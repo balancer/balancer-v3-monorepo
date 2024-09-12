@@ -28,14 +28,14 @@ contract WeightValidationTest is Test {
         for (uint256 numTokens = 2; numTokens <= 8; numTokens++) {
             uint256[] memory weights = new uint256[](numTokens);
             uint256 remainingWeight = FP_ONE;
-            
+
             for (uint256 i = 0; i < numTokens - 1; i++) {
                 uint256 weight = (remainingWeight / (numTokens - i)) + 1e16; // Ensure it's above MIN_WEIGHT
                 weights[i] = weight;
                 remainingWeight -= weight;
             }
             weights[numTokens - 1] = remainingWeight;
-            
+
             wrapper.validateWeights(weights, numTokens);
         }
     }

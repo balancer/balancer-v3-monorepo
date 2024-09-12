@@ -358,7 +358,7 @@ contract LBPoolTest is BasePoolTest {
         );
     }
 
-     function testQuerySwapDuringWeightUpdate() public {
+    function testQuerySwapDuringWeightUpdate() public {
         // Cache original time to avoid issues from `block.timestamp` during `vm.warp`
         uint256 blockDotTimestampTestStart = block.timestamp;
 
@@ -413,6 +413,7 @@ contract LBPoolTest is BasePoolTest {
             prevAmountOut = amountOut;
         }
     }
+
     function _executeAndUndoSwap(uint256 amountIn) internal returns (uint256) {
         // Create a storage checkpoint
         uint256 snapshot = vm.snapshot();
@@ -438,15 +439,16 @@ contract LBPoolTest is BasePoolTest {
 
         // Perform the actual swap
         vm.prank(bob);
-        return router.swapSingleTokenExactIn(
-            address(pool),
-            IERC20(dai),
-            IERC20(usdc),
-            amountIn,
-            0,  // minAmountOut: Set to 0 or a minimum amount if desired
-            block.timestamp,  // deadline = now to ensure it won't timeout
-            false,  // wethIsEth: Set to false assuming DAI and USDC are not ETH
-            ""  // userData: Empty bytes as no additional data is needed
-        );
+        return
+            router.swapSingleTokenExactIn(
+                address(pool),
+                IERC20(dai),
+                IERC20(usdc),
+                amountIn,
+                0, // minAmountOut: Set to 0 or a minimum amount if desired
+                block.timestamp, // deadline = now to ensure it won't timeout
+                false, // wethIsEth: Set to false assuming DAI and USDC are not ETH
+                "" // userData: Empty bytes as no additional data is needed
+            );
     }
 }

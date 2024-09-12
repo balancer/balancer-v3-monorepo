@@ -23,11 +23,7 @@ contract GradualValueChangeWrapper {
         GradualValueChange.ensureNoTimeOverflow(time, maxTime);
     }
 
-    function interpolateValue(
-        uint256 startValue,
-        uint256 endValue,
-        uint256 pctProgress
-    ) public pure returns (uint256) {
+    function interpolateValue(uint256 startValue, uint256 endValue, uint256 pctProgress) public pure returns (uint256) {
         return GradualValueChange.interpolateValue(startValue, endValue, pctProgress);
     }
 
@@ -52,9 +48,9 @@ contract GradualValueChangeTest is Test {
         uint256 steps = 100;
 
         for (uint256 i = 0; i <= steps; i++) {
-            uint256 currentTime = startTime + (i * (endTime - startTime) / steps);
+            uint256 currentTime = startTime + ((i * (endTime - startTime)) / steps);
             vm.warp(currentTime);
-            uint256 expectedValue = startValue + (i * (endValue - startValue) / steps);
+            uint256 expectedValue = startValue + ((i * (endValue - startValue)) / steps);
             uint256 actualValue = wrapper.getInterpolatedValue(startValue, endValue, startTime, endTime);
             assertEq(actualValue, expectedValue, "Interpolated value should match expected");
         }
@@ -66,7 +62,11 @@ contract GradualValueChangeTest is Test {
 
         vm.warp(currentTime);
         assertEq(wrapper.resolveStartTime(futureTime, futureTime + 100), futureTime, "Should return future start time");
-        assertEq(wrapper.resolveStartTime(currentTime - 100, futureTime), currentTime, "Should return current time for past start time");
+        assertEq(
+            wrapper.resolveStartTime(currentTime - 100, futureTime),
+            currentTime,
+            "Should return current time for past start time"
+        );
 
         vm.expectRevert(GradualValueChange.GradualUpdateTimeTravel.selector);
         wrapper.resolveStartTime(futureTime + 200, futureTime + 100);
@@ -74,10 +74,10 @@ contract GradualValueChangeTest is Test {
 
     function testEnsureNoTimeOverflow() public {
         uint256 maxTime = 1000;
-        
+
         wrapper.ensureNoTimeOverflow(maxTime, maxTime);
         wrapper.ensureNoTimeOverflow(maxTime - 1, maxTime);
-        
+
         vm.expectRevert(GradualValueChange.TimeTruncatedInStorage.selector);
         wrapper.ensureNoTimeOverflow(maxTime + 1, maxTime);
     }
@@ -89,7 +89,7 @@ contract GradualValueChangeTest is Test {
 
         for (uint256 i = 0; i <= steps; i++) {
             uint256 pctProgress = (i * FP_ONE) / steps;
-            uint256 expectedValue = startValue + (i * (endValue - startValue) / steps);
+            uint256 expectedValue = startValue + ((i * (endValue - startValue)) / steps);
             uint256 actualValue = wrapper.interpolateValue(startValue, endValue, pctProgress);
             assertEq(actualValue, expectedValue, "Interpolated value should match expected");
         }
@@ -100,7 +100,7 @@ contract GradualValueChangeTest is Test {
 
         for (uint256 i = 0; i <= steps; i++) {
             uint256 pctProgress = (i * FP_ONE) / steps;
-            uint256 expectedValue = startValue - (i * (startValue - endValue) / steps);
+            uint256 expectedValue = startValue - ((i * (startValue - endValue)) / steps);
             uint256 actualValue = wrapper.interpolateValue(startValue, endValue, pctProgress);
             assertEq(actualValue, expectedValue, "Interpolated value should match expected for decreasing value");
         }
@@ -112,7 +112,7 @@ contract GradualValueChangeTest is Test {
         uint256 steps = 100;
 
         for (uint256 i = 0; i <= steps; i++) {
-            uint256 currentTime = startTime + (i * (endTime - startTime) / steps);
+            uint256 currentTime = startTime + ((i * (endTime - startTime)) / steps);
             vm.warp(currentTime);
             uint256 expectedProgress = (i * FP_ONE) / steps;
             uint256 actualProgress = wrapper.calculateValueChangeProgress(startTime, endTime);
@@ -133,7 +133,11 @@ contract GradualValueChangeTest is Test {
 
         for (uint256 i = 0; i <= 100; i++) {
             vm.warp(startTime + i);
-            assertEq(wrapper.getInterpolatedValue(startValue, startValue, startTime, endTime), startValue, "Should always return the same value");
+            assertEq(
+                wrapper.getInterpolatedValue(startValue, startValue, startTime, endTime),
+                startValue,
+                "Should always return the same value"
+            );
         }
 
         // Test before start time
@@ -174,7 +178,7 @@ contract GradualValueChangeTest is Test {
             uint256 currentTime = (bigVal / steps) * i;
             vm.warp(currentTime);
             uint256 expectedValue = (bigVal / steps) * i;
-            
+
             uint256 actualValue;
             try wrapper.getInterpolatedValue(0, bigVal, 0, bigVal) returns (uint256 value) {
                 actualValue = value;
@@ -184,7 +188,7 @@ contract GradualValueChangeTest is Test {
             } catch (bytes memory /*lowLevelData*/) {
                 revert("getInterpolatedValue reverted unexpectedly");
             }
-            
+
             // Additional check to ensure the value is within the expected range
             assertGe(actualValue, 0, "Value should not be less than 0");
             assertLe(actualValue, bigVal, "Value should not exceed bigVal");

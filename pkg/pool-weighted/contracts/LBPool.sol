@@ -191,7 +191,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
      * @notice Called before a swap to let pool block swaps if not enabled.
      * @return success True if the pool has swaps enabled.
      */
-    function onBeforeSwap(PoolSwapParams calldata, address) public override view onlyVault returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata, address) public view override onlyVault returns (bool) {
         return _getPoolSwapEnabledState();
     }
 
