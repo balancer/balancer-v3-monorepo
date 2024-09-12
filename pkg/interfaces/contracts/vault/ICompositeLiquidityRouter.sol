@@ -6,10 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
-/**
- * @notice Interface for the composite liquidity router, supporting add/remove liquidity of ERC4626 and nested pools.
- * @dev
- */
+/// @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
 interface ICompositeLiquidityRouter {
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
 
