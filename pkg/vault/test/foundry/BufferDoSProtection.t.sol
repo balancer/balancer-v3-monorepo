@@ -80,7 +80,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
         // Initializes the buffer with an amount that's not enough to fulfill the mint operation.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.convertToShares(_wrapAmount / 10));
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
         vm.stopPrank();
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
@@ -122,7 +122,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
         // Initializes the buffer with an amount that's not enough to fulfill the redeem operation.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.convertToShares(_wrapAmount / 10));
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
         vm.stopPrank();
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
