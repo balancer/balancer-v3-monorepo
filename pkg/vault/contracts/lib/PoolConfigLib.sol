@@ -27,7 +27,7 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    // Bit offsets for main pool config settings
+    // Bit offsets for main pool config settings.
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_REGISTERED_OFFSET);
     }
@@ -69,7 +69,7 @@ library PoolConfigLib {
             );
     }
 
-    // Bit offsets for liquidity operations
+    // Bit offsets for liquidity operations.
     function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
         // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
         // This function returns the inverted value.
@@ -158,7 +158,7 @@ library PoolConfigLib {
         }
     }
 
-    // Bit offsets for uint values
+    // Bit offsets for uint values.
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return
             PoolConfigBits.unwrap(config).decodeUint(PoolConfigConst.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *

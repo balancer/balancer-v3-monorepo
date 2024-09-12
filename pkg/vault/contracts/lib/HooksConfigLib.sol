@@ -165,8 +165,6 @@ library HooksConfigLib {
             });
     }
 
-    // Hooks helper functions
-
     /**
      * @dev Call the `onComputeDynamicSwapFeePercentage` hook and return the result. Reverts on failure.
      * @param swapParams The swap parameters used to calculate the fee
