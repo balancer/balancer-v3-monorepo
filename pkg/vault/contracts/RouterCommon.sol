@@ -2,17 +2,17 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import {
     TransientStorageHelpers
@@ -23,10 +23,11 @@ import { VaultGuard } from "./VaultGuard.sol";
 
 /// @notice Contract for functions shared between the `Router` and `BatchRouter`.
 abstract contract RouterCommon is IRouterCommon, VaultGuard {
-    using Address for address payable;
-    using SafeERC20 for IWETH;
-    using StorageSlotExtension for *;
     using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
+    using Address for address payable;
+    using StorageSlotExtension for *;
+    using SafeERC20 for IWETH;
+    using SafeCast for *;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used by what is written
     // after =. If you use immutable, the value is first calculated and then replaced everywhere. That means that if a
@@ -213,19 +214,13 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         amountsGiven[tokenIndex] = amountGiven;
     }
 
-    function _takeTokenIn(
-        address sender,
-        IERC20 tokenIn,
-        uint256 amountIn,
-        bool wethIsEth
-    ) internal returns (uint256 ethAmountIn) {
+    function _takeTokenIn(address sender, IERC20 tokenIn, uint256 amountIn, bool wethIsEth) internal {
         // If the tokenIn is ETH, then wrap `amountIn` into WETH.
         if (wethIsEth && tokenIn == _weth) {
             if (address(this).balance < amountIn) {
                 revert InsufficientEth();
             }
 
-            ethAmountIn = amountIn;
             // wrap amountIn to WETH.
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault.
@@ -234,7 +229,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             _vault.settle(_weth, amountIn);
         } else {
             // Send the tokenIn amount to the Vault
-            _permit2.transferFrom(sender, address(_vault), uint160(amountIn), address(tokenIn));
+            _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
             _vault.settle(tokenIn, amountIn);
         }
     }

@@ -40,6 +40,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
+    // Minimum BPT amount minted upon initialization.
+    uint256 internal constant _BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVaultDelegateCall() {
         _vault.ensureVaultDelegateCall();
@@ -467,8 +470,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
 
         // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
-        // buffer token balances, converted to underlying.
-        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
+        // since `redeem` is an EXACT_IN operation that rounds down the result.
+        issuedShares = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
         _ensureBufferMinimumTotalSupply(issuedShares);
 
         // Divide `issuedShares` between the zero address, which receives the minimum supply, and the account
@@ -506,12 +510,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
-        // The buffer invariant is the sum of buffer token balances converted to underlying.
+        // The buffer invariant is the sum of buffer token balances converted to underlying. We use `previewRedeem` to
+        // convert wrapped to underlying, since `redeem` is an EXACT_IN operation that rounds down the result.
         uint256 currentInvariant = bufferBalances.getBalanceRaw() +
-            wrappedToken.convertToAssets(bufferBalances.getBalanceDerived());
+            wrappedToken.previewRedeem(bufferBalances.getBalanceDerived());
 
-        // The invariant delta is the amount we're adding (at the current rate) in terms of underlying.
-        uint256 bufferInvariantDelta = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        // The invariant delta is the amount we're adding (at the current rate) in terms of underlying. We use
+        // `previewRedeem` to convert wrapped to underlying, since `redeem` is an EXACT_IN operation that rounds down
+        // the result.
+        uint256 bufferInvariantDelta = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
         // The new share amount is the invariant ratio normalized by the total supply.
         // Rounds down, as the shares are "outgoing," in the sense that they can be redeemed for tokens.
         issuedShares = (_bufferTotalShares[wrappedToken] * bufferInvariantDelta) / currentInvariant;
@@ -725,5 +732,23 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @dev Access control is delegated to the Authorizer. `where` refers to the target contract.
     function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
         return _authorizer.canPerform(actionId, user, where);
+    }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    // solhint-disable no-complex-fallback
+
+    fallback() external payable {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        revert("Not implemented");
     }
 }
