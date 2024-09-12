@@ -158,4 +158,13 @@ library FixedPoint {
             result := mul(lt(x, ONE), sub(ONE, x))
         }
     }
+
+    /// @dev Returns the larger of two uint256s.
+    function max(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        // Equivalent to:
+        // result = (a < b) ? b : a;
+        assembly ("memory-safe") {
+            result := sub(a, mul(sub(a, b), lt(a, b)))
+        }
+    }
 }
