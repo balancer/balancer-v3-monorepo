@@ -2,50 +2,67 @@
 
 pragma solidity ^0.8.24;
 
-import { WeightedPool } from "./WeightedPool.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    HookFlags,
-    TokenConfig,
-    AddLiquidityKind,
-    LiquidityManagement,
-    PoolSwapParams
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
+
 import { GradualValueChange } from "./lib/GradualValueChange.sol";
 import { WeightValidation } from "./lib/WeightValidation.sol";
+import { WeightedPool } from "./WeightedPool.sol";
 
 /// @notice Inheriting from WeightedPool is only slightly wasteful (setting 2 immutable weights
 ///     and _totalTokens, which will not be used later), and it is tremendously helpful for pool
 ///     validation and any potential future parent class changes.
 contract LBPool is WeightedPool, Ownable, BaseHooks {
+    using SafeCast for *;
+
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight
     struct PoolState {
-        uint56 startTime;
-        uint56 endTime;
+        uint32 startTime;
+        uint32 endTime;
         uint64 startWeight0;
         uint64 endWeight0;
         bool swapEnabled;
     }
-    PoolState private _poolState;
+    // `{start,end}Time` are `uint32`s. Ensure that no input time (passed as `uint256`) will overflow.
+    uint256 private constant _MAX_TIMESTAMP = type(uint32).max;
 
+    // LBPs are constrained to two tokens.auto
     uint256 private constant _NUM_TOKENS = 2;
 
-    // `{start,end}Time` are `uint56`s. Ensure that no input time (passed as `uint256`) will overflow.
-    uint256 private constant _MAX_TIME = type(uint56).max;
+    // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true
+    // originating account on operations. This is important for liquidity operations, as these are permissioned
+    // operations that can only be performed by the owner of the pool. Without this check, a malicious router
+    // could spoof the address of the owner, allowing anyone to withdraw LBP proceeds.
 
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _TRUSTED_ROUTER;
 
+    PoolState private _poolState;
+
+    /**
+     * @notice Emitted when the owner enables or disables swaps.
+     * @param swapEnabled True if we are enabling swaps
+     */
     event SwapEnabledSet(bool swapEnabled);
+
+    /**
+     * @notice Emitted when the owner initiates a gradual weight change (e.g., at the start of the sale).
+     * @dev Also emitted on deployment, recording the initial state.
+     * @param startTime The starting timestamp of the update
+     * @param endTime  The ending timestamp of the update
+     * @param startWeights The weights at the start of the update
+     * @param endWeights The final weights after the update is completed
+     */
     event GradualWeightUpdateScheduled(
         uint256 startTime,
         uint256 endTime,
@@ -67,21 +84,16 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         // WeightedPool validates `numTokens == normalizedWeights.length`
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
 
-        // _startGradualWeightChange validates weights
-
-        // Provider address validation performed at the factory level
+        // Set the trusted router (passed down from the factory).
         _TRUSTED_ROUTER = trustedRouter;
 
+        // `_startGradualWeightChange` validates weights.
+
         // solhint-disable-next-line not-rely-on-time
-        uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(
-            uint56(currentTime),
-            uint56(currentTime),
-            params.normalizedWeights,
-            params.normalizedWeights,
-            true,
-            swapEnabledOnStart
-        );
+        uint32 currentTime = block.timestamp.toUint32();
+        _startGradualWeightChange(currentTime, currentTime, params.normalizedWeights, params.normalizedWeights);
+
+        _setSwapEnabled(swapEnabledOnStart);
     }
 
     function updateWeightsGradually(
@@ -92,13 +104,11 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, endWeights.length);
         WeightValidation.validateTwoWeights(endWeights[0], endWeights[1]);
 
-        // Ensure startTime >= now
+        // Ensure startTime >= now.
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        // Ensure time will not overflow in storage; only check end (startTime <= endTime)
-        GradualValueChange.ensureNoTimeOverflow(endTime, _MAX_TIME);
-
-        _startGradualWeightChange(uint56(startTime), uint56(endTime), _getNormalizedWeights(), endWeights, false, true);
+        // The SafeCast ensures `endTime` can't overflow.
+        _startGradualWeightChange(startTime.toUint32(), endTime.toUint32(), _getNormalizedWeights(), endWeights);
     }
 
     /**
@@ -122,25 +132,34 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
 
     /**
      * @notice Enable/disable trading.
+     * @dev This is a permissioned function.
+     * @param swapEnabled True if trading should be enabled
      */
     function setSwapEnabled(bool swapEnabled) external onlyOwner {
+        _setSwapEnabled(swapEnabled);
+    }
+
+    function _setSwapEnabled(bool swapEnabled) private {
         _poolState.swapEnabled = swapEnabled;
+
         emit SwapEnabledSet(swapEnabled);
     }
 
     /**
-     * @notice Return whether swaps are enabled or not for the given pool.
+     * @notice Indicate whether swaps are enabled or not for the given pool.
+     * @return swapEnabled True if trading is enabled
      */
     function getSwapEnabled() external view returns (bool) {
-        return _getPoolSwapEnabledState();
+        return _getPoolSwapEnabled();
     }
 
-    /* =========================================
-     * =========================================
-     * ============HOOK FUNCTIONS===============
-     * =========================================
-     * =========================================
-     */
+    function _getPoolSwapEnabled() internal view returns (bool) {
+        return _poolState.swapEnabled;
+    }
+
+    /*******************************************************************************
+                                    Hook Functions
+    *******************************************************************************/
 
     /**
      * @notice Hook to be executed when pool is registered. Returns true if registration was successful, and false to
@@ -194,7 +213,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
      * @return success True if the pool has swaps enabled.
      */
     function onBeforeSwap(PoolSwapParams calldata, address) public view override onlyVault returns (bool) {
-        return _getPoolSwapEnabledState();
+        return _getPoolSwapEnabled();
     }
 
     /* =========================================
@@ -236,31 +255,23 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
      * if necessary.
      */
     function _startGradualWeightChange(
-        uint56 startTime,
-        uint56 endTime,
+        uint32 startTime,
+        uint32 endTime,
         uint256[] memory startWeights,
-        uint256[] memory endWeights,
-        bool modifySwapEnabledStatus,
-        bool newSwapEnabled
+        uint256[] memory endWeights
     ) internal virtual {
         WeightValidation.validateTwoWeights(endWeights[0], endWeights[1]);
 
         PoolState memory poolState = _poolState;
         poolState.startTime = startTime;
         poolState.endTime = endTime;
+
+        // These have been validated, so can be safely cast directly.
         poolState.startWeight0 = uint64(startWeights[0]);
         poolState.endWeight0 = uint64(endWeights[0]);
 
-        if (modifySwapEnabledStatus) {
-            poolState.swapEnabled = newSwapEnabled;
-            emit SwapEnabledSet(newSwapEnabled);
-        }
-
         _poolState = poolState;
-        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
-    }
 
-    function _getPoolSwapEnabledState() internal view returns (bool) {
-        return _poolState.swapEnabled;
+        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 }
