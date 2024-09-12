@@ -25,7 +25,7 @@ import {
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
 /**
- * @notice Entrypoint for add/remove liquidity of ERC4626 and nested pools.
+ * @notice Entrypoint for add/remove liquidity operations on ERC4626 and nested pools.
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  * These execute the steps needed to add to and remove liquidity from these special types of pools, and settle
  * the operation with the Vault.
