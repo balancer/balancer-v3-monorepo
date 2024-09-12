@@ -437,7 +437,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         // An ExactIn swap with `defaultAmount` tokenIn returned `amountOut` tokenOut.
         // Since Exact_In and Exact_Out are symmetrical, an ExactOut swap with `amountOut` tokenOut should return the
         // same amount of tokenIn.
-        assertApproxEqRel(amountIn, daiAmountIn, 0.02e16, "Swap fees are not symmetric for ExactIn and ExactOut");
+        assertApproxEqRel(amountIn, daiAmountIn, 0.001e16, "Swap fees are not symmetric for ExactIn and ExactOut");
     }
 
     /// Utils
