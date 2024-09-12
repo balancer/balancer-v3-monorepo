@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -94,6 +95,20 @@ contract RouterCommonTest is BaseVaultTest {
         assertEq(vars.bobWethAfter, vars.bobWethBefore - amountToDeposit, "Bob WETH balance is wrong");
         assertEq(vars.vaultWethAfter, vars.vaultWethBefore + amountToDeposit, "Vault WETH balance is wrong");
         assertEq(vars.wethDeltaAfter, vars.wethDeltaBefore - int256(amountToDeposit), "Vault delta is wrong");
+    }
+
+    function testTakeTokenInTooLarge() public {
+        vault.forceUnlock();
+
+        uint256 amountToDeposit = type(uint168).max;
+
+        vm.startPrank(bob);
+        IERC20(weth).approve(address(permit2), type(uint256).max);
+        permit2.approve(address(weth), address(routerMock), type(uint160).max, type(uint48).max);
+
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 160, amountToDeposit));
+        routerMock.mockTakeTokenIn(bob, IERC20(weth), amountToDeposit, false);
+        vm.stopPrank();
     }
 
     function testSendTokenOutWethIsEth() public {

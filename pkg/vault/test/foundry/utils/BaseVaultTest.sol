@@ -121,10 +121,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Change this value before calling `setUp` to test under real conditions.
     uint256 vaultMockMinWrapAmount = 0;
 
-    // Stores the Vault's CONVERT_FACTOR, used to fix the result of ERC4626 buffer's "convert" calls (amount used to
-    // wrap/unwrap using the buffer liquidity).
-    uint16 internal vaultConvertFactor;
-
     // Applies to Weighted Pools.
     uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%
@@ -165,8 +161,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
         // Add initial liquidity
         initPool();
-
-        vaultConvertFactor = vault.getConvertFactor();
     }
 
     function approveForSender() internal virtual {
@@ -174,6 +168,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+        }
+
+        for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
+            erc4626Tokens[i].approve(address(permit2), type(uint256).max);
+            permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(erc4626Tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+
+            // Approve deposits from sender.
+            IERC20 underlying = IERC20(erc4626Tokens[i].asset());
+            underlying.approve(address(erc4626Tokens[i]), type(uint160).max);
         }
     }
 
