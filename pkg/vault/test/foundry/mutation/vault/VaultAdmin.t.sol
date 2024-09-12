@@ -371,18 +371,18 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityFromBufferHookWhenNotVaultDelegateCall() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        VaultAdmin(address(vaultAdmin)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
+        VaultAdmin(payable(address(vaultAdmin))).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
     function testRemoveLiquidityFromBufferHookWhenVaultIsNotSender() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        VaultAdmin(address(vault)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
+        VaultAdmin(payable(address(vault))).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
     function testRemoveLiquidityFromBufferHookWhenNotUnlocked() public {
         vm.prank(address(vault));
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
-        VaultAdmin(address(vault)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
+        VaultAdmin(payable(address(vault))).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
     function testRemoveLiquidityFromBufferHookWhenNotInitialized() public {
@@ -390,7 +390,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.forceUnlock();
         vm.prank(address(vault));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
-        VaultAdmin(address(vault)).removeLiquidityFromBufferHook(wrappedToken, 0, address(0));
+        VaultAdmin(payable(address(vault))).removeLiquidityFromBufferHook(wrappedToken, 0, address(0));
     }
 
     function testRemoveLiquidityFromBufferNonReentrant() public {
