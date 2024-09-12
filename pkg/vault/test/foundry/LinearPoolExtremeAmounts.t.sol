@@ -10,7 +10,6 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 
 contract LinearPoolExtremeAmountsTest is BaseExtremeAmountsTest {
-    using ArrayHelpers for *;
     using CastingHelpers for *;
 
     function setUp() public virtual override {

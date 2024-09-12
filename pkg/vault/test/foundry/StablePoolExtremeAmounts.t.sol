@@ -12,7 +12,6 @@ import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.s
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 
 contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
-    using ArrayHelpers for *;
     using CastingHelpers for *;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
