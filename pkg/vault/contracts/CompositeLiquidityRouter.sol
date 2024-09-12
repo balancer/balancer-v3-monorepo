@@ -342,7 +342,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             if (isStaticCall == false) {
                 if (kind == SwapKind.EXACT_IN) {
-                    // If SwapKind of wrap is EXACT_IN, take the exact amount in from the sender.
+                    // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
                     _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
                 } else {
                     // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
