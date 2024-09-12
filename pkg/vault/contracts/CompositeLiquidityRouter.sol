@@ -345,7 +345,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     // If SwapKind of wrap is EXACT_IN, take the exact amount in from the sender.
                     _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
                 } else {
-                    // If SwapKind of wrap is EXACT_OUT, the exact amount in is not known, because amountsIn is the
+                    // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
                     // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
                     // between the limit and the actual underlying amount is returned to the sender.
                     _takeTokenIn(params.sender, underlyingToken, limits[i], params.wethIsEth);
