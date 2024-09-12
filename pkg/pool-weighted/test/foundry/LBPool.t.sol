@@ -358,4 +358,95 @@ contract LBPoolTest is BasePoolTest {
         );
     }
 
+     function testQuerySwapDuringWeightUpdate() public {
+        // Cache original time to avoid issues from `block.timestamp` during `vm.warp`
+        uint256 blockDotTimestampTestStart = block.timestamp;
+
+        uint256 testDuration = 1 days;
+        uint256 weightUpdateStep = 1 hours;
+        uint256 constantWeightDuration = 6 hours;
+        uint256 startTime = blockDotTimestampTestStart + constantWeightDuration;
+
+        uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.01e18; // 1%
+        endWeights[1] = 0.99e18; // 99%
+
+        uint256 amountIn = TOKEN_AMOUNT / 10;
+        uint256 constantWeightSteps = constantWeightDuration / weightUpdateStep;
+        uint256 weightUpdateSteps = testDuration / weightUpdateStep;
+
+        // Start the gradual weight update
+        vm.prank(bob);
+        LBPool(address(pool)).updateWeightsGradually(startTime, startTime + testDuration, endWeights);
+
+        uint256 prevAmountOut;
+        uint256 amountOut;
+
+        // Perform query swaps before the weight update starts
+        vm.warp(blockDotTimestampTestStart);
+        prevAmountOut = _executeAndUndoSwap(amountIn);
+        for (uint256 i = 1; i < constantWeightSteps; i++) {
+            uint256 currTime = blockDotTimestampTestStart + i * weightUpdateStep;
+            vm.warp(currTime);
+            amountOut = _executeAndUndoSwap(amountIn);
+            assertEq(amountOut, prevAmountOut, "Amount out should remain constant before weight update");
+            prevAmountOut = amountOut;
+        }
+
+        // Perform query swaps during the weight update
+        vm.warp(startTime);
+        prevAmountOut = _executeAndUndoSwap(amountIn);
+        for (uint256 i = 1; i <= weightUpdateSteps; i++) {
+            vm.warp(startTime + i * weightUpdateStep);
+            amountOut = _executeAndUndoSwap(amountIn);
+            assertTrue(amountOut > prevAmountOut, "Amount out should increase during weight update");
+            prevAmountOut = amountOut;
+        }
+
+        // Perform query swaps after the weight update ends
+        vm.warp(startTime + testDuration);
+        prevAmountOut = _executeAndUndoSwap(amountIn);
+        for (uint256 i = 1; i < constantWeightSteps; i++) {
+            vm.warp(startTime + testDuration + i * weightUpdateStep);
+            amountOut = _executeAndUndoSwap(amountIn);
+            assertEq(amountOut, prevAmountOut, "Amount out should remain constant after weight update");
+            prevAmountOut = amountOut;
+        }
+    }
+    function _executeAndUndoSwap(uint256 amountIn) internal returns (uint256) {
+        // Create a storage checkpoint
+        uint256 snapshot = vm.snapshot();
+
+        try this.executeSwap(amountIn) returns (uint256 amountOut) {
+            // Revert to the snapshot to undo the swap
+            vm.revertTo(snapshot);
+            return amountOut;
+        } catch Error(string memory reason) {
+            vm.revertTo(snapshot);
+            revert(reason);
+        } catch {
+            vm.revertTo(snapshot);
+            revert("Low level error during swap");
+        }
+    }
+
+    function executeSwap(uint256 amountIn) external returns (uint256) {
+        // Ensure this contract has enough tokens and allowance
+        deal(address(dai), address(bob), amountIn);
+        vm.prank(bob);
+        IERC20(dai).approve(address(router), amountIn);
+
+        // Perform the actual swap
+        vm.prank(bob);
+        return router.swapSingleTokenExactIn(
+            address(pool),
+            IERC20(dai),
+            IERC20(usdc),
+            amountIn,
+            0,  // minAmountOut: Set to 0 or a minimum amount if desired
+            block.timestamp,  // deadline = now to ensure it won't timeout
+            false,  // wethIsEth: Set to false assuming DAI and USDC are not ETH
+            ""  // userData: Empty bytes as no additional data is needed
+        );
+    }
 }
