@@ -15,7 +15,7 @@ import { FEE_BITLENGTH } from "@balancer-labs/v3-interfaces/contracts/vault/Vaul
  * and other data associated with pools.
  */
 library PoolConfigConst {
-    // Bit offsets for main pool config settings
+    // Bit offsets for main pool config settings.
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
@@ -28,7 +28,7 @@ library PoolConfigConst {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
     uint8 public constant DONATION_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
 
-    // Bit offsets for hooks config
+    // Bit offsets for hooks config.
     uint8 public constant BEFORE_INITIALIZE_OFFSET = DONATION_OFFSET + 1;
     uint8 public constant ENABLE_HOOK_ADJUSTED_AMOUNTS_ADD_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
     uint8 public constant ENABLE_HOOK_ADJUSTED_AMOUNTS_REMOVE_OFFSET = ENABLE_HOOK_ADJUSTED_AMOUNTS_ADD_OFFSET + 1;
@@ -42,7 +42,7 @@ library PoolConfigConst {
     uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
 
-    // Bit offsets for uint values
+    // Bit offsets for uint values.
     uint8 public constant STATIC_SWAP_FEE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
     uint256 public constant AGGREGATE_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant AGGREGATE_YIELD_FEE_OFFSET = AGGREGATE_SWAP_FEE_OFFSET + FEE_BITLENGTH;

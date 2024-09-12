@@ -35,8 +35,6 @@ library HooksConfigLib {
     using WordCodec for bytes32;
     using HooksConfigLib for PoolConfigBits;
 
-    // #region Bit offsets for hooks config
-
     function enableHookAdjustedAmountsOnAdd(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_ADD_OFFSET);
     }
@@ -196,10 +194,6 @@ library HooksConfigLib {
                 hooksContract: address(hooksContract)
             });
     }
-
-    // #endregion
-
-    // #region Hooks helper functions
 
     /**
      * @dev Call the `onComputeDynamicSwapFeePercentage` hook and return the result. Reverts on failure.
@@ -521,6 +515,4 @@ library HooksConfigLib {
             revert IVaultErrors.AfterInitializeHookFailed();
         }
     }
-
-    // #endregion
 }
