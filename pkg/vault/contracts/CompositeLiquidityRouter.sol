@@ -365,7 +365,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             );
 
             if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
-                // If SwapKind of wrap is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
+                // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
                 // difference between limit and exact underlying amount needs to be returned to the sender.
                 _vault.sendTo(underlyingToken, params.sender, limits[i] - underlyingAmounts[i]);
             }
