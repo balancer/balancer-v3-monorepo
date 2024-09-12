@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 pragma solidity ^0.8.24;
 
@@ -21,9 +22,6 @@ pragma solidity ^0.8.24;
 library GradualValueChange {
     /// @dev Indicates that the start time is after the end time
     error GradualUpdateTimeTravel();
-
-    /// @dev Indicates that an input time is larger than the maximum storage value.
-    error TimeTruncatedInStorage();
 
     using FixedPoint for uint256;
 
@@ -42,16 +40,10 @@ library GradualValueChange {
         // If the start time is in the past, "fast forward" to start now
         // This avoids discontinuities in the value curve. Otherwise, if you set the start/end times with
         // only 10% of the period in the future, the value would immediately jump 90%
-        resolvedStartTime = FixedPoint.max(block.timestamp, startTime);
+        resolvedStartTime = Math.max(block.timestamp, startTime);
 
         if (resolvedStartTime > endTime) {
             revert GradualUpdateTimeTravel();
-        }
-    }
-
-    function ensureNoTimeOverflow(uint256 time, uint256 maxTime) internal pure {
-        if (time > maxTime) {
-            revert TimeTruncatedInStorage();
         }
     }
 
