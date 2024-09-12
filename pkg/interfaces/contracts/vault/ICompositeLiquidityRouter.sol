@@ -6,7 +6,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
-/// @notice Interface for the composite liquidity router, supporting add/remove liquidity of ERC4626 and nested pools.
+/**
+ * @notice Interface for the composite liquidity router, supporting add/remove liquidity of ERC4626 and nested pools.
+ * @dev
+ */
 interface ICompositeLiquidityRouter {
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
 
@@ -28,9 +31,7 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard
-     * (e.g., waDAI).
-     *
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
      * wrapped tokens in the pool
@@ -49,9 +50,7 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Add proportional amounts of underlying tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard
-     * (e.g., waDAI).
-     *
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param maxUnderlyingAmountsIn Maximum amounts of underlying tokens in, sorted in token registration order of
      * wrapped tokens in the pool
@@ -71,9 +70,7 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Remove proportional amounts of underlying from an ERC4626 pool, burning an exact pool token amount.
-     * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard
-     * (e.g., waDAI).
-     *
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param minUnderlyingAmountsOut Minimum amounts of underlying tokens out, sorted in token registration order of
@@ -93,9 +90,7 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Queries an `addLiquidityUnbalancedToERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard
-     * (e.g., waDAI).
-     *
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
      * wrapped tokens in the pool
@@ -110,9 +105,7 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard
-     * (e.g., waDAI).
-     *
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param userData Additional (optional) data required for the query
@@ -127,9 +120,7 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard
-     * (e.g., waDAI).
-     *
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param userData Additional (optional) data required for the query
