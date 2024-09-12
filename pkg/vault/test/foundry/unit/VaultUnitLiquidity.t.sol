@@ -33,7 +33,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;
 
-    // Test structs
+    // Test structs.
 
     struct TestAddLiquidityParams {
         AddLiquidityParams addLiquidityParams;
@@ -89,7 +89,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         );
     }
 
-    // AddLiquidity tests
+    // AddLiquidity tests.
     function testAddLiquidityProportional() public {
         PoolData memory poolData = _makeDefaultParams();
         (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
@@ -370,7 +370,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18);
     }
 
-    // RemoveLiquidity tests
+    // RemoveLiquidity tests.
     function testRemoveLiquidityProportional() public {
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
@@ -687,7 +687,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
-    // Helpers
+    // Helpers.
     function _makeAddLiquidityParams(
         PoolData memory poolData,
         AddLiquidityKind kind,

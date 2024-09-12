@@ -281,7 +281,7 @@ contract VaultUnitSwapTest is BaseTest {
         );
     }
 
-    // Helpers
+    // Helpers.
     function _makeParams(
         SwapKind kind,
         uint256 amountGivenRaw,
