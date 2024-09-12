@@ -35,8 +35,6 @@ library HooksConfigLib {
     using WordCodec for bytes32;
     using HooksConfigLib for PoolConfigBits;
 
-    // Bit offsets for hooks config
-
     function enableHookAdjustedAmounts(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET);
     }
