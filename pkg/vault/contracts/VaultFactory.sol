@@ -132,7 +132,7 @@ contract VaultFactory is Authentication {
         );
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyway.
-        if (deployedAddress != targetAddress) {
+        if (deployedAddress != vaultAddress) {
             revert VaultAddressMismatch();
         }
 
