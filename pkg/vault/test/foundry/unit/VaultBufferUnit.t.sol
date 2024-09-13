@@ -37,7 +37,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         assertEq(surplus, int256(0), "Wrong underlying surplus");
     }
 
-    function testUnderlyingSurplusWrongBalance() public {
+    function testUnderlyingSurplusOfWrappedBalance() public {
         // Unbalances buffer so that buffer has less underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
@@ -50,12 +50,20 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
+        (uint256 underlyingBalance, uint256 wrappedBalance) = vault.getBufferBalance(
+            IERC4626(address(wDaiInitialized))
+        );
+        assertEq(underlyingBalance, _wrapAmount / 2, "Wrong buffer underlying balance");
+        assertEq(wrappedBalance, (3 * _wrapAmount) / 2, "Wrong wrapped underlying balance");
+
         int256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
-        assertEq(surplus, int256(0), "Wrong underlying surplus");
+        // The wrapped rate is 1. Buffer surplus = `(underlyingBalance - wrappedBalance) / 2`, and it has more wrapped
+        // than underlying, so the surplus is negative.
+        assertEq(surplus, -int256(_wrapAmount / 2), "Wrong underlying surplus");
     }
 
-    function testUnderlyingSurplusCorrectBalance() public {
-        // Unbalances buffer so that buffer has more underlying than wrapped (so it has a surplus of underlying).
+    function testUnderlyingSurplusOfUnderlyingBalance() public {
+        // Unbalances buffer so that buffer has more underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -92,7 +100,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         assertEq(surplus, int256(0), "Wrong wrapped surplus");
     }
 
-    function testWrappedSurplusWrongBalance() public {
+    function testWrappedSurplusOfUnderlyingBalance() public {
         // Unbalances buffer so that buffer has more underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
@@ -105,11 +113,19 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
+        (uint256 underlyingBalance, uint256 wrappedBalance) = vault.getBufferBalance(
+            IERC4626(address(wDaiInitialized))
+        );
+        assertEq(underlyingBalance, (3 * _wrapAmount) / 2, "Wrong buffer underlying balance");
+        assertEq(wrappedBalance, _wrapAmount / 2, "Wrong wrapped underlying balance");
+
         int256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
-        assertEq(surplus, int256(0), "Wrong wrapped surplus");
+        // The wrapped rate is 1. Buffer surplus = `(wrappedBalance - underlyingBalance) / 2`, and it has more
+        // underlying than wrapped, so the surplus is negative.
+        assertEq(surplus, -int256(_wrapAmount / 2), "Wrong wrapped surplus");
     }
 
-    function testWrappedSurplusCorrectBalance() public {
+    function testWrappedSurplusOfWrappedBalance() public {
         // Unbalances buffer so that buffer has less underlying than wrapped (so it has a surplus of wrapped).
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
