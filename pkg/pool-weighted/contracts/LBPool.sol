@@ -46,7 +46,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true
     // originating account on operations. This is important for liquidity operations, as these are permissioned
     // operations that can only be performed by the owner of the pool. Without this check, a malicious router
-    // could spoof the address of the owner, allowing anyone to withdraw LBP proceeds.
+    // could spoof the address of the owner, allowing anyone to call permissioned functions.
 
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _TRUSTED_ROUTER;
@@ -74,7 +74,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         uint256[] endWeights
     );
 
-    /// @dev Indicates that the router that called the Vault is not trusted and should be ignored.
+    /// @dev Indicates that the router that called the Vault is not trusted, so any operations should revert.
     error RouterNotTrusted();
 
     constructor(
@@ -85,6 +85,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         address trustedRouter
     ) WeightedPool(params, vault) Ownable(owner) {
         // WeightedPool validates `numTokens == normalizedWeights.length`, and ensures valid weights.
+        // Here we additionally enforce that LBPs must be two-token pools.
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
 
         // Set the trusted router (passed down from the factory).
@@ -93,13 +94,15 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         // solhint-disable-next-line not-rely-on-time
         uint32 currentTime = block.timestamp.toUint32();
         _startGradualWeightChange(currentTime, currentTime, params.normalizedWeights, params.normalizedWeights);
-
         _setSwapEnabled(swapEnabledOnStart);
     }
 
     /**
-     * @dev Return start time, end time, and endWeights as an array.
-     * Current weights should be retrieved via `getNormalizedWeights()`.
+     * @notice Return start time, end time, and endWeights as an array.
+     * @dev Current weights should be retrieved via `getNormalizedWeights()`.
+     * @return startTime The starting timestamp of any ongoing weight change
+     * @return endTime The ending timestamp of any ongoing weight change
+     * @return endWeights The "destination" weights, sorted in token registration order
      */
     function getGradualWeightUpdateParams()
         external
@@ -130,7 +133,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
 
     /**
      * @notice Enable/disable trading.
-     * @dev This is a permissioned function.
+     * @dev This is a permissioned function that can only be called by the owner.
      * @param swapEnabled True if trading should be enabled
      */
     function setSwapEnabled(bool swapEnabled) external onlyOwner {
@@ -139,7 +142,9 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
 
     /**
      * @notice Start a gradual weight change. Weights will change smoothly from current values to `endWeights`.
-     * @dev If the `startTime` is in the past, the weight change will begin immediately.
+     * @dev This is a permissioned function that can only be called by the owner.
+     * If the `startTime` is in the past, the weight change will begin immediately.
+     *
      * @param startTime The timestamp when the weight change will start
      * @param endTime  The timestamp when the weights will reach their final values
      * @param endWeights The final values of the weights
@@ -163,10 +168,8 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
     *******************************************************************************/
 
     /**
-     * @notice Hook to be executed when pool is registered. Returns true if registration was successful, and false to
-     * revert the registration of the pool. Make sure this function is properly implemented (e.g. check the factory,
-     * and check that the given pool is from the factory).
-     *
+     * @notice Hook to be executed when pool is registered.
+     * @dev Returns true if registration was successful, and false to revert the registration of the pool.
      * @param pool Address of the pool
      * @return success True if the hook allowed the registration, false otherwise
      */
@@ -225,24 +228,21 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
                                   Internal Functions
     *******************************************************************************/
 
-    function _getNormalizedWeights() internal view override returns (uint256[] memory) {
-        uint256[] memory normalizedWeights = new uint256[](_NUM_TOKENS);
-        normalizedWeights[0] = _getNormalizedWeight(0);
-        normalizedWeights[1] = _getNormalizedWeight(1);
-
-        return normalizedWeights;
-    }
-
+    // This is unused in this contract, but must be overridden from WeightedPool for consistency.
     function _getNormalizedWeight(uint256 tokenIndex) internal view virtual override returns (uint256) {
-        uint256 normalizedWeight0 = _getNormalizedWeight0();
-
-        if (tokenIndex == 0) {
-            return normalizedWeight0;
-        } else if (tokenIndex == 1) {
-            return FixedPoint.ONE - normalizedWeight0;
+        if (tokenIndex < _NUM_TOKENS) {
+            return _getNormalizedWeights()[tokenIndex];
         }
 
         revert IVaultErrors.InvalidToken();
+    }
+
+    function _getNormalizedWeights() internal view override returns (uint256[] memory) {
+        uint256[] memory normalizedWeights = new uint256[](_NUM_TOKENS);
+        normalizedWeights[0] = _getNormalizedWeight0();
+        normalizedWeights[1] = FixedPoint.ONE - normalizedWeights[0];
+
+        return normalizedWeights;
     }
 
     function _getNormalizedWeight0() internal view virtual returns (uint256) {
