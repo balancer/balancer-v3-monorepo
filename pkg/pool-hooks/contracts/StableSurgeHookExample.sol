@@ -33,7 +33,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
     uint256 private _thresholdPercentage;
     // An amplification coefficient to amplify the degree to which a fee increases after the threshold is met.
     uint256 private _surgeCoefficient;
-    
+
     // Note on StableSurge calculations:
     // Relevant Variables inherited from Stable Math:
     // n: number of tokens or assets
@@ -79,10 +79,8 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
         uint256 surgeCoefficient
     ) VaultGuard(vault) Ownable(msg.sender) {
         _allowedFactory = allowedFactory;
-        _thresholdPercentage = thresholdPercentage;
-        _surgeCoefficient = surgeCoefficient;
-        emit ThresholdPercentageChanged(address(this), thresholdPercentage);
-        emit SurgeCoefficientChanged(address(this), surgeCoefficient);
+        _setThresholdPercentage(thresholdPercentage);
+        _setSurgeCoefficient(surgeCoefficient);
     }
 
     /// @inheritdoc IHooks
@@ -225,17 +223,26 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
      * @notice Sets the hook threshold percentage.
      * @dev This function must be permissioned.
      */
-    function setThresholdPercentage(uint64 newThresholdPercentage) external onlyOwner {
-        _thresholdPercentage = newThresholdPercentage;
-
-        emit ThresholdPercentageChanged(address(this), newThresholdPercentage);
+    function setThresholdPercentage(uint256 newThresholdPercentage) external onlyOwner {
+        _setThresholdPercentage(newThresholdPercentage);
     }
 
     /**
      * @notice Sets the hook surgeCoefficient.
      * @dev This function must be permissioned.
      */
-    function setSurgeCoefficient(uint64 newSurgeCoefficient) external onlyOwner {
+    function setSurgeCoefficient(uint256 newSurgeCoefficient) external onlyOwner {
+        _setSurgeCoefficient(newSurgeCoefficient);
+    }
+
+    function _setThresholdPercentage(uint256 newThresholdPercentage) private {
+        // This should be validated; e.g. <= FixedPoint.ONE or some max value?
+        _thresholdPercentage = newThresholdPercentage;
+
+        emit ThresholdPercentageChanged(address(this), newThresholdPercentage);
+    }
+
+    function _setSurgeCoefficient(uint256 newSurgeCoefficient) private {
         _surgeCoefficient = newSurgeCoefficient;
 
         emit SurgeCoefficientChanged(address(this), newSurgeCoefficient);
