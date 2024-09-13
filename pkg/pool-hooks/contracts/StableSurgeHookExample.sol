@@ -169,7 +169,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
      * @param threshold Theshold value.
      */
     function getThresholdBoundary(uint256 numberOfAssets, uint256 threshold) public pure returns (uint256) {
-        return 1e18 / numberOfAssets + threshold;
+        return FixedPoint.ONE / numberOfAssets + threshold;
     }
 
     /**
