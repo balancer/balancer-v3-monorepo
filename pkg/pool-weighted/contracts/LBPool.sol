@@ -29,7 +29,8 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
 
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight.
     // Weights are 18 decimal floating point values, which fit in less than 64 bits. Store smaller numeric values
-    // to ensure the PoolState fits in a single slot.
+    // to ensure the PoolState fits in a single slot. All timestamps in the system are uint32, enforced through
+    // SafeCast.
     struct PoolState {
         uint32 startTime;
         uint32 endTime;
@@ -37,8 +38,6 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         uint64 endWeight0;
         bool swapEnabled;
     }
-    // `{start,end}Time` are `uint32`s. Ensure that no input time (passed as `uint256`) will overflow.
-    uint256 private constant _MAX_TIMESTAMP = type(uint32).max;
 
     // LBPs are constrained to two tokens.auto
     uint256 private constant _NUM_TOKENS = 2;
