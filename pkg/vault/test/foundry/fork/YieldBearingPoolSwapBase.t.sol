@@ -646,18 +646,22 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         assertApproxEqAbs(
             underlyingBalance,
-            vars.bufferBeforeSwapTokenIn -
-                vars.expectedUnderlyingSurplusTokenIn +
-                (vars.withBufferLiquidity ? vars.expectedUnderlyingDeltaTokenIn : 0),
+            uint256(
+                int256(vars.bufferBeforeSwapTokenIn) -
+                    vars.expectedUnderlyingSurplusTokenIn +
+                    int256(vars.withBufferLiquidity ? vars.expectedUnderlyingDeltaTokenIn : 0)
+            ),
             ROUNDING_TOLERANCE,
             "Wrong underlying balance for tokenIn buffer"
         );
 
         assertEq(
             wrappedBalance,
-            vars.bufferBeforeSwapYbTokenIn +
-                vars.expectedWrappedSurplusTokenIn -
-                (vars.withBufferLiquidity ? vars.expectedWrappedDeltaTokenIn : 0),
+            uint256(
+                int256(vars.bufferBeforeSwapYbTokenIn) +
+                    vars.expectedWrappedSurplusTokenIn -
+                    int256(vars.withBufferLiquidity ? vars.expectedWrappedDeltaTokenIn : 0)
+            ),
             "Wrong wrapped balance for tokenIn buffer"
         );
 
@@ -665,17 +669,21 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         assertApproxEqAbs(
             underlyingBalance,
-            vars.bufferBeforeSwapTokenOut +
-                vars.expectedUnderlyingSurplusTokenOut -
-                (vars.withBufferLiquidity ? vars.expectedUnderlyingDeltaTokenOut : 0),
+            uint256(
+                int256(vars.bufferBeforeSwapTokenOut) +
+                    vars.expectedUnderlyingSurplusTokenOut -
+                    int256(vars.withBufferLiquidity ? vars.expectedUnderlyingDeltaTokenOut : 0)
+            ),
             ROUNDING_TOLERANCE,
             "Wrong underlying balance for tokenOut buffer"
         );
         assertEq(
             wrappedBalance,
-            vars.bufferBeforeSwapYbTokenOut -
-                vars.expectedWrappedSurplusTokenOut +
-                (vars.withBufferLiquidity ? vars.expectedWrappedDeltaTokenOut : 0),
+            uint256(
+                int256(vars.bufferBeforeSwapYbTokenOut) -
+                    vars.expectedWrappedSurplusTokenOut +
+                    int256(vars.withBufferLiquidity ? vars.expectedWrappedDeltaTokenOut : 0)
+            ),
             "Wrong wrapped balance for tokenOut buffer"
         );
     }
@@ -917,12 +925,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountInUnderlying,
         bool withBufferLiquidity
-    ) private returns (uint256 amountOutWrapped, uint256 bufferUnderlyingSurplus, uint256 bufferWrappedSurplus) {
-        if (withBufferLiquidity) {
-            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
-            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
-            amountOutWrapped = wToken.previewDeposit(amountInUnderlying);
-        } else {
+    ) private returns (uint256 amountOutWrapped, int256 bufferUnderlyingSurplus, int256 bufferWrappedSurplus) {
+        amountOutWrapped = wToken.previewDeposit(amountInUnderlying);
+        bufferUnderlyingSurplus = 0;
+        bufferWrappedSurplus = 0;
+        // If operation is out of buffer liquidity, we need to wrap the underlying tokens in the wrapper protocol. But,
+        // if the buffer has enough liquidity, return the amountOutWrapped calculated by previewDeposit and surplus 0.
+        if (withBufferLiquidity == false) {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Deposit converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our result
@@ -932,14 +941,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // Do the actual operation to impact the rate used to calculate wrapped surplus.
             uint256 snapshotId = vm.snapshot();
             vm.startPrank(lp);
-            uint256 vaultUnderlyingDeltaHint = amountInUnderlying + bufferUnderlyingSurplus;
+            uint256 vaultUnderlyingDeltaHint = uint256(int256(amountInUnderlying) + bufferUnderlyingSurplus);
             IERC20(wToken.asset()).forceApprove(address(wToken), vaultUnderlyingDeltaHint);
             uint256 vaultWrappedDeltaHint = wToken.deposit(vaultUnderlyingDeltaHint, lp);
             vm.stopPrank();
-            bufferWrappedSurplus = wToken.previewDeposit(bufferUnderlyingSurplus);
+            bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountOutWrapped);
             vm.revertTo(snapshotId);
-
-            amountOutWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
         }
     }
 
@@ -947,12 +954,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountInWrapped,
         bool withBufferLiquidity
-    ) private returns (uint256 amountOutUnderlying, uint256 bufferUnderlyingSurplus, uint256 bufferWrappedSurplus) {
-        if (withBufferLiquidity) {
-            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
-            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
-            amountOutUnderlying = wToken.previewRedeem(amountInWrapped);
-        } else {
+    ) private returns (uint256 amountOutUnderlying, int256 bufferUnderlyingSurplus, int256 bufferWrappedSurplus) {
+        amountOutUnderlying = wToken.previewRedeem(amountInWrapped);
+        bufferUnderlyingSurplus = 0;
+        bufferWrappedSurplus = 0;
+        // TODO If operation is out of buffer liquidity, we need to wrap the underlying tokens in the wrapper protocol. But,
+        // if the buffer has enough liquidity, return the amountOutWrapped calculated by previewDeposit and surplus 0.
+        if (withBufferLiquidity == false) {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Redeem converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
@@ -962,13 +970,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // Do the actual operation to impact the rate used to calculate underlying surplus.
             uint256 snapshotId = vm.snapshot();
             vm.startPrank(lp);
-            uint256 vaultWrappedDeltaHint = amountInWrapped + bufferWrappedSurplus;
+            uint256 vaultWrappedDeltaHint = uint256(int256(amountInWrapped) + bufferWrappedSurplus);
             uint256 vaultUnderlyingDeltaHint = wToken.redeem(vaultWrappedDeltaHint, lp, lp);
             vm.stopPrank();
-            bufferUnderlyingSurplus = wToken.previewRedeem(bufferWrappedSurplus);
+            bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
             vm.revertTo(snapshotId);
-
-            amountOutUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
         }
     }
 
@@ -976,30 +982,31 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountOutWrapped,
         bool withBufferLiquidity
-    ) private returns (uint256 amountInUnderlying, uint256 bufferUnderlyingSurplus, uint256 bufferWrappedSurplus) {
-        if (withBufferLiquidity) {
-            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
-            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
-            amountInUnderlying = wToken.previewMint(amountOutWrapped);
-        } else {
+    ) private returns (uint256 amountInUnderlying, int256 bufferUnderlyingSurplus, int256 bufferWrappedSurplus) {
+        amountInUnderlying = wToken.previewMint(amountOutWrapped);
+        bufferUnderlyingSurplus = 0;
+        bufferWrappedSurplus = 0;
+
+        // TODO If operation is out of buffer liquidity, we need to wrap the underlying tokens in the wrapper protocol. But,
+        // if the buffer has enough liquidity, return the amountOutWrapped calculated by previewDeposit and surplus 0.
+        if (withBufferLiquidity == false) {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Mint converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
             // result preview. The logic below reproduces Vault's rebalance logic.
             bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wToken);
-            bufferWrappedSurplus = wToken.previewDeposit(bufferUnderlyingSurplus);
+            uint256 vaultUnderlyingDeltaHint = uint256(int256(amountInUnderlying) + bufferUnderlyingSurplus);
+            uint256 vaultWrappedDeltaHint = wToken.previewDeposit(vaultUnderlyingDeltaHint);
 
             // Do the actual operation to impact the rate used to calculate underlying surplus.
             uint256 snapshotId = vm.snapshot();
             vm.startPrank(lp);
-            uint256 vaultWrappedDeltaHint = amountOutWrapped + bufferWrappedSurplus;
-            IERC20(wToken.asset()).forceApprove(address(wToken), wToken.previewMint(vaultWrappedDeltaHint));
-            uint256 vaultUnderlyingDeltaHint = wToken.mint(vaultWrappedDeltaHint, lp);
+            IERC20(wToken.asset()).forceApprove(address(wToken), vaultUnderlyingDeltaHint);
+            vaultUnderlyingDeltaHint = wToken.mint(vaultWrappedDeltaHint, lp);
             vm.stopPrank();
-            bufferUnderlyingSurplus = wToken.previewMint(bufferWrappedSurplus);
+            bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountInUnderlying);
+            bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountOutWrapped);
             vm.revertTo(snapshotId);
-
-            amountInUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
         }
     }
 
@@ -1007,28 +1014,30 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountOutUnderlying,
         bool withBufferLiquidity
-    ) private returns (uint256 amountInWrapped, uint256 bufferUnderlyingSurplus, uint256 bufferWrappedSurplus) {
-        if (withBufferLiquidity) {
-            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
-            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
-            amountInWrapped = wToken.previewWithdraw(amountOutUnderlying);
-        } else {
+    ) private returns (uint256 amountInWrapped, int256 bufferUnderlyingSurplus, int256 bufferWrappedSurplus) {
+        amountInWrapped = wToken.previewWithdraw(amountOutUnderlying);
+        bufferUnderlyingSurplus = 0;
+        bufferWrappedSurplus = 0;
+
+        // TODO If operation is out of buffer liquidity, we need to wrap the underlying tokens in the wrapper protocol. But,
+        // if the buffer has enough liquidity, return the amountOutWrapped calculated by previewDeposit and surplus 0.
+        if (withBufferLiquidity == false) {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Withdraw converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
             // result preview. The logic below reproduces Vault's rebalance logic.
             bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wToken);
-            bufferUnderlyingSurplus = wToken.previewRedeem(bufferWrappedSurplus);
+            uint256 vaultWrappedDeltaHint = uint256(int256(amountInWrapped) + bufferWrappedSurplus);
+            uint256 vaultUnderlyingDeltaHint = wToken.previewRedeem(vaultWrappedDeltaHint);
+
             // Do the actual operation to impact the rate used to calculate underlying surplus.
             uint256 snapshotId = vm.snapshot();
             vm.startPrank(lp);
-            uint256 vaultUnderlyingDeltaHint = amountOutUnderlying + bufferUnderlyingSurplus;
-            uint256 vaultWrappedDeltaHint = wToken.withdraw(vaultUnderlyingDeltaHint, lp, lp);
+            vaultWrappedDeltaHint = wToken.withdraw(vaultUnderlyingDeltaHint, address(this), address(this));
             vm.stopPrank();
-            bufferWrappedSurplus = wToken.previewWithdraw(bufferUnderlyingSurplus);
+            bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);
+            bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
             vm.revertTo(snapshotId);
-
-            amountInWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
         }
     }
 
@@ -1050,12 +1059,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 poolBeforeSwapYbTokenOut;
         uint256 expectedUnderlyingDeltaTokenIn;
         uint256 expectedWrappedDeltaTokenIn;
-        uint256 expectedUnderlyingSurplusTokenIn;
-        uint256 expectedWrappedSurplusTokenIn;
         uint256 expectedUnderlyingDeltaTokenOut;
         uint256 expectedWrappedDeltaTokenOut;
-        uint256 expectedUnderlyingSurplusTokenOut;
-        uint256 expectedWrappedSurplusTokenOut;
+        // Underlying may be positive or negative.
+        int256 expectedUnderlyingSurplusTokenIn;
+        int256 expectedWrappedSurplusTokenIn;
+        int256 expectedUnderlyingSurplusTokenOut;
+        int256 expectedWrappedSurplusTokenOut;
         bool withBufferLiquidity;
     }
 }

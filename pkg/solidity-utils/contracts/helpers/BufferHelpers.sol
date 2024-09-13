@@ -46,7 +46,7 @@ library BufferHelpers {
      * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
      */
     function getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (int256) {
-        int256 wrappedBalance = bufferBalance.getBalanceDerived();
+        int256 wrappedBalance = int256(bufferBalance.getBalanceDerived());
 
         int256 underlyingBalanceAsWrapped = 0;
         if (bufferBalance.getBalanceRaw() > 0) {

@@ -33,8 +33,8 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testUnderlyingSurplusBalanceZero() public view {
-        uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wUSDCNotInitialized)));
-        assertEq(surplus, 0, "Wrong underlying surplus");
+        int256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wUSDCNotInitialized)));
+        assertEq(surplus, int256(0), "Wrong underlying surplus");
     }
 
     function testUnderlyingSurplusWrongBalance() public {
@@ -50,8 +50,8 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
-        assertEq(surplus, 0, "Wrong underlying surplus");
+        int256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
+        assertEq(surplus, int256(0), "Wrong underlying surplus");
     }
 
     function testUnderlyingSurplusCorrectBalance() public {
@@ -74,7 +74,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // Rounds up to make sure division is done properly.
         assertEq(wDaiInitialized.getRate().computeRateRoundUp(), 2e18, "Wrong wDAI rate");
 
-        uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
+        int256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
         // After swap, buffer has 3/2 _wrapAmount of underlying and 1/2 _wrapAmount of wrapped.
         // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount* rate)) / 2 =
@@ -83,13 +83,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 bufferWrappedBalance = _wrapAmount / 2;
         uint256 bufferWrappedBalanceAsUnderlying = wDaiInitialized.previewMint(bufferWrappedBalance);
         uint256 exactUnderlyingSurplus = (bufferUnderlyingBalance - bufferWrappedBalanceAsUnderlying) / 2;
-        assertEq(surplus, exactUnderlyingSurplus, "Underlying surplus different than exact calculation");
-        assertApproxEqAbs(surplus, _wrapAmount / 4, 1, "Underlying surplus different than theoretical value");
+        assertEq(surplus, int256(exactUnderlyingSurplus), "Underlying surplus different than exact calculation");
+        assertApproxEqAbs(surplus, int256(_wrapAmount / 4), 1, "Underlying surplus different than theoretical value");
     }
 
     function testWrappedSurplusBalanceZero() public view {
-        uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wUSDCNotInitialized)));
-        assertEq(surplus, 0, "Wrong wrapped surplus");
+        int256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wUSDCNotInitialized)));
+        assertEq(surplus, int256(0), "Wrong wrapped surplus");
     }
 
     function testWrappedSurplusWrongBalance() public {
@@ -105,8 +105,8 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
-        assertEq(surplus, 0, "Wrong wrapped surplus");
+        int256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
+        assertEq(surplus, int256(0), "Wrong wrapped surplus");
     }
 
     function testWrappedSurplusCorrectBalance() public {
@@ -130,7 +130,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // Rounds up to make sure division is done properly.
         assertEq(wDaiInitialized.getRate().computeRateRoundUp(), 2e18, "Wrong wDAI rate");
 
-        uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
+        int256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
         // After swap, buffer has `1/2 _wrapAmount` of underlying and 3/2 _wrapAmount of wrapped.
         // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount / rate)) / 2 = `5/8 _wrapAmount`.
@@ -138,8 +138,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 bufferUnderlyingBalance = _wrapAmount / 2;
         uint256 bufferUnderlyingBalanceAsWrapped = wDaiInitialized.previewWithdraw(bufferUnderlyingBalance);
         uint256 exactWrappedSurplus = (bufferWrappedBalance - bufferUnderlyingBalanceAsWrapped) / 2;
-        assertEq(surplus, exactWrappedSurplus, "Wrapped surplus different than exact calculation");
-        assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8, 1, "Wrapped surplus different than theoretical value");
+        assertEq(surplus, int256(exactWrappedSurplus), "Wrapped surplus different than exact calculation");
+        assertApproxEqAbs(
+            surplus,
+            int256((5 * _wrapAmount) / 8),
+            1,
+            "Wrapped surplus different than theoretical value"
+        );
     }
 
     function testSettleWrap() public {
