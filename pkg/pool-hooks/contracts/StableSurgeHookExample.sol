@@ -105,7 +105,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
         uint256 amp;
         (amp, , ) = IStablePool(pool).getAmplificationParameter();
 
-        // In order to calculate weightAfterSwap we need balances after swap so we must compute swap amount
+        // In order to calculate `weightAfterSwap` we need balances after swap, so we must compute the swap amount.
         uint256 invariant = StableMath.computeInvariant(amp, params.balancesScaled18);
         uint256 weightAfterSwap;
         if (params.kind == SwapKind.EXACT_IN) {
