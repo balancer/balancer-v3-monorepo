@@ -131,7 +131,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Deposit
     ********************************************************************************/
-    function testDepositInteractionWithERC4626Protocol() public {
+    function testDepositBufferBalancedNotEnoughLiquidity() public {
         // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
@@ -148,14 +148,77 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], false);
+        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], bufferBalanceBefore, false);
     }
 
-    function testDepositWithBufferLiquidity() public {
+    function testDepositBufferMoreWrappedNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the vault has
+        // to interact with the ERC4626 protocol.
+
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            totalUnderlyingInBuffer / 3,
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+        );
+        vm.stopPrank();
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+            _wrapAmount,
+            0,
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], bufferBalanceBefore, false);
+    }
+
+    function testDepositBufferMoreUnderlyingNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the vault has
+        // to interact with the ERC4626 protocol.
+
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            (2 * totalUnderlyingInBuffer) / 3,
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+        );
+        vm.stopPrank();
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+            _wrapAmount,
+            0,
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], bufferBalanceBefore, false);
+    }
+
+    function testDepositUsingBufferLiquidity() public {
         // Initializes the buffer with an amount that's enough to fulfill the deposit operation without interacting
         // with the ERC4626 protocol.
         vm.startPrank(lp);
@@ -172,11 +235,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], true);
+        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], bufferBalanceBefore, true);
     }
 
     function testDepositMaliciousRouter() public {
@@ -211,7 +275,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Mint
     ********************************************************************************/
-    function testMintInteractionWithERC4626Protocol() public {
+    function testMintBufferBalancedNotEnoughLiquidity() public {
         // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
@@ -228,11 +292,92 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(balancesBefore, pathAmountsIn[0], waDAI.previewDeposit(_wrapAmount), false);
+        _checkWrapResults(
+            balancesBefore,
+            pathAmountsIn[0],
+            waDAI.previewDeposit(_wrapAmount),
+            bufferBalanceBefore,
+            false
+        );
+    }
+
+    function testMintBufferMoreWrappedNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
+        // to interact with the ERC4626 protocol.
+
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            (totalUnderlyingInBuffer) / 3,
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+        );
+        vm.stopPrank();
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+            2 * _wrapAmount,
+            waDAI.previewDeposit(_wrapAmount),
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        _checkWrapResults(
+            balancesBefore,
+            pathAmountsIn[0],
+            waDAI.previewDeposit(_wrapAmount),
+            bufferBalanceBefore,
+            false
+        );
+    }
+
+    function testMintBufferMoreUnderlyingNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
+        // to interact with the ERC4626 protocol.
+
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            (2 * totalUnderlyingInBuffer) / 3,
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+        );
+        vm.stopPrank();
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+            2 * _wrapAmount,
+            waDAI.previewDeposit(_wrapAmount),
+            dai,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        _checkWrapResults(
+            balancesBefore,
+            pathAmountsIn[0],
+            waDAI.previewDeposit(_wrapAmount),
+            bufferBalanceBefore,
+            false
+        );
     }
 
     function testMintWithBufferLiquidity() public {
@@ -252,11 +397,18 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(balancesBefore, pathAmountsIn[0], waDAI.previewDeposit(_wrapAmount), true);
+        _checkWrapResults(
+            balancesBefore,
+            pathAmountsIn[0],
+            waDAI.previewDeposit(_wrapAmount),
+            bufferBalanceBefore,
+            true
+        );
     }
 
     function testMintMaliciousRouter() public {
@@ -290,8 +442,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Redeem
     ********************************************************************************/
-    function testRedeemInteractionWithERC4626Protocol() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
+    function testRedeemBufferBalancedNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
@@ -304,11 +456,67 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], false);
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], bufferBalanceBefore, false);
+    }
+
+    function testRedeemBufferMoreWrappedNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the vault has
+        // to interact with the ERC4626 protocol.
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            (totalUnderlyingInBuffer) / 3,
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+        );
+        vm.stopPrank();
+
+        uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
+        IERC20 wDai = IERC20(address(waDAI));
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], bufferBalanceBefore, false);
+    }
+
+    function testRedeemBufferMoreUnderlyingNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the vault has
+        // to interact with the ERC4626 protocol.
+
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            (2 * totalUnderlyingInBuffer) / 3,
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+        );
+        vm.stopPrank();
+
+        uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
+        IERC20 wDai = IERC20(address(waDAI));
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], bufferBalanceBefore, false);
     }
 
     function testRedeemWithBufferLiquidity() public {
@@ -325,18 +533,19 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], true);
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], bufferBalanceBefore, true);
     }
 
     /********************************************************************************
                                         Withdraw
     ********************************************************************************/
-    function testWithdrawInteractionWithERC4626Protocol() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
+    function testWithdrawBufferBalancedNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
@@ -352,11 +561,73 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, false);
+        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, bufferBalanceBefore, false);
+    }
+
+    function testWithdrawBufferMoreWrappedNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the vault has
+        // to interact with the ERC4626 protocol.
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            (totalUnderlyingInBuffer) / 3,
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+        );
+        vm.stopPrank();
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+            2 * waDAI.previewDeposit(_wrapAmount),
+            _wrapAmount,
+            IERC20(address(waDAI)),
+            dai,
+            IERC20(address(waDAI))
+        );
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, bufferBalanceBefore, false);
+    }
+
+    function testWithdrawBufferMoreUnderlyingNotEnoughLiquidity() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the vault has
+        // to interact with the ERC4626 protocol.
+
+        uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
+        vm.startPrank(lp);
+        router.initializeBuffer(
+            IERC4626(address(waDAI)),
+            (2 * totalUnderlyingInBuffer) / 3,
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+        );
+        vm.stopPrank();
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+            2 * waDAI.previewDeposit(_wrapAmount),
+            _wrapAmount,
+            IERC20(address(waDAI)),
+            dai,
+            IERC20(address(waDAI))
+        );
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, bufferBalanceBefore, false);
     }
 
     function testWithdrawWithBufferLiquidity() public {
@@ -376,11 +647,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, true);
+        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, bufferBalanceBefore, true);
     }
 
     /********************************************************************************
@@ -762,6 +1034,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore,
         uint256 amountIn,
         uint256 amountOut,
+        BufferBalance memory bufferBalanceBefore,
         bool withBufferLiquidity
     ) private view {
         (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
@@ -782,16 +1055,28 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             "LP balance of wrapped token is wrong"
         );
 
-        // Check Vault reserves. If the wrap operation used the buffer liquidity, the vault reserves should change to
-        // reflect more underlying and less wrapped. Else, vault balances should not change.
+        // Check if buffer is balanced.
+        BufferBalance memory bufferBalanceAfter = _getBufferBalance();
+        if (withBufferLiquidity == false) {
+            assertApproxEqAbs(
+                bufferBalanceAfter.underlying,
+                waDAI.previewRedeem(bufferBalanceAfter.wrapped),
+                1,
+                "Buffer is not balanced"
+            );
+        }
+        int256 bufferUnderlyingSurplus = int256(bufferBalanceAfter.underlying) - int256(bufferBalanceBefore.underlying);
+        int256 bufferWrappedSurplus = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
+
+        // Check Vault reserves.
         assertEq(
             balancesAfter.vaultReserves[daiIdx],
-            balancesBefore.vaultReserves[daiIdx] + (withBufferLiquidity ? amountIn : 0),
+            uint256(int256(balancesBefore.vaultReserves[daiIdx]) + bufferUnderlyingSurplus),
             "Vault reserves of underlying token is wrong"
         );
         assertEq(
             balancesAfter.vaultReserves[waDaiIdx],
-            balancesBefore.vaultReserves[waDaiIdx] - (withBufferLiquidity ? amountOut : 0),
+            uint256(int256(balancesBefore.vaultReserves[waDaiIdx]) + bufferWrappedSurplus),
             "Vault reserves of wrapped token is wrong"
         );
 
@@ -812,6 +1097,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore,
         uint256 wrappedAmountIn,
         uint256 underlyingAmountOut,
+        BufferBalance memory bufferBalanceBefore,
         bool withBufferLiquidity
     ) private view {
         (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
@@ -836,17 +1122,34 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             "LP balance of underlying token is wrong"
         );
 
-        // Check Vault reserves. If the unwrap operation used the buffer liquidity, the vault reserves should change to
-        // reflect more wrapped and less underlying. Else, vault balances should not change.
-        assertEq(
-            balancesAfter.vaultReserves[waDaiIdx],
-            balancesBefore.vaultReserves[waDaiIdx] + (withBufferLiquidity ? wrappedAmountIn : 0),
-            "Vault reserves of wrapped token is wrong"
-        );
+        int256 bufferUnderlyingSurplus;
+        int256 bufferWrappedSurplus;
+
+        {
+            // Check if buffer is balanced.
+            BufferBalance memory bufferBalanceAfter = _getBufferBalance();
+            if (withBufferLiquidity == false) {
+                assertApproxEqAbs(
+                    bufferBalanceAfter.underlying,
+                    waDAI.previewRedeem(bufferBalanceAfter.wrapped),
+                    1,
+                    "Buffer is not balanced"
+                );
+            }
+            bufferUnderlyingSurplus = int256(bufferBalanceAfter.underlying) - int256(bufferBalanceBefore.underlying);
+            bufferWrappedSurplus = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
+        }
+
+        // Check Vault reserves.
         assertEq(
             balancesAfter.vaultReserves[daiIdx],
-            balancesBefore.vaultReserves[daiIdx] - (withBufferLiquidity ? underlyingAmountOut : 0),
+            uint256(int256(balancesBefore.vaultReserves[daiIdx]) + bufferUnderlyingSurplus),
             "Vault reserves of underlying token is wrong"
+        );
+        assertEq(
+            balancesAfter.vaultReserves[waDaiIdx],
+            uint256(int256(balancesBefore.vaultReserves[waDaiIdx]) + bufferWrappedSurplus),
+            "Vault reserves of wrapped token is wrong"
         );
 
         // Check that Vault balances match vault reserves.
@@ -885,5 +1188,18 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             vault.settle(dai, amountIn);
             vault.sendTo(IERC20(address(waDAI)), address(this), amountOut);
         }
+    }
+
+    struct BufferBalance {
+        uint256 underlying;
+        uint256 wrapped;
+    }
+
+    function _getBufferBalance() private view returns (BufferBalance memory bufferBalance) {
+        (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(
+            IERC4626(address(waDAI))
+        );
+        bufferBalance.underlying = bufferUnderlyingBalance;
+        bufferBalance.wrapped = bufferWrappedBalance;
     }
 }

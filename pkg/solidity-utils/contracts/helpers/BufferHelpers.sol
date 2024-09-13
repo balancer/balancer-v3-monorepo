@@ -3,11 +3,13 @@
 pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { PackedTokenBalance } from "./PackedTokenBalance.sol";
 
 library BufferHelpers {
     using PackedTokenBalance for bytes32;
+    using SafeCast for *;
 
     /**
      * @dev Underlying surplus is the amount of underlying that need to be wrapped for the buffer to be rebalanced.
@@ -21,14 +23,14 @@ library BufferHelpers {
      * - final balances: 3.5 wrapped (2 existing + 1.5 new) and 7 underlying (10 existing - 3)
      */
     function getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (int256) {
-        int256 underlyingBalance = int256(bufferBalance.getBalanceRaw());
+        int256 underlyingBalance = bufferBalance.getBalanceRaw().toInt256();
 
         int256 wrappedBalanceAsUnderlying = 0;
         if (bufferBalance.getBalanceDerived() > 0) {
             // Buffer underlying surplus is used when wrapping (it means, deposit underlying and get wrapped tokens),
             // so we use `previewMint` to convert wrapped balance to underlying. The `mint` function is used here, as
             // it performs the inverse of a `deposit` operation.
-            wrappedBalanceAsUnderlying = int256(wrappedToken.previewMint(bufferBalance.getBalanceDerived()));
+            wrappedBalanceAsUnderlying = wrappedToken.previewMint(bufferBalance.getBalanceDerived()).toInt256();
         }
 
         return (underlyingBalance - wrappedBalanceAsUnderlying) / 2;
@@ -46,14 +48,14 @@ library BufferHelpers {
      * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
      */
     function getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (int256) {
-        int256 wrappedBalance = int256(bufferBalance.getBalanceDerived());
+        int256 wrappedBalance = bufferBalance.getBalanceDerived().toInt256();
 
         int256 underlyingBalanceAsWrapped = 0;
         if (bufferBalance.getBalanceRaw() > 0) {
             // Buffer wrapped surplus is used when unwrapping (it means, deposit wrapped and get underlying tokens),
             // so we use `previewWithdraw` to convert underlying balance to wrapped. The `withdraw` function is used
             // here, as it performs the inverse of a `redeem` operation.
-            underlyingBalanceAsWrapped = int256(wrappedToken.previewWithdraw(bufferBalance.getBalanceRaw()));
+            underlyingBalanceAsWrapped = wrappedToken.previewWithdraw(bufferBalance.getBalanceRaw()).toInt256();
         }
 
         return (wrappedBalance - underlyingBalanceAsWrapped) / 2;
