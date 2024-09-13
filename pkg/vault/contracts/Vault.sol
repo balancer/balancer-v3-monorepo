@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -44,6 +45,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using FixedPoint for *;
     using Address for *;
     using CastingHelpers for uint256[];
+    using SafeCast for int256;
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for PoolConfigBits;
@@ -1201,13 +1203,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
-                vaultUnderlyingDeltaHint = uint256(int256(amountInUnderlying) + bufferUnderlyingSurplus);
+                vaultUnderlyingDeltaHint = (int256(amountInUnderlying) + bufferUnderlyingSurplus).toUint256();
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so we call deposit.
                 vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
             } else {
                 if (bufferUnderlyingSurplus != 0) {
-                    vaultUnderlyingDeltaHint = uint256(int256(amountInUnderlying) + bufferUnderlyingSurplus);
+                    vaultUnderlyingDeltaHint = (int256(amountInUnderlying) + bufferUnderlyingSurplus).toUint256();
                     vaultWrappedDeltaHint = wrappedToken.previewDeposit(vaultUnderlyingDeltaHint);
                 } else {
                     vaultUnderlyingDeltaHint = amountInUnderlying;
@@ -1242,8 +1244,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (vaultUnderlyingDeltaHint) and discount the amount needed for the wrapping operation
                 // (amountInUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
-                    uint256(int256(bufferBalances.getBalanceRaw()) - bufferUnderlyingSurplus),
-                    uint256(int256(bufferBalances.getBalanceDerived()) + bufferWrappedSurplus)
+                    (int256(bufferBalances.getBalanceRaw()) - bufferUnderlyingSurplus).toUint256(),
+                    (int256(bufferBalances.getBalanceDerived()) + bufferWrappedSurplus).toUint256()
                 );
                 _bufferTokenBalances[wrappedToken] = bufferBalances;
             }
@@ -1316,7 +1318,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The amount of wrapped tokens to redeem is the amount necessary to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedSurplus).
-                vaultWrappedDeltaHint = uint256(int256(amountInWrapped) + bufferWrappedSurplus);
+                vaultWrappedDeltaHint = (int256(amountInWrapped) + bufferWrappedSurplus).toUint256();
                 vaultUnderlyingDeltaHint = wrappedToken.redeem(vaultWrappedDeltaHint, address(this), address(this));
             } else {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so we call withdraw.
@@ -1324,7 +1326,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (amountOutUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
                 if (bufferWrappedSurplus != 0) {
-                    vaultWrappedDeltaHint = uint256(int256(amountInWrapped) + bufferWrappedSurplus);
+                    vaultWrappedDeltaHint = (int256(amountInWrapped) + bufferWrappedSurplus).toUint256();
                     vaultUnderlyingDeltaHint = wrappedToken.previewRedeem(vaultWrappedDeltaHint);
                 } else {
                     vaultUnderlyingDeltaHint = amountOutUnderlying;
@@ -1347,8 +1349,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (vaultUnderlyingDeltaHint) and discount the amount needed for the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
-                    uint256(int256(bufferBalances.getBalanceRaw()) + bufferUnderlyingSurplus),
-                    uint256(int256(bufferBalances.getBalanceDerived()) - bufferWrappedSurplus)
+                    (int256(bufferBalances.getBalanceRaw()) + bufferUnderlyingSurplus).toUint256(),
+                    (int256(bufferBalances.getBalanceDerived()) - bufferWrappedSurplus).toUint256()
                 );
                 _bufferTokenBalances[wrappedToken] = bufferBalances;
             }
