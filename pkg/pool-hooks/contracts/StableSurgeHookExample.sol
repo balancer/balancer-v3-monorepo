@@ -29,11 +29,19 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
     using FixedPoint for uint256;
     // Only pools from a specific factory are able to register and use this hook.
     address private immutable _allowedFactory;
-    // Defines the range in which surging will not occur; meaning surging will occur when:
-    // B(i-after swap) / (sum(B(n-after swap))) > 1/n + gamma
-    uint256 private _threshold;
+    // Defines the range in which surging will not occur
+    uint256 private _thresholdPercentage;
     // An amplification coefficient to amplify the degree to which a fee increases after the threshold is met.
     uint256 private _surgeCoefficient;
+    
+    // Note on StableSurge calculations:
+    // Relevant Variables inherited from Stable Math:
+    // n: number of tokens or assets
+    // Bi: balance of token in after the swap
+    // Wa: Weight after swap is defined as: Bi / SumOfAllTokenBalancesAfterSwap
+    // Surging fee will be applied when:
+    // Wa > 1/n + _thresholdPercentage
+    // Surging fee is calculated as: staticSwapFee * _surgeCoefficient * (Wa/(1/n + _thresholdPercentage))
 
     /**
      * @notice A new `StableSurgeHookExample` contract has been registered successfully.
@@ -49,12 +57,12 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
     );
 
     /**
-     * @notice The threshold has been changed in a `StableSurgeHookExample` contract.
-     * @dev Note, the initial threshold is set on deployment and an event is emitted.
+     * @notice The threshold percentage has been changed in a `StableSurgeHookExample` contract.
+     * @dev Note, the initial threshold percentage is set on deployment and an event is emitted.
      * @param hooksContract This contract
-     * @param threshold The new threshold
+     * @param thresholdPercentage The new threshold percentage
      */
-    event ThresholdChanged(address indexed hooksContract, uint256 indexed threshold);
+    event ThresholdPercentageChanged(address indexed hooksContract, uint256 indexed thresholdPercentage);
 
     /**
      * @notice The surgeCoefficient has been changed in a `StableSurgeHookExample` contract.
@@ -67,13 +75,13 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
     constructor(
         IVault vault,
         address allowedFactory,
-        uint256 threshold,
+        uint256 thresholdPercentage,
         uint256 surgeCoefficient
     ) VaultGuard(vault) Ownable(msg.sender) {
         _allowedFactory = allowedFactory;
-        _threshold = threshold;
+        _thresholdPercentage = thresholdPercentage;
         _surgeCoefficient = surgeCoefficient;
-        emit ThresholdChanged(address(this), threshold);
+        emit ThresholdPercentageChanged(address(this), thresholdPercentage);
         emit SurgeCoefficientChanged(address(this), surgeCoefficient);
     }
 
@@ -153,7 +161,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
             );
         }
 
-        uint256 thresholdBoundary = getThresholdBoundary(params.balancesScaled18.length, _threshold);
+        uint256 thresholdBoundary = getThresholdBoundary(params.balancesScaled18.length, _thresholdPercentage);
         if (weightAfterSwap > thresholdBoundary) {
             return (true, getSurgeFee(weightAfterSwap, thresholdBoundary, staticSwapFeePercentage, _surgeCoefficient));
         } else {
@@ -166,10 +174,10 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
      * @dev An expected value for threshold in a 2 token (n=2) would be 0.1.
      * This would mean surging would occur if any token reaches 60% of the total of balances.
      * @param numberOfAssets Number of assets in the pool.
-     * @param threshold Theshold value.
+     * @param thresholdPercentage Thershold percentage value.
      */
-    function getThresholdBoundary(uint256 numberOfAssets, uint256 threshold) public pure returns (uint256) {
-        return FixedPoint.ONE / numberOfAssets + threshold;
+    function getThresholdBoundary(uint256 numberOfAssets, uint256 thresholdPercentage) public pure returns (uint256) {
+        return FixedPoint.ONE / numberOfAssets + thresholdPercentage;
     }
 
     /**
@@ -214,13 +222,13 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
     // Permissioned functions
 
     /**
-     * @notice Sets the hook threshold.
+     * @notice Sets the hook threshold percentage.
      * @dev This function must be permissioned.
      */
-    function setThreshold(uint64 newThreshold) external onlyOwner {
-        _threshold = newThreshold;
+    function setThresholdPercentage(uint64 newThresholdPercentage) external onlyOwner {
+        _thresholdPercentage = newThresholdPercentage;
 
-        emit ThresholdChanged(address(this), newThreshold);
+        emit ThresholdPercentageChanged(address(this), newThresholdPercentage);
     }
 
     /**
