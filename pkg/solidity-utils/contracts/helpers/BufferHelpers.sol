@@ -20,24 +20,18 @@ library BufferHelpers {
      * - 3 underlying = 1.5 wrapped
      * - final balances: 3.5 wrapped (2 existing + 1.5 new) and 7 underlying (10 existing - 3)
      */
-    function getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 underlyingBalance = bufferBalance.getBalanceRaw();
+    function getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (int256) {
+        int256 underlyingBalance = int256(bufferBalance.getBalanceRaw());
 
-        uint256 wrappedBalanceAsUnderlying = 0;
+        int256 wrappedBalanceAsUnderlying = 0;
         if (bufferBalance.getBalanceDerived() > 0) {
             // Buffer underlying surplus is used when wrapping (it means, deposit underlying and get wrapped tokens),
             // so we use `previewMint` to convert wrapped balance to underlying. The `mint` function is used here, as
             // it performs the inverse of a `deposit` operation.
-            wrappedBalanceAsUnderlying = wrappedToken.previewMint(bufferBalance.getBalanceDerived());
+            wrappedBalanceAsUnderlying = int256(wrappedToken.previewMint(bufferBalance.getBalanceDerived()));
         }
 
-        uint256 surplus = 0;
-        if (underlyingBalance > wrappedBalanceAsUnderlying) {
-            unchecked {
-                surplus = (underlyingBalance - wrappedBalanceAsUnderlying) / 2;
-            }
-        }
-        return surplus;
+        return (underlyingBalance - wrappedBalanceAsUnderlying) / 2;
     }
 
     /**
@@ -51,23 +45,17 @@ library BufferHelpers {
      * - 4 wrapped = 8 underlying
      * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
      */
-    function getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 wrappedBalance = bufferBalance.getBalanceDerived();
+    function getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (int256) {
+        int256 wrappedBalance = bufferBalance.getBalanceDerived();
 
-        uint256 underlyingBalanceAsWrapped = 0;
+        int256 underlyingBalanceAsWrapped = 0;
         if (bufferBalance.getBalanceRaw() > 0) {
             // Buffer wrapped surplus is used when unwrapping (it means, deposit wrapped and get underlying tokens),
             // so we use `previewWithdraw` to convert underlying balance to wrapped. The `withdraw` function is used
             // here, as it performs the inverse of a `redeem` operation.
-            underlyingBalanceAsWrapped = wrappedToken.previewWithdraw(bufferBalance.getBalanceRaw());
+            underlyingBalanceAsWrapped = int256(wrappedToken.previewWithdraw(bufferBalance.getBalanceRaw()));
         }
 
-        uint256 surplus = 0;
-        if (wrappedBalance > underlyingBalanceAsWrapped) {
-            unchecked {
-                surplus = (wrappedBalance - underlyingBalanceAsWrapped) / 2;
-            }
-        }
-        return surplus;
+        return (wrappedBalance - underlyingBalanceAsWrapped) / 2;
     }
 }

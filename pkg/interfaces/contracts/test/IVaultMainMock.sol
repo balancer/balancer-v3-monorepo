@@ -67,9 +67,9 @@ interface IVaultMainMock {
 
     function ensureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
 
-    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
+    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (int256);
 
-    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
+    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (int256);
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32);
 
