@@ -929,6 +929,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         amountOutWrapped = wToken.previewDeposit(amountInUnderlying);
         bufferUnderlyingSurplus = 0;
         bufferWrappedSurplus = 0;
+
         // If operation is out of buffer liquidity, we need to wrap the underlying tokens in the wrapper protocol. But,
         // if the buffer has enough liquidity, return the amountOutWrapped calculated by previewDeposit and surplus 0.
         if (withBufferLiquidity == false) {
@@ -958,8 +959,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         amountOutUnderlying = wToken.previewRedeem(amountInWrapped);
         bufferUnderlyingSurplus = 0;
         bufferWrappedSurplus = 0;
-        // TODO If operation is out of buffer liquidity, we need to wrap the underlying tokens in the wrapper protocol. But,
-        // if the buffer has enough liquidity, return the amountOutWrapped calculated by previewDeposit and surplus 0.
+
+        // If operation is out of buffer liquidity, we need to unwrap the wrapped tokens in the wrapper protocol. But,
+        // if the buffer has enough liquidity, return the amountOutUnderlying calculated by previewRedeem and surplus 0.
         if (withBufferLiquidity == false) {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Redeem converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
