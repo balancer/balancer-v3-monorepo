@@ -456,6 +456,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
                 vars.expectedUnderlyingSurplusTokenOut,
                 vars.expectedWrappedSurplusTokenOut
             ) = _previewUnwrapExactOut(ybToken2, vars.expectedUnderlyingDeltaTokenOut, withBufferLiquidity);
+
             uint256 wrappedAmountOutScaled18 = vars.expectedWrappedDeltaTokenOut.mulUp(_ybToken2Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
             vars.expectedWrappedDeltaTokenIn = wrappedAmountOutScaled18.divUp(_ybToken1Factor);
@@ -470,6 +471,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
                 vars.expectedUnderlyingSurplusTokenOut,
                 vars.expectedWrappedSurplusTokenOut
             ) = _previewUnwrapExactOut(ybToken1, vars.expectedUnderlyingDeltaTokenOut, withBufferLiquidity);
+
             uint256 wrappedAmountOutScaled18 = vars.expectedWrappedDeltaTokenOut.mulUp(_ybToken1Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
             vars.expectedWrappedDeltaTokenIn = wrappedAmountOutScaled18.divUp(_ybToken2Factor);
@@ -644,14 +646,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 wrappedBalance;
         (underlyingBalance, wrappedBalance) = vault.getBufferBalance(vars.ybTokenIn);
 
-        assertApproxEqAbs(
+        assertEq(
             underlyingBalance,
             uint256(
                 int256(vars.bufferBeforeSwapTokenIn) -
                     vars.expectedUnderlyingSurplusTokenIn +
                     int256(vars.withBufferLiquidity ? vars.expectedUnderlyingDeltaTokenIn : 0)
             ),
-            ROUNDING_TOLERANCE,
             "Wrong underlying balance for tokenIn buffer"
         );
 
@@ -667,14 +668,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         (underlyingBalance, wrappedBalance) = vault.getBufferBalance(vars.ybTokenOut);
 
-        assertApproxEqAbs(
+        assertEq(
             underlyingBalance,
             uint256(
                 int256(vars.bufferBeforeSwapTokenOut) +
                     vars.expectedUnderlyingSurplusTokenOut -
                     int256(vars.withBufferLiquidity ? vars.expectedUnderlyingDeltaTokenOut : 0)
             ),
-            ROUNDING_TOLERANCE,
             "Wrong underlying balance for tokenOut buffer"
         );
         assertEq(
@@ -1004,8 +1004,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             IERC20(wToken.asset()).forceApprove(address(wToken), vaultUnderlyingDeltaHint);
             vaultUnderlyingDeltaHint = wToken.mint(vaultWrappedDeltaHint, lp);
             vm.stopPrank();
-            bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountInUnderlying);
-            bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountOutWrapped);
+            if (bufferUnderlyingSurplus != 0) {
+                bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountInUnderlying);
+                bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountOutWrapped);
+            }
             vm.revertTo(snapshotId);
         }
     }
@@ -1033,10 +1035,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // Do the actual operation to impact the rate used to calculate underlying surplus.
             uint256 snapshotId = vm.snapshot();
             vm.startPrank(lp);
-            vaultWrappedDeltaHint = wToken.withdraw(vaultUnderlyingDeltaHint, address(this), address(this));
+            vaultWrappedDeltaHint = wToken.withdraw(vaultUnderlyingDeltaHint, lp, lp);
             vm.stopPrank();
-            bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);
-            bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
+            if (bufferWrappedSurplus != 0) {
+                bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);
+                bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
+            }
             vm.revertTo(snapshotId);
         }
     }
