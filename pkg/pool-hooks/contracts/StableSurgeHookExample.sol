@@ -32,7 +32,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
     // Defines the range in which surging will not occur; meaning surging will occur when:
     // B(i-after swap) / (sum(B(n-after swap))) > 1/n + gamma
     uint256 private _threshold;
-    // An amplification coefficient to amplify the degree a fee increases upon the threshold being triggered
+    // An amplification coefficient to amplify the degree to which a fee increases after the threshold is met.
     uint256 private _surgeCoefficient;
 
     /**
