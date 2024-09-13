@@ -1234,25 +1234,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus != 0) {
-                // TODO explain why wrapped surplus is always recalculated but underlying surplus is recalculated only
-                // for exact out
+                bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountInUnderlying);
                 bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountOutWrapped);
-
-                if (kind == SwapKind.EXACT_OUT) {
-                    // If the buffer has a surplus of underlying tokens, it wraps the surplus + amountIn, so the final
-                    // amount in needs to be discounted for that. For EXACT_OUT, `vaultWrappedDeltaHint` and
-                    // `amountOutWrapped` do not change after the mint operation, so the `bufferWrappedSurplus` does
-                    // not need to be recalculated.
-                    bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountInUnderlying);
-                }
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease the underlying balance, we get the delta amount that was deposited
                 // (vaultUnderlyingDeltaHint) and discount the amount needed for the wrapping operation
                 // (amountInUnderlying). The same logic applies to wrapped balances.
-                //
-                // Note: bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountInUnderlying
-                //       bufferWrappedSurplus = vaultWrappedDeltaHint - amountOutWrapped
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     uint256(int256(bufferBalances.getBalanceRaw()) - bufferUnderlyingSurplus),
                     uint256(int256(bufferBalances.getBalanceDerived()) + bufferWrappedSurplus)
@@ -1351,25 +1339,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
             if (bufferWrappedSurplus != 0) {
-                // TODO explain why underlying surplus is always recalculated but wrapped surplus is recalculated only
-                // for exact out
                 bufferUnderlyingSurplus = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
-
-                if (kind == SwapKind.EXACT_OUT) {
-                    // If the buffer has a surplus of wrapped tokens, it unwraps the surplus + amountIn, so the final
-                    // amountIn needs to be discounted for that. For EXACT_OUT, `vaultUnderlyingDeltaHint` and
-                    // `amountOutUnderlying` do not change after the withdraw operation, so the
-                    // `bufferUnderlyingSurplus` does not need to be recalculated.
-                    bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);
-                }
+                bufferWrappedSurplus = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);
 
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
                 // (vaultUnderlyingDeltaHint) and discount the amount needed for the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
-                //
-                // Note: bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountOutUnderlying
-                //       bufferWrappedSurplus = vaultWrappedDeltaHint - amountInWrapped
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     uint256(int256(bufferBalances.getBalanceRaw()) + bufferUnderlyingSurplus),
                     uint256(int256(bufferBalances.getBalanceDerived()) - bufferWrappedSurplus)
