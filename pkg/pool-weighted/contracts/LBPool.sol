@@ -153,7 +153,14 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         uint256 endTime,
         uint256[] memory endWeights
     ) external onlyOwner {
-        _ensureValidWeights(endWeights);
+        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, endWeights.length);
+
+        if (endWeights[0] < _MIN_WEIGHT || endWeights[1] < _MIN_WEIGHT) {
+            revert MinWeight();
+        }
+        if (endWeights[0] + endWeights[1] != FixedPoint.ONE) {
+            revert NormalizedWeightInvariant();
+        }
 
         // Ensure startTime >= now.
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
@@ -283,29 +290,5 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         _poolState = poolState;
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
-    }
-
-    /**
-     * @dev Ensure the given set of weights sums to exactly FixedPoint.ONE, and neither of the weights is below
-     * the minimum.
-     */
-    function _ensureValidWeights(uint256[] memory normalizedWeights) internal pure {
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, normalizedWeights.length);
-
-        // Ensure each normalized weight is above the minimum
-        uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < _NUM_TOKENS; ++i) {
-            uint256 normalizedWeight = normalizedWeights[i];
-
-            if (normalizedWeight < _MIN_WEIGHT) {
-                revert MinWeight();
-            }
-            normalizedSum += normalizedWeight;
-        }
-
-        // Ensure that the normalized weights sum to ONE
-        if (normalizedSum != FixedPoint.ONE) {
-            revert NormalizedWeightInvariant();
-        }
     }
 }
