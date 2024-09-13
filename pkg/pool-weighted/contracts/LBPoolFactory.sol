@@ -89,7 +89,7 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
             swapFeePercentage,
             true, // protocol fee exempt
             roleAccounts,
-            pool,
+            pool, // register the pool itself as the hook contract
             getDefaultLiquidityManagement()
         );
     }
