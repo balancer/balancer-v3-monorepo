@@ -52,15 +52,22 @@ library GradualValueChange {
         uint256 endValue,
         uint256 pctProgress
     ) internal pure returns (uint256) {
-        if (pctProgress >= FixedPoint.ONE || startValue == endValue) return endValue;
-        if (pctProgress == 0) return startValue;
+        if (pctProgress >= FixedPoint.ONE || startValue == endValue) {
+            return endValue;
+        }
 
-        if (startValue > endValue) {
-            uint256 delta = pctProgress.mulDown(startValue - endValue);
-            return startValue - delta;
-        } else {
-            uint256 delta = pctProgress.mulDown(endValue - startValue);
-            return startValue + delta;
+        if (pctProgress == 0) {
+            return startValue;
+        }
+
+        unchecked {
+            if (startValue > endValue) {
+                uint256 delta = pctProgress.mulDown(startValue - endValue);
+                return startValue - delta;
+            } else {
+                uint256 delta = pctProgress.mulDown(endValue - startValue);
+                return startValue + delta;
+            }
         }
     }
 
