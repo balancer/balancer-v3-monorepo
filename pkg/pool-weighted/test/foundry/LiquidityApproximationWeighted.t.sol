@@ -398,48 +398,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             : assertLiquidityOperationNoSwapFee();
     }
 
-    function testSwapSymmetry__Fuzz(uint256 daiAmountIn, uint256 weightDai, uint256 swapFeePercentage) public {
-        daiAmountIn = bound(daiAmountIn, minAmount, defaultAmount * 2000);
-        weightDai = bound(weightDai, 1e16, 99e16);
-        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, 10e16);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
-        _setPoolBalancesWithDifferentWeights(weightDai);
-
-        uint256 snapshotId = vm.snapshot();
-
-        vm.prank(alice);
-        uint256 amountOut = router.swapSingleTokenExactIn(
-            swapPool,
-            usdc,
-            dai,
-            daiAmountIn,
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
-        vm.revertTo(snapshotId);
-
-        vm.prank(alice);
-        uint256 amountIn = router.swapSingleTokenExactOut(
-            swapPool,
-            usdc,
-            dai,
-            amountOut,
-            MAX_UINT128,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
-        // An ExactIn swap with `defaultAmount` tokenIn returned `amountOut` tokenOut.
-        // Since Exact_In and Exact_Out are symmetrical, an ExactOut swap with `amountOut` tokenOut should return the
-        // same amount of tokenIn.
-        assertApproxEqRel(amountIn, daiAmountIn, 0.001e16, "Swap fees are not symmetric for ExactIn and ExactOut");
-    }
-
     /// Utils
 
     function _computeMaxTokenAmount(uint256 weightDai) private view returns (uint256 maxAmount) {

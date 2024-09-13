@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -192,6 +194,58 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+    }
+
+    function testSwapSymmetry__Fuzz(uint256 tokenAAmountIn, uint256 weightTokenA, uint256 swapFeePercentage) public {
+        weightTokenA = bound(weightTokenA, 1e16, 99e16);
+        swapFeePercentage = bound(swapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+        _setSwapFeePercentage(address(poolWithMutableWeights), swapFeePercentage);
+
+        uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);
+
+        // Since tokens can have different decimals and amountOut is in relation to tokenB, normalize tokenA liquidity.
+        uint256 normalizedLiquidityTokenA = (newPoolBalances[tokenAIdx] * (10 ** decimalsTokenB)) /
+            (10 ** decimalsTokenA);
+
+        // Cap amount in to lowest normalized liquidity * 25%
+        tokenAAmountIn = bound(
+            tokenAAmountIn,
+            1e15,
+            Math.min(normalizedLiquidityTokenA, newPoolBalances[tokenBIdx]) / 4
+        );
+
+        uint256 snapshotId = vm.snapshot();
+
+        vm.prank(alice);
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(poolWithMutableWeights),
+            tokenA,
+            tokenB,
+            tokenAAmountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(poolWithMutableWeights),
+            tokenA,
+            tokenB,
+            amountOut,
+            MAX_UINT128,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        // An ExactIn swap with `defaultAmount` tokenIn returned `amountOut` tokenOut.
+        // Since Exact_In and Exact_Out are symmetrical, an ExactOut swap with `amountOut` tokenOut should return the
+        // same amount of tokenIn.
+        assertApproxEqRel(amountIn, tokenAAmountIn, 0.00001e16, "Swap fees are not symmetric for ExactIn and ExactOut");
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
