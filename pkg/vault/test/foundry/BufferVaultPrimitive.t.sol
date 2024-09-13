@@ -1069,8 +1069,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         int256 bufferWrappedSurplus = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
 
         if (withBufferLiquidity) {
-            assertEq(underlyingAmountIn, uint256(-bufferUnderlyingSurplus), "Wrong underlying buffer surplus");
-            assertEq(wrappedAmountOut, uint256(bufferWrappedSurplus), "Wrong wrapped buffer surplus");
+            assertEq(underlyingAmountIn, uint256(bufferUnderlyingSurplus), "Wrong underlying buffer surplus");
+            assertEq(wrappedAmountOut, uint256(-bufferWrappedSurplus), "Wrong wrapped buffer surplus");
         }
 
         // Check Vault reserves.
@@ -1145,8 +1145,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             bufferWrappedSurplus = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
 
             if (withBufferLiquidity) {
-                assertEq(underlyingAmountOut, uint256(bufferUnderlyingSurplus), "Wrong underlying buffer surplus");
-                assertEq(wrappedAmountIn, uint256(-bufferWrappedSurplus), "Wrong wrapped buffer surplus");
+                assertEq(underlyingAmountOut, uint256(-bufferUnderlyingSurplus), "Wrong underlying buffer surplus");
+                assertEq(wrappedAmountIn, uint256(bufferWrappedSurplus), "Wrong wrapped buffer surplus");
             }
         }
 
