@@ -277,9 +277,9 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         poolState.startTime = startTime;
         poolState.endTime = endTime;
 
-        // These have been validated, so can be safely cast directly.
-        poolState.startWeight0 = uint64(startWeights[0]);
-        poolState.endWeight0 = uint64(endWeights[0]);
+        // These have been validated, but SafeCast anyway out of an abundance of caution.
+        poolState.startWeight0 = startWeights[0].toUint64();
+        poolState.endWeight0 = endWeights[0].toUint64();
 
         _poolState = poolState;
 
@@ -303,6 +303,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
             }
             normalizedSum += normalizedWeight;
         }
+
         // Ensure that the normalized weights sum to ONE
         if (normalizedSum != FixedPoint.ONE) {
             revert NormalizedWeightInvariant();
