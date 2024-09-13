@@ -82,9 +82,14 @@ library GradualValueChange {
             return 0;
         }
 
-        // No need for SafeMath as it was checked right above: endTime > block.timestamp > startTime
-        uint256 totalSeconds = endTime - startTime;
-        uint256 secondsElapsed = block.timestamp - startTime;
+        // No need for checked math as the magnitudes are verified above: endTime > block.timestamp > startTime
+        uint256 totalSeconds;
+        uint256 secondsElapsed;
+
+        unchecked {
+            totalSeconds = endTime - startTime;
+            secondsElapsed = block.timestamp - startTime;
+        }
 
         // We don't need to consider zero division here as this is covered above.
         return secondsElapsed.divDown(totalSeconds);
