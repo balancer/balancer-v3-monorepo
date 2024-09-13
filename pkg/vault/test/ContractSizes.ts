@@ -4,7 +4,14 @@ import { saveSizeSnap } from '@balancer-labs/v3-helpers/src/contract-size';
 describe('ContractSizes', function () {
   it('calculates and stores contract sizes', async () => {
     // List of contracts to monitor
-    for (const contractName of ['Vault', 'VaultExtension', 'VaultAdmin', 'Router', 'BatchRouter']) {
+    for (const contractName of [
+      'Vault',
+      'VaultExtension',
+      'VaultAdmin',
+      'Router',
+      'BatchRouter',
+      'CompositeLiquidityRouter',
+    ]) {
       const artifact = getArtifact(`v3-vault/${contractName}`);
 
       // Match calculations performed by `yarn hardhat size-contracts`

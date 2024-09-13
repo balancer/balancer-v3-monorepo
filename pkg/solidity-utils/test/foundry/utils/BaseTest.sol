@@ -9,11 +9,16 @@ import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+
 import { ERC4626TestToken } from "../../../contracts/test/ERC4626TestToken.sol";
 import { ERC20TestToken } from "../../../contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "../../../contracts/test/WETHTestToken.sol";
 
 abstract contract BaseTest is Test, GasSnapshot {
+    using CastingHelpers for *;
+
     // Reasonable block.timestamp `MAY_1_2023`
     uint32 internal constant START_TIMESTAMP = 1_682_899_200;
 
@@ -136,6 +141,27 @@ abstract contract BaseTest is Test, GasSnapshot {
     ) internal pure returns (uint256 idxTokenA, uint256 idxTokenB) {
         idxTokenA = tokenA > tokenB ? 1 : 0;
         idxTokenB = idxTokenA == 0 ? 1 : 0;
+    }
+
+    function getSortedIndexes(address[] memory addresses) public pure returns (uint256[] memory sortedIndexes) {
+        uint256 length = addresses.length;
+        address[] memory sortedAddresses = new address[](length);
+
+        // Clone address array to sortedAddresses, so the original array does not change.
+        for (uint256 i = 0; i < length; i++) {
+            sortedAddresses[i] = addresses[i];
+        }
+
+        sortedAddresses = InputHelpers.sortTokens(sortedAddresses.asIERC20()).asAddress();
+
+        sortedIndexes = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            for (uint256 j = 0; j < length; j++) {
+                if (addresses[i] == sortedAddresses[j]) {
+                    sortedIndexes[i] = j;
+                }
+            }
+        }
     }
 
     /// @dev Creates an ERC20 test token, labels its address.
