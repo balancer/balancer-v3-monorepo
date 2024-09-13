@@ -16,16 +16,20 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { GradualValueChange } from "./lib/GradualValueChange.sol";
-import { WeightValidation } from "./lib/WeightValidation.sol";
 import { WeightedPool } from "./WeightedPool.sol";
 
-/// @notice Inheriting from WeightedPool is only slightly wasteful (setting 2 immutable weights
-///     and _totalTokens, which will not be used later), and it is tremendously helpful for pool
-///     validation and any potential future parent class changes.
+/**
+ * @notice Weighted Pool with mutable weights, designed to support v3 Liquidity Bootstrapping.
+ * @dev Inheriting from WeightedPool is only slightly wasteful (setting 2 immutable weights and `_totalTokens`,
+ * which will not be used later), and it is tremendously helpful for pool validation and any potential future
+ * base contract changes.
+ */
 contract LBPool is WeightedPool, Ownable, BaseHooks {
     using SafeCast for *;
 
-    // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight
+    // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight.
+    // Weights are 18 decimal floating point values, which fit in less than 64 bits. Store smaller numeric values
+    // to ensure the PoolState fits in a single slot.
     struct PoolState {
         uint32 startTime;
         uint32 endTime;
@@ -80,35 +84,17 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         bool swapEnabledOnStart,
         address trustedRouter
     ) WeightedPool(params, vault) Ownable(owner) {
-        // _NUM_TOKENS == 2 == params.normalizedWeights.length == params.numTokens
-        // WeightedPool validates `numTokens == normalizedWeights.length`
+        // WeightedPool validates `numTokens == normalizedWeights.length`, and ensures valid weights.
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
 
         // Set the trusted router (passed down from the factory).
         _TRUSTED_ROUTER = trustedRouter;
-
-        // `_startGradualWeightChange` validates weights.
 
         // solhint-disable-next-line not-rely-on-time
         uint32 currentTime = block.timestamp.toUint32();
         _startGradualWeightChange(currentTime, currentTime, params.normalizedWeights, params.normalizedWeights);
 
         _setSwapEnabled(swapEnabledOnStart);
-    }
-
-    function updateWeightsGradually(
-        uint256 startTime,
-        uint256 endTime,
-        uint256[] memory endWeights
-    ) external onlyOwner {
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, endWeights.length);
-        WeightValidation.validateTwoWeights(endWeights[0], endWeights[1]);
-
-        // Ensure startTime >= now.
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
-        // The SafeCast ensures `endTime` can't overflow.
-        _startGradualWeightChange(startTime.toUint32(), endTime.toUint32(), _getNormalizedWeights(), endWeights);
     }
 
     /**
@@ -131,6 +117,18 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
     }
 
     /**
+     * @notice Indicate whether swaps are enabled or not for the given pool.
+     * @return swapEnabled True if trading is enabled
+     */
+    function getSwapEnabled() external view returns (bool) {
+        return _getPoolSwapEnabled();
+    }
+
+    /*******************************************************************************
+                                Permissioned Functions
+    *******************************************************************************/
+
+    /**
      * @notice Enable/disable trading.
      * @dev This is a permissioned function.
      * @param swapEnabled True if trading should be enabled
@@ -139,22 +137,25 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         _setSwapEnabled(swapEnabled);
     }
 
-    function _setSwapEnabled(bool swapEnabled) private {
-        _poolState.swapEnabled = swapEnabled;
-
-        emit SwapEnabledSet(swapEnabled);
-    }
-
     /**
-     * @notice Indicate whether swaps are enabled or not for the given pool.
-     * @return swapEnabled True if trading is enabled
+     * @notice Start a gradual weight change. Weights will change smoothly from current values to `endWeights`.
+     * @dev If the `startTime` is in the past, the weight change will begin immediately.
+     * @param startTime The timestamp when the weight change will start
+     * @param endTime  The timestamp when the weights will reach their final values
+     * @param endWeights The final values of the weights
      */
-    function getSwapEnabled() external view returns (bool) {
-        return _getPoolSwapEnabled();
-    }
+    function updateWeightsGradually(
+        uint256 startTime,
+        uint256 endTime,
+        uint256[] memory endWeights
+    ) external onlyOwner {
+        _ensureValidWeights(endWeights);
 
-    function _getPoolSwapEnabled() internal view returns (bool) {
-        return _poolState.swapEnabled;
+        // Ensure startTime >= now.
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
+
+        // The SafeCast ensures `endTime` can't overflow.
+        _startGradualWeightChange(startTime.toUint32(), endTime.toUint32(), _getNormalizedWeights(), endWeights);
     }
 
     /*******************************************************************************
@@ -166,29 +167,35 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
      * revert the registration of the pool. Make sure this function is properly implemented (e.g. check the factory,
      * and check that the given pool is from the factory).
      *
-     * @param factory Address of the pool factory
      * @param pool Address of the pool
      * @return success True if the hook allowed the registration, false otherwise
      */
     function onRegister(
-        address factory,
+        address,
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public view override onlyVault returns (bool) {
-        return (pool == address(this) && IBasePoolFactory(factory).isPoolFromFactory(pool));
+        // Since in this case the pool is the hook, we don't need to check anything else.
+        // We *could* check that it's two tokens, but better to let that be caught later, as it will fail with a more
+        // descriptive error.
+        return pool == address(this);
     }
 
     // Return HookFlags struct that indicates which hooks this contract supports
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
-        // Support hooks before swap/join for swapEnabled/onlyOwner LP
+        // Check whether swaps are enabled in `onBeforeSwap`.
         hookFlags.shouldCallBeforeSwap = true;
+        // Ensure the caller is the owner, as only the owner can add liquidity.
         hookFlags.shouldCallBeforeAddLiquidity = true;
     }
 
     /**
      * @notice Check that the caller who initiated the add liquidity operation is the owner.
-     * @param router The address (usually a router contract) that initiated add liquidity operation on the Vault
+     * @dev We first ensure the caller is the standard router, so that we know we can trust the value it returns
+     * from `getSender`.
+     *
+     * @param router The address (usually a router contract) that initiated the add liquidity operation
      */
     function onBeforeAddLiquidity(
         address router,
@@ -199,55 +206,60 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault returns (bool) {
-        // TODO use TrustedRoutersProvider. Presumably something like this:
-        // if (ITrustedRoutersProvider(TRUSTED_ROUTERS_PROVIDER).isTrusted(router)) {
         if (router == _TRUSTED_ROUTER) {
-            //TODO: should hooks w/ failing checks revert or just return false?
             return IRouterCommon(router).getSender() == owner();
         }
+
         revert RouterNotTrusted();
     }
 
     /**
-     * @notice Called before a swap to let pool block swaps if not enabled.
+     * @notice Called before a swap to let the pool block swaps if not enabled.
      * @return success True if the pool has swaps enabled.
      */
     function onBeforeSwap(PoolSwapParams calldata, address) public view override onlyVault returns (bool) {
         return _getPoolSwapEnabled();
     }
 
-    /* =========================================
-     * =========================================
-     * ==========INTERNAL FUNCTIONS=============
-     * =========================================
-     * =========================================
-     */
+    /*******************************************************************************
+                                  Internal Functions
+    *******************************************************************************/
 
-    function _getNormalizedWeight0() internal view virtual returns (uint256) {
-        PoolState memory poolState = _poolState;
-        uint256 pctProgress = _getWeightChangeProgress(poolState);
-        return GradualValueChange.interpolateValue(poolState.startWeight0, poolState.endWeight0, pctProgress);
+    function _getNormalizedWeights() internal view override returns (uint256[] memory) {
+        uint256[] memory normalizedWeights = new uint256[](_NUM_TOKENS);
+        normalizedWeights[0] = _getNormalizedWeight(0);
+        normalizedWeights[1] = _getNormalizedWeight(1);
+
+        return normalizedWeights;
     }
 
     function _getNormalizedWeight(uint256 tokenIndex) internal view virtual override returns (uint256) {
         uint256 normalizedWeight0 = _getNormalizedWeight0();
+
         if (tokenIndex == 0) {
             return normalizedWeight0;
         } else if (tokenIndex == 1) {
             return FixedPoint.ONE - normalizedWeight0;
         }
+
         revert IVaultErrors.InvalidToken();
     }
 
-    function _getNormalizedWeights() internal view override returns (uint256[] memory) {
-        uint256[] memory normalizedWeights = new uint256[](_NUM_TOKENS);
-        normalizedWeights[0] = _getNormalizedWeight0();
-        normalizedWeights[1] = FixedPoint.ONE - normalizedWeights[0];
-        return normalizedWeights;
+    function _getNormalizedWeight0() internal view virtual returns (uint256) {
+        PoolState memory poolState = _poolState;
+        uint256 pctProgress = GradualValueChange.calculateValueChangeProgress(poolState.startTime, poolState.endTime);
+
+        return GradualValueChange.interpolateValue(poolState.startWeight0, poolState.endWeight0, pctProgress);
     }
 
-    function _getWeightChangeProgress(PoolState memory poolState) internal view returns (uint256) {
-        return GradualValueChange.calculateValueChangeProgress(poolState.startTime, poolState.endTime);
+    function _getPoolSwapEnabled() private view returns (bool) {
+        return _poolState.swapEnabled;
+    }
+
+    function _setSwapEnabled(bool swapEnabled) private {
+        _poolState.swapEnabled = swapEnabled;
+
+        emit SwapEnabledSet(swapEnabled);
     }
 
     /**
@@ -260,9 +272,8 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         uint256[] memory startWeights,
         uint256[] memory endWeights
     ) internal virtual {
-        WeightValidation.validateTwoWeights(endWeights[0], endWeights[1]);
-
         PoolState memory poolState = _poolState;
+
         poolState.startTime = startTime;
         poolState.endTime = endTime;
 
@@ -273,5 +284,28 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         _poolState = poolState;
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+    }
+
+    /**
+     * @dev Ensure the given set of weights sums to exactly FixedPoint.ONE, and neither of the weights is below
+     * the minimum.
+     */
+    function _ensureValidWeights(uint256[] memory normalizedWeights) internal pure {
+        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, normalizedWeights.length);
+
+        // Ensure each normalized weight is above the minimum
+        uint256 normalizedSum = 0;
+        for (uint8 i = 0; i < _NUM_TOKENS; ++i) {
+            uint256 normalizedWeight = normalizedWeights[i];
+
+            if (normalizedWeight < _MIN_WEIGHT) {
+                revert MinWeight();
+            }
+            normalizedSum += normalizedWeight;
+        }
+        // Ensure that the normalized weights sum to ONE
+        if (normalizedSum != FixedPoint.ONE) {
+            revert NormalizedWeightInvariant();
+        }
     }
 }
