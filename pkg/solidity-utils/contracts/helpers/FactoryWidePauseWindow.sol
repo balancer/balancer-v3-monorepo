@@ -70,9 +70,7 @@ contract FactoryWidePauseWindow {
      * @return The resolved pause window end time (0 indicating it's no longer pausable)
      */
     function getNewPoolPauseWindowEndTime() public view returns (uint32) {
-        uint256 currentTime = block.timestamp;
-
-        // Handle the (obscure) overflow case, vs. truncating or reverting.
-        return (currentTime <= _MAX_TIMESTAMP && currentTime < _poolsPauseWindowEndTime) ? _poolsPauseWindowEndTime : 0;
+        // We know _poolsPauseWindowEndTime <= _MAX_TIMESTAMP (checked above).
+        return (block.timestamp < _poolsPauseWindowEndTime) ? _poolsPauseWindowEndTime : 0;
     }
 }
