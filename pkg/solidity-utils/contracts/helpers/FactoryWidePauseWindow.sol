@@ -73,6 +73,6 @@ contract FactoryWidePauseWindow {
         uint256 currentTime = block.timestamp;
 
         // Handle the (obscure) overflow case, vs. truncating or reverting.
-        return (currentTime > _MAX_TIMESTAMP || currentTime < _poolsPauseWindowEndTime) ? _poolsPauseWindowEndTime : 0;
+        return (currentTime <= _MAX_TIMESTAMP && currentTime < _poolsPauseWindowEndTime) ? _poolsPauseWindowEndTime : 0;
     }
 }
