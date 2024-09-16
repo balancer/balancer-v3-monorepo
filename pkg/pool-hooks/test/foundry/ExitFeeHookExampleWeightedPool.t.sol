@@ -33,7 +33,7 @@ contract ExitFeeHookExampleWeightedPoolTest is ExitFeeHookExampleTest {
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation).
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        weightedPoolFactory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
