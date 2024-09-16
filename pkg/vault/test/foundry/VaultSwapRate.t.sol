@@ -40,7 +40,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         rateProviders[0] = rateProvider;
         rateProvider.mockRate(mockRate);
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         factoryMock.registerTestPool(
             newPool,

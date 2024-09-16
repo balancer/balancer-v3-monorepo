@@ -44,7 +44,7 @@ contract BigPoolDataTest is BaseVaultTest {
             initAmounts[i] = poolInitAmount;
         }
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
 
         _approveForPool(IERC20(newPool));
 

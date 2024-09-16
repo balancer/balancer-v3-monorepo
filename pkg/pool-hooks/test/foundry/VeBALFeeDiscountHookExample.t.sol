@@ -224,7 +224,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
     // Registry tests require a new pool, because an existing pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
-        newPool = address(new PoolMock(IVault(address(vault)), "VeBAL Fee Pool", "veBALFeePool"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "VeBAL Fee Pool", "veBALFeePool"));
         vm.label(newPool, "VeBAL Fee Pool");
     }
 

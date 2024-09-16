@@ -23,7 +23,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     function setUp() public virtual {
         deployer = makeAddr("deployer");
         authorizer = deployBasicAuthorizerMock();
-        factory = new VaultFactory(authorizer, 90 days, 30 days, _MIN_TRADE_AMOUNT, _MIN_WRAP_AMOUNT);
+        factory = deployVaultFactory(authorizer, 90 days, 30 days, _MIN_TRADE_AMOUNT, _MIN_WRAP_AMOUNT);
     }
 
     /// forge-config: default.fuzz.runs = 100

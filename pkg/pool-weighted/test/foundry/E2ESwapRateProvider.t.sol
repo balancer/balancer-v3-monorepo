@@ -21,8 +21,13 @@ import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksM
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract E2eSwapRateProviderWeightedTest is VaultContractsDeployer, E2eSwapRateProviderTest {
+contract E2eSwapRateProviderWeightedTest is
+    WeightedPoolContractsDeployer,
+    VaultContractsDeployer,
+    E2eSwapRateProviderTest
+{
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
@@ -46,7 +51,7 @@ contract E2eSwapRateProviderWeightedTest is VaultContractsDeployer, E2eSwapRateP
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        WeightedPoolFactory factory = new WeightedPoolFactory(
+        WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",

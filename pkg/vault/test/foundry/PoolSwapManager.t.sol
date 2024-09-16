@@ -39,7 +39,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
         PoolRoleAccounts memory adminRoleAccounts;
         adminRoleAccounts.swapFeeManager = admin;
 
-        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         // Make admin the swap fee manager.
         factoryMock.registerGeneralTestPool(
@@ -52,7 +52,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             poolHooksContract
         );
 
-        unmanagedPool = new PoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
+        unmanagedPool = deployPoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
 
         // Pass zero for the swap fee manager.
         factoryMock.registerGeneralTestPool(
@@ -66,7 +66,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
         );
 
         // Pass zero for the swap fee manager.
-        otherPool = new PoolMock(IVault(address(vault)), "Other Pool", "OTHER");
+        otherPool = deployPoolMock(IVault(address(vault)), "Other Pool", "OTHER");
 
         // Pass zero for the swap fee manager.
         factoryMock.registerGeneralTestPool(

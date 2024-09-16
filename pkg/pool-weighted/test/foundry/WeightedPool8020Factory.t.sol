@@ -18,8 +18,9 @@ import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-inte
 
 import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPool8020FactoryTest is VaultContractsDeployer {
+contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultContractsDeployer {
     uint256 internal DEFAULT_SWAP_FEE = 1e16; // 1%
 
     IVaultMock vault;
@@ -32,7 +33,7 @@ contract WeightedPool8020FactoryTest is VaultContractsDeployer {
 
     function setUp() public {
         vault = deployVaultMock(0, 0);
-        factory = new WeightedPool8020Factory(IVault(address(vault)), 365 days, "Factory v1", "8020Pool v1");
+        factory = deployWeightedPool8020Factory(IVault(address(vault)), 365 days, "Factory v1", "8020Pool v1");
 
         tokenA = new ERC20TestToken("Token A", "TKNA", 18);
         tokenB = new ERC20TestToken("Token B", "TKNB", 6);

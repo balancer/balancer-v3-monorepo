@@ -50,7 +50,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         // Part of the tests use the rateProvider variable from BaseVaultTest, so we set that to wstEth rate provider.
         rateProvider = RateProviderMock(address(rateProviders[wstethIdx]));
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         // Add tokens in the same order as rate providers.
         IERC20[] memory tokens = new IERC20[](2);

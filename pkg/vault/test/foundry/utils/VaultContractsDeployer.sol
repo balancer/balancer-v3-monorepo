@@ -15,6 +15,8 @@ import { HooksConfigLibMock } from "@balancer-labs/v3-vault/contracts/test/Hooks
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
+import { VaultFactory } from "../../../contracts/VaultFactory.sol";
+import { VaultExplorer } from "../../../contracts/VaultExplorer.sol";
 import { BaseHooksMock } from "../../../contracts/test/BaseHooksMock.sol";
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
@@ -34,20 +36,47 @@ import { RouterCommonMock } from "../../../contracts/test/RouterCommonMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 
 contract VaultContractsDeployer is BaseContractsDeployer {
-    string artifactsRootDir;
+    string private artifactsRootDir = "artifacts/";
 
     constructor() {
-        // if this artifacts/@balancer-labs/v3-vault exists, it means we are running outside of this repo
-        if (vm.exists("artifacts/@balancer-labs/v3-vault")) {
+        // if this external artifact path exists, it means we are running outside of this repo
+        if (vm.exists("artifacts/@balancer-labs/v3-vault/")) {
             artifactsRootDir = "artifacts/@balancer-labs/v3-vault/";
+        }
+    }
+
+    function deployVaultFactory(
+        IAuthorizer authorizer,
+        uint32 pauseWindowDuration,
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
+    ) internal returns (VaultFactory) {
+        if (reusingArtifacts) {
+            return
+                VaultFactory(
+                    deployCode(
+                        _computeVaultPath(type(VaultFactory).name),
+                        abi.encode(authorizer, pauseWindowDuration, bufferPeriodDuration, minTradeAmount, minWrapAmount)
+                    )
+                );
         } else {
-            artifactsRootDir = "artifacts/";
+            return
+                new VaultFactory(authorizer, pauseWindowDuration, bufferPeriodDuration, minTradeAmount, minWrapAmount);
+        }
+    }
+
+    function deployVaultExplorer(IVault vault) internal returns (VaultExplorer) {
+        if (reusingArtifacts) {
+            return VaultExplorer(deployCode(_computeVaultPath(type(VaultExplorer).name), abi.encode(vault)));
+        } else {
+            return new VaultExplorer(vault);
         }
     }
 
     function deployBaseHookMock() internal returns (BaseHooksMock) {
         if (reusingArtifacts) {
-            return BaseHooksMock(deployCode(_computePath(type(BaseHooksMock).name)));
+            return BaseHooksMock(deployCode(_computeVaultTestPath(type(BaseHooksMock).name)));
         } else {
             return new BaseHooksMock();
         }
@@ -55,7 +84,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployBasicAuthorizerMock() internal returns (BasicAuthorizerMock) {
         if (reusingArtifacts) {
-            return BasicAuthorizerMock(deployCode(_computePath(type(BasicAuthorizerMock).name)));
+            return BasicAuthorizerMock(deployCode(_computeVaultTestPath(type(BasicAuthorizerMock).name)));
         } else {
             return new BasicAuthorizerMock();
         }
@@ -65,7 +94,9 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 BatchRouterMock(
-                    payable(deployCode(_computePath(type(BatchRouterMock).name), abi.encode(vault, weth, permit2)))
+                    payable(
+                        deployCode(_computeVaultTestPath(type(BatchRouterMock).name), abi.encode(vault, weth, permit2))
+                    )
                 );
         } else {
             return new BatchRouterMock(vault, weth, permit2);
@@ -74,7 +105,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployERC20MultiTokenMock() internal returns (ERC20MultiTokenMock) {
         if (reusingArtifacts) {
-            return ERC20MultiTokenMock(deployCode(_computePath(type(ERC20MultiTokenMock).name)));
+            return ERC20MultiTokenMock(deployCode(_computeVaultTestPath(type(ERC20MultiTokenMock).name)));
         } else {
             return new ERC20MultiTokenMock();
         }
@@ -82,7 +113,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployHooksConfigLibMock() internal returns (HooksConfigLibMock) {
         if (reusingArtifacts) {
-            return HooksConfigLibMock(deployCode(_computePath(type(HooksConfigLibMock).name)));
+            return HooksConfigLibMock(deployCode(_computeVaultTestPath(type(HooksConfigLibMock).name)));
         } else {
             return new HooksConfigLibMock();
         }
@@ -90,7 +121,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployLinearBasePoolMathMock() internal returns (LinearBasePoolMathMock) {
         if (reusingArtifacts) {
-            return LinearBasePoolMathMock(deployCode(_computePath(type(LinearBasePoolMathMock).name)));
+            return LinearBasePoolMathMock(deployCode(_computeVaultTestPath(type(LinearBasePoolMathMock).name)));
         } else {
             return new LinearBasePoolMathMock();
         }
@@ -107,20 +138,20 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         bytes memory vaultMockBytecode;
 
         if (reusingArtifacts) {
-            vaultMockBytecode = vm.getCode(_computePath(type(VaultMock).name));
+            vaultMockBytecode = vm.getCode(_computeVaultTestPath(type(VaultMock).name));
             vaultAdmin = VaultAdminMock(
                 payable(
                     deployCode(
-                        _computePath(type(VaultAdminMock).name),
+                        _computeVaultTestPath(type(VaultAdminMock).name),
                         abi.encode(vault, 90 days, 30 days, minTradeAmount, minWrapAmount)
                     )
                 )
             );
             vaultExtension = VaultExtensionMock(
-                payable(deployCode(_computePath(type(VaultExtensionMock).name), abi.encode(vault, vaultAdmin)))
+                payable(deployCode(_computeVaultTestPath(type(VaultExtensionMock).name), abi.encode(vault, vaultAdmin)))
             );
             protocolFeeController = ProtocolFeeControllerMock(
-                deployCode(_computePath(type(ProtocolFeeControllerMock).name), abi.encode(vault))
+                deployCode(_computeVaultTestPath(type(ProtocolFeeControllerMock).name), abi.encode(vault))
             );
         } else {
             vaultMockBytecode = type(VaultMock).creationCode;
@@ -137,7 +168,10 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 PoolFactoryMock(
-                    deployCode(_computePath(type(PoolFactoryMock).name), abi.encode(vault, pauseWindowDuration))
+                    deployCode(
+                        _computeVaultTestPath(type(PoolFactoryMock).name),
+                        abi.encode(vault, pauseWindowDuration)
+                    )
                 );
         } else {
             return new PoolFactoryMock(vault, pauseWindowDuration);
@@ -146,7 +180,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployPoolHooksMock(IVault vault) internal returns (PoolHooksMock) {
         if (reusingArtifacts) {
-            return PoolHooksMock(deployCode(_computePath(type(PoolHooksMock).name), abi.encode(vault)));
+            return PoolHooksMock(deployCode(_computeVaultTestPath(type(PoolHooksMock).name), abi.encode(vault)));
         } else {
             return new PoolHooksMock(vault);
         }
@@ -154,7 +188,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployPoolMock(IVault vault, string memory name, string memory symbol) internal returns (PoolMock) {
         if (reusingArtifacts) {
-            return PoolMock(deployCode(_computePath(type(PoolMock).name), abi.encode(vault, name, symbol)));
+            return PoolMock(deployCode(_computeVaultTestPath(type(PoolMock).name), abi.encode(vault, name, symbol)));
         } else {
             return new PoolMock(vault, name, symbol);
         }
@@ -168,7 +202,10 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 PoolMockFlexibleInvariantRatio(
-                    deployCode(_computePath(type(PoolMockFlexibleInvariantRatio).name), abi.encode(vault, name, symbol))
+                    deployCode(
+                        _computeVaultTestPath(type(PoolMockFlexibleInvariantRatio).name),
+                        abi.encode(vault, name, symbol)
+                    )
                 );
         } else {
             return new PoolMockFlexibleInvariantRatio(vault, name, symbol);
@@ -177,7 +214,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployRateProviderMock() internal returns (RateProviderMock) {
         if (reusingArtifacts) {
-            return RateProviderMock(deployCode(_computePath(type(RateProviderMock).name)));
+            return RateProviderMock(deployCode(_computeVaultTestPath(type(RateProviderMock).name)));
         } else {
             return new RateProviderMock();
         }
@@ -187,7 +224,9 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 RouterCommonMock(
-                    payable(deployCode(_computePath(type(RouterCommonMock).name), abi.encode(vault, weth, permit2)))
+                    payable(
+                        deployCode(_computeVaultTestPath(type(RouterCommonMock).name), abi.encode(vault, weth, permit2))
+                    )
                 );
         } else {
             return new RouterCommonMock(vault, weth, permit2);
@@ -197,17 +236,19 @@ contract VaultContractsDeployer is BaseContractsDeployer {
     function deployRouterMock(IVault vault, IWETH weth, IPermit2 permit2) internal returns (RouterMock) {
         if (reusingArtifacts) {
             return
-                RouterMock(payable(deployCode(_computePath(type(RouterMock).name), abi.encode(vault, weth, permit2))));
+                RouterMock(
+                    payable(deployCode(_computeVaultTestPath(type(RouterMock).name), abi.encode(vault, weth, permit2)))
+                );
         } else {
             return new RouterMock(vault, weth, permit2);
         }
     }
 
-    function _computePath(string memory name) private view returns (string memory) {
-        return string(abi.encodePacked(artifactsRootDir, "contracts/test/", name, ".sol/", name, ".json"));
+    function _computeVaultPath(string memory name) private view returns (string memory) {
+        return string(abi.encodePacked(artifactsRootDir, "contracts/", name, ".sol/", name, ".json"));
     }
 
-    function _create3(bytes memory constructorArgs, bytes memory bytecode, bytes32 salt) private returns (address) {
-        return CREATE3.deploy(salt, abi.encodePacked(bytecode, constructorArgs), 0);
+    function _computeVaultTestPath(string memory name) private view returns (string memory) {
+        return string(abi.encodePacked(artifactsRootDir, "contracts/test/", name, ".sol/", name, ".json"));
     }
 }

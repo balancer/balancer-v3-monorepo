@@ -197,7 +197,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(
+        WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",

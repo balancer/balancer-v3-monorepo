@@ -38,7 +38,7 @@ contract PoolDataTest is BaseVaultTest {
         rateProviders[0] = daiRateProvider;
         rateProviders[1] = wstETHRateProvider;
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         factoryMock.registerTestPool(
             newPool,

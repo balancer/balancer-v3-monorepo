@@ -45,7 +45,7 @@ contract HooksTest is BaseVaultTest {
         uint32 bufferPeriodDuration = vault.getBufferPeriodDuration();
         anotherFactory = deployPoolFactoryMock(IVault(vault), pauseWindowEndTime - bufferPeriodDuration);
         vm.label(address(anotherFactory), "another factory");
-        anotherPool = address(new PoolMock(IVault(address(vault)), "Another Pool", "ANOTHER"));
+        anotherPool = address(deployPoolMock(IVault(address(vault)), "Another Pool", "ANOTHER"));
         vm.label(address(anotherPool), "another pool");
     }
 

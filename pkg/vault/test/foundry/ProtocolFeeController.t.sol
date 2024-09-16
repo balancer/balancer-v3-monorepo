@@ -674,7 +674,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     }
 
     function testWithdrawalWithNoCreator() public {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
         factoryMock.registerTestPool(address(newPool), vault.buildTokenConfig(tokens));
 
