@@ -12,8 +12,9 @@ library BufferHelpers {
     using SafeCast for *;
 
     /**
-     * @dev Underlying surplus is the amount of underlying that need to be wrapped for the buffer to be rebalanced.
-     * For instance, consider the following scenario:
+     * @dev Underlying surplus is the amount of underlying that need to be wrapped/unwrapped for the buffer to be
+     * rebalanced. If the surplus is positive, it means the underlying surplus amount must be wrapped. Else, it's the
+     * amount of underlying that needs to be unwrapped. For instance, consider the following scenario:
      * - buffer balances: 2 wrapped and 10 underlying
      * - wrapped rate: 2
      * - normalized buffer balances: 4 wrapped as underlying (2 wrapped * rate) and 10 underlying
@@ -33,12 +34,14 @@ library BufferHelpers {
             wrappedBalanceAsUnderlying = wrappedToken.previewMint(bufferBalance.getBalanceDerived()).toInt256();
         }
 
+        // The return value may be positive (excess of underlying) or negative (excess of wrapped).
         return (underlyingBalance - wrappedBalanceAsUnderlying) / 2;
     }
 
     /**
      * @dev Wrapped surplus is the amount of wrapped tokens that need to be unwrapped for the buffer to be rebalanced.
-     * For instance, consider the following scenario:
+     * If the surplus is positive, it means the wrapped surplus amount must be unwrapped. Else, it's the amount of
+     * wrapped tokens that needs to be wrapped to rebalance. For instance, consider the following scenario:
      * - buffer balances: 10 wrapped and 4 underlying
      * - wrapped rate: 2
      * - normalized buffer balances: 10 wrapped and 2 underlying as wrapped (2 underlying / rate)
@@ -58,6 +61,7 @@ library BufferHelpers {
             underlyingBalanceAsWrapped = wrappedToken.previewWithdraw(bufferBalance.getBalanceRaw()).toInt256();
         }
 
+        // The return value may be positive (excess of wrapped) or negative (excess of underlying).
         return (wrappedBalance - underlyingBalanceAsWrapped) / 2;
     }
 }
