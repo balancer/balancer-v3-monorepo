@@ -43,7 +43,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     uint256 internal _ybToken1Idx;
     uint256 private _ybToken2Idx;
 
-    uint256 private constant ROUNDING_TOLERANCE = 5;
     uint256 private constant BUFFER_INIT_AMOUNT = 100;
     uint256 private constant YIELD_BEARING_POOL_INIT_AMOUNT = BUFFER_INIT_AMOUNT * 5;
 
@@ -574,13 +573,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             );
 
             // Rounding issues are very small.
-            assertApproxEqAbs(paths[0], vars.expectedUnderlyingDeltaTokenOut, ROUNDING_TOLERANCE, "Wrong path count");
-            assertApproxEqAbs(
-                amounts[0],
-                vars.expectedUnderlyingDeltaTokenOut,
-                ROUNDING_TOLERANCE,
-                "Wrong amounts count"
-            );
+            assertEq(paths[0], vars.expectedUnderlyingDeltaTokenOut, "Wrong path count");
+            assertEq(amounts[0], vars.expectedUnderlyingDeltaTokenOut, "Wrong amounts count");
             assertEq(tokens[0], address(vars.tokenOut), "Wrong token for SwapKind");
         } else {
             // Rounding issues occurs in favor of the Vault.
@@ -588,13 +582,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             assertGe(amounts[0], vars.expectedUnderlyingDeltaTokenIn, "amounts AmountIn must be >= expected amountIn");
 
             // Rounding issues are very small.
-            assertApproxEqAbs(paths[0], vars.expectedUnderlyingDeltaTokenIn, ROUNDING_TOLERANCE, "Wrong path count");
-            assertApproxEqAbs(
-                amounts[0],
-                vars.expectedUnderlyingDeltaTokenIn,
-                ROUNDING_TOLERANCE,
-                "Wrong amounts count"
-            );
+            assertEq(paths[0], vars.expectedUnderlyingDeltaTokenIn, "Wrong path count");
+            assertEq(amounts[0], vars.expectedUnderlyingDeltaTokenIn, "Wrong amounts count");
             assertEq(tokens[0], address(vars.tokenIn), "Wrong token for SwapKind");
         }
 
@@ -606,10 +595,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "LP balance tokenIn must be <= expected balance"
         );
         // If there were rounding issues, make sure it's not a big one (less than 5 wei).
-        assertApproxEqAbs(
+        assertEq(
             vars.tokenIn.balanceOf(lp),
             vars.lpBeforeSwapTokenIn - vars.expectedUnderlyingDeltaTokenIn,
-            ROUNDING_TOLERANCE,
             "Wrong ending balance of tokenIn for LP"
         );
 
@@ -621,10 +609,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "LP balance tokenOut must be <= expected balance"
         );
         // If there were rounding issues, make sure it's not a big one (less than 5 wei).
-        assertApproxEqAbs(
+        assertEq(
             vars.tokenOut.balanceOf(lp),
             vars.lpBeforeSwapTokenOut + vars.expectedUnderlyingDeltaTokenOut,
-            ROUNDING_TOLERANCE,
             "Wrong ending balance of tokenOut for LP"
         );
 
