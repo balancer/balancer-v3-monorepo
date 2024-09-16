@@ -1190,7 +1190,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
 
-            // Gets the amount of underlying to wrap in order to rebalance the buffer.
+            // Gets the amount of underlying to wrap in order to rebalance the buffer. If the surplus is negative, the
+            // buffer has more wrapped than underlying.
             int256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
             int256 bufferWrappedSurplus;
 
@@ -1202,16 +1203,32 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferUnderlyingSurplus).
+                // (bufferUnderlyingSurplus). `bufferUnderlyingSurplus` may be positive if buffer has an excess of
+                // underlying, or negative if the buffer has an excess of wrapped tokens. `vaultUnderlyingDeltaHint`
+                // will always be a positive number, because if `abs(bufferUnderlyingSurplus) > amountInUnderlying` and
+                // `bufferUnderlyingSurplus < 0`, it means the buffer has enough liquidity to fulfill the trade (i.e.
+                // `bufferBalances.getBalanceDerived() >= amountOutWrapped` is true).
                 vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingSurplus).toUint256();
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so we call deposit.
                 vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
             } else {
+                // We need to calculate both `vaultUnderlyingDeltaHint` and `vaultWrappedDeltaHint`. The underlying
+                // delta will be used to approve transfer from underlying token to the wrapper protocol, while the
+                // wrapped delta will be used to wrap an EXACT_OUT amount of wrapped tokens (mint).
                 if (bufferUnderlyingSurplus != 0) {
+                    // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
+                    // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                    // (bufferUnderlyingSurplus). `bufferUnderlyingSurplus` may be positive if buffer has an excess of
+                    // underlying, or negative if the buffer has an excess of wrapped tokens.
+                    // `vaultUnderlyingDeltaHint` will always be a positive number, because if
+                    // `abs(bufferUnderlyingSurplus) > amountInUnderlying` and `bufferUnderlyingSurplus < 0`, it means
+                    // the buffer has enough liquidity to fulfill the trade (i.e.
+                    // `bufferBalances.getBalanceDerived() >= amountOutWrapped` is true).
                     vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingSurplus).toUint256();
                     vaultWrappedDeltaHint = wrappedToken.previewDeposit(vaultUnderlyingDeltaHint);
                 } else {
+                    // If the buffer does not have a surplus, wrap the exact `amountOutWrapped` amount.
                     vaultUnderlyingDeltaHint = amountInUnderlying;
                     vaultWrappedDeltaHint = amountOutWrapped;
                 }
@@ -1304,7 +1321,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of wrapped tokens.
 
-            // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer.
+            // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer. If the surplus is
+            // negative, the buffer has more underlying than wrapped.
             int256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);
             int256 bufferUnderlyingSurplus;
 
@@ -1317,7 +1335,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so we call redeem.
                 // The amount of wrapped tokens to redeem is the amount necessary to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferWrappedSurplus).
+                // (bufferWrappedSurplus). `bufferWrappedSurplus` may be positive if buffer has an excess of
+                // wrapped, or negative if the buffer has an excess of underlying tokens. `vaultWrappedDeltaHint`
+                // will always be a positive number, because if `abs(bufferWrappedSurplus) > amountInWrapped` and
+                // `bufferWrappedSurplus < 0`, it means the buffer has enough liquidity to fulfill the trade (i.e.
+                // `bufferBalances.getBalanceRaw() >= amountOutUnderlying` is true).
                 vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedSurplus).toUint256();
                 vaultUnderlyingDeltaHint = wrappedToken.redeem(vaultWrappedDeltaHint, address(this), address(this));
             } else {
@@ -1329,6 +1351,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedSurplus).toUint256();
                     vaultUnderlyingDeltaHint = wrappedToken.previewRedeem(vaultWrappedDeltaHint);
                 } else {
+                    // If the buffer does not have a surplus, unwrap the exact `amountOutUnderlying` amount.
                     vaultUnderlyingDeltaHint = amountOutUnderlying;
                 }
 
