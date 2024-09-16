@@ -71,6 +71,7 @@ contract FactoryWidePauseWindow {
      */
     function getNewPoolPauseWindowEndTime() public view returns (uint32) {
         // We know _poolsPauseWindowEndTime <= _MAX_TIMESTAMP (checked above).
+        // Do not truncate timestamp; it should still return 0 after _MAX_TIMESTAMP.
         return (block.timestamp < _poolsPauseWindowEndTime) ? _poolsPauseWindowEndTime : 0;
     }
 }
