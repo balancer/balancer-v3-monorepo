@@ -65,7 +65,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.WrongUnderlyingToken.selector, address(waDAI), address(usdc))
         );
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount);
     }
 
     function testChangeAssetOfWrappedTokenRemoveLiquidityFromBuffer() public {
@@ -429,7 +429,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount);
 
         // Remove liquidity is supposed to pass even with buffers paused, so revert is not expected.
         vault.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
@@ -449,118 +449,147 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     ********************************************************************************/
 
     function testAddLiquidityToBuffer() public {
-        vm.prank(lp);
-        router.initializeBuffer(waDAI, 1e18, 1e18);
+        vm.startPrank(lp);
+        router.initializeBuffer(waDAI, 1e18, waDAI.previewDeposit(1e18));
+        vm.stopPrank();
 
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
 
-        uint256 underlyingAmountIn = _wrapAmount;
-        uint256 wrappedAmountIn = _wrapAmount.mulDown(2e18);
-
         uint256 lpSharesBeforeAdd = vault.getBufferOwnerShares(waDAI, lp);
+        uint256 lpSharesToAdd = 2 * _wrapAmount;
+
+        uint256 invariantRatio = lpSharesToAdd.divUp(vault.getBufferTotalShares(waDAI));
+        // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
+        // tokens added, keeping the proportion of the buffer.
+        uint256 expectedUnderlyingAmountIn = beforeBalances.buffer.dai.mulUp(invariantRatio);
+        uint256 expectedWrappedAmountIn = beforeBalances.buffer.waDai.mulUp(invariantRatio);
+
         vm.prank(lp);
-        uint256 lpSharesAdded = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn);
+        router.addLiquidityToBuffer(waDAI, lpSharesToAdd);
 
         BufferAndLPBalances memory afterBalances = _measureBuffer();
 
         assertEq(
             afterBalances.buffer.dai,
-            beforeBalances.buffer.dai + underlyingAmountIn,
+            beforeBalances.buffer.dai + expectedUnderlyingAmountIn,
             "Buffer DAI balance is wrong"
         );
         assertEq(
             afterBalances.buffer.waDai,
-            beforeBalances.buffer.waDai + wrappedAmountIn,
+            beforeBalances.buffer.waDai + expectedWrappedAmountIn,
             "Buffer waDAI balance is wrong"
         );
 
-        assertEq(afterBalances.vault.dai, beforeBalances.vault.dai + underlyingAmountIn, "Vault DAI balance is wrong");
+        assertEq(
+            afterBalances.vault.dai,
+            beforeBalances.vault.dai + expectedUnderlyingAmountIn,
+            "Vault DAI balance is wrong"
+        );
         assertEq(
             afterBalances.vault.waDai,
-            beforeBalances.vault.waDai + wrappedAmountIn,
+            beforeBalances.vault.waDai + expectedWrappedAmountIn,
             "Vault waDAI balance is wrong"
         );
 
         assertEq(
             afterBalances.vaultReserves.dai,
-            beforeBalances.vaultReserves.dai + underlyingAmountIn,
+            beforeBalances.vaultReserves.dai + expectedUnderlyingAmountIn,
             "Vault Reserve DAI balance is wrong"
         );
         assertEq(
             afterBalances.vaultReserves.waDai,
-            beforeBalances.vaultReserves.waDai + wrappedAmountIn,
+            beforeBalances.vaultReserves.waDai + expectedWrappedAmountIn,
             "Vault Reserve waDAI balance is wrong"
         );
 
-        assertEq(afterBalances.lp.dai, beforeBalances.lp.dai - underlyingAmountIn, "LP DAI balance is wrong");
-        assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai - wrappedAmountIn, "LP waDAI balance is wrong");
+        assertEq(afterBalances.lp.dai, beforeBalances.lp.dai - expectedUnderlyingAmountIn, "LP DAI balance is wrong");
+        assertEq(
+            afterBalances.lp.waDai,
+            beforeBalances.lp.waDai - expectedWrappedAmountIn,
+            "LP waDAI balance is wrong"
+        );
 
         assertEq(
-            lpSharesBeforeAdd + lpSharesAdded,
+            lpSharesBeforeAdd + lpSharesToAdd,
             vault.getBufferOwnerShares(IERC4626(address(waDAI)), lp),
             "LP Buffer shares is wrong"
         );
-        assertEq(lpSharesAdded, underlyingAmountIn + waDAI.previewRedeem(wrappedAmountIn), "Issued shares is wrong");
+
+        // Since underlying and wrapped amount in are rounded up, it can introduced rounding issues in favor of the
+        // vault (`bufferInvariantDelta - 2e6 < sharesToAdd < bufferInvariantDelta`).
+        uint256 bufferInvariantDelta = expectedUnderlyingAmountIn + waDAI.previewRedeem(expectedWrappedAmountIn);
+        assertApproxEqAbs(lpSharesToAdd, bufferInvariantDelta - 1e6, 1e6, "Issued shares is wrong");
     }
 
     function testAddLiquidityToBufferWithRateChange() public {
         vm.prank(lp);
-        uint256 firstAddLpShares = router.initializeBuffer(waDAI, _wrapAmount, _wrapAmount);
-        // After the first add liquidity operation, ending balances are (using 1000 for _wrapAmount for simplicity):
-        // [1000 underlying, 1000 wrapped]; total supply is ~2000 (not counting the initialization).
+        {
+            uint256 firstAddLpShares = router.initializeBuffer(waDAI, _wrapAmount, _wrapAmount);
+            // After the first add liquidity operation, ending balances are (using 1000 for _wrapAmount for simplicity):
+            // [1000 underlying, 1000 wrapped]; total supply is ~2000 (not counting the initialization).
 
-        assertEq(
-            firstAddLpShares,
-            _wrapAmount + waDAI.previewRedeem(_wrapAmount) - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            "Wrong first lpShares added"
-        );
+            assertEq(
+                firstAddLpShares,
+                _wrapAmount + waDAI.previewRedeem(_wrapAmount) - BUFFER_MINIMUM_TOTAL_SUPPLY,
+                "Wrong first lpShares added"
+            );
+        }
+
         uint256 rate = 2e18;
 
         // Add [2000 underlying, 0 wrapped] when the rate is 2: (1 wrapped = 2 underlying)
         waDAI.mockRate(rate);
 
-        uint256 secondAddUnderlying = _wrapAmount * 2;
-
         (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
-        uint256 currentInvariant = bufferUnderlyingBalance + bufferWrappedBalance.mulDown(rate);
 
-        // Shares = current supply (= first shares added) times the invariant ratio.
-        uint256 expectedSecondAddShares = (vault.getBufferTotalShares(waDAI) * secondAddUnderlying) / currentInvariant;
+        uint256 secondAddShares = _wrapAmount * 2;
+        uint256 secondAddUnderlying;
+        uint256 secondAddWrapped;
 
-        vm.prank(lp);
-        uint256 secondAddLpShares = router.addLiquidityToBuffer(waDAI, secondAddUnderlying, 0);
-        assertEq(secondAddLpShares, expectedSecondAddShares, "Wrong second lpShares added");
+        uint256 invariantRatio = secondAddShares.divUp(vault.getBufferTotalShares(waDAI));
+        {
+            // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
+            // tokens added, keeping the proportion of the buffer.
+            uint256 expectedSecondAddUnderlying = bufferUnderlyingBalance.mulUp(invariantRatio);
+            uint256 expectedSecondAddWrapped = bufferWrappedBalance.mulUp(invariantRatio);
 
-        uint256 proportionalWithdrawPct = secondAddLpShares.divDown(vault.getBufferTotalShares(waDAI));
+            vm.prank(lp);
+            (secondAddUnderlying, secondAddWrapped) = router.addLiquidityToBuffer(waDAI, secondAddShares);
+            assertEq(secondAddUnderlying, expectedSecondAddUnderlying, "Wrong second underlying added");
+            assertEq(secondAddWrapped, expectedSecondAddWrapped, "Wrong second wrapped added");
+        }
+
         (bufferUnderlyingBalance, bufferWrappedBalance) = vault.getBufferBalance(waDAI);
+        invariantRatio = secondAddShares.divDown(vault.getBufferTotalShares(waDAI));
 
-        uint256 expectedUnderlyingOut = proportionalWithdrawPct.mulDown(bufferUnderlyingBalance);
-        uint256 expectedWrappedOut = proportionalWithdrawPct.mulDown(bufferWrappedBalance);
+        uint256 expectedUnderlyingOut = invariantRatio.mulDown(bufferUnderlyingBalance);
+        uint256 expectedWrappedOut = invariantRatio.mulDown(bufferWrappedBalance);
         // Will get 1333.333/3333.333 = 40% of value:
         // [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000 = amount in
         vm.prank(lp);
-        (uint256 removedUnderlying, uint256 removedWrapped) = vault.removeLiquidityFromBuffer(waDAI, secondAddLpShares);
+        (uint256 removedUnderlying, uint256 removedWrapped) = vault.removeLiquidityFromBuffer(waDAI, secondAddShares);
+
         assertApproxEqAbs(removedUnderlying, expectedUnderlyingOut, 1e6, "Wrong underlying amount removed");
         assertApproxEqAbs(removedWrapped, expectedWrappedOut, 1e6, "Wrong wrapped amount removed");
 
-        uint256 totalUnderlyingValue = removedUnderlying + rate.mulDown(removedWrapped);
-        assertLe(totalUnderlyingValue, secondAddUnderlying, "Value removed > value added");
-        assertApproxEqAbs(totalUnderlyingValue, secondAddUnderlying, 3, "Value removed !~ value added");
+        uint256 underlyingValueAdded = secondAddUnderlying + waDAI.previewRedeem(secondAddWrapped);
+        uint256 underlyingValueRemoved = removedUnderlying + waDAI.previewRedeem(removedWrapped);
+        assertLe(underlyingValueRemoved, underlyingValueAdded, "Value removed > value added");
+        // `underlyingValueAdded - 2e6 < underlyingValueRemoved < underlyingValueAdded`,
+        assertApproxEqAbs(underlyingValueRemoved, underlyingValueAdded - 1e6, 1e6, "Value removed !~ value added");
     }
 
     // Trying to increase the coverage by splitting into two rate regimes, and limiting the range.
     function testAddLiquidityToBufferWithIncreasedRate_Fuzz(
         uint128 firstDepositUnderlying,
         uint128 firstDepositWrapped,
-        uint128 secondDepositUnderlying,
-        uint128 secondDepositWrapped,
+        uint128 secondDepositShares,
         uint64 rate
     ) public {
         _addLiquidityToBufferWithRate(
             bound(firstDepositUnderlying, 0, _wrapAmount),
             bound(firstDepositWrapped, 0, _wrapAmount),
-            bound(secondDepositUnderlying, 0, _wrapAmount),
-            bound(secondDepositWrapped, 0, _wrapAmount),
+            bound(secondDepositShares, 0, 2 * _wrapAmount),
             bound(rate, 1e18, 10_000e18)
         );
     }
@@ -568,15 +597,13 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     function testAddLiquidityToBufferWithDecreasedRate_Fuzz(
         uint128 firstDepositUnderlying,
         uint128 firstDepositWrapped,
-        uint128 secondDepositUnderlying,
-        uint128 secondDepositWrapped,
+        uint128 secondDepositShares,
         uint64 rate
     ) public {
         _addLiquidityToBufferWithRate(
             bound(firstDepositUnderlying, 0, _wrapAmount),
             bound(firstDepositWrapped, 0, _wrapAmount),
-            bound(secondDepositUnderlying, 0, _wrapAmount),
-            bound(secondDepositWrapped, 0, _wrapAmount),
+            bound(secondDepositShares, 0, 2 * _wrapAmount),
             bound(rate, 0.0001e18, 1e18)
         );
     }
@@ -584,8 +611,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     function _addLiquidityToBufferWithRate(
         uint256 firstDepositUnderlying,
         uint256 firstDepositWrapped,
-        uint256 secondDepositUnderlying,
-        uint256 secondDepositWrapped,
+        uint256 secondDepositShares,
         uint256 rate
     ) internal {
         // Ensure we're adding more than the minimum, or it will revert.
@@ -608,11 +634,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Make the second deposit, at the modified rate.
         vm.prank(lp);
-        uint256 secondAddLpShares = router.addLiquidityToBuffer(waDAI, secondDepositUnderlying, secondDepositWrapped);
+        router.addLiquidityToBuffer(waDAI, secondDepositShares);
 
         // Burn the shares from the second deposit
         vm.prank(lp);
-        vault.removeLiquidityFromBuffer(waDAI, secondAddLpShares);
+        vault.removeLiquidityFromBuffer(waDAI, secondDepositShares);
 
         // Compute the invariant after the add/remove. Should be >= `invariantBefore`
         (bufferUnderlyingBalance, bufferWrappedBalance) = vault.getBufferBalance(waDAI);

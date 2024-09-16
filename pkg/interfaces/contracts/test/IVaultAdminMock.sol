@@ -24,10 +24,15 @@ interface IVaultAdminMock {
         address sharesOwner
     ) external;
 
+    function manualAddLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 underlyingAmount,
+        uint256 wrappedAmount
+    ) external;
+
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 exactSharesToIssue,
         address sharesOwner
     ) external;
 

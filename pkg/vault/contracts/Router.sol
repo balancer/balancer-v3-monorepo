@@ -654,37 +654,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        Router.addLiquidityToBufferHook,
+                        Router.initializeBufferHook,
                         (
                             wrappedToken,
                             amountUnderlyingRaw,
                             amountWrappedRaw,
-                            msg.sender, // sharesOwner
-                            false // isBufferInitialized
-                        )
-                    )
-                ),
-                (uint256)
-            );
-    }
-
-    /// @inheritdoc IRouter
-    function addLiquidityToBuffer(
-        IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw
-    ) external returns (uint256 issuedShares) {
-        return
-            abi.decode(
-                _vault.unlock(
-                    abi.encodeCall(
-                        Router.addLiquidityToBufferHook,
-                        (
-                            wrappedToken,
-                            amountUnderlyingRaw,
-                            amountWrappedRaw,
-                            msg.sender, // sharesOwner
-                            true // isBufferInitialized
+                            msg.sender // sharesOwner
                         )
                     )
                 ),
@@ -693,27 +668,69 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     }
 
     /**
-     * @notice Hook for adding liquidity to vault buffers.
+     * @notice Hook for initializing a vault buffers.
      * @dev Can only be called by the Vault.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
      * remove liquidity from the buffer
-     * @param isBufferInitialized true if the buffer is already initialized; false otherwise.
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
      * (This is the BPT of an internal ERC4626 buffer)
      */
-    function addLiquidityToBufferHook(
+    function initializeBufferHook(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
-        address sharesOwner,
-        bool isBufferInitialized
+        address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = isBufferInitialized
-            ? _vault.addLiquidityToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner)
-            : _vault.initializeBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
+        issuedShares = _vault.initializeBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingRaw, false);
+        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
+    }
+
+    /// @inheritdoc IRouter
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 exactSharesToIssue
+    ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        Router.addLiquidityToBufferHook,
+                        (
+                            wrappedToken,
+                            exactSharesToIssue,
+                            msg.sender // sharesOwner
+                        )
+                    )
+                ),
+                (uint256, uint256)
+            );
+    }
+
+    /**
+     * @notice Hook for adding liquidity to vault buffers. Buffer should be initialized.
+     * @dev Can only be called by the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param exactSharesToIssue The amount sharesOwner wants to add to the buffer, expressed in underlying token
+     * amounts. It is expressed in underlying token native decimals
+     * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
+     * remove liquidity from the buffer
+     * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
+     * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
+     */
+    function addLiquidityToBufferHook(
+        IERC4626 wrappedToken,
+        uint256 exactSharesToIssue,
+        address sharesOwner
+    ) external nonReentrant onlyVault returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw) {
+        (amountUnderlyingRaw, amountWrappedRaw) = _vault.addLiquidityToBuffer(
+            wrappedToken,
+            exactSharesToIssue,
+            sharesOwner
+        );
         _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingRaw, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
     }
