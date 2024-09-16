@@ -342,20 +342,17 @@ contract E2eSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-
         vm.revertTo(snapshotId);
         uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
             pool,
             tokenA,
             tokenB,
-            exactAmountOut + feesTokenB,
+            exactAmountOut,
             MAX_UINT128,
             MAX_UINT128,
             false,
             bytes("")
         );
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
         vm.stopPrank();
 
         if (decimalsTokenA != decimalsTokenB || exactAmountIn < PRODUCTION_MIN_TRADE_AMOUNT) {
@@ -371,20 +368,15 @@ contract E2eSwapTest is BaseVaultTest {
             }
 
             assertApproxEqAbs(
-                exactAmountInSwap - feesTokenA,
                 exactAmountIn,
+                exactAmountInSwap,
                 tolerance,
                 "ExactOut and ExactIn amountsIn should match"
             );
         } else {
             // Accepts an error of 0.0001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
             // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math.
-            assertApproxEqRel(
-                exactAmountInSwap - feesTokenA,
-                exactAmountIn,
-                1e12,
-                "ExactOut and ExactIn amountsIn should match"
-            );
+            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 1e12, "ExactOut and ExactIn amountsIn should match");
         }
     }
 

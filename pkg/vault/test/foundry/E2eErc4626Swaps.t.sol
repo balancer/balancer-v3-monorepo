@@ -349,9 +349,13 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             waUSDC.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waUsdcIdx]);
         uint256 vaultTotalUsdcAfter = balancesAfter.balances.vaultTokens[balancesAfter.usdcIdx] +
             waUSDC.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waUsdcIdx]);
+        console.log("vault usdc after: ", vaultTotalUsdcAfter);
+        console.log("vault usdc before: ", vaultTotalUsdcBefore);
+        // TODO: check sign; vaultTotalUsdcAfter - vaultTotalUsdcBefore = senderUsdcDelta, solve for usdcAfter
+        // to prevent underflows
         assertApproxEqAbs(
-            vaultTotalUsdcAfter - vaultTotalUsdcBefore,
-            senderUsdcDelta,
+            vaultTotalUsdcAfter,
+            senderUsdcDelta + vaultTotalUsdcBefore,
             MAX_ERROR,
             "Vault usdc/waUSDC balance is wrong"
         );
