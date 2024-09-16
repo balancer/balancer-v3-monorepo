@@ -506,8 +506,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         // To proportionally add liquidity to buffer, we need to calculate the buffer invariant ratio. It's calculated
-        // as the amount of shares the sender wants to have from the buffer (which in practice is the value that the
-        // sender wants to add to the buffer, expressed in underlying token amounts), divided by the total shares of
+        // as the amount of buffer shares the sender wants to issue (which in practice is the value that the sender
+        // will add to the buffer, expressed in underlying token amounts), divided by the total shares of
         // the buffer.
         uint256 invariantRatio = exactSharesToIssue.divUp(_bufferTotalShares[wrappedToken]);
         // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
