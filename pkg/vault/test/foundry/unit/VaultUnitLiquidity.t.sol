@@ -33,7 +33,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;
 
-    // #region Test structs
+    // Test structs.
 
     struct TestAddLiquidityParams {
         AddLiquidityParams addLiquidityParams;
@@ -50,7 +50,6 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         uint256[] expectSwapFeeAmountsScaled18;
         uint256 expectedBPTAmountIn;
     }
-    // #endregion
 
     address internal constant ZERO_ADDRESS = address(0x00);
 
@@ -90,7 +89,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         );
     }
 
-    // #region AddLiquidity tests
+    // AddLiquidity tests.
     function testAddLiquidityProportional() public {
         PoolData memory poolData = _makeDefaultParams();
         (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
@@ -371,9 +370,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18);
     }
 
-    // #endregion
-
-    // #region RemoveLiquidity tests
+    // RemoveLiquidity tests.
     function testRemoveLiquidityProportional() public {
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
@@ -690,9 +687,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
-    // #endregion
-
-    // #region Helpers
+    // Helpers.
     function _makeAddLiquidityParams(
         PoolData memory poolData,
         AddLiquidityKind kind,
@@ -970,5 +965,4 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
             );
         }
     }
-    // #endregion
 }

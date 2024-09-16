@@ -281,7 +281,7 @@ contract VaultUnitSwapTest is BaseTest, VaultContractsDeployer {
         );
     }
 
-    // #region Helpers
+    // Helpers.
     function _makeParams(
         SwapKind kind,
         uint256 amountGivenRaw,
@@ -589,5 +589,4 @@ contract VaultUnitSwapTest is BaseTest, VaultContractsDeployer {
         ) = vault.manualInternalSwap(locals.params, locals.swapState, locals.poolData);
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut);
     }
-    // #endregion
 }

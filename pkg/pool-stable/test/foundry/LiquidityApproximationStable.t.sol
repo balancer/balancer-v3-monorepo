@@ -74,6 +74,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
@@ -85,6 +86,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
@@ -96,6 +98,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
@@ -107,6 +110,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
@@ -118,6 +122,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
@@ -129,6 +134,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
