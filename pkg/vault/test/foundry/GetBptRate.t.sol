@@ -46,9 +46,9 @@ contract GetBptRateTest is BaseVaultTest {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1");
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
-        RateProviderMock rateProviderDai = new RateProviderMock();
+        RateProviderMock rateProviderDai = deployRateProviderMock();
         rateProviderDai.mockRate(daiMockRate);
-        RateProviderMock rateProviderUsdc = new RateProviderMock();
+        RateProviderMock rateProviderUsdc = deployRateProviderMock();
         rateProviderUsdc.mockRate(usdcMockRate);
 
         // The rate providers will be sorted along with the tokens, by `buildTokenConfig`

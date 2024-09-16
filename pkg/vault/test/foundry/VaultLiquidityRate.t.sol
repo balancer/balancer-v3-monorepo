@@ -44,8 +44,8 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         rateProviders = new IRateProvider[](2);
 
         // Add rate providers for wstEth and dai.
-        rateProviders[daiIdx] = new RateProviderMock();
-        rateProviders[wstethIdx] = new RateProviderMock();
+        rateProviders[daiIdx] = deployRateProviderMock();
+        rateProviders[wstethIdx] = deployRateProviderMock();
 
         // Part of the tests use the rateProvider variable from BaseVaultTest, so we set that to wstEth rate provider.
         rateProvider = RateProviderMock(address(rateProviders[wstethIdx]));

@@ -89,10 +89,10 @@ contract VaultExplorerTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        rateProviderDai = new RateProviderMock();
+        rateProviderDai = deployRateProviderMock();
         rateProviderDai.mockRate(DAI_MOCK_RATE);
 
-        rateProviderUsdc = new RateProviderMock();
+        rateProviderUsdc = deployRateProviderMock();
         rateProviderUsdc.mockRate(USDC_MOCK_RATE);
 
         rateProviders = new IRateProvider[](2);

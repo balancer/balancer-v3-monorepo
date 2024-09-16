@@ -21,13 +21,13 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
-import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer.sol";
+import { VaultContractsDeployer } from "../../../test/foundry/utils/VaultContractsDeployer.sol";
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 import { VaultStateBits } from "../../../contracts/lib/VaultStateLib.sol";
 import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 import { BasePoolMath } from "../../../contracts/BasePoolMath.sol";
 
-contract VaultUnitLiquidityTest is BaseTest {
+contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
     using CastingHelpers for uint256[];
     using ScalingHelpers for *;
     using FixedPoint for *;
@@ -62,7 +62,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = deployVaultMock(0, 0);
 
         _mockMintCallback(alice, initTotalSupply);
         vault.mintERC20(pool, alice, initTotalSupply);

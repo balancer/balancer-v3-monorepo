@@ -5,12 +5,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
-contract RateProviderTest is Test {
+contract RateProviderTest is VaultContractsDeployer {
     RateProviderMock rateProvider;
 
     function setUp() public {
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
     }
 
     function testRate__Fuzz(uint256 rate) public {

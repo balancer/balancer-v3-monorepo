@@ -31,8 +31,8 @@ contract PoolDataTest is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        wstETHRateProvider = new RateProviderMock();
-        daiRateProvider = new RateProviderMock();
+        wstETHRateProvider = deployRateProviderMock();
+        daiRateProvider = deployRateProviderMock();
 
         // Providers will be sorted along with the tokens by `buildTokenConfig`.
         rateProviders[0] = daiRateProvider;

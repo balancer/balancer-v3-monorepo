@@ -5,7 +5,9 @@ pragma solidity ^0.8.24;
 import { Test } from "forge-std/Test.sol";
 
 contract BaseContractsDeployer is Test {
-    function _reusingArtifacts() internal pure returns (bool) {
-        return true;
+    bool reusingArtifacts;
+
+    constructor() {
+        reusingArtifacts = vm.envOr("REUSING_HARDHAT_ARTIFACTS", false);
     }
 }

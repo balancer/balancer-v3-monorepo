@@ -21,9 +21,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
-import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer.sol";
+import { VaultContractsDeployer } from "../../../test/foundry/utils/VaultContractsDeployer.sol";
 
-contract VaultUnitTest is BaseTest {
+contract VaultUnitTest is BaseTest, VaultContractsDeployer {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using CastingHelpers for *;
@@ -40,7 +40,7 @@ contract VaultUnitTest is BaseTest {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = deployVaultMock(0, 0);
     }
 
     function testBuildPoolSwapParams() public view {

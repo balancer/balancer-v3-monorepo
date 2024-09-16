@@ -56,7 +56,7 @@ contract RouterTest is BaseVaultTest {
     IERC20[] internal wethDaiTokens;
 
     function setUp() public virtual override {
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
 

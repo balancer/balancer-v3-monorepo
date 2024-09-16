@@ -14,7 +14,9 @@ import { HooksConfigLib } from "@balancer-labs/v3-vault/contracts/lib/HooksConfi
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { HooksConfigLibMock } from "@balancer-labs/v3-vault/contracts/test/HooksConfigLibMock.sol";
 
-contract HooksConfigLibHelpersTest is Test {
+import { VaultContractsDeployer } from "../utils/VaultContractsDeployer.sol";
+
+contract HooksConfigLibHelpersTest is VaultContractsDeployer {
     using WordCodec for bytes32;
     using HooksConfigLib for PoolConfigBits;
 
@@ -24,7 +26,7 @@ contract HooksConfigLibHelpersTest is Test {
     HooksConfigLibMock hooksConfigLibMock;
 
     function setUp() public {
-        hooksConfigLibMock = new HooksConfigLibMock();
+        hooksConfigLibMock = deployHooksConfigLibMock();
     }
 
     // callComputeDynamicSwapFeeHook

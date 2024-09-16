@@ -12,7 +12,7 @@ import { StablePoolFactory } from "../../../contracts/StablePoolFactory.sol";
 
 contract StablePoolContractsDeployer is BaseContractsDeployer {
     function deployStablePool(StablePool.NewPoolParams memory params, IVault vault) internal returns (StablePool) {
-        if (_reusingArtifacts()) {
+        if (reusingArtifacts) {
             return
                 StablePool(deployCode("artifacts/contracts/StablePool.sol/StablePool.json", abi.encode(params, vault)));
         } else {
@@ -26,7 +26,7 @@ contract StablePoolContractsDeployer is BaseContractsDeployer {
         string memory factoryVersion,
         string memory poolVersion
     ) internal returns (StablePoolFactory) {
-        if (_reusingArtifacts()) {
+        if (reusingArtifacts) {
             return
                 StablePoolFactory(
                     deployCode(

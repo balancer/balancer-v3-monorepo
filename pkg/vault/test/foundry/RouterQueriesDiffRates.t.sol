@@ -47,8 +47,8 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         vm.label(newPool, label);
 
         rateProviders = new IRateProvider[](2);
-        rateProviders[0] = IRateProvider(address(new RateProviderMock()));
-        rateProviders[1] = IRateProvider(address(new RateProviderMock()));
+        rateProviders[0] = IRateProvider(address(deployRateProviderMock()));
+        rateProviders[1] = IRateProvider(address(deployRateProviderMock()));
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20(), rateProviders));
 

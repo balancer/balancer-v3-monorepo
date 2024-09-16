@@ -17,7 +17,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
-import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer.sol";
+import { VaultContractsDeployer } from "../../../test/foundry/utils/VaultContractsDeployer.sol";
 
 struct TestStateLocals {
     VaultSwapParams params;
@@ -25,7 +25,7 @@ struct TestStateLocals {
     PoolData poolData;
 }
 
-contract VaultUnitSwapTest is BaseTest {
+contract VaultUnitSwapTest is BaseTest, VaultContractsDeployer {
     using ScalingHelpers for *;
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;
@@ -48,7 +48,7 @@ contract VaultUnitSwapTest is BaseTest {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = deployVaultMock(0, 0);
         feeController = vault.getProtocolFeeController();
 
         swapTokens = [dai, usdc];

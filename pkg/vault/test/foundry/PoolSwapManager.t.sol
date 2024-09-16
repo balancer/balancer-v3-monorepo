@@ -79,7 +79,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             poolHooksContract
         );
 
-        factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
+        factory = deployPoolFactoryMock(IVault(address(vault)), 365 days);
     }
 
     function testHasSwapFeeManager() public view {

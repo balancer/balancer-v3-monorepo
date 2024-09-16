@@ -28,7 +28,6 @@ import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
-import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
 
@@ -133,7 +132,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount, vaultMockMinWrapAmount)));
+        vault = deployVaultMock(vaultMockMinTradeAmount, vaultMockMinWrapAmount);
 
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
@@ -144,7 +143,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
-        router = new RouterMock(IVault(address(vault)), weth, permit2);
+        router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
@@ -239,7 +238,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function _createHook(HookFlags memory hookFlags) internal virtual returns (address) {
-        PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
+        PoolHooksMock newHook = deployPoolHooksMock(IVault(address(vault)));
         // Allow pools built with factoryMock to use the poolHooksMock
         newHook.allowFactory(address(factoryMock));
         // Configure pool hook flags

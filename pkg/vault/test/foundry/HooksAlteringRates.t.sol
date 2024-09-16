@@ -40,7 +40,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     function createPool() internal virtual override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         // Rate providers will by sorted along with tokens by `buildTokenConfig`.
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
         rateProviders[0] = rateProvider;
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(

@@ -11,9 +11,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BaseHooksMock } from "../../contracts/test/BaseHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
-import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
-contract BaseHooksTest is VaultContractsDeployer, BaseVaultTest {
+contract BaseHooksTest is BaseVaultTest {
     BaseHooksMock internal testHook;
 
     function setUp() public override {

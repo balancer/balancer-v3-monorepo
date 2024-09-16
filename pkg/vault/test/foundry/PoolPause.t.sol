@@ -89,7 +89,7 @@ contract PoolPauseTest is BaseVaultTest {
             poolHooksContract
         );
 
-        factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
+        factory = deployPoolFactoryMock(IVault(address(vault)), 365 days);
     }
 
     function testPoolFactory() public {
@@ -112,7 +112,7 @@ contract PoolPauseTest is BaseVaultTest {
         uint32 maxDuration = type(uint32).max - uint32(block.timestamp);
 
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
-        new PoolFactoryMock(vault, maxDuration + 1);
+        deployPoolFactoryMock(vault, maxDuration + 1);
     }
 
     function testHasPauseManager() public view {

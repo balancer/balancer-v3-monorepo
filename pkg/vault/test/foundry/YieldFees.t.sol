@@ -39,8 +39,8 @@ contract YieldFeesTest is BaseVaultTest {
 
     // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt).
     function createPool() internal override returns (address) {
-        wstETHRateProvider = new RateProviderMock();
-        daiRateProvider = new RateProviderMock();
+        wstETHRateProvider = deployRateProviderMock();
+        daiRateProvider = deployRateProviderMock();
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldFeeFlags = new bool[](2);

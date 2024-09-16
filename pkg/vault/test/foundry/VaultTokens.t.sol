@@ -43,7 +43,7 @@ contract VaultTokenTest is BaseVaultTest {
 
         cDAI = new ERC4626TestToken(dai, "Wrapped cDAI", "cDAI", 18);
 
-        poolFactory = new PoolFactoryMock(vault, 365 days);
+        poolFactory = deployPoolFactoryMock(vault, 365 days);
 
         // Allow pools from factory poolFactory to use the hook PoolHooksMock.
         PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));

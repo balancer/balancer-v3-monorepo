@@ -17,7 +17,7 @@ contract WeightedPoolContractsDeployer is BaseContractsDeployer {
         WeightedPool.NewPoolParams memory params,
         IVault vault
     ) internal returns (WeightedPoolMock) {
-        if (_reusingArtifacts()) {
+        if (reusingArtifacts) {
             return
                 WeightedPoolMock(
                     deployCode(
@@ -31,7 +31,7 @@ contract WeightedPoolContractsDeployer is BaseContractsDeployer {
     }
 
     function deployWeightedMathMock() internal returns (WeightedMathMock) {
-        if (_reusingArtifacts()) {
+        if (reusingArtifacts) {
             return
                 WeightedMathMock(deployCode("artifacts/contracts/test/WeightedMathMock.sol/WeightedMathMock.json", ""));
         } else {
@@ -40,7 +40,7 @@ contract WeightedPoolContractsDeployer is BaseContractsDeployer {
     }
 
     function deployWeightedBasePoolMathMock(uint256[] memory weights) internal returns (WeightedBasePoolMathMock) {
-        if (_reusingArtifacts()) {
+        if (reusingArtifacts) {
             return
                 WeightedBasePoolMathMock(
                     deployCode(
