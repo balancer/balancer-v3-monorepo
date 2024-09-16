@@ -11,7 +11,7 @@ import { FixedPoint } from "./FixedPoint.sol";
  * For security reasons, to help ensure that for all possible "round trip" paths the caller always receives the same
  * or fewer tokens than supplied, we have used precise math (i.e., '*', '/' vs. FixedPoint) whenever possible, and
  * chosen the rounding direction to favor the protocol elsewhere.
- * 
+ *
  * `computeInvariant` does not use the rounding direction from `IBasePool`, effectively always rounding down to match
  * the Curve implementation.
  */
