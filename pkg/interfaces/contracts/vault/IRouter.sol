@@ -332,7 +332,9 @@ interface IRouter {
 
     /**
      * @notice Adds liquidity proportionally to an internal ERC4626 buffer in the Vault.
-     * @dev Requires the buffer to be initialized beforehand.
+     * @dev Requires the buffer to be initialized beforehand. Restricting adds to proportional simplifies the Vault
+     * code, avoiding rounding issues and minimum amount checks. It is possible to add unbalanced by interacting
+     * with the wrapper contract directly.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param exactSharesToIssue The amount sharesOwner wants to add to the buffer, expressed in underlying token
      * amounts. It is expressed in underlying token native decimals
