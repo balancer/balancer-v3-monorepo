@@ -1065,23 +1065,24 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                 "Buffer is not balanced"
             );
         }
-        int256 bufferUnderlyingSurplus = int256(bufferBalanceAfter.underlying) - int256(bufferBalanceBefore.underlying);
-        int256 bufferWrappedSurplus = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
+        int256 bufferUnderlyingImbalance = int256(bufferBalanceAfter.underlying) -
+            int256(bufferBalanceBefore.underlying);
+        int256 bufferWrappedImbalance = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
 
         if (withBufferLiquidity) {
-            assertEq(underlyingAmountIn, uint256(bufferUnderlyingSurplus), "Wrong underlying buffer surplus");
-            assertEq(wrappedAmountOut, uint256(-bufferWrappedSurplus), "Wrong wrapped buffer surplus");
+            assertEq(underlyingAmountIn, uint256(bufferUnderlyingImbalance), "Wrong underlying buffer imbalance");
+            assertEq(wrappedAmountOut, uint256(-bufferWrappedImbalance), "Wrong wrapped buffer imbalance");
         }
 
         // Check Vault reserves.
         assertEq(
             balancesAfter.vaultReserves[daiIdx],
-            uint256(int256(balancesBefore.vaultReserves[daiIdx]) + bufferUnderlyingSurplus),
+            uint256(int256(balancesBefore.vaultReserves[daiIdx]) + bufferUnderlyingImbalance),
             "Vault reserves of underlying token is wrong"
         );
         assertEq(
             balancesAfter.vaultReserves[waDaiIdx],
-            uint256(int256(balancesBefore.vaultReserves[waDaiIdx]) + bufferWrappedSurplus),
+            uint256(int256(balancesBefore.vaultReserves[waDaiIdx]) + bufferWrappedImbalance),
             "Vault reserves of wrapped token is wrong"
         );
 
@@ -1127,8 +1128,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             "LP balance of underlying token is wrong"
         );
 
-        int256 bufferUnderlyingSurplus;
-        int256 bufferWrappedSurplus;
+        int256 bufferUnderlyingImbalance;
+        int256 bufferWrappedImbalance;
 
         {
             // Check if buffer is balanced.
@@ -1141,24 +1142,24 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                     "Buffer is not balanced"
                 );
             }
-            bufferUnderlyingSurplus = int256(bufferBalanceAfter.underlying) - int256(bufferBalanceBefore.underlying);
-            bufferWrappedSurplus = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
+            bufferUnderlyingImbalance = int256(bufferBalanceAfter.underlying) - int256(bufferBalanceBefore.underlying);
+            bufferWrappedImbalance = int256(bufferBalanceAfter.wrapped) - int256(bufferBalanceBefore.wrapped);
 
             if (withBufferLiquidity) {
-                assertEq(underlyingAmountOut, uint256(-bufferUnderlyingSurplus), "Wrong underlying buffer surplus");
-                assertEq(wrappedAmountIn, uint256(bufferWrappedSurplus), "Wrong wrapped buffer surplus");
+                assertEq(underlyingAmountOut, uint256(-bufferUnderlyingImbalance), "Wrong underlying buffer imbalance");
+                assertEq(wrappedAmountIn, uint256(bufferWrappedImbalance), "Wrong wrapped buffer imbalance");
             }
         }
 
         // Check Vault reserves.
         assertEq(
             balancesAfter.vaultReserves[daiIdx],
-            uint256(int256(balancesBefore.vaultReserves[daiIdx]) + bufferUnderlyingSurplus),
+            uint256(int256(balancesBefore.vaultReserves[daiIdx]) + bufferUnderlyingImbalance),
             "Vault reserves of underlying token is wrong"
         );
         assertEq(
             balancesAfter.vaultReserves[waDaiIdx],
-            uint256(int256(balancesBefore.vaultReserves[waDaiIdx]) + bufferWrappedSurplus),
+            uint256(int256(balancesBefore.vaultReserves[waDaiIdx]) + bufferWrappedImbalance),
             "Vault reserves of wrapped token is wrong"
         );
 

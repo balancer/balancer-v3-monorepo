@@ -595,14 +595,14 @@ contract VaultMock is IVaultMainMock, Vault {
         _removeLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
-    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (int256) {
+    function internalGetBufferUnderlyingImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferUnderlyingSurplus(wrappedToken);
+        return bufferBalance.getBufferUnderlyingImbalance(wrappedToken);
     }
 
-    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (int256) {
+    function internalGetBufferWrappedImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferWrappedSurplus(wrappedToken);
+        return bufferBalance.getBufferWrappedImbalance(wrappedToken);
     }
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32) {

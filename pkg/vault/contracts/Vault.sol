@@ -1142,7 +1142,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev If the buffer has enough liquidity, it uses the internal ERC4626 buffer to perform the wrap
-     * operation without any external calls. If not, it wraps the assets needed to fulfill the trade + the surplus
+     * operation without any external calls. If not, it wraps the assets needed to fulfill the trade + the imbalance
      * of assets in the buffer, so that the buffer is rebalanced at the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
@@ -1165,7 +1165,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If it's a query, the Vault may not have enough underlying tokens to wrap. Since in a query we do not expect
         // the sender to pay for underlying tokens to wrap upfront, return the calculated amount without checking for
-        // the surplus.
+        // the imbalance.
         if (_isQueryContext()) {
             return (amountInUnderlying, amountOutWrapped);
         }
@@ -1187,12 +1187,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the wrap without making an external call.
-            // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
-            // surplus of underlying tokens.
+            // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has an
+            // imbalance of underlying tokens.
 
-            // Gets the surplus of underlying in the buffer. If negative, the buffer has more wrapped than underlying.
-            int256 bufferUnderlyingToRebalance = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
-            int256 bufferWrappedToRebalance;
+            // Gets the imbalance of underlying in the buffer. If negative, the buffer has more wrapped than underlying.
+            int256 bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wrappedToken);
+            int256 bufferWrappedImbalance;
 
             // Expected amount of underlying deposited into the wrapper protocol.
             uint256 vaultUnderlyingDeltaHint;
@@ -1202,12 +1202,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferUnderlyingToRebalance). `bufferUnderlyingToRebalance` may be positive if buffer has an excess
+                // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if buffer has an excess
                 // of underlying, or negative if the buffer has an excess of wrapped tokens. `vaultUnderlyingDeltaHint`
-                // will always be a positive number, because if `abs(bufferUnderlyingToRebalance) > amountInUnderlying`
-                // and `bufferUnderlyingToRebalance < 0`, it means the buffer has enough liquidity to fulfill the trade
+                // will always be a positive number, because if `abs(bufferUnderlyingImbalance) > amountInUnderlying`
+                // and `bufferUnderlyingImbalance < 0`, it means the buffer has enough liquidity to fulfill the trade
                 // (i.e. `bufferBalances.getBalanceDerived() >= amountOutWrapped` is true).
-                vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingToRebalance).toUint256();
+                vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingImbalance).toUint256();
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so we call deposit.
                 vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
@@ -1215,20 +1215,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // We need to calculate both `vaultUnderlyingDeltaHint` and `vaultWrappedDeltaHint`. The underlying
                 // delta will be used to approve transfer from underlying token to the wrapper protocol, while the
                 // wrapped delta will be used to wrap an EXACT_OUT amount of wrapped tokens (mint).
-                if (bufferUnderlyingToRebalance != 0) {
+                if (bufferUnderlyingImbalance != 0) {
                     // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                     // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                    // (bufferUnderlyingToRebalance). `bufferUnderlyingToRebalance` may be positive if buffer has an
+                    // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if buffer has an
                     // excess of underlying, or negative if the buffer has an excess of wrapped tokens.
                     // `vaultUnderlyingDeltaHint` will always be a positive number, because if
-                    // `abs(bufferUnderlyingToRebalance) > amountInUnderlying` and `bufferUnderlyingToRebalance < 0`,
+                    // `abs(bufferUnderlyingImbalance) > amountInUnderlying` and `bufferUnderlyingImbalance < 0`,
                     // it means the buffer has enough liquidity to fulfill the trade (i.e.
                     // `bufferBalances.getBalanceDerived() >= amountOutWrapped` is true).
-                    vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingToRebalance)
-                        .toUint256();
+                    vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingImbalance).toUint256();
                     vaultWrappedDeltaHint = wrappedToken.previewDeposit(vaultUnderlyingDeltaHint);
                 } else {
-                    // If the buffer does not have a surplus, wrap the exact `amountOutWrapped` amount.
+                    // If the buffer does not have an imbalance, wrap the exact `amountOutWrapped` amount.
                     vaultUnderlyingDeltaHint = amountInUnderlying;
                     vaultWrappedDeltaHint = amountOutWrapped;
                 }
@@ -1251,28 +1250,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // wrapped balance increased by `vaultWrappedDeltaHint`. If not, it reverts.
             _settleWrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
-            // Only updates buffer balances if buffer has a surplus of underlying tokens.
-            if (bufferUnderlyingToRebalance != 0) {
+            // Only updates buffer balances if buffer has an imbalance of underlying tokens.
+            if (bufferUnderlyingImbalance != 0) {
                 // A wrap should remove underlying from the sender and buffer, and return wrapped tokens to the sender
                 // and buffer. However, `vaultUnderlyingDeltaHint` may be smaller than `amountInUnderlying`, meaning
                 // that the buffer had more wrapped than underlying. If that's the case, an amount of underlying must
-                // be added to the buffer, so `bufferUnderlyingToRebalance` must be negative (note that the buffer
-                // balance update below already removes bufferUnderlyingToRebalance from the buffer, so if this number
+                // be added to the buffer, so `bufferUnderlyingImbalance` must be negative (note that the buffer
+                // balance update below already removes bufferUnderlyingImbalance from the buffer, so if this number
                 // is negative it'll actually be added to the buffer balances).
-                bufferUnderlyingToRebalance = vaultUnderlyingDeltaHint.toInt256() - amountInUnderlying.toInt256();
+                bufferUnderlyingImbalance = vaultUnderlyingDeltaHint.toInt256() - amountInUnderlying.toInt256();
                 // A wrap should remove underlying from the sender and buffer, and return wrapped tokens to the sender
                 // and buffer. However, `vaultWrappedDeltaHint` may be smaller than `amountOutWrapped`, meaning
                 // that the buffer had more wrapped than underlying. If that's the case, an amount of wrapped must
-                // be removed from the buffer, so `bufferWrappedToRebalance` must be negative.
-                bufferWrappedToRebalance = vaultWrappedDeltaHint.toInt256() - amountOutWrapped.toInt256();
+                // be removed from the buffer, so `bufferWrappedImbalance` must be negative.
+                bufferWrappedImbalance = vaultWrappedDeltaHint.toInt256() - amountOutWrapped.toInt256();
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease the underlying balance, we get the delta amount that was deposited
                 // (vaultUnderlyingDeltaHint) and discount the amount needed for the wrapping operation
                 // (amountInUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
-                    (bufferBalances.getBalanceRaw().toInt256() - bufferUnderlyingToRebalance).toUint256(),
-                    (bufferBalances.getBalanceDerived().toInt256() + bufferWrappedToRebalance).toUint256()
+                    (bufferBalances.getBalanceRaw().toInt256() - bufferUnderlyingImbalance).toUint256(),
+                    (bufferBalances.getBalanceDerived().toInt256() + bufferWrappedImbalance).toUint256()
                 );
                 _bufferTokenBalances[wrappedToken] = bufferBalances;
             }
@@ -1284,7 +1283,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev If the buffer has enough liquidity, it uses the internal ERC4626 buffer to perform the unwrap
-     * operation without any external calls. If not, it unwraps the assets needed to fulfill the trade + the surplus
+     * operation without any external calls. If not, it unwraps the assets needed to fulfill the trade + the imbalance
      * of assets in the buffer, so that the buffer is rebalanced at the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
@@ -1307,7 +1306,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If it's a query, the Vault may not have enough wrapped tokens to unwrap. Since in a query we do not expect
         // the sender to pay for wrapped tokens to unwrap upfront, return the calculated amount without checking for
-        // the surplus.
+        // the imbalance.
         if (_isQueryContext()) {
             return (amountInWrapped, amountOutUnderlying);
         }
@@ -1328,12 +1327,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the unwrap without making an external call.
-            // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
-            // surplus of wrapped tokens.
+            // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has an
+            // imbalance of wrapped tokens.
 
-            // Gets the surplus of wrapped in the buffer. If negative, the buffer has more underlying than wrapped.
-            int256 bufferWrappedToRebalance = bufferBalances.getBufferWrappedSurplus(wrappedToken);
-            int256 bufferUnderlyingToRebalance;
+            // Gets the imbalance of wrapped in the buffer. If negative, the buffer has more underlying than wrapped.
+            int256 bufferWrappedImbalance = bufferBalances.getBufferWrappedImbalance(wrappedToken);
+            int256 bufferUnderlyingImbalance;
 
             // Expected amount of underlying withdrawn from the wrapper protocol.
             uint256 vaultUnderlyingDeltaHint;
@@ -1344,21 +1343,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so we call redeem.
                 // The amount of wrapped tokens to redeem is the amount necessary to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferWrappedToRebalance). `bufferWrappedToRebalance` may be positive if buffer has an excess of
+                // (bufferWrappedImbalance). `bufferWrappedImbalance` may be positive if buffer has an excess of
                 // wrapped, or negative if the buffer has an excess of underlying tokens. `vaultWrappedDeltaHint`
-                // will always be a positive number, because if `abs(bufferWrappedToRebalance) > amountInWrapped` and
-                // `bufferWrappedToRebalance < 0`, it means the buffer has enough liquidity to fulfill the trade (i.e.
+                // will always be a positive number, because if `abs(bufferWrappedImbalance) > amountInWrapped` and
+                // `bufferWrappedImbalance < 0`, it means the buffer has enough liquidity to fulfill the trade (i.e.
                 // `bufferBalances.getBalanceRaw() >= amountOutUnderlying` is true).
-                vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedToRebalance).toUint256();
+                vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedImbalance).toUint256();
                 vaultUnderlyingDeltaHint = wrappedToken.redeem(vaultWrappedDeltaHint, address(this), address(this));
             } else {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so we call withdraw.
                 // The amount of underlying tokens to withdraw is calculated in terms of the wra.
-                if (bufferWrappedToRebalance != 0) {
-                    vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedToRebalance).toUint256();
+                if (bufferWrappedImbalance != 0) {
+                    vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedImbalance).toUint256();
                     vaultUnderlyingDeltaHint = wrappedToken.previewRedeem(vaultWrappedDeltaHint);
                 } else {
-                    // If the buffer does not have a surplus, unwrap the exact `amountOutUnderlying` amount.
+                    // If the buffer does not have an imbalance, unwrap the exact `amountOutUnderlying` amount.
                     vaultUnderlyingDeltaHint = amountOutUnderlying;
                 }
 
@@ -1369,28 +1368,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // wrapped balance decreased by `vaultWrappedDeltaHint`. If not, it reverts.
             _settleUnwrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
-            // Only updates buffer balances if buffer has a surplus of wrapped tokens.
-            if (bufferWrappedToRebalance != 0) {
+            // Only updates buffer balances if buffer has an imbalance of wrapped tokens.
+            if (bufferWrappedImbalance != 0) {
                 // An unwrap should remove wrapped from the sender and buffer, and return underlying tokens to the
                 // sender and buffer. However, `vaultUnderlyingDeltaHint` may be smaller than `amountOutUnderlying`,
                 // meaning that the buffer had more underlying than wrapped. If that's the case, an amount of
-                // underlying must be removed to the buffer, so `bufferUnderlyingToRebalance` must be negative.
-                bufferUnderlyingToRebalance = vaultUnderlyingDeltaHint.toInt256() - amountOutUnderlying.toInt256();
+                // underlying must be removed to the buffer, so `bufferUnderlyingImbalance` must be negative.
+                bufferUnderlyingImbalance = vaultUnderlyingDeltaHint.toInt256() - amountOutUnderlying.toInt256();
                 // An unwrap should remove wrapped from the sender and buffer, and return underlying tokens to the
                 // sender and buffer. However, `vaultWrappedDeltaHint` may be smaller than `amountInWrapped`, meaning
                 // that the buffer had more underlying than wrapped. If that's the case, an amount of wrapped must
-                // be added to the buffer, so `bufferWrappedToRebalance` must be negative (note that the buffer
-                // balance update below already removes bufferWrappedToRebalance from the buffer, so if this number
+                // be added to the buffer, so `bufferWrappedImbalance` must be negative (note that the buffer
+                // balance update below already removes bufferWrappedImbalance from the buffer, so if this number
                 // is negative it'll actually be added to the buffer balances).
-                bufferWrappedToRebalance = vaultWrappedDeltaHint.toInt256() - amountInWrapped.toInt256();
+                bufferWrappedImbalance = vaultWrappedDeltaHint.toInt256() - amountInWrapped.toInt256();
 
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
                 // (vaultUnderlyingDeltaHint) and discount the amount needed for the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
-                    (bufferBalances.getBalanceRaw().toInt256() + bufferUnderlyingToRebalance).toUint256(),
-                    (bufferBalances.getBalanceDerived().toInt256() - bufferWrappedToRebalance).toUint256()
+                    (bufferBalances.getBalanceRaw().toInt256() + bufferUnderlyingImbalance).toUint256(),
+                    (bufferBalances.getBalanceDerived().toInt256() - bufferWrappedImbalance).toUint256()
                 );
                 _bufferTokenBalances[wrappedToken] = bufferBalances;
             }
@@ -1493,7 +1492,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingBalancesAfter
             );
         }
-        // Update the Vault's underlying reserves, discarding any unexpected surplus of tokens (difference between
+        // Update the Vault's underlying reserves, discarding any unexpected imbalance of tokens (difference between
         // actual and expected vault balance).
         _reservesOf[underlyingToken] = underlyingBalancesAfter;
 
@@ -1512,7 +1511,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedBalancesAfter
             );
         }
-        // Update the Vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between Vault's
+        // Update the Vault's wrapped reserves, discarding any unexpected imbalance of tokens (difference between Vault's
         // actual and expected balances).
         _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
