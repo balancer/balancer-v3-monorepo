@@ -900,8 +900,8 @@ export class Benchmark {
 
       it('measures gas (buffers with liquidity exact in - BatchRouter)', async () => {
         // Add liquidity to buffers
-        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, TOKEN_AMOUNT, TOKEN_AMOUNT);
-        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, TOKEN_AMOUNT, TOKEN_AMOUNT);
+        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
+        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
 
         // Warm up
         await batchRouter.connect(alice).swapExactIn(
@@ -975,8 +975,8 @@ export class Benchmark {
 
       it('measures gas (buffers with liquidity exact out - BatchRouter)', async () => {
         // Add liquidity to buffers
-        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, TOKEN_AMOUNT, TOKEN_AMOUNT);
-        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, TOKEN_AMOUNT, TOKEN_AMOUNT);
+        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
+        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
 
         // Warm up
         await batchRouter.connect(alice).swapExactOut(
