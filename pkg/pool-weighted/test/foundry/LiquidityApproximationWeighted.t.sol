@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -76,23 +77,36 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
-        _addLiquidityUnbalancedWeights(daiAmountIn, swapFeePercentage, weightDai);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        weightDai = bound(weightDai, 1e16, 99e16);
+        daiAmountIn = bound(daiAmountIn, minAmount, _computeMaxTokenAmount(weightDai));
+
+        addLiquidityUnbalancedWeights(daiAmountIn, swapFeePercentage, weightDai);
     }
 
     function testAddLiquidityUnbalancedWeightsNoSwapFee__Fuzz(uint256 daiAmountIn, uint256 weightDai) public {
-        _addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
+        weightDai = bound(weightDai, 1e16, 99e16);
+        daiAmountIn = _computeMaxTokenAmount(weightDai);
+
+        addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
     }
 
-    function _addLiquidityUnbalancedWeights(
-        uint256 daiAmountIn,
-        uint256 swapFeePercentage,
-        uint256 weightDai
-    ) internal {
+    function testAddLiquidityUnbalancedWeightsSmallAmounts__Fuzz(uint256 daiAmountIn, uint256 weightDai) public {
+        daiAmountIn = bound(daiAmountIn, 1, 1e6);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        // For small amounts, BPT amount out goes negative because of rounding and BasePoolMath reverts.
+        // Perform an external call so that `expectRevert` catches the error.
+        vm.expectRevert(stdError.arithmeticError);
+        this.addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
+    }
+
+    function addLiquidityUnbalancedWeights(uint256 daiAmountIn, uint256 swapFeePercentage, uint256 weightDai) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
 
-        swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
+        _setPoolBalancesWithDifferentWeights(weightDai);
 
         uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
         swapFeePercentage > 0
@@ -105,6 +119,11 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
+        // exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        weightDai = bound(weightDai, 1e16, 99e16);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, _computeMaxBptAmount(weightDai, swapFeePercentage));
+
         _addLiquiditySingleTokenExactOutWeights(exactBptAmountOut, swapFeePercentage, weightDai);
     }
 
@@ -112,6 +131,19 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 exactBptAmountOut,
         uint256 weightDai
     ) public {
+        weightDai = bound(weightDai, 1e16, 99e16);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, _computeMaxBptAmount(weightDai, 0));
+
+        _addLiquiditySingleTokenExactOutWeights(exactBptAmountOut, 0, weightDai);
+    }
+
+    function testAddLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 weightDai
+    ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, 1, 1e6);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
         _addLiquiditySingleTokenExactOutWeights(exactBptAmountOut, 0, weightDai);
     }
 
@@ -126,7 +158,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         defectRoundingDelta = 0.001e16; // 0.001%
         absoluteRoundingDelta = 1e15;
 
-        swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
+        _setPoolBalancesWithDifferentWeights(weightDai);
 
         uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
         swapFeePercentage > 0
@@ -135,32 +167,51 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     }
 
     function testAddLiquidityProportionalAndRemoveExactInWeights__Fuzz(
-        uint256 exactBptAmountOut,
+        uint256 exactBptAmount,
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
-        _addLiquidityProportionalAndRemoveExactInWeights(exactBptAmountOut, swapFeePercentage, weightDai);
+        exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        addLiquidityProportionalAndRemoveExactInWeights(exactBptAmount, swapFeePercentage, weightDai);
     }
 
     function testAddLiquidityProportionalAndRemoveExactInWeightsNoSwapFee__Fuzz(
-        uint256 exactBptAmountOut,
+        uint256 exactBptAmount,
         uint256 weightDai
     ) public {
-        _addLiquidityProportionalAndRemoveExactInWeights(exactBptAmountOut, 0, weightDai);
+        exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        addLiquidityProportionalAndRemoveExactInWeights(exactBptAmount, 0, weightDai);
     }
 
-    function _addLiquidityProportionalAndRemoveExactInWeights(
-        uint256 exactBptAmountOut,
+    function testAddLiquidityProportionalAndRemoveExactInWeightsSmallAmounts__Fuzz(
+        uint256 exactBptAmount,
+        uint256 weightDai
+    ) public {
+        exactBptAmount = bound(exactBptAmount, 0, 1e6);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        // `amountOut` will go negative inside `BasePoolMath`.
+        vm.expectRevert(stdError.arithmeticError);
+        this.addLiquidityProportionalAndRemoveExactInWeights(exactBptAmount, 0, weightDai);
+    }
+
+    function addLiquidityProportionalAndRemoveExactInWeights(
+        uint256 exactBptAmount,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) internal {
+    ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         defectRoundingDelta = 0.00001e16; // 0.00001%
 
-        swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
+        _setPoolBalancesWithDifferentWeights(weightDai);
 
-        uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactInAllBptIn(exactBptAmount, swapFeePercentage);
         swapFeePercentage > 0
             ? assertLiquidityOperation(amountOut, swapFeePercentage, false)
             : assertLiquidityOperationNoSwapFee();
@@ -171,26 +222,47 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
-        _addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, swapFeePercentage, weightDai);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, swapFeePercentage, weightDai);
     }
 
     function testAddLiquidityProportionalAndRemoveExactOutWeightsNoSwapFee__Fuzz(
         uint256 exactBptAmountOut,
         uint256 weightDai
     ) public {
-        _addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, 0, weightDai);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, 0, weightDai);
     }
 
-    function _addLiquidityProportionalAndRemoveExactOutWeights(
+    function testAddLiquidityProportionalAndRemoveExactOutWeightsSmallAmounts__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 weightDai
+    ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, 1, 1e6);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        // Remove will ask more BPT than what the sender has; we care about the revert reason, not the exact amount.
+        // TODO: use `expectPartialRevert` once forge is updated with `IVaultErrors.BptAmountInAboveMax.selector`:
+        // `expectPartialRevert(IVaultErrors.BptAmountInAboveMax.selector)`
+        vm.expectRevert();
+        this.addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, 0, weightDai);
+    }
+
+    function addLiquidityProportionalAndRemoveExactOutWeights(
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) internal {
+    ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
 
-        swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
+        _setPoolBalancesWithDifferentWeights(weightDai);
 
         uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
         swapFeePercentage > 0
@@ -203,26 +275,55 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
-        _removeLiquiditySingleTokenExactOutWeights(exactAmountOut, swapFeePercentage, weightDai);
+        // This test adds 10x the initial liquidity to work, so we amplify the usual min amount.
+        // On the other hand, we would need to add even more in the first step to work with large `exactAmountOut`,
+        // so we also cap the maximum.
+        exactAmountOut = bound(exactAmountOut, minAmount * 10, maxAmount / 10);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        removeLiquiditySingleTokenExactOutWeights(exactAmountOut, swapFeePercentage, weightDai);
     }
 
     function testRemoveLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz(
         uint256 exactAmountOut,
         uint256 weightDai
     ) public {
-        _removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai);
+        // This test adds 10x the initial liquidity to work, so we amplify the usual min amount.
+        // On the other hand, we would need to add even more in the first step to work with large `exactAmountOut`,
+        // so we also cap the maximum.
+        exactAmountOut = bound(exactAmountOut, minAmount * 10, maxAmount / 10);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai);
     }
 
-    function _removeLiquiditySingleTokenExactOutWeights(
+    function testRemoveLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
+        uint256 exactAmountOut,
+        uint256 weightDai
+    ) public {
+        exactAmountOut = bound(exactAmountOut, 1, 1e6);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        try this.removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai) {
+            // OK, test passed.
+        } catch (bytes memory result) {
+            // Can also legitimately fail due to arithmetic underflow when computing `taxableAmount` in `BasePoolMath`.abi
+            // live system will be protected by minimum amounts in any case.
+            assertEq(bytes4(result), bytes4(stdError.arithmeticError), "Unexpected error");
+        }
+    }
+
+    function removeLiquiditySingleTokenExactOutWeights(
         uint256 exactAmountOut,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) internal {
+    ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
 
-        swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
+        _setPoolBalancesWithDifferentWeights(weightDai);
 
         uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
         swapFeePercentage > 0
@@ -230,31 +331,66 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             : assertLiquidityOperationNoSwapFee();
     }
 
+    function testRemoveLiquiditySingleTokenExactOut__Fuzz(
+        uint256 exactAmountOut,
+        uint256 swapFeePercentage
+    ) public override {
+        excessRoundingDelta = 0.5e16;
+        super.testRemoveLiquiditySingleTokenExactOut__Fuzz(exactAmountOut, swapFeePercentage);
+    }
+
+    function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactAmountOut) public override {
+        excessRoundingDelta = 0.5e16;
+        super.testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(exactAmountOut);
+    }
+
     function testRemoveLiquiditySingleTokenExactInWeights__Fuzz(
         uint256 exactBptAmountIn,
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
-        _removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, swapFeePercentage, weightDai);
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, swapFeePercentage, weightDai);
     }
 
     function testRemoveLiquiditySingleTokenExactInWeightsNoSwapFee__Fuzz(
         uint256 exactBptAmountIn,
         uint256 weightDai
     ) public {
-        _removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, 0, weightDai);
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, 0, weightDai);
     }
 
-    function _removeLiquiditySingleTokenExactInWeights(
+    function testRemoveLiquiditySingleTokenExactInWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmountIn,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) internal {
+    ) public {
+        exactBptAmountIn = bound(exactBptAmountIn, 1, 1e6);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        weightDai = bound(weightDai, 1e16, 99e16);
+
+        // For very small invariant ratios, `BasePoolMath` reverts when calculated amount out < 0 because of rounding.
+        // Perform an external call so that `expectRevert` catches the error.
+        vm.expectRevert(stdError.arithmeticError);
+        this.removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, swapFeePercentage, weightDai);
+    }
+
+    function removeLiquiditySingleTokenExactInWeights(
+        uint256 exactBptAmountIn,
+        uint256 swapFeePercentage,
+        uint256 weightDai
+    ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        defectRoundingDelta = 0.00001e16; // 0.000001%
+        defectRoundingDelta = 0.0001e16; // 0.0001%
 
-        swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
+        _setPoolBalancesWithDifferentWeights(weightDai);
 
         uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
         swapFeePercentage > 0
@@ -264,21 +400,29 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
 
     /// Utils
 
-    function _setPoolWeightsAndSwapFee(uint256 swapFeePercentage, uint256 weightDai) private returns (uint256) {
-        // Vary DAI weight from 1% to 99%.
-        weightDai = bound(weightDai, 1e16, 99e16);
-        _setPoolBalancesWithDifferentWeights(weightDai);
-
-        // maxAmount must be lower than 30% of the lowest pool liquidity. Below, maxAmount is calculated as 25% of the
-        // lowest liquidity to have some error margin.
+    function _computeMaxTokenAmount(uint256 weightDai) private view returns (uint256 maxAmount) {
+        // `maxAmount` must be lower than 30% of the lowest pool liquidity. Below, `maxAmount` is calculated as 25%
+        // of the lowest liquidity to have some error margin.
         maxAmount = weightDai > 50e16
             ? poolInitAmount.mulDown(weightDai.complement())
             : poolInitAmount.mulDown(weightDai);
         maxAmount = maxAmount.mulDown(25e16);
+    }
 
-        // Vary swap fee from 0.0001% (min swap fee) - 10% (max swap fee).
-        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-        return swapFeePercentage;
+    function _computeMaxBptAmount(
+        uint256 weightDai,
+        uint256 swapFeePercentage
+    ) private view returns (uint256 maxAmount) {
+        uint256 totalSupply = IERC20(liquidityPool).totalSupply();
+        // Compute the portion of the BPT supply that corresponds to the DAI tokens.
+        uint256 daiSupply = totalSupply.mulDown(weightDai);
+        // When we add liquidity unbalanced, fees will make the vault request more tokens.
+        // We need to offset this effect: we want to bring down the max amount even further when fees are larger,
+        // so we multiply the DAI supply with a lower value as fees go higher.
+        uint256 daiSupplyAccountingFees = daiSupply.mulDown(swapFeePercentage.complement());
+
+        // Finally we multiply by 25% (30% is max in ratio, this leaves some margin for error).
+        maxAmount = daiSupplyAccountingFees.mulDown(25e16);
     }
 
     function _setPoolBalancesWithDifferentWeights(

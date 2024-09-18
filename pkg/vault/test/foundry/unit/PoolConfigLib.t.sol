@@ -41,7 +41,7 @@ contract PoolConfigLibTest is Test {
         assertEq(config.getPauseWindowEndTime(), 0, "getPauseWindowEndTime mismatch (zero config)");
     }
 
-    // #region Tests for main pool config settings
+    // Tests for main pool config settings.
 
     function testIsPoolRegistered() public pure {
         PoolConfigBits config;
@@ -99,9 +99,7 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (setter)");
     }
 
-    // #endregion
-
-    // #region Tests for liquidity operations
+    // Tests for liquidity operations.
     function testSupportsUnbalancedLiquidity() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
@@ -215,9 +213,7 @@ contract PoolConfigLibTest is Test {
         config.requireDonationEnabled();
     }
 
-    // #endregion
-
-    // #region Tests for uint values
+    // Tests for uint values.
     function testGetAggregateSwapFeePercentage() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
@@ -392,8 +388,6 @@ contract PoolConfigLibTest is Test {
         config = config.setPauseWindowEndTime(value);
         assertEq(config.getPauseWindowEndTime(), value, "pauseWindowEndTime mismatch (testSetPauseWindowEndTime)");
     }
-
-    // #endregion
 
     function testToTokenDecimalDiffs() public pure {
         uint8[] memory tokenDecimalDiffs = new uint8[](2);

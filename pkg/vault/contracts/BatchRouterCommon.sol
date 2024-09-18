@@ -2,17 +2,25 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
-
 import {
     TransientStorageHelpers,
     AddressMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
-/// @notice Transient storage for Batch Router operations.
-contract BatchRouterStorage {
+import { RouterCommon } from "./RouterCommon.sol";
+
+/// @notice Transient storage for Batch and Composite Liquidity Router operations.
+contract BatchRouterCommon is RouterCommon {
+    using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
     // solhint-disable var-name-mixedcase
@@ -31,6 +39,10 @@ contract BatchRouterStorage {
 
     // solhint-enable var-name-mixedcase
     // solhint-disable no-inline-assembly
+
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     // We use transient storage to track tokens and amounts flowing in and out of a batch swap.
     // Set of input tokens involved in a batch swap.
@@ -67,6 +79,41 @@ contract BatchRouterStorage {
     }
 
     function _calculateBatchRouterStorageSlot(string memory key) internal pure returns (bytes32) {
-        return TransientStorageHelpers.calculateSlot(type(BatchRouterStorage).name, key);
+        return TransientStorageHelpers.calculateSlot(type(BatchRouterCommon).name, key);
+    }
+
+    /*******************************************************************************
+                                    Settlement
+    *******************************************************************************/
+
+    /// @notice Settles batch and composite liquidity operations, after debts and credits are computed.
+    function _settlePaths(address sender, bool wethIsEth) internal {
+        // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
+        // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
+        // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
+        // to subtract 1 from these quantities without reverting, which is why we use signed integers.
+        int256 numTokensIn = int256(_currentSwapTokensIn().length());
+        int256 numTokensOut = int256(_currentSwapTokensOut().length());
+
+        // Iterate backwards, from the last element to 0 (included).
+        // Removing the last element from a set is cheaper than removing the first one.
+        for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
+            address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
+            _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
+            // Erases delta, in case more than one batch router op is called in the same transaction
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+            _currentSwapTokensIn().remove(tokenIn);
+        }
+
+        for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
+            address tokenOut = _currentSwapTokensOut().unchecked_at(uint256(i));
+            _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
+            // Erases delta, in case more than one batch router op is called in the same transaction.
+            _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
+            _currentSwapTokensOut().remove(tokenOut);
+        }
+
+        // Return the rest of ETH to sender.
+        _returnEth(sender);
     }
 }

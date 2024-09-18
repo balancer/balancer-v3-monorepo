@@ -16,6 +16,7 @@ import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultT
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -130,6 +131,26 @@ contract RouterTest is BaseVaultTest {
             wethDaiAmountsIn,
             initBpt,
             wethIsEth,
+            bytes("")
+        );
+    }
+
+    function testInitBalanceOverflow() public {
+        address newPool = address(new PoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
+        vm.label(address(newPool), "big pool");
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens), address(0), lp);
+
+        vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
+        vm.prank(lp);
+        router.initialize(
+            address(newPool),
+            tokens,
+            [type(uint168).max, poolInitAmount].toMemoryArray(),
+            0,
+            false,
             bytes("")
         );
     }

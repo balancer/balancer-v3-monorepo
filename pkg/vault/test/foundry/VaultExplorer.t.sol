@@ -69,7 +69,6 @@ contract VaultExplorerTest is BaseVaultTest {
 
     VaultExplorer internal explorer;
     IAuthentication feeControllerAuth;
-    ERC4626TestToken internal waDAI;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -107,8 +106,6 @@ contract VaultExplorerTest is BaseVaultTest {
         _setComplexPoolData();
 
         feeControllerAuth = IAuthentication(address(feeController));
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
 
         explorer = new VaultExplorer(vault);
     }

@@ -44,15 +44,6 @@ contract VaultStorage {
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
-    // Minimum BPT amount minted upon initialization.
-    uint256 internal constant _BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
-
-    // When using the ERC4626 buffer liquidity directly to wrap/unwrap, convert is used to calculate how many tokens to
-    // return to the user. However, convert is not equal to the actual operation and may return an optimistic result.
-    // This factor makes sure that the use of buffer liquidity does not return more tokens than executing the
-    // wrap/unwrap operation directly.
-    uint16 internal constant _CONVERT_FACTOR = 100;
-
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors.
     // solhint-disable-next-line var-name-mixedcase
