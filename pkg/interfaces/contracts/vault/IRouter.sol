@@ -337,7 +337,7 @@ interface IRouter {
      * with the wrapper contract directly.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
-     * in native token decimals
+     * in underlying token decimals
      * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
      * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
      */
