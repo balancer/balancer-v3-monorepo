@@ -228,7 +228,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams = _buildPoolSwapParams(vaultSwapParams, swapState, poolData);
         }
 
-        _ensureValidTradeAmount(swapState.amountGivenScaled18);
+        _ensureValidSwapAmount(swapState.amountGivenScaled18, vaultSwapParams.kind == SwapKind.EXACT_IN);
 
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
@@ -256,7 +256,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams
         );
 
-        _ensureValidTradeAmount(amountCalculatedScaled18);
+        _ensureValidSwapAmount(amountCalculatedScaled18, vaultSwapParams.kind == SwapKind.EXACT_OUT);
 
         // The new amount calculated is 'amountCalculated + delta'. If the underlying hook fails, or limits are
         // violated, `onAfterSwap` will revert. Uses msg.sender as the router (the contract that called the vault).
@@ -1517,11 +1517,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
 
-    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors.
+    // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors. This is called in the context of adding or removing liquidity, so zero is
+    // allowed to support single-token operations.
     function _ensureValidTradeAmount(uint256 tradeAmount) private view {
         if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
+        }
+    }
+
+    // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors. This is called in the swap context, so 0 is allowed for `amountOut` - but not
+    // for `amountIn`, as an additional safeguard to prevent extracting any value.
+    function _ensureValidSwapAmount(uint256 tradeAmount, bool isAmountIn) private view {
+        if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
+            if (isAmountIn == false && tradeAmount != 0) {
+                revert TradeAmountTooSmall();
+            }
         }
     }
 
