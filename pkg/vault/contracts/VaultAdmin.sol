@@ -509,11 +509,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // as the amount of buffer shares the sender wants to issue (which in practice is the value that the sender
         // will add to the buffer, expressed in underlying token amounts), divided by the total shares of
         // the buffer.
-        uint256 invariantRatio = exactSharesToIssue.divUp(_bufferTotalShares[wrappedToken]);
         // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
         // tokens to add, keeping the proportion of the buffer.
-        amountUnderlyingRaw = bufferBalances.getBalanceRaw().mulUp(invariantRatio);
-        amountWrappedRaw = bufferBalances.getBalanceDerived().mulUp(invariantRatio);
+        uint256 totalShares = _bufferTotalShares[wrappedToken];
+        amountUnderlyingRaw = bufferBalances.getBalanceRaw().mulDivUp(exactSharesToIssue, totalShares);
+        amountWrappedRaw = bufferBalances.getBalanceDerived().mulDivUp(exactSharesToIssue, totalShares);
 
         // Take debt for assets going into the buffer (wrapped and underlying).
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
