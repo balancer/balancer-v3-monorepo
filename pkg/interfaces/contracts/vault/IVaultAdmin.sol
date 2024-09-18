@@ -285,22 +285,21 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault.
+     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault, proportionally.
      * @dev The buffer needs to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
-     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
+     * in underlying token decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
      * liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
-     * (it is the BPT of an internal ERC4626 buffer). It is expressed in underlying token native decimals.
+     * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
+     * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
+        uint256 exactSharesToIssue,
         address sharesOwner
-    ) external returns (uint256 issuedShares);
+    ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
 
     /**
      * @notice Removes liquidity from an internal ERC4626 buffer in the Vault.
