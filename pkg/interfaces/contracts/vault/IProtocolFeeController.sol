@@ -284,6 +284,10 @@ interface IProtocolFeeController {
 
     /**
      * @notice Assigns a new pool creator swap fee percentage to the specified pool.
+     * @dev Fees are divided between the protocol, pool creator, and LPs. The pool creator percentage is applied to
+     * the "net" amount after protocol fees, and divides the remainder between the pool creator and LPs. If the
+     * pool creator fee is 100%, none of the fee amount remains in the pool for LPs.
+     *
      * @param pool The address of the pool for which the pool creator fee will be changed
      * @param poolCreatorSwapFeePercentage The new pool creator swap fee percentage to apply to the pool
      */
@@ -291,6 +295,10 @@ interface IProtocolFeeController {
 
     /**
      * @notice Assigns a new pool creator yield fee percentage to the specified pool.
+     * @dev Fees are divided between the protocol, pool creator, and LPs. The pool creator percentage is applied to
+     * the "net" amount after protocol fees, and divides the remainder between the pool creator and LPs. If the
+     * pool creator fee is 100%, none of the fee amount remains in the pool for LPs.
+     *
      * @param pool The address of the pool for which the pool creator fee will be changed
      * @param poolCreatorYieldFeePercentage The new pool creator yield fee percentage to apply to the pool
      */
