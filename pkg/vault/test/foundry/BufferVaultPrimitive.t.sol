@@ -458,11 +458,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 lpSharesBeforeAdd = vault.getBufferOwnerShares(waDAI, lp);
         uint256 lpSharesToAdd = 2 * _wrapAmount;
 
-        uint256 invariantRatio = lpSharesToAdd.divUp(vault.getBufferTotalShares(waDAI));
-        // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
-        // tokens added, keeping the proportion of the buffer.
-        uint256 expectedUnderlyingAmountIn = beforeBalances.buffer.dai.mulUp(invariantRatio);
-        uint256 expectedWrappedAmountIn = beforeBalances.buffer.waDai.mulUp(invariantRatio);
+        uint256 totalShares = vault.getBufferTotalShares(waDAI);
+        // Multiply the current buffer balance by the invariant ratio (new shares / total shares) to calculate the
+        // amount of underlying and wrapped tokens added, keeping the proportion of the buffer.
+        uint256 expectedUnderlyingAmountIn = beforeBalances.buffer.dai.mulDivUp(lpSharesToAdd, totalShares);
+        uint256 expectedWrappedAmountIn = beforeBalances.buffer.waDai.mulDivUp(lpSharesToAdd, totalShares);
 
         vm.prank(lp);
         router.addLiquidityToBuffer(waDAI, lpSharesToAdd);
@@ -546,12 +546,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 secondAddUnderlying;
         uint256 secondAddWrapped;
 
-        uint256 invariantRatio = secondAddShares.divUp(vault.getBufferTotalShares(waDAI));
+        uint256 totalShares = vault.getBufferTotalShares(waDAI);
         {
-            // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
-            // tokens added, keeping the proportion of the buffer.
-            uint256 expectedSecondAddUnderlying = bufferUnderlyingBalance.mulUp(invariantRatio);
-            uint256 expectedSecondAddWrapped = bufferWrappedBalance.mulUp(invariantRatio);
+            // Multiply the current buffer balance by the invariant ratio (new shares / total shares) to calculate the
+            // amount of underlying and wrapped tokens added, keeping the proportion of the buffer.
+            uint256 expectedSecondAddUnderlying = bufferUnderlyingBalance.mulDivUp(secondAddShares, totalShares);
+            uint256 expectedSecondAddWrapped = bufferWrappedBalance.mulDivUp(secondAddShares, totalShares);
 
             vm.prank(lp);
             (secondAddUnderlying, secondAddWrapped) = router.addLiquidityToBuffer(waDAI, secondAddShares);
@@ -560,10 +560,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         }
 
         (bufferUnderlyingBalance, bufferWrappedBalance) = vault.getBufferBalance(waDAI);
-        invariantRatio = secondAddShares.divDown(vault.getBufferTotalShares(waDAI));
 
-        uint256 expectedUnderlyingOut = invariantRatio.mulDown(bufferUnderlyingBalance);
-        uint256 expectedWrappedOut = invariantRatio.mulDown(bufferWrappedBalance);
+        totalShares = vault.getBufferTotalShares(waDAI);
+        uint256 expectedUnderlyingOut = bufferUnderlyingBalance.mulDivUp(secondAddShares, totalShares);
+        uint256 expectedWrappedOut = bufferWrappedBalance.mulDivUp(secondAddShares, totalShares);
         // Will get 1333.333/3333.333 = 40% of value:
         // [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000 = amount in
         vm.prank(lp);
