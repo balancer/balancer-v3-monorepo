@@ -1194,10 +1194,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             int256 bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wrappedToken);
             int256 bufferWrappedImbalance;
 
-            // Expected amount of underlying deposited into the wrapper protocol.
-            uint256 vaultUnderlyingDeltaHint;
-            // Expected amount of wrapped minted by the wrapper protocol.
-            uint256 vaultWrappedDeltaHint;
+            // Expected amount of underlying deposited into the wrapper protocol if buffer is balanced.
+            uint256 vaultUnderlyingDeltaHint = amountInUnderlying;
+            // Expected amount of wrapped minted by the wrapper protocol if buffer is balanced.
+            uint256 vaultWrappedDeltaHint = amountOutWrapped;
 
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
@@ -1226,10 +1226,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     // `bufferBalances.getBalanceDerived() >= amountOutWrapped` is true).
                     vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingImbalance).toUint256();
                     vaultWrappedDeltaHint = wrappedToken.previewDeposit(vaultUnderlyingDeltaHint);
-                } else {
-                    // If the buffer does not have an imbalance, wrap the exact `amountOutWrapped` amount.
-                    vaultUnderlyingDeltaHint = amountInUnderlying;
-                    vaultWrappedDeltaHint = amountOutWrapped;
                 }
 
                 // The mint operation returns exactly `vaultWrappedDelta` shares. To do so, it withdraws underlying
@@ -1334,10 +1330,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             int256 bufferWrappedImbalance = bufferBalances.getBufferWrappedImbalance(wrappedToken);
             int256 bufferUnderlyingImbalance;
 
-            // Expected amount of underlying withdrawn from the wrapper protocol.
-            uint256 vaultUnderlyingDeltaHint;
-            // Expected amount of wrapped burned by the wrapper protocol.
-            uint256 vaultWrappedDeltaHint;
+            // Expected amount of underlying withdrawn from the wrapper protocol if buffer is balanced.
+            uint256 vaultUnderlyingDeltaHint = amountOutUnderlying;
+            // Expected amount of wrapped burned by the wrapper protocol if buffer is balanced.
+            uint256 vaultWrappedDeltaHint = amountInWrapped;
 
             if (kind == SwapKind.EXACT_IN) {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so we call redeem.
@@ -1356,9 +1352,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 if (bufferWrappedImbalance != 0) {
                     vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedImbalance).toUint256();
                     vaultUnderlyingDeltaHint = wrappedToken.previewRedeem(vaultWrappedDeltaHint);
-                } else {
-                    // If the buffer does not have an imbalance, unwrap the exact `amountOutUnderlying` amount.
-                    vaultUnderlyingDeltaHint = amountOutUnderlying;
                 }
 
                 vaultWrappedDeltaHint = wrappedToken.withdraw(vaultUnderlyingDeltaHint, address(this), address(this));
