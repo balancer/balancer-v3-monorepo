@@ -66,12 +66,16 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         if (underlyingAmount > 0) {
             IERC20(wrappedToken.asset()).transferFrom(msg.sender, address(this), underlyingAmount);
             _reservesOf[IERC20(wrappedToken.asset())] += underlyingAmount;
+            // Issued shares amount = underlying amount.
             _bufferTotalShares[wrappedToken] += underlyingAmount;
+            _bufferLpShares[wrappedToken][msg.sender] += underlyingAmount;
         }
         if (wrappedAmount > 0) {
             IERC20(address(wrappedToken)).transferFrom(msg.sender, address(this), wrappedAmount);
             _reservesOf[IERC20(address(wrappedToken))] += wrappedAmount;
-            _bufferTotalShares[wrappedToken] += wrappedToken.previewRedeem(wrappedAmount);
+            uint256 issuedSharesAmount = wrappedToken.previewRedeem(wrappedAmount);
+            _bufferTotalShares[wrappedToken] += issuedSharesAmount;
+            _bufferLpShares[wrappedToken][msg.sender] += issuedSharesAmount;
         }
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
