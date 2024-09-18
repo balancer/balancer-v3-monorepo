@@ -268,7 +268,7 @@ contract VaultUnitTest is BaseTest {
     }
 
     // Disallow too small in, allow zero out
-    function testMinimumSwapAmount() public {
+    function testMinimumSwapAmounts() public {
         // Should allow 0 trades
         vault.ensureValidSwapAmounts(0, 0, SwapKind.EXACT_IN);
         vault.ensureValidSwapAmounts(0, 0, SwapKind.EXACT_OUT);
@@ -278,11 +278,11 @@ contract VaultUnitTest is BaseTest {
         // Should succeed with 0 amountOut and anything in
         vault.ensureValidSwapAmounts(minAmount - 1, 0, SwapKind.EXACT_IN);
         vault.ensureValidSwapAmounts(minAmount, 0, SwapKind.EXACT_IN);
-        vault.ensureValidSwapAmounts(1e18, 0, SwapKind.EXACT_IN);
+        vault.ensureValidSwapAmounts(100e18, 0, SwapKind.EXACT_IN);
 
         vault.ensureValidSwapAmounts(0, minAmount - 1, SwapKind.EXACT_OUT);
         vault.ensureValidSwapAmounts(0, minAmount, SwapKind.EXACT_OUT);
-        vault.ensureValidSwapAmounts(0, 1e18, SwapKind.EXACT_OUT);
+        vault.ensureValidSwapAmounts(0, 100e18, SwapKind.EXACT_OUT);
 
         // Should fail with 0 in, minimum out
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
