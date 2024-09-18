@@ -1346,8 +1346,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vaultUnderlyingDeltaHint = wrappedToken.redeem(vaultWrappedDeltaHint, address(this), address(this));
             } else {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so we call withdraw.
-                // The amount of underlying tokens to withdraw is calculated in terms of the wra.
+                // The amount of underlying tokens to withdraw is calculated in terms of the wrapped amount, since
+                // we elected to measure buffer imbalance in wrapped terms.
                 if (bufferWrappedImbalance != 0) {
+                    // The amount of wrapped tokens to unwrap is the necessary amount to fulfill the trade
+                    // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                    // (bufferWrappedImbalance). `bufferWrappedImbalance` may be positive if buffer has an excess of
+                    // wrapped, or negative if the buffer has an excess of underlying tokens. `vaultWrappedDeltaHint`
+                    // will always be a positive number, because if `abs(bufferWrappedImbalance) > amountInWrapped`
+                    // and `bufferWrappedImbalance < 0`, it means the buffer has enough liquidity to fulfill the trade
+                    // (i.e. `bufferBalances.getBalanceRaw() >= amountOutUnderlying` is true).
                     vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedImbalance).toUint256();
                     vaultUnderlyingDeltaHint = wrappedToken.previewRedeem(vaultWrappedDeltaHint);
                 }
