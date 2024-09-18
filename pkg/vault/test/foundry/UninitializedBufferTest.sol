@@ -22,10 +22,10 @@ contract UnInitializedBufferTest is BaseVaultTest {
     }
 
     function testAddLiquidityToBufferUninitialized() public {
-        uint256 amountIn = 1e18;
+        uint256 exactSharesToIssue = 1e18;
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, waDAI));
-        router.addLiquidityToBuffer(waDAI, amountIn, amountIn);
+        router.addLiquidityToBuffer(waDAI, exactSharesToIssue);
     }
 
     function testRemoveLiquidityFromBufferUninitialized() public {

@@ -335,12 +335,12 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testAddLiquidityToBufferWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.addLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
+        vaultAdmin.addLiquidityToBuffer(IERC4626(address(0)), 0, address(0));
     }
 
     function testAddLiquidityToBufferWhenNotUnlocked() public {
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
-        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
+        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, address(0));
     }
 
     function testAddLiquidityToBufferWhenPaused() public {
@@ -350,14 +350,14 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.pauseVaultBuffers();
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
-        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
+        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, address(0));
     }
 
     function testAddLiquidityFromBufferWhenNotInitialized() public {
         IERC4626 wrappedToken = IERC4626(address(123));
         vault.forceUnlock();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
-        vault.addLiquidityToBuffer(wrappedToken, 0, 0, address(0));
+        vault.addLiquidityToBuffer(wrappedToken, 0, address(0));
     }
 
     function testAddLiquidityToBufferNonReentrant() public {
@@ -366,7 +366,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.forceUnlock();
         vault.manualSetBufferAsset(wrappedToken, underlyingToken);
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.manualReentrancyAddLiquidityToBuffer(wrappedToken, 0, 0, address(0));
+        vault.manualReentrancyAddLiquidityToBuffer(wrappedToken, 0, address(0));
     }
 
     function testRemoveLiquidityFromBufferHookWhenNotVaultDelegateCall() public {

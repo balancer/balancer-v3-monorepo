@@ -54,12 +54,16 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
+        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, waDAI.previewDeposit(bufferInitialAmount));
+        router.addLiquidityToBuffer(waDAI, 2 * bufferInitialAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
+        emit IVaultEvents.LiquidityAddedToBuffer(
+            waUSDC,
+            bufferInitialAmount,
+            waUSDC.previewDeposit(bufferInitialAmount)
+        );
+        router.addLiquidityToBuffer(waUSDC, 2 * bufferInitialAmount);
         vm.stopPrank();
     }
 
@@ -236,10 +240,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
-        // Imbalance of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
-        // Imbalance of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        // Positive imbalance of underlying.
+        dai.approve(address(vault), unbalancedUnderlyingDelta);
+        vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
+        // Positive imbalance of wrapped.
+        IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -276,10 +282,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
-        // Imbalance of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
-        // Imbalance of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        // Positive imbalance of underlying.
+        dai.approve(address(vault), unbalancedUnderlyingDelta);
+        vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
+        // Positive imbalance of wrapped.
+        IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
