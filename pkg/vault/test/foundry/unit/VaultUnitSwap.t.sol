@@ -436,13 +436,13 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(amountCalculatedScaled18, expectedAmountCalculatedScaled18, "Unexpected amountCalculatedScaled18");
 
         // Expected fees
-        uint256 expectedProtocolFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            poolData.poolConfigBits.getAggregateSwapFeePercentage()
-        );
-
-        uint256 expectedProtocolFeeAmountRaw = expectedProtocolFeeAmountScaled18.toRawUndoRateRoundDown(
+        uint256 expectedTotalSwapFeeAmountRaw = expectedSwapFeeAmountScaled18.toRawUndoRateRoundUp(
             poolData.decimalScalingFactors[swapState.indexIn],
             poolData.tokenRates[swapState.indexIn]
+        );
+
+        uint256 expectedProtocolFeeAmountRaw = expectedTotalSwapFeeAmountRaw.mulDown(
+            poolData.poolConfigBits.getAggregateSwapFeePercentage()
         );
 
         assertEq(

@@ -26,7 +26,7 @@ contract VaultSwapTest is BaseVaultTest {
     uint256 internal swapFeeExactIn = defaultAmount / 100; // 1%
     uint256 internal swapFeeExactOut = defaultAmount.mulDivUp(1e16, uint256(1e16).complement()); // 1%/(100% - 1%)
     uint256 internal protocolSwapFeeExactIn = swapFeeExactIn / 2; // 50%
-    uint256 internal protocolSwapFeeExactOut = swapFeeExactOut.divUp(2e18); // 50%
+    uint256 internal protocolSwapFeeExactOut = swapFeeExactOut.divDown(2e18); // 50%
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;

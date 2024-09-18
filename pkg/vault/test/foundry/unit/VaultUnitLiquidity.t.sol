@@ -929,10 +929,10 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256 protocolSwapFeePercentage,
         uint256 expectSwapFeeAmountScaled18
     ) internal view returns (uint256 protocolSwapFeeAmountRaw) {
-        protocolSwapFeeAmountRaw = expectSwapFeeAmountScaled18.mulUp(protocolSwapFeePercentage).toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[tokenIndex],
-            poolData.tokenRates[tokenIndex]
-        );
+        protocolSwapFeeAmountRaw = expectSwapFeeAmountScaled18
+            .toRawUndoRateRoundUp(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex])
+            .mulDown(protocolSwapFeePercentage);
+
         assertEq(
             vault.getAggregateSwapFeeAmount(pool_, poolData.tokens[tokenIndex]),
             protocolSwapFeeAmountRaw,
