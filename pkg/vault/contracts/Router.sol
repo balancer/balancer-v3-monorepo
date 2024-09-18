@@ -669,7 +669,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
     /**
      * @notice Hook for initializing a vault buffer.
-     * @dev Can only be called by the Vault.
+     * @dev Can only be called by the Vault. Buffers must be initialized before use.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
