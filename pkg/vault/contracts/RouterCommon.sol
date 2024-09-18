@@ -36,6 +36,10 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _IS_RETURN_ETH_LOCKED_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "isReturnEthLocked");
+
     /// @notice Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
 
@@ -81,6 +85,15 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         bool isExternalSender = _saveSender();
         _;
         _discardSenderIfRequired(isExternalSender);
+    }
+
+    /// @notice Locks the return of excess ETH to the sender until the end of the function.
+    /// @dev This modifier must be used after `saveSender` to ensure that the sender is saved.
+    modifier useMulticall() {
+        _isReturnEthLockedSlot().tstore(true);
+        _;
+        _isReturnEthLockedSlot().tstore(false);
+        _returnEth(_getSenderSlot().tload());
     }
 
     function _saveSender() internal returns (bool isExternalSender) {
@@ -155,7 +168,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     }
 
     /// @inheritdoc IRouterCommon
-    function multicall(bytes[] calldata data) public virtual saveSender returns (bytes[] memory results) {
+    function multicall(
+        bytes[] calldata data
+    ) public payable virtual saveSender useMulticall returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
@@ -191,8 +206,11 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * returned ETH.
      */
     function _returnEth(address sender) internal {
-        uint256 excess = address(this).balance;
+        // if (_isReturnEthLockedSlot().tload()) {
+        //     return;
+        // }
 
+        uint256 excess = address(this).balance;
         if (excess > 0) {
             payable(sender).sendValue(excess);
         }
@@ -280,5 +298,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
 
     function _getSenderSlot() internal view returns (StorageSlotExtension.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
+    }
+
+    function _isReturnEthLockedSlot() internal view returns (StorageSlotExtension.BooleanSlotType) {
+        return _IS_RETURN_ETH_LOCKED_SLOT.asBoolean();
     }
 }
