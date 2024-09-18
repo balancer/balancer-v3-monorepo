@@ -1525,8 +1525,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors. This is called in the swap context, so 0 is allowed for `amountOut` - but not
-    // for `amountIn`, as an additional safeguard to prevent extracting any value.
+    // exploitation of rounding errors. This is called in the swap context, so zero is allowed for `amountOut` (i.e.,
+    // donation), but small trades that extract value are explicitly blocked (e.g., zero in, non-zero out).
     function _ensureValidSwapAmounts(uint256 amountGiven, uint256 amountCalculated, SwapKind kind) internal view {
         (uint256 amountIn, uint256 amountOut) = kind == SwapKind.EXACT_IN
             ? (amountGiven, amountCalculated)
