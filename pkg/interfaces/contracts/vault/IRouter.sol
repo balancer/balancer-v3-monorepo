@@ -336,8 +336,8 @@ interface IRouter {
      * code, avoiding rounding issues and minimum amount checks. It is possible to add unbalanced by interacting
      * with the wrapper contract directly.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param exactSharesToIssue The amount sharesOwner wants to add to the buffer, expressed in underlying token
-     * amounts. It is expressed in underlying token native decimals
+     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
+     * in native token decimals
      * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
      * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
      */

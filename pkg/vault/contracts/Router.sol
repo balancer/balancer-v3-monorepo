@@ -714,8 +714,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @notice Hook for adding liquidity to vault buffers. The Vault will enforce that the buffer is initialized.
      * @dev Can only be called by the Vault.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param exactSharesToIssue The amount sharesOwner wants to add to the buffer, expressed in underlying token
-     * amounts. It is expressed in underlying token native decimals
+     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
+     * in native token decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
      * remove liquidity from the buffer
      * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
