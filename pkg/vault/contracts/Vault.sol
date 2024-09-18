@@ -1510,8 +1510,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedBalancesAfter
             );
         }
-        // Update the Vault's wrapped reserves, discarding any unexpected imbalance of tokens (difference between Vault's
-        // actual and expected balances).
+        // Update the Vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between
+        // Vault's actual and expected balances).
         _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
 
