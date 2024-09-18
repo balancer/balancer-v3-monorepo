@@ -912,7 +912,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountInUnderlying,
         bool withBufferLiquidity
-    ) private returns (uint256 amountOutWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+    ) private view returns (uint256 amountOutWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
         amountOutWrapped = wToken.previewDeposit(amountInUnderlying);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
@@ -935,7 +935,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountInWrapped,
         bool withBufferLiquidity
-    ) private returns (uint256 amountOutUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+    )
+        private
+        view
+        returns (uint256 amountOutUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance)
+    {
         amountOutUnderlying = wToken.previewRedeem(amountInWrapped);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
@@ -958,7 +962,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountOutWrapped,
         bool withBufferLiquidity
-    ) private returns (uint256 amountInUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+    )
+        private
+        view
+        returns (uint256 amountInUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance)
+    {
         amountInUnderlying = wToken.previewMint(amountOutWrapped);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
@@ -985,7 +993,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountOutUnderlying,
         bool withBufferLiquidity
-    ) private returns (uint256 amountInWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+    ) private view returns (uint256 amountInWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
         amountInWrapped = wToken.previewWithdraw(amountOutUnderlying);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
