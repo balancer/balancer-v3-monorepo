@@ -997,13 +997,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Withdraw converts wrapped to underlying. The rebalance logic can introduce rounding issues, so we
             // should consider it in our result preview. The logic below reproduces Vault's rebalance logic.
-            bufferWrappedImbalance = bufferBalances.getBufferWrappedImbalance(wToken);
-            uint256 vaultWrappedDeltaHint = uint256(int256(amountInWrapped) + bufferWrappedImbalance);
-            uint256 vaultUnderlyingDeltaHint = wToken.previewRedeem(vaultWrappedDeltaHint);
+            bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wToken);
+            uint256 vaultUnderlyingDeltaHint = uint256(int256(amountOutUnderlying) - bufferUnderlyingImbalance);
 
-            vaultWrappedDeltaHint = wToken.previewWithdraw(vaultUnderlyingDeltaHint);
+            uint256 vaultWrappedDeltaHint = wToken.previewWithdraw(vaultUnderlyingDeltaHint);
 
-            if (bufferWrappedImbalance != 0) {
+            if (bufferUnderlyingImbalance != 0) {
                 bufferWrappedImbalance = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);
                 bufferUnderlyingImbalance = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
             }

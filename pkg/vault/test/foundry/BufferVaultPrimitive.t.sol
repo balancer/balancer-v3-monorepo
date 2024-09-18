@@ -613,7 +613,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.stopPrank();
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
-            2 * waDAI.previewDeposit(_wrapAmount),
+            waDAI.previewWithdraw(_wrapAmount),
             _wrapAmount,
             IERC20(address(waDAI)),
             dai,
@@ -1132,12 +1132,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         int256 bufferWrappedImbalance;
 
         {
-            // Check if buffer is balanced.
+            // Check if buffer is balanced (tolerance of 1 wei to compensate previewMint rounding).
             BufferBalance memory bufferBalanceAfter = _getBufferBalance();
             if (withBufferLiquidity == false) {
                 assertApproxEqAbs(
                     bufferBalanceAfter.underlying,
-                    waDAI.previewRedeem(bufferBalanceAfter.wrapped),
+                    waDAI.previewMint(bufferBalanceAfter.wrapped),
                     1,
                     "Buffer is not balanced"
                 );
