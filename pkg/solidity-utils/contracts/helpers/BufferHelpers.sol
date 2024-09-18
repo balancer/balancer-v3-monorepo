@@ -12,9 +12,13 @@ library BufferHelpers {
     using SafeCast for *;
 
     /**
-     * @dev The underlying token imbalance measures how much needs to be wrapped/unwrapped for the buffer to end up
-     * rebalanced. If the underlying imbalance is positive, we have excess tokens that must be wrapped. If negative,
-     * we have a deficit of underlying tokens, and the imbalance refers to the value that must be unwrapped.
+     * @notice Returns the imbalance of a buffer in terms of the underlying asset.
+     * @dev The imbalance refers to the difference between the buffer's underlying asset balance and its wrapped asset
+     * balance, both expressed in terms of the underlying asset. A positive imbalance means the buffer holds more
+     * underlying assets than wrapped assets, indicating that the excess underlying should be wrapped to restore
+     * balance. Conversely, a negative imbalance means the buffer has more wrapped assets than underlying assets, so
+     * during a wrap operation, fewer underlying tokens need to be wrapped, and the surplus wrapped tokens can be
+     * returned to the caller.
      * For instance, consider the following scenario:
      * - buffer balances: 2 wrapped and 10 underlying
      * - wrapped rate: 2
@@ -41,9 +45,13 @@ library BufferHelpers {
     }
 
     /**
-     * @dev The wrapped token imbalance measures how much needs to be wrapped/unwrapped for the buffer to end up
-     * rebalanced. If the wrapped imbalance is positive, we have excess tokens that must be unwrapped. If negative,
-     * we have a deficit of wrapped tokens, and the imbalance refers to the value that must be wrapped.
+     * @notice Returns the imbalance of a buffer in terms of the wrapped asset.
+     * @dev The imbalance refers to the difference between the buffer's underlying asset balance and its wrapped asset
+     * balance, both expressed in terms of the wrapped asset. A positive imbalance means the buffer holds more
+     * wrapped assets than underlying assets, indicating that the excess wrapped should be unwrapped to restore
+     * balance. Conversely, a negative imbalance means the buffer has more underlying assets than wrapped assets, so
+     * during an unwrap operation, fewer wrapped tokens need to be unwrapped, and the surplus underlying tokens can be
+     * returned to the caller.
      * For instance, consider the following scenario:
      * - buffer balances: 10 wrapped and 4 underlying
      * - wrapped rate: 2
