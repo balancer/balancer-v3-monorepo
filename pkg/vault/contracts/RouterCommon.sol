@@ -206,9 +206,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * returned ETH.
      */
     function _returnEth(address sender) internal {
-        // if (_isReturnEthLockedSlot().tload()) {
-        //     return;
-        // }
+        if (_isReturnEthLockedSlot().tload()) {
+            return;
+        }
 
         uint256 excess = address(this).balance;
         if (excess > 0) {
