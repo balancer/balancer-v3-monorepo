@@ -91,7 +91,7 @@ contract VaultUnitTest is BaseTest {
             .mulUp(protocolSwapFeePercentage)
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(
+        (, uint256 aggregateSwapFeeAmountRaw) = vault.manualComputeAndChargeAggregateSwapFees(
             poolData,
             swapFeeAmountScaled18,
             pool,
@@ -100,7 +100,7 @@ contract VaultUnitTest is BaseTest {
         );
 
         // No creator fees, so protocol fees is equal to the total
-        assertEq(totalFeesRaw, expectedSwapFeeAmountRaw, "Unexpected totalFeesRaw");
+        assertEq(aggregateSwapFeeAmountRaw, expectedSwapFeeAmountRaw, "Unexpected totalFeesRaw");
         assertEq(
             vault.getAggregateSwapFeeAmount(pool, dai),
             expectedSwapFeeAmountRaw,
@@ -114,9 +114,15 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInRecoveryMode(true);
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
+        (, uint256 aggregateSwapFeeAmountRaw) = vault.manualComputeAndChargeAggregateSwapFees(
+            poolData,
+            1e18,
+            pool,
+            dai,
+            0
+        );
 
-        assertEq(totalFeesRaw, 0, "Unexpected totalFeesRaw");
+        assertEq(aggregateSwapFeeAmountRaw, 0, "Unexpected aggregateSwapFeeAmountRaw");
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 

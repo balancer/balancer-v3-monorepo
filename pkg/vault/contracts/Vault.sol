@@ -435,7 +435,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 4) Compute and charge protocol and creator fees.
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        locals.aggregateFeeAmountRaw = _computeAndChargeAggregateSwapFees(
+        (locals.swapFeeAmountRaw, locals.aggregateFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
             poolData,
             locals.swapFeeAmountScaled18,
             vaultSwapParams.pool,
@@ -470,13 +470,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // 7) Off-chain events.
-        // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
-        // also contains the rate, undo it when converting to raw.
-        locals.swapFeeAmountRaw = locals.swapFeeAmountScaled18.toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[swapState.indexOut],
-            poolData.tokenRates[swapState.indexOut]
-        );
-
         emit Swap(
             vaultSwapParams.pool,
             vaultSwapParams.tokenIn,
@@ -581,7 +574,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     // Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
         uint256 numTokens;
-        uint256 totalFeesRaw;
+        uint256 aggregateSwapFeeAmountRaw;
         uint256 tokenIndex;
     }
 
@@ -720,7 +713,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _takeDebt(token, amountInRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
+            (, locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -735,7 +728,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // A pool's token balance increases by amounts in after adding liquidity, minus fees.
             poolData.updateRawAndLiveBalance(
                 i,
-                poolData.balancesRaw[i] + amountInRaw - locals.totalFeesRaw,
+                poolData.balancesRaw[i] + amountInRaw - locals.aggregateSwapFeeAmountRaw,
                 Rounding.ROUND_DOWN
             );
         }
@@ -961,7 +954,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _supplyCredit(token, amountOutRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
+            (, locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -977,7 +970,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // (potentially by 0). Also adjust by protocol and pool creator fees.
             poolData.updateRawAndLiveBalance(
                 i,
-                poolData.balancesRaw[i] - (amountOutRaw + locals.totalFeesRaw),
+                poolData.balancesRaw[i] - (amountOutRaw + locals.aggregateSwapFeeAmountRaw),
                 Rounding.ROUND_DOWN
             );
         }
@@ -1014,7 +1007,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Splitting the fees and event emission occur during fee collection.
      * Should only be called in a non-reentrant context.
      *
-     * @return totalFeesRaw Sum of protocol and pool creator fees raw
+     * @return swapFeeAmountRaw Total swap fees raw (LP + aggregate protocol fees)
+     * @return aggregateSwapFeeAmountRaw Sum of protocol and pool creator fees raw
      */
     function _computeAndChargeAggregateSwapFees(
         PoolData memory poolData,
@@ -1022,7 +1016,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address pool,
         IERC20 token,
         uint256 index
-    ) internal returns (uint256 totalFeesRaw) {
+    ) internal returns (uint256 swapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
         uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
         // If swapFeeAmount equals zero, no need to charge anything.
         if (
@@ -1030,23 +1024,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             aggregateSwapFeePercentage > 0 &&
             poolData.poolConfigBits.isPoolInRecoveryMode() == false
         ) {
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(aggregateSwapFeePercentage);
-
-            // Ensure we can never charge more than the total swap fee.
-            if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
-                revert ProtocolFeesExceedTotalCollected();
-            }
-
-            totalFeesRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+            swapFeeAmountRaw = swapFeeAmountScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
             );
+
+            // We have already calculated raw total fees rounding up.
+            // Total fees = LP fees + aggregate fees, so by rounding aggregate fees down we round the fee split in
+            // LPs' favor.
+            aggregateSwapFeeAmountRaw = swapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
+
+            // Ensure we can never charge more than the total swap fee.
+            if (aggregateSwapFeeAmountRaw > swapFeeAmountRaw) {
+                revert ProtocolFeesExceedTotalCollected();
+            }
 
             // Both Swap and Yield fees are stored together in a PackedTokenBalance.
             // We have designated "Raw" the derived half for Swap fee storage.
             bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
             _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
-                currentPackedBalance.getBalanceRaw() + totalFeesRaw
+                currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
             );
         }
     }

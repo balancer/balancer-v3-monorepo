@@ -189,7 +189,7 @@ interface IVaultMainMock {
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalFeesRaw);
+    ) external returns (uint256 swapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw);
 
     function manualUpdatePoolDataLiveBalancesAndRates(
         address pool,
