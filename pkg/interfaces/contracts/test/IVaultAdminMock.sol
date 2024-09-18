@@ -24,7 +24,8 @@ interface IVaultAdminMock {
         address sharesOwner
     ) external;
 
-    function manualAddLiquidityToBuffer(
+    /// @dev Adds liquidity to buffer unbalanced, so it can unbalance the buffer.
+    function addLiquidityToBufferUnbalancedForTests(
         IERC4626 wrappedToken,
         uint256 underlyingAmount,
         uint256 wrappedAmount

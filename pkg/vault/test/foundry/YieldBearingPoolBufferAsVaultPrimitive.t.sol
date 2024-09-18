@@ -242,10 +242,10 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.startPrank(lp);
         // Surplus of underlying.
         dai.approve(address(vault), unbalancedUnderlyingDelta);
-        vault.manualAddLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
+        vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
         IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
-        vault.manualAddLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -288,10 +288,10 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.startPrank(lp);
         // Surplus of underlying.
         dai.approve(address(vault), unbalancedUnderlyingDelta);
-        vault.manualAddLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
+        vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
         IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
-        vault.manualAddLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);

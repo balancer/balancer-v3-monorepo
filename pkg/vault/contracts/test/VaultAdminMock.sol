@@ -60,7 +60,12 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         IVault(address(this)).initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
     }
 
-    function manualAddLiquidityToBuffer(IERC4626 wrappedToken, uint256 underlyingAmount, uint256 wrappedAmount) public {
+    /// @dev Adds liquidity to buffer unbalanced, so it can unbalance the buffer.
+    function addLiquidityToBufferUnbalancedForTests(
+        IERC4626 wrappedToken,
+        uint256 underlyingAmount,
+        uint256 wrappedAmount
+    ) public {
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (underlyingAmount > 0) {
