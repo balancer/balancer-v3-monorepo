@@ -1190,7 +1190,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has an
             // imbalance of underlying tokens.
 
-            // Gets the imbalance of underlying in the buffer. If negative, the buffer has more wrapped than underlying.
+            // Gets the imbalance of underlying in the buffer. If negative, the buffer has more wrapped than
+            // underlying.
             int256 bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wrappedToken);
 
             // Expected amount of underlying deposited into the wrapper protocol if buffer is balanced.
