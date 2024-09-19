@@ -1225,7 +1225,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vaultUnderlyingDeltaHint = wrappedToken.previewMint(vaultWrappedDeltaHint);
 
                 // The mint operation returns exactly `vaultWrappedDeltaHint` shares. To do so, it withdraws underlying
-                // from the Vault and returns the shares. So, the vault needs to approve the transfer of underlying
+                // tokens from the Vault and returns the shares. So, the vault needs to approve the transfer of underlying
                 // tokens to the wrapper.
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
 
