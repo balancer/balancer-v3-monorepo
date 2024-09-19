@@ -1327,7 +1327,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so we call withdraw.
                 // The amount of underlying tokens to withdraw is the amount necessary to fulfill the trade
                 // (amountOutUnderlying), less the excess amount of underlying assets in the buffer
-                // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if buffer has an excess of
+                // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if the buffer has an excess of
                 // underlying, or negative if the buffer has an excess of wrapped tokens. `vaultUnderlyingDeltaHint`
                 // will always be a positive number, because if `abs(bufferUnderlyingImbalance) > amountOutUnderlying`
                 // and `bufferUnderlyingImbalance > 0`, it means the buffer has enough liquidity to fulfill the trade
