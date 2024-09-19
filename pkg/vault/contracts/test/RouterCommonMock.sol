@@ -60,7 +60,11 @@ contract RouterCommonMock is RouterCommon {
         _returnEth(msg.sender);
     }
 
-    function assertNonZeroETHBalance() public payable {
+    function sendExtraEth(address recipient, uint256 amount) public payable {
+        payable(recipient).transfer(amount);
+    }
+
+    function assertETHBalance() public payable {
         require(address(msg.sender).balance > 0, "Balance must be more then 0");
     }
 }

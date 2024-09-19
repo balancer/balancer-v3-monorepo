@@ -177,7 +177,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     /// @inheritdoc IRouterCommon
     function multicall(
         bytes[] calldata data
-    ) public payable virtual saveSender useMulticall returns (bytes[] memory results) {
+    ) public payable virtual saveSenderAndManageEth returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);

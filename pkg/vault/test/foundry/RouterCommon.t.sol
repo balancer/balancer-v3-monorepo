@@ -166,11 +166,14 @@ contract RouterCommonTest is BaseVaultTest {
     }
 
     function testSaveSenderAndManageEthModifierWithMultipleFunctions() public {
-        bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(RouterCommonMock.manualReturnETH.selector);
-        calls[1] = abi.encodeWithSelector(RouterCommonMock.assertNonZeroETHBalance.selector);
-
+        uint256 extraAmount = 0.5 ether;
         uint256 balanceBefore = alice.balance;
+
+        bytes[] memory calls = new bytes[](3);
+        calls[0] = abi.encodeWithSelector(RouterCommonMock.sendExtraEth.selector, alice, extraAmount);
+        calls[1] = abi.encodeWithSelector(RouterCommonMock.manualReturnETH.selector);
+        calls[2] = abi.encodeWithSelector(RouterCommonMock.assertETHBalance.selector, balanceBefore - extraAmount);
+
         vm.prank(alice);
         routerMock.multicall{ value: 1 ether }(calls);
         uint256 balanceAfter = alice.balance;
