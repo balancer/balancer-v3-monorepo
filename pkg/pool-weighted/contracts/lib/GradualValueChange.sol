@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 pragma solidity ^0.8.24;
 
@@ -21,9 +22,6 @@ pragma solidity ^0.8.24;
 library GradualValueChange {
     /// @dev Indicates that the start time is after the end time
     error GradualUpdateTimeTravel();
-
-    /// @dev Indicates that an input time is larger than the maximum storage value.
-    error TimeTruncatedInStorage();
 
     using FixedPoint for uint256;
 
@@ -42,16 +40,10 @@ library GradualValueChange {
         // If the start time is in the past, "fast forward" to start now
         // This avoids discontinuities in the value curve. Otherwise, if you set the start/end times with
         // only 10% of the period in the future, the value would immediately jump 90%
-        resolvedStartTime = FixedPoint.max(block.timestamp, startTime);
+        resolvedStartTime = Math.max(block.timestamp, startTime);
 
         if (resolvedStartTime > endTime) {
             revert GradualUpdateTimeTravel();
-        }
-    }
-
-    function ensureNoTimeOverflow(uint256 time, uint256 maxTime) internal pure {
-        if (time > maxTime) {
-            revert TimeTruncatedInStorage();
         }
     }
 
@@ -60,15 +52,22 @@ library GradualValueChange {
         uint256 endValue,
         uint256 pctProgress
     ) internal pure returns (uint256) {
-        if (pctProgress >= FixedPoint.ONE || startValue == endValue) return endValue;
-        if (pctProgress == 0) return startValue;
+        if (pctProgress >= FixedPoint.ONE || startValue == endValue) {
+            return endValue;
+        }
 
-        if (startValue > endValue) {
-            uint256 delta = pctProgress.mulDown(startValue - endValue);
-            return startValue - delta;
-        } else {
-            uint256 delta = pctProgress.mulDown(endValue - startValue);
-            return startValue + delta;
+        if (pctProgress == 0) {
+            return startValue;
+        }
+
+        unchecked {
+            if (startValue > endValue) {
+                uint256 delta = pctProgress.mulDown(startValue - endValue);
+                return startValue - delta;
+            } else {
+                uint256 delta = pctProgress.mulDown(endValue - startValue);
+                return startValue + delta;
+            }
         }
     }
 
@@ -83,9 +82,14 @@ library GradualValueChange {
             return 0;
         }
 
-        // No need for SafeMath as it was checked right above: endTime > block.timestamp > startTime
-        uint256 totalSeconds = endTime - startTime;
-        uint256 secondsElapsed = block.timestamp - startTime;
+        // No need for checked math as the magnitudes are verified above: endTime > block.timestamp > startTime
+        uint256 totalSeconds;
+        uint256 secondsElapsed;
+
+        unchecked {
+            totalSeconds = endTime - startTime;
+            secondsElapsed = block.timestamp - startTime;
+        }
 
         // We don't need to consider zero division here as this is covered above.
         return secondsElapsed.divDown(totalSeconds);

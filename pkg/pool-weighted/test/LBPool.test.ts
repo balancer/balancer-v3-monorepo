@@ -6,13 +6,7 @@ import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import {
-  MAX_UINT256,
-  MAX_UINT160,
-  MAX_UINT48,
-  ZERO_BYTES32,
-  ZERO_ADDRESS,
-} from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -44,6 +38,9 @@ describe('LBPool', function () {
   let tokenB: ERC20TestToken;
   let poolTokens: string[];
 
+  let tokenAIdx: number;
+  let tokenBIdx: number;
+
   let tokenAAddress: string;
   let tokenBAddress: string;
 
@@ -72,14 +69,14 @@ describe('LBPool', function () {
 
     tokenAAddress = await tokenA.getAddress();
     tokenBAddress = await tokenB.getAddress();
+
+    tokenAIdx = tokenAAddress < tokenBAddress ? 0 : 1;
+    tokenBIdx = tokenAAddress < tokenBAddress ? 1 : 0;
   });
 
   sharedBeforeEach('create and initialize pool', async () => {
-
-    const tempRouter = bob.address
-    const tempRouterProvider = bob.address
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION, tempRouter, tempRouterProvider],
+      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION, router],
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
@@ -91,7 +88,7 @@ describe('LBPool', function () {
       tokenConfig,
       WEIGHTS,
       SWAP_FEE,
-      bob.address, //owner
+      bob.address, // owner
       true, // swapEnabledOnStart
       ZERO_BYTES32
     );
@@ -163,13 +160,9 @@ describe('LBPool', function () {
 
   describe('Owner operations and events', () => {
     it('should emit SwapEnabledSet event when setSwapEnabled is called', async () => {
-      await expect(pool.connect(bob).setSwapEnabled(false))
-        .to.emit(pool, 'SwapEnabledSet')
-        .withArgs(false);
+      await expect(pool.connect(bob).setSwapEnabled(false)).to.emit(pool, 'SwapEnabledSet').withArgs(false);
 
-      await expect(pool.connect(bob).setSwapEnabled(true))
-        .to.emit(pool, 'SwapEnabledSet')
-        .withArgs(true);
+      await expect(pool.connect(bob).setSwapEnabled(true)).to.emit(pool, 'SwapEnabledSet').withArgs(true);
     });
 
     it('should emit GradualWeightUpdateScheduled event when updateWeightsGradually is called', async () => {
@@ -178,7 +171,6 @@ describe('LBPool', function () {
       const endWeights = [fp(0.7), fp(0.3)];
 
       const tx = await pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights);
-      const receipt = await tx.wait();
       const actualStartTime = await time.latest();
 
       await expect(tx)
@@ -187,31 +179,15 @@ describe('LBPool', function () {
     });
 
     it('should only allow owner to be the LP', async () => {
-      const joinKind = 0; // Assuming 0 is the correct join kind for initialization
-      const userData = ethers.AbiCoder.defaultAbiCoder().encode(
-        ['uint256', 'uint256[]'],
-        [joinKind, INITIAL_BALANCES]
+      const amounts: bigint[] = [FP_ZERO, FP_ZERO];
+      amounts[tokenAIdx] = SWAP_AMOUNT;
+
+      await expect(router.addLiquidityUnbalanced(pool, amounts, FP_ZERO, false, '0x')).to.be.revertedWithCustomError(
+        vault,
+        'BeforeAddLiquidityHookFailed'
       );
 
-      await expect(router.connect(alice).addLiquidity({
-        pool: await pool.getAddress(),
-        tokens: poolTokens,
-        lastChangeBlock: 0,
-        userData: userData,
-        from: await alice.getAddress(),
-        to: await alice.getAddress(),
-        onlyManagePoolTokens: false
-      })).to.be.revertedWithCustomError(pool, 'RouterNotTrusted');
-
-      await expect(router.connect(bob).addLiquidity({
-        pool: await pool.getAddress(),
-        tokens: poolTokens,
-        lastChangeBlock: 0,
-        userData: userData,
-        from: await bob.getAddress(),
-        to: await bob.getAddress(),
-        onlyManagePoolTokens: false
-      })).to.not.be.reverted;
+      await router.connect(bob).addLiquidityUnbalanced(pool, amounts, FP_ZERO, false, '0x');
     });
 
     it('should only allow owner to update weights', async () => {
@@ -219,11 +195,11 @@ describe('LBPool', function () {
       const endTime = startTime + MONTH;
       const endWeights = [fp(0.7), fp(0.3)];
 
-      await expect(pool.connect(alice).updateWeightsGradually(startTime, endTime, endWeights))
-        .to.be.revertedWithCustomError(pool, 'OwnableUnauthorizedAccount');
+      await expect(
+        pool.connect(alice).updateWeightsGradually(startTime, endTime, endWeights)
+      ).to.be.revertedWithCustomError(pool, 'OwnableUnauthorizedAccount');
 
-      await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights))
-        .to.not.be.reverted;
+      await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights)).to.not.be.reverted;
     });
   });
 
@@ -254,56 +230,55 @@ describe('LBPool', function () {
       const endTime = startTime + MONTH;
 
       // Try to set weight below 1%
-      await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.009), fp(0.991)]))
-        .to.be.revertedWithCustomError(pool, 'MinWeight');
+      await expect(
+        pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.009), fp(0.991)])
+      ).to.be.revertedWithCustomError(pool, 'MinWeight');
 
       // Try to set weight above 99%
-      await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.991), fp(0.009)]))
-        .to.be.revertedWithCustomError(pool, 'MinWeight');
+      await expect(
+        pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.991), fp(0.009)])
+      ).to.be.revertedWithCustomError(pool, 'MinWeight');
 
       // Valid weight update
-      await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.01), fp(0.99)]))
-        .to.not.be.reverted;
+      await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.01), fp(0.99)])).to.not.be
+        .reverted;
     });
 
-it('should always sum weights to 1', async () => {
-  const currentTime = await time.latest();
-  const startTime = currentTime + 60; // Set startTime 60 seconds in the future
-  const endTime = startTime + MONTH;
-  const startWeights = [fp(0.5), fp(0.5)];
-  const endWeights = [fp(0.7), fp(0.3)];
+    it('should always sum weights to 1', async () => {
+      const currentTime = await time.latest();
+      const startTime = currentTime + 60; // Set startTime 60 seconds in the future
+      const endTime = startTime + MONTH;
+      const startWeights = [fp(0.5), fp(0.5)];
+      const endWeights = [fp(0.7), fp(0.3)];
 
-  // Move time to just before startTime
-  await time.increaseTo(startTime - 1);
+      // Move time to just before startTime
+      await time.increaseTo(startTime - 1);
 
-  // Set weights to 50/50 instantaneously
-  const tx1 = await pool.connect(bob).updateWeightsGradually(startTime, startTime, startWeights);
-  await tx1.wait();
+      // Set weights to 50/50 instantaneously
+      const tx1 = await pool.connect(bob).updateWeightsGradually(startTime, startTime, startWeights);
+      await tx1.wait();
 
-  // Schedule gradual shift to 70/30
-  const tx2 = await pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights);
-  await tx2.wait();
+      // Schedule gradual shift to 70/30
+      const tx2 = await pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights);
+      await tx2.wait();
 
-  // Check weights at various points during the transition
-  for (let i = 0; i <= 100; i++) {
-    const checkTime = startTime + (i * MONTH) / 100;
+      // Check weights at various points during the transition
+      for (let i = 0; i <= 100; i++) {
+        const checkTime = startTime + (i * MONTH) / 100;
 
-    // Only increase time if it's greater than the current time
-    const currentBlockTime = await time.latest();
-    if (checkTime > currentBlockTime) {
-      await time.increaseTo(checkTime);
-    }
+        // Only increase time if it's greater than the current time
+        const currentBlockTime = await time.latest();
+        if (checkTime > currentBlockTime) {
+          await time.increaseTo(checkTime);
+        }
 
-    const weights = await pool.getNormalizedWeights();
-    const sum = (BigInt(weights[0].toString()) + BigInt(weights[1].toString())).toString();
+        const weights = await pool.getNormalizedWeights();
+        const sum = (BigInt(weights[0].toString()) + BigInt(weights[1].toString())).toString();
 
-    // Assert exact equality
-    expect(sum).to.equal(fp(1));
-
-    }
-});
-
-
+        // Assert exact equality
+        expect(sum).to.equal(fp(1));
+      }
+    });
   });
 
   describe('Setters and Getters', () => {
@@ -332,30 +307,42 @@ it('should always sum weights to 1', async () => {
   });
 
   describe('Swap restrictions', () => {
+    it('should allow swaps when enabled', async () => {
+      await expect(
+        router
+          .connect(bob)
+          .swapSingleTokenExactIn(
+            pool,
+            poolTokens[tokenAIdx],
+            poolTokens[tokenBIdx],
+            SWAP_AMOUNT,
+            0,
+            MAX_UINT256,
+            false,
+            '0x'
+          )
+      ).to.not.be.reverted;
+    });
+
     it('should not allow swaps when disabled', async () => {
-      await pool.connect(bob).setSwapEnabled(false);
+      await expect(await pool.connect(bob).setSwapEnabled(false))
+        .to.emit(pool, 'SwapEnabledSet')
+        .withArgs(false);
 
-      await expect(router.connect(bob).swap(
-        pool,
-        poolTokens[0],
-        poolTokens[1],
-        SWAP_AMOUNT,
-        0,
-        false,
-        '0x'
-      )).to.be.reverted; // Exact error message depends on implementation
-
-      await pool.connect(bob).setSwapEnabled(true);
-
-      await expect(router.connect(bob).swap(
-        pool,
-        poolTokens[0],
-        poolTokens[1],
-        SWAP_AMOUNT,
-        0,
-        false,
-        '0x'
-      )).to.not.be.reverted;
+      await expect(
+        router
+          .connect(bob)
+          .swapSingleTokenExactIn(
+            pool,
+            poolTokens[tokenAIdx],
+            poolTokens[tokenBIdx],
+            SWAP_AMOUNT,
+            0,
+            MAX_UINT256,
+            false,
+            '0x'
+          )
+      ).to.be.reverted;
     });
   });
 });

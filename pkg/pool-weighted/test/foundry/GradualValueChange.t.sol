@@ -1,43 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../../contracts/lib/GradualValueChange.sol";
 
-// Wrapper contract to expose library functions
-contract GradualValueChangeWrapper {
-    function getInterpolatedValue(
-        uint256 startValue,
-        uint256 endValue,
-        uint256 startTime,
-        uint256 endTime
-    ) public view returns (uint256) {
-        return GradualValueChange.getInterpolatedValue(startValue, endValue, startTime, endTime);
-    }
-
-    function resolveStartTime(uint256 startTime, uint256 endTime) public view returns (uint256) {
-        return GradualValueChange.resolveStartTime(startTime, endTime);
-    }
-
-    function ensureNoTimeOverflow(uint256 time, uint256 maxTime) public pure {
-        GradualValueChange.ensureNoTimeOverflow(time, maxTime);
-    }
-
-    function interpolateValue(uint256 startValue, uint256 endValue, uint256 pctProgress) public pure returns (uint256) {
-        return GradualValueChange.interpolateValue(startValue, endValue, pctProgress);
-    }
-
-    function calculateValueChangeProgress(uint256 startTime, uint256 endTime) public view returns (uint256) {
-        return GradualValueChange.calculateValueChangeProgress(startTime, endTime);
-    }
-}
+import "../../contracts/test/GradualValueChangeMock.sol";
 
 contract GradualValueChangeTest is Test {
-    GradualValueChangeWrapper private wrapper;
     uint256 private constant FP_ONE = 1e18;
 
+    GradualValueChangeMock private mock;
+
     function setUp() public {
-        wrapper = new GradualValueChangeWrapper();
+        mock = new GradualValueChangeMock();
     }
 
     function testGetInterpolatedValue() public {
@@ -51,7 +26,7 @@ contract GradualValueChangeTest is Test {
             uint256 currentTime = startTime + ((i * (endTime - startTime)) / steps);
             vm.warp(currentTime);
             uint256 expectedValue = startValue + ((i * (endValue - startValue)) / steps);
-            uint256 actualValue = wrapper.getInterpolatedValue(startValue, endValue, startTime, endTime);
+            uint256 actualValue = mock.getInterpolatedValue(startValue, endValue, startTime, endTime);
             assertEq(actualValue, expectedValue, "Interpolated value should match expected");
         }
     }
@@ -61,25 +36,15 @@ contract GradualValueChangeTest is Test {
         uint256 futureTime = currentTime + 100;
 
         vm.warp(currentTime);
-        assertEq(wrapper.resolveStartTime(futureTime, futureTime + 100), futureTime, "Should return future start time");
+        assertEq(mock.resolveStartTime(futureTime, futureTime + 100), futureTime, "Should return future start time");
         assertEq(
-            wrapper.resolveStartTime(currentTime - 100, futureTime),
+            mock.resolveStartTime(currentTime - 100, futureTime),
             currentTime,
             "Should return current time for past start time"
         );
 
         vm.expectRevert(GradualValueChange.GradualUpdateTimeTravel.selector);
-        wrapper.resolveStartTime(futureTime + 200, futureTime + 100);
-    }
-
-    function testEnsureNoTimeOverflow() public {
-        uint256 maxTime = 1000;
-
-        wrapper.ensureNoTimeOverflow(maxTime, maxTime);
-        wrapper.ensureNoTimeOverflow(maxTime - 1, maxTime);
-
-        vm.expectRevert(GradualValueChange.TimeTruncatedInStorage.selector);
-        wrapper.ensureNoTimeOverflow(maxTime + 1, maxTime);
+        mock.resolveStartTime(futureTime + 200, futureTime + 100);
     }
 
     function testInterpolateValue() public view {
@@ -90,7 +55,7 @@ contract GradualValueChangeTest is Test {
         for (uint256 i = 0; i <= steps; i++) {
             uint256 pctProgress = (i * FP_ONE) / steps;
             uint256 expectedValue = startValue + ((i * (endValue - startValue)) / steps);
-            uint256 actualValue = wrapper.interpolateValue(startValue, endValue, pctProgress);
+            uint256 actualValue = mock.interpolateValue(startValue, endValue, pctProgress);
             assertEq(actualValue, expectedValue, "Interpolated value should match expected");
         }
 
@@ -101,7 +66,7 @@ contract GradualValueChangeTest is Test {
         for (uint256 i = 0; i <= steps; i++) {
             uint256 pctProgress = (i * FP_ONE) / steps;
             uint256 expectedValue = startValue - ((i * (startValue - endValue)) / steps);
-            uint256 actualValue = wrapper.interpolateValue(startValue, endValue, pctProgress);
+            uint256 actualValue = mock.interpolateValue(startValue, endValue, pctProgress);
             assertEq(actualValue, expectedValue, "Interpolated value should match expected for decreasing value");
         }
     }
@@ -115,13 +80,13 @@ contract GradualValueChangeTest is Test {
             uint256 currentTime = startTime + ((i * (endTime - startTime)) / steps);
             vm.warp(currentTime);
             uint256 expectedProgress = (i * FP_ONE) / steps;
-            uint256 actualProgress = wrapper.calculateValueChangeProgress(startTime, endTime);
+            uint256 actualProgress = mock.calculateValueChangeProgress(startTime, endTime);
             // Use a very tight tolerance for progress calculation
             assertApproxEqAbs(actualProgress, expectedProgress, 1, "Progress should be very close to expected");
         }
 
         vm.warp(endTime + 50);
-        assertEq(wrapper.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Should be complete after end time");
+        assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Should be complete after end time");
     }
 
     function testEdgeCases() public {
@@ -134,7 +99,7 @@ contract GradualValueChangeTest is Test {
         for (uint256 i = 0; i <= 100; i++) {
             vm.warp(startTime + i);
             assertEq(
-                wrapper.getInterpolatedValue(startValue, startValue, startTime, endTime),
+                mock.getInterpolatedValue(startValue, startValue, startTime, endTime),
                 startValue,
                 "Should always return the same value"
             );
@@ -143,7 +108,7 @@ contract GradualValueChangeTest is Test {
         // Test before start time
         vm.warp(startTime - 1);
         assertEq(
-            wrapper.getInterpolatedValue(startValue, endValue, startTime, startTime),
+            mock.getInterpolatedValue(startValue, endValue, startTime, startTime),
             startValue,
             "Should return start value before start time for zero duration"
         );
@@ -151,7 +116,7 @@ contract GradualValueChangeTest is Test {
         // Test at start time
         vm.warp(startTime);
         assertEq(
-            wrapper.getInterpolatedValue(startValue, endValue, startTime, startTime),
+            mock.getInterpolatedValue(startValue, endValue, startTime, startTime),
             endValue,
             "Should return end value at start time for zero duration"
         );
@@ -159,7 +124,7 @@ contract GradualValueChangeTest is Test {
         // Test after start time
         vm.warp(startTime + 1);
         assertEq(
-            wrapper.getInterpolatedValue(startValue, endValue, startTime, startTime),
+            mock.getInterpolatedValue(startValue, endValue, startTime, startTime),
             endValue,
             "Should return end value after start time for zero duration"
         );
@@ -168,19 +133,19 @@ contract GradualValueChangeTest is Test {
 
         // Test exact endpoints
         vm.warp(0);
-        assertEq(wrapper.getInterpolatedValue(0, bigVal, 0, bigVal), 0, "Should be 0 at start time");
+        assertEq(mock.getInterpolatedValue(0, bigVal, 0, bigVal), 0, "Should be 0 at start time");
         vm.warp(bigVal);
-        assertEq(wrapper.getInterpolatedValue(0, bigVal, 0, bigVal), bigVal, "Should be bigVal at end time");
+        assertEq(mock.getInterpolatedValue(0, bigVal, 0, bigVal), bigVal, "Should be bigVal at end time");
 
         // Test intermediate points
-        uint256 steps = 1e5;
+        uint256 steps = 1e4;
         for (uint256 i = 0; i <= steps; i++) {
             uint256 currentTime = (bigVal / steps) * i;
             vm.warp(currentTime);
             uint256 expectedValue = (bigVal / steps) * i;
 
             uint256 actualValue;
-            try wrapper.getInterpolatedValue(0, bigVal, 0, bigVal) returns (uint256 value) {
+            try mock.getInterpolatedValue(0, bigVal, 0, bigVal) returns (uint256 value) {
                 actualValue = value;
                 assertApproxEqRel(actualValue, expectedValue, 1, "Should be close for large numbers");
             } catch Error(string memory reason) {

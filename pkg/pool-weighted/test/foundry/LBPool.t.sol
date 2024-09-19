@@ -3,25 +3,25 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 
 import { LBPoolFactory } from "../../contracts/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/LBPool.sol";
-import "forge-std/console.sol";
 
 contract LBPoolTest is BasePoolTest {
     using CastingHelpers for address[];
@@ -33,8 +33,8 @@ contract LBPoolTest is BasePoolTest {
 
     uint256[] internal weights;
 
-    uint256 daiIdx;
-    uint256 usdcIdx;
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
 
     function setUp() public virtual override {
         expectedAddLiquidityBptAmountOut = TOKEN_AMOUNT;
@@ -184,7 +184,7 @@ contract LBPoolTest is BasePoolTest {
 
         uint256[] memory minAmountsOut = new uint256[](poolTokens.length);
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            minAmountsOut[i] = _less(tokenAmounts[i], 1e4);
+            minAmountsOut[i] = less(tokenAmounts[i], 1e4);
         }
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
@@ -254,7 +254,7 @@ contract LBPoolTest is BasePoolTest {
             tokenIn,
             tokenOut,
             tokenAmountIn,
-            _less(tokenAmountOut, 1e3),
+            less(tokenAmountOut, 1e3),
             MAX_UINT256,
             false,
             bytes("")
@@ -356,6 +356,17 @@ contract LBPoolTest is BasePoolTest {
             false,
             ""
         );
+    }
+
+    function testEnsureNoTimeOverflow() public {
+        uint256 blockDotTimestampTestStart = block.timestamp;
+        uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.01e18; // 1%
+        endWeights[1] = 0.99e18; // 99%
+
+        vm.prank(bob);
+        vm.expectRevert(stdError.arithmeticError);
+        LBPool(address(pool)).updateWeightsGradually(blockDotTimestampTestStart, type(uint32).max + 1, endWeights);
     }
 
     function testQuerySwapDuringWeightUpdate() public {

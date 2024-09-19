@@ -43,7 +43,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
 
     // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
     // implementation of the fixed point power function, as these ratios are often exponents.
-    uint256 private constant _MIN_WEIGHT = 1e16; // 1%
+    uint256 internal constant _MIN_WEIGHT = 1e16; // 1%
 
     uint256 private immutable _totalTokens;
 
