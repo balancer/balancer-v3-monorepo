@@ -1207,8 +1207,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferImbalance). `bufferImbalance` may be positive if buffer has an excess of underlying, or
                 // negative if the buffer has an excess of wrapped tokens. `vaultUnderlyingDeltaHint` will always be a
                 // positive number, because if `abs(bufferImbalance) > amountInUnderlying` `bufferImbalance < 0`, it
-                // means the buffer has enough liquidity to fulfill the trade (i.e.
-                // `bufferBalances.getBalanceDerived() >= amountOutWrapped` is true).
+                // means the buffer has enough liquidity to fulfill the trade
+                // (i.e. `bufferBalances.getBalanceDerived() >= amountOutWrapped`).
                 bufferImbalance = bufferBalances.getBufferUnderlyingImbalance(wrappedToken);
                 vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferImbalance).toUint256();
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
@@ -1220,8 +1220,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // `bufferImbalance` may be positive if buffer has an excess of wrapped assets or negative if the
                 // buffer has an excess of underlying assets. `vaultWrappedDeltaHint` will always be a positive
                 // number, because if `abs(bufferImbalance) > amountOutWrapped` and `bufferImbalance > 0`,
-                // it means the buffer has enough liquidity to fulfill the trade (i.e.
-                // `bufferBalances.getBalanceDerived() >= amountOutWrapped` is true).
+                // it means the buffer has enough liquidity to fulfill the trade
+                // (i.e. `bufferBalances.getBalanceDerived() >= amountOutWrapped`).
                 bufferImbalance = bufferBalances.getBufferWrappedImbalance(wrappedToken);
                 vaultWrappedDeltaHint = (amountOutWrapped.toInt256() - bufferImbalance).toUint256();
 
@@ -1337,26 +1337,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultWrappedDeltaHint;
 
             if (kind == SwapKind.EXACT_IN) {
-                // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so we call redeem.
-                // The amount of wrapped tokens to redeem is the amount necessary to fulfill the trade
-                // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferWrappedImbalance). `bufferWrappedImbalance` may be positive if buffer has an excess of
-                // wrapped, or negative if the buffer has an excess of underlying tokens. `vaultWrappedDeltaHint`
-                // will always be a positive number, because if `abs(bufferWrappedImbalance) > amountInWrapped` and
-                // `bufferWrappedImbalance < 0`, it means the buffer has enough liquidity to fulfill the trade (i.e.
-                // `bufferBalances.getBalanceRaw() >= amountOutUnderlying` is true).
+                // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so we call redeem. The amount
+                // of wrapped tokens to redeem is the amount necessary to fulfill the trade (amountInWrapped), plus the
+                // amount needed to leave the buffer rebalanced 50/50 at the end (bufferImbalance). `bufferImbalance`
+                // may be positive if buffer has an excess of wrapped, or negative if the buffer has an excess of
+                // underlying tokens. `vaultWrappedDeltaHint` will always be a positive number, because if
+                // `abs(bufferImbalance) > amountInWrapped` and `bufferImbalance < 0`, it means the buffer has enough
+                // liquidity to fulfill the trade (i.e. `bufferBalances.getBalanceRaw() >= amountOutUnderlying`).
                 bufferImbalance = bufferBalances.getBufferWrappedImbalance(wrappedToken);
                 vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferImbalance).toUint256();
                 vaultUnderlyingDeltaHint = wrappedToken.redeem(vaultWrappedDeltaHint, address(this), address(this));
             } else {
-                // TODO change comment
-                // The amount of wrapped tokens to unwrap is the necessary amount to fulfill the trade
-                // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferWrappedImbalance). `bufferWrappedImbalance` may be positive if buffer has an excess of
-                // wrapped, or negative if the buffer has an excess of underlying tokens. `vaultWrappedDeltaHint`
-                // will always be a positive number, because if `abs(bufferWrappedImbalance) > amountInWrapped`
-                // and `bufferWrappedImbalance < 0`, it means the buffer has enough liquidity to fulfill the trade
-                // (i.e. `bufferBalances.getBalanceRaw() >= amountOutUnderlying` is true).
+                // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
+                // (amountOutUnderlying), less the excess amount of underlying assets in the buffer (bufferImbalance).
+                // `bufferImbalance` may be positive if buffer has an excess of underlying, or negative if the buffer
+                // has an excess of wrapped tokens. `vaultUnderlyingDeltaHint` will always be a positive number,
+                // because if `abs(bufferImbalance) > amountOutUnderlying` and `bufferImbalance > 0`, it means the
+                // buffer has enough liquidity to fulfill the trade
+                // (i.e. `bufferBalances.getBalanceRaw() >= amountOutUnderlying`).
                 bufferImbalance = bufferBalances.getBufferUnderlyingImbalance(wrappedToken);
                 vaultUnderlyingDeltaHint = (amountOutUnderlying.toInt256() - bufferImbalance).toUint256();
                 vaultWrappedDeltaHint = wrappedToken.withdraw(vaultUnderlyingDeltaHint, address(this), address(this));
