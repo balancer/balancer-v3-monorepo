@@ -348,6 +348,21 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             "Vault usdc/waUSDC balance is wrong"
         );
 
+        // This can only happen in USDC, since the caller puts back in the undo operation all the USDC tokens that Do
+        // operation retrieved for him. The USDC balance of the user is effectively 0, so the vault should have the
+        // same balance. However, due to changes in the rate of the wrapped tokens, an error may occur and we detect
+        // that the vault lost part of the USDC tokens, but that's just a conversion rounding issue if the rate has
+        // changed.
+        if (vaultTotalUsdcBefore > vaultTotalUsdcAfter) {
+            // If vault lost some USDC value in USDC and waUSDC tokens, it may be due to the token rate that changed
+            // after the buffer operations, so the vault has the same value but converted differently.
+            assertGt(
+                balancesAfter.waUSDCRate,
+                balancesBefore.waUSDCRate,
+                "waUSDC rate did not increase with Do/Undo operation"
+            );
+        }
+
         // DAI and USDC are worth the same. So, we can sum the deltas for DAI and USDC in the vault, and compare with
         // how much the user paid in fees. The user cannot have any benefit, but the vault and the user amount may
         // differ because of rounding. Let's call the sum of vault deltas as sumDeltaVault, and the sum of sender
@@ -472,6 +487,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         BaseVaultTest.Balances balances;
         BufferBalances waUSDCBuffer;
         BufferBalances waDAIBuffer;
+        uint256 waDAIRate;
+        uint256 waUSDCRate;
         uint256 daiIdx;
         uint256 usdcIdx;
         uint256 waDaiIdx;
@@ -479,6 +496,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     }
 
     function _getTestBalances(address sender) private view returns (TestBalances memory testBalances) {
+        // The index of each token is defined by the order of tokenArray, defined right below.
+        testBalances.daiIdx = 0;
+        testBalances.usdcIdx = 1;
+        testBalances.waDaiIdx = 2;
+        testBalances.waUsdcIdx = 3;
         IERC20[] memory tokenArray = [address(dai), address(usdc), address(waDAI), address(waUSDC)]
             .toMemoryArray()
             .asIERC20();
@@ -492,11 +514,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         testBalances.waUSDCBuffer.underlying = waUSDCBufferBalanceUnderlying;
         testBalances.waUSDCBuffer.wrapped = waUSDCBufferBalanceWrapped;
 
-        // The index of each token is defined by the order of tokenArray, defined in this function.
-        testBalances.daiIdx = 0;
-        testBalances.usdcIdx = 1;
-        testBalances.waDaiIdx = 2;
-        testBalances.waUsdcIdx = 3;
+        testBalances.waDAIRate = waDAI.previewRedeem(1e10 * FixedPoint.ONE);
+        testBalances.waUSDCRate = waUSDC.previewRedeem(1e10 * FixedPoint.ONE);
     }
 
     function _donateToVault() internal virtual {
