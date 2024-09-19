@@ -1220,7 +1220,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 int256 bufferWrappedImbalance = bufferBalances.getBufferWrappedImbalance(wrappedToken);
                 vaultWrappedDeltaHint = (amountOutWrapped.toInt256() - bufferWrappedImbalance).toUint256();
 
-                // For Wrap ExactOut, we need to also calculate `vaultUnderlyingDeltaHint` before the mint operation,
+                // For Wrap ExactOut, we also need to calculate `vaultUnderlyingDeltaHint` before the mint operation,
                 // to approve the transfer of underlying tokens to the wrapper protocol.
                 vaultUnderlyingDeltaHint = wrappedToken.previewMint(vaultWrappedDeltaHint);
 
