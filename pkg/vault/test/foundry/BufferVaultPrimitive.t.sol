@@ -254,9 +254,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 vaultBalance = dai.balanceOf(address(vault));
 
-        // If a wrapper operation takes less tokens than what the user requested, or returns less tokens than the
-        // wrapper informs, that quantities must be settled by the router. So, an approval attack is not possible.
-        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        // The malicious erc4626 consumes 0 underlying when the deposit is called, so the vault leaves an approval
+        // unused. This approval is then used to transfer underlying tokens from the Vault to the wrapper.
         vault.unlock(
             abi.encodeCall(
                 BufferVaultPrimitiveTest.erc4626MaliciousHook,
@@ -270,6 +269,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                 })
             )
         );
+
+        assertTrue(dai.allowance(address(vault), address(waDAI)) == 0, "Wrong allowance");
     }
 
     /********************************************************************************
@@ -1216,6 +1217,14 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /// @notice Hook used to create a vault approval using a malicious erc4626 and drain the vault.
     function erc4626MaliciousHook(BufferWrapOrUnwrapParams memory params) external {
         (, uint256 amountIn, uint256 amountOut) = vault.erc4626BufferWrapOrUnwrap(params);
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            dai.mint(address(this), amountIn);
+            dai.transfer(address(vault), amountIn);
+            vault.settle(dai, amountIn);
+            vault.sendTo(IERC20(address(waDAI)), address(this), amountOut);
+        }
+
         if (params.kind == SwapKind.EXACT_OUT) {
             // When the wrap is EXACT_OUT, a minimum amount of tokens must be wrapped. so, balances need to be settled
             // at the end to not revert the transaction and keep an approval to remove underlying tokens from the
