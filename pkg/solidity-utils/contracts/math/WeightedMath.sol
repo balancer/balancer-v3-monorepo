@@ -137,7 +137,7 @@ library WeightedMath {
         uint256 currentBalance,
         uint256 weight,
         uint256 invariantRatio
-    ) internal pure returns (uint256 invariant) {
+    ) internal pure returns (uint256 newBalance) {
         /******************************************************************************************
         // calculateBalanceGivenInvariant                                                        //
         // o = balanceOut                                                                        //
