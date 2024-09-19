@@ -144,10 +144,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function sendTo(IERC20 token, address to, uint256 amount) external nonReentrant onlyWhenUnlocked {
-        _takeDebt(token, amount);
-        _reservesOf[token] -= amount;
+        if (amount > 0) {
+            _takeDebt(token, amount);
+            _reservesOf[token] -= amount;
 
-        token.safeTransfer(to, amount);
+            token.safeTransfer(to, amount);
+        }
     }
 
     /*******************************************************************************
