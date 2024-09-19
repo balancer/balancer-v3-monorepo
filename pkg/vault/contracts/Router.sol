@@ -97,7 +97,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 // Transfer WETH from the router to the Vault.
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
-            } else {
+            } else if (amountIn > 0) {
                 // Rransfer tokens from the user to the Vault.
                 // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
                 // necessary. Done out of an abundance of caution.
@@ -298,7 +298,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _weth.deposit{ value: amountIn }();
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
-            } else {
+            } else if (amountIn > 0) {
                 // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
                 // necessary. Done out of an abundance of caution.
                 _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
@@ -489,7 +489,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
                 ethAmountOut = amountOut;
-            } else {
+            } else if (amountOut > 0) {
                 // Transfer the token to the sender (amountOut).
                 _vault.sendTo(token, params.sender, amountOut);
             }
@@ -518,7 +518,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Transfer the token to the sender (amountOut)
-            _vault.sendTo(tokens[i], sender, amountsOut[i]);
+            uint256 amountOut = amountsOut[i];
+
+            if (amountOut > 0) {
+                _vault.sendTo(tokens[i], sender, amountOut);
+            }
         }
     }
 

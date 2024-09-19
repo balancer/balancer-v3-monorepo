@@ -233,7 +233,7 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                 _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
                 ethAmountOut = amountOut;
-            } else {
+            } else if (amountOut > 0) {
                 // Transfer the token to the receiver (amountOut).
                 _vault.sendTo(token, params.receiver, amountOut);
             }

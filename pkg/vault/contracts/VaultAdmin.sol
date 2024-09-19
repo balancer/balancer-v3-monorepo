@@ -627,6 +627,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         // This triggers an external call to itself; the vault is acting as a Router in this case.
         // `sendTo` makes external calls (`transfer`) but is non-reentrant.
+        // Since it's proportional, amounts transferred cannot be zero.
         _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
         _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
 

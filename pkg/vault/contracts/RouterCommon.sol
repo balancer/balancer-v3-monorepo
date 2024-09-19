@@ -227,7 +227,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             _weth.safeTransfer(address(_vault), amountIn);
             // update Vault accounting.
             _vault.settle(_weth, amountIn);
-        } else {
+        } else if (amountIn > 0) {
             // Send the tokenIn amount to the Vault
             _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
             _vault.settle(tokenIn, amountIn);
@@ -243,7 +243,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             _weth.withdraw(amountOut);
             // Send ETH to sender.
             payable(sender).sendValue(amountOut);
-        } else {
+        } else if (amountOut > 0) {
             // Receive the tokenOut amountOut.
             _vault.sendTo(tokenOut, sender, amountOut);
         }
