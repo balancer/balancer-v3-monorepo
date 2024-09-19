@@ -1315,7 +1315,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so we call redeem. The amount
                 // of wrapped tokens to redeem is the amount necessary to fulfill the trade (amountInWrapped), plus the
                 // amount needed to leave the buffer rebalanced 50/50 at the end (bufferWrappedImbalance).
-                // `bufferWrappedImbalance` may be positive if buffer has an excess of wrapped, or negative if the
+                // `bufferWrappedImbalance` may be positive if the buffer has an excess of wrapped, or negative if the
                 // buffer has an excess of underlying tokens. `vaultWrappedDeltaHint` will always be a positive number,
                 // because if `abs(bufferWrappedImbalance) > amountInWrapped` and `bufferWrappedImbalance < 0`, it
                 // means the buffer has enough liquidity to fulfill the trade
