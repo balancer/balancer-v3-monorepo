@@ -57,7 +57,7 @@ contract RouterCommonMock is RouterCommon {
     }
 
     function manualReturnETH() public payable {
-        //   _returnEth(msg.sender);
+        _returnEth(msg.sender);
     }
 
     function assertNonZeroETHBalance() public payable {

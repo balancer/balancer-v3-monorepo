@@ -156,7 +156,7 @@ contract RouterCommonTest is BaseVaultTest {
         assertEq(vars.wethDeltaAfter, vars.wethDeltaBefore + int256(amountToWithdraw), "Vault delta is wrong");
     }
 
-    function testUseMulticallModifier() public {
+    function testSaveSenderAndManageEthModifierWithSingleFunction() public {
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
         routerMock.multicall{ value: 1 ether }(new bytes[](0));
@@ -165,7 +165,7 @@ contract RouterCommonTest is BaseVaultTest {
         assertEq(balanceAfter, balanceBefore, "Value wasn't returned");
     }
 
-    function testUseMulticallModifierWithDoubleReturn() public {
+    function testSaveSenderAndManageEthModifierWithMultipleFunctions() public {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(RouterCommonMock.manualReturnETH.selector);
         calls[1] = abi.encodeWithSelector(RouterCommonMock.assertNonZeroETHBalance.selector);
