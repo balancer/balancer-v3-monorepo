@@ -348,7 +348,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             "Vault usdc/waUSDC balance is wrong"
         );
 
-        // DAI and USDC worths the same. So, we can sum the deltas for DAI and USDC in the vault, and compare with
+        // DAI and USDC are worth the same. So, we can sum the deltas for DAI and USDC in the vault, and compare with
         // how much the user paid in fees. The user cannot have any benefit, but the vault and the user amount may
         // differ because of rounding. Let's call the sum of vault deltas as sumDeltaVault, and the sum of sender
         // deltas as sumDeltaSender, the test belows tests if
