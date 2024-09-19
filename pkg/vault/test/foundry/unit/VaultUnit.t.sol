@@ -253,26 +253,29 @@ contract VaultUnitTest is BaseTest {
         assertLt(MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
     }
 
-    function testMinimumTradeAmount() public {
-        // Should succeed with 0
+    function testMinimumTradeAmountWithZero() public view {
+        // Should succeed with 0 or the minimum
         vault.ensureValidTradeAmount(0);
-
-        // Should fail below minimum
-        uint256 tradeAmount = vault.getMinimumTradeAmount() - 1;
-
-        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vault.ensureValidTradeAmount(tradeAmount);
 
         // Should succeed when it's the minimum
         vault.ensureValidTradeAmount(vault.getMinimumTradeAmount());
     }
 
-    // Disallow too small in, allow zero out
-    function testMinimumSwapAmounts() public {
+    function testMinimumTradeAmountBelowMinimum() public {
+        // Should fail below minimum
+        uint256 tradeAmount = vault.getMinimumTradeAmount() - 1;
+
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidTradeAmount(tradeAmount);
+    }
+
+    function testMinimumSwapAmountsWithZero() public view {
         // Should allow 0 trades
         vault.ensureValidSwapAmounts(0, 0, SwapKind.EXACT_IN);
         vault.ensureValidSwapAmounts(0, 0, SwapKind.EXACT_OUT);
+    }
 
+    function testMinimumSwapAmountsValidCases() public view {
         uint256 minAmount = vault.getMinimumTradeAmount();
 
         // Should succeed with 0 amountOut and anything in
@@ -283,6 +286,10 @@ contract VaultUnitTest is BaseTest {
         vault.ensureValidSwapAmounts(0, minAmount - 1, SwapKind.EXACT_OUT);
         vault.ensureValidSwapAmounts(0, minAmount, SwapKind.EXACT_OUT);
         vault.ensureValidSwapAmounts(0, 100e18, SwapKind.EXACT_OUT);
+    }
+
+    function testMinimumSwapAmountsInvalidCases() public {
+        uint256 minAmount = vault.getMinimumTradeAmount();
 
         // Should fail with 0 in, minimum out
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
