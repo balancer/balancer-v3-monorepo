@@ -1199,7 +1199,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so we call deposit.
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if buffer has an excess of
+                // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if the buffer has an excess of
                 // underlying, or negative if the buffer has an excess of wrapped tokens. `vaultUnderlyingDeltaHint`
                 // will always be a positive number, because if `abs(bufferUnderlyingImbalance) > amountInUnderlying`
                 // and `bufferUnderlyingImbalance < 0`, it means the buffer has enough liquidity to fulfill the trade
