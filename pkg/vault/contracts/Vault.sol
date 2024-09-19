@@ -1196,6 +1196,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultWrappedDeltaHint;
 
             if (kind == SwapKind.EXACT_IN) {
+                // EXACT_IN requires the exact amount of underlying tokens to be deposited, so we call deposit.
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if buffer has an excess of
@@ -1206,9 +1207,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 int256 bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wrappedToken);
                 vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingImbalance).toUint256();
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
-                // EXACT_IN requires the exact amount of underlying tokens to be deposited, so we call deposit.
                 vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
             } else {
+                // EXACT_OUT requires the exact amount of wrapped tokens to be minted, so we call mint.
                 // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
                 // (amountOutWrapped), less the excess amount of wrapped tokens in the buffer (bufferWrappedImbalance).
                 // `bufferWrappedImbalance` may be positive if buffer has an excess of wrapped assets or negative if
@@ -1228,7 +1229,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // tokens to the wrapper.
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
 
-                // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
                 vaultUnderlyingDeltaHint = wrappedToken.mint(vaultWrappedDeltaHint, address(this));
             }
 
@@ -1324,6 +1324,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedImbalance).toUint256();
                 vaultUnderlyingDeltaHint = wrappedToken.redeem(vaultWrappedDeltaHint, address(this), address(this));
             } else {
+                // EXACT_OUT requires the exact amount of underlying tokens to be returned, so we call withdraw.
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
                 // (amountOutUnderlying), less the excess amount of underlying assets in the buffer
                 // (bufferUnderlyingImbalance). `bufferUnderlyingImbalance` may be positive if buffer has an excess of
