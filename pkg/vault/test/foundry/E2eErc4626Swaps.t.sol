@@ -317,11 +317,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         uint256 senderDaiDelta = balancesBefore.balances.bobTokens[balancesBefore.daiIdx] -
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx];
         uint256 vaultTotalDaiBefore = balancesBefore.balances.vaultTokens[balancesBefore.daiIdx] +
-            waDAI.previewMint(balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
+            waDAI.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
         uint256 vaultTotalDaiAfter = balancesAfter.balances.vaultTokens[balancesAfter.daiIdx] +
-            waDAI.previewMint(balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
+            waDAI.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
 
-        // `vaultTotalDaiAfter - vaultTotalDaiBefore = senderDaiDelta`, solve for daiAfter to prevent underflows.
+        // `vaultTotalDaiAfter - vaultTotalDaiBefore = senderDaiDelta`, solve for daiAfter to prevent underflow.
         assertApproxEqAbs(
             vaultTotalDaiAfter,
             senderDaiDelta + vaultTotalDaiBefore,
@@ -336,11 +336,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         uint256 senderUsdcDelta = balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] -
             balancesAfter.balances.bobTokens[balancesAfter.usdcIdx];
         uint256 vaultTotalUsdcBefore = balancesBefore.balances.vaultTokens[balancesBefore.usdcIdx] +
-            waUSDC.previewMint(balancesBefore.balances.vaultTokens[balancesBefore.waUsdcIdx]);
+            waUSDC.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waUsdcIdx]);
         uint256 vaultTotalUsdcAfter = balancesAfter.balances.vaultTokens[balancesAfter.usdcIdx] +
-            waUSDC.previewMint(balancesAfter.balances.vaultTokens[balancesAfter.waUsdcIdx]);
+            waUSDC.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waUsdcIdx]);
 
-        // `vaultTotalUsdcAfter - vaultTotalUsdcBefore = senderUsdcDelta`, solve for usdcAfter to prevent underflows.
+        // `vaultTotalUsdcAfter - vaultTotalUsdcBefore = senderUsdcDelta`, solve for usdcAfter to prevent underflow.
         assertApproxEqAbs(
             vaultTotalUsdcAfter,
             senderUsdcDelta + vaultTotalUsdcBefore,
