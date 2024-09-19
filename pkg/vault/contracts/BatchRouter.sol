@@ -561,8 +561,9 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
 
                     // The first step executed determines the outputs for the path, since this is given out.
                     if (stepLocals.isFirstStep) {
-                        // Instead of sending tokens back to the vault, we can just discount it from whatever
-                        // the vault owes the sender to make one less transfer.
+                        // The BPT are sent directly to the sender, so we can discount the initial increment
+                        // (normally zeroing it out), to avoid the extra transfer involved if we sent them
+                        // through the Vault.
                         _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
                     } else {
                         // If it's not the first step, BPT is minted to the vault so we just get the credit.
