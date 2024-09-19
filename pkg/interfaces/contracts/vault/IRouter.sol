@@ -331,19 +331,20 @@ interface IRouter {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault.
-     * @dev Requires the buffer to be initialized beforehand.
+     * @notice Adds liquidity proportionally to an internal ERC4626 buffer in the Vault.
+     * @dev Requires the buffer to be initialized beforehand. Restricting adds to proportional simplifies the Vault
+     * code, avoiding rounding issues and minimum amount checks. It is possible to add unbalanced by interacting
+     * with the wrapper contract directly.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
-     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
-     * (This is the BPT of the vault's internal ERC4626 buffers)
+     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
+     * in underlying token decimals
+     * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
+     * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw
-    ) external returns (uint256 issuedShares);
+        uint256 exactSharesToIssue
+    ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
 
     /***************************************************************************
                                       Queries
