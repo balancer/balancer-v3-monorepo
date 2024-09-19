@@ -488,8 +488,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @inheritdoc IVaultAdmin
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
+        uint256 exactSharesToIssue,
         address sharesOwner
     )
         public
@@ -498,30 +497,27 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         whenVaultBuffersAreNotPaused
         withInitializedBuffer(wrappedToken)
         nonReentrant
-        returns (uint256 issuedShares)
+        returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw)
     {
         // Check wrapped token asset correctness.
         address underlyingToken = wrappedToken.asset();
         _ensureCorrectBufferAsset(wrappedToken, underlyingToken);
 
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
+
+        // To proportionally add liquidity to buffer, we need to calculate the buffer invariant ratio. It's calculated
+        // as the amount of buffer shares the sender wants to issue (which in practice is the value that the sender
+        // will add to the buffer, expressed in underlying token amounts), divided by the total shares of
+        // the buffer.
+        // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
+        // tokens to add, keeping the proportion of the buffer.
+        uint256 totalShares = _bufferTotalShares[wrappedToken];
+        amountUnderlyingRaw = bufferBalances.getBalanceRaw().mulDivUp(exactSharesToIssue, totalShares);
+        amountWrappedRaw = bufferBalances.getBalanceDerived().mulDivUp(exactSharesToIssue, totalShares);
+
         // Take debt for assets going into the buffer (wrapped and underlying).
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
         _takeDebt(wrappedToken, amountWrappedRaw);
-
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-
-        // The buffer invariant is the sum of buffer token balances converted to underlying. We use `previewRedeem` to
-        // convert wrapped to underlying, since `redeem` is an EXACT_IN operation that rounds down the result.
-        uint256 currentInvariant = bufferBalances.getBalanceRaw() +
-            wrappedToken.previewRedeem(bufferBalances.getBalanceDerived());
-
-        // The invariant delta is the amount we're adding (at the current rate) in terms of underlying. We use
-        // `previewRedeem` to convert wrapped to underlying, since `redeem` is an EXACT_IN operation that rounds down
-        // the result.
-        uint256 bufferInvariantDelta = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
-        // The new share amount is the invariant ratio normalized by the total supply.
-        // Rounds down, as the shares are "outgoing," in the sense that they can be redeemed for tokens.
-        issuedShares = (_bufferTotalShares[wrappedToken] * bufferInvariantDelta) / currentInvariant;
 
         // Add the amountsIn to the current buffer balances.
         bufferBalances = PackedTokenBalance.toPackedBalance(
@@ -531,7 +527,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         // Mint new shares to the owner.
-        _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
+        _mintBufferShares(wrappedToken, sharesOwner, exactSharesToIssue);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
     }

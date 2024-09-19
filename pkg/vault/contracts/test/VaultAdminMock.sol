@@ -2,14 +2,19 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVaultAdminMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultAdminMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+
 import { VaultAdmin } from "../VaultAdmin.sol";
 
 contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
+    using PackedTokenBalance for bytes32;
+
     constructor(
         IVault mainVault,
         uint32 pauseWindowDuration,
@@ -55,13 +60,42 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         IVault(address(this)).initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
     }
 
+    /// @dev Adds liquidity to buffer unbalanced, so it can unbalance the buffer.
+    function addLiquidityToBufferUnbalancedForTests(
+        IERC4626 wrappedToken,
+        uint256 underlyingAmount,
+        uint256 wrappedAmount
+    ) public {
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
+
+        if (underlyingAmount > 0) {
+            IERC20(wrappedToken.asset()).transferFrom(msg.sender, address(this), underlyingAmount);
+            _reservesOf[IERC20(wrappedToken.asset())] += underlyingAmount;
+            // Issued shares amount = underlying amount.
+            _bufferTotalShares[wrappedToken] += underlyingAmount;
+            _bufferLpShares[wrappedToken][msg.sender] += underlyingAmount;
+        }
+        if (wrappedAmount > 0) {
+            IERC20(address(wrappedToken)).transferFrom(msg.sender, address(this), wrappedAmount);
+            _reservesOf[IERC20(address(wrappedToken))] += wrappedAmount;
+            uint256 issuedSharesAmount = wrappedToken.previewRedeem(wrappedAmount);
+            _bufferTotalShares[wrappedToken] += issuedSharesAmount;
+            _bufferLpShares[wrappedToken][msg.sender] += issuedSharesAmount;
+        }
+
+        bufferBalances = PackedTokenBalance.toPackedBalance(
+            bufferBalances.getBalanceRaw() + underlyingAmount,
+            bufferBalances.getBalanceDerived() + wrappedAmount
+        );
+        _bufferTokenBalances[wrappedToken] = bufferBalances;
+    }
+
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 exactSharesToIssue,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).addLiquidityToBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
+        IVault(address(this)).addLiquidityToBuffer(wrappedToken, exactSharesToIssue, sharesOwner);
     }
 
     function manualReentrancyRemoveLiquidityFromBufferHook(
