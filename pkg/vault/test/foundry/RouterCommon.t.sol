@@ -168,7 +168,7 @@ contract RouterCommonTest is BaseVaultTest {
     function testUseMulticallModifierWithDoubleReturn() public {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(RouterCommonMock.manualReturnETH.selector);
-        calls[1] = abi.encodeWithSelector(RouterCommonMock.assertETHBalancerMoreZero.selector);
+        calls[1] = abi.encodeWithSelector(RouterCommonMock.assertNonZeroETHBalance.selector);
 
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
