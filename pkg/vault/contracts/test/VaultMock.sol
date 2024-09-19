@@ -511,7 +511,7 @@ contract VaultMock is IVaultMainMock, Vault {
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
+    ) external returns (uint256 aggregateSwapFeeAmountRaw) {
         return _computeAndChargeAggregateSwapFees(poolData, totalSwapFeeAmountScaled18, pool, token, index);
     }
 

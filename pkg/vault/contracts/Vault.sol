@@ -344,7 +344,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     struct SwapInternalLocals {
         uint256 totalSwapFeeAmountScaled18;
-        uint256 totalSwapFeeAmountRaw;
         uint256 aggregateFeeAmountRaw;
     }
 
@@ -439,7 +438,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 4) Compute and charge protocol and creator fees.
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        (locals.totalSwapFeeAmountRaw, locals.aggregateFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
+        locals.aggregateFeeAmountRaw = _computeAndChargeAggregateSwapFees(
             poolData,
             locals.totalSwapFeeAmountScaled18,
             vaultSwapParams.pool,
@@ -480,8 +479,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultSwapParams.tokenOut,
             amountInRaw,
             amountOutRaw,
-            swapState.swapFeePercentage,
-            locals.totalSwapFeeAmountRaw
+            swapState.swapFeePercentage
         );
     }
 
@@ -717,7 +715,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _takeDebt(token, amountInRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            (, locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
+            locals.aggregateSwapFeeAmountRaw = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -958,7 +956,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _supplyCredit(token, amountOutRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            (, locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
+            locals.aggregateSwapFeeAmountRaw = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -1011,7 +1009,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Splitting the fees and event emission occur during fee collection.
      * Should only be called in a non-reentrant context.
      *
-     * @return totalSwapFeeAmountRaw Total swap fees raw (LP + aggregate protocol fees)
      * @return aggregateSwapFeeAmountRaw Sum of protocol and pool creator fees raw
      */
     function _computeAndChargeAggregateSwapFees(
@@ -1020,10 +1017,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address pool,
         IERC20 token,
         uint256 index
-    ) internal returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
+    ) internal returns (uint256 aggregateSwapFeeAmountRaw) {
         // If totalSwapFeeAmountScaled18 equals zero, no need to charge anything.
         if (totalSwapFeeAmountScaled18 > 0 && poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
-            totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundUp(
+            uint256 totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
             );

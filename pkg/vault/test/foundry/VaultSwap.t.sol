@@ -211,15 +211,7 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.expectEmit();
-        emit IVaultEvents.Swap(
-            pool,
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount - swapFeeExactIn,
-            swapFeePercentage,
-            defaultAmount.mulDown(swapFeePercentage)
-        );
+        emit IVaultEvents.Swap(pool, usdc, dai, defaultAmount, defaultAmount - swapFeeExactIn, swapFeePercentage);
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
@@ -238,15 +230,7 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.expectEmit();
-        emit IVaultEvents.Swap(
-            pool,
-            usdc,
-            dai,
-            defaultAmount + swapFeeExactOut,
-            defaultAmount,
-            swapFeePercentage,
-            swapFeeExactOut
-        );
+        emit IVaultEvents.Swap(pool, usdc, dai, defaultAmount + swapFeeExactOut, defaultAmount, swapFeePercentage);
 
         vm.prank(alice);
         router.swapSingleTokenExactOut(

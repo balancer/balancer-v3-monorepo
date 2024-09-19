@@ -48,7 +48,6 @@ interface IVaultEvents {
      * @param amountIn Number of tokenIn tokens
      * @param amountOut Number of tokenOut tokens
      * @param swapFeePercentage Swap fee percentage applied (can differ if dynamic)
-     * @param swapFeeAmount Swap fee amount paid
      */
     event Swap(
         address indexed pool,
@@ -56,8 +55,7 @@ interface IVaultEvents {
         IERC20 indexed tokenOut,
         uint256 amountIn,
         uint256 amountOut,
-        uint256 swapFeePercentage,
-        uint256 swapFeeAmount
+        uint256 swapFeePercentage
     );
 
     /**
