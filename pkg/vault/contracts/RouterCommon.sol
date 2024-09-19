@@ -87,13 +87,20 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         _discardSenderIfRequired(isExternalSender);
     }
 
-    /// @notice Locks the return of excess ETH to the sender until the end of the function.
-    /// @dev This modifier must be used after `saveSender` to ensure that the sender is saved.
-    modifier useMulticall() {
+    /**
+     * @notice Locks the return of excess ETH to the sender until the end of the function.
+     * @dev This also encompasses the `saveSender` functionality.
+     */
+    modifier saveSenderAndManageEth() {
+        bool isExternalSender = _saveSender();
+
+        // Lock the return of ETH during execution
         _isReturnEthLockedSlot().tstore(true);
         _;
         _isReturnEthLockedSlot().tstore(false);
+
         _returnEth(_getSenderSlot().tload());
+        _discardSenderIfRequired(isExternalSender);
     }
 
     function _saveSender() internal returns (bool isExternalSender) {
