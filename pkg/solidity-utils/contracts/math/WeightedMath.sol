@@ -63,9 +63,16 @@ library WeightedMath {
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 70e16; // 70%
 
-    // The invariant functions are called by the Vault during various liquidity operations, and require a specific
-    // rounding direction in order to ensure safety (i.e., that the final result is always rounded in favor of the
-    // protocol).
+    /**
+     * @notice Compute the invariant, rounding down.
+     * @dev The invariant functions are called by the Vault during various liquidity operations, and require a specific
+     * rounding direction in order to ensure safety (i.e., that the final result is always rounded in favor of the
+     * protocol. The invariant (i.e., all token balances) must always be greater than 0, or it will revert.
+     *
+     * @param normalizedWeights The pool token weights, sorted in token registration order
+     * @param balances The pool token balances, sorted in token registration order
+     * @return invariant The invariant, rounded down
+     */
     function computeInvariantDown(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
@@ -87,6 +94,16 @@ library WeightedMath {
         }
     }
 
+    /**
+     * @notice Compute the invariant, rounding up.
+     * @dev The invariant functions are called by the Vault during various liquidity operations, and require a specific
+     * rounding direction in order to ensure safety (i.e., that the final result is always rounded in favor of the
+     * protocol. The invariant (i.e., all token balances) must always be greater than 0, or it will revert.
+     *
+     * @param normalizedWeights The pool token weights, sorted in token registration order
+     * @param balances The pool token balances, sorted in token registration order
+     * @return invariant The invariant, rounded up
+     */
     function computeInvariantUp(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
@@ -108,6 +125,14 @@ library WeightedMath {
         }
     }
 
+    /**
+     * @notice Compute a token balance after a liquidity operation, given the current balance and invariant ratio.
+     * @dev This is called as part of the "inverse invariant" `computeBalance` calculation.
+     * @param currentBalance The current balance of the token
+     * @param weight The weight of the token
+     * @param invariantRatio The invariant ratio (i.e., new/old; will be > 1 for add; < 1 for remove)
+     * @return newBalance The adjusted token balance after the operation
+     */
     function computeBalanceOutGivenInvariant(
         uint256 currentBalance,
         uint256 weight,
@@ -129,15 +154,22 @@ library WeightedMath {
         return currentBalance.mulUp(balanceRatio);
     }
 
-    // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
-    // current balances and weights.
+    /**
+     * @notice Compute the `amountOut` of tokenOut in a swap, given the current balances and weights.
+     * @param balanceIn The current balance of `tokenIn`
+     * @param weightIn  The weight of `tokenIn`
+     * @param balanceOut The current balance of `tokenOut`
+     * @param weightOut The weight of `tokenOut`
+     * @param amountIn The exact amount of `tokenIn` (i.e., the amount given in an ExactIn swap)
+     * @return amountOut The calculated amount of `tokenOut` returned in an ExactIn swap
+     */
     function computeOutGivenExactIn(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountIn
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256 amountOut) {
         /**********************************************************************************************
         // outGivenExactIn                                                                           //
         // aO = amountOut                                                                            //
@@ -167,15 +199,22 @@ library WeightedMath {
         return balanceOut.mulDown(power.complement());
     }
 
-    // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
-    // current balances and weights.
+    /**
+     * @notice Compute the `amountIn` of tokenIn in a swap, given the current balances and weights.
+     * @param balanceIn The current balance of `tokenIn`
+     * @param weightIn  The weight of `tokenIn`
+     * @param balanceOut The current balance of `tokenOut`
+     * @param weightOut The weight of `tokenOut`
+     * @param amountOut The exact amount of `tokenOut` (i.e., the amount given in an ExactOut swap)
+     * @return amountIn The calculated amount of `tokenIn` returned in an ExactOut swap
+     */
     function computeInGivenExactOut(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountOut
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256 amountIn) {
         /**********************************************************************************************
         // inGivenExactOut                                                                           //
         // aO = amountOut                                                                            //
