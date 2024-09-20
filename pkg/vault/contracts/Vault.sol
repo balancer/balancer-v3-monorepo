@@ -1211,7 +1211,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             } else {
                 // EXACT_OUT requires the exact amount of wrapped tokens to be minted, so we call mint.
                 // The amount of wrapped tokens to mint is the amount necessary to fulfill the trade
-                // (amountOutWrapped), less the excess amount of wrapped tokens in the buffer (bufferWrappedImbalance).
+                // (amountOutWrapped), minus the excess amount of wrapped tokens in the buffer (bufferWrappedImbalance).
                 // `bufferWrappedImbalance` may be positive if buffer has an excess of wrapped assets or negative if
                 // the buffer has an excess of underlying assets. `vaultWrappedDeltaHint` will always be a positive
                 // number, because if `abs(bufferWrappedImbalance) > amountOutWrapped` and `bufferWrappedImbalance > 0`,
