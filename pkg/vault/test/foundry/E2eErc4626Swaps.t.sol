@@ -369,12 +369,15 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // deltas as sumDeltaSender, the test belows tests if
         // `sumDeltaSender - 2 * MAX_ERROR < sumDeltaVault < sumDeltaSender`, it means, vault delta is smaller than
         // sender delta (sender paid more than vault received), but the difference is small.
+        uint256 sumDeltaVault = vaultTotalUsdcAfter + vaultTotalDaiAfter - vaultTotalDaiBefore - vaultTotalUsdcBefore;
+        uint256 sumDeltaSender = senderUsdcDelta + senderDaiDelta;
         assertApproxEqAbs(
-            vaultTotalUsdcAfter + vaultTotalDaiAfter - vaultTotalDaiBefore - vaultTotalUsdcBefore,
-            senderUsdcDelta + senderDaiDelta - MAX_ERROR,
+            sumDeltaVault,
+            sumDeltaSender,
             MAX_ERROR,
-            "Vault received less tokens than user paid"
+            "Sum of tokens in the vault after Do/Undo operation is wrong"
         );
+        assertLe(sumDeltaVault, sumDeltaSender, "Sender paid less tokens than vault delta");
     }
 
     function _buildExactInPaths(
@@ -514,6 +517,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         testBalances.waUSDCBuffer.underlying = waUSDCBufferBalanceUnderlying;
         testBalances.waUSDCBuffer.wrapped = waUSDCBufferBalanceWrapped;
 
+        // The rate only affects swaps of a very large amount (over 1e28), so we get the rate with this amount of
+        // precision.
         testBalances.waDAIRate = waDAI.previewRedeem(1e10 * FixedPoint.ONE);
         testBalances.waUSDCRate = waUSDC.previewRedeem(1e10 * FixedPoint.ONE);
     }
