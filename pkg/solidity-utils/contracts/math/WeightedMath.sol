@@ -146,10 +146,21 @@ library WeightedMath {
         // i = invariantRatio                                                                    //
         ******************************************************************************************/
 
-        // Rounds result up overall.
+        // Rounds result up overall, rounding up the two individual steps:
+        // - balanceRatio = invariantRatio ^ (1 / weight)
+        // - newBalance = balance * balanceRatio
+        //
+        // Regarding `balanceRatio`, the exponent is always > FP(1), but the invariant ratio can be either greater or
+        // lower than FP(1) depending on whether this is solving an `add` or a `remove` operation.
+        // - For i > 1, we need to round the exponent up, as i^x is monotonically increasing for i > 1.
+        // - For i < 1, we need to round the exponent down, as as i^x is monotonically decreasing for i < 1.
+
+        function(uint256, uint256) internal pure returns (uint256) divUpOrDown = invariantRatio > 1
+            ? FixedPoint.divUp
+            : FixedPoint.divDown;
 
         // Calculate by how much the token balance has to increase to match the invariantRatio.
-        uint256 balanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(weight));
+        uint256 balanceRatio = invariantRatio.powUp(divUpOrDown(FixedPoint.ONE, weight));
 
         return currentBalance.mulUp(balanceRatio);
     }
