@@ -863,7 +863,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the VaultExtension does when handling the request.
+     * This function actually returns whatever the VaultAdmin does when handling the request.
      */
     fallback() external payable override {
         if (msg.value > 0) {
