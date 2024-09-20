@@ -94,7 +94,12 @@ interface IVaultEvents {
      * @param liquidityProvider The user performing the operation
      * @param deltas The amount each token changed, sorted in the pool tokens' order
      */
-    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, int256[] deltas, uint256[] swapFeeAmountsRaw);
+    event PoolBalanceChanged(
+        address indexed pool,
+        address indexed liquidityProvider,
+        int256[] deltas,
+        uint256[] swapFeeAmountsRaw
+    );
 
     /**
      * @notice The Vault's pause status has changed.

@@ -580,7 +580,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 numTokens;
         uint256 aggregateSwapFeeAmountRaw;
         uint256 tokenIndex;
-        uint256[] totalSwapFeeAmountsRaw;
     }
 
     /**
@@ -610,13 +609,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
         amountsInRaw = new uint256[](locals.numTokens);
-        locals.totalSwapFeeAmountsRaw = new uint256[](locals.numTokens);
-        uint256[] memory swapFeeAmountsScaled18;
+        uint256[] memory swapFeeAmounts;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
             bptAmountOut = params.minBptAmountOut;
-            // Initializes the swapFeeAmountsScaled18 empty array (no swap fees on proportional add liquidity).
-            swapFeeAmountsScaled18 = new uint256[](locals.numTokens);
+            // Initializes the swapFeeAmounts empty array (no swap fees on proportional add liquidity).
+            swapFeeAmounts = new uint256[](locals.numTokens);
 
             amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(
                 poolData.balancesLiveScaled18,
@@ -626,7 +624,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else if (params.kind == AddLiquidityKind.DONATION) {
             poolData.poolConfigBits.requireDonationEnabled();
 
-            swapFeeAmountsScaled18 = new uint256[](maxAmountsInScaled18.length);
+            swapFeeAmounts = new uint256[](maxAmountsInScaled18.length);
             bptAmountOut = 0;
             amountsInScaled18 = maxAmountsInScaled18;
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
@@ -637,7 +635,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // `maxAmountsIn` is preserved.
             ScalingHelpers.copyToArray(params.maxAmountsIn, amountsInRaw);
 
-            (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
+            (bptAmountOut, swapFeeAmounts) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
@@ -651,7 +649,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             locals.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
 
             amountsInScaled18 = maxAmountsInScaled18;
-            (amountsInScaled18[locals.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
+            (amountsInScaled18[locals.tokenIndex], swapFeeAmounts) = BasePoolMath
                 .computeAddLiquiditySingleTokenExactOut(
                     poolData.balancesLiveScaled18,
                     locals.tokenIndex,
@@ -664,7 +662,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfigBits.requireAddCustomLiquidityEnabled();
 
             // Uses msg.sender as the router (the contract that called the vault).
-            (amountsInScaled18, bptAmountOut, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
+            (amountsInScaled18, bptAmountOut, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
                 .onAddLiquidityCustom(
                     msg.sender,
                     maxAmountsInScaled18,
@@ -719,9 +717,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _takeDebt(token, amountInRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            (locals.totalSwapFeeAmountsRaw[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
+            // swapFeeAmounts[i] is now raw instead of scaled.
+            (swapFeeAmounts[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
-                swapFeeAmountsScaled18[i],
+                swapFeeAmounts[i],
                 params.pool,
                 token,
                 i
@@ -748,7 +747,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _mint(address(params.pool), params.to, bptAmountOut);
 
         // 8) Off-chain events.
-        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), locals.totalSwapFeeAmountsRaw);
+        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), swapFeeAmounts);
     }
 
     /***************************************************************************
@@ -866,12 +865,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
         amountsOutRaw = new uint256[](locals.numTokens);
-        locals.totalSwapFeeAmountsRaw = new uint256[](locals.numTokens);
-        uint256[] memory swapFeeAmountsScaled18;
+        uint256[] memory swapFeeAmounts;
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
             bptAmountIn = params.maxBptAmountIn;
-            swapFeeAmountsScaled18 = new uint256[](locals.numTokens);
+            swapFeeAmounts = new uint256[](locals.numTokens);
             amountsOutScaled18 = BasePoolMath.computeProportionalAmountsOut(
                 poolData.balancesLiveScaled18,
                 _totalSupply(params.pool),
@@ -883,7 +881,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountsOutScaled18 = minAmountsOutScaled18;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
-            (amountsOutScaled18[locals.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
+            (amountsOutScaled18[locals.tokenIndex], swapFeeAmounts) = BasePoolMath
                 .computeRemoveLiquiditySingleTokenExactIn(
                     poolData.balancesLiveScaled18,
                     locals.tokenIndex,
@@ -898,7 +896,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             amountsOutRaw[locals.tokenIndex] = params.minAmountsOut[locals.tokenIndex];
 
-            (bptAmountIn, swapFeeAmountsScaled18) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
+            (bptAmountIn, swapFeeAmounts) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
                 locals.tokenIndex,
                 amountsOutScaled18[locals.tokenIndex],
@@ -909,7 +907,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
             poolData.poolConfigBits.requireRemoveCustomLiquidityEnabled();
             // Uses msg.sender as the router (the contract that called the vault)
-            (bptAmountIn, amountsOutScaled18, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
+            (bptAmountIn, amountsOutScaled18, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
                     msg.sender,
                     params.maxBptAmountIn,
@@ -961,9 +959,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _supplyCredit(token, amountOutRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            (locals.totalSwapFeeAmountsRaw[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
+            (swapFeeAmounts[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
-                swapFeeAmountsScaled18[i],
+                swapFeeAmounts[i],
                 params.pool,
                 token,
                 i
@@ -1004,7 +1002,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params.from,
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false),
-            locals.totalSwapFeeAmountsRaw
+            swapFeeAmounts
         );
     }
 
