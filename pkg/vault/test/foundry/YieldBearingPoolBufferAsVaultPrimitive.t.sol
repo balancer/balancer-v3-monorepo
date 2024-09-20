@@ -240,10 +240,10 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
-        // Surplus of underlying.
+        // Positive imbalance of underlying.
         dai.approve(address(vault), unbalancedUnderlyingDelta);
         vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
-        // Surplus of wrapped.
+        // Positive imbalance of wrapped.
         IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
@@ -256,12 +256,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
-        // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
-        // by the user. E.g.:
-        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
-        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
-        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers are imbalanced, buffers must be
+        // perfectly balanced at the end.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
         vars.expectedBufferBalanceAfterSwapWaDai =
             vars.bufferBalanceBeforeSwapWaDai +
@@ -286,10 +282,10 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
-        // Surplus of underlying.
+        // Positive imbalance of underlying.
         dai.approve(address(vault), unbalancedUnderlyingDelta);
         vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
-        // Surplus of wrapped.
+        // Positive imbalance of wrapped.
         IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
@@ -302,12 +298,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
-        // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
-        // by the user. E.g.:
-        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
-        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
-        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers are imbalanced, buffers must be
+        // perfectly balanced at the end.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
         vars.expectedBufferBalanceAfterSwapWaDai =
             vars.bufferBalanceBeforeSwapWaDai +
