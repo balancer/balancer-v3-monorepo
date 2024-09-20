@@ -270,7 +270,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             )
         );
 
-        assertTrue(dai.allowance(address(vault), address(waDAI)) == 0, "Wrong allowance");
+        assertEq(dai.allowance(address(vault), address(waDAI)), 0, "Leftover allowance between vault and wrapper");
     }
 
     /********************************************************************************
