@@ -131,8 +131,8 @@ contract E2eSwapWeightedTest is E2eSwapTest {
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
 
-        // - Token B should have been round-tripped with exact amounts
-        // - Token A should have less balance after
+        // - Token B should have been round-tripped with exact amounts.
+        // - Token A should have less balance after.
         assertEq(
             balancesAfter.userTokens[tokenBIdx],
             balancesBefore.userTokens[tokenBIdx],

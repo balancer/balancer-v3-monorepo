@@ -1034,7 +1034,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // We have already calculated raw total fees rounding up.
             // Total fees = LP fees + aggregate fees, so by rounding aggregate fees down we round the fee split in
-            // LPs' favor (which in turn contributes to invariants going up).
+            // the LPs' favor, in turn increasing token balances and the pool invariant.
             aggregateSwapFeeAmountRaw = totalSwapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
 
             // Ensure we can never charge more than the total swap fee.
