@@ -89,13 +89,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAsset(dai);
 
         // Wrap token should pass, since there's no liquidity in the buffer.
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            _wrapAmount,
-            0,
-            usdc,
-            IERC20(address(waDAI)),
-            IERC20(address(waDAI))
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
 
         vm.prank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
@@ -115,13 +109,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Above permit2 limit of uint160.
         uint256 overflowAmount = type(uint168).max;
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            overflowAmount,
-            0,
-            usdc,
-            IERC20(address(waDAI)),
-            IERC20(address(waDAI))
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(overflowAmount, 0, IERC20(address(waDAI)));
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 160, overflowAmount));
@@ -138,13 +126,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            _wrapAmount,
-            0,
-            dai,
-            IERC20(address(waDAI)),
-            IERC20(address(waDAI))
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -169,13 +151,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            _wrapAmount,
-            0,
-            dai,
-            IERC20(address(waDAI)),
-            IERC20(address(waDAI))
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -200,13 +176,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            _wrapAmount,
-            0,
-            dai,
-            IERC20(address(waDAI)),
-            IERC20(address(waDAI))
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -225,13 +195,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.previewDeposit(2 * _wrapAmount));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            _wrapAmount,
-            0,
-            dai,
-            IERC20(address(waDAI)),
-            IERC20(address(waDAI))
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -283,11 +247,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _wrapExactOutPath(
             2 * _wrapAmount,
             waDAI.previewDeposit(_wrapAmount),
-            dai,
-            IERC20(address(waDAI)),
             IERC20(address(waDAI))
         );
 
@@ -320,11 +282,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _wrapExactOutPath(
             2 * _wrapAmount,
             waDAI.previewDeposit(_wrapAmount),
-            dai,
-            IERC20(address(waDAI)),
             IERC20(address(waDAI))
         );
 
@@ -357,11 +317,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _wrapExactOutPath(
             2 * _wrapAmount,
             waDAI.previewDeposit(_wrapAmount),
-            dai,
-            IERC20(address(waDAI)),
             IERC20(address(waDAI))
         );
 
@@ -388,11 +346,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.previewDeposit(2 * _wrapAmount));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _wrapExactOutPath(
             2 * _wrapAmount,
             waDAI.previewDeposit(_wrapAmount),
-            dai,
-            IERC20(address(waDAI)),
             IERC20(address(waDAI))
         );
 
@@ -453,7 +409,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
         IERC20 wDai = IERC20(address(waDAI));
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _unwrapExactInPath(wrappedAmountIn, 0, wDai);
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -480,7 +436,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
         IERC20 wDai = IERC20(address(waDAI));
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _unwrapExactInPath(wrappedAmountIn, 0, wDai);
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -508,7 +464,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
         IERC20 wDai = IERC20(address(waDAI));
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _unwrapExactInPath(wrappedAmountIn, 0, wDai);
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -530,7 +486,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
         IERC20 wDai = IERC20(address(waDAI));
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _unwrapExactInPath(wrappedAmountIn, 0, wDai);
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -552,11 +508,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _unwrapExactOutPath(
             2 * waDAI.previewDeposit(_wrapAmount),
             _wrapAmount,
-            IERC20(address(waDAI)),
-            dai,
             IERC20(address(waDAI))
         );
 
@@ -582,11 +536,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _unwrapExactOutPath(
             2 * waDAI.previewDeposit(_wrapAmount),
             _wrapAmount,
-            IERC20(address(waDAI)),
-            dai,
             IERC20(address(waDAI))
         );
 
@@ -613,11 +565,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _unwrapExactOutPath(
             waDAI.previewWithdraw(_wrapAmount),
             _wrapAmount,
-            IERC20(address(waDAI)),
-            dai,
             IERC20(address(waDAI))
         );
 
@@ -638,11 +588,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.previewDeposit(2 * _wrapAmount));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _unwrapExactOutPath(
             2 * waDAI.previewDeposit(_wrapAmount),
             _wrapAmount,
-            IERC20(address(waDAI)),
-            dai,
             IERC20(address(waDAI))
         );
 
@@ -687,13 +635,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            _wrapAmount,
-            0,
-            dai,
-            IERC20(address(waDAI)),
-            IERC20(address(waDAI))
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
 
         // Wrap/unwrap, add and remove liquidity should fail, since vault buffers are disabled.
         vm.startPrank(lp);
@@ -1017,40 +959,84 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vars.vaultReserves.waDai = vault.getReservesOf(IERC20(address(waDAI)));
     }
 
-    function _exactInWrapUnwrapPath(
+    function _wrapExactInPath(
         uint256 exactAmountIn,
         uint256 minAmountOut,
-        IERC20 tokenFrom,
-        IERC20 tokenTo,
         IERC20 wrappedToken
-    ) private pure returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenTo, isBuffer: true });
+        IERC20 tokenIn = IERC20(IERC4626(address(wrappedToken)).asset());
+        IERC20 tokenOut = wrappedToken;
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenOut, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: tokenFrom,
+            tokenIn: tokenIn,
             steps: steps,
             exactAmountIn: exactAmountIn,
             minAmountOut: minAmountOut
         });
     }
 
-    function _exactOutWrapUnwrapPath(
+    function _unwrapExactInPath(
+        uint256 exactAmountIn,
+        uint256 minAmountOut,
+        IERC20 wrappedToken
+    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+
+        IERC20 tokenIn = wrappedToken;
+        IERC20 tokenOut = IERC20(IERC4626(address(wrappedToken)).asset());
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenOut, isBuffer: true });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: tokenIn,
+            steps: steps,
+            exactAmountIn: exactAmountIn,
+            minAmountOut: minAmountOut
+        });
+    }
+
+    function _wrapExactOutPath(
         uint256 maxAmountIn,
         uint256 exactAmountOut,
-        IERC20 tokenFrom,
-        IERC20 tokenTo,
         IERC20 wrappedToken
-    ) private pure returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
+    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenTo, isBuffer: true });
+        IERC20 tokenIn = IERC20(IERC4626(address(wrappedToken)).asset());
+        IERC20 tokenOut = wrappedToken;
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenOut, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
-            tokenIn: tokenFrom,
+            tokenIn: tokenIn,
+            steps: steps,
+            maxAmountIn: maxAmountIn,
+            exactAmountOut: exactAmountOut
+        });
+    }
+
+    function _unwrapExactOutPath(
+        uint256 maxAmountIn,
+        uint256 exactAmountOut,
+        IERC20 wrappedToken
+    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+        paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+
+        IERC20 tokenIn = wrappedToken;
+        IERC20 tokenOut = IERC20(IERC4626(address(wrappedToken)).asset());
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wrappedToken), tokenOut: tokenOut, isBuffer: true });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: tokenIn,
             steps: steps,
             maxAmountIn: maxAmountIn,
             exactAmountOut: exactAmountOut
