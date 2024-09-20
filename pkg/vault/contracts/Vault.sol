@@ -580,6 +580,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 numTokens;
         uint256 aggregateSwapFeeAmountRaw;
         uint256 tokenIndex;
+        uint256[] totalSwapFeeAmountsRaw;
     }
 
     /**
@@ -609,6 +610,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
         amountsInRaw = new uint256[](locals.numTokens);
+        locals.totalSwapFeeAmountsRaw = new uint256[](locals.numTokens);
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
@@ -717,7 +719,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _takeDebt(token, amountInRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            (, locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
+            (locals.totalSwapFeeAmountsRaw[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -746,7 +748,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _mint(address(params.pool), params.to, bptAmountOut);
 
         // 8) Off-chain events.
-        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), locals.totalSwapFeeAmountsRaw);
     }
 
     /***************************************************************************
@@ -863,8 +865,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
-        uint256[] memory swapFeeAmountsScaled18;
         amountsOutRaw = new uint256[](locals.numTokens);
+        locals.totalSwapFeeAmountsRaw = new uint256[](locals.numTokens);
+        uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
             bptAmountIn = params.maxBptAmountIn;
@@ -958,7 +961,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _supplyCredit(token, amountOutRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            (, locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
+            (locals.totalSwapFeeAmountsRaw[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -1000,7 +1003,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params.pool,
             params.from,
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
-            amountsOutRaw.unsafeCastToInt256(false)
+            amountsOutRaw.unsafeCastToInt256(false),
+            locals.totalSwapFeeAmountsRaw
         );
     }
 
