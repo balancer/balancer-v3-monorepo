@@ -153,7 +153,7 @@ export class Benchmark {
       it(`measures initialization gas ${ethStatus}`, async () => {
         initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
 
-        // Measure gas.
+        // Measure gas on initialization.
         const value = useEth ? TOKEN_AMOUNT : 0;
         const tx = await router
           .connect(alice)

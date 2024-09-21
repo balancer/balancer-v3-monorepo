@@ -153,7 +153,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
-        // bob sends correct lp tokens
+        // Bob sends correct lp tokens
         assertEq(
             balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
             amountsIn[daiIdx],
@@ -271,7 +271,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         uint256 amountOut = bptAmount / 2;
-        // bob gets original liquidity with no fee applied because of full decay.
+        // Bob gets original liquidity with no fee applied because of full decay.
         assertEq(
             balancesAfter.bobTokens[daiIdx] - balancesBefore.bobTokens[daiIdx],
             amountOut,

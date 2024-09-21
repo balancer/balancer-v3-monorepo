@@ -127,7 +127,7 @@ contract PoolPauseTest is BaseVaultTest {
         // Pool is not paused.
         require(vault.isPoolPaused(pool) == false, "Vault is already paused");
 
-        // pause manager can pause and unpause.
+        // The pause manager can pause and unpause.
         vm.prank(admin);
         vault.pausePool(pool);
 
@@ -166,7 +166,7 @@ contract PoolPauseTest is BaseVaultTest {
     }
 
     function testCannotPausePermissionlessPool() public {
-        // Authorize alice.
+        // Authorize Alice.
         bytes32 pausePoolRole = vault.getActionId(IVaultAdmin.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 
@@ -181,7 +181,7 @@ contract PoolPauseTest is BaseVaultTest {
         (, , , address pauseManager) = vault.getPoolPausedState(address(infinityPool));
         require(pauseManager == address(0), "Pause manager non-zero");
 
-        // Authorize alice.
+        // Authorize Alice.
         bytes32 pausePoolRole = vault.getActionId(IVaultAdmin.pausePool.selector);
         authorizer.grantRole(pausePoolRole, alice);
 

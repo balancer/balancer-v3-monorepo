@@ -193,7 +193,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     function testPoolRegistrationWithCreatorFee() public {
         _registerPoolWithMaxProtocolFees();
 
-        // Aggregate percentage with no creator fee should just be the global fee percentages.
+        // Aggregate percentages with no creator fee should just be the global fee percentages.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         assertEq(
             poolConfigBits.aggregateSwapFeePercentage,
