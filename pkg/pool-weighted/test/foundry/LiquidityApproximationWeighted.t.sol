@@ -398,7 +398,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             : assertLiquidityOperationNoSwapFee();
     }
 
-    /// Utils
+    // Utils
 
     function _computeMaxTokenAmount(uint256 weightDai) private view returns (uint256 maxAmount) {
         // `maxAmount` must be lower than 30% of the lowest pool liquidity. Below, `maxAmount` is calculated as 25%
@@ -416,7 +416,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 totalSupply = IERC20(liquidityPool).totalSupply();
         // Compute the portion of the BPT supply that corresponds to the DAI tokens.
         uint256 daiSupply = totalSupply.mulDown(weightDai);
-        // When we add liquidity unbalanced, fees will make the vault request more tokens.
+        // When we add liquidity unbalanced, fees will make the Vault request more tokens.
         // We need to offset this effect: we want to bring down the max amount even further when fees are larger,
         // so we multiply the DAI supply with a lower value as fees go higher.
         uint256 daiSupplyAccountingFees = daiSupply.mulDown(swapFeePercentage.complement());

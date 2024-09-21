@@ -56,25 +56,25 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
 
     /**
      * @notice Saves the user or contract that initiated the current operation.
-     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the router's
-     * `getSender` function will always be the "outermost" caller. Some transactions require the router to identify
+     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the Router's
+     * `getSender` function will always be the "outermost" caller. Some transactions require the Router to identify
      * multiple senders. Consider the following example:
      *
-     * - ContractA has a function that calls the router, then calls ContractB with the output. ContractB in turn
-     * calls back into the router.
-     * - Imagine further that ContractA is a pool with a "before" hook that also calls the router.
+     * - ContractA has a function that calls the Router, then calls ContractB with the output. ContractB in turn
+     * calls back into the Router.
+     * - Imagine further that ContractA is a pool with a "before" hook that also calls the Router.
      *
-     * When the user calls the function on ContractA, there are three calls to the router in the same transaction:
-     * - 1st call: When ContractA calls the router directly, to initiate an operation on the pool (say, a swap).
+     * When the user calls the function on ContractA, there are three calls to the Router in the same transaction:
+     * - 1st call: When ContractA calls the Router directly, to initiate an operation on the pool (say, a swap).
      *             (Sender is contractA, initiator of the operation.)
      *
-     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the router.
+     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the Router.
      *             This is a "nested" call within the original pool operation. The nested call returns, then the
-     *             before hook returns, the router completes the operation, and finally returns back to ContractA
+     *             before hook returns, the Router completes the operation, and finally returns back to ContractA
      *             with the result (e.g., a calculated amount of tokens).
      *             (Nested call; sender is still ContractA through all of this.)
      *
-     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the router.
+     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the Router.
      *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
     modifier saveSender() {
@@ -86,7 +86,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     function _saveSender() internal returns (bool isExternalSender) {
         address sender = _getSenderSlot().tload();
 
-        // NOTE: Only the most external sender will be saved by the router.
+        // NOTE: Only the most external sender will be saved by the Router.
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
             isExternalSender = true;

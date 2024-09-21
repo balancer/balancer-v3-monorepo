@@ -193,7 +193,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     function testPoolRegistrationWithCreatorFee() public {
         _registerPoolWithMaxProtocolFees();
 
-        // Aggregate percentage with no creator fee should just be the global fee percentages
+        // Aggregate percentage with no creator fee should just be the global fee percentages.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         assertEq(
             poolConfigBits.aggregateSwapFeePercentage,
@@ -607,8 +607,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         // Check initial conditions: aggregate swap fee percentage should be 100%.
         (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = IPoolInfo(pool)
             .getAggregateFeePercentages();
-        assertEq(aggregateSwapFeePercentage, FixedPoint.ONE, "Aggregage swap fee != 100%");
-        assertEq(aggregateYieldFeePercentage, 0, "Aggregage swap fee is not zero");
+        assertEq(aggregateSwapFeePercentage, FixedPoint.ONE, "Aggregate swap fee != 100%");
+        assertEq(aggregateYieldFeePercentage, 0, "Aggregate swap fee is not zero");
 
         vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
 
@@ -699,7 +699,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
         vm.stopPrank();
 
-        // Check that the aggregate percentages are set in the pool config
+        // Check that the aggregate percentages are set in the pool config.
         uint256 expectedSwapFeePercentage = MAX_PROTOCOL_SWAP_FEE_PCT +
             MAX_PROTOCOL_SWAP_FEE_PCT.complement().mulDown(POOL_CREATOR_SWAP_FEE_PCT);
         uint256 expectedYieldFeePercentage = MAX_PROTOCOL_YIELD_FEE_PCT +
@@ -754,7 +754,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
         uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
 
-        // Check reserves
+        // Check reserves.
         assertEq(
             vault.getReservesOf(dai),
             reservesOfDaiBeforeCollect - protocolFeeAmounts[daiIdx] - poolCreatorFeeAmounts[daiIdx],

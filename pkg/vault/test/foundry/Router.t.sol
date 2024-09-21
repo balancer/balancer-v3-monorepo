@@ -136,7 +136,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testInitBalanceOverflow() public {
-        address newPool = address(new PoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
+        address newPool = address(new PoolMock(IVault(address(vault)), "Big Pool", "BIG_POOL"));
         vm.label(address(newPool), "big pool");
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
@@ -166,7 +166,7 @@ contract RouterTest is BaseVaultTest {
 
         vault.disableQuery();
 
-        // Authorize alice
+        // Authorize alice.
         bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQuery.selector);
 
         authorizer.grantRole(disableQueryRole, alice);
@@ -642,7 +642,7 @@ contract RouterTest is BaseVaultTest {
             bytes("")
         );
 
-        // Only ethAmountIn is sent to the router
+        // Only ethAmountIn is sent to the Router.
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
         assertEq(dai.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong DAI balance");
         assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");

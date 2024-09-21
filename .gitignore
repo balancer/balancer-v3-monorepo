@@ -46,3 +46,6 @@ slither/
 
 # Mac
 .DS_Store
+
+# Misc
+.vscode/

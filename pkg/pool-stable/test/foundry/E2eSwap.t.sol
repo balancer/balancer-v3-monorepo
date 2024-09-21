@@ -55,7 +55,7 @@ contract E2eSwapStableTest is E2eSwapTest {
         // 1) amountCalculatedRaw > 0
         // 2) amountCalculatedRaw = amountCalculatedScaled18 * 10^(decimalsB) / (rateB * 10^18)
         // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math, there's a factor to stable math
-        // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
+        // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decimalsA)
         // Using the four formulas above, we determine that:
         // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));

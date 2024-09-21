@@ -43,7 +43,7 @@ contract VaultSwapTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    /// Swap
+    // Swap
 
     function testCannotSwapWhenPaused() public {
         vault.manualPausePool(pool);
@@ -522,7 +522,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(daiBeforeSwap, dai.balanceOf(address(this)), "DAI balance changed");
     }
 
-    /// Utils
+    // Utils
 
     struct SwapBalances {
         uint256 vaultDai;
@@ -554,7 +554,7 @@ contract VaultSwapTest is BaseVaultTest {
             daiProtocolFee = protocolFee;
         }
 
-        // assets are transferred to/from user.
+        // Assets are transferred to/from user.
         assertEq(
             usdc.balanceOf(alice),
             balancesBefore.userUsdc - defaultAmount - usdcFee,

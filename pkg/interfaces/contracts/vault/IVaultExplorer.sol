@@ -499,7 +499,7 @@ interface IVaultExplorer {
     function getBufferTotalShares(IERC4626 wrappedToken) external view returns (uint256 bufferShares);
 
     /**
-     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
+     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the Vault.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer, in native token decimals
      * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer, in native token decimals

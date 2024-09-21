@@ -322,8 +322,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             "Sender USDC balance is incorrect"
         );
 
-        // All tokens paid by the user should stay in the vault since pool creator fees were not charged yet. However,
-        // calculating the amount of tokens in the vault involves previewRedeem, used multiple times by buffers,
+        // All tokens paid by the user should stay in the Vault since pool creator fees were not charged yet. However,
+        // calculating the amount of tokens in the Vault involves previewRedeem, used multiple times by buffers,
         // fee calculation, and to transform wrapped amounts in underlying amounts, which introduces rounding errors to
         // compare user and vault amounts. Make sure this rounding error is below 10 wei.
         uint256 senderDaiDelta = balancesBefore.balances.bobTokens[balancesBefore.daiIdx] -
@@ -339,8 +339,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             "Vault dai/waDAI balance is wrong"
         );
 
-        // All tokens paid by the user should stay in the vault since pool creator fees were not charged yet. However,
-        // calculating the amount of tokens in the vault involves previewRedeem, used multiple times by buffers,
+        // All tokens paid by the user should stay in the Vault since pool creator fees were not charged yet. However,
+        // calculating the amount of tokens in the Vault involves previewRedeem, used multiple times by buffers,
         // fee calculation, and to transform wrapped amounts in underlying amounts, which introduces rounding errors to
         // compare user and vault amounts. Make sure this rounding error is below 10 wei.
         uint256 senderUsdcDelta = balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] -

@@ -247,7 +247,7 @@ contract VaultUnitSwapTest is BaseTest {
             );
 
             uint256 amountCalculatedWithFee = mockedPoolAmountCalculatedScaled18 + swapFeeAmount;
-            // This sets the protocol swap fee percentage to the same as the swap fee percentage
+            // This sets the protocol swap fee percentage to the same as the swap fee percentage.
             (locals.params, locals.swapState, locals.poolData) = _makeParams(
                 SwapKind.EXACT_OUT,
                 defaultAmountGivenRaw,
@@ -281,7 +281,8 @@ contract VaultUnitSwapTest is BaseTest {
         );
     }
 
-    // Helpers.
+    // Helpers
+
     function _makeParams(
         SwapKind kind,
         uint256 amountGivenRaw,
@@ -332,7 +333,7 @@ contract VaultUnitSwapTest is BaseTest {
         SwapState memory swapState,
         PoolData memory poolData
     ) internal view {
-        // Check swap state
+        // Check swap state.
         assertEq(swapState.indexIn, 0, "Unexpected index in");
         assertEq(swapState.indexOut, 1, "Unexpected index out");
         assertEq(
@@ -364,7 +365,7 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(amountOut, expectedAmountOut, "Unexpected amountOut");
         assertEq(amountCalculatedScaled18, expectedAmountCalculatedScaled18, "Unexpected amountCalculatedScaled18");
 
-        // Expected fees
+        // Check expected fees.
         uint256 expectedProtocolSwapFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
             poolData.poolConfigBits.getAggregateSwapFeePercentage()
         );
@@ -398,7 +399,7 @@ contract VaultUnitSwapTest is BaseTest {
         SwapState memory swapState,
         PoolData memory poolData
     ) internal view {
-        // Check swap state
+        // Check swap state.
         assertEq(swapState.indexIn, 0, "Unexpected index in");
         assertEq(swapState.indexOut, 1, "Unexpected index out");
         assertEq(
@@ -432,7 +433,7 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(amountOut, amountGivenRaw, "Unexpected amountOut");
         assertEq(amountCalculatedScaled18, expectedAmountCalculatedScaled18, "Unexpected amountCalculatedScaled18");
 
-        // Expected fees
+        // Check expected fees.
         uint256 expectedProtocolFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
             poolData.poolConfigBits.getAggregateSwapFeePercentage()
         );
@@ -467,7 +468,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 feesOnAmountOut = params.kind == SwapKind.EXACT_IN ? totalFees : 0;
         uint256 feesOnAmountIn = params.kind == SwapKind.EXACT_IN ? 0 : totalFees;
 
-        // check balances updated
+        // Check balances updated.
         assertEq(
             poolData.balancesRaw[state.indexIn],
             initialBalances[state.indexIn] + amountIn - feesOnAmountIn,
@@ -479,7 +480,7 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected balanceRaw[state.indexOut]"
         );
 
-        // check _writePoolBalancesToStorage called
+        // Check _writePoolBalancesToStorage called.
         uint256[] memory expectedBalancesLiveScaled18 = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates
@@ -525,10 +526,10 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected storageLiveBalances[state.indexIn]"
         );
 
-        // check _takeDebt called
+        // Check _takeDebt called.
         assertEq(vault.getTokenDelta(swapTokens[0]), int256(amountIn), "Unexpected tokenIn delta");
 
-        // check _supplyCredit called
+        // Check _supplyCredit called.
         assertEq(vault.getTokenDelta(swapTokens[1]), -int256(amountOut), "Unexpected tokenOut delta");
     }
 
@@ -569,9 +570,7 @@ contract VaultUnitSwapTest is BaseTest {
         );
     }
 
-    /**
-     * @dev Prevents stack-too-deep while preserving any side-effects applied to the memory inside the Vault.
-     */
+    /// @dev Prevents stack-too-deep while preserving any side-effects applied to the memory inside the Vault.
     function _manualInternalSwap(
         TestStateLocals memory locals
     )

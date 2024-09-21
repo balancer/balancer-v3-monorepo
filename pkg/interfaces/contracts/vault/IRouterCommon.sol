@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 
-/// @notice Interface for funtions shared between the `Router` and `BatchRouter`.
+/// @notice Interface for functions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
     /**
      * @notice Data for the add liquidity hook.

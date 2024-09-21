@@ -106,12 +106,12 @@ contract DynamicFeePoolTest is BaseVaultTest {
         );
 
         vm.prank(alice);
-        // Perform a swap in the pool
+        // Perform a swap in the pool.
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapTooSmallAmountCalculated() public {
-        // Near 100% swap fee will result in near 0 amount calculated
+        // Near 100% swap fee will result in near 0 amount calculated.
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE - 1);
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 

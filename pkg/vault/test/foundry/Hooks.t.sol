@@ -309,7 +309,7 @@ contract HooksTest is BaseVaultTest {
         hooksConfig.shouldCallAfterSwap = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
-        // should fail
+        // Should fail.
         PoolHooksMock(poolHooksContract).setFailOnAfterSwapHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.AfterSwapHookFailed.selector);
@@ -322,7 +322,7 @@ contract HooksTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setFailOnBeforeAddLiquidityHook(true);
 
         vm.prank(bob);
-        // Doesn't fail, does not call hooks
+        // Doesn't fail, does not call hooks.
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -367,7 +367,7 @@ contract HooksTest is BaseVaultTest {
         hooksConfig.shouldCallBeforeAddLiquidity = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
-        // Force failure on AfterRemoveLiquidityHook
+        // Force failure on AfterRemoveLiquidityHook.
         PoolHooksMock(poolHooksContract).setFailOnBeforeAddLiquidityHook(true);
 
         vm.prank(bob);
@@ -449,7 +449,7 @@ contract HooksTest is BaseVaultTest {
         hooksConfig.shouldCallBeforeRemoveLiquidity = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
-        // Add liquidity first, so Alice can remove it later
+        // Add liquidity first, so Alice can remove it later.
         vm.prank(alice);
         router.addLiquidityUnbalanced(
             pool,
@@ -459,7 +459,7 @@ contract HooksTest is BaseVaultTest {
             bytes("")
         );
 
-        // Force failure on AfterRemoveLiquidityHook
+        // Force failure on AfterRemoveLiquidityHook.
         PoolHooksMock(poolHooksContract).setFailOnBeforeRemoveLiquidityHook(true);
 
         vm.prank(alice);
@@ -479,7 +479,7 @@ contract HooksTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setFailOnAfterAddLiquidityHook(true);
 
         vm.prank(bob);
-        // Doesn't fail, does not call hooks
+        // Doesn't fail, does not call hooks.
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -525,7 +525,7 @@ contract HooksTest is BaseVaultTest {
         hooksConfig.shouldCallAfterAddLiquidity = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
-        // Force failure on AfterRemoveLiquidityHook
+        // Force failure on AfterRemoveLiquidityHook.
         PoolHooksMock(poolHooksContract).setFailOnAfterAddLiquidityHook(true);
 
         vm.prank(bob);
@@ -544,7 +544,7 @@ contract HooksTest is BaseVaultTest {
         hooksConfig.shouldCallAfterAddLiquidity = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
-        // Return empty hook adjusted amounts
+        // Return empty hook adjusted amounts.
         PoolHooksMock(poolHooksContract).enableForcedHookAdjustedAmountsLiquidity(new uint256[](0));
 
         vm.prank(bob);

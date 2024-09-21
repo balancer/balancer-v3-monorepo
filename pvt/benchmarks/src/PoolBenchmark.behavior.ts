@@ -153,7 +153,7 @@ export class Benchmark {
       it(`measures initialization gas ${ethStatus}`, async () => {
         initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
 
-        // Measure
+        // Measure gas.
         const value = useEth ? TOKEN_AMOUNT : 0;
         const tx = await router
           .connect(alice)
@@ -176,7 +176,7 @@ export class Benchmark {
       });
 
       it('measures gas (Router)', async () => {
-        // Warm up
+        // Warm up.
         let tx = await router
           .connect(alice)
           .swapSingleTokenExactIn(this.pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
@@ -190,7 +190,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await router
           .connect(alice)
           .swapSingleTokenExactIn(this.pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
@@ -203,7 +203,7 @@ export class Benchmark {
       });
 
       it('measures gas (BatchRouter)', async () => {
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -232,7 +232,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -281,7 +281,7 @@ export class Benchmark {
       });
 
       it('measures gas', async () => {
-        // Warm up
+        // Warm up.
         const tx = await router.connect(alice).donate(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
         const receipt = await tx.wait();
         await saveSnap(this._testDirname, `[${this._poolType}] donation`, receipt);
@@ -317,14 +317,14 @@ export class Benchmark {
 
       it('measures gas (single token exact in)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         await router
           .connect(alice)
           .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[0], 1, false, '0x');
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure remove liquidity gas.
         const tx = await router
           .connect(alice)
           .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[0], 1, false, '0x');
@@ -338,7 +338,7 @@ export class Benchmark {
 
       it('measures gas (single token exact in - BatchRouter)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -361,7 +361,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -392,7 +392,7 @@ export class Benchmark {
 
       it('measures gas (single token exact out)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         await router
           .connect(alice)
           .removeLiquiditySingleTokenExactOut(
@@ -406,7 +406,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure remove liquidity gas.
         const tx = await router
           .connect(alice)
           .removeLiquiditySingleTokenExactOut(
@@ -427,7 +427,7 @@ export class Benchmark {
 
       it('measures gas (single token exact out - BatchRouter)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -450,7 +450,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -505,12 +505,12 @@ export class Benchmark {
           .fill(TOKEN_AMOUNT)
           .map((amount, index) => BigInt(amount / BigInt(index + 1)));
 
-        // Warm up
+        // Warm up.
         await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure add liquidity gas.
         const tx = await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
         const receipt = await tx.wait();
         await saveSnap(
@@ -521,7 +521,7 @@ export class Benchmark {
       });
 
       it('measures gas (unbalanced - BatchRouter)', async () => {
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -544,7 +544,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -576,14 +576,14 @@ export class Benchmark {
       it('measures gas (single token exact out)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
 
-        // Warm up
+        // Warm up.
         await router
           .connect(alice)
           .addLiquiditySingleTokenExactOut(this.pool, poolTokens[0], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure add liquidity gas.
         const tx = await router
           .connect(alice)
           .addLiquiditySingleTokenExactOut(this.pool, poolTokens[0], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
@@ -599,7 +599,7 @@ export class Benchmark {
       it('measures gas (single token exact out - BatchRouter)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
 
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -622,7 +622,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -757,7 +757,7 @@ export class Benchmark {
       });
 
       it('measures gas (buffers without liquidity exact in - BatchRouter)', async () => {
-        // Warm up
+        // Warm up.
         await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -788,7 +788,7 @@ export class Benchmark {
           '0x'
         );
 
-        // Measure
+        // Measure gas for the swap.
         const tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -828,7 +828,7 @@ export class Benchmark {
       });
 
       it('measures gas (buffers without liquidity exact out - BatchRouter)', async () => {
-        // Warm up
+        // Warm up.
         await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -859,7 +859,7 @@ export class Benchmark {
           '0x'
         );
 
-        // Measure
+        // Measure gas for the swap.
         const tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -899,11 +899,11 @@ export class Benchmark {
       });
 
       it('measures gas (buffers with liquidity exact in - BatchRouter)', async () => {
-        // Add liquidity to buffers
+        // Add liquidity to buffers.
         await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
         await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
 
-        // Warm up
+        // Warm up.
         await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -934,7 +934,7 @@ export class Benchmark {
           '0x'
         );
 
-        // Measure
+        // Measure gas for the swap.
         const tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -974,11 +974,11 @@ export class Benchmark {
       });
 
       it('measures gas (buffers with liquidity exact out - BatchRouter)', async () => {
-        // Add liquidity to buffers
+        // Add liquidity to buffers.
         await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
         await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
 
-        // Warm up
+        // Warm up.
         await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -1009,7 +1009,7 @@ export class Benchmark {
           '0x'
         );
 
-        // Measure
+        // Measure gas for the swap.
         const tx = await batchRouter.connect(alice).swapExactOut(
           [
             {

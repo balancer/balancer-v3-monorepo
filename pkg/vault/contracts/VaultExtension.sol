@@ -65,7 +65,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
 
-    /// @dev Functions with this modifier can only be delegate-called by the vault.
+    /// @dev Functions with this modifier can only be delegate-called by the Vault.
     modifier onlyVaultDelegateCall() {
         _ensureVaultDelegateCall();
         _;
@@ -272,12 +272,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
 
-                // Gets the default HooksConfig from the hook contract and saves in the vault state.
+                // Gets the default HooksConfig from the hook contract and saves it in the Vault state.
                 // Storing into hooksConfig first avoids stack-too-deep.
                 HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
                 // When enableHookAdjustedAmounts == true, hooks are able to modify the result of a liquidity or swap
-                // operation by implementing an after hook. For simplicity, the vault only supports modifying the
+                // operation by implementing an after hook. For simplicity, the Vault only supports modifying the
                 // calculated part of the operation. As such, when a hook supports adjusted amounts, it cannot support
                 // unbalanced liquidity operations, as this would introduce instances where the amount calculated is the
                 // input amount (EXACT_OUT).
@@ -772,6 +772,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        //
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(pool, from, exactBptAmountIn);
 
