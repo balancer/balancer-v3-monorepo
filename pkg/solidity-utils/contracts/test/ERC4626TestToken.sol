@@ -117,8 +117,10 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
 
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         if (_maliciousWrapper) {
-            // A malicious wrapper does nothing so it can use the approval to drain the vault.
-            return 0;
+            // A malicious wrapper does not take underlying tokens to use the vault approval later.
+            uint256 sharesToReturn = previewDeposit(assets);
+            _mint(receiver, sharesToReturn);
+            return sharesToReturn;
         }
 
         return super.deposit(assets, receiver);
