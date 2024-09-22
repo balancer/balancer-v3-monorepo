@@ -700,7 +700,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _ensureValidTradeAmount(tradeAmount);
     }
 
-    function ensureValidSwapAmounts(uint256 amountGiven, uint256 amountCalculated, SwapKind kind) external view {
-        _ensureValidSwapAmounts(amountGiven, amountCalculated, kind);
+    function ensureValidSwapAmount(uint256 tradeAmount) external view {
+        _ensureValidSwapAmount(tradeAmount);
     }
 }

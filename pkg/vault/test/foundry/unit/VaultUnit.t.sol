@@ -254,62 +254,27 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testMinimumTradeAmountWithZero() public view {
-        // Should succeed with 0 or the minimum
+        // Should succeed with 0 or the minimum.
         vault.ensureValidTradeAmount(0);
 
-        // Should succeed when it's the minimum
+        // Should succeed when it's the minimum.
         vault.ensureValidTradeAmount(vault.getMinimumTradeAmount());
     }
 
     function testMinimumTradeAmountBelowMinimum() public {
-        // Should fail below minimum
+        // Should fail below minimum.
         uint256 tradeAmount = vault.getMinimumTradeAmount() - 1;
 
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
         vault.ensureValidTradeAmount(tradeAmount);
     }
 
-    function testMinimumSwapAmountsWithZero() public view {
-        // Should allow 0 trades
-        vault.ensureValidSwapAmounts(0, 0, SwapKind.EXACT_IN);
-        vault.ensureValidSwapAmounts(0, 0, SwapKind.EXACT_OUT);
-    }
+    function testMinimumSwapAmount() public {
+        // Should succeed when it's the minimum
+        vault.ensureValidTradeAmount(vault.getMinimumTradeAmount());
 
-    function testMinimumSwapAmountsValidCases() public view {
-        uint256 minAmount = vault.getMinimumTradeAmount();
-
-        // Should succeed with 0 amountOut and anything in
-        vault.ensureValidSwapAmounts(minAmount - 1, 0, SwapKind.EXACT_IN);
-        vault.ensureValidSwapAmounts(minAmount, 0, SwapKind.EXACT_IN);
-        vault.ensureValidSwapAmounts(100e18, 0, SwapKind.EXACT_IN);
-
-        vault.ensureValidSwapAmounts(0, minAmount - 1, SwapKind.EXACT_OUT);
-        vault.ensureValidSwapAmounts(0, minAmount, SwapKind.EXACT_OUT);
-        vault.ensureValidSwapAmounts(0, 100e18, SwapKind.EXACT_OUT);
-    }
-
-    function testMinimumSwapAmountsInvalidCases() public {
-        uint256 minAmount = vault.getMinimumTradeAmount();
-
-        // Should fail with 0 in, minimum out
+        // Should fail with 0 (unlke testMinimumTradeAmount).
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vault.ensureValidSwapAmounts(0, minAmount, SwapKind.EXACT_IN);
-
-        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vault.ensureValidSwapAmounts(minAmount, 0, SwapKind.EXACT_OUT);
-
-        // Should fail with min 0, < min out
-        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vault.ensureValidSwapAmounts(minAmount, minAmount - 1, SwapKind.EXACT_IN);
-
-        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vault.ensureValidSwapAmounts(minAmount - 1, minAmount, SwapKind.EXACT_OUT);
-
-        // Should fail with < min on both
-        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vault.ensureValidSwapAmounts(minAmount - 1, minAmount - 1, SwapKind.EXACT_IN);
-
-        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vault.ensureValidSwapAmounts(minAmount - 1, minAmount - 1, SwapKind.EXACT_OUT);
+        vault.ensureValidSwapAmount(0);
     }
 }

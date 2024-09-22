@@ -279,5 +279,5 @@ interface IVaultMainMock {
 
     function ensureValidTradeAmount(uint256 tradeAmount) external view;
 
-    function ensureValidSwapAmounts(uint256 amountGiven, uint256 amountCalculated, SwapKind kind) external view;
+    function ensureValidSwapAmount(uint256 tradeAmount) external view;
 }
