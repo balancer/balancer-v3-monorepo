@@ -230,6 +230,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams = _buildPoolSwapParams(vaultSwapParams, swapState, poolData);
         }
 
+        // Prohibit "dust" trades. `_ensureValidSwapAmount` does not allow zero. Note that a zero amount given will be
+        // blocked at the Router level anyway (at least with the standard Router).
+        _ensureValidSwapAmount(swapState.amountGivenScaled18);
+
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         //
@@ -256,7 +260,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams
         );
 
-        _ensureValidSwapAmounts(swapState.amountGivenScaled18, amountCalculatedScaled18, vaultSwapParams.kind);
+        // Prohibit "dust trades" generally, but explicitly allow 0 tokens out.
+        if (vaultSwapParams.kind == SwapKind.EXACT_IN && amountCalculatedScaled18 != 0) {
+            _ensureValidSwapAmount(amountCalculatedScaled18);
+        }
 
         // The new amount calculated is 'amountCalculated + delta'. If the underlying hook fails, or limits are
         // violated, `onAfterSwap` will revert. Uses msg.sender as the router (the contract that called the vault).
@@ -1477,20 +1484,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     // exploitation of rounding errors. This is called in the context of adding or removing liquidity, so zero is
     // allowed to support single-token operations.
     function _ensureValidTradeAmount(uint256 tradeAmount) internal view {
-        if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
-            revert TradeAmountTooSmall();
+        if (tradeAmount != 0) {
+            _ensureValidSwapAmount(tradeAmount);
         }
     }
 
     // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors. This is called in the swap context, so zero is allowed for `amountOut` (i.e.,
-    // donation), but small trades that extract value are explicitly blocked (e.g., zero in, non-zero out).
-    function _ensureValidSwapAmounts(uint256 amountGiven, uint256 amountCalculated, SwapKind kind) internal view {
-        (uint256 amountIn, uint256 amountOut) = kind == SwapKind.EXACT_IN
-            ? (amountGiven, amountCalculated)
-            : (amountCalculated, amountGiven);
-
-        if ((amountIn < _MINIMUM_TRADE_AMOUNT || amountOut < _MINIMUM_TRADE_AMOUNT) && amountOut != 0) {
+    // exploitation of rounding errors. This is called in the swap context, so zero is not a valid amount. Note that
+    // the swap code (which knows the direction) explicitly allows 0 tokens out by not calling this in those cases.
+    function _ensureValidSwapAmount(uint256 tradeAmount) internal view {
+        if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
         }
     }
