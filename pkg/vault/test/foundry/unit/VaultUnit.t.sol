@@ -73,14 +73,16 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolSwapParams.userData, vaultSwapParams.userData, "Unexpected userData");
     }
 
-    function testComputeAndChargeAggregateSwapFees() public {
+    function testComputeAndChargeAggregateSwapFees__Fuzz(
+        uint256 totalSwapFeeAmountScaled18,
+        uint256 aggregateSwapFeePercentage
+    ) public {
+        totalSwapFeeAmountScaled18 = bound(totalSwapFeeAmountScaled18, 0, 1e18);
+        aggregateSwapFeePercentage = bound(aggregateSwapFeePercentage, 1e12, 50e16);
+
         vault.manualSetPoolRegistered(pool, true);
-
-        uint256 tokenIndex = 0;
         vault.manualSetAggregateSwapFeeAmount(pool, dai, 0);
-
-        uint256 totalSwapFeeAmountScaled18 = 1.123456789987654321e18;
-        uint256 aggregateSwapFeePercentage = 10.98765432112345e16;
+        uint256 tokenIndex = 0;
 
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
