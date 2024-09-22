@@ -76,6 +76,9 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
     /// @dev Indicates that the router that called the Vault is not trusted, so any operations should revert.
     error RouterNotTrusted();
 
+    /// @dev Indicates that the `owner` has disabled swaps.
+    error SwapsDisabled();
+
     constructor(
         NewPoolParams memory params,
         IVault vault,
@@ -169,6 +172,13 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         _startGradualWeightChange(startTime.toUint32(), endTime.toUint32(), _getNormalizedWeights(), endWeights);
     }
 
+    /// @inheritdoc WeightedPool
+    function onSwap(PoolSwapParams memory request) public view override onlyVault returns (uint256) {
+        if (!_getPoolSwapEnabled()) {
+            revert SwapsDisabled();
+        }
+        return super.onSwap(request);
+    }
     /*******************************************************************************
                                     Hook Functions
     *******************************************************************************/
@@ -193,8 +203,6 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
 
     // Return HookFlags struct that indicates which hooks this contract supports
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
-        // Check whether swaps are enabled in `onBeforeSwap`.
-        hookFlags.shouldCallBeforeSwap = true;
         // Ensure the caller is the owner, as only the owner can add liquidity.
         hookFlags.shouldCallBeforeAddLiquidity = true;
     }
@@ -218,16 +226,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         if (router == _TRUSTED_ROUTER) {
             return IRouterCommon(router).getSender() == owner();
         }
-
         revert RouterNotTrusted();
-    }
-
-    /**
-     * @notice Called before a swap to let the pool block swaps if not enabled.
-     * @return success True if the pool has swaps enabled.
-     */
-    function onBeforeSwap(PoolSwapParams calldata, address) public view override onlyVault returns (bool) {
-        return _getPoolSwapEnabled();
     }
 
     /*******************************************************************************

@@ -325,7 +325,7 @@ contract LBPoolTest is BasePoolTest {
 
         // Test swap when disabled
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(LBPool.SwapsDisabled.selector));
         router.swapSingleTokenExactIn(
             address(pool),
             IERC20(dai),
