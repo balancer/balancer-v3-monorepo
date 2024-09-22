@@ -179,6 +179,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         }
         return super.onSwap(request);
     }
+
     /*******************************************************************************
                                     Hook Functions
     *******************************************************************************/
