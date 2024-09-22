@@ -611,7 +611,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
         amountsInRaw = new uint256[](locals.numTokens);
-        // swapFeeAmounts shall store scaled18 amounts first, and then it will be reused to store raw amounts.
+        // `swapFeeAmounts` stores scaled18 amounts first, and is then reused to store raw amounts.
         uint256[] memory swapFeeAmounts;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
@@ -868,7 +868,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
         amountsOutRaw = new uint256[](locals.numTokens);
-        // swapFeeAmounts shall store scaled18 amounts first, and then it will be reused to store raw amounts.
+        // `swapFeeAmounts` stores scaled18 amounts first, and is then reused to store raw amounts.
         uint256[] memory swapFeeAmounts;
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
