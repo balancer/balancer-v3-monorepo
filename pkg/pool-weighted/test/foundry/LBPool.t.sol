@@ -20,8 +20,8 @@ import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksM
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 
-import { LBPoolFactory } from "../../contracts/LBPoolFactory.sol";
-import { LBPool } from "../../contracts/LBPool.sol";
+import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
+import { LBPool } from "../../contracts/lbp/LBPool.sol";
 
 contract LBPoolTest is BasePoolTest {
     using CastingHelpers for address[];

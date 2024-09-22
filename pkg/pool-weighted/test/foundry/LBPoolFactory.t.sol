@@ -14,7 +14,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-import { LBPoolFactory } from "../../contracts/LBPoolFactory.sol";
+import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 
 contract LBPoolFactoryTest is BaseVaultTest {
     using CastingHelpers for address[];

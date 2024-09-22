@@ -15,8 +15,8 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-import { GradualValueChange } from "./lib/GradualValueChange.sol";
-import { WeightedPool } from "./WeightedPool.sol";
+import { GradualValueChange } from "../lib/GradualValueChange.sol";
+import { WeightedPool } from "../WeightedPool.sol";
 
 /**
  * @notice Weighted Pool with mutable weights, designed to support v3 Liquidity Bootstrapping.

@@ -9,7 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
-import { WeightedPool } from "./WeightedPool.sol";
+import { WeightedPool } from "../WeightedPool.sol";
 import { LBPool } from "./LBPool.sol";
 
 /**
