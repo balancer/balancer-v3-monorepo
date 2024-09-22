@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
 /**
  * @notice Base contract for v3 factories to support pause windows for pools based on the factory deployment time.
  * @dev Each pool deployment calls `getPauseWindowDuration` on the factory so that all Pools created by this factory
@@ -16,8 +14,6 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * When the buffer period expires, it will unpause automatically, and remain permissionless forever after.
  */
 contract FactoryWidePauseWindow {
-    using SafeCast for *;
-
     // This contract relies on timestamps - the usual caveats apply.
     // solhint-disable not-rely-on-time
 
