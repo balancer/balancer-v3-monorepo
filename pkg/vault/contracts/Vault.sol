@@ -1467,8 +1467,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors. This is called in the swap context, so zero is not a valid amount. Note that
-    // the swap code (which knows the direction) explicitly allows 0 tokens out by not calling this in those cases.
+    // exploitation of rounding errors. This is called in the swap context, so zero is not a valid amount.
     function _ensureValidSwapAmount(uint256 tradeAmount) internal view {
         if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
