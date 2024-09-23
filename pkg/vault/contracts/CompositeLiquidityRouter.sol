@@ -377,7 +377,111 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ***************************************************************************/
 
     /// @inheritdoc ICompositeLiquidityRouter
-    function removeLiquidityProportionalFromNestedPools(
+    function addLiquidityUnbalancedNestedPool(
+        address parentPool,
+        address[] memory tokensIn,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeWithSelector(
+                        CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
+                        AddLiquidityHookParams({
+                            pool: parentPool,
+                            sender: msg.sender,
+                            maxAmountsIn: exactAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            kind: AddLiquidityKind.UNBALANCED,
+                            wethIsEth: false,
+                            userData: userData
+                        }),
+                        tokensIn
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    function addLiquidityUnbalancedNestedPoolHook(
+        AddLiquidityHookParams calldata params,
+        address[] memory tokensIn
+    ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+
+        if (params.maxAmountsIn.length != tokensIn.length) {
+            // If tokensIn length does not match with maxAmountsIn length, maxAmountsIn is wrong.
+            revert WrongMaxAmountsInLength();
+        }
+
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
+        }
+
+        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
+            address childToken = address(parentPoolTokens[i]);
+
+            if (_vault.isPoolRegistered(childToken)) {
+                // Token is a BPT, so add liquidity to the child pool.
+
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
+                uint256[] memory childPoolAmountsIn = new uint256[](childPoolTokens.length);
+
+                for (uint256 j = 0; j < childPoolTokens.length; j++) {
+                    childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(address(childPoolTokens[j]));
+                    _currentSwapTokenInAmounts().tSet(address(childPoolTokens[j]), 0);
+                }
+
+                // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent pool
+                // will be a logic insertion, not a token transfer.
+                (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
+                    AddLiquidityParams({
+                        pool: childToken,
+                        to: address(_vault),
+                        maxAmountsIn: childPoolAmountsIn,
+                        minBptAmountOut: 0,
+                        kind: params.kind,
+                        userData: params.userData
+                    })
+                );
+
+                _currentSwapTokenInAmounts().tSet(childToken, exactChildBptAmountOut);
+
+                // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
+                // advance.
+                _vault.settle(IERC20(childToken), exactChildBptAmountOut);
+            }
+        }
+
+        uint256[] memory parentPoolAmountsIn = new uint256[](parentPoolTokens.length);
+
+        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
+            parentPoolAmountsIn[i] = _currentSwapTokenInAmounts().tGet(address(parentPoolTokens[i]));
+        }
+
+        (, exactBptAmountOut, ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: parentPoolAmountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            _currentSwapTokensIn().add(tokensIn[i]);
+            _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
+        }
+
+        _settlePaths(params.sender, false);
+    }
+
+    /// @inheritdoc ICompositeLiquidityRouter
+    function removeLiquidityProportionalNestedPool(
         address parentPool,
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
@@ -387,7 +491,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         (amountsOut) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
-                    CompositeLiquidityRouter.removeLiquidityProportionalFromNestedPoolsHook.selector,
+                    CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook.selector,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: parentPool,
@@ -404,7 +508,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         );
     }
 
-    function removeLiquidityProportionalFromNestedPoolsHook(
+    function removeLiquidityProportionalNestedPoolHook(
         RemoveLiquidityHookParams calldata params,
         address[] memory tokensOut
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
