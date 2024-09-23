@@ -114,6 +114,13 @@ library ArrayHelpers {
         return ret;
     }
 
+    function toMemoryArray(int256[2] memory array) internal pure returns (int256[] memory) {
+        int256[] memory ret = new int256[](2);
+        ret[0] = array[0];
+        ret[1] = array[1];
+        return ret;
+    }
+
     function toMemoryArray(uint256[3] memory array) internal pure returns (uint256[] memory) {
         uint256[] memory ret = new uint256[](3);
         ret[0] = array[0];

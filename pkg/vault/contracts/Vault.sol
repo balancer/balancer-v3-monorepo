@@ -340,13 +340,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
     }
 
+    /**
+     * @dev Auxiliary struct to prevent stack-too-deep issues inside `_swap` function.
+     * Total swap fees include LP (pool) fees and aggregate (protocol + pool creator) fees.
+     */
     struct SwapInternalLocals {
-        uint256 swapFeeAmountScaled18;
-        uint256 swapFeeIndex;
-        IERC20 swapFeeToken;
-        uint256 balanceInIncrement;
-        uint256 balanceOutDecrement;
-        uint256 swapFeeAmountRaw;
+        uint256 totalSwapFeeAmountScaled18;
+        uint256 totalSwapFeeAmountRaw;
+        uint256 aggregateFeeAmountRaw;
     }
 
     /**
@@ -375,6 +376,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         SwapInternalLocals memory locals;
 
+        if (vaultSwapParams.kind == SwapKind.EXACT_IN) {
+            // Round up to avoid losses during precision loss.
+            locals.totalSwapFeeAmountScaled18 = poolSwapParams.amountGivenScaled18.mulUp(swapState.swapFeePercentage);
+            poolSwapParams.amountGivenScaled18 -= locals.totalSwapFeeAmountScaled18;
+        }
+
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap.
         amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(poolSwapParams);
 
@@ -384,12 +391,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // (1) and (2): get raw amounts and check limits.
         if (vaultSwapParams.kind == SwapKind.EXACT_IN) {
-            // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
-            // amountOut. Round up to avoid losses during precision loss.
-            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(swapState.swapFeePercentage);
-
-            // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
-            amountCalculatedScaled18 -= locals.swapFeeAmountScaled18;
+            // Restore the original input value; this function should not mutate memory inputs.
+            // At this point swap fee amounts have already been computed for EXACT_IN.
+            poolSwapParams.amountGivenScaled18 = swapState.amountGivenScaled18;
 
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
             amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundDown(
@@ -410,12 +414,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
             // `amountCalculated * fee% / (100% - fee%)`. Add it to the calculated amountIn. Round up to avoid losses
             // during precision loss.
-            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulDivUp(
+            locals.totalSwapFeeAmountScaled18 = amountCalculatedScaled18.mulDivUp(
                 swapState.swapFeePercentage,
                 swapState.swapFeePercentage.complement()
             );
 
-            amountCalculatedScaled18 += locals.swapFeeAmountScaled18;
+            amountCalculatedScaled18 += locals.totalSwapFeeAmountScaled18;
 
             // For `ExactOut` the amount calculated is entering the Vault, so we round up.
             amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundUp(
@@ -435,40 +439,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(vaultSwapParams.tokenOut, amountOutRaw);
 
         // 4) Compute and charge protocol and creator fees.
-        (locals.swapFeeIndex, locals.swapFeeToken) = vaultSwapParams.kind == SwapKind.EXACT_IN
-            ? (swapState.indexOut, vaultSwapParams.tokenOut)
-            : (swapState.indexIn, vaultSwapParams.tokenIn);
-
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        uint256 totalFeesRaw = _computeAndChargeAggregateSwapFees(
+        (locals.totalSwapFeeAmountRaw, locals.aggregateFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
             poolData,
-            locals.swapFeeAmountScaled18,
+            locals.totalSwapFeeAmountScaled18,
             vaultSwapParams.pool,
-            locals.swapFeeToken,
-            locals.swapFeeIndex
+            vaultSwapParams.tokenIn,
+            swapState.indexIn
         );
 
         // 5) Pool balances: raw and live.
-        //
-        // Adjust for raw swap amounts and total fees on the calculated end.
-        // So that fees are always subtracted from pool balances:
-        // For ExactIn, we increase the tokenIn balance by `amountIn`, and decrease the tokenOut balance by the
-        // (`amountOut` + fees).
-        // For ExactOut, we increase the tokenInBalance by (`amountIn` - fees), and decrease the tokenOut balance by
-        // `amountOut`.
-        (locals.balanceInIncrement, locals.balanceOutDecrement) = vaultSwapParams.kind == SwapKind.EXACT_IN
-            ? (amountInRaw, amountOutRaw + totalFeesRaw)
-            : (amountInRaw - totalFeesRaw, amountOutRaw);
 
         poolData.updateRawAndLiveBalance(
             swapState.indexIn,
-            poolData.balancesRaw[swapState.indexIn] + locals.balanceInIncrement,
+            poolData.balancesRaw[swapState.indexIn] + amountInRaw - locals.aggregateFeeAmountRaw,
             Rounding.ROUND_DOWN
         );
         poolData.updateRawAndLiveBalance(
             swapState.indexOut,
-            poolData.balancesRaw[swapState.indexOut] - locals.balanceOutDecrement,
+            poolData.balancesRaw[swapState.indexOut] - amountOutRaw,
             Rounding.ROUND_DOWN
         );
 
@@ -486,13 +476,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // 7) Off-chain events.
-        // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
-        // also contains the rate, undo it when converting to raw.
-        locals.swapFeeAmountRaw = locals.swapFeeAmountScaled18.toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[locals.swapFeeIndex],
-            poolData.tokenRates[locals.swapFeeIndex]
-        );
-
         emit Swap(
             vaultSwapParams.pool,
             vaultSwapParams.tokenIn,
@@ -500,8 +483,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountInRaw,
             amountOutRaw,
             swapState.swapFeePercentage,
-            locals.swapFeeAmountRaw,
-            locals.swapFeeToken
+            locals.totalSwapFeeAmountRaw
         );
     }
 
@@ -598,7 +580,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     // Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
         uint256 numTokens;
-        uint256 totalFeesRaw;
+        uint256 aggregateSwapFeeAmountRaw;
         uint256 tokenIndex;
     }
 
@@ -629,12 +611,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
         amountsInRaw = new uint256[](locals.numTokens);
-        uint256[] memory swapFeeAmountsScaled18;
+        // `swapFeeAmounts` stores scaled18 amounts first, and is then reused to store raw amounts.
+        uint256[] memory swapFeeAmounts;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
             bptAmountOut = params.minBptAmountOut;
-            // Initializes the swapFeeAmountsScaled18 empty array (no swap fees on proportional add liquidity).
-            swapFeeAmountsScaled18 = new uint256[](locals.numTokens);
+            // Initializes the swapFeeAmounts empty array (no swap fees on proportional add liquidity).
+            swapFeeAmounts = new uint256[](locals.numTokens);
 
             amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(
                 poolData.balancesLiveScaled18,
@@ -644,7 +627,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else if (params.kind == AddLiquidityKind.DONATION) {
             poolData.poolConfigBits.requireDonationEnabled();
 
-            swapFeeAmountsScaled18 = new uint256[](maxAmountsInScaled18.length);
+            swapFeeAmounts = new uint256[](maxAmountsInScaled18.length);
             bptAmountOut = 0;
             amountsInScaled18 = maxAmountsInScaled18;
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
@@ -655,7 +638,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // `maxAmountsIn` is preserved.
             ScalingHelpers.copyToArray(params.maxAmountsIn, amountsInRaw);
 
-            (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
+            (bptAmountOut, swapFeeAmounts) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
@@ -669,7 +652,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             locals.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
 
             amountsInScaled18 = maxAmountsInScaled18;
-            (amountsInScaled18[locals.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
+            (amountsInScaled18[locals.tokenIndex], swapFeeAmounts) = BasePoolMath
                 .computeAddLiquiditySingleTokenExactOut(
                     poolData.balancesLiveScaled18,
                     locals.tokenIndex,
@@ -682,7 +665,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfigBits.requireAddCustomLiquidityEnabled();
 
             // Uses msg.sender as the router (the contract that called the vault).
-            (amountsInScaled18, bptAmountOut, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
+            (amountsInScaled18, bptAmountOut, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
                 .onAddLiquidityCustom(
                     msg.sender,
                     maxAmountsInScaled18,
@@ -737,9 +720,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _takeDebt(token, amountInRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
+            // swapFeeAmounts[i] is now raw instead of scaled.
+            (swapFeeAmounts[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
-                swapFeeAmountsScaled18[i],
+                swapFeeAmounts[i],
                 params.pool,
                 token,
                 i
@@ -752,7 +736,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // A pool's token balance increases by amounts in after adding liquidity, minus fees.
             poolData.updateRawAndLiveBalance(
                 i,
-                poolData.balancesRaw[i] + amountInRaw - locals.totalFeesRaw,
+                poolData.balancesRaw[i] + amountInRaw - locals.aggregateSwapFeeAmountRaw,
                 Rounding.ROUND_DOWN
             );
         }
@@ -766,7 +750,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _mint(address(params.pool), params.to, bptAmountOut);
 
         // 8) Off-chain events.
-        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), swapFeeAmounts);
     }
 
     /***************************************************************************
@@ -883,12 +867,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
-        uint256[] memory swapFeeAmountsScaled18;
         amountsOutRaw = new uint256[](locals.numTokens);
+        // `swapFeeAmounts` stores scaled18 amounts first, and is then reused to store raw amounts.
+        uint256[] memory swapFeeAmounts;
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
             bptAmountIn = params.maxBptAmountIn;
-            swapFeeAmountsScaled18 = new uint256[](locals.numTokens);
+            swapFeeAmounts = new uint256[](locals.numTokens);
             amountsOutScaled18 = BasePoolMath.computeProportionalAmountsOut(
                 poolData.balancesLiveScaled18,
                 _totalSupply(params.pool),
@@ -900,7 +885,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountsOutScaled18 = minAmountsOutScaled18;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
-            (amountsOutScaled18[locals.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
+            (amountsOutScaled18[locals.tokenIndex], swapFeeAmounts) = BasePoolMath
                 .computeRemoveLiquiditySingleTokenExactIn(
                     poolData.balancesLiveScaled18,
                     locals.tokenIndex,
@@ -915,7 +900,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             amountsOutRaw[locals.tokenIndex] = params.minAmountsOut[locals.tokenIndex];
 
-            (bptAmountIn, swapFeeAmountsScaled18) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
+            (bptAmountIn, swapFeeAmounts) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
                 locals.tokenIndex,
                 amountsOutScaled18[locals.tokenIndex],
@@ -926,7 +911,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
             poolData.poolConfigBits.requireRemoveCustomLiquidityEnabled();
             // Uses msg.sender as the router (the contract that called the vault)
-            (bptAmountIn, amountsOutScaled18, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
+            (bptAmountIn, amountsOutScaled18, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
                     msg.sender,
                     params.maxBptAmountIn,
@@ -978,9 +963,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _supplyCredit(token, amountOutRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
+            // swapFeeAmounts[i] is now raw instead of scaled.
+            (swapFeeAmounts[i], locals.aggregateSwapFeeAmountRaw) = _computeAndChargeAggregateSwapFees(
                 poolData,
-                swapFeeAmountsScaled18[i],
+                swapFeeAmounts[i],
                 params.pool,
                 token,
                 i
@@ -994,7 +980,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // (potentially by 0). Also adjust by protocol and pool creator fees.
             poolData.updateRawAndLiveBalance(
                 i,
-                poolData.balancesRaw[i] - (amountOutRaw + locals.totalFeesRaw),
+                poolData.balancesRaw[i] - (amountOutRaw + locals.aggregateSwapFeeAmountRaw),
                 Rounding.ROUND_DOWN
             );
         }
@@ -1020,7 +1006,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params.pool,
             params.from,
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
-            amountsOutRaw.unsafeCastToInt256(false)
+            amountsOutRaw.unsafeCastToInt256(false),
+            swapFeeAmounts
         );
     }
 
@@ -1031,39 +1018,40 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Splitting the fees and event emission occur during fee collection.
      * Should only be called in a non-reentrant context.
      *
-     * @return totalFeesRaw Sum of protocol and pool creator fees raw
+     * @return totalSwapFeeAmountRaw Total swap fees raw (LP + aggregate protocol fees)
+     * @return aggregateSwapFeeAmountRaw Sum of protocol and pool creator fees raw
      */
     function _computeAndChargeAggregateSwapFees(
         PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
+        uint256 totalSwapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) internal returns (uint256 totalFeesRaw) {
-        uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
-        // If swapFeeAmount equals zero, no need to charge anything.
-        if (
-            swapFeeAmountScaled18 > 0 &&
-            aggregateSwapFeePercentage > 0 &&
-            poolData.poolConfigBits.isPoolInRecoveryMode() == false
-        ) {
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(aggregateSwapFeePercentage);
-
-            // Ensure we can never charge more than the total swap fee.
-            if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
-                revert ProtocolFeesExceedTotalCollected();
-            }
-
-            totalFeesRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+    ) internal returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
+        // If totalSwapFeeAmountScaled18 equals zero, no need to charge anything.
+        if (totalSwapFeeAmountScaled18 > 0 && poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
+            totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
             );
+
+            uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
+
+            // We have already calculated raw total fees rounding up.
+            // Total fees = LP fees + aggregate fees, so by rounding aggregate fees down we round the fee split in
+            // the LPs' favor, in turn increasing token balances and the pool invariant.
+            aggregateSwapFeeAmountRaw = totalSwapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
+
+            // Ensure we can never charge more than the total swap fee.
+            if (aggregateSwapFeeAmountRaw > totalSwapFeeAmountRaw) {
+                revert ProtocolFeesExceedTotalCollected();
+            }
 
             // Both Swap and Yield fees are stored together in a PackedTokenBalance.
             // We have designated "Raw" the derived half for Swap fee storage.
             bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
             _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
-                currentPackedBalance.getBalanceRaw() + totalFeesRaw
+                currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
             );
         }
     }
