@@ -29,7 +29,6 @@ struct WeightedPoolImmutableData {
  * @param tokenRates 18-decimal FP values for rate tokens (e.g., yield-bearing), or FP(1) for standard tokens
  * @param staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage
  * @param totalSupply The current total supply of the pool tokens (BPT)
- * @param bptRate The current rate of a pool token (BPT) = invariant / totalSupply
  * @param isPoolInitialized If false, the pool has not been seeded with initial liquidity, so operations will revert
  * @param isPoolPaused If true, the pool is paused, and all non-recovery-mode state-changing operations will revert
  * @param isPoolInRecoveryMode If true, Recovery Mode withdrawals are enabled, and live balances may be inaccurate
@@ -39,7 +38,6 @@ struct WeightedPoolDynamicData {
     uint256[] tokenRates;
     uint256 staticSwapFeePercentage;
     uint256 totalSupply;
-    uint256 bptRate;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
