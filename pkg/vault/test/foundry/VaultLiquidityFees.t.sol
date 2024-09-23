@@ -85,7 +85,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         aggregateSwapFees = new uint256[](2);
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2) + 1;
-        aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
+        aggregateSwapFees[daiIdx] = swapFeeAmount.mulDown(aggregateSwapFeePercentage);
 
         vm.prank(alice);
         uint256 amountIn = router.addLiquiditySingleTokenExactOut(
@@ -150,7 +150,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         amountsOut[daiIdx] = defaultAmount;
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2) + 1;
-        aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
+        aggregateSwapFees[daiIdx] = swapFeeAmount.mulDown(aggregateSwapFeePercentage);
 
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             pool,

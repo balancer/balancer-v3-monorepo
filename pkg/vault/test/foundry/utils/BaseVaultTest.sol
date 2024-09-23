@@ -258,6 +258,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {
+        return getBalances(user, Rounding.ROUND_DOWN);
+    }
+
+    function getBalances(address user, Rounding invariantRounding) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
         balances.aliceBpt = IERC20(pool).balanceOf(alice);
         balances.bobBpt = IERC20(pool).balanceOf(bob);
@@ -271,7 +275,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         balances.poolTokens = poolBalances;
         uint256 numTokens = tokens.length;
 
-        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, invariantRounding);
         balances.userTokens = new uint256[](numTokens);
         balances.aliceTokens = new uint256[](numTokens);
         balances.bobTokens = new uint256[](numTokens);

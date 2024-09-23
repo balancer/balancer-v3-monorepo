@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 
@@ -17,6 +18,29 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+    }
+
+    function testRecoveryModeEmitsPoolBalanceChangedEvent() public {
+        // Add initial liquidity.
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+
+        // Put pool in recovery mode.
+        vault.manualEnableRecoveryMode(pool);
+
+        vm.expectEmit();
+        emit IVaultEvents.PoolBalanceChanged(
+            pool,
+            alice,
+            [-int256(defaultAmount) / 2, -int256(defaultAmount) / 2].toMemoryArray(),
+            new uint256[](2)
+        );
+
+        // Do a recovery withdrawal.
+        vm.prank(alice);
+        router.removeLiquidityRecovery(pool, bptAmountOut / 2);
     }
 
     function testRecoveryModeBalances() public {
