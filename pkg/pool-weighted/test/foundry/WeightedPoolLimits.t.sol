@@ -135,8 +135,6 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         _updatePoolParams(daiWeight, swapFeePercentage);
 
         uint256 postInitSnapshot = vm.snapshot();
-        _testGetBptRate();
-        vm.revertTo(postInitSnapshot);
 
         _testAddLiquidity();
         vm.revertTo(postInitSnapshot);
@@ -321,36 +319,6 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
 
         assertEq(balances[daiIdx], expectedBalances[daiIdx], "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], expectedBalances[usdcIdx], "Pool: Wrong USDC balance");
-    }
-
-    function _testGetBptRate() internal {
-        uint256 totalSupply = bptAmountOut + POOL_MINIMUM_TOTAL_SUPPLY;
-        uint256[] memory weights = weightedPool.getNormalizedWeights();
-
-        uint256 weightedInvariant = WeightedMath.computeInvariantDown(weights, amountsIn);
-        uint256 expectedRate = weightedInvariant.divDown(totalSupply);
-        uint256 actualRate = IRateProvider(address(pool)).getRate();
-        assertEq(actualRate, expectedRate, "Wrong rate");
-
-        uint256[] memory unbalancedAmountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
-        vm.prank(bob);
-        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(
-            address(weightedPool),
-            unbalancedAmountsIn,
-            0,
-            false,
-            bytes("")
-        );
-
-        totalSupply += addLiquidityBptAmountOut;
-        expectedBalances[0] = amountsIn[0] + TOKEN_AMOUNT;
-        expectedBalances[1] = amountsIn[1];
-
-        weightedInvariant = WeightedMath.computeInvariantDown(weights, expectedBalances);
-
-        expectedRate = weightedInvariant.divDown(totalSupply);
-        actualRate = IRateProvider(address(pool)).getRate();
-        assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
     function _testAddLiquidityUnbalanced(uint256 swapFeePercentage) public {

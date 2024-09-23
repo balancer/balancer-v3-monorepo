@@ -34,6 +34,15 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
  * The swap fee percentage is bounded by minimum and maximum values (same as were used in v2).
  */
 contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
+    /// @dev Struct with data for deploying a new WeightedPool. `normalizedWeights` length must match `numTokens`.
+    struct NewPoolParams {
+        string name;
+        string symbol;
+        uint256 numTokens;
+        uint256[] normalizedWeights;
+        string version;
+    }
+
     // Fees are 18-decimal, floating point values, which will be stored in the Vault using 24 bits.
     // This means they have 0.00001% resolution (i.e., any non-zero bits < 1e11 will cause precision loss).
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
@@ -56,19 +65,23 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     uint256 internal immutable _normalizedWeight6;
     uint256 internal immutable _normalizedWeight7;
 
-    struct NewPoolParams {
-        string name;
-        string symbol;
-        uint256 numTokens;
-        uint256[] normalizedWeights;
-        string version;
-    }
-
     /// @notice Indicates that one of the pool tokens' weight is below the minimum allowed.
     error MinWeight();
 
     /// @notice Indicates that the sum of the pool tokens' weights is not FixedPoint.ONE.
     error NormalizedWeightInvariant();
+
+    /**
+     * @notice `getRate` from `IRateProvider` was called on a Weighted Pool.
+     * @dev It is not safe to nest Weighted Pools as WITH_RATE tokens in other pools, where they function as their own
+     * rate provider. The default `getRate` implementation from `BalancerPoolToken` computes the BPT rate using the
+     * invariant, which has a non-trivial (and non-linear) error. Without the ability to specify a rounding direction,
+     * the rate could be manipulable.
+     *
+     * It is fine to nest Weighted Pools as STANDARD tokens, or to use them with external rate providers that are
+     * stable and have at most 1 wei of rounding error (e.g., oracle-based).
+     */
+    error WeightedPoolBptRateUnsupported();
 
     constructor(
         NewPoolParams memory params,
@@ -222,7 +235,6 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();
-        data.bptRate = getRate();
 
         PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
         data.isPoolInitialized = poolConfig.isPoolInitialized;
@@ -235,5 +247,10 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         data.tokens = _vault.getPoolTokens(address(this));
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
         data.normalizedWeights = _getNormalizedWeights();
+    }
+
+    /// @inheritdoc IRateProvider
+    function getRate() public pure override returns (uint256) {
+        revert WeightedPoolBptRateUnsupported();
     }
 }
