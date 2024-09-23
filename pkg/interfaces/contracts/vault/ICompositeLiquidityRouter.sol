@@ -26,7 +26,7 @@ interface ICompositeLiquidityRouter {
     error WrongMinAmountsOutLength();
 
     /// @notice `maxAmountsIn` array does not have the same length as `tokensIn`.
-    error WrongMaxAmountsInLength();
+    error WrongAmountsInLength();
 
     /***************************************************************************
                                    ERC4626 Pools

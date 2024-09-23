@@ -411,7 +411,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
         // If tokensIn length does not match with maxAmountsIn length, maxAmountsIn is wrong.
         if (params.maxAmountsIn.length != tokensIn.length) {
-            revert WrongMaxAmountsInLength();
+            revert WrongAmountsInLength();
         }
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate in the tokens

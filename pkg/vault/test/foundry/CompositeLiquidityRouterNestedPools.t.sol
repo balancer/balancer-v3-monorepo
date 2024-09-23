@@ -66,13 +66,18 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
                                 Add liquidity
     *******************************************************************************/
 
-    function testAddLiquidityNestedPool() public {
-        uint256 daiAmount = poolInitAmount;
-        uint256 usdcAmount = poolInitAmount;
-        uint256 wethAmount = poolInitAmount;
-        uint256 wstEthAmount = poolInitAmount;
+    function testAddLiquidityNestedPool__Fuzz(
+        uint256 daiAmount,
+        uint256 usdcAmount,
+        uint256 wethAmount,
+        uint256 wstEthAmount
+    ) public {
+        daiAmount = bound(daiAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
+        usdcAmount = bound(usdcAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
+        wethAmount = bound(wethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
+        wstEthAmount = bound(wstEthAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
 
-        uint256 minBptOut = poolInitAmount;
+        uint256 minBptOut = 0;
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
 
@@ -100,6 +105,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         _fillNestedPoolTestLocalsAfter(vars);
         uint256 mintedChildPoolABpts = vars.childPoolAAfter.totalSupply - vars.childPoolABefore.totalSupply;
         uint256 mintedChildPoolBBpts = vars.childPoolBAfter.totalSupply - vars.childPoolBBefore.totalSupply;
+
+        // Check exact BPT out.
+        // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
+        uint256 expectedBptOut = daiAmount + usdcAmount + wethAmount + wstEthAmount;
+        assertEq(exactBptOut, expectedBptOut, "Exact BPT amount out is wrong");
 
         // Check LP Balances.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai - amountsIn[vars.daiIdx], "LP Dai Balance is wrong");
@@ -178,6 +188,74 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
             vars.parentPoolAfter.childPoolBBpt,
             vars.parentPoolBefore.childPoolBBpt + mintedChildPoolBBpts,
             "ParentPool ChildPoolB BPT Balance is wrong"
+        );
+    }
+
+    function testAddLiquidityNestedPoolBptLimit() public {
+        uint256 daiAmount = poolInitAmount;
+        uint256 usdcAmount = poolInitAmount;
+        uint256 wethAmount = poolInitAmount;
+        uint256 wstEthAmount = poolInitAmount;
+
+        // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
+        uint256 expectedBptOut = daiAmount + usdcAmount + wethAmount + wstEthAmount;
+        uint256 minBptOut = 10 * poolInitAmount;
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+
+        address[] memory tokensIn = new address[](4);
+        tokensIn[vars.daiIdx] = address(dai);
+        tokensIn[vars.usdcIdx] = address(usdc);
+        tokensIn[vars.wethIdx] = address(weth);
+        tokensIn[vars.wstethIdx] = address(wsteth);
+
+        uint256[] memory amountsIn = new uint256[](4);
+        amountsIn[vars.daiIdx] = daiAmount;
+        amountsIn[vars.usdcIdx] = usdcAmount;
+        amountsIn[vars.wethIdx] = wethAmount;
+        amountsIn[vars.wstethIdx] = wstEthAmount;
+
+        vm.prank(lp);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BptAmountOutBelowMin.selector, expectedBptOut, minBptOut));
+        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            parentPool,
+            tokensIn,
+            amountsIn,
+            minBptOut,
+            bytes("")
+        );
+    }
+
+    function testAddLiquidityNestedPoolWrongTokenArray() public {
+        uint256 daiAmount = poolInitAmount;
+        uint256 usdcAmount = poolInitAmount;
+        uint256 wethAmount = poolInitAmount;
+        uint256 wstEthAmount = poolInitAmount;
+
+        uint256 minBptOut = 0;
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+
+        address[] memory tokensIn = new address[](3);
+        tokensIn[0] = address(dai);
+        tokensIn[1] = address(usdc);
+        tokensIn[2] = address(weth);
+
+        uint256[] memory amountsIn = new uint256[](4);
+        amountsIn[vars.daiIdx] = daiAmount;
+        amountsIn[vars.usdcIdx] = usdcAmount;
+        amountsIn[vars.wethIdx] = wethAmount;
+        amountsIn[vars.wstethIdx] = wstEthAmount;
+
+        vm.prank(lp);
+        // Since tokensIn and amountsIn have different lengths, revert.
+        vm.expectRevert(ICompositeLiquidityRouter.WrongAmountsInLength.selector);
+        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            parentPool,
+            tokensIn,
+            amountsIn,
+            minBptOut,
+            bytes("")
         );
     }
 
