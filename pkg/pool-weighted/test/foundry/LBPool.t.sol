@@ -19,9 +19,11 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
+import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
+import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 contract LBPoolTest is BasePoolTest {
     using CastingHelpers for address[];
@@ -423,6 +425,62 @@ contract LBPoolTest is BasePoolTest {
             assertEq(amountOut, prevAmountOut, "Amount out should remain constant after weight update");
             prevAmountOut = amountOut;
         }
+    }
+
+    function testGetGradualWeightUpdateParams() public {
+        uint256 startTime = block.timestamp + 1 days;
+        uint256 endTime = startTime + 7 days;
+        uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.2e18; // 20%
+        endWeights[1] = 0.8e18; // 80%
+
+        vm.prank(bob);
+        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+
+        (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPool(address(pool))
+            .getGradualWeightUpdateParams();
+
+        assertEq(returnedStartTime, startTime, "Start time should match");
+        assertEq(returnedEndTime, endTime, "End time should match");
+        assertEq(returnedEndWeights.length, endWeights.length, "End weights length should match");
+        for (uint256 i = 0; i < endWeights.length; i++) {
+            assertEq(returnedEndWeights[i], endWeights[i], "End weight should match");
+        }
+    }
+
+    function testUpdateWeightsGraduallyMinWeightRevert() public {
+        uint256 startTime = block.timestamp + 1 days;
+        uint256 endTime = startTime + 7 days;
+        uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.0001e18; // 0.01%
+        endWeights[1] = 0.9999e18; // 99.99%
+
+        vm.prank(bob);
+        vm.expectRevert(WeightedPool.MinWeight.selector);
+        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+    }
+
+    function testUpdateWeightsGraduallyNormalizedWeightInvariantRevert() public {
+        uint256 startTime = block.timestamp + 1 days;
+        uint256 endTime = startTime + 7 days;
+        uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.6e18; // 60%
+        endWeights[1] = 0.5e18; // 50%
+
+        vm.prank(bob);
+        vm.expectRevert(WeightedPool.NormalizedWeightInvariant.selector);
+        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+    }
+
+    function testAddLiquidityRouterNotTrusted() public {
+        RouterMock mockRouter = new RouterMock(IVault(address(vault)), weth, permit2);
+
+        uint256[] memory amounts = [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray();
+
+        vm.startPrank(bob);
+        vm.expectRevert(abi.encodeWithSelector(LBPool.RouterNotTrusted.selector));
+        mockRouter.addLiquidityUnbalanced(address(pool), amounts, 0, false, "");
+        vm.stopPrank();
     }
 
     function _executeAndUndoSwap(uint256 amountIn) internal returns (uint256) {
