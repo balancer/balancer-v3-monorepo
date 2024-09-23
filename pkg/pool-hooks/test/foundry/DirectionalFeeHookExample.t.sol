@@ -134,12 +134,13 @@ contract DirectionalHookExampleTest is BaseVaultTest {
             DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
             balancesBefore.poolTokens
         );
+        uint256 swapFeeAmount = daiExactAmountIn.mulUp(SWAP_FEE_PERCENTAGE);
         uint256 expectedAmountOut = StableMath.computeOutGivenExactIn(
             DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
             balancesBefore.poolTokens,
             daiIdx,
             usdcIdx,
-            daiExactAmountIn,
+            daiExactAmountIn - swapFeeAmount,
             poolInvariant
         );
 
@@ -151,11 +152,10 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
         // Measure the actual amount out, which should be `expectedAmountOut` - `swapFeeAmount`.
         uint256 actualAmountOut = balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx];
-        uint256 swapFeeAmount = expectedAmountOut - actualAmountOut;
 
         // Check whether the calculated swap fee percentage equals the static fee percentage. It should,
         // since the pool was taken closer to equilibrium.
-        assertEq(swapFeeAmount, expectedAmountOut.mulUp(SWAP_FEE_PERCENTAGE), "Swap Fee Amount is wrong");
+        assertEq(expectedAmountOut, actualAmountOut, "Amount out is wrong");
 
         // Check Bob's balances (Bob deposited DAI to receive USDC)
         assertEq(
@@ -165,7 +165,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         );
         assertEq(
             balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
-            expectedAmountOut - swapFeeAmount,
+            expectedAmountOut,
             "Bob USDC balance is wrong"
         );
 
@@ -178,7 +178,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         // Since the protocol swap fee is 0 (was not set in this test), all swap fee amounts are returned to the pool.
         assertEq(
             balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
-            expectedAmountOut - swapFeeAmount,
+            expectedAmountOut,
             "Pool USDC balance is wrong"
         );
 
@@ -190,7 +190,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         );
         assertEq(
             balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
-            expectedAmountOut - swapFeeAmount,
+            expectedAmountOut,
             "Vault USDC balance is wrong"
         );
 
@@ -202,7 +202,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         );
         assertEq(
             balancesBefore.vaultReserves[usdcIdx] - balancesAfter.vaultReserves[usdcIdx],
-            expectedAmountOut - swapFeeAmount,
+            expectedAmountOut,
             "Vault USDC reserve is wrong"
         );
     }
@@ -220,14 +220,6 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         uint256 poolInvariant = StableMath.computeInvariant(
             DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
             balancesScaled18
-        );
-        uint256 expectedAmountOut = StableMath.computeOutGivenExactIn(
-            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
-            balancesScaled18,
-            daiIdx,
-            usdcIdx,
-            daiExactAmountIn,
-            poolInvariant
         );
 
         // Call the dynamic fee hook to fetch the expected swap fee percentage.
@@ -247,6 +239,16 @@ contract DirectionalHookExampleTest is BaseVaultTest {
                 SWAP_FEE_PERCENTAGE
             );
 
+        uint256 swapFeeAmount = daiExactAmountIn.mulUp(expectedSwapFeePercentage);
+        uint256 expectedAmountOut = StableMath.computeOutGivenExactIn(
+            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
+            balancesScaled18,
+            daiIdx,
+            usdcIdx,
+            daiExactAmountIn - swapFeeAmount,
+            poolInvariant
+        );
+
         // Swap DAI for USDC to bring the pool closer to equilibrium.
         vm.prank(bob);
         router.swapSingleTokenExactIn(pool, dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
@@ -259,7 +261,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
         // Check that the swap fee percentage was applied as expected. Since the pool was taken further from
         // equilibrium, it should be greater than the standard swap fee percentage.
-        assertEq(actualSwapFeeAmount, expectedAmountOut.mulUp(expectedSwapFeePercentage), "Swap fee amount is wrong");
+        assertEq(expectedAmountOut, actualAmountOut, "Amount out is wrong");
         assertGt(expectedSwapFeePercentage, SWAP_FEE_PERCENTAGE, "Expected swap fee percentage not greater than 10%");
 
         // Bob balances (Bob deposited DAI to receive USDC)

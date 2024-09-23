@@ -146,8 +146,8 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
         vm.stopPrank();
 
-        assertTrue(feesTokenA > 0, "No fees on tokenA");
-        assertTrue(feesTokenD > 0, "No fees on tokenD");
+        assertGt(feesTokenA, 0, "No aggregate fees on tokenA (token in)");
+        assertEq(feesTokenD, 0, "Aggregate fees on token D (token out)");
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsAfter = _getPoolInvariants();
