@@ -409,17 +409,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         address[] memory tokensIn
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
-        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
-
+        // If tokensIn length does not match with maxAmountsIn length, maxAmountsIn is wrong.
         if (params.maxAmountsIn.length != tokensIn.length) {
-            // If tokensIn length does not match with maxAmountsIn length, maxAmountsIn is wrong.
             revert WrongMaxAmountsInLength();
         }
 
+        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate in the tokens
+        // array to find the child pool amounts to insert.
         for (uint256 i = 0; i < tokensIn.length; ++i) {
             _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
         }
 
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+
+        // Iterate over each token of the parent pool. If it's a BPT, add liquidity unbalanced to it.
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address childToken = address(parentPoolTokens[i]);
 
@@ -430,8 +433,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 uint256[] memory childPoolAmountsIn = new uint256[](childPoolTokens.length);
 
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
-                    childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(address(childPoolTokens[j]));
-                    _currentSwapTokenInAmounts().tSet(address(childPoolTokens[j]), 0);
+                    address childPoolToken = address(childPoolTokens[j]);
+                    childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(childPoolToken);
+                    // This operation does not support adding liquidity multiple times to the same token. So, we set
+                    // the amount in of the child pool token to 0. If the same token appears more times, the amount in
+                    // will be 0 for any other pool.
+                    _currentSwapTokenInAmounts().tSet(childPoolToken, 0);
                 }
 
                 // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent pool
@@ -447,6 +454,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     })
                 );
 
+                // Sets the amount in of child BPT to the exactBptAmountOut of the child pool, so all the minted BPT
+                // will be added to the parent pool.
                 _currentSwapTokenInAmounts().tSet(childToken, exactChildBptAmountOut);
 
                 // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
@@ -458,9 +467,15 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256[] memory parentPoolAmountsIn = new uint256[](parentPoolTokens.length);
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
-            parentPoolAmountsIn[i] = _currentSwapTokenInAmounts().tGet(address(parentPoolTokens[i]));
+            // Fill the `parentPoolAmountsIn` array with amounts in from _currentSwapTokenInAmounts() storage, which
+            // includes the amount of minted BPT. Then, erase the token amount from _currentSwapTokenInAmounts() so
+            // any other operation that uses CompositeLiquidityProvider in the same transaction will not face a bug.
+            address parentPoolToken = address(parentPoolTokens[i]);
+            parentPoolAmountsIn[i] = _currentSwapTokenInAmounts().tGet(parentPoolToken);
+            _currentSwapTokenInAmounts().tSet(parentPoolToken, 0);
         }
 
+        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -472,11 +487,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
+        // Since all values from _currentSwapTokenInAmounts are erased, recreates the set of amounts in so
+        // `_settlePaths()` can charge the sender.
         for (uint256 i = 0; i < tokensIn.length; ++i) {
             _currentSwapTokensIn().add(tokensIn[i]);
             _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
         }
 
+        // Settle the amounts in.
         _settlePaths(params.sender, false);
     }
 
