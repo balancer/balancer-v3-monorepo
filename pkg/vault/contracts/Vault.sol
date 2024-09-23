@@ -224,10 +224,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams = _buildPoolSwapParams(vaultSwapParams, swapState, poolData);
         }
 
-        // Prohibit "dust" trades. `_ensureValidSwapAmount` does not allow zero. Note that a zero amount given will be
-        // blocked at the Router level anyway (at least with the standard Router).
-        _ensureValidSwapAmount(swapState.amountGivenScaled18);
-
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         //
@@ -253,11 +249,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData,
             poolSwapParams
         );
-
-        // Prohibit "dust trades" generally, but explicitly allow 0 tokens out.
-        if (vaultSwapParams.kind == SwapKind.EXACT_IN && amountCalculatedScaled18 != 0) {
-            _ensureValidSwapAmount(amountCalculatedScaled18);
-        }
 
         // The new amount calculated is 'amountCalculated + delta'. If the underlying hook fails, or limits are
         // violated, `onAfterSwap` will revert. Uses msg.sender as the router (the contract that called the vault).
@@ -381,6 +372,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams.amountGivenScaled18 -= locals.totalSwapFeeAmountScaled18;
         }
 
+        _ensureValidSwapAmount(poolSwapParams.amountGivenScaled18);
+
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap.
         amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(poolSwapParams);
 
@@ -432,6 +425,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert SwapLimit(amountInRaw, vaultSwapParams.limitRaw);
             }
         }
+
+        _ensureValidSwapAmount(amountCalculatedScaled18);
 
         // 3) Deltas: debit for token in, credit for token out.
         _takeDebt(vaultSwapParams.tokenIn, amountInRaw);
