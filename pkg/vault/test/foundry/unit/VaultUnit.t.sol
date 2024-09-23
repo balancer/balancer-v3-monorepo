@@ -278,10 +278,16 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testMinimumSwapAmount() public {
-        // Should succeed when it's the minimum
-        vault.ensureValidSwapAmount(vault.getMinimumTradeAmount());
+        uint256 minAmount = vault.getMinimumTradeAmount();
 
-        // Should fail with 0 (unlke testMinimumTradeAmount).
+        // Should succeed when it's the minimum
+        vault.ensureValidSwapAmount(minAmount);
+
+        // Should fail below minimum.
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidSwapAmount(minAmount - 1);
+
+        // Should fail with 0 (unlike testMinimumTradeAmount).
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
         vault.ensureValidSwapAmount(0);
     }
