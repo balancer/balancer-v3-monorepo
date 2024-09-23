@@ -21,6 +21,8 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -481,6 +483,139 @@ contract LBPoolTest is BasePoolTest {
         vm.expectRevert(abi.encodeWithSelector(LBPool.RouterNotTrusted.selector));
         mockRouter.addLiquidityUnbalanced(address(pool), amounts, 0, false, "");
         vm.stopPrank();
+    }
+
+    function testInvalidTokenCount() public {
+        IERC20[] memory sortedTokens1 = InputHelpers.sortTokens(
+            [address(dai)].toMemoryArray().asIERC20()
+        );
+        IERC20[] memory sortedTokens3 = InputHelpers.sortTokens(
+            [address(dai), address(usdc), address(weth)].toMemoryArray().asIERC20()
+        );
+
+        TokenConfig[] memory tokenConfig1 = vault.buildTokenConfig(sortedTokens1);
+        TokenConfig[] memory tokenConfig3 = vault.buildTokenConfig(sortedTokens3);
+
+        // Attempt to create a pool with 1 token
+        // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
+        vm.expectRevert("DEPLOYMENT_FAILED");
+        LBPoolFactory(address(factory)).create(
+            "Invalid Pool 1",
+            "IP1",
+            tokenConfig1,
+            [uint256(1e18)].toMemoryArray(),
+            DEFAULT_SWAP_FEE,
+            bob,
+            true,
+            ZERO_BYTES32
+        );
+
+        // Attempt to create a pool with 3 tokens
+        // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
+        vm.expectRevert("DEPLOYMENT_FAILED");
+        LBPoolFactory(address(factory)).create(
+            "Invalid Pool 3",
+            "IP3",
+            tokenConfig3,
+            [uint256(0.3e18), uint256(0.3e18), uint256(0.4e18)].toMemoryArray(),
+            DEFAULT_SWAP_FEE,
+            bob,
+            true,
+            ZERO_BYTES32
+        );
+    }
+
+    function testMismatchedWeightsAndTokens() public {
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(poolTokens);
+
+        vm.expectRevert("DEPLOYMENT_FAILED");
+        LBPoolFactory(address(factory)).create(
+            "Mismatched Pool",
+            "MP",
+            tokenConfig,
+            [uint256(1e18)].toMemoryArray(),
+            DEFAULT_SWAP_FEE,
+            bob,
+            true,
+            ZERO_BYTES32
+        );
+    }
+
+    function testInitializedWithSwapsDisabled() public {
+        LBPool swapsDisabledPool = LBPool(
+            LBPoolFactory(address(factory)).create(
+                "Swaps Disabled Pool",
+                "SDP",
+                vault.buildTokenConfig(poolTokens),
+                weights,
+                DEFAULT_SWAP_FEE,
+                bob,
+                false, // swapEnabledOnStart set to false
+                keccak256(abi.encodePacked(block.timestamp)) // generate pseudorandom salt to avoid collision
+            )
+        );
+
+        assertFalse(swapsDisabledPool.getSwapEnabled(), "Swaps should be disabled on initialization");
+
+        // Initialize to make swapping (or at least trying) possible
+        vm.startPrank(bob);
+        bptAmountOut = _initPool(
+            address(swapsDisabledPool),
+            tokenAmounts,
+            // Account for the precision loss
+            expectedAddLiquidityBptAmountOut - DELTA
+        );
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(LBPool.SwapsDisabled.selector));
+        router.swapSingleTokenExactIn(
+            address(swapsDisabledPool),
+            IERC20(dai),
+            IERC20(usdc),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+        vm.stopPrank();
+    }
+
+    function testUpdateWeightsGraduallyMismatchedEndWeightsTooFew() public {
+        uint256 startTime = block.timestamp + 1 days;
+        uint256 endTime = startTime + 7 days;
+        uint256[] memory endWeights = new uint256[](1); // Too few end weights
+        endWeights[0] = 1e18;
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(InputHelpers.InputLengthMismatch.selector));
+        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+    }
+
+    function testUpdateWeightsGraduallyMismatchedEndWeightsTooMany() public {
+        uint256 startTime = block.timestamp + 1 days;
+        uint256 endTime = startTime + 7 days;
+        uint256[] memory endWeights = new uint256[](3); // Too many end weights
+        endWeights[0] = 0.3e18;
+        endWeights[1] = 0.3e18;
+        endWeights[2] = 0.4e18;
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(InputHelpers.InputLengthMismatch.selector));
+        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+    }
+
+    function testNonOwnerCannotUpdateWeights() public {
+        uint256 startTime = block.timestamp + 1 days;
+        uint256 endTime = startTime + 7 days;
+        uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.7e18;
+        endWeights[1] = 0.3e18;
+
+        vm.prank(alice); // Non-owner
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(alice)));
+        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
     }
 
     function _executeAndUndoSwap(uint256 amountIn) internal returns (uint256) {
