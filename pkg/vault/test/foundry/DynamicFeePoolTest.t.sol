@@ -177,7 +177,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
     function testSwapCallsComputeFeeWithSender() public {
         // Set a 100% fee, and bob as 0 swap fee sender.
-        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE);
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(99e16);
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
@@ -187,7 +187,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
         // 100% fee; should get nothing.
-        assertEq(aliceBalanceAfter - aliceBalanceBefore, 0, "Wrong alice balance (high fee)");
+        assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount.mulDown(1e16), "Wrong alice balance (high fee)");
 
         // Now set Alice as the special 0-fee sender.
         PoolHooksMock(poolHooksContract).setSpecialSender(alice);
