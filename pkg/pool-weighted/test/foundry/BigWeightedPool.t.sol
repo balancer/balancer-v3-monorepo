@@ -120,16 +120,4 @@ contract BigWeightedPoolTest is BasePoolTest {
         );
         vm.stopPrank();
     }
-
-    function testGetBptRate() public {
-        uint256[] memory amountsIn = new uint256[](poolTokens.length);
-        amountsIn[0] = TOKEN_AMOUNT;
-
-        uint256 invariantBefore = WeightedMath.computeInvariantDown(weights, tokenAmounts);
-
-        tokenAmounts[0] += TOKEN_AMOUNT;
-        uint256 invariantAfter = WeightedMath.computeInvariantDown(weights, tokenAmounts);
-
-        _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
-    }
 }
