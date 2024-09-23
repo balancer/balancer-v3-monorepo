@@ -146,7 +146,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint256 exactAmountIn = poolInitAmount / 100;
         // PoolMock uses linear math with a rate of 1, so amountIn == amountOut when no fees are applied.
         uint256 expectedAmountOut = exactAmountIn;
-        // Bob does not get a discount since it does not have VeBals.
+        // Bob does not get a discount since it does not have VeBal.
         uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage);
         // The hook fee will remain in the pool, so the expected amountOut discounts the fees.
         expectedAmountOut -= expectedHookFee;
