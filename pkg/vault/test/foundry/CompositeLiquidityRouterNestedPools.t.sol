@@ -11,6 +11,7 @@ import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contract
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
@@ -371,6 +372,51 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
             minBptOut,
             bytes("")
         );
+    }
+
+    function testAddLiquidityNestedPoolNonExistentToken() public {
+        ERC20TestToken newToken = new ERC20TestToken("New Token", "NT", 18);
+
+        uint256 daiAmount = poolInitAmount;
+        uint256 usdcAmount = poolInitAmount;
+        uint256 wethAmount = poolInitAmount;
+        uint256 wstEthAmount = poolInitAmount;
+        uint256 newTokenAmount = poolInitAmount;
+
+        uint256 minBptOut = 0;
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+
+        address[] memory tokensIn = new address[](5);
+        tokensIn[vars.daiIdx] = address(dai);
+        tokensIn[vars.usdcIdx] = address(usdc);
+        tokensIn[vars.wethIdx] = address(weth);
+        tokensIn[vars.wstethIdx] = address(wsteth);
+        tokensIn[4] = address(newToken);
+
+        uint256[] memory amountsIn = new uint256[](5);
+        amountsIn[vars.daiIdx] = daiAmount;
+        amountsIn[vars.usdcIdx] = usdcAmount;
+        amountsIn[vars.wethIdx] = wethAmount;
+        amountsIn[vars.wstethIdx] = wstEthAmount;
+        amountsIn[4] = newTokenAmount;
+
+        vm.startPrank(lp);
+        // Mints amount to LP, so it can pay for the transaction in the router.
+        newToken.mint(lp, poolInitAmount);
+        // Allow permit2 to move newToken amounts from sender to the router.
+        newToken.approve(address(permit2), type(uint256).max);
+        permit2.approve(address(newToken), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
+        // Since user passed a token that was not deposited in any pool, transaction reverts.
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            parentPool,
+            tokensIn,
+            amountsIn,
+            minBptOut,
+            bytes("")
+        );
+        vm.stopPrank();
     }
 
     /*******************************************************************************
