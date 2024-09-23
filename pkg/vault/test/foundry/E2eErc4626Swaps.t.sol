@@ -214,7 +214,6 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         IBatchRouter.SwapPathExactAmountIn[] memory pathsDo = _buildExactInPaths(dai, exactDaiAmountIn);
         vm.prank(bob);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(pathsDo, MAX_UINT256, false, bytes(""));
-        uint256 feesWaUsdc = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waUSDC)));
 
         // If amountsOut is smaller than minSwapAmount, we won't be able to undo the operation, so ignore the test.
         vm.assume(pathAmountsOut[0] > minSwapAmount);
@@ -222,17 +221,13 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // If we insert only pathAmountsOut, the user USDC balance will go back to where it was before and we won't be
         // able to measure fees. So, we make the user pay the exact USDC fees back. Then, when we compare the DAI
         // balance, we can make sure that it's not paying fees twice.
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsUndo = _buildExactInPaths(
-            usdc,
-            pathAmountsOut[0] + waUSDC.previewRedeem(feesWaUsdc)
-        );
+        IBatchRouter.SwapPathExactAmountIn[] memory pathsUndo = _buildExactInPaths(usdc, pathAmountsOut[0]);
         vm.prank(bob);
         batchRouter.swapExactIn(pathsUndo, MAX_UINT256, false, bytes(""));
-        uint256 feesWaDai = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI)));
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesWaDai, feesWaUsdc);
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter);
     }
 
     function _testDoUndoExactOutBase(uint256 exactUsdcAmountOut, DoUndoLocals memory testLocals) private {
@@ -276,7 +271,6 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         IBatchRouter.SwapPathExactAmountOut[] memory pathsDo = _buildExactOutPaths(usdc, exactUsdcAmountOut);
         vm.prank(bob);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(pathsDo, MAX_UINT256, false, bytes(""));
-        uint256 feesWaDai = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI)));
 
         // If amountsIn is smaller than minSwapAmount, we won't be able to undo the operation, so ignore the test.
         vm.assume(pathAmountsIn[0] > minSwapAmount);
@@ -284,24 +278,18 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // If we use only pathAmountsIn, the user DAI balance will go back to where it was before and we won't be
         // able to measure fees. So, we make the user discount the exact DAI fees. Then, when we compare the USDC
         // balance, we can make sure that it's not paying fees twice.
-        IBatchRouter.SwapPathExactAmountOut[] memory pathsUndo = _buildExactOutPaths(
-            dai,
-            pathAmountsIn[0] - waDAI.previewRedeem(feesWaDai)
-        );
+        IBatchRouter.SwapPathExactAmountOut[] memory pathsUndo = _buildExactOutPaths(dai, pathAmountsIn[0]);
         vm.prank(bob);
         batchRouter.swapExactOut(pathsUndo, MAX_UINT256, false, bytes(""));
-        uint256 feesWaUsdc = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waUSDC)));
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesWaDai, feesWaUsdc);
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter);
     }
 
     function _checkUserBalancesAndPoolInvariant(
         TestBalances memory balancesBefore,
-        TestBalances memory balancesAfter,
-        uint256 feesWaDai,
-        uint256 feesWaUsdc
+        TestBalances memory balancesAfter
     ) private view {
         // Pool invariant should never decrease.
         assertGe(
@@ -313,12 +301,12 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // User balances should be smaller than before, and user should pay the fees.
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.daiIdx] - waDAI.previewRedeem(feesWaDai),
+            balancesBefore.balances.bobTokens[balancesBefore.daiIdx],
             "Sender DAI balance is incorrect"
         );
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] - waUSDC.previewRedeem(feesWaUsdc),
+            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx],
             "Sender USDC balance is incorrect"
         );
 
@@ -332,9 +320,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             waDAI.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
         uint256 vaultTotalDaiAfter = balancesAfter.balances.vaultTokens[balancesAfter.daiIdx] +
             waDAI.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
+
+        // `vaultTotalDaiAfter - vaultTotalDaiBefore = senderDaiDelta`, solve for daiAfter to prevent underflow.
         assertApproxEqAbs(
-            vaultTotalDaiAfter - vaultTotalDaiBefore,
-            senderDaiDelta,
+            vaultTotalDaiAfter,
+            senderDaiDelta + vaultTotalDaiBefore,
             MAX_ERROR,
             "Vault dai/waDAI balance is wrong"
         );
@@ -349,12 +339,45 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             waUSDC.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waUsdcIdx]);
         uint256 vaultTotalUsdcAfter = balancesAfter.balances.vaultTokens[balancesAfter.usdcIdx] +
             waUSDC.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waUsdcIdx]);
+
+        // `vaultTotalUsdcAfter - vaultTotalUsdcBefore = senderUsdcDelta`, solve for usdcAfter to prevent underflow.
         assertApproxEqAbs(
-            vaultTotalUsdcAfter - vaultTotalUsdcBefore,
-            senderUsdcDelta,
+            vaultTotalUsdcAfter,
+            senderUsdcDelta + vaultTotalUsdcBefore,
             MAX_ERROR,
             "Vault usdc/waUSDC balance is wrong"
         );
+
+        // This can only happen in USDC, since the caller puts back in the undo operation all the USDC tokens that Do
+        // operation retrieved for him. The USDC balance of the user is effectively 0, so the vault should have the
+        // same balance. However, due to changes in the rate of the wrapped tokens, an error may occur and we detect
+        // that the vault lost part of the USDC tokens, but that's just a conversion rounding issue if the rate has
+        // changed.
+        if (vaultTotalUsdcBefore > vaultTotalUsdcAfter) {
+            // If vault lost some USDC value in USDC and waUSDC tokens, it may be due to the token rate that changed
+            // after the buffer operations, so the vault has the same value but converted differently.
+            assertGt(
+                balancesAfter.waUSDCRate,
+                balancesBefore.waUSDCRate,
+                "waUSDC rate did not increase with Do/Undo operation"
+            );
+        }
+
+        // DAI and USDC are worth the same. So, we can sum the deltas for DAI and USDC in the vault, and compare with
+        // how much the user paid in fees. The user cannot have any benefit, but the vault and the user amount may
+        // differ because of rounding. Let's call the sum of vault deltas as sumDeltaVault, and the sum of sender
+        // deltas as sumDeltaSender, the test belows tests if
+        // `sumDeltaSender - 2 * MAX_ERROR < sumDeltaVault < sumDeltaSender`, it means, vault delta is smaller than
+        // sender delta (sender paid more than vault received), but the difference is small.
+        uint256 sumDeltaVault = vaultTotalUsdcAfter + vaultTotalDaiAfter - vaultTotalDaiBefore - vaultTotalUsdcBefore;
+        uint256 sumDeltaSender = senderUsdcDelta + senderDaiDelta;
+        assertApproxEqAbs(
+            sumDeltaVault,
+            sumDeltaSender,
+            MAX_ERROR,
+            "Sum of tokens in the vault after Do/Undo operation is wrong"
+        );
+        assertLe(sumDeltaVault, sumDeltaSender, "Sender paid less tokens than vault delta");
     }
 
     function _buildExactInPaths(
@@ -467,6 +490,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         BaseVaultTest.Balances balances;
         BufferBalances waUSDCBuffer;
         BufferBalances waDAIBuffer;
+        uint256 waDAIRate;
+        uint256 waUSDCRate;
         uint256 daiIdx;
         uint256 usdcIdx;
         uint256 waDaiIdx;
@@ -474,6 +499,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     }
 
     function _getTestBalances(address sender) private view returns (TestBalances memory testBalances) {
+        // The index of each token is defined by the order of tokenArray, defined right below.
+        testBalances.daiIdx = 0;
+        testBalances.usdcIdx = 1;
+        testBalances.waDaiIdx = 2;
+        testBalances.waUsdcIdx = 3;
         IERC20[] memory tokenArray = [address(dai), address(usdc), address(waDAI), address(waUSDC)]
             .toMemoryArray()
             .asIERC20();
@@ -487,11 +517,10 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         testBalances.waUSDCBuffer.underlying = waUSDCBufferBalanceUnderlying;
         testBalances.waUSDCBuffer.wrapped = waUSDCBufferBalanceWrapped;
 
-        // The index of each token is defined by the order of tokenArray, defined in this function.
-        testBalances.daiIdx = 0;
-        testBalances.usdcIdx = 1;
-        testBalances.waDaiIdx = 2;
-        testBalances.waUsdcIdx = 3;
+        // The rate only affects swaps of a very large amount (over 1e28), so we get the rate with this amount of
+        // precision.
+        testBalances.waDAIRate = waDAI.previewRedeem(1e10 * FixedPoint.ONE);
+        testBalances.waUSDCRate = waUSDC.previewRedeem(1e10 * FixedPoint.ONE);
     }
 
     function _donateToVault() internal virtual {

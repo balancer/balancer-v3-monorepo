@@ -185,11 +185,11 @@ interface IVaultMainMock {
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
+        uint256 totalSwapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalFeesRaw);
+    ) external returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw);
 
     function manualUpdatePoolDataLiveBalancesAndRates(
         address pool,
