@@ -439,8 +439,9 @@ contract LBPoolTest is BasePoolTest {
         vm.prank(bob);
         LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
 
-        (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPool(address(pool))
-            .getGradualWeightUpdateParams();
+        (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPool(
+            address(pool)
+        ).getGradualWeightUpdateParams();
 
         assertEq(returnedStartTime, startTime, "Start time should match");
         assertEq(returnedEndTime, endTime, "End time should match");
@@ -486,9 +487,7 @@ contract LBPoolTest is BasePoolTest {
     }
 
     function testInvalidTokenCount() public {
-        IERC20[] memory sortedTokens1 = InputHelpers.sortTokens(
-            [address(dai)].toMemoryArray().asIERC20()
-        );
+        IERC20[] memory sortedTokens1 = InputHelpers.sortTokens([address(dai)].toMemoryArray().asIERC20());
         IERC20[] memory sortedTokens3 = InputHelpers.sortTokens(
             [address(dai), address(usdc), address(weth)].toMemoryArray().asIERC20()
         );
