@@ -543,8 +543,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         minUnderlyingAmountsOut[waUsdcIdx] = waUSDC.previewRedeem(expectedWrappedAmountsOut[waUsdcIdx]);
         minUnderlyingAmountsOut[waDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[waDaiIdx]);
 
-        console.log("compositeLiquidityRouter", address(compositeLiquidityRouter));
-
         uint256 snapshotId = vm.snapshot();
         vm.prank(bob, address(0));
         uint256[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter

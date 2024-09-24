@@ -29,13 +29,16 @@ contract FactoryWidePauseWindow {
     uint32 private immutable _poolsPauseWindowEndTime;
 
     constructor(uint32 pauseWindowDuration) {
-        if (block.timestamp + pauseWindowDuration > _MAX_TIMESTAMP) {
+        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+
+        if (pauseWindowEndTime > _MAX_TIMESTAMP) {
             revert PoolPauseWindowDurationOverflow();
         }
 
         _pauseWindowDuration = pauseWindowDuration;
 
-        _poolsPauseWindowEndTime = uint32(block.timestamp) + pauseWindowDuration;
+        // Direct cast is safe, as it was checked above.
+        _poolsPauseWindowEndTime = uint32(pauseWindowEndTime);
     }
 
     /**
@@ -63,6 +66,8 @@ contract FactoryWidePauseWindow {
      * @return The resolved pause window end time (0 indicating it's no longer pausable)
      */
     function getNewPoolPauseWindowEndTime() public view returns (uint32) {
-        return uint32(block.timestamp) < _poolsPauseWindowEndTime ? _poolsPauseWindowEndTime : 0;
+        // We know _poolsPauseWindowEndTime <= _MAX_TIMESTAMP (checked above).
+        // Do not truncate timestamp; it should still return 0 after _MAX_TIMESTAMP.
+        return (block.timestamp < _poolsPauseWindowEndTime) ? _poolsPauseWindowEndTime : 0;
     }
 }

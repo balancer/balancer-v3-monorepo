@@ -416,7 +416,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolBalances[i] = PackedTokenBalance.toPackedBalance(exactAmountsIn[i], exactAmountsInScaled18[i]);
         }
 
-        emit PoolBalanceChanged(pool, to, exactAmountsIn.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(
+            pool,
+            to,
+            exactAmountsIn.unsafeCastToInt256(true),
+            new uint256[](poolData.tokens.length)
+        );
 
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInitialized(true);
 
@@ -779,7 +784,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             from,
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
-            amountsOutRaw.unsafeCastToInt256(false)
+            amountsOutRaw.unsafeCastToInt256(false),
+            new uint256[](numTokens)
         );
     }
 
@@ -857,7 +863,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the VaultExtension does when handling the request.
+     * This function actually returns whatever the VaultAdmin does when handling the request.
      */
     fallback() external payable override {
         if (msg.value > 0) {

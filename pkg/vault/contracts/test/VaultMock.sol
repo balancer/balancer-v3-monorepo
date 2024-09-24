@@ -507,12 +507,12 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
+        uint256 totalSwapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalFeesRaw) {
-        return _computeAndChargeAggregateSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
+    ) external returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
+        return _computeAndChargeAggregateSwapFees(poolData, totalSwapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(
@@ -595,14 +595,14 @@ contract VaultMock is IVaultMainMock, Vault {
         _removeLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
-    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+    function internalGetBufferUnderlyingImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferUnderlyingSurplus(wrappedToken);
+        return bufferBalance.getBufferUnderlyingImbalance(wrappedToken);
     }
 
-    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+    function internalGetBufferWrappedImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferWrappedSurplus(wrappedToken);
+        return bufferBalance.getBufferWrappedImbalance(wrappedToken);
     }
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32) {

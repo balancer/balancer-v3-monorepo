@@ -67,9 +67,9 @@ interface IVaultMainMock {
 
     function ensureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
 
-    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
+    function internalGetBufferUnderlyingImbalance(IERC4626 wrappedToken) external view returns (int256);
 
-    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
+    function internalGetBufferWrappedImbalance(IERC4626 wrappedToken) external view returns (int256);
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32);
 
@@ -185,11 +185,11 @@ interface IVaultMainMock {
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
+        uint256 totalSwapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalFeesRaw);
+    ) external returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw);
 
     function manualUpdatePoolDataLiveBalancesAndRates(
         address pool,
