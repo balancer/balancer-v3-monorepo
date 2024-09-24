@@ -9,7 +9,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    TokenConfig,
+    PoolRoleAccounts,
+    PoolSwapParams,
+    SwapKind
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 
@@ -615,6 +620,23 @@ contract LBPoolTest is BasePoolTest {
         vm.prank(alice); // Non-owner
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(alice)));
         LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+    }
+
+    function testOnSwapInvalidTokenIndex() public {
+        vm.prank(address(vault));
+
+        PoolSwapParams memory request = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: 1e18,
+            balancesScaled18: new uint256[](3), // add an extra (non-existant) value to give the bad index a balance
+            indexIn: 2, // Invalid token index
+            indexOut: 0,
+            router: address(router),
+            userData: ""
+        });
+
+        vm.expectRevert(IVaultErrors.InvalidToken.selector);
+        LBPool(pool).onSwap(request);
     }
 
     function _executeAndUndoSwap(uint256 amountIn) internal returns (uint256) {

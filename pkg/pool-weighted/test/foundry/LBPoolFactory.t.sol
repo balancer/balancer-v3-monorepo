@@ -24,10 +24,12 @@ contract LBPoolFactoryTest is BaseVaultTest {
 
     LBPoolFactory internal lbPoolFactory;
 
+    string public constant poolVersion = "Pool v1";
+
     function setUp() public override {
         super.setUp();
 
-        lbPoolFactory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1", address(router));
+        lbPoolFactory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion, address(router));
         vm.label(address(lbPoolFactory), "LB pool factory");
     }
 
@@ -41,6 +43,10 @@ contract LBPoolFactoryTest is BaseVaultTest {
 
         // Verify pool was created and initialized correctly
         assertTrue(vault.isPoolRegistered(lbPool), "Pool not registered in the vault");
+    }
+
+    function testGetPoolVersion() public view {
+        assert(keccak256(abi.encodePacked(lbPoolFactory.getPoolVersion())) == keccak256(abi.encodePacked(poolVersion)));
     }
 
     function testDonationNotAllowed() public {
