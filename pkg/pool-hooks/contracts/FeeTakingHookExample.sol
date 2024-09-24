@@ -243,7 +243,7 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
 
                 if (hookFee > 0) {
                     hookAdjustedAmountsOutRaw[i] -= hookFee;
-                    // Sends the hook fee to the hook and registers the debt in the vault
+                    // Sends the hook fee to the hook and registers the debt in the Vault
                     _vault.sendTo(tokens[i], address(this), hookFee);
 
                     emit HookFeeCharged(address(this), tokens[i], hookFee);

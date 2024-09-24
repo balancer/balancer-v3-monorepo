@@ -108,7 +108,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
             "Wrong yield-bearing pool balance waUSDC"
         );
 
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
+        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
         uint256 waDAIInvariantDelta = bufferInitialAmount +
             waDAI.previewRedeem(waDAI.previewDeposit(bufferInitialAmount));
         assertEq(

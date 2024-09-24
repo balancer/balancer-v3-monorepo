@@ -38,7 +38,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function initializeLp() private {
-        // Create and fund buffer pools
+        // Create and fund buffer pools.
         vm.startPrank(lp);
 
         // Minting wrong token to wrapped token contracts, to test changing the asset.
@@ -51,8 +51,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Asset
     ********************************************************************************/
+
     function testChangeAssetOfWrappedTokenAddLiquidityToBuffer() public {
-        // Change Asset to correct asset.
+        // Change Asset to the correct asset.
         waDAI.setAsset(dai);
 
         vm.prank(lp);
@@ -69,7 +70,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testChangeAssetOfWrappedTokenRemoveLiquidityFromBuffer() public {
-        // Change Asset to correct asset.
+        // Change Asset to the correct asset.
         waDAI.setAsset(dai);
 
         vm.prank(lp);
@@ -85,7 +86,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testChangeAssetOfWrappedTokenWrapUnwrap() public {
-        // Change Asset to correct asset.
+        // Change Asset to the correct asset.
         waDAI.setAsset(dai);
 
         // Wrap token should pass, since there's no liquidity in the buffer.
@@ -120,7 +121,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                                         Deposit
     ********************************************************************************/
     function testDepositBufferBalancedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
@@ -139,7 +140,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testDepositBufferMoreWrappedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the Vault has
         // to interact with the ERC4626 protocol.
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
@@ -164,7 +165,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testDepositBufferMoreUnderlyingNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the Vault has
         // to interact with the ERC4626 protocol.
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
@@ -218,7 +219,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 vaultBalance = dai.balanceOf(address(vault));
 
-        // The malicious erc4626 consumes 0 underlying when the deposit is called, so the vault leaves an approval
+        // The malicious erc4626 consumes 0 underlying when the deposit is called, so the Vault leaves an approval
         // unused. This approval is then used to transfer underlying tokens from the Vault to the wrapper.
         vault.unlock(
             abi.encodeCall(
@@ -240,8 +241,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Mint
     ********************************************************************************/
+
     function testMintBufferBalancedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
@@ -270,7 +272,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testMintBufferMoreWrappedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the Vault has
         // to interact with the ERC4626 protocol.
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
@@ -305,7 +307,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testMintBufferMoreUnderlyingNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the Vault has
         // to interact with the ERC4626 protocol.
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
@@ -392,15 +394,16 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
 
         // After a wrap operation, even if the erc4626 token didn't take all the assets it was supposed to deposit,
-        // the allowance should be 0 to avoid a malicious wrapper from draining the underlying balance of the vault.
+        // the allowance should be 0 to avoid a malicious wrapper from draining the underlying balance of the Vault.
         assertTrue(dai.allowance(address(vault), address(waDAI)) == 0, "Wrong allowance");
     }
 
     /********************************************************************************
                                         Redeem
     ********************************************************************************/
+
     function testRedeemBufferBalancedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
@@ -422,7 +425,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testRedeemBufferMoreWrappedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the Vault has
         // to interact with the ERC4626 protocol.
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
@@ -449,9 +452,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testRedeemBufferMoreUnderlyingNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the Vault has
         // to interact with the ERC4626 protocol.
-
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
         router.initializeBuffer(
@@ -501,8 +503,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Withdraw
     ********************************************************************************/
+
     function testWithdrawBufferBalancedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
@@ -525,7 +528,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testWithdrawBufferMoreWrappedNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the Vault has
         // to interact with the ERC4626 protocol.
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
@@ -553,9 +556,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testWithdrawBufferMoreUnderlyingNotEnoughLiquidity() public {
-        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the vault has
+        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the Vault has
         // to interact with the ERC4626 protocol.
-
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
         router.initializeBuffer(
@@ -607,6 +609,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                 Disable Vault Buffers
     ********************************************************************************/
+
     // Make sure only authorized users can disable/enable vault buffers.
     function testDisableVaultBufferAuthentication() public {
         vm.prank(alice);
@@ -615,7 +618,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         IVaultAdmin(address(vault)).pauseVaultBuffers();
 
         vm.prank(admin);
-        // Should pass, since admin has access
+        // Should pass, since admin has access.
         IVaultAdmin(address(vault)).pauseVaultBuffers();
 
         vm.prank(alice);
@@ -752,7 +755,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 rate = 2e18;
 
-        // Add [2000 underlying, 0 wrapped] when the rate is 2: (1 wrapped = 2 underlying)
         waDAI.mockRate(rate);
 
         (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
@@ -780,7 +782,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 expectedUnderlyingOut = bufferUnderlyingBalance.mulDivUp(secondAddShares, totalShares);
         uint256 expectedWrappedOut = bufferWrappedBalance.mulDivUp(secondAddShares, totalShares);
         // Will get 1333.333/3333.333 = 40% of value:
-        // [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000 = amount in
+        // [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000 = amount in.
         vm.prank(lp);
         (uint256 removedUnderlying, uint256 removedWrapped) = vault.removeLiquidityFromBuffer(waDAI, secondAddShares);
 
@@ -790,7 +792,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 underlyingValueAdded = secondAddUnderlying + waDAI.previewRedeem(secondAddWrapped);
         uint256 underlyingValueRemoved = removedUnderlying + waDAI.previewRedeem(removedWrapped);
         assertLe(underlyingValueRemoved, underlyingValueAdded, "Value removed > value added");
-        // `underlyingValueAdded - 2e6 < underlyingValueRemoved < underlyingValueAdded`,
+        // `underlyingValueAdded - 2e6 < underlyingValueRemoved < underlyingValueAdded`.
         assertApproxEqAbs(underlyingValueRemoved, underlyingValueAdded - 1e6, 1e6, "Value removed !~ value added");
     }
 
@@ -855,7 +857,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         vault.removeLiquidityFromBuffer(waDAI, secondDepositShares);
 
-        // Compute the invariant after the add/remove. Should be >= `invariantBefore`
+        // Compute the invariant after the add/remove. Should be >= `invariantBefore`.
         (bufferUnderlyingBalance, bufferWrappedBalance) = vault.getBufferBalance(waDAI);
         uint256 invariantAfter = bufferUnderlyingBalance + waDAI.previewRedeem(bufferWrappedBalance);
 
@@ -878,9 +880,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(waDAI, lpShares);
 
         // The underlying and wrapped removed are not exactly the same as amountsIn, because part of the first deposit
-        // is kept to not deplete the buffer and these shares (POOL_MINIMUM_TOTAL_SUPPLY) are "burned". The remove liquidity operation
-        // is proportional to buffer balances, so the amount of burned shares must be discounted proportionally from
-        // underlying and wrapped.
+        // is kept to not deplete the buffer and these shares (POOL_MINIMUM_TOTAL_SUPPLY) are "burned". The remove
+        // liquidity operation is proportional to buffer balances, so the amount of burned shares must be discounted
+        // proportionally from underlying and wrapped.
         uint256 bufferInvariant = underlyingAmountIn + waDAI.previewRedeem(wrappedAmountIn);
         assertEq(
             underlyingRemoved,
@@ -928,7 +930,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai + wrappedRemoved, "LP waDAI balance is wrong");
 
         assertEq(vault.getBufferOwnerShares(IERC4626(address(waDAI)), lp), 0, "LP Buffer shares is wrong");
-        // If math has rounding issues, the rounding occurs in favor of the vault
+        // If math has rounding issues, the rounding occurs in favor of the Vault
         // (invariantDelta <= lpShares <= invariantDelta + 2).
         uint256 bufferInvariantDelta = underlyingRemoved + waDAI.previewRedeem(wrappedRemoved);
         assertApproxEqAbs(lpShares, bufferInvariantDelta + 1, 1, "Removed assets are wrong");
@@ -1200,7 +1202,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         tokens[waDaiIdx] = IERC20(address(waDAI));
     }
 
-    /// @notice Hook used to create a vault approval using a malicious erc4626 and drain the vault.
+    /// @notice Hook used to create a vault approval using a malicious erc4626 and drain the Vault.
     function erc4626MaliciousHook(BufferWrapOrUnwrapParams memory params) external {
         (, uint256 amountIn, uint256 amountOut) = vault.erc4626BufferWrapOrUnwrap(params);
 
@@ -1214,7 +1216,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         if (params.kind == SwapKind.EXACT_OUT) {
             // When the wrap is EXACT_OUT, a minimum amount of tokens must be wrapped. so, balances need to be settled
             // at the end to not revert the transaction and keep an approval to remove underlying tokens from the
-            // vault.
+            // Vault.
             dai.mint(address(this), amountIn);
             dai.transfer(address(vault), amountIn);
             vault.settle(dai, amountIn);

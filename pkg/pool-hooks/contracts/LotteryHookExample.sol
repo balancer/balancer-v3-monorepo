@@ -127,7 +127,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
     ) public override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
         uint8 drawnNumber;
         if (params.router == _trustedRouter) {
-            // If the router is trusted, draw a number as a lottery entry. (If router is not trusted, the user can
+            // If the Router is trusted, draw a number as a lottery entry. (If router is not trusted, the user can
             // perform swaps and contribute to the pot, but is not eligible to win.)
             drawnNumber = _getRandomNumber();
         }
@@ -233,7 +233,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
             _tokensWithAccruedFees.set(token, 1);
 
             if (hookFee > 0) {
-                // Collect fees from the Vault; the user will pay them when the router settles the swap.
+                // Collect fees from the Vault; the user will pay them when the Router settles the swap.
                 _vault.sendTo(token, address(this), hookFee);
 
                 emit LotteryFeeCollected(address(this), token, hookFee);

@@ -799,7 +799,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    // callAfterRemoveLiquidityHook tests
+    // callAfterRemoveLiquidityHook tests.
     function testCallAfterRemoveLiquidity() public {
         (
             uint256[] memory amountsOutScaled18,
@@ -1029,7 +1029,7 @@ contract HooksConfigLibHelpersTest is Test {
             );
     }
 
-    // callBeforeInitializeHook tests
+    // callBeforeInitializeHook tests.
     function testCallBeforeInitialize() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         bytes memory userData = new bytes(0);
@@ -1057,7 +1057,7 @@ contract HooksConfigLibHelpersTest is Test {
         hooksConfigLibMock.callBeforeInitializeHook(exactAmountsInScaled18, userData, IHooks(hooksContract));
     }
 
-    // callAfterInitializeHook tests
+    // callAfterInitializeHook tests.
     function testCallAfterInitialize() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         uint256 bptAmountOut = 1e18;

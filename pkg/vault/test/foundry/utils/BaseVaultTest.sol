@@ -68,29 +68,22 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
-    // Vault mock.
+    // Main contract mocks.
     IVaultMock internal vault;
-    // VaultExtension mock.
     IVaultExtension internal vaultExtension;
-    // VaultAdmin mock.
     IVaultAdmin internal vaultAdmin;
-    // Router mock.
     RouterMock internal router;
-    // Batch router
     BatchRouterMock internal batchRouter;
-    // Composite Liquidity router
+    PoolFactoryMock internal factoryMock;
+    RateProviderMock internal rateProvider;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
-    // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
+
     // Fee controller deployed with the Vault.
     IProtocolFeeController internal feeController;
     // Pool for tests.
     address internal pool;
-    // Rate provider mock.
-    RateProviderMock internal rateProvider;
-    // Pool Factory
-    PoolFactoryMock internal factoryMock;
-    // Pool Hooks
+    // Pool Hooks.
     address internal poolHooksContract;
 
     // Default amount to use in tests for user operations.
@@ -154,7 +147,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         poolHooksContract = createHook();
         pool = createPool();
 
-        // Approve vault allowances
+        // Approve vault allowances.
         for (uint256 i = 0; i < users.length; ++i) {
             address user = users[i];
             vm.startPrank(user);
@@ -164,7 +157,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         if (pool != address(0)) {
             approveForPool(IERC20(pool));
         }
-        // Add initial liquidity
+        // Add initial liquidity.
         initPool();
     }
 
@@ -234,16 +227,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function createHook() internal virtual returns (address) {
-        // Sets all flags as false
+        // Sets all flags to false.
         HookFlags memory hookFlags;
         return _createHook(hookFlags);
     }
 
     function _createHook(HookFlags memory hookFlags) internal virtual returns (address) {
         PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
-        // Allow pools built with factoryMock to use the poolHooksMock
+        // Allow pools built with factoryMock to use the poolHooksMock.
         newHook.allowFactory(address(factoryMock));
-        // Configure pool hook flags
+        // Configure pool hook flags.
         newHook.setHookFlags(hookFlags);
         vm.label(address(newHook), "pool hooks");
         return address(newHook);
@@ -333,7 +326,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function _prankStaticCall() internal {
-        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall).
         vm.prank(address(0), address(0));
     }
 }

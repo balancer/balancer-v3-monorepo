@@ -515,9 +515,9 @@ contract VaultExplorerTest is BaseVaultTest {
 
         assertEq(vaultRoleAccounts.poolCreator, lp, "Pool creator is not LP");
 
-        assertEq(vaultRoleAccounts.pauseManager, explorerRoleAccounts.pauseManager, "Pause manager mmismatch");
-        assertEq(vaultRoleAccounts.swapFeeManager, explorerRoleAccounts.swapFeeManager, "Swap fee manager mmismatch");
-        assertEq(vaultRoleAccounts.poolCreator, explorerRoleAccounts.poolCreator, "Pool creator mmismatch");
+        assertEq(vaultRoleAccounts.pauseManager, explorerRoleAccounts.pauseManager, "Pause manager mismatch");
+        assertEq(vaultRoleAccounts.swapFeeManager, explorerRoleAccounts.swapFeeManager, "Swap fee manager mismatch");
+        assertEq(vaultRoleAccounts.poolCreator, explorerRoleAccounts.poolCreator, "Pool creator mismatch");
     }
 
     function testComputeDynamicSwapFeePercentage() public {
@@ -750,7 +750,7 @@ contract VaultExplorerTest is BaseVaultTest {
         uint256 lpShares = explorer.getBufferOwnerShares(waDAI, lp);
         uint256 totalShares = explorer.getBufferTotalShares(waDAI);
 
-        // A single depositor has all the shares (except for the security premint).
+        // A single depositor has all the shares (except for the security pre-mint).
         assertTrue(lpShares > 0, "LP has no shares");
         assertEq(totalShares - BUFFER_MINIMUM_TOTAL_SUPPLY, lpShares, "Share value mismatch");
     }
@@ -762,10 +762,10 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(vaultUnderlyingBalanceRaw > 0, "Zero underlying balance");
         assertTrue(vaultWrappedBalanceRaw > 0, "Zero wrapped balance");
 
-        (uint256 explorerUnderlyingBalanceRaw, uint256 explorertWrappedBalanceRaw) = explorer.getBufferBalance(waDAI);
+        (uint256 explorerUnderlyingBalanceRaw, uint256 explorerWrappedBalanceRaw) = explorer.getBufferBalance(waDAI);
 
         assertEq(explorerUnderlyingBalanceRaw, vaultUnderlyingBalanceRaw, "Underlying balance mismatch");
-        assertEq(explorertWrappedBalanceRaw, vaultWrappedBalanceRaw, "Wrapped balance mismatch");
+        assertEq(explorerWrappedBalanceRaw, vaultWrappedBalanceRaw, "Wrapped balance mismatch");
     }
 
     function _registerPool(address newPool, bool initializeNewPool) private {

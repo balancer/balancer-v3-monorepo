@@ -95,7 +95,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.MaxTokens.selector);
         stablePoolFactory.create(
             "Big Pool",
-            "TOOBIG",
+            "TOO_BIG",
             tokenConfig,
             DEFAULT_AMP_FACTOR,
             roleAccounts,

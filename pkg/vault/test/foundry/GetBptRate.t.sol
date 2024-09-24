@@ -51,7 +51,7 @@ contract GetBptRateTest is BaseVaultTest {
         RateProviderMock rateProviderUsdc = new RateProviderMock();
         rateProviderUsdc.mockRate(usdcMockRate);
 
-        // The rate providers will be sorted along with the tokens, by `buildTokenConfig`
+        // The rate providers will be sorted along with the tokens, by `buildTokenConfig`.
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[0] = IRateProvider(rateProviderDai);
         rateProviders[1] = IRateProvider(rateProviderUsdc);
