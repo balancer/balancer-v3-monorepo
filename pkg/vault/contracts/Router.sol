@@ -868,7 +868,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function queryAddLiquidityHook(
         AddLiquidityHookParams calldata params
-    ) external payable onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    ) external onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -1129,7 +1129,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function querySwapHook(
         SwapSingleTokenHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;
