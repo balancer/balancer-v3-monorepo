@@ -88,5 +88,5 @@ interface IRouterCommon {
      * @param data Encoded function calls to be executed in the batch.
      * @return results Array of bytes arrays, each representing the return data from each function call executed.
      */
-    function multicall(bytes[] calldata data) external returns (bytes[] memory results);
+    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
 }
