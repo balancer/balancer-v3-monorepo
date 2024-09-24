@@ -755,7 +755,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 rate = 2e18;
 
-        // Add [2000 underlying, 0 wrapped] when the rate is 2: (1 wrapped = 2 underlying).
         waDAI.mockRate(rate);
 
         (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
