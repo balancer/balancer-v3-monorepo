@@ -213,7 +213,8 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * returned ETH.
      */
     function _returnEth(address sender) internal {
-        // If the return of ETH is locked, then don't return it because _returnEth will be called again at the end of the call.
+        // If the return of ETH is locked, then don't return it,
+        // because _returnEth will be called again at the end of the call.
         if (_isReturnEthLockedSlot().tload()) {
             return;
         }
