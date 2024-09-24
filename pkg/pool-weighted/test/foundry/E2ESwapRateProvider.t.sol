@@ -83,10 +83,10 @@ contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
         uint256 rateTokenB = getRate(tokenB);
 
         // The vault does not allow trade amounts (amountGivenScaled18 or amountCalculatedScaled18) to be less than
-        // PRODUCTION_MIN_TRADE_AMOUNT. For "linear pools" (PoolMock), amountGivenScaled18 and amountCalculatedScaled18
-        // are the same. So, minAmountGivenScaled18 > PRODUCTION_MIN_TRADE_AMOUNT. To derive the
-        // formula below, note that `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`. There's an
-        // adjustment for weighted math in the following steps.
+        // PRODUCTION_MIN_TRADE_AMOUNT. For "linear" pools (PoolMock), amountGivenScaled18 and amountCalculatedScaled18
+        // are the same. So, minAmountGivenScaled18 > PRODUCTION_MIN_TRADE_AMOUNT. To derive the formula below, note
+        // that `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`. There's an adjustment for weighted
+        // math in the following steps.
         uint256 tokenAMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
         uint256 tokenBMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
 
