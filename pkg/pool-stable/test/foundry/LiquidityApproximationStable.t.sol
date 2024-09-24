@@ -140,7 +140,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
-    /// Utils
+    // Utils
 
     function _setAmplificationParameterAndSwapFee(
         uint256 swapFeePercentage,

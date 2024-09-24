@@ -12,7 +12,7 @@ import { IBasePool } from "../vault/IBasePool.sol";
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
  * calculations. FP(1) for 18-decimal tokens
  * @param amplificationParameterPrecision Scaling factor used to increase the precision of calculations involving the
- * `amplificationfactor`. (See StableMath `MIN_AMP`, `MAX_AMP`, `AMP_PRECISION`)
+ * `amplificationParameter`. (See StableMath `MIN_AMP`, `MAX_AMP`, `AMP_PRECISION`)
  */
 struct StablePoolImmutableData {
     IERC20[] tokens;
@@ -67,7 +67,7 @@ interface IStablePool is IBasePool {
     function stopAmplificationParameterUpdate() external;
 
     /**
-     * @notice Get all the amplifcation parameters.
+     * @notice Get all the amplification parameters.
      * @return value Current amplification parameter value (could be in the middle of an update)
      * @return isUpdating True if an amplification parameter update is in progress
      * @return precision The raw value is multiplied by this number for greater precision during updates
