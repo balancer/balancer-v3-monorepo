@@ -156,6 +156,34 @@ contract RouterCommonTest is BaseVaultTest {
         assertEq(vars.wethDeltaAfter, vars.wethDeltaBefore + int256(amountToWithdraw), "Vault delta is wrong");
     }
 
+    function testSaveSenderAndManageEthModifierWithSingleFunction() public {
+        uint256 balanceBefore = alice.balance;
+        vm.prank(alice);
+        routerMock.multicall{ value: 1 ether }(new bytes[](0));
+        uint256 balanceAfter = alice.balance;
+
+        assertEq(balanceAfter, balanceBefore, "Value wasn't returned");
+    }
+
+    function testSaveSenderAndManageEthModifierWithMultipleFunctions() public {
+        uint256 extraAmount = 0.5 ether;
+        uint256 balanceBefore = alice.balance;
+
+        bytes[] memory calls = new bytes[](3);
+        // Send extra ETH to the mock contract
+        calls[0] = abi.encodeWithSelector(RouterCommonMock.sendExtraEth.selector, alice, extraAmount);
+        // Try to return the extra ETH but this function will ignore sending the ETH back
+        calls[1] = abi.encodeWithSelector(RouterCommonMock.manualReturnETH.selector);
+        // Assert that the manualReturnETH function didn't send the ETH back
+        calls[2] = abi.encodeWithSelector(RouterCommonMock.assertETHBalance.selector, balanceBefore - extraAmount);
+
+        vm.prank(alice);
+        routerMock.multicall{ value: 1 ether }(calls);
+        uint256 balanceAfter = alice.balance;
+
+        assertEq(balanceAfter, balanceBefore, "Value wasn't returned");
+    }
+
     struct EthStateTest {
         uint256 bobEthBefore;
         uint256 bobEthAfter;
