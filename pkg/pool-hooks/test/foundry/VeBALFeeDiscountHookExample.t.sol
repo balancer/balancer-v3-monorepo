@@ -121,7 +121,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     }
 
     function testSwapWithoutVeBal() public {
-        assertEq(veBAL.balanceOf(bob), 0, "Bob still has veBAL");
+        assertEq(veBAL.balanceOf(bob), 0, "Bob has veBAL");
 
         _doSwapAndCheckBalances(trustedRouter);
     }
@@ -132,6 +132,54 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
 
         _doSwapAndCheckBalances(trustedRouter);
+    }
+
+    function testQueryAndCompareWithSwapWithoutVeBal() public {
+        assertEq(veBAL.balanceOf(bob), 0, "Bob has veBAL");
+
+        // Since the Vault has no swap fee, the fee will stay in the pool.
+        uint256 swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE;
+
+        vm.prank(lp);
+        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+
+        uint256 exactAmountIn = poolInitAmount / 100;
+        // PoolMock uses linear math with a rate of 1, so amountIn == amountOut when no fees are applied.
+        uint256 expectedAmountOut = exactAmountIn;
+        // Bob does not get a discount since it does not have VeBal.
+        uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage);
+        // The hook fee will remain in the pool, so the expected amountOut discounts the fees.
+        expectedAmountOut -= expectedHookFee;
+
+        vm.prank(bob, address(0));
+        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bytes(""));
+
+        assertEq(amountOut, expectedAmountOut, "Wrong veBal hook fee");
+    }
+
+    function testQueryAndCompareWithSwapWithVeBal() public {
+        // Mint 1 veBAL to Bob, so he's able to receive the fee discount.
+        veBAL.mint(bob, 1);
+        assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
+
+        // Since the Vault has no swap fee, the fee will stay in the pool.
+        uint256 swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE;
+
+        vm.prank(lp);
+        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+
+        uint256 exactAmountIn = poolInitAmount / 100;
+        // PoolMock uses linear math with a rate of 1, so amountIn == amountOut when no fees are applied.
+        uint256 expectedAmountOut = exactAmountIn;
+        // Bob has veBAL and the router is trusted, so Bob gets a 50% discount (divide by 2).
+        uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage) / 2;
+        // The hook fee will remain in the pool, so the expected amountOut discounts the fees.
+        expectedAmountOut -= expectedHookFee;
+
+        vm.prank(bob, address(0));
+        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bytes(""));
+
+        assertEq(amountOut, expectedAmountOut, "Wrong veBal hook fee");
     }
 
     function testSwapWithVeBalAndUntrustedRouter() public {
