@@ -377,6 +377,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap.
         amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(poolSwapParams);
 
+        _ensureValidSwapAmount(amountCalculatedScaled18);
+
         // Note that balances are kept in memory, and are not fully computed until the `setPoolBalances` below.
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
@@ -425,8 +427,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert SwapLimit(amountInRaw, vaultSwapParams.limitRaw);
             }
         }
-
-        _ensureValidSwapAmount(amountCalculatedScaled18);
 
         // 3) Deltas: debit for token in, credit for token out.
         _takeDebt(vaultSwapParams.tokenIn, amountInRaw);
