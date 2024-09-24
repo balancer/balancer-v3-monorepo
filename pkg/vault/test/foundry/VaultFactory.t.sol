@@ -51,7 +51,7 @@ contract VaultFactoryTest is Test {
             type(VaultExtension).creationCode
         );
 
-        // We cannot compare the deployed bytecode of the created vault against a second deployment of the vault
+        // We cannot compare the deployed bytecode of the created vault against a second deployment of the Vault
         // because the actionIdDisambiguator of the authentication contract is stored in immutable storage.
         // Therefore such comparison would fail, so we just call a few getters instead.
         IVault vault = IVault(vaultAddress);

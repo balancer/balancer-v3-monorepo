@@ -389,7 +389,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         (uint256 expectedBptAmountIn, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
             vault.getCurrentLiveBalances(pool),
             daiIdx,
-            // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals)
+            // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals).
             exactAmountOut.mulUp(daiMockRate),
             IERC20(pool).totalSupply(),
             0,

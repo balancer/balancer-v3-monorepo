@@ -78,7 +78,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             vault.manualSetAggregateSwapFeeAmount(pool, tokens[i], 0);
         }
 
-        // Mock invariant ratio bounds
+        // Mock invariant ratio bounds.
         vm.mockCall(
             pool,
             abi.encodeWithSelector(IUnbalancedLiquidityInvariantRatioBounds.getMinimumInvariantRatio.selector),
@@ -502,7 +502,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             poolData.tokenRates[tokenIndex]
         );
 
-        // mock invariants
+        // mock invariants.
         {
             (uint256 currentInvariant, uint256 invariantAndInvariantWithFeesApplied) = (3e8, 3e9);
             vm.mockCall(
@@ -739,7 +739,8 @@ contract VaultUnitLiquidityTest is BaseTest {
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
-    // Helpers.
+    // Helpers
+
     function _makeAddLiquidityParams(
         PoolData memory poolData,
         AddLiquidityKind kind,
@@ -852,7 +853,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             "Token minted with unexpected amount"
         );
 
-        // NOTE: stack too deep fix
+        // NOTE: stack too deep fix.
         TestAddLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
@@ -932,7 +933,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             "Token burned with unexpected amount (allowance)"
         );
 
-        // NOTE: stack too deep fix
+        // NOTE: stack too deep fix.
         TestRemoveLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
@@ -942,7 +943,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         assertEq(numTokens, amountsOutScaled18.length, "Incorrect amounts out scaled length");
         assertEq(numTokens, poolData.tokens.length, "Incorrect pool data tokens length");
         for (uint256 i = 0; i < numTokens; i++) {
-            // check _computeAndChargeAggregateSwapFees
+            // check _computeAndChargeAggregateSwapFees.
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,
                 i,
@@ -951,7 +952,7 @@ contract VaultUnitLiquidityTest is BaseTest {
                 params_.expectedSwapFeeAmountsScaled18[i]
             );
 
-            // check balances and amounts
+            // check balances and amounts.
             assertEq(
                 updatedPoolData.balancesRaw[i],
                 poolData_.balancesRaw[i] - protocolSwapFeeAmountRaw - amountsOutRaw[i],
@@ -964,7 +965,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             );
             assertEq(amountsOutRaw[i], expectedAmountsOutRaw[i], "Unexpected tokenOut amount");
 
-            // check _supplyCredit
+            // check _supplyCredit.
             assertEq(vault.getTokenDelta(tokens[i]), -int256(amountsOutRaw[i]), "Unexpected tokenOut delta");
         }
 

@@ -80,7 +80,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     /**
      * @notice Hooks functions called from an external router.
      * @dev This contract inherits both `MinimalRouter` and `BaseHooks`, and functions as is its own router.
-     * @param router The address of the router
+     * @param router The address of the Router
      */
     error CannotUseExternalRouter(address router);
 
@@ -294,7 +294,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
             uint256 exitFee = amountsOutRaw[i].mulDown(currentFee);
             accruedFees[i] = exitFee;
             hookAdjustedAmountsOutRaw[i] -= exitFee;
-            // Fees don't need to be transferred to the hook, because donation will redeposit them in the vault.
+            // Fees don't need to be transferred to the hook, because donation will redeposit them in the Vault.
             // In effect, we will transfer a reduced amount of tokensOut to the caller, and leave the remainder
             // in the pool balance.
 

@@ -162,7 +162,7 @@ contract VaultUnitTest is BaseTest {
         vm.mockCall(rateProvider, abi.encodeWithSelector(IRateProvider.getRate.selector), abi.encode(secondTokenRate));
         poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
 
-        // check _updateTokenRatesInPoolData is called
+        // check _updateTokenRatesInPoolData is called.
         assertEq(poolData.tokenRates[0], FixedPoint.ONE, "Unexpected tokenRates[0]");
         assertEq(poolData.tokenRates[1], secondTokenRate, "Unexpected tokenRates[1]");
 
@@ -170,7 +170,7 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
         assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
 
-        // check _updateRawAndLiveTokenBalancesInPoolData is called
+        // check _updateRawAndLiveTokenBalancesInPoolData is called.
         assertEq(
             poolData.balancesLiveScaled18[0],
             poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
