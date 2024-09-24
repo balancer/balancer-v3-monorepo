@@ -92,7 +92,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             );
         }
 
-        // Should mint correct amount of BPT poolTokens, accounting for the precision loss.
+        // Should mint the correct amount of BPT poolTokens, within a maximum error of DELTA due to precision loss.
         assertApproxEqAbs(IERC20(pool).balanceOf(lp), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
@@ -125,7 +125,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             );
         }
 
-        // Should mint correct amount of BPT poolTokens.
+        // Should mint the correct amount of BPT poolTokens, within a maximum error of DELTA due to precision loss.
         assertApproxEqAbs(IERC20(pool).balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
@@ -190,7 +190,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             );
         }
 
-        // Should mint correct amount of BPT poolTokens.
+        // Should burn the correct amount of BPT poolTokens.
         assertEq(IERC20(pool).balanceOf(bob), 0, "LP: Wrong BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
