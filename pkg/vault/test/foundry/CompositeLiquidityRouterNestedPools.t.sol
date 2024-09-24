@@ -13,6 +13,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -364,7 +365,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
 
         vm.prank(lp);
         // Since tokensIn and amountsIn have different lengths, revert.
-        vm.expectRevert(ICompositeLiquidityRouter.WrongAmountsInLength.selector);
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
         compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
@@ -667,7 +668,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         minAmountsOut[1] = 1;
         minAmountsOut[2] = 1;
 
-        vm.expectRevert(abi.encodeWithSelector(ICompositeLiquidityRouter.WrongMinAmountsOutLength.selector));
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
 
         vm.prank(lp);
         compositeLiquidityRouter.removeLiquidityProportionalNestedPool(

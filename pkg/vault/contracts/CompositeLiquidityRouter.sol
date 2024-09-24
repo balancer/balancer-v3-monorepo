@@ -12,6 +12,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -409,10 +410,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         address[] memory tokensIn
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
-        // If tokensIn length does not match with maxAmountsIn length, maxAmountsIn is wrong.
-        if (params.maxAmountsIn.length != tokensIn.length) {
-            revert WrongAmountsInLength();
-        }
+        // Revert if tokensIn length does not match with maxAmountsIn length.
+        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate in the tokens
         // array to find the child pool amounts to insert.
@@ -532,10 +531,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
 
-        if (params.minAmountsOut.length != tokensOut.length) {
-            // If tokensOut length does not match with minAmountsOut length, minAmountsOut is wrong.
-            revert WrongMinAmountsOutLength();
-        }
+        // Revert if tokensOut length does not match with minAmountsOut length.
+        InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
         (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
