@@ -104,48 +104,28 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
 
     function testsetThresholdWithWrongAddress() public {
         vm.prank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                StableSurgeHookExample.SenderNotAllowed.selector
-            )
-        );
-        StableSurgeHookExample(poolHooksContract).setThresholdPercentage(
-            pool,
-            0.2e18
-        );
+        vm.expectRevert(abi.encodeWithSelector(StableSurgeHookExample.SenderNotAllowed.selector));
+        StableSurgeHookExample(poolHooksContract).setThresholdPercentage(pool, 0.2e18);
     }
 
     function testsetThresholdWithCorrectAddress() public {
         uint256 newThreshold = 0.2e18;
         vm.prank(admin);
-        StableSurgeHookExample(poolHooksContract).setThresholdPercentage(
-            pool,
-            newThreshold
-        );
+        StableSurgeHookExample(poolHooksContract).setThresholdPercentage(pool, newThreshold);
         uint256 threshold = StableSurgeHookExample(poolHooksContract).poolThresholdPercentage(pool);
         assertEq(threshold, newThreshold);
     }
 
     function testsetSurgeCoefficientWithWrongAddress() public {
         vm.prank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                StableSurgeHookExample.SenderNotAllowed.selector
-            )
-        );
-        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(
-            pool,
-            0.2e18
-        );
+        vm.expectRevert(abi.encodeWithSelector(StableSurgeHookExample.SenderNotAllowed.selector));
+        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(pool, 0.2e18);
     }
 
     function testsetSurgeCoefficientWithCorrectAddress() public {
         uint256 newThreshold = 0.2e18;
         vm.prank(admin);
-        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(
-            pool,
-            newThreshold
-        );
+        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(pool, newThreshold);
         uint256 threshold = StableSurgeHookExample(poolHooksContract).poolSurgeCoefficient(pool);
         assertEq(threshold, newThreshold);
     }

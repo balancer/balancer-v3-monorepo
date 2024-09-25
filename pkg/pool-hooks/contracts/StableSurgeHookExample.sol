@@ -32,7 +32,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
     // An amplification coefficient to amplify the degree to which a fee increases after the threshold is met.
     mapping(address pool => uint256 surgeCoefficient) public poolSurgeCoefficient;
     uint256 public constant DEFAULT_SURGECOEFFICIENT = 50e18;
-    // A threshold of 0.1 for a 2 token pool would mean surging would occur if any token reaches 60% of the total of balances.
+    // A threshold of 0.1 for a 2 token pool means surging occurs if any token reaches 60% of the total of balances.
     uint256 public constant DEFAULT_THRESHOLD = 0.1e18;
 
     // Note on StableSurge calculations:
@@ -76,10 +76,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
      */
     event SurgeCoefficientChanged(address indexed hooksContract, uint256 indexed surgeCoefficient);
 
-    constructor(
-        IVault vault,
-        address allowedFactory
-    ) VaultGuard(vault) {
+    constructor(IVault vault, address allowedFactory) VaultGuard(vault) {
         _allowedFactory = allowedFactory;
     }
 
@@ -164,7 +161,10 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
 
         uint256 thresholdBoundary = getThresholdBoundary(params.balancesScaled18.length, poolThresholdPercentage[pool]);
         if (weightAfterSwap > thresholdBoundary) {
-            return (true, getSurgeFee(weightAfterSwap, thresholdBoundary, staticSwapFeePercentage, poolSurgeCoefficient[pool]));
+            return (
+                true,
+                getSurgeFee(weightAfterSwap, thresholdBoundary, staticSwapFeePercentage, poolSurgeCoefficient[pool])
+            );
         } else {
             return (true, staticSwapFeePercentage);
         }
