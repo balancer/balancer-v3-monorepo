@@ -42,10 +42,14 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
     // Wa: Weight after swap is defined as: Bi / SumOfAllTokenBalancesAfterSwap
     // Surging fee will be applied when:
     // Wa > 1/n + _thresholdPercentage
-    // Surging fee is calculated as: staticSwapFee * _surgeCoefficient * (Wa/(1/n + _thresholdPercentage))
+    // Surging fee is calculated as: staticSwapFee * surgeCoefficient * (Wa/(1/n + thresholdPercentage))
 
     /// @notice The sender does not have permission to call a function.
     error SenderNotAllowed();
+    /// @notice Thrown when attempting to set the threshold percentage to an invalid value.
+    error ThresholdPercentageNotAllowed();
+    /// @notice Thrown when attempting to set the surge coefficient to an invalid value.
+    error SurgeCoefficientNotAllowed();
 
     /**
      * @notice A new `StableSurgeHookExample` contract has been registered successfully.
@@ -96,6 +100,8 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
         // the pool was created by the allowed factory.
         emit StableSurgeHookExampleRegistered(address(this), factory, pool);
 
+        // Initially set the pool threshold and surge coefficient to
+        // defaults (can be set by pool swapFeeManager in future).
         _setThresholdPercentage(pool, DEFAULT_THRESHOLD);
         _setSurgeCoefficient(pool, DEFAULT_SURGECOEFFICIENT);
 
@@ -230,6 +236,12 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
         if (_vault.getPoolRoleAccounts(pool).swapFeeManager != msg.sender) {
             revert SenderNotAllowed();
         }
+        // New threshold should be < 1 - 1/number_of_assets
+        uint256 thresholdPercentageCheck = FixedPoint.ONE - FixedPoint.ONE / _vault.getPoolTokens(pool).length;
+
+        if (newThresholdPercentage > thresholdPercentageCheck) {
+            revert ThresholdPercentageNotAllowed();
+        }
         _setThresholdPercentage(pool, newThresholdPercentage);
     }
 
@@ -241,18 +253,24 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
         if (_vault.getPoolRoleAccounts(pool).swapFeeManager != msg.sender) {
             revert SenderNotAllowed();
         }
+
+        // Check that baseFee * newSurgeCoefficient / (1/number_of_assets) < 100
+        uint256 surgeCoefficientCheck = (_vault.getStaticSwapFeePercentage(pool) * newSurgeCoefficient) /
+            (FixedPoint.ONE / _vault.getPoolTokens(pool).length);
+
+        if (surgeCoefficientCheck > 100e18) {
+            revert SurgeCoefficientNotAllowed();
+        }
         _setSurgeCoefficient(pool, newSurgeCoefficient);
     }
 
     function _setThresholdPercentage(address pool, uint256 newThresholdPercentage) private {
-        // New threshold should be < 1 - 1/number_of_assets - but this is pool specific. How should we handle this? (Same for surge)
         poolThresholdPercentage[pool] = newThresholdPercentage;
 
         emit ThresholdPercentageChanged(address(this), newThresholdPercentage);
     }
 
     function _setSurgeCoefficient(address pool, uint256 newSurgeCoefficient) private {
-        // baseFee * 𝜇 / (1/n) < 100 would be the test then.
         poolSurgeCoefficient[pool] = newSurgeCoefficient;
 
         emit SurgeCoefficientChanged(address(this), newSurgeCoefficient);

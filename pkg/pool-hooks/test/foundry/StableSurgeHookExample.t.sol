@@ -108,7 +108,13 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
         StableSurgeHookExample(poolHooksContract).setThresholdPercentage(pool, 0.2e18);
     }
 
-    function testsetThresholdWithCorrectAddress() public {
+    function testsetThresholdIncorrectValue() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(StableSurgeHookExample.ThresholdPercentageNotAllowed.selector));
+        StableSurgeHookExample(poolHooksContract).setThresholdPercentage(pool, 0.6e18);
+    }
+
+    function testsetThresholdCorrect() public {
         uint256 newThreshold = 0.2e18;
         vm.prank(admin);
         StableSurgeHookExample(poolHooksContract).setThresholdPercentage(pool, newThreshold);
@@ -122,12 +128,18 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
         StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(pool, 0.2e18);
     }
 
-    function testsetSurgeCoefficientWithCorrectAddress() public {
-        uint256 newThreshold = 0.2e18;
+    function testsetSurgeCoefficientWithIncorrectValue() public {
         vm.prank(admin);
-        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(pool, newThreshold);
+        vm.expectRevert(abi.encodeWithSelector(StableSurgeHookExample.SurgeCoefficientNotAllowed.selector));
+        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(pool, 500000e18);
+    }
+
+    function testsetSurgeCoefficientCorrect() public {
+        uint256 newSurgeCoefficient = 60e18;
+        vm.prank(admin);
+        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(pool, newSurgeCoefficient);
         uint256 threshold = StableSurgeHookExample(poolHooksContract).poolSurgeCoefficient(pool);
-        assertEq(threshold, newThreshold);
+        assertEq(threshold, newSurgeCoefficient);
     }
 
     function testGetThresholdBoundary() public view {
