@@ -224,8 +224,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams = _buildPoolSwapParams(vaultSwapParams, swapState, poolData);
         }
 
-        _ensureValidTradeAmount(swapState.amountGivenScaled18);
-
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         //
@@ -251,8 +249,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData,
             poolSwapParams
         );
-
-        _ensureValidTradeAmount(amountCalculatedScaled18);
 
         // The new amount calculated is 'amountCalculated + delta'. If the underlying hook fails, or limits are
         // violated, `onAfterSwap` will revert. Uses msg.sender as the Router (the contract that called the Vault).
@@ -376,8 +372,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolSwapParams.amountGivenScaled18 -= locals.totalSwapFeeAmountScaled18;
         }
 
+        _ensureValidSwapAmount(poolSwapParams.amountGivenScaled18);
+
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap.
         amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(poolSwapParams);
+
+        _ensureValidSwapAmount(amountCalculatedScaled18);
 
         // Note that balances are kept in memory, and are not fully computed until the `setPoolBalances` below.
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
@@ -1456,10 +1456,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
 
-    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors.
-    function _ensureValidTradeAmount(uint256 tradeAmount) private view {
-        if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
+    // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors. This is called in the context of adding or removing liquidity, so zero is
+    // allowed to support single-token operations.
+    function _ensureValidTradeAmount(uint256 tradeAmount) internal view {
+        if (tradeAmount != 0) {
+            _ensureValidSwapAmount(tradeAmount);
+        }
+    }
+
+    // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors. This is called in the swap context, so zero is not a valid amount.
+    function _ensureValidSwapAmount(uint256 tradeAmount) internal view {
+        if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
         }
     }
