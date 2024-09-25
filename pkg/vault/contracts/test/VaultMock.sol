@@ -695,4 +695,12 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualSetPoolCreator(address pool, address newPoolCreator) public {
         _poolRoleAccounts[pool].poolCreator = newPoolCreator;
     }
+
+    function ensureValidTradeAmount(uint256 tradeAmount) external view {
+        _ensureValidTradeAmount(tradeAmount);
+    }
+
+    function ensureValidSwapAmount(uint256 tradeAmount) external view {
+        _ensureValidSwapAmount(tradeAmount);
+    }
 }
