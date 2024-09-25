@@ -306,6 +306,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             }
         }
 
+        // With all debts paid, get minted BPT shares out of the Vault reserves.
+        _vault.sendTo(IERC20(params.pool), params.sender, bptAmountOut);
+
         // Send remaining ETH to the user.
         _returnEth(params.sender);
     }
