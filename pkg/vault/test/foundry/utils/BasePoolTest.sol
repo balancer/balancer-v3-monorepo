@@ -251,16 +251,14 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testSetSwapFeeTooLow() public {
-        address swapFeeManager = _getSwapFeeAdmin();
-        vm.prank(swapFeeManager);
+        vm.prank(_getSwapFeeAdmin());
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         vault.setStaticSwapFeePercentage(pool, poolMinSwapFeePercentage - 1);
     }
 
     function testSetSwapFeeTooHigh() public {
-        address swapFeeManager = _getSwapFeeAdmin();
-        vm.prank(swapFeeManager);
+        vm.prank(_getSwapFeeAdmin());
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
         vault.setStaticSwapFeePercentage(pool, poolMaxSwapFeePercentage + 1);
@@ -301,14 +299,13 @@ abstract contract BasePoolTest is BaseVaultTest {
 
     function _getSwapFeeAdmin() internal returns (address) {
         PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
-        address swapFeeManager;
+        address swapFeeManager = roleAccounts.swapFeeManager;
 
-        if (roleAccounts.swapFeeManager != address(0)) {
-            return roleAccounts.swapFeeManager;
-        } else {
+        if (swapFeeManager == address(0)) {
             swapFeeManager = alice;
             authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), swapFeeManager);
-            return swapFeeManager;
         }
+        return swapFeeManager;
+
     }
 }
