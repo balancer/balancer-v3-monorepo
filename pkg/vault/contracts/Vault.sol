@@ -500,6 +500,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         _ensureUnpaused(params.pool);
+        _addLiquidityCalled().tSet(params.pool, true);
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -872,6 +873,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _totalSupply(params.pool),
                 bptAmountIn
             );
+
+            if (_addLiquidityCalled().tGet(params.pool)) {
+                uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
+                for (uint256 i = 0; i < locals.numTokens; ++i) {
+                    swapFeeAmounts[i] = amountsOutScaled18[i].mulUp(swapFeePercentage);
+                }
+            }
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
             bptAmountIn = params.maxBptAmountIn;
