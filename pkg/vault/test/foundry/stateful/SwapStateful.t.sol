@@ -15,7 +15,7 @@ contract SwapStatefulTest is BaseVaultTest {
 
     uint256 internal initialPoolInvariant;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -33,7 +33,6 @@ contract SwapStatefulTest is BaseVaultTest {
     function invariantSwaps__Stateful() public view {
         (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
         uint256 newInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
-
         assertGe(newInvariant, initialPoolInvariant, "Pool Invariant decreased!");
     }
 }

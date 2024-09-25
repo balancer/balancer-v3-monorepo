@@ -7,6 +7,8 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { RouterMock } from "../../../../contracts/test/RouterMock.sol";
 
@@ -57,6 +59,10 @@ contract OperationsHandler is Test {
         vm.startPrank(alice);
         router.swapSingleTokenExactIn(pool, dai, usdc, exactDaiAmountIn, 0, MAX_UINT128, false, bytes(""));
         vm.stopPrank();
+
+        // Makes sure it's still possible to calculate the pool invariant. If it's not, reverts.
+        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
+        IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
     }
 
     function executeSwapUsdcExactIn(uint256 exactUsdcAmountIn) public {
@@ -67,6 +73,10 @@ contract OperationsHandler is Test {
         vm.startPrank(alice);
         router.swapSingleTokenExactIn(pool, usdc, dai, exactUsdcAmountIn, 0, MAX_UINT128, false, bytes(""));
         vm.stopPrank();
+
+        // Makes sure it's still possible to calculate the pool invariant. If it's not, reverts.
+        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
+        IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
     }
 
     function executeSwapDaiExactOut(uint256 exactDaiAmountOut) public {
@@ -77,6 +87,10 @@ contract OperationsHandler is Test {
         vm.startPrank(alice);
         router.swapSingleTokenExactOut(pool, usdc, dai, exactDaiAmountOut, MAX_UINT128, MAX_UINT128, false, bytes(""));
         vm.stopPrank();
+
+        // Makes sure it's still possible to calculate the pool invariant. If it's not, reverts.
+        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
+        IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
     }
 
     function executeSwapUsdcExactOut(uint256 exactUsdcAmountOut) public {
@@ -87,5 +101,9 @@ contract OperationsHandler is Test {
         vm.startPrank(alice);
         router.swapSingleTokenExactOut(pool, dai, usdc, exactUsdcAmountOut, MAX_UINT128, MAX_UINT128, false, bytes(""));
         vm.stopPrank();
+
+        // Makes sure it's still possible to calculate the pool invariant. If it's not, reverts.
+        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
+        IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
     }
 }
