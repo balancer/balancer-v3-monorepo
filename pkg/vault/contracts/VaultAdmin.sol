@@ -45,7 +45,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
 
-    /// @dev Functions with this modifier can only be delegate-called by the vault.
+    /// @dev Functions with this modifier can only be delegate-called by the Vault.
     modifier onlyVaultDelegateCall() {
         _vault.ensureVaultDelegateCall();
         _;
@@ -627,7 +627,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // Ensures we cannot drop the supply below the minimum.
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
-        // This triggers an external call to itself; the vault is acting as a Router in this case.
+        // This triggers an external call to itself; the Vault is acting as a Router in this case.
         // `sendTo` makes external calls (`transfer`) but is non-reentrant.
         _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
         _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);

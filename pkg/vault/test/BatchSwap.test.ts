@@ -146,8 +146,8 @@ describe('BatchSwap', function () {
     await poolC.connect(lp).transfer(sender, fp(100));
   });
 
-  // This checks that the batch router is not susceptible to DDoS attacks by dusting the Vault.
-  sharedBeforeEach('add some dust to the vault (DDoS check)', async () => {
+  // This checks that the Batch Router is not susceptible to DDoS attacks by dusting the Vault.
+  sharedBeforeEach('add some dust to the Vault (DDoS check)', async () => {
     await tokens.mint({ to: vault, amount: 1234 });
     await Promise.all(pools.map((pool) => pool.connect(lp).transfer(vault, 12345)));
   });

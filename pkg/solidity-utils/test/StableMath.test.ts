@@ -82,7 +82,7 @@ describe('StableMath', function () {
 
       const actualTokenBalance = await mock.computeBalance(ampParameter, balances, invariant, tokenIndex);
 
-      // Note this function takes the decimal amp (unadjusted)
+      // Note this function takes the decimal amp (unadjusted).
       const expectedTokenBalance = getTokenBalanceGivenInvariantAndAllOtherBalances(
         amp,
         balances,

@@ -52,8 +52,8 @@ contract WeightedPoolSwaps is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
-        rateProviders.push(new RateProviderMock());
-        rateProviders.push(new RateProviderMock());
+        rateProviders.push(deployRateProviderMock());
+        rateProviders.push(deployRateProviderMock());
 
         wsteth.mint(bob, initialFunds);
         dai.mint(bob, initialFunds);
