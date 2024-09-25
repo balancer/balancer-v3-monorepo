@@ -155,6 +155,11 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
         return super.nonces(owner);
     }
 
+    /// @notice Revoke any currently granted `permit` by incrementing the sender's nonce.
+    function revokePermit() external {
+        _useNonce(msg.sender);
+    }
+
     // @inheritdoc IERC20Permit
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
