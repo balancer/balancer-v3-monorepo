@@ -16,6 +16,7 @@ contract TransientEnumerableSetTest is Test {
     address internal constant NON_EXISTENT_ADDRESS = address(10);
 
     function setUp() public virtual {
+        // This value is erased after setUp is executed, because testSet is trnsient.
         testSet.add(ADDRESS_ONE);
     }
 
