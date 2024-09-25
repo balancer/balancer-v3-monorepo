@@ -8,6 +8,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -20,7 +21,8 @@ import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 
 contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
-    using CastingHelpers for address[];
+    using ArrayHelpers for *;
+    using CastingHelpers for *;
     using FixedPoint for uint256;
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
@@ -108,5 +110,53 @@ contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
         maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(50e16);
         maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
+    }
+
+    function testMockPoolBalanceWithRate() public {
+        uint tokenAmount = 1179465241898852517841248;
+        uint dustAmount = 2;
+        vault.manualSetPoolTokensAndBalances(
+            pool,
+            [address(tokenA), address(tokenB)].toMemoryArray().asIERC20(),
+            [tokenAmount, dustAmount].toMemoryArray(),
+            [tokenAmount, dustAmount].toMemoryArray()
+        );
+
+        rateProviderTokenA.mockRate(1e18);
+        rateProviderTokenB.mockRate(1e18);
+        vm.startPrank(lp);
+
+        uint256[] memory exactAmountsIn = [tokenAmount, uint(0)].toMemoryArray();
+        uint mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
+        uint lpBurned = router.removeLiquiditySingleTokenExactOut(pool, 1e50, usdc, tokenAmount, false, "");
+        vm.assertGt(mintLp, lpBurned);
+    }
+
+    function testFuzzEdgeTokenAmount(uint tokenAmount) public {
+        tokenAmount = bound(tokenAmount, 1e6 ether, 1e12 ether);
+        uint dustAmount = 2;
+        uint[] memory currentBalances = [tokenAmount, dustAmount].toMemoryArray();
+        bool first = false;
+        bool second = false;
+        uint256 invariantA;
+        uint256 invariantB;
+        try StablePool(pool).computeInvariant(currentBalances, Rounding.ROUND_UP) returns (uint256 invariant) {
+            first = true;
+            invariantA = invariant;
+        } catch {
+        }
+        if(first) {
+            currentBalances = [tokenAmount, dustAmount + 1].toMemoryArray();
+            try StablePool(pool).computeInvariant(currentBalances, Rounding.ROUND_DOWN) returns (uint256 invariant) {
+                second = true;
+                invariantB = invariant;
+            } catch {
+            }
+        }
+
+        if (second) {
+            assertFalse(true);
+            assertGe(invariantB, invariantA, "Invariant decreased");
+        }
     }
 }

@@ -513,7 +513,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and
         // `_aggregateFeeAmounts` in storage.
-        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_UP);
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(
+            params.pool,
+            params.kind == AddLiquidityKind.PROPORTIONAL ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
+        );
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
