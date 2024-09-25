@@ -42,7 +42,7 @@ describe('WordCodec', () => {
       async function assertUnsignedEncoding(value: bigint, offset: number, bits: number) {
         const result = await lib.encodeUint(value, offset, bits);
 
-        // We must be able to restore the original value
+        // We must be able to restore the original value.
         expect(await lib.decodeUint(result, offset, bits)).to.equal(value);
         // All other bits should be clear
         expect(negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset)) & BigInt(result)).to.equal(0);
@@ -100,9 +100,9 @@ describe('WordCodec', () => {
       async function assertSignedEncoding(value: bigint, offset: number, bits: number) {
         const result = await lib.encodeInt(value, offset, bits);
 
-        // We must be able to restore the original value
+        // We must be able to restore the original value.
         expect(await lib.decodeInt(result, offset, bits)).to.equal(value);
-        // All other bits should be clear
+        // All other bits should be clear.
         expect(negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset)) & BigInt(result)).to.equal(0);
       }
 
@@ -183,9 +183,9 @@ describe('WordCodec', () => {
       async function assertUnsignedInsertion(value: bigint, offset: number, bits: number) {
         const result = await lib.insertUint(word, value, offset, bits);
 
-        // We must be able to restore the original value+
+        // We must be able to restore the original value.
         expect(await lib.decodeUint(result, offset, bits)).to.equal(value);
-        // All other bits should match the original word
+        // All other bits should match the original word.
         const mask = negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset));
         const clearedResult = BigInt(mask) & BigInt(result);
         const clearedWord = BigInt(mask) & BigInt(word);
@@ -244,9 +244,9 @@ describe('WordCodec', () => {
       async function assertSignedInsertion(value: bigint, offset: number, bits: number) {
         const result = await lib.insertInt(word, value, offset, bits);
 
-        // We must be able to restore the original value
+        // We must be able to restore the original value.
         expect(await lib.decodeInt(result, offset, bits)).to.equal(value);
-        // All other bits should match the original word
+        // All other bits should match the original word.
         const mask = negate(((ONE << BigInt(bits)) - ONE) << BigInt(offset));
         const clearedResult = BigInt(mask) & BigInt(result);
         const clearedWord = BigInt(mask) & BigInt(word);
@@ -315,9 +315,9 @@ describe('WordCodec', () => {
       async function assertBoolInsertion(value: boolean, offset: number) {
         const result = await lib.insertBool(word, value, offset);
 
-        // We must be able to restore the original value+
+        // We must be able to restore the original value.
         expect(await lib.decodeBool(result, offset)).to.equal(value);
-        // All other bits should match the original word
+        // All other bits should match the original word.
         const mask = negate(ONE << BigInt(offset));
         const clearedResult = BigInt(mask) & BigInt(result);
         const clearedWord = BigInt(mask) & BigInt(word);
@@ -340,21 +340,21 @@ describe('WordCodec', () => {
 
   describe('helpers', () => {
     it('clears word at position', async () => {
-      // Starting with all 1's, inserting a 128-bit value of 0 should be the same as clearing 128 bits
+      // Starting with all 1's, inserting a 128-bit value of 0 should be the same as clearing 128 bits.
       expect(await lib.clearWordAtPosition(ONES_BYTES32, 128, 128)).to.equal(
         await lib.insertUint(ONES_BYTES32, 0, 128, 128)
       );
-      // Should fail when the values are different
+      // Should fail when the values are different.
       expect(await lib.clearWordAtPosition(ONES_BYTES32, 128, 128)).to.not.equal(
         await lib.insertUint(ONES_BYTES32, 0, 128, 64)
       );
     });
 
     it('ensures surrounding state unchanged', async () => {
-      // Should be true if you pass in the same value
+      // Should be true if you pass in the same value.
       expect(await lib.isOtherStateUnchanged(ONES_BYTES32, ONES_BYTES32, 0, 255)).to.be.true;
 
-      // Should be false if you pass in different values
+      // Should be false if you pass in different values.
       expect(await lib.isOtherStateUnchanged(ONES_BYTES32, ZERO_BYTES32, 0, 255)).to.be.false;
 
       // Realistic example. Insert a value, *other* bits should be unchanged.

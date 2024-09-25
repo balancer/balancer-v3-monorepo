@@ -524,7 +524,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         );
         assertEq(vars.vaultAfter.usdc, vars.vaultBefore.usdc - amountsOut[vars.usdcIdx], "Vault Usdc Balance is wrong");
         // Since all Child Pool BPTs were allocated in the parent pool, vault was holding all of them. Since part of
-        // them was burned when liquidity was removed, we need to discount this amount from the vault reserves.
+        // them was burned when liquidity was removed, we need to discount this amount from the Vault reserves.
         assertEq(
             vars.vaultAfter.childPoolABpt,
             vars.vaultBefore.childPoolABpt - burnedChildPoolABpts,
@@ -554,7 +554,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
             "ChildPoolA Usdc Balance is wrong"
         );
 
-        // Check ChildPoolB
+        // Check ChildPoolB.
         // Since DAI amountOut comes from parentPool and childPoolB, we need to calculate the proportion that comes
         // from childPoolB.
         assertApproxEqAbs(
@@ -569,7 +569,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
             "ChildPoolB Wsteth Balance is wrong"
         );
 
-        // Check ParentPool
+        // Check ParentPool.
         assertApproxEqAbs(
             vars.parentPoolAfter.dai,
             vars.parentPoolBefore.dai -

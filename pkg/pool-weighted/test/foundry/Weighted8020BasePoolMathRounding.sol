@@ -7,8 +7,9 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { BasePoolMathMock } from "@balancer-labs/v3-vault/contracts/test/BasePoolMathMock.sol";
 
 import { WeightedBasePoolMathMock } from "../../contracts/test/WeightedBasePoolMathMock.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract Weighted8020BasePoolMathRounding is BasePoolMathRoundingTest {
+contract Weighted8020BasePoolMathRounding is BasePoolMathRoundingTest, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
 
     function setUp() public override {
@@ -20,6 +21,6 @@ contract Weighted8020BasePoolMathRounding is BasePoolMathRoundingTest {
     }
 
     function createMathMock() internal override returns (BasePoolMathMock) {
-        return BasePoolMathMock(address(new WeightedBasePoolMathMock([uint256(80e16), 20e16].toMemoryArray())));
+        return BasePoolMathMock(address(deployWeightedBasePoolMathMock([uint256(80e16), 20e16].toMemoryArray())));
     }
 }

@@ -322,7 +322,7 @@ interface IRouter {
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
-     * (This is the BPT of the vault's internal ERC4626 buffer.)
+     * (This is the BPT of the Vault's internal ERC4626 buffer.)
      */
     function initializeBuffer(
         IERC4626 wrappedToken,

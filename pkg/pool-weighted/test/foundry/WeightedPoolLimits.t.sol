@@ -22,8 +22,9 @@ import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
 import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPoolLimitsTest is BaseVaultTest {
+contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -54,7 +55,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     uint256 internal preInitSnapshotId;
 
     constructor() {
-        math = new WeightedMathMock();
+        math = deployWeightedMathMock();
         amountsIn = new uint256[](2);
         newAmountsIn = new uint256[](2);
         startingBalances = new uint256[](2);
@@ -72,7 +73,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
 
-        weightedPool = new WeightedPoolMock(
+        weightedPool = deployWeightedPoolMock(
             WeightedPool.NewPoolParams({
                 name: "Weight Limit Pool",
                 symbol: "WEIGHTY",

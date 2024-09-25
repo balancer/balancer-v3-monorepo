@@ -21,15 +21,18 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
-import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer.sol";
+import { VaultContractsDeployer } from "../../../test/foundry/utils/VaultContractsDeployer.sol";
 
-contract VaultUnitTest is BaseTest {
+contract VaultUnitTest is BaseTest, VaultContractsDeployer {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using CastingHelpers for *;
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;
     using SafeCast for *;
+
+    uint256 constant MIN_TRADE_AMOUNT = 1e6;
+    uint256 constant MIN_WRAP_AMOUNT = 1e4;
 
     IVaultMock internal vault;
 
@@ -40,7 +43,7 @@ contract VaultUnitTest is BaseTest {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = deployVaultMock(MIN_TRADE_AMOUNT, MIN_WRAP_AMOUNT);
     }
 
     function testBuildPoolSwapParams() public view {
@@ -159,7 +162,7 @@ contract VaultUnitTest is BaseTest {
         vm.mockCall(rateProvider, abi.encodeWithSelector(IRateProvider.getRate.selector), abi.encode(secondTokenRate));
         poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
 
-        // check _updateTokenRatesInPoolData is called
+        // check _updateTokenRatesInPoolData is called.
         assertEq(poolData.tokenRates[0], FixedPoint.ONE, "Unexpected tokenRates[0]");
         assertEq(poolData.tokenRates[1], secondTokenRate, "Unexpected tokenRates[1]");
 
@@ -167,7 +170,7 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
         assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
 
-        // check _updateRawAndLiveTokenBalancesInPoolData is called
+        // check _updateRawAndLiveTokenBalancesInPoolData is called.
         assertEq(
             poolData.balancesLiveScaled18[0],
             poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
@@ -256,5 +259,36 @@ contract VaultUnitTest is BaseTest {
 
     function testFeeConstants() public pure {
         assertLt(MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+    }
+
+    function testMinimumTradeAmountWithZero() public view {
+        // Should succeed with 0 or the minimum.
+        vault.ensureValidTradeAmount(0);
+
+        // Should succeed when it's the minimum.
+        vault.ensureValidTradeAmount(vault.getMinimumTradeAmount());
+    }
+
+    function testMinimumTradeAmountBelowMinimum() public {
+        // Should fail below minimum.
+        uint256 tradeAmount = vault.getMinimumTradeAmount() - 1;
+
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidTradeAmount(tradeAmount);
+    }
+
+    function testMinimumSwapAmount() public {
+        uint256 minAmount = vault.getMinimumTradeAmount();
+
+        // Should succeed when it's the minimum
+        vault.ensureValidSwapAmount(minAmount);
+
+        // Should fail below minimum.
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidSwapAmount(minAmount - 1);
+
+        // Should fail with 0 (unlike testMinimumTradeAmount).
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidSwapAmount(0);
     }
 }

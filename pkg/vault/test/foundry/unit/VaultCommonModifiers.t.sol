@@ -27,7 +27,7 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     function testUnlock() public {
         vault.forceUnlock();
 
-        // If function does not revert, test passes
+        // If function does not revert, test passes.
         vault.mockIsUnlocked();
     }
 

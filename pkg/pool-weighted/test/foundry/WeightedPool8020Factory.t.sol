@@ -6,10 +6,11 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
@@ -17,11 +18,12 @@ import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-inte
 
 import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPool8020FactoryTest is Test {
+contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultContractsDeployer {
     uint256 internal DEFAULT_SWAP_FEE = 1e16; // 1%
 
-    VaultMock vault;
+    IVaultMock vault;
     WeightedPool8020Factory factory;
     RateProviderMock rateProvider;
     ERC20TestToken tokenA;
@@ -30,8 +32,8 @@ contract WeightedPool8020FactoryTest is Test {
     address alice = vm.addr(1);
 
     function setUp() public {
-        vault = VaultMockDeployer.deploy();
-        factory = new WeightedPool8020Factory(IVault(address(vault)), 365 days, "Factory v1", "8020Pool v1");
+        vault = deployVaultMock();
+        factory = deployWeightedPool8020Factory(IVault(address(vault)), 365 days, "Factory v1", "8020Pool v1");
 
         tokenA = new ERC20TestToken("Token A", "TKNA", 18);
         tokenB = new ERC20TestToken("Token B", "TKNB", 6);

@@ -280,8 +280,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the router treats it as a non-ERC4626 token.
+            // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+            // initialized. Thus, the Router treats it as a non-ERC4626 token.
             if (address(underlyingToken) == address(0)) {
                 underlyingAmountsOut[i] = wrappedAmountsOut[i];
                 if (isStaticCall == false) {
@@ -328,8 +328,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the router treats it as a non-ERC4626 token.
+            // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+            // initialized. Thus, the Router treats it as a non-ERC4626 token.
             if (address(underlyingToken) == address(0)) {
                 underlyingAmounts[i] = amountsIn[i];
                 wrappedAmounts[i] = amountsIn[i];
@@ -353,7 +353,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 }
             }
 
-            // erc4626BufferWrapOrUnwrap will fail if the wrappedToken isn't ERC4626-conforming.
+            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
             (, underlyingAmounts[i], wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
                 BufferWrapOrUnwrapParams({
                     kind: kind,
@@ -556,7 +556,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountsOut[i]);
 
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                // Router is an intermediary in this case. The Vault will burn tokens from the router, so Router is
+                // Router is an intermediary in this case. The Vault will burn tokens from the Router, so Router is
                 // both owner and spender (which doesn't need approval).
                 (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
                     RemoveLiquidityParams({

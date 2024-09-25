@@ -308,7 +308,7 @@ interface IVaultAdmin {
      *
      * Pre-conditions:
      * - The buffer needs to be initialized.
-     * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
+     * - sharesOwner is the original msg.sender, it needs to be checked in the Router. That's why
      *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
      * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
      *
@@ -353,7 +353,7 @@ interface IVaultAdmin {
     function getBufferTotalShares(IERC4626 wrappedToken) external view returns (uint256 bufferShares);
 
     /**
-     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
+     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the Vault.
      * @dev All values are in native token decimals of the wrapped or underlying tokens.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer, in native token decimals

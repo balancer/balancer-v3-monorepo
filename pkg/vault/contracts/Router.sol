@@ -94,11 +94,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 }
 
                 _weth.deposit{ value: amountIn }();
-                // Transfer WETH from the router to the Vault.
+                // Transfer WETH from the Router to the Vault.
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                // Rransfer tokens from the user to the Vault.
+                // Transfer tokens from the user to the Vault.
                 // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
                 // necessary. Done out of an abundance of caution.
                 _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
@@ -282,7 +282,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             })
         );
 
-        // maxAmountsIn length is checked against tokens length at the vault.
+        // maxAmountsIn length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -475,7 +475,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             })
         );
 
-        // minAmountsOut length is checked against tokens length at the vault.
+        // minAmountsOut length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         uint256 ethAmountOut = 0;
@@ -517,7 +517,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Transfer the token to the sender (amountOut)
+            // Transfer the token to the sender (amountOut).
             _vault.sendTo(tokens[i], sender, amountsOut[i]);
         }
     }
@@ -868,7 +868,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function queryAddLiquidityHook(
         AddLiquidityHookParams calldata params
-    ) external payable onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    ) external onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -1129,7 +1129,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function querySwapHook(
         SwapSingleTokenHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;
