@@ -121,6 +121,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _tokenDeltas().tGet(token);
     }
 
+    function getNonzeroDebtCount() external view returns (uint256) {
+        return _nonZeroDebtCount().tload();
+    }
+
     /// @inheritdoc IVaultExtension
     function getReservesOf(IERC20 token) external view onlyVaultDelegateCall returns (uint256) {
         return _reservesOf[token];

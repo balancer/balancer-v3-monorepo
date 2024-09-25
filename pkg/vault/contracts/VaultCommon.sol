@@ -114,6 +114,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             _nonZeroDeltaCount().tIncrement();
         }
 
+        if (current <= 0 && next > 0) {
+            // We are going from zero or credit into debt territory.
+            _nonZeroDebtCount().tIncrement();
+        } else if (current > 0 && next <= 0) {
+            // We are going from debt into settlement or credit territory.
+            _nonZeroDebtCount().tDecrement();
+        }
+
         // Update the delta for this token.
         _tokenDeltas().tSet(token, next);
     }

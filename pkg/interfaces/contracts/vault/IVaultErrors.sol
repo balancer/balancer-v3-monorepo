@@ -79,6 +79,9 @@ interface IVaultErrors {
     /// @notice A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
+    /// @notice Withdrawals are prohibited if there are any outstanding debts.
+    error DebtsNotSettled();
+
     /// @notice A user called a Vault function (swap, add/remove liquidity) outside the lock context.
     error VaultIsNotUnlocked();
 

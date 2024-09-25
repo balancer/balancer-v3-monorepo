@@ -65,6 +65,7 @@ contract VaultStorage {
     // solhint-disable var-name-mixedcase
     bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
+    bytes32 private immutable _NON_ZERO_DEBT_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDebtCount");
     bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
     // solhint-enable var-name-mixedcase
 
@@ -167,6 +168,10 @@ contract VaultStorage {
 
     function _nonZeroDeltaCount() internal view returns (StorageSlotExtension.Uint256SlotType slot) {
         return _NON_ZERO_DELTA_COUNT_SLOT.asUint256();
+    }
+
+    function _nonZeroDebtCount() internal view returns (StorageSlotExtension.Uint256SlotType slot) {
+        return _NON_ZERO_DEBT_COUNT_SLOT.asUint256();
     }
 
     function _tokenDeltas() internal view returns (TokenDeltaMappingSlotType slot) {

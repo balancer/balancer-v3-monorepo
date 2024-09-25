@@ -120,8 +120,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function settle(IERC20 token, uint256 amountHint) external nonReentrant onlyWhenUnlocked returns (uint256 credit) {
-        uint256 reservesBefore = _reservesOf[token];
         uint256 currentReserves = token.balanceOf(address(this));
+        return _settle(token, amountHint, currentReserves);
+    }
+
+    function _settle(IERC20 token, uint256 amountHint, uint256 currentReserves) internal returns (uint256 credit) {
+        uint256 reservesBefore = _reservesOf[token];
         _reservesOf[token] = currentReserves;
         credit = currentReserves - reservesBefore;
 
@@ -141,6 +145,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /// @inheritdoc IVaultMain
     function sendTo(IERC20 token, address to, uint256 amount) external nonReentrant onlyWhenUnlocked {
         _takeDebt(token, amount);
+
+        // No funds can go out of the vault unless all debts are paid beforehand.
+        // In other words, this debt has to cancel an existing credit.
+        if (_nonZeroDebtCount().tload() > 0) {
+            revert DebtsNotSettled();
+        }
+
         _reservesOf[token] -= amount;
 
         token.safeTransfer(to, amount);
@@ -741,7 +752,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 7) BPT supply adjustment.
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        _mint(address(params.pool), params.to, bptAmountOut);
+        _mint(params.pool, address(this), bptAmountOut);
+        _settle(IERC20(params.pool), bptAmountOut, _reservesOf[IERC20(params.pool)] + bptAmountOut);
 
         // 8) Off-chain events.
         emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), swapFeeAmounts);
