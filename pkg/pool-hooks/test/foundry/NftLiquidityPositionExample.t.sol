@@ -25,8 +25,6 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
-
 import { NftLiquidityPositionExample } from "../../contracts/NftLiquidityPositionExample.sol";
 
 contract NftLiquidityPositionExampleTest is BaseVaultTest {
@@ -48,7 +46,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = deployVaultMock();
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");
@@ -58,9 +56,9 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
-        router = new RouterMock(IVault(address(vault)), weth, permit2);
+        router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
+        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
@@ -117,7 +115,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity).
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "NFT Pool", "NFT-POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "NFT Pool", "NFT-POOL");
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;

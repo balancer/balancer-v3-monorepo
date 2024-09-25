@@ -22,8 +22,9 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract E2eSwapWeightedTest is E2eSwapTest {
+contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
@@ -277,7 +278,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(
+        WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",
@@ -328,7 +329,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = poolCreator;
 
-        WeightedPoolMock weightedPool = new WeightedPoolMock(
+        WeightedPoolMock weightedPool = deployWeightedPoolMock(
             WeightedPool.NewPoolParams({
                 name: label,
                 symbol: "WEIGHTY",

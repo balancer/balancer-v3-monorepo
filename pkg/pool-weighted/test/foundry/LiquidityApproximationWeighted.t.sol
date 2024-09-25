@@ -20,10 +20,11 @@ import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksM
 
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
-contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
+contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, WeightedPoolContractsDeployer {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for uint256;
@@ -44,7 +45,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
 
-        WeightedPoolMock weightedPool = new WeightedPoolMock(
+        WeightedPoolMock weightedPool = deployWeightedPoolMock(
             WeightedPool.NewPoolParams({
                 name: label,
                 symbol: "WEIGHTY",

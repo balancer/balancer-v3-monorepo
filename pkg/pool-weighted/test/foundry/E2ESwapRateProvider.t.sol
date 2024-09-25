@@ -14,14 +14,20 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
+import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
+contract E2eSwapRateProviderWeightedTest is
+    WeightedPoolContractsDeployer,
+    VaultContractsDeployer,
+    E2eSwapRateProviderTest
+{
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
@@ -30,9 +36,13 @@ contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
 
     uint256 internal poolCreationNonce;
 
+    function setUp() public override {
+        super.setUp();
+    }
+
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        rateProviderTokenA = new RateProviderMock();
-        rateProviderTokenB = new RateProviderMock();
+        rateProviderTokenA = deployRateProviderMock();
+        rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
         rateProviderTokenA.mockRate(5.2453235e18);
         rateProviderTokenB.mockRate(0.4362784e18);
@@ -41,7 +51,7 @@ contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        WeightedPoolFactory factory = new WeightedPoolFactory(
+        WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",

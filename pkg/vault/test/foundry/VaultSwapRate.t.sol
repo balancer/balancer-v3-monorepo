@@ -35,12 +35,12 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
         // Must match the array passed in, not the sorted index, since buildTokenConfig will do the sorting.
         rateProviders[0] = rateProvider;
         rateProvider.mockRate(mockRate);
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         factoryMock.registerTestPool(
             newPool,

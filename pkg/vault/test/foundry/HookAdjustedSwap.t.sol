@@ -44,7 +44,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity).
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;

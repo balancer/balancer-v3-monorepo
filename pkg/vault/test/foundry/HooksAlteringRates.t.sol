@@ -40,7 +40,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     function createPool() internal virtual override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         // Rate providers will by sorted along with tokens by `buildTokenConfig`.
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
         rateProviders[0] = rateProvider;
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
@@ -48,7 +48,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             rateProviders
         );
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
@@ -96,7 +96,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             rateProviders
         );
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);

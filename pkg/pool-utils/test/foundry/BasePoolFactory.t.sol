@@ -90,13 +90,13 @@ contract BasePoolFactoryTest is BaseVaultTest {
         vm.prank(admin);
         testFactory.disable();
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "Test Pool", "TEST"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Test Pool", "TEST"));
         vm.expectRevert(IBasePoolFactory.Disabled.selector);
         testFactory.manualRegisterPoolWithFactory(newPool);
     }
 
     function testRegisterPoolWithFactory() public {
-        address newPool = address(new PoolMock(IVault(address(vault)), "Test Pool", "TEST"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Test Pool", "TEST"));
 
         assertFalse(testFactory.isPoolFromFactory(newPool), "Pool is already registered with factory");
 
@@ -106,7 +106,7 @@ contract BasePoolFactoryTest is BaseVaultTest {
     }
 
     function testRegisterPoolWithVault() public {
-        address newPool = address(new PoolMock(IVault(address(vault)), "Test Pool", "TEST"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Test Pool", "TEST"));
         TokenConfig[] memory newTokens = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );

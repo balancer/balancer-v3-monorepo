@@ -27,7 +27,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
     // Create a pool with flexible invariant ratio bounds.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        address newPool = address(new PoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
+        address newPool = address(deployPoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);

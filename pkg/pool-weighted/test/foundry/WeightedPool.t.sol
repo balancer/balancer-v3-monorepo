@@ -21,8 +21,9 @@ import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksM
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPoolTest is BasePoolTest {
+contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -56,7 +57,7 @@ contract WeightedPoolTest is BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         PoolRoleAccounts memory roleAccounts;
