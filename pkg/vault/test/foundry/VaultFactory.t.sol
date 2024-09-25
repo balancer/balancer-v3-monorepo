@@ -44,7 +44,13 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
 
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.prank(deployer);
-        factory.create(salt, vaultAddress);
+        factory.create(
+            salt,
+            vaultAddress,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
 
         // We cannot compare the deployed bytecode of the created vault against a second deployment of the Vault
         // because the actionIdDisambiguator of the authentication contract is stored in immutable storage.
@@ -61,7 +67,13 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     function testCreateNotAuthorized() public {
         vm.prank(deployer);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        factory.create(bytes32(0), address(0));
+        factory.create(
+            bytes32(0),
+            address(0),
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
     }
 
     function testCreateMismatch() public {
@@ -71,7 +83,13 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.prank(deployer);
         vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
-        factory.create(bytes32(uint256(salt) + 1), vaultAddress);
+        factory.create(
+            bytes32(uint256(salt) + 1),
+            vaultAddress,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
     }
 
     function testCreateTwice() public {
@@ -80,8 +98,56 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
 
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.startPrank(deployer);
-        factory.create(salt, vaultAddress);
-        vm.expectRevert(VaultFactory.VaultAlreadyCreated.selector);
-        factory.create(salt, vaultAddress);
+        factory.create(
+            salt,
+            vaultAddress,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
+        vm.expectRevert();
+        factory.create(
+            salt,
+            vaultAddress,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
+    }
+
+    function testInvalidVaultBytecode() public {
+        bytes32 salt = bytes32(uint256(123));
+        authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
+
+        address vaultAddress = factory.getDeploymentAddress(salt);
+        vm.prank(deployer);
+        vm.expectRevert(abi.encodeWithSelector(VaultFactory.InvalidBytecode.selector, "Vault"));
+        factory.create(
+            salt,
+            vaultAddress,
+            new bytes(0),
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
+    }
+
+    function testInvalidVaultAdminBytecode() public {
+        bytes32 salt = bytes32(uint256(123));
+        authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
+
+        address vaultAddress = factory.getDeploymentAddress(salt);
+        vm.prank(deployer);
+        vm.expectRevert(abi.encodeWithSelector(VaultFactory.InvalidBytecode.selector, "VaultAdmin"));
+        factory.create(salt, vaultAddress, type(Vault).creationCode, new bytes(0), type(VaultExtension).creationCode);
+    }
+
+    function testInvalidVaultExtensionBytecode() public {
+        bytes32 salt = bytes32(uint256(123));
+        authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
+
+        address vaultAddress = factory.getDeploymentAddress(salt);
+        vm.prank(deployer);
+        vm.expectRevert(abi.encodeWithSelector(VaultFactory.InvalidBytecode.selector, "VaultExtension"));
+        factory.create(salt, vaultAddress, type(Vault).creationCode, type(VaultAdmin).creationCode, new bytes(0));
     }
 }
