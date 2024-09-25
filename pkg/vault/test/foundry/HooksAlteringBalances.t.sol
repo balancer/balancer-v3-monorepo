@@ -47,7 +47,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);

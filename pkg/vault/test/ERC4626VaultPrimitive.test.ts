@@ -35,7 +35,7 @@ describe('ERC4626VaultPrimitive', function () {
   const SWAP_AMOUNT = fp(100);
   const MIN_BPT = bn(1e6);
 
-  // Donate to wrapped tokens to generate different rates
+  // Donate to wrapped tokens to generate different rates.
   const daiToDonate = fp((Math.random() * 1000 + 10).toFixed(0));
   const usdcToDonate = fp((Math.random() * 1000 + 10).toFixed(0));
 
@@ -74,7 +74,7 @@ describe('ERC4626VaultPrimitive', function () {
       args: [DAI, 'Wrapped DAI', 'wDAI', 18],
     });
 
-    // Using USDC as 18 decimals for simplicity
+    // Using USDC as 18 decimals for simplicity.
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
     wUSDC = await deploy('v3-solidity-utils/ERC4626TestToken', {
       args: [USDC, 'Wrapped USDC', 'wUSDC', 18],
@@ -90,7 +90,7 @@ describe('ERC4626VaultPrimitive', function () {
   });
 
   async function createYieldBearingPool(): Promise<PoolMock> {
-    // initialize assets and supply
+    // Initialize assets and supply.
     await DAI.mint(lp, TOKEN_AMOUNT);
     await DAI.connect(lp).approve(wDAI, TOKEN_AMOUNT);
     await wDAI.connect(lp).deposit(TOKEN_AMOUNT, lp);
@@ -252,7 +252,7 @@ describe('ERC4626VaultPrimitive', function () {
     sharedBeforeEach('create and initialize pool', async () => {
       pool = await createAndInitializeYieldBearingPool();
 
-      // Donate to wrapped tokens to generate different rates
+      // Donate to wrapped tokens to generate different rates.
       await DAI.mint(lp, daiToDonate);
       await DAI.connect(lp).transfer(await wDAI.getAddress(), daiToDonate);
       await USDC.mint(lp, usdcToDonate);
@@ -265,7 +265,7 @@ describe('ERC4626VaultPrimitive', function () {
     });
 
     it('should not require tokens in advance to querySwapExactIn using buffer', async () => {
-      // Check that vault does not have tokenIn balance (DAI)
+      // Check that vault does not have tokenIn balance (DAI).
       const reservesBefore = await vault.getReservesOf(await DAI.getAddress());
       expect(reservesBefore).to.be.eq(bufferInitAmount, 'DAI balance is wrong');
 
@@ -288,7 +288,7 @@ describe('ERC4626VaultPrimitive', function () {
       expect(queryOutput.tokensOut).to.have.length(1, 'Wrong query tokensOut length');
       expect(queryOutput.tokensOut[0]).to.be.equal(await USDC.getAddress(), 'Wrong query tokensOut value');
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Connect Alice since the real transaction requires user to have tokens.
       const staticActualOutput = await batchRouter
         .connect(alice)
         .swapExactIn.staticCall(paths, MAX_UINT256, false, '0x');
@@ -298,7 +298,7 @@ describe('ERC4626VaultPrimitive', function () {
       expect(staticActualOutput.tokensOut[0]).to.be.equal(await USDC.getAddress(), 'Wrong actual tokensOut value');
 
       // Check if real transaction and query transaction are approx the same (tolerates an error when token is
-      // wrapped/unwrapped and rate changes in the real operation)
+      // wrapped/unwrapped and rate changes in the real operation).
       expect(staticActualOutput.pathAmountsOut[0]).to.be.almostEqual(
         queryOutput.pathAmountsOut[0],
         1e-10,
@@ -310,7 +310,7 @@ describe('ERC4626VaultPrimitive', function () {
         'Wrong actual amountsOut value'
       );
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Connect Alice since the real transaction requires user to have tokens.
       const actualOutput = await batchRouter.connect(alice).swapExactIn(paths, MAX_UINT256, false, '0x');
       expect(actualOutput)
         .to.emit(await DAI.getAddress(), 'Transfer')
@@ -321,7 +321,7 @@ describe('ERC4626VaultPrimitive', function () {
     });
 
     it('should not require tokens in advance to querySwapExactOut using buffer', async () => {
-      // Check that vault does not have tokenIn balance (DAI)
+      // Check that vault does not have tokenIn balance (DAI).
       const reservesBefore = await vault.getReservesOf(await DAI.getAddress());
       expect(reservesBefore).to.be.eq(bufferInitAmount, 'DAI balance is wrong');
 
@@ -334,7 +334,7 @@ describe('ERC4626VaultPrimitive', function () {
             { pool: wUSDC, tokenOut: USDC, isBuffer: true },
           ],
           exactAmountOut: SWAP_AMOUNT,
-          // max amount is twice the SWAP_AMOUNT
+          // max amount is twice the SWAP_AMOUNT.
           maxAmountIn: pct(SWAP_AMOUNT, 2),
         },
       ];
@@ -345,7 +345,7 @@ describe('ERC4626VaultPrimitive', function () {
       expect(queryOutput.tokensIn).to.have.length(1, 'Wrong query tokensIn length');
       expect(queryOutput.tokensIn[0]).to.be.equal(await DAI.getAddress(), 'Wrong query tokensIn value');
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Connect Alice since the real transaction requires user to have tokens.
       const staticActualOutput = await batchRouter
         .connect(alice)
         .swapExactOut.staticCall(paths, MAX_UINT256, false, '0x');
@@ -355,7 +355,7 @@ describe('ERC4626VaultPrimitive', function () {
       expect(staticActualOutput.tokensIn[0]).to.be.equal(await DAI.getAddress(), 'Wrong actual tokensIn value');
 
       // Check if real transaction and query transaction are approx the same (tolerates an error when token is
-      // wrapped/unwrapped and rate changes in the real operation)
+      // wrapped/unwrapped and rate changes in the real operation).
       expect(staticActualOutput.pathAmountsIn[0]).to.be.almostEqual(
         queryOutput.pathAmountsIn[0],
         1e-10,
@@ -367,7 +367,7 @@ describe('ERC4626VaultPrimitive', function () {
         'Wrong actual amountsIn value'
       );
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Connect Alice since the real transaction requires user to have tokens.
       const actualOutput = await batchRouter.connect(alice).swapExactOut(paths, MAX_UINT256, false, '0x');
       expect(actualOutput)
         .to.emit(await DAI.getAddress(), 'Transfer')

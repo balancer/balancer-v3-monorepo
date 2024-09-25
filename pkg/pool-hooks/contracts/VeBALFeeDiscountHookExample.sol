@@ -78,7 +78,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
         address,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
-        // If the router is not trusted, do not apply the veBAL discount. `getSender` may be manipulated by a
+        // If the Router is not trusted, do not apply the veBAL discount. `getSender` may be manipulated by a
         // malicious router.
         if (params.router != _trustedRouter) {
             return (true, staticSwapFeePercentage);

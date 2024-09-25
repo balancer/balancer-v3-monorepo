@@ -11,8 +11,9 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { ERC20MultiTokenMock } from "../../../contracts/test/ERC20MultiTokenMock.sol";
 import { ERC20MultiToken } from "../../../contracts/token/ERC20MultiToken.sol";
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
+import { VaultContractsDeployer } from "../utils/VaultContractsDeployer.sol";
 
-contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
+contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken, VaultContractsDeployer {
     address internal constant ZERO_ADDRESS = address(0x00);
     address internal constant POOL = address(0x01);
     address internal constant OWNER = address(0x02);
@@ -24,7 +25,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
     ERC20MultiTokenMock token;
 
     function setUp() public {
-        token = new ERC20MultiTokenMock();
+        token = deployERC20MultiTokenMock();
     }
 
     function testBalanceOfWithZeroValue() public view {

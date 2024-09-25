@@ -202,7 +202,7 @@ enum SwapKind {
 //
 // `PoolSwapParams` passes some of this information through (kind, userData), but "translates" the parameters to fit
 // the internal swap API used by `IBasePool`. It scales amounts to full 18-decimal precision, adds the token balances,
-// converts the raw token addresses to indices, and adds the address of the router originating the request. It does
+// converts the raw token addresses to indices, and adds the address of the Router originating the request. It does
 // not need the limit, since this is checked at the Router level.
 
 /**

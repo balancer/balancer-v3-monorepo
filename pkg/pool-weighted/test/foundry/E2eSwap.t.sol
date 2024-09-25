@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -20,8 +22,9 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract E2eSwapWeightedTest is E2eSwapTest {
+contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
@@ -88,7 +91,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
+        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights), Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
@@ -102,8 +105,6 @@ contract E2eSwapWeightedTest is E2eSwapTest {
             bytes("")
         );
 
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-
         // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesTokenB. So, if
         // there were no fees, trading `exactAmountOutDo + feesTokenB` would get exactAmountIn. Therefore, a swap
         // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
@@ -112,21 +113,37 @@ contract E2eSwapWeightedTest is E2eSwapTest {
             address(poolWithMutableWeights),
             tokenB,
             tokenA,
-            exactAmountOutDo + feesTokenB,
+            exactAmountOutDo,
             0,
             MAX_UINT128,
             false,
             bytes("")
         );
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
+
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(address(poolWithMutableWeights), tokenA);
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(address(poolWithMutableWeights), tokenB);
+
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
+        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights), Rounding.ROUND_UP);
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
+
+        // - Token B should have been round-tripped with exact amounts.
+        // - Token A should have less balance after.
+        assertEq(
+            balancesAfter.userTokens[tokenBIdx],
+            balancesBefore.userTokens[tokenBIdx],
+            "User did not end up with the same amount of B tokens"
+        );
+        assertLe(
+            balancesAfter.userTokens[tokenAIdx],
+            balancesBefore.userTokens[tokenAIdx],
+            "User ended up with more A tokens"
+        );
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
@@ -151,7 +168,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
+        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights), Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 exactAmountInDo = router.swapSingleTokenExactOut(
@@ -165,8 +182,6 @@ contract E2eSwapWeightedTest is E2eSwapTest {
             bytes("")
         );
 
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-
         // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
         // there were no fees, trading `exactAmountInDo - feesTokenA` would get exactAmountOut. Therefore, a swap
         // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
@@ -175,28 +190,95 @@ contract E2eSwapWeightedTest is E2eSwapTest {
             address(poolWithMutableWeights),
             tokenB,
             tokenA,
-            exactAmountInDo - feesTokenA,
+            exactAmountInDo,
             MAX_UINT128,
             MAX_UINT128,
             false,
             bytes("")
         );
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(address(poolWithMutableWeights), tokenA);
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(address(poolWithMutableWeights), tokenB);
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
+        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights), Rounding.ROUND_UP);
 
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
+
+        // - Token A should have been round-tripped with exact amounts
+        // - Token B should have less balance after
+        assertEq(
+            balancesAfter.userTokens[tokenAIdx],
+            balancesBefore.userTokens[tokenAIdx],
+            "User did not end up with the same amount of A tokens"
+        );
+        assertLe(
+            balancesAfter.userTokens[tokenBIdx],
+            balancesBefore.userTokens[tokenBIdx],
+            "User ended up with more B tokens"
+        );
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
+    function testSwapSymmetry__Fuzz(uint256 tokenAAmountIn, uint256 weightTokenA, uint256 swapFeePercentage) public {
+        weightTokenA = bound(weightTokenA, 1e16, 99e16);
+        swapFeePercentage = bound(swapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+        _setSwapFeePercentage(address(poolWithMutableWeights), swapFeePercentage);
+
+        uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);
+
+        // Since tokens can have different decimals and amountOut is in relation to tokenB, normalize tokenA liquidity.
+        uint256 normalizedLiquidityTokenA = (newPoolBalances[tokenAIdx] * (10 ** decimalsTokenB)) /
+            (10 ** decimalsTokenA);
+
+        // Cap amount in to lowest normalized liquidity * 25%
+        tokenAAmountIn = bound(
+            tokenAAmountIn,
+            1e15,
+            Math.min(normalizedLiquidityTokenA, newPoolBalances[tokenBIdx]) / 4
+        );
+
+        uint256 snapshotId = vm.snapshot();
+
+        vm.prank(alice);
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(poolWithMutableWeights),
+            tokenA,
+            tokenB,
+            tokenAAmountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            address(poolWithMutableWeights),
+            tokenA,
+            tokenB,
+            amountOut,
+            MAX_UINT128,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        // An ExactIn swap with `defaultAmount` tokenIn returned `amountOut` tokenOut.
+        // Since Exact_In and Exact_Out are symmetrical, an ExactOut swap with `amountOut` tokenOut should return the
+        // same amount of tokenIn.
+        assertApproxEqRel(amountIn, tokenAAmountIn, 0.00001e16, "Swap fees are not symmetric for ExactIn and ExactOut");
+    }
+
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(
+        WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",
@@ -247,7 +329,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = poolCreator;
 
-        WeightedPoolMock weightedPool = new WeightedPoolMock(
+        WeightedPoolMock weightedPool = deployWeightedPoolMock(
             WeightedPool.NewPoolParams({
                 name: label,
                 symbol: "WEIGHTY",
@@ -309,8 +391,11 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         );
     }
 
-    function _calculatePoolInvariant(address poolToCalculate) private view returns (uint256 invariant) {
+    function _calculatePoolInvariant(
+        address poolToCalculate,
+        Rounding rounding
+    ) private view returns (uint256 invariant) {
         (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(poolToCalculate);
-        return IBasePool(poolToCalculate).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+        return IBasePool(poolToCalculate).computeInvariant(lastBalancesLiveScaled18, rounding);
     }
 }

@@ -55,4 +55,16 @@ contract RouterCommonMock is RouterCommon {
     function mockSendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) external {
         return _sendTokenOut(sender, tokenOut, amountOut, wethIsEth);
     }
+
+    function manualReturnETH() public payable {
+        _returnEth(msg.sender);
+    }
+
+    function sendExtraEth(address recipient, uint256 amount) public payable {
+        payable(recipient).transfer(amount);
+    }
+
+    function assertETHBalance() public payable {
+        require(address(msg.sender).balance > 0, "Balance must be more then 0");
+    }
 }

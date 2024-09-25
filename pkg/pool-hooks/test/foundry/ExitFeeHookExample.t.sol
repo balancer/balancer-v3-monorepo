@@ -51,7 +51,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation)
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
@@ -181,7 +181,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
 
     // Registry tests require a new pool, because an existent pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
-        newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
         vm.label(newPool, "Exit Fee Pool");
     }
 
