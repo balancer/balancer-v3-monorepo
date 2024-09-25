@@ -37,7 +37,7 @@ contract PoolInfoTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
-        vault = deployVaultMock(0, 0);
+        vault = deployVaultMock();
         poolInfo = new PoolInfo(vault);
         poolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
 
@@ -180,32 +180,5 @@ contract PoolInfoTest is BaseTest {
 
         assertEq(actualAggregateSwapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
         assertEq(actualAggregateYieldFeePercentage, expectedYieldFeePercentage, "Incorrect yield fee percentage");
-    }
-
-    function deployVaultMock(uint256 minTradeAmount, uint256 minWrapAmount) internal returns (IVaultMock) {
-        IAuthorizer authorizer = new BasicAuthorizerMock();
-        bytes32 salt = bytes32(0);
-        VaultMock vaultMock = VaultMock(payable(CREATE3.getDeployed(salt)));
-
-        VaultAdminMock vaultAdmin = new VaultAdminMock(
-            IVault(payable(vaultMock)),
-            90 days,
-            30 days,
-            minTradeAmount,
-            minWrapAmount
-        );
-        VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(payable(vaultMock)), vaultAdmin);
-        ProtocolFeeControllerMock protocolFeeController = new ProtocolFeeControllerMock(IVault(payable(vaultMock)));
-
-        CREATE3.deploy(
-            salt,
-            abi.encodePacked(
-                type(VaultMock).creationCode,
-                abi.encode(vaultExtension, authorizer, protocolFeeController)
-            ),
-            0
-        );
-
-        return IVaultMock(address(vaultMock));
     }
 }

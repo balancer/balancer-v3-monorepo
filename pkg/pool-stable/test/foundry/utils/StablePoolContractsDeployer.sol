@@ -10,6 +10,9 @@ import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/fou
 import { StablePool } from "../../../contracts/StablePool.sol";
 import { StablePoolFactory } from "../../../contracts/StablePoolFactory.sol";
 
+/**
+ * @dev This contract contains functions for deploying mocks and contracts related to the "StablePool". These functions should have support for reusing artifacts from the hardhat compilation.
+ */
 contract StablePoolContractsDeployer is BaseContractsDeployer {
     function deployStablePool(StablePool.NewPoolParams memory params, IVault vault) internal returns (StablePool) {
         if (reusingArtifacts) {

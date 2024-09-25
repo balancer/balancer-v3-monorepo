@@ -61,7 +61,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = deployVaultMock(0, 0);
+        vault = deployVaultMock();
 
         _mockMintCallback(alice, initTotalSupply);
         vault.mintERC20(pool, alice, initTotalSupply);

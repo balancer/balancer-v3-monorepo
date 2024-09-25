@@ -48,7 +48,7 @@ contract VaultUnitSwapTest is BaseTest, VaultContractsDeployer {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = deployVaultMock(0, 0);
+        vault = deployVaultMock();
         feeController = vault.getProtocolFeeController();
 
         swapTokens = [dai, usdc];

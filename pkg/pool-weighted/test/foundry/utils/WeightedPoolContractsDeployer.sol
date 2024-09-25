@@ -14,6 +14,9 @@ import { WeightedPool } from "../../../contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool8020Factory } from "../../../contracts/WeightedPool8020Factory.sol";
 
+/**
+ * @dev This contract contains functions for deploying mocks and contracts related to the "WeightedPool". These functions should have support for reusing artifacts from the hardhat compilation.
+ */
 contract WeightedPoolContractsDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";
 

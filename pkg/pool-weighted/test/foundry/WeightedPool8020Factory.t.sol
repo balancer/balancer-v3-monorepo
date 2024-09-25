@@ -32,7 +32,7 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
     address alice = vm.addr(1);
 
     function setUp() public {
-        vault = deployVaultMock(0, 0);
+        vault = deployVaultMock();
         factory = deployWeightedPool8020Factory(IVault(address(vault)), 365 days, "Factory v1", "8020Pool v1");
 
         tokenA = new ERC20TestToken("Token A", "TKNA", 18);

@@ -35,6 +35,9 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { RouterCommonMock } from "../../../contracts/test/RouterCommonMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 
+/**
+ * @dev This contract contains functions for deploying mocks and contracts related to the "Vault". These functions should have support for reusing artifacts from the hardhat compilation.
+ */
 contract VaultContractsDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";
 
@@ -125,6 +128,10 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         } else {
             return new LinearBasePoolMathMock();
         }
+    }
+
+    function deployVaultMock() internal returns (IVaultMock) {
+        return deployVaultMock(0, 0);
     }
 
     function deployVaultMock(uint256 minTradeAmount, uint256 minWrapAmount) internal returns (IVaultMock) {

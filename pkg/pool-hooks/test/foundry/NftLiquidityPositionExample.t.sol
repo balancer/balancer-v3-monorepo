@@ -46,7 +46,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = deployVaultMock(0, 0);
+        vault = deployVaultMock();
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");
