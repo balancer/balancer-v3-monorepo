@@ -306,6 +306,5 @@ abstract contract BasePoolTest is BaseVaultTest {
             authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), swapFeeManager);
         }
         return swapFeeManager;
-
     }
 }
