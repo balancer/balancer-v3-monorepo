@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -25,14 +23,17 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
  * @notice Hook that applies a fee for out of range or undesirable amounts of tokens in relation to a threshold.
  * @dev Uses the dynamic fee mechanism to apply a directional fee.
  */
-contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
+contract StableSurgeHookExample is BaseHooks, VaultGuard {
     using FixedPoint for uint256;
     // Only pools from a specific factory are able to register and use this hook.
     address private immutable _allowedFactory;
     // Defines the range in which surging will not occur
-    uint256 private _thresholdPercentage;
+    mapping(address pool => uint256 threshold) public poolThresholdPercentage;
     // An amplification coefficient to amplify the degree to which a fee increases after the threshold is met.
-    uint256 private _surgeCoefficient;
+    mapping(address pool => uint256 surgeCoefficient) public poolSurgeCoefficient;
+    uint256 public constant DEFAULT_SURGECOEFFICIENT = 50e18;
+    // A threshold of 0.1 for a 2 token pool would mean surging would occur if any token reaches 60% of the total of balances.
+    uint256 public constant DEFAULT_THRESHOLD = 0.1e18;
 
     // Note on StableSurge calculations:
     // Relevant Variables inherited from Stable Math:
@@ -42,6 +43,9 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
     // Surging fee will be applied when:
     // Wa > 1/n + _thresholdPercentage
     // Surging fee is calculated as: staticSwapFee * _surgeCoefficient * (Wa/(1/n + _thresholdPercentage))
+
+    /// @notice The sender does not have permission to call a function.
+    error SenderNotAllowed();
 
     /**
      * @notice A new `StableSurgeHookExample` contract has been registered successfully.
@@ -74,13 +78,9 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
 
     constructor(
         IVault vault,
-        address allowedFactory,
-        uint256 thresholdPercentage,
-        uint256 surgeCoefficient
-    ) VaultGuard(vault) Ownable(msg.sender) {
+        address allowedFactory
+    ) VaultGuard(vault) {
         _allowedFactory = allowedFactory;
-        _setThresholdPercentage(thresholdPercentage);
-        _setSurgeCoefficient(surgeCoefficient);
     }
 
     /// @inheritdoc IHooks
@@ -98,6 +98,9 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
         // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
         // the pool was created by the allowed factory.
         emit StableSurgeHookExampleRegistered(address(this), factory, pool);
+
+        _setThresholdPercentage(pool, DEFAULT_THRESHOLD);
+        _setSurgeCoefficient(pool, DEFAULT_SURGECOEFFICIENT);
 
         return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
@@ -159,9 +162,9 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
             );
         }
 
-        uint256 thresholdBoundary = getThresholdBoundary(params.balancesScaled18.length, _thresholdPercentage);
+        uint256 thresholdBoundary = getThresholdBoundary(params.balancesScaled18.length, poolThresholdPercentage[pool]);
         if (weightAfterSwap > thresholdBoundary) {
-            return (true, getSurgeFee(weightAfterSwap, thresholdBoundary, staticSwapFeePercentage, _surgeCoefficient));
+            return (true, getSurgeFee(weightAfterSwap, thresholdBoundary, staticSwapFeePercentage, poolSurgeCoefficient[pool]));
         } else {
             return (true, staticSwapFeePercentage);
         }
@@ -223,27 +226,34 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard, Ownable {
      * @notice Sets the hook threshold percentage.
      * @dev This function must be permissioned.
      */
-    function setThresholdPercentage(uint256 newThresholdPercentage) external onlyOwner {
-        _setThresholdPercentage(newThresholdPercentage);
+    function setThresholdPercentage(address pool, uint256 newThresholdPercentage) external {
+        if (_vault.getPoolRoleAccounts(pool).swapFeeManager != msg.sender) {
+            revert SenderNotAllowed();
+        }
+        _setThresholdPercentage(pool, newThresholdPercentage);
     }
 
     /**
      * @notice Sets the hook surgeCoefficient.
      * @dev This function must be permissioned.
      */
-    function setSurgeCoefficient(uint256 newSurgeCoefficient) external onlyOwner {
-        _setSurgeCoefficient(newSurgeCoefficient);
+    function setSurgeCoefficient(address pool, uint256 newSurgeCoefficient) external {
+        if (_vault.getPoolRoleAccounts(pool).swapFeeManager != msg.sender) {
+            revert SenderNotAllowed();
+        }
+        _setSurgeCoefficient(pool, newSurgeCoefficient);
     }
 
-    function _setThresholdPercentage(uint256 newThresholdPercentage) private {
-        // This should be validated; e.g. <= FixedPoint.ONE or some max value?
-        _thresholdPercentage = newThresholdPercentage;
+    function _setThresholdPercentage(address pool, uint256 newThresholdPercentage) private {
+        // New threshold should be < 1 - 1/number_of_assets - but this is pool specific. How should we handle this? (Same for surge)
+        poolThresholdPercentage[pool] = newThresholdPercentage;
 
         emit ThresholdPercentageChanged(address(this), newThresholdPercentage);
     }
 
-    function _setSurgeCoefficient(uint256 newSurgeCoefficient) private {
-        _surgeCoefficient = newSurgeCoefficient;
+    function _setSurgeCoefficient(address pool, uint256 newSurgeCoefficient) private {
+        // baseFee * 𝜇 / (1/n) < 100 would be the test then.
+        poolSurgeCoefficient[pool] = newSurgeCoefficient;
 
         emit SurgeCoefficientChanged(address(this), newSurgeCoefficient);
     }

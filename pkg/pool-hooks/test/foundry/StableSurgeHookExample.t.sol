@@ -33,9 +33,6 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
 
     uint64 SWAP_FEE_PERCENTAGE = 0.0004e18;
     uint256 AMP_FACTOR = 200;
-    // A threshold of 0.1 for a 2 token pool would mean surging would occur if any token reaches 60% of the total of balances.
-    uint256 THRESHOLD = 0.1e18;
-    uint256 SURGE_COEFFICIENT = 50e18;
 
     // The following reference values were calculated manually using settings above
     uint256 initialAmount = 50e18;
@@ -57,7 +54,7 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
         // LP will be the owner of the hook.
         vm.prank(lp);
         address stableSurgeHook = address(
-            new StableSurgeHookExample(IVault(address(vault)), address(stablePoolFactory), THRESHOLD, SURGE_COEFFICIENT)
+            new StableSurgeHookExample(IVault(address(vault)), address(stablePoolFactory))
         );
         vm.label(stableSurgeHook, "Stable Surge Hook");
         return stableSurgeHook;
@@ -66,6 +63,7 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
     // Overrides pool creation to use StablePool
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         PoolRoleAccounts memory roleAccounts;
+        roleAccounts.swapFeeManager = admin;
 
         vm.expectEmit(true, true, false, false);
         emit StableSurgeHookExample.StableSurgeHookExampleRegistered(
@@ -104,10 +102,58 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
         vm.stopPrank();
     }
 
+    function testsetThresholdWithWrongAddress() public {
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StableSurgeHookExample.SenderNotAllowed.selector
+            )
+        );
+        StableSurgeHookExample(poolHooksContract).setThresholdPercentage(
+            pool,
+            0.2e18
+        );
+    }
+
+    function testsetThresholdWithCorrectAddress() public {
+        uint256 newThreshold = 0.2e18;
+        vm.prank(admin);
+        StableSurgeHookExample(poolHooksContract).setThresholdPercentage(
+            pool,
+            newThreshold
+        );
+        uint256 threshold = StableSurgeHookExample(poolHooksContract).poolThresholdPercentage(pool);
+        assertEq(threshold, newThreshold);
+    }
+
+    function testsetSurgeCoefficientWithWrongAddress() public {
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StableSurgeHookExample.SenderNotAllowed.selector
+            )
+        );
+        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(
+            pool,
+            0.2e18
+        );
+    }
+
+    function testsetSurgeCoefficientWithCorrectAddress() public {
+        uint256 newThreshold = 0.2e18;
+        vm.prank(admin);
+        StableSurgeHookExample(poolHooksContract).setSurgeCoefficient(
+            pool,
+            newThreshold
+        );
+        uint256 threshold = StableSurgeHookExample(poolHooksContract).poolSurgeCoefficient(pool);
+        assertEq(threshold, newThreshold);
+    }
+
     function testGetThresholdBoundary() public view {
         uint256 thresholdBoundary = StableSurgeHookExample(poolHooksContract).getThresholdBoundary(
             balancesScaled18.length,
-            THRESHOLD
+            StableSurgeHookExample(poolHooksContract).DEFAULT_THRESHOLD()
         );
         assertEq(thresholdBoundary, expectedThresholdBoundary, "Incorrect threshold boundary calculation");
     }
@@ -115,7 +161,7 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
     function testComputeSurgeFee() public view {
         uint256 thresholdBoundary = StableSurgeHookExample(poolHooksContract).getThresholdBoundary(
             balancesScaled18.length,
-            THRESHOLD
+            StableSurgeHookExample(poolHooksContract).DEFAULT_THRESHOLD()
         );
         uint256 weightAfterSwap = StableSurgeHookExample(poolHooksContract).getWeightAfterSwap(
             balancesScaled18,
@@ -127,7 +173,7 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
             weightAfterSwap,
             thresholdBoundary,
             SWAP_FEE_PERCENTAGE,
-            SURGE_COEFFICIENT
+            StableSurgeHookExample(poolHooksContract).DEFAULT_SURGECOEFFICIENT()
         );
         assertEq(surgeFee, expectedSurgeFee, "Incorrect surge fee calculation");
     }
