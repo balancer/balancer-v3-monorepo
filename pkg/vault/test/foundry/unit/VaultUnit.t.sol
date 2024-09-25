@@ -31,6 +31,9 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
     using PoolConfigLib for PoolConfigBits;
     using SafeCast for *;
 
+    uint256 constant MIN_TRADE_AMOUNT = 1e6;
+    uint256 constant MIN_WRAP_AMOUNT = 1e4;
+
     IVaultMock internal vault;
 
     address pool = address(0x1234);
@@ -40,7 +43,7 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = deployVaultMock();
+        vault = deployVaultMock(MIN_TRADE_AMOUNT, MIN_WRAP_AMOUNT);
     }
 
     function testBuildPoolSwapParams() public view {
@@ -73,37 +76,40 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         assertEq(poolSwapParams.userData, vaultSwapParams.userData, "Unexpected userData");
     }
 
-    function testComputeAndChargeAggregateSwapFees() public {
+    function testComputeAndChargeAggregateSwapFees__Fuzz(
+        uint256 totalSwapFeeAmountScaled18,
+        uint256 aggregateSwapFeePercentage
+    ) public {
+        totalSwapFeeAmountScaled18 = bound(totalSwapFeeAmountScaled18, 0, 1e18);
+        aggregateSwapFeePercentage = bound(aggregateSwapFeePercentage, 1e12, 50e16);
+
         vault.manualSetPoolRegistered(pool, true);
-
-        uint256 tokenIndex = 0;
         vault.manualSetAggregateSwapFeeAmount(pool, dai, 0);
-
-        uint256 swapFeeAmountScaled18 = 1e18;
-        uint256 protocolSwapFeePercentage = 10e16;
+        uint256 tokenIndex = 0;
 
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
-        poolData.poolConfigBits = poolData.poolConfigBits.setAggregateSwapFeePercentage(protocolSwapFeePercentage);
+        poolData.poolConfigBits = poolData.poolConfigBits.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);
 
-        uint256 expectedSwapFeeAmountRaw = swapFeeAmountScaled18
-            .mulUp(protocolSwapFeePercentage)
-            .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
+        // The aggregate fee percentage is truncated in the pool config bits, so we do the same.
+        aggregateSwapFeePercentage = (aggregateSwapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(
-            poolData,
-            swapFeeAmountScaled18,
-            pool,
-            dai,
-            tokenIndex
+        uint256 expectedTotalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundUp(
+            poolData.decimalScalingFactors[tokenIndex],
+            poolData.tokenRates[tokenIndex]
         );
 
-        // No creator fees, so protocol fees is equal to the total
-        assertEq(totalFeesRaw, expectedSwapFeeAmountRaw, "Unexpected totalFeesRaw");
+        uint256 expectedAggregateSwapFeeAmountRaw = expectedTotalSwapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
+
+        (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) = vault
+            .manualComputeAndChargeAggregateSwapFees(poolData, totalSwapFeeAmountScaled18, pool, dai, tokenIndex);
+
+        assertEq(totalSwapFeeAmountRaw, expectedTotalSwapFeeAmountRaw, "Unexpected totalSwapFeeAmountRaw");
+        assertEq(aggregateSwapFeeAmountRaw, expectedAggregateSwapFeeAmountRaw, "Unexpected aggregateSwapFeeAmountRaw");
         assertEq(
             vault.getAggregateSwapFeeAmount(pool, dai),
-            expectedSwapFeeAmountRaw,
+            expectedAggregateSwapFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
     }
@@ -112,11 +118,16 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         vault.manualSetPoolRegistered(pool, true);
 
         PoolData memory poolData;
+        poolData.decimalScalingFactors = decimalScalingFactors;
+        poolData.tokenRates = tokenRates;
+        poolData.poolConfigBits = poolData.poolConfigBits.setAggregateSwapFeePercentage(1.56464e16);
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInRecoveryMode(true);
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
+        (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) = vault
+            .manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
 
-        assertEq(totalFeesRaw, 0, "Unexpected totalFeesRaw");
+        assertEq(totalSwapFeeAmountRaw, 0, "Unexpected totalSwapFeeAmountRaw");
+        assertEq(aggregateSwapFeeAmountRaw, 0, "Unexpected aggregateSwapFeeAmountRaw");
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
@@ -151,7 +162,7 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         vm.mockCall(rateProvider, abi.encodeWithSelector(IRateProvider.getRate.selector), abi.encode(secondTokenRate));
         poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
 
-        // check _updateTokenRatesInPoolData is called
+        // check _updateTokenRatesInPoolData is called.
         assertEq(poolData.tokenRates[0], FixedPoint.ONE, "Unexpected tokenRates[0]");
         assertEq(poolData.tokenRates[1], secondTokenRate, "Unexpected tokenRates[1]");
 
@@ -159,7 +170,7 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
         assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
 
-        // check _updateRawAndLiveTokenBalancesInPoolData is called
+        // check _updateRawAndLiveTokenBalancesInPoolData is called.
         assertEq(
             poolData.balancesLiveScaled18[0],
             poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
@@ -248,5 +259,36 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
     function testFeeConstants() public pure {
         assertLt(MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+    }
+
+    function testMinimumTradeAmountWithZero() public view {
+        // Should succeed with 0 or the minimum.
+        vault.ensureValidTradeAmount(0);
+
+        // Should succeed when it's the minimum.
+        vault.ensureValidTradeAmount(vault.getMinimumTradeAmount());
+    }
+
+    function testMinimumTradeAmountBelowMinimum() public {
+        // Should fail below minimum.
+        uint256 tradeAmount = vault.getMinimumTradeAmount() - 1;
+
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidTradeAmount(tradeAmount);
+    }
+
+    function testMinimumSwapAmount() public {
+        uint256 minAmount = vault.getMinimumTradeAmount();
+
+        // Should succeed when it's the minimum
+        vault.ensureValidSwapAmount(minAmount);
+
+        // Should fail below minimum.
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidSwapAmount(minAmount - 1);
+
+        // Should fail with 0 (unlike testMinimumTradeAmount).
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        vault.ensureValidSwapAmount(0);
     }
 }

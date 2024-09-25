@@ -53,19 +53,40 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         uint32 pauseWindowDuration,
         uint32 bufferPeriodDuration,
         uint256 minTradeAmount,
-        uint256 minWrapAmount
+        uint256 minWrapAmount,
+        bytes32 vaultCreationCodeHash,
+        bytes32 vaultAdminCreationCodeHash,
+        bytes32 vaultExtensionCreationCodeHash
     ) internal returns (VaultFactory) {
         if (reusingArtifacts) {
             return
                 VaultFactory(
                     deployCode(
                         _computeVaultPath(type(VaultFactory).name),
-                        abi.encode(authorizer, pauseWindowDuration, bufferPeriodDuration, minTradeAmount, minWrapAmount)
+                        abi.encode(
+                            authorizer,
+                            pauseWindowDuration,
+                            bufferPeriodDuration,
+                            minTradeAmount,
+                            minWrapAmount,
+                            vaultCreationCodeHash,
+                            vaultAdminCreationCodeHash,
+                            vaultExtensionCreationCodeHash
+                        )
                     )
                 );
         } else {
             return
-                new VaultFactory(authorizer, pauseWindowDuration, bufferPeriodDuration, minTradeAmount, minWrapAmount);
+                new VaultFactory(
+                    authorizer,
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    minTradeAmount,
+                    minWrapAmount,
+                    vaultCreationCodeHash,
+                    vaultAdminCreationCodeHash,
+                    vaultExtensionCreationCodeHash
+                );
         }
     }
 

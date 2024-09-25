@@ -99,7 +99,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
     }
 
     function getMaximumInvariantRatio() external view virtual override returns (uint256) {
-        return 1e40; // Something just really big; should always work.
+        return 1e40; // Something just really big; should always work
     }
 
     function setMockRate(uint256 mockRate) external {

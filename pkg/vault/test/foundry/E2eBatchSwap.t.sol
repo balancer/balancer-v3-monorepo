@@ -69,14 +69,14 @@ contract E2eBatchSwapTest is BaseVaultTest {
         _setUpVariables();
 
         // Initialize pools that will be used by batch router.
-        // Create poolA
+        // Create poolA.
         vm.startPrank(lp);
         poolA = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "poolA");
         _initPool(poolA, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
-        // Create poolB
+        // Create poolB.
         poolB = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
         _initPool(poolB, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
-        // Create poolC
+        // Create poolC.
         poolC = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
         _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
@@ -146,8 +146,8 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
         vm.stopPrank();
 
-        assertTrue(feesTokenA > 0, "No fees on tokenA");
-        assertTrue(feesTokenD > 0, "No fees on tokenD");
+        assertGt(feesTokenA, 0, "No aggregate fees on tokenA (token in)");
+        assertEq(feesTokenD, 0, "Aggregate fees on token D (token out)");
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsAfter = _getPoolInvariants();
@@ -205,7 +205,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
     function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn, uint256 poolFeePercentage) public {
         poolFeePercentage = bound(poolFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
 
-        // For this test, we need equal fees to ensure symetry between exact_in and out.
+        // For this test, we need equal fees to ensure symmetry between exact_in and out.
         vault.manualSetStaticSwapFeePercentage(poolA, poolFeePercentage);
         vault.manualSetStaticSwapFeePercentage(poolB, poolFeePercentage);
         vault.manualSetStaticSwapFeePercentage(poolC, poolFeePercentage);

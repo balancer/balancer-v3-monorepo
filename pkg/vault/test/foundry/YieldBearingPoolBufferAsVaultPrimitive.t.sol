@@ -54,12 +54,16 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
+        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, waDAI.previewDeposit(bufferInitialAmount));
+        router.addLiquidityToBuffer(waDAI, 2 * bufferInitialAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
+        emit IVaultEvents.LiquidityAddedToBuffer(
+            waUSDC,
+            bufferInitialAmount,
+            waUSDC.previewDeposit(bufferInitialAmount)
+        );
+        router.addLiquidityToBuffer(waUSDC, 2 * bufferInitialAmount);
         vm.stopPrank();
     }
 
@@ -184,7 +188,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were balanced, buffer balances should
-        // not change
+        // not change.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai;
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
@@ -198,7 +202,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             waUSDC.previewDeposit(tooLargeSwapAmount);
 
         // Delta DAI and USDC are the same because the _verifySwapResult will check them in opposite directions (DAI
-        // going in, USDC going out)
+        // going in, USDC going out).
         vars.expectedAliceDeltaDai = tooLargeSwapAmount;
         vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
@@ -236,10 +240,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
-        // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
-        // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        // Positive imbalance of underlying.
+        dai.approve(address(vault), unbalancedUnderlyingDelta);
+        vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
+        // Positive imbalance of wrapped.
+        IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -250,12 +256,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
-        // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
-        // by the user. E.g.:
-        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
-        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
-        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers are imbalanced, buffers must be
+        // perfectly balanced at the end.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
         vars.expectedBufferBalanceAfterSwapWaDai =
             vars.bufferBalanceBeforeSwapWaDai +
@@ -280,10 +282,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
-        // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
-        // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        // Positive imbalance of underlying.
+        dai.approve(address(vault), unbalancedUnderlyingDelta);
+        vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
+        // Positive imbalance of wrapped.
+        IERC20(address(waUSDC)).approve(address(vault), waUSDC.previewDeposit(unbalancedUnderlyingDelta));
+        vault.addLiquidityToBufferUnbalancedForTests(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
@@ -294,12 +298,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
-        // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
-        // by the user. E.g.:
-        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
-        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
-        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers are imbalanced, buffers must be
+        // perfectly balanced at the end.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
         vars.expectedBufferBalanceAfterSwapWaDai =
             vars.bufferBalanceBeforeSwapWaDai +
@@ -379,7 +379,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
         // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "preview"
         // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up. Adds 1e6 to cover
-        // any rate change when wrapping/unwrapping. (It tolerates a bigger amountIn, which is in favor of the vault).
+        // any rate change when wrapping/unwrapping. (It tolerates a bigger amountIn, which is in favor of the Vault).
         uint256 waUsdcAmountOutScaled18 = waUsdcAmountOutRaw.mulDown(waUSDC.getRate().computeRateRoundUp()) + 1e6;
         // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18. `waDaiAmountInRaw` is the
         // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
@@ -447,7 +447,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         assertEq(paths.length, tokens.length, "Output array length mismatch");
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
-        // Check results
+        // Check results.
         if (vars.kind == SwapKind.EXACT_IN) {
             // Rounding issues occurs in favor of vault, and are very small. Usdc is the token out.
             assertLe(paths[0], vars.expectedAliceDeltaUsdc, "paths AmountOut must be <= expected amountOut");
@@ -464,7 +464,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             assertEq(tokens[0], address(dai), "Wrong token for SwapKind");
         }
 
-        // Tokens were transferred
+        // Tokens were transferred.
         assertLe(
             dai.balanceOf(alice),
             vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDeltaDai,

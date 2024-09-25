@@ -64,7 +64,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256 minBptAmountOut = defaultAmount;
         uint256 maxInvariantRatio = FixedPoint.ONE * 2; // 200%
 
-        // Reasonable invariant ratio
+        // Reasonable invariant ratio.
         PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);
         // Pool balances are [defaultAmount, defaultAmount]; invariant is `2 * defaultAmount`.
         // Adding `[8, 10] defaultAmount` will make the new invariant `20 * defaultAmount` (10x ratio).

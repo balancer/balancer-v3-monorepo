@@ -131,7 +131,7 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
             })
         );
 
-        // maxAmountsIn length is checked against tokens length at the vault.
+        // maxAmountsIn length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -219,7 +219,7 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
             })
         );
 
-        // minAmountsOut length is checked against tokens length at the vault.
+        // minAmountsOut length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         uint256 ethAmountOut = 0;

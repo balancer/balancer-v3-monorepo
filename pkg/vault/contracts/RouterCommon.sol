@@ -36,6 +36,10 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _IS_RETURN_ETH_LOCKED_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "isReturnEthLocked");
+
     /// @notice Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
 
@@ -56,25 +60,25 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
 
     /**
      * @notice Saves the user or contract that initiated the current operation.
-     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the router's
-     * `getSender` function will always be the "outermost" caller. Some transactions require the router to identify
+     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the Router's
+     * `getSender` function will always be the "outermost" caller. Some transactions require the Router to identify
      * multiple senders. Consider the following example:
      *
-     * - ContractA has a function that calls the router, then calls ContractB with the output. ContractB in turn
-     * calls back into the router.
-     * - Imagine further that ContractA is a pool with a "before" hook that also calls the router.
+     * - ContractA has a function that calls the Router, then calls ContractB with the output. ContractB in turn
+     * calls back into the Router.
+     * - Imagine further that ContractA is a pool with a "before" hook that also calls the Router.
      *
-     * When the user calls the function on ContractA, there are three calls to the router in the same transaction:
-     * - 1st call: When ContractA calls the router directly, to initiate an operation on the pool (say, a swap).
+     * When the user calls the function on ContractA, there are three calls to the Router in the same transaction:
+     * - 1st call: When ContractA calls the Router directly, to initiate an operation on the pool (say, a swap).
      *             (Sender is contractA, initiator of the operation.)
      *
-     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the router.
+     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the Router.
      *             This is a "nested" call within the original pool operation. The nested call returns, then the
-     *             before hook returns, the router completes the operation, and finally returns back to ContractA
+     *             before hook returns, the Router completes the operation, and finally returns back to ContractA
      *             with the result (e.g., a calculated amount of tokens).
      *             (Nested call; sender is still ContractA through all of this.)
      *
-     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the router.
+     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the Router.
      *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
     modifier saveSender() {
@@ -83,10 +87,26 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         _discardSenderIfRequired(isExternalSender);
     }
 
+    /**
+     * @notice Locks the return of excess ETH to the sender until the end of the function.
+     * @dev This also encompasses the `saveSender` functionality.
+     */
+    modifier saveSenderAndManageEth() {
+        bool isExternalSender = _saveSender();
+
+        // Lock the return of ETH during execution
+        _isReturnEthLockedSlot().tstore(true);
+        _;
+        _isReturnEthLockedSlot().tstore(false);
+
+        _returnEth(_getSenderSlot().tload());
+        _discardSenderIfRequired(isExternalSender);
+    }
+
     function _saveSender() internal returns (bool isExternalSender) {
         address sender = _getSenderSlot().tload();
 
-        // NOTE: Only the most external sender will be saved by the router.
+        // NOTE: Only the most external sender will be saved by the Router.
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
             isExternalSender = true;
@@ -155,7 +175,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     }
 
     /// @inheritdoc IRouterCommon
-    function multicall(bytes[] calldata data) public virtual saveSender returns (bytes[] memory results) {
+    function multicall(
+        bytes[] calldata data
+    ) public payable virtual saveSenderAndManageEth returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
@@ -191,8 +213,13 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * returned ETH.
      */
     function _returnEth(address sender) internal {
-        uint256 excess = address(this).balance;
+        // If the return of ETH is locked, then don't return it,
+        // because _returnEth will be called again at the end of the call.
+        if (_isReturnEthLockedSlot().tload()) {
+            return;
+        }
 
+        uint256 excess = address(this).balance;
         if (excess > 0) {
             payable(sender).sendValue(excess);
         }
@@ -280,5 +307,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
 
     function _getSenderSlot() internal view returns (StorageSlotExtension.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
+    }
+
+    function _isReturnEthLockedSlot() internal view returns (StorageSlotExtension.BooleanSlotType) {
+        return _IS_RETURN_ETH_LOCKED_SLOT.asBoolean();
     }
 }
