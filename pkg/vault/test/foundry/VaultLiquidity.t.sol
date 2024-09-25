@@ -27,7 +27,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    /// Add
+    // Add
 
     function addLiquidityProportional() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         bptAmountOut = defaultAmount;
@@ -141,7 +141,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquidityCustomDisabled() public {
-        // Disable add custom liquidity
+        // Disable add custom liquidity.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.enableAddLiquidityCustom = false;
         vault.manualSetPoolConfig(pool, poolConfigBits);
@@ -198,7 +198,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         router.addLiquiditySingleTokenExactOut(pool, dai, defaultAmount - 1, bptAmountOut, false, bytes(""));
     }
 
-    /// Remove
+    // Remove
 
     function removeLiquidityProportional() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         bptAmountIn = defaultAmount * 2;
@@ -378,7 +378,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         );
     }
 
-    /// Utils
+    // Utils
 
     function assertAddLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
         Balances memory balancesBefore = getBalances(alice);
@@ -387,7 +387,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         Balances memory balancesAfter = getBalances(alice);
 
-        // Tokens are transferred from the user to the vault.
+        // Tokens are transferred from the user to the Vault.
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] - amountsIn[0],
@@ -399,7 +399,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             "Add - User balance: token 1"
         );
 
-        // Tokens are now in the vault / pool.
+        // Tokens are now in the Vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0],
@@ -457,7 +457,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             "Remove - User balance: token 1"
         );
 
-        // Tokens are no longer in the vault / pool.
+        // Tokens are no longer in the Vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] - amountsOut[0],

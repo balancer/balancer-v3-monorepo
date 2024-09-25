@@ -49,7 +49,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         );
     }
 
-    /// Add
+    // Add
 
     function addLiquidityUnbalanced()
         public
@@ -108,7 +108,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertAddLiquidity(addLiquiditySingleTokenExactOut);
     }
 
-    /// Remove
+    // Remove
 
     function removeLiquiditySingleTokenExactIn()
         public
@@ -169,7 +169,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertRemoveLiquidity(removeLiquiditySingleTokenExactOut);
     }
 
-    /// Utils
+    // Utils
 
     function assertAddLiquidity(function() returns (uint256[] memory, uint256, uint256[] memory) testFunc) internal {
         Balances memory balancesBefore = getBalances(alice);
@@ -178,7 +178,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         Balances memory balancesAfter = getBalances(alice);
 
-        // Tokens are transferred from the user to the vault.
+        // Tokens are transferred from the user to the Vault.
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] - amountsIn[0],
@@ -190,7 +190,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - User balance: token 1"
         );
 
-        // Tokens are now in the vault / pool.
+        // Tokens are now in the Vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0] - aggregateSwapFees[0],
@@ -251,7 +251,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Remove - User balance: token 1"
         );
 
-        // Tokens are no longer in the vault / pool.
+        // Tokens are no longer in the Vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] - amountsOut[0] - aggregateSwapFees[0],

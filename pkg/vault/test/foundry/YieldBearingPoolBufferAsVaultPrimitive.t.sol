@@ -188,7 +188,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were balanced, buffer balances should
-        // not change
+        // not change.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai;
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
@@ -202,7 +202,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             waUSDC.previewDeposit(tooLargeSwapAmount);
 
         // Delta DAI and USDC are the same because the _verifySwapResult will check them in opposite directions (DAI
-        // going in, USDC going out)
+        // going in, USDC going out).
         vars.expectedAliceDeltaDai = tooLargeSwapAmount;
         vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
@@ -379,7 +379,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
         // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "preview"
         // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up. Adds 1e6 to cover
-        // any rate change when wrapping/unwrapping. (It tolerates a bigger amountIn, which is in favor of the vault).
+        // any rate change when wrapping/unwrapping. (It tolerates a bigger amountIn, which is in favor of the Vault).
         uint256 waUsdcAmountOutScaled18 = waUsdcAmountOutRaw.mulDown(waUSDC.getRate().computeRateRoundUp()) + 1e6;
         // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18. `waDaiAmountInRaw` is the
         // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
@@ -447,7 +447,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         assertEq(paths.length, tokens.length, "Output array length mismatch");
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
-        // Check results
+        // Check results.
         if (vars.kind == SwapKind.EXACT_IN) {
             // Rounding issues occurs in favor of vault, and are very small. Usdc is the token out.
             assertLe(paths[0], vars.expectedAliceDeltaUsdc, "paths AmountOut must be <= expected amountOut");
@@ -464,7 +464,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             assertEq(tokens[0], address(dai), "Wrong token for SwapKind");
         }
 
-        // Tokens were transferred
+        // Tokens were transferred.
         assertLe(
             dai.balanceOf(alice),
             vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDeltaDai,

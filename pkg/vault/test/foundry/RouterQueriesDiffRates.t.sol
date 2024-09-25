@@ -47,8 +47,8 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         vm.label(newPool, label);
 
         rateProviders = new IRateProvider[](2);
-        rateProviders[0] = IRateProvider(address(new RateProviderMock()));
-        rateProviders[1] = IRateProvider(address(new RateProviderMock()));
+        rateProviders[0] = IRateProvider(address(deployRateProviderMock()));
+        rateProviders[1] = IRateProvider(address(deployRateProviderMock()));
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20(), rateProviders));
 
@@ -389,7 +389,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         (uint256 expectedBptAmountIn, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
             vault.getCurrentLiveBalances(pool),
             daiIdx,
-            // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals)
+            // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals).
             exactAmountOut.mulUp(daiMockRate),
             IERC20(pool).totalSupply(),
             0,
