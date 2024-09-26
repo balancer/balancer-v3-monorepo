@@ -14,6 +14,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 
@@ -38,6 +39,7 @@ import {
 contract RoundingDirectionStablePoolTest is BasePoolTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     uint256 constant TOKEN_AMOUNT = 1e3 ether;
     RateProviderMock rateProviderWstEth;
@@ -61,7 +63,7 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         for (uint256 i = 0; i < sortedTokens.length; i++) {
             poolTokens.push(sortedTokens[i]);
             tokenConfigs[i].token = sortedTokens[i];
-            if(address(sortedTokens[i]) == address(wsteth)) {
+            if (address(sortedTokens[i]) == address(wsteth)) {
                 rateProviderWstEth = new RateProviderMock();
                 rateProviderWstEth.mockRate(1e18);
                 tokenConfigs[i].rateProvider = IRateProvider(address(rateProviderWstEth));
@@ -114,14 +116,12 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         bool second = false;
         try StablePool(pool).computeInvariant(currentBalances, Rounding.ROUND_UP) returns (uint256 invariant) {
             first = true;
-        } catch {
-        }
-        if(!first) {
+        } catch {}
+        if (!first) {
             currentBalances = [tokenAmount, dustAmount + 1].toMemoryArray();
             try StablePool(pool).computeInvariant(currentBalances, Rounding.ROUND_DOWN) returns (uint256 invariant) {
                 second = true;
-            } catch {
-            }
+            } catch {}
         }
 
         vm.assertTrue(!second);
@@ -140,7 +140,7 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
             [tokenAmount + inputAmount, dustAmount].toMemoryArray(),
             Rounding.ROUND_DOWN
         );
-        uint lpAmountAfterMint = initialTotalSupply * postInvariant / previousInvariant;
+        uint lpAmountAfterMint = (initialTotalSupply * postInvariant) / previousInvariant;
         uint mintedLpAmount = lpAmountAfterMint - initialTotalSupply;
         uint previousInvariant2 = StablePool(pool).computeInvariant(
             [tokenAmount + inputAmount, dustAmount - 1].toMemoryArray(),
@@ -150,7 +150,7 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
             [tokenAmount, dustAmount - 1].toMemoryArray(),
             Rounding.ROUND_DOWN
         );
-        uint lpAmountAfterBurn = lpAmountAfterMint * postInvariant2 / previousInvariant2;
+        uint lpAmountAfterBurn = (lpAmountAfterMint * postInvariant2) / previousInvariant2;
         uint burnedLpAmount = lpAmountAfterMint - lpAmountAfterBurn;
         vm.assertGt(mintedLpAmount, burnedLpAmount);
     }
@@ -228,32 +228,137 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         uint256[] memory exactAmountsIn = [tokenAmount, uint(0)].toMemoryArray();
         uint mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
 
-        console.log('minted LP: ', mintLp);
+        console.log("minted LP: ", mintLp);
 
         (, , , lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
 
         uint lpBurned = router.removeLiquiditySingleTokenExactOut(pool, 1e50, usdc, tokenAmount, false, "");
-        assertGt(mintLp, lpBurned, "Shannon test");
+        assertGt(mintLp, lpBurned, "BPT test");
         uint256 invariantMid = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
-        router.removeLiquidityProportional(pool, IERC20(pool).balanceOf(alice), [uint256(0), uint256(0)].toMemoryArray(), false, "");
+        router.removeLiquidityProportional(
+            pool,
+            IERC20(pool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            ""
+        );
 
         (, , , lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
         uint256 usdcBalanceAfter = IERC20(usdc).balanceOf(lp);
         uint256 wstETHBalanceAfter = IERC20(wsteth).balanceOf(lp);
         uint256 invariantAfter = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        console.log('USDC balance before: ', usdcBalanceBefore);
-        console.log('USDC balance after: ', usdcBalanceAfter);
+        console.log("USDC balance before: ", usdcBalanceBefore);
+        console.log("USDC balance after: ", usdcBalanceAfter);
 
-        console.log('wsteth balance before: ', wstETHBalanceBefore);
-        console.log('wsteth balance after: ', wstETHBalanceAfter);
+        console.log("wsteth balance before: ", wstETHBalanceBefore);
+        console.log("wsteth balance after: ", wstETHBalanceAfter);
 
-        console.log('invariant before: ', invariantBefore);
-        console.log('invariant mid: ', invariantMid);
-        console.log('invariant after: ', invariantAfter);
+        console.log("invariant before: ", invariantBefore);
+        console.log("invariant mid: ", invariantMid);
+        console.log("invariant after: ", invariantAfter);
 
-        // assertEq(IERC20(pool).balanceOf(lp), 0, "LP still has shares");
+        assertEq(IERC20(pool).balanceOf(alice), 0, "LP still has shares");
         assertGe(invariantAfter, invariantBefore, "Invariant decreased");
+    }
+
+    function testMockPoolBalanceWithRate2() public {
+        uint tokenAmount = 1e6;
+        uint dustAmount = 1;
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[0] = IERC20(usdc);
+        tokens[1] = IERC20(wsteth);
+        vault.manualSetPoolTokensAndBalances(
+            pool,
+            tokens,
+            [tokenAmount, 1].toMemoryArray(),
+            [tokenAmount, 1].toMemoryArray()
+        );
+        rateProviderWstEth.mockRate(1.5e18);
+        vm.startPrank(alice);
+        uint256[] memory exactAmountsIn = [tokenAmount * 3, dustAmount * 2].toMemoryArray();
+
+        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
+        uint256 usdcBalanceBefore = IERC20(usdc).balanceOf(alice);
+        uint256 wstETHBalanceBefore = IERC20(wsteth).balanceOf(alice);
+        uint256 invariantBefore = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+
+        uint mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
+
+        console2.log("bptrate:", StablePool(pool).getRate());
+        uint[] memory minAmountsOut = [uint(1), uint(1)].toMemoryArray();
+        uint[] memory amountsOut = router.removeLiquidityProportional(pool, mintLp, minAmountsOut, false, "");
+
+        (, , , lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pool);
+        uint256 usdcBalanceAfter = IERC20(usdc).balanceOf(alice);
+        uint256 wstETHBalanceAfter = IERC20(wsteth).balanceOf(alice);
+        uint256 invariantAfter = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+
+        console.log("usdc before: %d", usdcBalanceBefore);
+        console.log("wstETH before: %d", wstETHBalanceBefore);
+        console.log("invariant before: %d", invariantBefore);
+
+        console.log("usdc after: %d", usdcBalanceAfter);
+        console.log("wstETH after: %d", wstETHBalanceAfter);
+        console.log("invariant after: %d", invariantAfter);
+
+        assertGe(invariantAfter, invariantBefore, "Invariant decreased");
+        // In this test case, users get exact same wstETH back and some USDC profit.
+    }
+
+    function testComputeBalance(
+        uint256 currentAmp,
+        uint256 balance0,
+        uint256 balance1,
+        uint256 balance2,
+        uint256 invariantRatio
+    ) public {
+        currentAmp = bound(currentAmp, 100, 10000);
+        balance0 = bound(balance0, 1000e18, 1_000_000e18);
+        balance1 = bound(balance1, 1000e18, 1_000_000e18);
+        balance2 = bound(balance2, 1000e18, 1_000_000e18);
+        invariantRatio = bound(invariantRatio, 60e16, 300e16);
+        uint256 tokenInIndex = bound(balance0 + balance1 + balance2, 0, 2);
+
+        uint256[] memory balancesLiveScaled18 = new uint256[](3);
+        balancesLiveScaled18[0] = balance0;
+        balancesLiveScaled18[1] = balance1;
+        balancesLiveScaled18[2] = balance2;
+
+        try this.computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_DOWN) returns (
+            uint256 invariant
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        uint256 balanceRoundDown = StableMath.computeBalance(
+            currentAmp,
+            balancesLiveScaled18,
+            computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
+            tokenInIndex
+        );
+
+        uint256 balanceRoundUp = StableMath.computeBalance(
+            currentAmp,
+            balancesLiveScaled18,
+            computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
+            tokenInIndex
+        );
+
+        assertGe(balanceRoundDown, balanceRoundUp, "Incorrect assumption");
+    }
+
+    function computeInvariant(
+        uint256 currentAmp,
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) public view returns (uint256) {
+        uint256 invariant = StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+        if (invariant > 0) {
+            invariant = rounding == Rounding.ROUND_DOWN ? invariant : invariant + 1;
+        }
+
+        return invariant;
     }
 
     fallback() external {
