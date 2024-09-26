@@ -752,14 +752,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 7) BPT supply adjustment.
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        if (_nonZeroDebtCount().tload() == 0) {
-            // Debts paid in advance; mint directly to LP.
-            _mint(params.pool, params.to, bptAmountOut);
-        } else {
-            // There are outstanding debts, so keep the funds in the vault and supply credit to LP.
-            _mint(params.pool, address(this), bptAmountOut);
-            _settle(IERC20(params.pool), bptAmountOut, _reservesOf[IERC20(params.pool)] + bptAmountOut);
-        }
+        _mint(params.pool, address(this), bptAmountOut);
+        _settle(IERC20(params.pool), bptAmountOut, _reservesOf[IERC20(params.pool)] + bptAmountOut);
 
         // 8) Off-chain events.
         emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), swapFeeAmounts);

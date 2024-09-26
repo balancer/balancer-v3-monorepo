@@ -162,8 +162,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
-                // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
+            if (EVMCallModeHelpers.isStaticCall() == false) {
+                // If this is not a query, take the token in advance.
                 _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
             } else {
                 // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
@@ -304,14 +304,12 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                         // is minted directly to the sender, so this step can be considered settled at this point.
                         pathAmountsOut[i] = bptAmountOut;
                         _currentSwapTokensOut().add(address(step.tokenOut));
-                        _settledTokenAmounts().tAdd(address(step.tokenOut), bptAmountOut);
+                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), bptAmountOut);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
-                        // If this is an intermediate step, BPT is minted to the Vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool), bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in.
