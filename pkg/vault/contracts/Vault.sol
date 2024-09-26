@@ -504,6 +504,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
+        // However, since the ratio depends on invariant computations that might not be linear, we round down
+        // to level the field with `removeLiquidity`.
 
         _ensureUnpaused(params.pool);
 
