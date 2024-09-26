@@ -264,12 +264,16 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
-            // Receive the WETH amountOut.
+            // Receive the WETH amountOut. We want to call `sendTo` regardless for reentrancy protection;
+            // it has an internal check for zero amounts.
             _vault.sendTo(tokenOut, address(this), amountOut);
-            // Withdraw WETH to ETH.
-            _weth.withdraw(amountOut);
-            // Send ETH to sender.
-            payable(sender).sendValue(amountOut);
+
+            if (amountOut > 0) {
+                // Withdraw WETH to ETH.
+                _weth.withdraw(amountOut);
+                // Send ETH to sender.
+                payable(sender).sendValue(amountOut);
+            }
         } else {
             // Receive the tokenOut amountOut.
             _vault.sendTo(tokenOut, sender, amountOut);

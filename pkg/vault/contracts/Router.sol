@@ -496,7 +496,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         }
 
         // Send ETH to sender.
-        payable(params.sender).sendValue(ethAmountOut);
+        if (ethAmountOut > 0) {
+            payable(params.sender).sendValue(ethAmountOut);
+        }
     }
 
     /**
