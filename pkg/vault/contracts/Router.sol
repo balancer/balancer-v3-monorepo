@@ -97,7 +97,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 // Transfer WETH from the Router to the Vault.
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
-            } else {
+            } else if (amountIn > 0) {
                 // Transfer tokens from the user to the Vault.
                 // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
                 // necessary. Done out of an abundance of caution.
@@ -298,7 +298,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _weth.deposit{ value: amountIn }();
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
-            } else {
+            } else if (amountIn > 0) {
                 // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
                 // necessary. Done out of an abundance of caution.
                 _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
