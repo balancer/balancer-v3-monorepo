@@ -192,13 +192,13 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
             uint256 hookDiscount = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapDiscountPercentage);
             if (params.kind == SwapKind.EXACT_IN) {
                 hookAdjustedAmountCalculatedRaw += hookDiscount;
-                if (shouldSettleDiscount) {
+                if (shouldSettleDiscount && hookDiscount > 0) {
                     params.tokenOut.transfer(address(_vault), hookDiscount);
                     _vault.settle(params.tokenOut, hookDiscount);
                 }
             } else {
                 hookAdjustedAmountCalculatedRaw -= hookDiscount;
-                if (shouldSettleDiscount) {
+                if (shouldSettleDiscount && hookDiscount > 0) {
                     params.tokenIn.transfer(address(_vault), hookDiscount);
                     _vault.settle(params.tokenIn, hookDiscount);
                 }
@@ -285,9 +285,11 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         } else if (addLiquidityHookDiscountPercentage > 0) {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
                 uint256 hookDiscount = amountsInRaw[i].mulDown(addLiquidityHookDiscountPercentage);
-                tokens[i].transfer(address(_vault), hookDiscount);
-                _vault.settle(tokens[i], hookDiscount);
-                hookAdjustedAmountsInRaw[i] -= hookDiscount;
+                if (hookDiscount > 0) {
+                    tokens[i].transfer(address(_vault), hookDiscount);
+                    _vault.settle(tokens[i], hookDiscount);
+                    hookAdjustedAmountsInRaw[i] -= hookDiscount;
+                }
             }
         }
 
@@ -321,9 +323,11 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         } else if (removeLiquidityHookDiscountPercentage > 0) {
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                 uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
-                tokens[i].transfer(address(_vault), hookDiscount);
-                _vault.settle(tokens[i], hookDiscount);
-                hookAdjustedAmountsOutRaw[i] += hookDiscount;
+                if (hookDiscount > 0) {
+                    tokens[i].transfer(address(_vault), hookDiscount);
+                    _vault.settle(tokens[i], hookDiscount);
+                    hookAdjustedAmountsOutRaw[i] += hookDiscount;
+                }
             }
         }
 
