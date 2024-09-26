@@ -99,7 +99,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ADD_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireAddCustomLiquidityEnabled(PoolConfigBits config) internal pure {
+    function requireAddLiquidityCustomEnabled(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityCustom() == false) {
             revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
         }
@@ -122,7 +122,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireRemoveCustomLiquidityEnabled(PoolConfigBits config) internal pure {
+    function requireRemoveLiquidityCustomEnabled(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityCustom() == false) {
             revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
         }
