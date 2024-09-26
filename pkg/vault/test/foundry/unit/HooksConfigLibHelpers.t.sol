@@ -14,7 +14,9 @@ import { HooksConfigLib } from "@balancer-labs/v3-vault/contracts/lib/HooksConfi
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { HooksConfigLibMock } from "@balancer-labs/v3-vault/contracts/test/HooksConfigLibMock.sol";
 
-contract HooksConfigLibHelpersTest is Test {
+import { VaultContractsDeployer } from "../utils/VaultContractsDeployer.sol";
+
+contract HooksConfigLibHelpersTest is VaultContractsDeployer {
     using WordCodec for bytes32;
     using HooksConfigLib for PoolConfigBits;
 
@@ -24,7 +26,7 @@ contract HooksConfigLibHelpersTest is Test {
     HooksConfigLibMock hooksConfigLibMock;
 
     function setUp() public {
-        hooksConfigLibMock = new HooksConfigLibMock();
+        hooksConfigLibMock = deployHooksConfigLibMock();
     }
 
     // callComputeDynamicSwapFeeHook
@@ -799,7 +801,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    // callAfterRemoveLiquidityHook tests
+    // callAfterRemoveLiquidityHook tests.
     function testCallAfterRemoveLiquidity() public {
         (
             uint256[] memory amountsOutScaled18,
@@ -1029,7 +1031,7 @@ contract HooksConfigLibHelpersTest is Test {
             );
     }
 
-    // callBeforeInitializeHook tests
+    // callBeforeInitializeHook tests.
     function testCallBeforeInitialize() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         bytes memory userData = new bytes(0);
@@ -1057,7 +1059,7 @@ contract HooksConfigLibHelpersTest is Test {
         hooksConfigLibMock.callBeforeInitializeHook(exactAmountsInScaled18, userData, IHooks(hooksContract));
     }
 
-    // callAfterInitializeHook tests
+    // callAfterInitializeHook tests.
     function testCallAfterInitialize() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         uint256 bptAmountOut = 1e18;

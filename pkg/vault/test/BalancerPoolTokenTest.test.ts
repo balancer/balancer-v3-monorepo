@@ -53,7 +53,7 @@ describe('BalancerPoolToken', function () {
 
   sharedBeforeEach('', async () => {
     // Simulate a call from the real Pool by "casting" it as a Signer,
-    // so it can be used with `connect` like an EOA
+    // so it can be used with `connect` like an EOA.
     poolASigner = await impersonate(poolAAddress);
   });
 
@@ -63,19 +63,19 @@ describe('BalancerPoolToken', function () {
     it('vault can mint BPT', async () => {
       await vault.mintERC20(poolAAddress, user.address, bptAmount);
 
-      // balanceOf directly on pool token
+      // balanceOf directly on pool token.
       expect(await poolA.balanceOf(user.address)).to.equal(bptAmount);
       expect(await poolB.balanceOf(user.address)).to.equal(0);
 
-      // balanceOf indirectly, through vault
+      // balanceOf indirectly, through the Vault.
       expect(await vault.balanceOf(poolAAddress, user.address)).to.equal(bptAmount);
       expect(await vault.balanceOf(poolBAddress, user.address)).to.equal(0);
 
-      // user has the total supply (directly on pool token)
+      // User has the total supply (directly on pool token).
       expect(await poolA.totalSupply()).to.equal(bptAmount);
       expect(await poolB.totalSupply()).to.equal(0);
 
-      // user has the total supply (indirectly, through vault)
+      // User has the total supply (indirectly, through the Vault).
       expect(await vault.totalSupply(poolAAddress)).to.equal(bptAmount);
       expect(await vault.totalSupply(poolBAddress)).to.equal(0);
     });
@@ -106,16 +106,16 @@ describe('BalancerPoolToken', function () {
 
       const remainingBalance = totalSupply - bptAmount;
 
-      // balanceOf directly on pool token
+      // balanceOf directly on pool token.
       expect(await poolA.balanceOf(user.address)).to.equal(remainingBalance);
 
-      // balanceOf indirectly, through vault
+      // balanceOf indirectly, through the Vault.
       expect(await vault.balanceOf(poolAAddress, user.address)).to.equal(remainingBalance);
 
-      // user has the total supply (directly on pool token)
+      // User has the total supply (directly on pool token).
       expect(await poolA.totalSupply()).to.equal(remainingBalance);
 
-      // user has the total supply (indirectly, through vault)
+      // User has the total supply (indirectly, through the Vault).
       expect(await vault.totalSupply(poolAAddress)).to.equal(remainingBalance);
     });
 
@@ -132,7 +132,7 @@ describe('BalancerPoolToken', function () {
     });
 
     it('cannot burn more than the ERC20 BPT balance', async () => {
-      // User has zero balance of PoolB
+      // User has zero balance of PoolB.
       await expect(vault.burnERC20(poolBAddress, user.address, bptAmount))
         .to.be.revertedWithCustomError(vault, 'ERC20InsufficientBalance')
         .withArgs(user.address, 0, bptAmount);
@@ -154,7 +154,7 @@ describe('BalancerPoolToken', function () {
         expect(await poolA.balanceOf(user.address)).to.equal(remainingBalance);
         expect(await poolA.balanceOf(other.address)).to.equal(bptAmount);
 
-        // Supply doesn't change
+        // Supply doesn't change.
         expect(await poolA.totalSupply()).to.equal(totalSupply);
       });
 
@@ -177,7 +177,7 @@ describe('BalancerPoolToken', function () {
       itTransfersBPTCorrectly();
     });
 
-    it('transfers ERC20 BPT through the vault', async () => {
+    it('transfers ERC20 BPT through the Vault', async () => {
       await vault.connect(poolASigner).transfer(user.address, other.address, bptAmount);
 
       itTransfersBPTCorrectly();
@@ -247,7 +247,7 @@ describe('BalancerPoolToken', function () {
       itSetsApprovalsCorrectly();
     });
 
-    context('sets approval through the vault', async () => {
+    context('sets approval through the Vault', async () => {
       sharedBeforeEach('set approval', async () => {
         await vault.connect(poolASigner).approve(user, relayer, bptAmount);
       });
@@ -278,7 +278,7 @@ describe('BalancerPoolToken', function () {
         expect(await poolA.balanceOf(user.address)).to.equal(remainingBalance);
         expect(await poolA.balanceOf(relayer.address)).to.equal(bptAmount);
 
-        // Supply doesn't change
+        // Supply doesn't change.
         expect(await poolA.totalSupply()).to.equal(totalSupply);
       });
     }
@@ -291,7 +291,7 @@ describe('BalancerPoolToken', function () {
       itTransfersBPTCorrectly();
     });
 
-    context('transfers ERC20 BPT through the vault', async () => {
+    context('transfers ERC20 BPT through the Vault', async () => {
       sharedBeforeEach('indirect transferFrom', async () => {
         await vault.connect(poolASigner).transfer(user.address, relayer.address, bptAmount);
       });
@@ -320,7 +320,7 @@ describe('BalancerPoolToken', function () {
     });
 
     it('cannot transfer more than ERC20 BPT balance', async () => {
-      // Give infinite allowance
+      // Give infinite allowance.
       await poolA.connect(user).approve(relayer.address, MAX_UINT256);
 
       await expect(

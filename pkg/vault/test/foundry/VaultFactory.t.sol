@@ -9,11 +9,12 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BasicAuthorizerMock } from "../../contracts/test/BasicAuthorizerMock.sol";
 import { VaultFactory } from "../../contracts/VaultFactory.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 import { Vault } from "../../contracts/Vault.sol";
 import { VaultAdmin } from "../../contracts/VaultAdmin.sol";
 import { VaultExtension } from "../../contracts/VaultExtension.sol";
 
-contract VaultFactoryTest is Test {
+contract VaultFactoryTest is Test, VaultContractsDeployer {
     // Should match the "PRODUCTION" limits in BaseVaultTest.
     uint256 private constant _MIN_TRADE_AMOUNT = 1e6;
     uint256 private constant _MIN_WRAP_AMOUNT = 1e4;
@@ -24,8 +25,8 @@ contract VaultFactoryTest is Test {
 
     function setUp() public virtual {
         deployer = makeAddr("deployer");
-        authorizer = new BasicAuthorizerMock();
-        factory = new VaultFactory(
+        authorizer = deployBasicAuthorizerMock();
+        factory = deployVaultFactory(
             authorizer,
             90 days,
             30 days,
@@ -51,7 +52,7 @@ contract VaultFactoryTest is Test {
             type(VaultExtension).creationCode
         );
 
-        // We cannot compare the deployed bytecode of the created vault against a second deployment of the vault
+        // We cannot compare the deployed bytecode of the created vault against a second deployment of the Vault
         // because the actionIdDisambiguator of the authentication contract is stored in immutable storage.
         // Therefore such comparison would fail, so we just call a few getters instead.
         IVault vault = IVault(vaultAddress);

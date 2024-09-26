@@ -53,7 +53,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        // Create the factory here, because it needs to be deployed after the vault, but before the hook contract.
+        // Create the factory here, because it needs to be deployed after the Vault, but before the hook contract.
         stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
@@ -316,7 +316,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
     // Registration tests require a new pool, because an existing pool may already be registered.
     function _createPoolToRegister() private returns (address newPool) {
-        newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
         vm.label(newPool, "Directional Fee Pool");
     }
 

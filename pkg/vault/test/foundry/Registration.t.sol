@@ -35,7 +35,7 @@ contract RegistrationTest is BaseVaultTest {
 
         standardPoolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
 
-        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
     // Do not register the pool in the base test.
@@ -197,7 +197,7 @@ contract RegistrationTest is BaseVaultTest {
             abi.encode(decimalDiffUsdc)
         );
         vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
-        // Test end to end that the decimal scaling factors are correct
+        // Test end to end that the decimal scaling factors are correct.
         (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
         assertEq(decimalScalingFactors[daiIdx], 1e18 * 10 ** (18 - decimalDiffDai), "Wrong dai decimal scaling factor");
         assertEq(

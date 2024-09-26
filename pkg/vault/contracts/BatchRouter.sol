@@ -223,9 +223,10 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
 
                     if (stepLocals.isFirstStep && params.sender != address(this)) {
                         // If this is the first step, the sender must have the tokens. Therefore, we can transfer them
-                        // to the router, which acts as an intermediary. If the sender is the router, we just skip this
+                        // to the Router, which acts as an intermediary. If the sender is the Router, we just skip this
                         // step (useful for queries).
-                        // This saves one permit(1) approval for the BPT to the router; if we burned tokens directly
+                        //
+                        // This saves one permit(1) approval for the BPT to the Router; if we burned tokens directly
                         // from the sender we would need their approval.
                         _permit2.transferFrom(
                             params.sender,
@@ -252,7 +253,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                         minAmountOut == 0 ? 1 : minAmountOut
                     );
 
-                    // Router is always an intermediary in this case. The Vault will burn tokens from the router, so
+                    // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
                     // Router is both owner and spender (which doesn't need approval).
                     // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
                     (, amountsOut, ) = _vault.removeLiquidity(
@@ -309,7 +310,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                         stepExactAmountIn = bptAmountOut;
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
-                        // If this is an intermediate step, BPT is minted to the vault so we just get the credit.
+                        // If this is an intermediate step, BPT is minted to the Vault so we just get the credit.
                         _vault.settle(IERC20(step.pool), bptAmountOut);
                     }
                 } else {
@@ -483,7 +484,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                         // that defines the inputs of the path.
                         //
                         // In that case, the sender must have the tokens. Therefore, we can transfer them
-                        // to the router, which acts as an intermediary. If the sender is the router, we just skip this
+                        // to the Router, which acts as an intermediary. If the sender is the Router, we just skip this
                         // step (useful for queries).
                         _permit2.transferFrom(
                             params.sender,
@@ -499,7 +500,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                         stepExactAmountOut
                     );
 
-                    // Router is always an intermediary in this case. The Vault will burn tokens from the router, so
+                    // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
                     // Router is both owner and spender (which doesn't need approval).
                     (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
@@ -561,11 +562,11 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
 
                     // The first step executed determines the outputs for the path, since this is given out.
                     if (stepLocals.isFirstStep) {
-                        // Instead of sending tokens back to the vault, we can just discount it from whatever
-                        // the vault owes the sender to make one less transfer.
+                        // Instead of sending tokens back to the Vault, we can just discount it from whatever
+                        // the Vault owes the sender to make one less transfer.
                         _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
                     } else {
-                        // If it's not the first step, BPT is minted to the vault so we just get the credit.
+                        // If it's not the first step, BPT is minted to the Vault so we just get the credit.
                         _vault.settle(IERC20(step.pool), stepExactAmountOut);
                     }
                 } else {
