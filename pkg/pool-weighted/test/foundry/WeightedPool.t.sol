@@ -120,4 +120,75 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         factoryMock.registerTestPool(lowFeeWeightedPool, tokenConfigs);
     }
+
+    function testSandwichSwapExactInWeighted() public {
+        setSwapFeePercentage(10e16);
+
+        uint256 exactAmountIn = defaultAmount / 10;
+
+        vm.startPrank(alice);
+
+        uint256 snapshotId = vm.snapshot();
+
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            pool,
+            usdc,
+            dai,
+            exactAmountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        console.log('simple swap amount in: ', exactAmountIn);
+        console.log('simple swap amount out: ', amountOut);
+
+        vm.revertTo(snapshotId);
+
+        uint256 balanceUsdcBefore = usdc.balanceOf(alice);
+        uint256 balanceDaiBefore = dai.balanceOf(alice);
+
+        router.addLiquidityProportional(pool, [uint256(1e36), uint256(1e36)].toMemoryArray(), uint256(1e30), false, bytes(""));
+        router.swapSingleTokenExactIn(
+            pool,
+            usdc,
+            dai,
+            exactAmountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        router.removeLiquidityProportional(
+            pool,
+            IERC20(pool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        uint256 intermediateDaiBalance = dai.balanceOf(alice);
+
+        router.swapSingleTokenExactOut(
+            pool,
+            usdc,
+            dai,
+            amountOut - (intermediateDaiBalance - defaultBalance),
+            exactAmountIn * 100,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        uint256 balanceUsdcAfter = usdc.balanceOf(alice);
+        uint256 balanceDaiAfter = dai.balanceOf(alice);
+        uint256 sandwichAmountIn = balanceUsdcBefore - balanceUsdcAfter;
+        uint256 sandwichAmountOut = balanceDaiAfter - balanceDaiBefore;
+
+        console.log('sandwich amount in: ', sandwichAmountIn);
+        console.log('sandwich amount out: ', sandwichAmountOut);
+        assertEq(sandwichAmountOut, amountOut, "User did not get the same amount out end to end");
+        assertGe(sandwichAmountIn, exactAmountIn, "User paid less using the sandwich attack");
+    }
 }

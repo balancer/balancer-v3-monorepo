@@ -65,7 +65,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC4626[] internal erc4626Tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance = 1e9 * 1e18;
+    uint256 internal defaultBalance = 1e60;
 
     function setUp() public virtual {
         // Set timestamp only if testing locally
