@@ -29,6 +29,8 @@
     "test:forge": "yarn build && ./forge-test.sh",
     "test:forgeonly": "forge test -vvv --no-match-test Fork",
     "test:stress": "FOUNDRY_PROFILE=intense forge test -vvv",
+    "fuzz:medusa": "medusa fuzz --config medusa.json",
+    "fuzz:echidna": "echidna . --contract FuzzHarness --config echidna.yml",
     "coverage": "./coverage.sh forge",
     "coverage:hardhat": "./coverage.sh hardhat",
     "coverage:all": "./coverage.sh all",
