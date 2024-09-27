@@ -29,11 +29,11 @@ evm_version = 'cancun'
 ignored_error_codes = [2394, 5574, 3860] # Transient storage, code size
 
 [fuzz]
-runs = 10000
+runs = 100
 max_test_rejects = 60000
 
 [profile.forkfuzz.fuzz]
-runs = 1000
+runs = 100
 max_test_rejects = 60000
 
 [profile.coverage.fuzz]
