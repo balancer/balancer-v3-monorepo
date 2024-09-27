@@ -658,7 +658,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     IBasePool(params.pool)
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
-            poolData.poolConfigBits.requireAddCustomLiquidityEnabled();
+            poolData.poolConfigBits.requireAddLiquidityCustomEnabled();
 
             // Uses msg.sender as the Router (the contract that called the Vault).
             (amountsInScaled18, bptAmountOut, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
@@ -904,7 +904,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool)
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
-            poolData.poolConfigBits.requireRemoveCustomLiquidityEnabled();
+            poolData.poolConfigBits.requireRemoveLiquidityCustomEnabled();
             // Uses msg.sender as the Router (the contract that called the Vault).
             (bptAmountIn, amountsOutScaled18, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(

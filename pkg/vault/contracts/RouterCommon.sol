@@ -124,7 +124,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
         _weth = weth;
         _permit2 = permit2;
-        weth.approve(address(vault), type(uint256).max);
     }
 
     /*******************************************************************************
