@@ -893,7 +893,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         tokenConfig[0].tokenType = TokenType.STANDARD;
         tokenConfig[1].tokenType = TokenType.STANDARD;
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Yield-Bearing Pool", "YBPOOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "Yield-Bearing Pool", "YBPOOL");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
 

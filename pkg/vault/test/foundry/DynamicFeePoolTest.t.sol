@@ -50,7 +50,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
         PoolRoleAccounts memory roleAccounts;
 

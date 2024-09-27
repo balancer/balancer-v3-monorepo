@@ -17,8 +17,9 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
-contract StablePoolFactoryTest is BaseVaultTest {
+contract StablePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -35,7 +36,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
     function setUp() public override {
         super.setUp();
 
-        stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         vm.label(address(stablePoolFactory), "stable pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));

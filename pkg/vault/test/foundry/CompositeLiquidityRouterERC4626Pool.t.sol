@@ -19,6 +19,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
 contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
@@ -790,7 +791,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         tokenConfig[partialUsdcIdx].tokenType = TokenType.STANDARD;
         tokenConfig[partialWaDaiIdx].rateProvider = IRateProvider(address(waDAI));
 
-        newPool = address(new PoolMock(IVault(address(vault)), "PARTIAL ERC4626 Pool", "PART-ERC4626P"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "PARTIAL ERC4626 Pool", "PART-ERC4626P"));
 
         factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract);
 

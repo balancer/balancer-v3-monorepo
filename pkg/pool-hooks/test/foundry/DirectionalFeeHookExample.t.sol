@@ -316,7 +316,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
     // Registration tests require a new pool, because an existing pool may already be registered.
     function _createPoolToRegister() private returns (address newPool) {
-        newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
         vm.label(newPool, "Directional Fee Pool");
     }
 

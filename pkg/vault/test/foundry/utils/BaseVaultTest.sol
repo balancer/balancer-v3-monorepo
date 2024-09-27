@@ -29,10 +29,10 @@ import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
-import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 import { Permit2Helpers } from "./Permit2Helpers.sol";
+import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
 
-abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
+abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -124,7 +124,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount, vaultMockMinWrapAmount)));
+        vault = deployVaultMock(vaultMockMinTradeAmount, vaultMockMinWrapAmount);
 
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
@@ -135,9 +135,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
-        router = new RouterMock(IVault(address(vault)), weth, permit2);
+        router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
+        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
@@ -233,7 +233,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function _createHook(HookFlags memory hookFlags) internal virtual returns (address) {
-        PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
+        PoolHooksMock newHook = deployPoolHooksMock(IVault(address(vault)));
         // Allow pools built with factoryMock to use the poolHooksMock.
         newHook.allowFactory(address(factoryMock));
         // Configure pool hook flags.

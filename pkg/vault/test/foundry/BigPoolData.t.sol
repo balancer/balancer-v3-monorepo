@@ -40,11 +40,11 @@ contract BigPoolDataTest is BaseVaultTest {
         for (uint8 i = 0; i < numTokens; ++i) {
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18 - i);
             ERC20TestToken(address(bigPoolTokens[i])).mint(lp, poolInitAmount);
-            bigPoolRateProviders[i] = new RateProviderMock();
+            bigPoolRateProviders[i] = deployRateProviderMock();
             initAmounts[i] = poolInitAmount;
         }
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
 
         _approveForPool(IERC20(newPool));
 

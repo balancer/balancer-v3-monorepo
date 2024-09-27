@@ -56,7 +56,7 @@ contract RouterTest is BaseVaultTest {
     IERC20[] internal wethDaiTokens;
 
     function setUp() public virtual override {
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
 
@@ -64,7 +64,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
@@ -86,7 +86,7 @@ contract RouterTest is BaseVaultTest {
         );
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
+        wethPool = deployPoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
         factoryMock.registerTestPool(
@@ -104,7 +104,7 @@ contract RouterTest is BaseVaultTest {
         wethDaiAmountsIn[wethIdx] = ethAmountIn;
         wethDaiAmountsIn[daiIdxWethPool] = daiAmountIn;
 
-        wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
+        wethPoolNoInit = deployPoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
 
         factoryMock.registerTestPool(
@@ -136,7 +136,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testInitBalanceOverflow() public {
-        address newPool = address(new PoolMock(IVault(address(vault)), "Big Pool", "BIG_POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
         vm.label(address(newPool), "big pool");
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);

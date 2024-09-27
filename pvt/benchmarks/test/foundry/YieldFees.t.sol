@@ -53,8 +53,8 @@ contract YieldFeesTest is BaseVaultTest {
     function createPool() internal override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 
-        wstETHRateProvider = new RateProviderMock();
-        daiRateProvider = new RateProviderMock();
+        wstETHRateProvider = deployRateProviderMock();
+        daiRateProvider = deployRateProviderMock();
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldFeeFlags = new bool[](2);

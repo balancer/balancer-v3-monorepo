@@ -89,10 +89,10 @@ contract VaultExplorerTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        rateProviderDai = new RateProviderMock();
+        rateProviderDai = deployRateProviderMock();
         rateProviderDai.mockRate(DAI_MOCK_RATE);
 
-        rateProviderUsdc = new RateProviderMock();
+        rateProviderUsdc = deployRateProviderMock();
         rateProviderUsdc.mockRate(USDC_MOCK_RATE);
 
         rateProviders = new IRateProvider[](2);
@@ -107,7 +107,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         feeControllerAuth = IAuthentication(address(feeController));
 
-        explorer = new VaultExplorer(vault);
+        explorer = deployVaultExplorer(vault);
     }
 
     function testGetVaultContracts() public view {
@@ -174,7 +174,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(vault.isPoolRegistered(pool), "Default pool not registered (Vault)");
         assertTrue(explorer.isPoolRegistered(pool), "Default pool not registered (Explorer)");
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         assertFalse(vault.isPoolRegistered(newPool), "New pool magically registered (Vault)");
         assertFalse(explorer.isPoolRegistered(newPool), "New pool magically registered (Explorer)");
@@ -189,7 +189,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(vault.isPoolInitialized(pool), "Default pool not initialized (Vault)");
         assertTrue(explorer.isPoolInitialized(pool), "Default pool not initialized (Explorer)");
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         _registerPool(newPool, true);
 

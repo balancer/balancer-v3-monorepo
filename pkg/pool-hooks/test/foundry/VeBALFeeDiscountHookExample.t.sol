@@ -68,7 +68,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint32 pauseWindowEndTime = IVaultAdmin(address(vault)).getPauseWindowEndTime();
         uint32 bufferPeriodDuration = IVaultAdmin(address(vault)).getBufferPeriodDuration();
         uint32 pauseWindowDuration = pauseWindowEndTime - bufferPeriodDuration;
-        address unauthorizedFactory = address(new PoolFactoryMock(IVault(address(vault)), pauseWindowDuration));
+        address unauthorizedFactory = address(deployPoolFactoryMock(IVault(address(vault)), pauseWindowDuration));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -188,7 +188,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
 
         // Create an untrusted router
-        address payable untrustedRouter = payable(new RouterMock(IVault(address(vault)), weth, permit2));
+        address payable untrustedRouter = payable(deployRouterMock(IVault(address(vault)), weth, permit2));
         vm.label(untrustedRouter, "untrusted router");
 
         // Allows permit2 to move DAI tokens from Bob to untrustedRouter.
@@ -272,7 +272,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
     // Registry tests require a new pool, because an existing pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
-        newPool = address(new PoolMock(IVault(address(vault)), "VeBAL Fee Pool", "veBALFeePool"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "VeBAL Fee Pool", "veBALFeePool"));
         vm.label(newPool, "VeBAL Fee Pool");
     }
 
