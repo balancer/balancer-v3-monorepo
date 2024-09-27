@@ -555,7 +555,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 liquidityManagement: LiquidityManagement({
-                    // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported.
+                    // NOTE: In contrast to the other flags, supportsUnbalancedLiquidity is enabled by default.
                     disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
                     enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
                     enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom(),
