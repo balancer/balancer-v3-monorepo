@@ -698,8 +698,8 @@ contract E2eSwapTest is BaseVaultTest {
 
         // 20% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
         amountOut = (normalizedLiquidityTokenA > liquidityTokenB ? liquidityTokenB : normalizedLiquidityTokenA).mulDown(
-                20e16
-            );
+            20e16
+        );
     }
 
     function setPoolBalances(uint256 liquidityTokenA, uint256 liquidityTokenB) internal {
