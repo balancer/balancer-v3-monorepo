@@ -455,7 +455,16 @@ contract E2eSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.assume(exactAmountOutDo > 0);
+        {
+            // If the amount given is below the guardrail, don't continue.
+            uint256 rateTokenB = getRate(tokenB);
+            uint256 decimalScalingFactorTokenB = 1e18 * 10 ** (18 - decimalsTokenB);
+            vm.assume(
+                exactAmountOutDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
+                    testLocals.poolSwapFeePercentage.complement()
+                ) > vaultMockMinTradeAmount
+            );
+        }
 
         // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesTokenB. So, if
         // there were no fees, trading `exactAmountOutDo + feesTokenB` would get exactAmountIn. Therefore, a swap
@@ -561,7 +570,16 @@ contract E2eSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.assume(exactAmountInDo > 0);
+        {
+            // If the amount given is below the guardrail, don't continue.
+            uint256 rateTokenB = getRate(tokenB);
+            uint256 decimalScalingFactorTokenB = 1e18 * 10 ** (18 - decimalsTokenB);
+            vm.assume(
+                exactAmountInDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
+                    testLocals.poolSwapFeePercentage.complement()
+                ) > vaultMockMinTradeAmount
+            );
+        }
 
         // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
         // there were no fees, trading `exactAmountInDo - feesTokenA` would get exactAmountOut. Therefore, a swap
@@ -680,8 +698,8 @@ contract E2eSwapTest is BaseVaultTest {
 
         // 20% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
         amountOut = (normalizedLiquidityTokenA > liquidityTokenB ? liquidityTokenB : normalizedLiquidityTokenA).mulDown(
-            20e16
-        );
+                20e16
+            );
     }
 
     function setPoolBalances(uint256 liquidityTokenA, uint256 liquidityTokenB) internal {
