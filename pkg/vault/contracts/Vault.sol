@@ -498,8 +498,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If proportional, higher balances = higher proportional amountsIn, favoring the pool.
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
-        // However, since the ratio depends on invariant computations that might not be linear, we round down
-        // to level the field with `removeLiquidity`.
 
         _ensureUnpaused(params.pool);
 
@@ -509,10 +507,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and
         // `_aggregateFeeAmounts` in storage.
-        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(
-            params.pool,
-            params.kind == AddLiquidityKind.PROPORTIONAL ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
-        );
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
