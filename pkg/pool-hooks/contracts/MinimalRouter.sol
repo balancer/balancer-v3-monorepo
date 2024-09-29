@@ -144,13 +144,19 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                     revert InsufficientEth();
                 }
 
-                _weth.deposit{ value: amountIn }();
-                _weth.transfer(address(_vault), amountIn);
+                if (amountIn > 0) {
+                    _weth.deposit{ value: amountIn }();
+                    _weth.transfer(address(_vault), amountIn);
+                }
+
                 _vault.settle(_weth, amountIn);
             } else {
-                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+                if (amountIn > 0) {
+                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                    // necessary. Done out of an abundance of caution.
+                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+                }
+
                 _vault.settle(token, amountIn);
             }
         }
@@ -222,7 +228,6 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         // minAmountsOut length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountOut = 0;
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
             IERC20 token = tokens[i];
@@ -232,16 +237,12 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                 // Send WETH here and unwrap to native ETH.
                 _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
-                ethAmountOut = amountOut;
+                // Send ETH to receiver.
+                payable(params.receiver).sendValue(amountOut);
             } else {
                 // Transfer the token to the receiver (amountOut).
                 _vault.sendTo(token, params.receiver, amountOut);
             }
-        }
-
-        if (ethAmountOut > 0) {
-            // Send ETH to receiver.
-            payable(params.receiver).sendValue(ethAmountOut);
         }
     }
 }
