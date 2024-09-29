@@ -93,12 +93,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     revert InsufficientEth();
                 }
 
-                if (amountIn > 0) {
-                    _weth.deposit{ value: amountIn }();
-                    // Transfer WETH from the Router to the Vault.
-                    _weth.transfer(address(_vault), amountIn);
-                }
-
+                _weth.deposit{ value: amountIn }();
+                // Transfer WETH from the Router to the Vault.
+                _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
                 if (amountIn > 0) {
@@ -301,11 +298,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     revert InsufficientEth();
                 }
 
-                if (amountIn > 0) {
-                    _weth.deposit{ value: amountIn }();
-                    _weth.transfer(address(_vault), amountIn);
-                }
-
+                _weth.deposit{ value: amountIn }();
+                _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
                 if (amountIn > 0) {

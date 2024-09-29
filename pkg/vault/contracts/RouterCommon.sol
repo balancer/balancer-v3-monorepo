@@ -247,13 +247,10 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
                 revert InsufficientEth();
             }
 
-            if (amountIn > 0) {
-                // wrap amountIn to WETH.
-                _weth.deposit{ value: amountIn }();
-                // send WETH to Vault.
-                _weth.safeTransfer(address(_vault), amountIn);
-            }
-
+            // wrap amountIn to WETH.
+            _weth.deposit{ value: amountIn }();
+            // send WETH to Vault.
+            _weth.safeTransfer(address(_vault), amountIn);
             // update Vault accounting.
             _vault.settle(_weth, amountIn);
         } else {

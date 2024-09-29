@@ -144,11 +144,8 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                     revert InsufficientEth();
                 }
 
-                if (amountIn > 0) {
-                    _weth.deposit{ value: amountIn }();
-                    _weth.transfer(address(_vault), amountIn);
-                }
-
+                _weth.deposit{ value: amountIn }();
+                _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
                 if (amountIn > 0) {
@@ -230,6 +227,11 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
+
+            if (amountOut == 0) {
+                continue;
+            }
+
             IERC20 token = tokens[i];
 
             // There can be only one WETH token in the pool.
