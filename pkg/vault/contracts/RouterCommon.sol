@@ -247,32 +247,38 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
                 revert InsufficientEth();
             }
 
-            // wrap amountIn to WETH.
-            _weth.deposit{ value: amountIn }();
-            // send WETH to Vault.
-            _weth.safeTransfer(address(_vault), amountIn);
+            if (amountIn > 0) {
+                // wrap amountIn to WETH.
+                _weth.deposit{ value: amountIn }();
+                // send WETH to Vault.
+                _weth.safeTransfer(address(_vault), amountIn);
+            }
+
             // update Vault accounting.
             _vault.settle(_weth, amountIn);
-        } else if (amountIn > 0) {
-            // Send the tokenIn amount to the Vault
-            _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
+        } else {
+            if (amountIn > 0) {
+                // Send the tokenIn amount to the Vault
+                _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
+            }
+
             _vault.settle(tokenIn, amountIn);
         }
     }
 
     function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
+        if (amountOut == 0) {
+            return;
+        }
+
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
-            // Receive the WETH amountOut. We want to call `sendTo` regardless for reentrancy protection;
-            // it has an internal check for zero amounts.
+            // Receive the WETH amountOut.
             _vault.sendTo(tokenOut, address(this), amountOut);
-
-            if (amountOut > 0) {
-                // Withdraw WETH to ETH.
-                _weth.withdraw(amountOut);
-                // Send ETH to sender.
-                payable(sender).sendValue(amountOut);
-            }
+            // Withdraw WETH to ETH.
+            _weth.withdraw(amountOut);
+            // Send ETH to sender.
+            payable(sender).sendValue(amountOut);
         } else {
             // Receive the tokenOut amountOut.
             _vault.sendTo(tokenOut, sender, amountOut);
