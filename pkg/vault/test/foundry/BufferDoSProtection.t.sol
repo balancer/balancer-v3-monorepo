@@ -315,10 +315,16 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         if (params.direction == WrappingDirection.WRAP) {
             // Since we're wrapping, we need to transfer underlying tokens to the Vault, so it can be wrapped.
             if (params.kind == SwapKind.EXACT_IN) {
-                underlyingToken.transferFrom(sender, address(vault), params.amountGivenRaw);
+                if (params.amountGivenRaw > 0) {
+                    underlyingToken.transferFrom(sender, address(vault), params.amountGivenRaw);
+                }
+
                 vault.settle(underlyingToken, params.amountGivenRaw);
             } else {
-                underlyingToken.transferFrom(sender, address(vault), params.limitRaw);
+                if (params.limitRaw > 0) {
+                    underlyingToken.transferFrom(sender, address(vault), params.limitRaw);
+                }
+
                 vault.settle(underlyingToken, params.limitRaw);
             }
 
@@ -329,10 +335,16 @@ contract BufferDoSProtectionTest is BaseVaultTest {
             dai.transfer(address(vault), frontrunnerAmount);
         } else {
             if (params.kind == SwapKind.EXACT_IN) {
-                wrappedToken.transferFrom(sender, address(vault), params.amountGivenRaw);
+                if (params.amountGivenRaw > 0) {
+                    wrappedToken.transferFrom(sender, address(vault), params.amountGivenRaw);
+                }
+
                 vault.settle(wrappedToken, params.amountGivenRaw);
             } else {
-                wrappedToken.transferFrom(sender, address(vault), params.limitRaw);
+                if (params.limitRaw > 0) {
+                    wrappedToken.transferFrom(sender, address(vault), params.limitRaw);
+                }
+
                 vault.settle(wrappedToken, params.limitRaw);
             }
 
@@ -349,14 +361,26 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         // Settle balances.
         if (params.direction == WrappingDirection.WRAP) {
             if (params.kind == SwapKind.EXACT_OUT) {
-                vault.sendTo(underlyingToken, sender, params.limitRaw - amountIn);
+                uint256 refundAmount = params.limitRaw - amountIn;
+                if (refundAmount > 0) {
+                    vault.sendTo(underlyingToken, sender, refundAmount);
+                }
             }
-            vault.sendTo(wrappedToken, sender, amountOut);
+
+            if (amountOut > 0) {
+                vault.sendTo(wrappedToken, sender, amountOut);
+            }
         } else {
             if (params.kind == SwapKind.EXACT_OUT) {
-                vault.sendTo(wrappedToken, sender, params.limitRaw - amountIn);
+                uint256 refundAmount = params.limitRaw - amountIn;
+                if (refundAmount > 0) {
+                    vault.sendTo(wrappedToken, sender, refundAmount);
+                }
             }
-            vault.sendTo(underlyingToken, sender, amountOut);
+
+            if (amountOut > 0) {
+                vault.sendTo(underlyingToken, sender, amountOut);
+            }
         }
     }
 }
