@@ -223,12 +223,12 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
 
                     if (stepLocals.isFirstStep && params.sender != address(this)) {
                         if (stepExactAmountIn > 0) {
-                            // If this is the first step, the sender must have the tokens. Therefore, we can transfer them
-                            // to the Router, which acts as an intermediary. If the sender is the Router, we just skip this
-                            // step (useful for queries).
+                            // If this is the first step, the sender must have the tokens. Therefore, we can transfer
+                            // them to the Router, which acts as an intermediary. If the sender is the Router, we just
+                            // skip this step (useful for queries).
                             //
-                            // This saves one permit(1) approval for the BPT to the Router; if we burned tokens directly
-                            // from the sender we would need their approval.
+                            // This saves one permit(1) approval for the BPT to the Router; if we burned tokens
+                            // directly from the sender we would need their approval.
                             _permit2.transferFrom(
                                 params.sender,
                                 address(this),
