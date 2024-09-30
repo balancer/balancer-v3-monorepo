@@ -95,8 +95,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
                         direction: WrappingDirection.WRAP,
                         wrappedToken: IERC4626(address(waDAI)),
                         amountGivenRaw: amountGivenRaw,
-                        limitRaw: limitRaw,
-                        userData: bytes("")
+                        limitRaw: limitRaw
                     }),
                     lp,
                     frontrunnerUnderlyingAmount
@@ -137,8 +136,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
                         direction: WrappingDirection.UNWRAP,
                         wrappedToken: IERC4626(address(waDAI)),
                         amountGivenRaw: amountGivenRaw,
-                        limitRaw: limitRaw,
-                        userData: bytes("")
+                        limitRaw: limitRaw
                     }),
                     lp,
                     frontrunnerWrappedAmount

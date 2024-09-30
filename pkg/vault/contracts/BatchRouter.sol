@@ -197,8 +197,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                                 : WrappingDirection.WRAP,
                             wrappedToken: IERC4626(step.pool),
                             amountGivenRaw: stepExactAmountIn,
-                            limitRaw: minAmountOut,
-                            userData: params.userData
+                            limitRaw: minAmountOut
                         })
                     );
 
@@ -449,8 +448,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                                 : WrappingDirection.WRAP,
                             wrappedToken: IERC4626(step.pool),
                             amountGivenRaw: stepExactAmountOut,
-                            limitRaw: stepMaxAmountIn,
-                            userData: params.userData
+                            limitRaw: stepMaxAmountIn
                         })
                     );
 
