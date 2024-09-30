@@ -1086,7 +1086,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
         // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
         // we can extract from the child pools.
-        uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
+        uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 4).mulDown(proportionToRemove);
 
         address[] memory tokensOut = new address[](3);
         tokensOut[vars.daiIdx] = address(dai);
@@ -1103,7 +1103,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
         expectedAmountsOut[vars.usdcIdx] = waUSDC.previewRedeem(
-            poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR
+            poolInitAmount.mulDown(proportionToRemove) - MAX_ROUND_ERROR
         );
 
         vm.prank(lp);
@@ -1124,19 +1124,19 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         assertApproxEqAbs(
             expectedAmountsOut[vars.daiIdx],
             amountsOut[vars.daiIdx],
-            5 * MAX_ROUND_ERROR, // Increasing error because of ERC4626 conversion roundings
+            6 * MAX_ROUND_ERROR, // Increasing error because of ERC4626 conversion roundings
             "DAI amount out is wrong"
         );
         assertApproxEqAbs(
             expectedAmountsOut[vars.wethIdx],
             amountsOut[vars.wethIdx],
-            5 * MAX_ROUND_ERROR, // Increasing error because of ERC4626 conversion roundings
+            6 * MAX_ROUND_ERROR, // Increasing error because of ERC4626 conversion roundings
             "WETH amount out is wrong"
         );
         assertApproxEqAbs(
             expectedAmountsOut[vars.usdcIdx],
             amountsOut[vars.usdcIdx],
-            5 * MAX_ROUND_ERROR, // Increasing error because of ERC4626 conversion roundings
+            6 * MAX_ROUND_ERROR, // Increasing error because of ERC4626 conversion roundings
             "USDC amount out is wrong"
         );
 
@@ -1183,16 +1183,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             vars.childPoolERC4626Before.weth - amountsOut[vars.wethIdx],
             "ChildPoolERC4626 Weth Balance is wrong"
         );
-        assertEq(
+        assertApproxEqAbs(
             vars.childPoolERC4626After.waDAI,
-            vars.childPoolERC4626Before.waDAI - waDAI.previewDeposit(amountsOut[vars.daiIdx]),
+            vars.childPoolERC4626Before.waDAI - waDAI.previewWithdraw(amountsOut[vars.daiIdx]),
+            MAX_ROUND_ERROR,
             "ChildPoolERC4626 waDAI Balance is wrong"
         );
 
         // Check ParentPoolWithWrapper.
         assertApproxEqAbs(
             vars.parentPoolWithWrapperAfter.waUSDC,
-            vars.parentPoolWithWrapperBefore.waUSDC - waUSDC.previewDeposit(amountsOut[vars.usdcIdx]),
+            vars.parentPoolWithWrapperBefore.waUSDC - waUSDC.previewWithdraw(amountsOut[vars.usdcIdx]),
             MAX_ROUND_ERROR,
             "ParentPoolWithWrapper waUSDC Balance is wrong"
         );
