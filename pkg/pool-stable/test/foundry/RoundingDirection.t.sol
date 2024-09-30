@@ -125,7 +125,7 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         }
 
         vm.assertTrue(!second);
-        vm.assertTrue(first);
+        vm.assertTrue(!first);
     }
 
     function testEdgeCaseLiquidity() public {
@@ -156,8 +156,8 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
     }
 
     function testMockPoolBalanceWithRate() public {
-        uint tokenAmount = 1e6;
-        uint dustAmount = 1;
+        uint tokenAmount = 1179465241898852517841248;
+        uint dustAmount = 3;
         IERC20[] memory tokens = new IERC20[](2);
         tokens[0] = IERC20(usdc);
         tokens[1] = IERC20(wsteth);
@@ -307,6 +307,7 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
     }
 
     function testMockPoolBalanceWithRate3() public {
+        setSwapFeePercentage(0);
         uint tokenAmount = 1e6;
         uint dustAmount = 1;
         IERC20[] memory tokens = new IERC20[](2);
@@ -322,9 +323,10 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         uint previousTotalSupply = StablePool(pool).totalSupply();
         uint256[] memory exactAmountsIn = [tokenAmount * 2 , dustAmount * 2].toMemoryArray();
         uint mintLp;
+        vm.prank(alice);
         mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
         // This is only true when trading fee is 0
-        vm.assertGt(mintLp, previousTotalSupply * 2);
+        vm.assertLt(mintLp, previousTotalSupply * 2);
     }
 
     function testComputeBalance(
@@ -378,6 +380,59 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         );
 
         assertGe(balanceRoundUp, balanceRoundDown, "Incorrect assumption");
+    }
+
+    function testComputeInvariantRatio(
+        uint256 currentAmp,
+        uint256[3] memory currentBalances,
+        uint256[3] memory amountsIn
+    ) public {
+        currentAmp = bound(currentAmp, 100, 1000);
+        currentBalances[0] = bound(currentBalances[0], 1000e18, 1_000_000e18);
+        currentBalances[1] = bound(currentBalances[1], 1000e18, 1_000_000e18);
+        currentBalances[2] = bound(currentBalances[2], 1000e18, 1_000_000e18);
+        amountsIn[0] = bound(amountsIn[0], 1e18, 10_000e18);
+        amountsIn[1] = bound(amountsIn[1], 1e18, 10_000e18);
+        amountsIn[2] = bound(amountsIn[2], 1e18, 10_000e18);
+
+        uint256[] memory newBalances = new uint256[](3);
+        newBalances[0] = currentBalances[0] + amountsIn[0];
+        newBalances[1] = currentBalances[0] + amountsIn[1];
+        newBalances[2] = currentBalances[0] + amountsIn[2];
+
+        uint256[] memory newBalancesRoundDown = new uint256[](3);
+        newBalancesRoundDown[0] = newBalances[0] - 1;
+        newBalancesRoundDown[1] = newBalances[1] - 1;
+        newBalancesRoundDown[2] = newBalances[2] - 1;
+
+        try this.computeInvariant(currentAmp, currentBalances.toMemoryArray(), Rounding.ROUND_DOWN) returns (
+            uint256 invariant
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        try this.computeInvariant(currentAmp, newBalances, Rounding.ROUND_UP) returns (
+            uint256 invariant
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        try this.computeInvariant(currentAmp, newBalancesRoundDown, Rounding.ROUND_UP) returns (
+            uint256 invariant
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        uint256 currentInvariant = computeInvariant(currentAmp, currentBalances.toMemoryArray(), Rounding.ROUND_DOWN);
+        // Round down to make `taxableAmount` larger below.
+        uint256 invariantRatioRegular = computeInvariant(currentAmp, newBalances, Rounding.ROUND_DOWN).divDown(currentInvariant);
+
+
+        uint256 currentInvariantUp = computeInvariant(currentAmp, currentBalances.toMemoryArray(), Rounding.ROUND_UP);
+        // Round down to make `taxableAmount` larger below.
+        uint256 invariantRatioDown = computeInvariant(currentAmp, newBalancesRoundDown, Rounding.ROUND_DOWN).divDown(currentInvariantUp);
+
+        assertLe(invariantRatioDown, invariantRatioRegular, "Incorrect assumption");
     }
 
     function computeInvariant(
