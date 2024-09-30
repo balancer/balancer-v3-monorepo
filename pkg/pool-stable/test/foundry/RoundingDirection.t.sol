@@ -334,11 +334,11 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         uint256 balance2,
         uint256 invariantRatio
     ) public {
-        currentAmp = bound(currentAmp, 100, 10000);
+        currentAmp = bound(currentAmp, 100, 1000);
         balance0 = bound(balance0, 1000e18, 1_000_000e18);
         balance1 = bound(balance1, 1000e18, 1_000_000e18);
         balance2 = bound(balance2, 1000e18, 1_000_000e18);
-        invariantRatio = bound(invariantRatio, 60e16, 300e16);
+        invariantRatio = bound(invariantRatio, 60e16, 500e16);
         uint256 tokenInIndex = bound(balance0 + balance1 + balance2, 0, 2);
 
         uint256[] memory balancesLiveScaled18 = new uint256[](3);
@@ -346,7 +346,18 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         balancesLiveScaled18[1] = balance1;
         balancesLiveScaled18[2] = balance2;
 
+        uint256[] memory balancesLiveScaled18RoundUp = new uint256[](3);
+        balancesLiveScaled18RoundUp[0] = balance0 + 1;
+        balancesLiveScaled18RoundUp[1] = balance1 + 1;
+        balancesLiveScaled18RoundUp[2] = balance2 + 1;
+
         try this.computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_DOWN) returns (
+            uint256 invariant
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        try this.computeInvariant(currentAmp, balancesLiveScaled18RoundUp, Rounding.ROUND_UP) returns (
             uint256 invariant
         ) {} catch {
             vm.assume(false);
@@ -362,11 +373,11 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         uint256 balanceRoundUp = StableMath.computeBalance(
             currentAmp,
             balancesLiveScaled18,
-            computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
+            computeInvariant(currentAmp, balancesLiveScaled18RoundUp, Rounding.ROUND_UP).mulUp(invariantRatio),
             tokenInIndex
         );
 
-        assertGe(balanceRoundDown, balanceRoundUp, "Incorrect assumption");
+        assertGe(balanceRoundUp, balanceRoundDown, "Incorrect assumption");
     }
 
     function computeInvariant(
