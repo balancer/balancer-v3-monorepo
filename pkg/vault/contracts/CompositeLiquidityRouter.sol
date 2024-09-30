@@ -427,16 +427,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Token is a BPT, so add liquidity to the child pool.
 
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                uint256[] memory childPoolAmountsIn = new uint256[](childPoolTokens.length);
-
-                for (uint256 j = 0; j < childPoolTokens.length; j++) {
-                    address childPoolToken = address(childPoolTokens[j]);
-                    childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(childPoolToken);
-                    // This operation does not support adding liquidity multiple times to the same token. So, we set
-                    // the amount in of the child pool token to 0. If the same token appears more times, the amount in
-                    // will be 0 for any other pool.
-                    _currentSwapTokenInAmounts().tSet(childPoolToken, 0);
-                }
+                uint256[] memory childPoolAmountsIn = _getPoolAmountsIn(childPoolTokens);
 
                 // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent pool
                 // will be a logic insertion, not a token transfer.
@@ -458,19 +449,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
                 // advance.
                 _vault.settle(IERC20(childToken), exactChildBptAmountOut);
+            } else if (
+                _vault.getBufferTotalShares(IERC4626(childToken)) > 0 &&
+                _currentSwapTokenInAmounts().tGet(childToken) == 0
+            ) {
+                // Token is an ERC4626 supported by the vault and the user did not add wrapped liquidity
+                // directly, so wrap underlying and add wrapped liquidity to the pool.
+                _wrapAndUpdateTokenInAmounts(IERC4626(childToken));
             }
         }
 
-        uint256[] memory parentPoolAmountsIn = new uint256[](parentPoolTokens.length);
-
-        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
-            // Fill the `parentPoolAmountsIn` array with amounts in from _currentSwapTokenInAmounts() storage, which
-            // includes the amount of minted BPT. Then, erase the token amount from _currentSwapTokenInAmounts() so
-            // any other operation that uses CompositeLiquidityProvider in the same transaction will not face a bug.
-            address parentPoolToken = address(parentPoolTokens[i]);
-            parentPoolAmountsIn[i] = _currentSwapTokenInAmounts().tGet(parentPoolToken);
-            _currentSwapTokenInAmounts().tSet(parentPoolToken, 0);
-        }
+        uint256[] memory parentPoolAmountsIn = _getPoolAmountsIn(parentPoolTokens);
 
         // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
@@ -493,6 +482,51 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         // Settle the amounts in.
         _settlePaths(params.sender, false);
+    }
+
+    function _getPoolAmountsIn(IERC20[] memory poolTokens) private returns (uint256[] memory poolAmountsIn) {
+        poolAmountsIn = new uint256[](poolTokens.length);
+
+        for (uint256 j = 0; j < poolTokens.length; j++) {
+            address poolToken = address(poolTokens[j]);
+            if (
+                _vault.getBufferTotalShares(IERC4626(poolToken)) > 0 &&
+                _currentSwapTokenInAmounts().tGet(poolToken) == 0
+            ) {
+                // Token is an ERC4626 supported by the vault and the user did not add wrapped liquidity
+                // directly, so wrap underlying and add wrapped liquidity to the pool.
+                uint256 wrappedAmount = _wrapAndUpdateTokenInAmounts(IERC4626(poolToken));
+                poolAmountsIn[j] = wrappedAmount;
+            } else {
+                poolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(poolToken);
+                // This operation does not support adding liquidity multiple times to the same token. So, we set
+                // the amount in of the child pool token to 0. If the same token appears more times, the amount in
+                // will be 0 for any other pool.
+                _currentSwapTokenInAmounts().tSet(poolToken, 0);
+            }
+        }
+    }
+
+    function _wrapAndUpdateTokenInAmounts(IERC4626 wrappedToken) private returns (uint256 wrappedAmountOut) {
+        address underlyingToken = wrappedToken.asset();
+        uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
+        if (underlyingAmountIn == 0) {
+            return 0;
+        }
+
+        (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: SwapKind.EXACT_IN,
+                direction: WrappingDirection.WRAP,
+                wrappedToken: wrappedToken,
+                amountGivenRaw: underlyingAmountIn,
+                limitRaw: uint256(0)
+            })
+        );
+
+        _currentSwapTokenInAmounts().tSet(address(wrappedToken), wrappedAmountOut);
+        _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
+        _vault.settle(IERC20(address(wrappedToken)), wrappedAmountOut);
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
@@ -568,11 +602,19 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 );
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
-                    _currentSwapTokensOut().add(address(childPoolTokens[j]));
-                    _currentSwapTokenOutAmounts().tAdd(address(childPoolTokens[j]), childPoolAmountsOut[j]);
+                    if (_vault.getBufferTotalShares(IERC4626(address(childPoolTokens[j]))) > 0) {
+                        // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
+                        _unwrapAndUpdateTokenOutAmounts(IERC4626(address(childPoolTokens[j])), childPoolAmountsOut[j]);
+                    } else {
+                        _currentSwapTokensOut().add(address(childPoolTokens[j]));
+                        _currentSwapTokenOutAmounts().tAdd(address(childPoolTokens[j]), childPoolAmountsOut[j]);
+                    }
                 }
+            } else if (_vault.getBufferTotalShares(IERC4626(childToken)) > 0) {
+                // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
+                _unwrapAndUpdateTokenOutAmounts(IERC4626(childToken), parentPoolAmountsOut[i]);
             } else {
-                // Token is not a BPT, so return the amount to the user.
+                // Token is neither a BPT nor ERC4626, so return the amount to the user.
                 _currentSwapTokensOut().add(childToken);
                 _currentSwapTokenOutAmounts().tAdd(childToken, parentPoolAmountsOut[i]);
             }
@@ -592,10 +634,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             if (_currentSwapTokensOut().contains(tokensOut[i]) == false || checkedTokenIndexes[tokenIndex]) {
                 // If tokenOut is not in transient tokens out array or token is repeated, the tokensOut array is wrong.
                 revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
-            } else {
-                // Informs that the token in the transient array index has already been checked.
-                checkedTokenIndexes[tokenIndex] = true;
             }
+
+            // Informs that the token in the transient array index has already been checked.
+            checkedTokenIndexes[tokenIndex] = true;
 
             amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]);
 
@@ -605,5 +647,25 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         _settlePaths(params.sender, false);
+    }
+
+    function _unwrapAndUpdateTokenOutAmounts(IERC4626 wrappedToken, uint256 wrappedAmountIn) private {
+        if (wrappedAmountIn == 0) {
+            return;
+        }
+
+        (, , uint256 underlyingAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: SwapKind.EXACT_IN,
+                direction: WrappingDirection.UNWRAP,
+                wrappedToken: wrappedToken,
+                amountGivenRaw: wrappedAmountIn,
+                limitRaw: uint256(0)
+            })
+        );
+
+        address underlyingToken = wrappedToken.asset();
+        _currentSwapTokensOut().add(underlyingToken);
+        _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmountOut);
     }
 }
