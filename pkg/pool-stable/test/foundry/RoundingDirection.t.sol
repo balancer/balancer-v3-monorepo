@@ -306,6 +306,27 @@ contract RoundingDirectionStablePoolTest is BasePoolTest {
         // In this test case, users get exact same wstETH back and some USDC profit.
     }
 
+    function testMockPoolBalanceWithRate3() public {
+        uint tokenAmount = 1e6;
+        uint dustAmount = 1;
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[0] = IERC20(usdc);
+        tokens[1] = IERC20(wsteth);
+        vault.manualSetPoolTokensAndBalances(
+            pool,
+            tokens,
+            [tokenAmount, dustAmount].toMemoryArray(),
+            [tokenAmount, dustAmount].toMemoryArray()
+        );
+        rateProviderWstEth.mockRate(1.5e18);
+        uint previousTotalSupply = StablePool(pool).totalSupply();
+        uint256[] memory exactAmountsIn = [tokenAmount * 2 , dustAmount * 2].toMemoryArray();
+        uint mintLp;
+        mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
+        // This is only true when trading fee is 0
+        vm.assertGt(mintLp, previousTotalSupply * 2);
+    }
+
     function testComputeBalance(
         uint256 currentAmp,
         uint256 balance0,
