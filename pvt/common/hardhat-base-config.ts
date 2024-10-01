@@ -69,7 +69,7 @@ const contractSettings: ContractSettings = {
   },
   '@balancer-labs/v3-vault/contracts/CompositeLiquidityRouter.sol': {
     version: '0.8.26',
-    runs: 9999,
+    runs: 500,
     viaIR: false,
   },
   '@balancer-labs/v3-vault/contracts/test/CompositeLiquidityRouterMock.sol': {

@@ -118,6 +118,17 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     /********************************************************************************
+                                    Initialization
+    ********************************************************************************/
+    function testIsERC4626BufferInitialized() public {
+        assertFalse(vault.isERC4626BufferInitialized(waDAI), "waDAI buffer is initialized");
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
+        assertTrue(vault.isERC4626BufferInitialized(waDAI), "waDAI buffer is not initialized");
+    }
+
+    /********************************************************************************
                                         Deposit
     ********************************************************************************/
     function testDepositBufferBalancedNotEnoughLiquidity() public {
