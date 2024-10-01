@@ -450,7 +450,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // advance.
                 _vault.settle(IERC20(childToken), exactChildBptAmountOut);
             } else if (
-                _vault.getBufferTotalShares(IERC4626(childToken)) > 0 &&
+                _vault.isERC4626BufferInitialized(IERC4626(childToken)) &&
                 _currentSwapTokenInAmounts().tGet(childToken) == 0
             ) {
                 // Token is an ERC4626 supported by the vault and the user did not add wrapped liquidity
@@ -490,7 +490,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         for (uint256 j = 0; j < poolTokens.length; j++) {
             address poolToken = address(poolTokens[j]);
             if (
-                _vault.getBufferTotalShares(IERC4626(poolToken)) > 0 &&
+                _vault.isERC4626BufferInitialized(IERC4626(poolToken)) &&
                 _currentSwapTokenInAmounts().tGet(poolToken) == 0
             ) {
                 // Token is an ERC4626 supported by the vault and the user did not add wrapped liquidity
@@ -602,15 +602,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 );
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
-                    if (_vault.getBufferTotalShares(IERC4626(address(childPoolTokens[j]))) > 0) {
+                    address childPoolToken = address(childPoolTokens[j]);
+                    if (_vault.isERC4626BufferInitialized(IERC4626(childPoolToken))) {
                         // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
-                        _unwrapAndUpdateTokenOutAmounts(IERC4626(address(childPoolTokens[j])), childPoolAmountsOut[j]);
+                        _unwrapAndUpdateTokenOutAmounts(IERC4626(childPoolToken), childPoolAmountsOut[j]);
                     } else {
-                        _currentSwapTokensOut().add(address(childPoolTokens[j]));
-                        _currentSwapTokenOutAmounts().tAdd(address(childPoolTokens[j]), childPoolAmountsOut[j]);
+                        _currentSwapTokensOut().add(childPoolToken);
+                        _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountsOut[j]);
                     }
                 }
-            } else if (_vault.getBufferTotalShares(IERC4626(childToken)) > 0) {
+            } else if (_vault.isERC4626BufferInitialized(IERC4626(childToken))) {
                 // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
                 _unwrapAndUpdateTokenOutAmounts(IERC4626(childToken), parentPoolAmountsOut[i]);
             } else {

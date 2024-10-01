@@ -315,6 +315,18 @@ interface IVaultExtension {
     function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
+                                   ERC4626 Buffers
+    *******************************************************************************/
+
+    /**
+     * @notice Checks if the wrapped token has an initialized buffer in the Vault.
+     * @dev An initialized buffer should have an asset registered in the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return isBufferInitialized True if the ERC4626 buffer is initialized
+     */
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized);
+
+    /*******************************************************************************
                                           Fees
     *******************************************************************************/
 

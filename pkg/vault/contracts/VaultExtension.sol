@@ -629,6 +629,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                   ERC4626 Buffers
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool) {
+        return _bufferAssets[wrappedToken] != address(0);
+    }
+
+    /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
 
