@@ -87,6 +87,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
+            if (amountIn == 0) {
+                continue;
+            }
+
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (address(this).balance < amountIn) {
@@ -98,13 +102,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                if (amountIn > 0) {
-                    // Transfer tokens from the user to the Vault.
-                    // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
-                    // necessary. Done out of an abundance of caution.
-                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                }
-
+                // Transfer tokens from the user to the Vault.
+                // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
                 _vault.settle(token, amountIn);
             }
         }
@@ -292,6 +293,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
+            if (amountIn == 0) {
+                continue;
+            }
+
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (address(this).balance < amountIn) {
@@ -302,12 +307,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                if (amountIn > 0) {
-                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                    // necessary. Done out of an abundance of caution.
-                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                }
-
+                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
                 _vault.settle(token, amountIn);
             }
         }

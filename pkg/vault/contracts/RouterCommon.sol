@@ -257,9 +257,8 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             if (amountIn > 0) {
                 // Send the tokenIn amount to the Vault
                 _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
+                _vault.settle(tokenIn, amountIn);
             }
-
-            _vault.settle(tokenIn, amountIn);
         }
     }
 

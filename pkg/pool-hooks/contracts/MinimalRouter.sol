@@ -138,6 +138,10 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
+            if (amountIn == 0) {
+                continue;
+            }
+
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (address(this).balance < amountIn) {
@@ -148,12 +152,9 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                if (amountIn > 0) {
-                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                    // necessary. Done out of an abundance of caution.
-                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                }
-
+                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
                 _vault.settle(token, amountIn);
             }
         }

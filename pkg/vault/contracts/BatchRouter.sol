@@ -530,8 +530,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                             uint256 refundAmount = stepMaxAmountIn - bptAmountIn;
                             if (refundAmount > 0) {
                                 stepTokenIn.safeTransfer(address(_vault), refundAmount);
+                                _vault.settle(stepTokenIn, refundAmount);
                             }
-                            _vault.settle(stepTokenIn, refundAmount);
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {

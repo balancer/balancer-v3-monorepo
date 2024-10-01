@@ -198,18 +198,16 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
                     if (shouldSettleDiscount) {
                         if (hookDiscount > 0) {
                             params.tokenOut.transfer(address(_vault), hookDiscount);
+                            _vault.settle(params.tokenOut, hookDiscount);
                         }
-
-                        _vault.settle(params.tokenOut, hookDiscount);
                     }
                 } else {
                     hookAdjustedAmountCalculatedRaw -= hookDiscount;
                     if (shouldSettleDiscount) {
                         if (hookDiscount > 0) {
                             params.tokenIn.transfer(address(_vault), hookDiscount);
+                            _vault.settle(params.tokenIn, hookDiscount);
                         }
-
-                        _vault.settle(params.tokenIn, hookDiscount);
                     }
                 }
             }
@@ -302,9 +300,8 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
                 if (hookDiscount > 0) {
                     token.transfer(address(_vault), hookDiscount);
                     hookAdjustedAmountsInRaw[i] -= hookDiscount;
+                    _vault.settle(token, hookDiscount);
                 }
-
-                _vault.settle(token, hookDiscount);
             }
         }
 
@@ -345,9 +342,8 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
                 if (hookDiscount > 0) {
                     token.transfer(address(_vault), hookDiscount);
                     hookAdjustedAmountsOutRaw[i] += hookDiscount;
+                    _vault.settle(token, hookDiscount);
                 }
-
-                _vault.settle(token, hookDiscount);
             }
         }
 
