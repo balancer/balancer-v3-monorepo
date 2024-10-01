@@ -459,12 +459,14 @@ contract ProtocolFeeController is
         if (feeType == ProtocolFeeType.SWAP) {
             _poolCreatorSwapFeePercentages[pool] = poolCreatorFeePercentage;
 
+            // The Vault will also emit an `AggregateSwapFeePercentageChanged` event.
             _vault.updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
 
             emit PoolCreatorSwapFeePercentageChanged(pool, poolCreatorFeePercentage);
         } else {
             _poolCreatorYieldFeePercentages[pool] = poolCreatorFeePercentage;
 
+            // The Vault will also emit an `AggregateYieldFeePercentageChanged` event.
             _vault.updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
             emit PoolCreatorYieldFeePercentageChanged(pool, poolCreatorFeePercentage);

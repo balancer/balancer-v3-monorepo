@@ -297,8 +297,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     direction: WrappingDirection.UNWRAP,
                     wrappedToken: wrappedToken,
                     amountGivenRaw: wrappedAmountsOut[i],
-                    limitRaw: params.minAmountsOut[i],
-                    userData: params.userData
+                    limitRaw: params.minAmountsOut[i]
                 })
             );
 
@@ -360,8 +359,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     direction: WrappingDirection.WRAP,
                     wrappedToken: wrappedToken,
                     amountGivenRaw: amountsIn[i],
-                    limitRaw: limits[i],
-                    userData: params.userData
+                    limitRaw: limits[i]
                 })
             );
 

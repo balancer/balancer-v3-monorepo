@@ -6,18 +6,19 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { PoolConfig, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
+import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -410,6 +411,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
 
         vm.expectEmit();
+        emit IVaultEvents.AggregateSwapFeePercentageChanged(pool, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
+        vm.expectEmit();
         emit IProtocolFeeController.ProtocolSwapFeePercentageChanged(pool, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
 
         // Have governance override a swap fee.
@@ -464,6 +467,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             admin
         );
 
+        vm.expectEmit();
+        emit IVaultEvents.AggregateYieldFeePercentageChanged(pool, CUSTOM_PROTOCOL_YIELD_FEE_PCT);
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolYieldFeePercentageChanged(pool, CUSTOM_PROTOCOL_YIELD_FEE_PCT);
 

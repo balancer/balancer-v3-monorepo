@@ -92,11 +92,13 @@ interface IVaultEvents {
      * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
      * @param pool The pool being registered
      * @param liquidityProvider The user performing the operation
+     * @param totalSupply The total supply of the pool after the operation
      * @param deltas The amount each token changed, sorted in the pool tokens' order
      */
     event PoolBalanceChanged(
         address indexed pool,
         address indexed liquidityProvider,
+        uint256 totalSupply,
         int256[] deltas,
         uint256[] swapFeeAmountsRaw
     );
@@ -129,6 +131,22 @@ interface IVaultEvents {
      * @param recoveryMode True if recovery mode was enabled
      */
     event PoolRecoveryModeStateChanged(address indexed pool, bool recoveryMode);
+
+    /**
+     * @notice A protocol or pool creator fee has changed, causing an update to the aggregate swap fee.
+     * @dev The `ProtocolFeeController` will emit an event with the underlying change.
+     * @param pool The pool whose aggregate swap fee percentage changed
+     * @param aggregateSwapFeePercentage The new aggregate swap fee percentage
+     */
+    event AggregateSwapFeePercentageChanged(address indexed pool, uint256 aggregateSwapFeePercentage);
+
+    /**
+     * @notice A protocol or pool creator fee has changed, causing an update to the aggregate yield fee.
+     * @dev The `ProtocolFeeController` will emit an event with the underlying change.
+     * @param pool The pool whose aggregate yield fee percentage changed
+     * @param aggregateYieldFeePercentage The new aggregate yield fee percentage
+     */
+    event AggregateYieldFeePercentageChanged(address indexed pool, uint256 aggregateYieldFeePercentage);
 
     /**
      * @notice A new authorizer is set by `setAuthorizer`.
