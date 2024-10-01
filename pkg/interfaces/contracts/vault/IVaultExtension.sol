@@ -71,7 +71,7 @@ interface IVaultExtension {
      * @notice Returns `true` if `addLiquidity` was called for the given pool in this transaction.
      * @param pool Address of the pool to check.
      */
-    function getAddLiquidityCalledFlag(address pool) external view  returns (bool);
+    function getAddLiquidityCalledFlag(address pool) external view returns (bool);
 
     /*******************************************************************************
                                     Pool Registration
