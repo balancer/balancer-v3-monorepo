@@ -399,9 +399,11 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.forceUnlock();
         vault.manualSetBufferAsset(wrappedToken, underlyingToken);
 
-        // Manually set owner and total shares so that the call doesn't revert before hitting the reentrancy guard.
-        vault.manualSetBufferOwnerShares(wrappedToken, bob, 1e18);
-        vault.manualSetBufferTotalShares(wrappedToken, 2e18);
+        // Manually set balances, owner and total shares so that the call doesn't revert before hitting the reentrancy guard.
+        vault.manualSetBufferOwnerShares(wrappedToken, bob, 1000e18);
+        vault.manualSetBufferTotalShares(wrappedToken, 2000e18);
+
+        vault.manualSetBufferBalances(wrappedToken, 500e18, 500e18);
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualReentrancyRemoveLiquidityFromBufferHook(wrappedToken, 1e18, bob);
