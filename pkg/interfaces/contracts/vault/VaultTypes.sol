@@ -352,7 +352,6 @@ enum WrappingDirection {
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depends on the type of swap and wrapping direction)
  * @param limitRaw Minimum or maximum amount specified for the other token (depends on the type of swap and wrapping
  * direction)
- * @param userData Optional user data
  */
 struct BufferWrapOrUnwrapParams {
     SwapKind kind;
@@ -360,7 +359,6 @@ struct BufferWrapOrUnwrapParams {
     IERC4626 wrappedToken;
     uint256 amountGivenRaw;
     uint256 limitRaw;
-    bytes userData;
 }
 
 // Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so

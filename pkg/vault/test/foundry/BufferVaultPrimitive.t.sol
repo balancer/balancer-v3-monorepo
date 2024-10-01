@@ -229,8 +229,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                     direction: WrappingDirection.WRAP,
                     wrappedToken: IERC4626(address(waDAI)),
                     amountGivenRaw: vaultBalance,
-                    limitRaw: 0,
-                    userData: bytes("")
+                    limitRaw: 0
                 })
             )
         );
@@ -387,8 +386,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                     direction: WrappingDirection.WRAP,
                     wrappedToken: IERC4626(address(waDAI)),
                     amountGivenRaw: PRODUCTION_MIN_WRAP_AMOUNT,
-                    limitRaw: MAX_UINT128,
-                    userData: bytes("")
+                    limitRaw: MAX_UINT128
                 })
             )
         );
