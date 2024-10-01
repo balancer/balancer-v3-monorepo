@@ -269,6 +269,8 @@ interface IVaultMainMock {
 
     function manualSetBufferTotalShares(IERC4626 wrappedToken, uint256 shares) external;
 
+    function manualSetBufferBalances(IERC4626 wrappedToken, uint256 underlyingAmount, uint256 wrappedAmount) external;
+
     function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
