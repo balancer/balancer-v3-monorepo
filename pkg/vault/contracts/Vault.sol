@@ -874,10 +874,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
 
+            // Charge roundtrip fee.
             if (_addLiquidityCalled().tGet(params.pool)) {
                 uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
                 for (uint256 i = 0; i < locals.numTokens; ++i) {
                     swapFeeAmounts[i] = amountsOutScaled18[i].mulUp(swapFeePercentage);
+                    amountsOutScaled18[i] -= swapFeeAmounts[i];
                 }
             }
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {

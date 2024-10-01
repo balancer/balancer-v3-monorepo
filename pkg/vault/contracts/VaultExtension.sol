@@ -126,6 +126,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _reservesOf[token];
     }
 
+    /// @inheritdoc IVaultExtension
+    function getAddLiquidityCalledFlag(address pool) external view onlyVaultDelegateCall returns (bool) {
+        return _addLiquidityCalled().tGet(pool);
+    }
+
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
