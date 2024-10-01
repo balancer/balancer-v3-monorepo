@@ -633,7 +633,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool) {
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (bool) {
         return _bufferAssets[wrappedToken] != address(0);
     }
 
