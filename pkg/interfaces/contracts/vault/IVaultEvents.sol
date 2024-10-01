@@ -92,11 +92,13 @@ interface IVaultEvents {
      * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
      * @param pool The pool being registered
      * @param liquidityProvider The user performing the operation
+     * @param totalSupply The total supply of the pool after the operation
      * @param deltas The amount each token changed, sorted in the pool tokens' order
      */
     event PoolBalanceChanged(
         address indexed pool,
         address indexed liquidityProvider,
+        uint256 totalSupply,
         int256[] deltas,
         uint256[] swapFeeAmountsRaw
     );
