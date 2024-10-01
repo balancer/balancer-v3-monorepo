@@ -4,9 +4,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -30,17 +32,21 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
+        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 amountToRemove = bptAmountOut / 2;
+
         vm.expectEmit();
         emit IVaultEvents.PoolBalanceChanged(
             pool,
             alice,
+            initialSupply - amountToRemove, // totalSupply after the operation
             [-int256(defaultAmount) / 2, -int256(defaultAmount) / 2].toMemoryArray(),
             new uint256[](2)
         );
 
         // Do a recovery withdrawal.
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, bptAmountOut / 2);
+        router.removeLiquidityRecovery(pool, amountToRemove);
     }
 
     function testRecoveryModeBalances() public {
