@@ -7,8 +7,9 @@ import "forge-std/Test.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedMathRoundingTest is Test {
+contract WeightedMathRoundingTest is Test, WeightedPoolContractsDeployer {
     uint256 constant MIN_WEIGHT = 10e16; // 10%
     uint256 constant MAX_WEIGHT = 90e16; // 90%
     uint256 constant MIN_BALANCE = 1e18;
@@ -26,7 +27,7 @@ contract WeightedMathRoundingTest is Test {
     WeightedMathMock mock;
 
     function setUp() public {
-        mock = new WeightedMathMock();
+        mock = deployWeightedMathMock();
     }
 
     function testComputeOutGivenExactIn__Fuzz(

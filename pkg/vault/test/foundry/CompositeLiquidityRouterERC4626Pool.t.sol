@@ -19,8 +19,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
-contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
+contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for *;
@@ -102,7 +103,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256 bptOut = batchRouter.addLiquidityUnbalancedToERC4626Pool(
+        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
             erc4626Pool,
             exactUnderlyingAmountsIn,
             1,
@@ -141,7 +142,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256 bptOut = batchRouter.addLiquidityUnbalancedToERC4626Pool(
+        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
             partialErc4626Pool,
             exactUnderlyingAmountsIn,
             0,
@@ -168,7 +169,11 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         vm.prank(alice, address(0));
-        batchRouter.queryAddLiquidityUnbalancedToERC4626Pool(erc4626Pool, exactUnderlyingAmountsIn, bytes(""));
+        compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+            erc4626Pool,
+            exactUnderlyingAmountsIn,
+            bytes("")
+        );
     }
 
     function testQueryAddLiquidityUnbalancedToERC4626Pool() public {
@@ -177,7 +182,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(alice, address(0));
-        uint256 queryBptAmountOut = batchRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
             erc4626Pool,
             exactUnderlyingAmountsIn,
             bytes("")
@@ -185,7 +190,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.revertTo(snapshotId);
 
         vm.prank(alice);
-        uint256 actualBptAmountOut = batchRouter.addLiquidityUnbalancedToERC4626Pool(
+        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
             erc4626Pool,
             exactUnderlyingAmountsIn,
             1,
@@ -202,7 +207,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(alice, address(0));
-        uint256 queryBptAmountOut = batchRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
             partialErc4626Pool,
             exactUnderlyingAmountsIn,
             bytes("")
@@ -210,7 +215,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.revertTo(snapshotId);
 
         vm.prank(alice);
-        uint256 actualBptAmountOut = batchRouter.addLiquidityUnbalancedToERC4626Pool(
+        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
             partialErc4626Pool,
             exactUnderlyingAmountsIn,
             1,
@@ -239,7 +244,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
+        uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
             erc4626Pool,
             maxAmountsIn,
             exactBptAmountOut,
@@ -299,7 +304,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
+        uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
             maxAmountsIn,
             exactBptAmountOut,
@@ -335,7 +340,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bufferInitialAmount / 2;
 
         vm.prank(alice, address(0));
-        batchRouter.queryAddLiquidityProportionalToERC4626Pool(erc4626Pool, operationAmount, bytes(""));
+        compositeLiquidityRouter.queryAddLiquidityProportionalToERC4626Pool(erc4626Pool, operationAmount, bytes(""));
     }
 
     function testQueryAddLiquidityProportionalToERC4626Pool() public {
@@ -345,7 +350,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(alice, address(0));
-        uint256[] memory queryUnderlyingAmountsIn = batchRouter.queryAddLiquidityProportionalToERC4626Pool(
+        uint256[] memory queryUnderlyingAmountsIn = compositeLiquidityRouter.queryAddLiquidityProportionalToERC4626Pool(
             erc4626Pool,
             exactBptAmountOut,
             bytes("")
@@ -353,7 +358,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.revertTo(snapshotId);
 
         vm.prank(alice);
-        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
+        uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
             erc4626Pool,
             maxAmountsIn,
             exactBptAmountOut,
@@ -377,7 +382,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(alice, address(0));
-        uint256[] memory queryUnderlyingAmountsIn = batchRouter.queryAddLiquidityProportionalToERC4626Pool(
+        uint256[] memory queryUnderlyingAmountsIn = compositeLiquidityRouter.queryAddLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
             exactBptAmountOut,
             bytes("")
@@ -385,7 +390,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.revertTo(snapshotId);
 
         vm.prank(alice);
-        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
+        uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
             maxAmountsIn,
             exactBptAmountOut,
@@ -427,13 +432,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
-            erc4626Pool,
-            exactBptAmountIn,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
+        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, minAmountsOut, false, bytes(""));
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
@@ -482,13 +482,14 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
-            partialErc4626Pool,
-            exactBptAmountIn,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
+        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalFromERC4626Pool(
+                partialErc4626Pool,
+                exactBptAmountIn,
+                minAmountsOut,
+                false,
+                bytes("")
+            );
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
@@ -520,7 +521,11 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 exactBptAmountIn = bufferInitialAmount / 2;
 
         vm.prank(bob, address(0));
-        batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, bytes(""));
+        compositeLiquidityRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
+            erc4626Pool,
+            exactBptAmountIn,
+            bytes("")
+        );
     }
 
     function testQueryRemoveLiquidityProportionalFromERC4626Pool() public {
@@ -541,21 +546,19 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(bob, address(0));
-        uint256[] memory queryUnderlyingAmountsOut = batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
-            erc4626Pool,
-            exactBptAmountIn,
-            bytes("")
-        );
+        uint256[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter
+            .queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, bytes(""));
         vm.revertTo(snapshotId);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
-            erc4626Pool,
-            exactBptAmountIn,
-            minUnderlyingAmountsOut,
-            false,
-            bytes("")
-        );
+        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalFromERC4626Pool(
+                erc4626Pool,
+                exactBptAmountIn,
+                minUnderlyingAmountsOut,
+                false,
+                bytes("")
+            );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsOut.length; i++) {
             assertEq(
@@ -584,21 +587,19 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(bob, address(0));
-        uint256[] memory queryUnderlyingAmountsOut = batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
-            partialErc4626Pool,
-            exactBptAmountIn,
-            bytes("")
-        );
+        uint256[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter
+            .queryRemoveLiquidityProportionalFromERC4626Pool(partialErc4626Pool, exactBptAmountIn, bytes(""));
         vm.revertTo(snapshotId);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
-            partialErc4626Pool,
-            exactBptAmountIn,
-            minUnderlyingAmountsOut,
-            false,
-            bytes("")
-        );
+        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalFromERC4626Pool(
+                partialErc4626Pool,
+                exactBptAmountIn,
+                minUnderlyingAmountsOut,
+                false,
+                bytes("")
+            );
 
         assertEq(
             actualUnderlyingAmountsOut[partialWaDaiIdx],
@@ -790,7 +791,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         tokenConfig[partialUsdcIdx].tokenType = TokenType.STANDARD;
         tokenConfig[partialWaDaiIdx].rateProvider = IRateProvider(address(waDAI));
 
-        newPool = address(new PoolMock(IVault(address(vault)), "PARTIAL ERC4626 Pool", "PART-ERC4626P"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "PARTIAL ERC4626 Pool", "PART-ERC4626P"));
 
         factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract);
 
@@ -799,7 +800,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.startPrank(bob);
         waDAI.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
         dai.mint(bob, erc4626PoolInitialAmount);
         dai.approve(address(waDAI), erc4626PoolInitialAmount);
@@ -815,10 +816,10 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         IERC20(newPool).approve(address(permit2), MAX_UINT256);
         permit2.approve(newPool, address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(newPool, address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(newPool, address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
-        IERC20(address(newPool)).approve(address(router), type(uint256).max);
-        IERC20(address(newPool)).approve(address(batchRouter), type(uint256).max);
+        IERC20(newPool).approve(address(router), type(uint256).max);
+        IERC20(newPool).approve(address(compositeLiquidityRouter), type(uint256).max);
         vm.stopPrank();
     }
 

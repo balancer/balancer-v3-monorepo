@@ -69,19 +69,19 @@ contract VaultDefaultHandlersTest is BaseVaultTest {
     }
 
     function testSendEthNowhereExtension() public {
-        // Try sending ETH directly to the VaultExtension
+        // Try sending ETH directly to the VaultExtension.
         vm.expectRevert(IVaultErrors.CannotReceiveEth.selector);
         IRandom(address(vaultExtension)).nonexistentFunction{ value: 1 }();
     }
 
     function testSendEthNowhereAdmin() public {
-        // Try sending ETH directly to the VaultAdmin
+        // Try sending ETH directly to the VaultAdmin.
         vm.expectRevert(IVaultErrors.CannotReceiveEth.selector);
         IRandom(address(vaultAdmin)).nonexistentFunction{ value: 1 }();
     }
 
     function testAdminFallback() public {
-        // Try calling an non-existent function on the VaultAdmin
+        // Try calling an non-existent function on the VaultAdmin.
         vm.expectRevert("Not implemented");
         IRandom(address(vaultAdmin)).nonexistentFunction();
     }

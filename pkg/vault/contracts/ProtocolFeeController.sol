@@ -177,7 +177,7 @@ contract ProtocolFeeController is
     }
 
     /**
-     * @notice Settle fee credits from the vault.
+     * @notice Settle fee credits from the Vault.
      * @dev This must be called after calling `collectAggregateFees` in the Vault. Note that since charging protocol
      * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
      * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
@@ -448,7 +448,7 @@ contract ProtocolFeeController is
         uint256 poolCreatorFeePercentage,
         ProtocolFeeType feeType
     ) internal {
-        // Need to set locally, and update the aggregate percentage in the vault.
+        // Need to set locally, and update the aggregate percentage in the Vault.
         if (feeType == ProtocolFeeType.SWAP) {
             _poolCreatorSwapFeePercentages[pool] = poolCreatorFeePercentage;
 
@@ -509,7 +509,8 @@ contract ProtocolFeeController is
 
     /// @dev Common code shared between set/update. `isOverride` will be true if governance is setting the percentage.
     function _updatePoolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage, bool isOverride) private {
-        // Update local storage of the raw percentage
+        // Update local storage of the raw percentage.
+        //
         // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
         // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
