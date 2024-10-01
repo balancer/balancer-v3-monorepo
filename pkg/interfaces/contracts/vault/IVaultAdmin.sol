@@ -180,7 +180,9 @@ interface IVaultAdmin {
      * @notice Update an aggregate swap fee percentage.
      * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE, and also
+     * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
+     * Emits an `AggregateSwapFeePercentageChanged` event.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
@@ -191,7 +193,9 @@ interface IVaultAdmin {
      * @notice Update an aggregate yield fee percentage.
      * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE, and also
+     * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
+     * Emits an `AggregateYieldFeePercentageChanged` event.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage
