@@ -308,6 +308,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         onlyProtocolFeeController
     {
         _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
+
+        emit AggregateSwapFeePercentageChanged(pool, newAggregateSwapFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -322,6 +324,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         onlyProtocolFeeController
     {
         _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
+
+        emit AggregateYieldFeePercentageChanged(pool, newAggregateYieldFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin

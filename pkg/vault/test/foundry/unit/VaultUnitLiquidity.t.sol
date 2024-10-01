@@ -10,8 +10,8 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -22,16 +22,17 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { VaultContractsDeployer } from "../../../test/foundry/utils/VaultContractsDeployer.sol";
+import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 import { VaultStateBits } from "../../../contracts/lib/VaultStateLib.sol";
 import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 import { BasePoolMath } from "../../../contracts/BasePoolMath.sol";
 
 contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
-    using CastingHelpers for uint256[];
+    using PoolConfigLib for PoolConfigBits;
+    using CastingHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
-    using PoolConfigLib for PoolConfigBits;
 
     // Test structs.
 
@@ -57,13 +58,17 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
     IVaultMock internal vault;
 
-    address pool = address(0x1234);
     uint256 initTotalSupply = 1000e18;
     uint256 swapFeePercentage = 1e16;
+    address pool;
 
     function setUp() public virtual override {
         BaseTest.setUp();
         vault = deployVaultMock();
+
+        PoolFactoryMock factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
+        pool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+        factoryMock.registerTestPool(pool, vault.buildTokenConfig(tokens));
 
         _mockMintCallback(alice, initTotalSupply);
         vault.mintERC20(pool, alice, initTotalSupply);
@@ -834,6 +839,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         emit IVaultEvents.PoolBalanceChanged(
             params.addLiquidityParams.pool,
             params.addLiquidityParams.to,
+            IERC20(params.addLiquidityParams.pool).totalSupply() + params.expectedBPTAmountOut,
             expectedAmountsInRaw.unsafeCastToInt256(true),
             params.expectedSwapFeeAmountsRaw
         );
@@ -909,6 +915,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         emit IVaultEvents.PoolBalanceChanged(
             params.removeLiquidityParams.pool,
             params.removeLiquidityParams.from,
+            IERC20(params.removeLiquidityParams.pool).totalSupply() - params.expectedBPTAmountIn,
             expectedAmountsOutRaw.unsafeCastToInt256(false),
             params.expectedSwapFeeAmountsRaw
         );
