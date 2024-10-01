@@ -315,15 +315,13 @@ contract BufferDoSProtectionTest is BaseVaultTest {
             if (params.kind == SwapKind.EXACT_IN) {
                 if (params.amountGivenRaw > 0) {
                     underlyingToken.transferFrom(sender, address(vault), params.amountGivenRaw);
+                    vault.settle(underlyingToken, params.amountGivenRaw);
                 }
-
-                vault.settle(underlyingToken, params.amountGivenRaw);
             } else {
                 if (params.limitRaw > 0) {
                     underlyingToken.transferFrom(sender, address(vault), params.limitRaw);
+                    vault.settle(underlyingToken, params.limitRaw);
                 }
-
-                vault.settle(underlyingToken, params.limitRaw);
             }
 
             // Donate more underlying to the Vault than the amount that will be deposited, so the Vault can think that
@@ -335,15 +333,13 @@ contract BufferDoSProtectionTest is BaseVaultTest {
             if (params.kind == SwapKind.EXACT_IN) {
                 if (params.amountGivenRaw > 0) {
                     wrappedToken.transferFrom(sender, address(vault), params.amountGivenRaw);
+                    vault.settle(wrappedToken, params.amountGivenRaw);
                 }
-
-                vault.settle(wrappedToken, params.amountGivenRaw);
             } else {
                 if (params.limitRaw > 0) {
                     wrappedToken.transferFrom(sender, address(vault), params.limitRaw);
+                    vault.settle(wrappedToken, params.limitRaw);
                 }
-
-                vault.settle(wrappedToken, params.limitRaw);
             }
 
             // Donate more wrapped to the Vault than the amount that will be burned, so an arithmetic error can be
