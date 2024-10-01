@@ -685,6 +685,10 @@ contract VaultMock is IVaultMainMock, Vault {
         return _findTokenIndex(tokens, token);
     }
 
+    function manualSetAddLiquidityCalledFlag(address pool, bool flag) public {
+        _addLiquidityCalled().tSet(pool, flag);
+    }
+
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.enableAddLiquidityCustom = true;
