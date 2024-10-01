@@ -672,6 +672,53 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
     }
 
+    function testQueryAddLiquidityNestedERC4626__Fuzz(
+        uint256 daiAmount,
+        uint256 usdcAmount,
+        uint256 wethAmount
+    ) public {
+        daiAmount = bound(daiAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
+        usdcAmount = bound(usdcAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
+        wethAmount = bound(wethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
+
+        uint256 minBptOut = 0;
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+        // Override indexes, since wstEth is not used in this test.
+        vars.daiIdx = 0;
+        vars.usdcIdx = 1;
+        vars.wethIdx = 2;
+
+        address[] memory tokensIn = new address[](3);
+        tokensIn[vars.daiIdx] = address(dai);
+        tokensIn[vars.usdcIdx] = address(usdc);
+        tokensIn[vars.wethIdx] = address(weth);
+
+        uint256[] memory amountsIn = new uint256[](3);
+        amountsIn[vars.daiIdx] = daiAmount;
+        amountsIn[vars.usdcIdx] = usdcAmount;
+        amountsIn[vars.wethIdx] = wethAmount;
+
+        _prankStaticCall();
+        uint256 queryBptOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedNestedPool(
+            parentPoolWithWrapper,
+            tokensIn,
+            amountsIn,
+            bytes("")
+        );
+
+        vm.prank(lp);
+        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            parentPoolWithWrapper,
+            tokensIn,
+            amountsIn,
+            minBptOut,
+            bytes("")
+        );
+
+        assertEq(exactBptOut, queryBptOut, "BPTs out do not match");
+    }
+
     function testAddLiquidityNestedPoolMissingToken() public {
         uint256 daiAmount = poolInitAmount;
         uint256 usdcAmount = poolInitAmount;
@@ -1202,6 +1249,68 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             vars.parentPoolWithWrapperBefore.childPoolERC4626Bpt - burnedChildPoolERC4626Bpts,
             "ParentPool ChildPoolERC4626 BPT Balance is wrong"
         );
+    }
+
+    function testQueryRemoveLiquidityNestedERC4626Pool__Fuzz(uint256 proportionToRemove) public {
+        // Remove between 0.0001% and 50% of each pool liquidity.
+        proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
+
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPoolWithWrapper).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+        // Override indexes, since wstEth is not used in this test.
+        vars.daiIdx = 0;
+        vars.usdcIdx = 1;
+        vars.wethIdx = 2;
+
+        // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
+        // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
+        // we can extract from the child pools.
+        uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 4).mulDown(proportionToRemove);
+
+        address[] memory tokensOut = new address[](3);
+        tokensOut[vars.daiIdx] = address(dai);
+        tokensOut[vars.wethIdx] = address(weth);
+        tokensOut[vars.usdcIdx] = address(usdc);
+
+        uint256[] memory expectedAmountsOut = new uint256[](3);
+        // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
+        // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
+        // totalSupply (so the burned POOL_MINIMUM_TOTAL_SUPPLY amount does not affect the BPT in circulation, and the
+        // amounts out are perfectly proportional to the parent pool balance).
+        expectedAmountsOut[vars.daiIdx] = waDAI.previewRedeem(
+            poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR
+        );
+        expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.usdcIdx] = waUSDC.previewRedeem(
+            poolInitAmount.mulDown(proportionToRemove) - MAX_ROUND_ERROR
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(lp, address(0));
+        uint256[] memory queryAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityProportionalNestedPool(
+            parentPoolWithWrapper,
+            exactBptIn,
+            tokensOut,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+            parentPoolWithWrapper,
+            exactBptIn,
+            tokensOut,
+            expectedAmountsOut,
+            bytes("")
+        );
+
+        for (uint256 i = 0; i < amountsOut.length; i++) {
+            assertEq(amountsOut[i], queryAmountsOut[i], "AmountsOut and QueryAmountsOut do not match");
+        }
     }
 
     function testRemoveLiquidityNestedPoolLimits() public {

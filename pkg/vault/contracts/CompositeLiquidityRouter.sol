@@ -382,7 +382,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external returns (uint256) {
+    ) external saveSender returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -404,12 +404,42 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             );
     }
 
+    /// @inheritdoc ICompositeLiquidityRouter
+    function queryAddLiquidityUnbalancedNestedPool(
+        address parentPool,
+        address[] memory tokensIn,
+        uint256[] memory exactAmountsIn,
+        bytes memory userData
+    ) external saveSender returns (uint256) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
+                        AddLiquidityHookParams({
+                            pool: parentPool,
+                            sender: msg.sender,
+                            maxAmountsIn: exactAmountsIn,
+                            minBptAmountOut: 0,
+                            kind: AddLiquidityKind.UNBALANCED,
+                            wethIsEth: false,
+                            userData: userData
+                        }),
+                        tokensIn
+                    )
+                ),
+                (uint256)
+            );
+    }
+
     function addLiquidityUnbalancedNestedPoolHook(
         AddLiquidityHookParams calldata params,
         address[] memory tokensIn
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
         // Revert if tokensIn length does not match with maxAmountsIn length.
         InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
+
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate in the tokens
         // array to find the child pool amounts to insert.
@@ -466,7 +496,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         (, exactBptAmountOut, ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
-                to: params.sender,
+                to: isStaticCall ? address(this) : params.sender,
                 maxAmountsIn: parentPoolAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
@@ -482,7 +512,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         // Settle the amounts in.
-        _settlePaths(params.sender, false);
+        if (isStaticCall == false) {
+            _settlePaths(params.sender, false);
+        }
     }
 
     /**
@@ -552,7 +584,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address[] memory tokensOut,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut) {
+    ) external saveSender returns (uint256[] memory amountsOut) {
         (amountsOut) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
@@ -573,11 +605,40 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         );
     }
 
+    /// @inheritdoc ICompositeLiquidityRouter
+    function queryRemoveLiquidityProportionalNestedPool(
+        address parentPool,
+        uint256 exactBptAmountIn,
+        address[] memory tokensOut,
+        bytes memory userData
+    ) external saveSender returns (uint256[] memory amountsOut) {
+        (amountsOut) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook.selector,
+                    RemoveLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: parentPool,
+                        minAmountsOut: new uint256[](tokensOut.length),
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: false,
+                        userData: userData
+                    }),
+                    tokensOut
+                )
+            ),
+            (uint256[])
+        );
+    }
+
     function removeLiquidityProportionalNestedPoolHook(
         RemoveLiquidityHookParams calldata params,
         address[] memory tokensOut
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         // Revert if tokensOut length does not match with minAmountsOut length.
         InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
@@ -663,7 +724,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        _settlePaths(params.sender, false);
+        if (isStaticCall == false) {
+            _settlePaths(params.sender, false);
+        }
     }
 
     /**
