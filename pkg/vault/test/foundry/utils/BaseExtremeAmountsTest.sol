@@ -112,6 +112,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         _testAddAndRemoveLiquidityProportional(_boundExactBPTAmount(exactBPTAmount));
     }
 
+    // this function compute max possible BPT amount for proportional operations based on the current pool state
     function _calculateMaxBPTAmountForProportionalOperations() private view returns (uint256) {
         return
             Math.min(
