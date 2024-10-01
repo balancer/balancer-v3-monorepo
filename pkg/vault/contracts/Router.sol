@@ -87,6 +87,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
+            if (amountIn == 0) {
+                continue;
+            }
+
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (address(this).balance < amountIn) {
@@ -289,6 +293,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
+            if (amountIn == 0) {
+                continue;
+            }
+
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (address(this).balance < amountIn) {
@@ -478,9 +486,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // minAmountsOut length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountOut = 0;
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
+            if (amountOut == 0) {
+                continue;
+            }
+
             IERC20 token = tokens[i];
 
             // There can be only one WETH token in the pool.
@@ -488,15 +499,13 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 // Send WETH here and unwrap to native ETH.
                 _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
-                ethAmountOut = amountOut;
+                // Send ETH to sender.
+                payable(params.sender).sendValue(amountOut);
             } else {
                 // Transfer the token to the sender (amountOut).
                 _vault.sendTo(token, params.sender, amountOut);
             }
         }
-
-        // Send ETH to sender.
-        payable(params.sender).sendValue(ethAmountOut);
     }
 
     /**
@@ -517,8 +526,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Transfer the token to the sender (amountOut).
-            _vault.sendTo(tokens[i], sender, amountsOut[i]);
+            uint256 amountOut = amountsOut[i];
+            if (amountOut > 0) {
+                // Transfer the token to the sender (amountOut).
+                _vault.sendTo(tokens[i], sender, amountOut);
+            }
         }
     }
 
