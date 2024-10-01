@@ -195,19 +195,17 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
             if (hookDiscount > 0) {
                 if (params.kind == SwapKind.EXACT_IN) {
                     hookAdjustedAmountCalculatedRaw += hookDiscount;
+
                     if (shouldSettleDiscount) {
-                        if (hookDiscount > 0) {
-                            params.tokenOut.transfer(address(_vault), hookDiscount);
-                            _vault.settle(params.tokenOut, hookDiscount);
-                        }
+                        params.tokenOut.transfer(address(_vault), hookDiscount);
+                        _vault.settle(params.tokenOut, hookDiscount);
                     }
                 } else {
                     hookAdjustedAmountCalculatedRaw -= hookDiscount;
+
                     if (shouldSettleDiscount) {
-                        if (hookDiscount > 0) {
-                            params.tokenIn.transfer(address(_vault), hookDiscount);
-                            _vault.settle(params.tokenIn, hookDiscount);
-                        }
+                        params.tokenIn.transfer(address(_vault), hookDiscount);
+                        _vault.settle(params.tokenIn, hookDiscount);
                     }
                 }
             }
