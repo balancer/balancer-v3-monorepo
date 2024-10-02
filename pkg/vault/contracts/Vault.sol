@@ -745,7 +745,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _mint(address(params.pool), params.to, bptAmountOut);
 
         // 8) Off-chain events.
-        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), swapFeeAmounts);
+        emit PoolBalanceChanged(
+            params.pool,
+            params.to,
+            _totalSupply(params.pool),
+            amountsInRaw.unsafeCastToInt256(true),
+            swapFeeAmounts
+        );
     }
 
     /***************************************************************************
@@ -1008,6 +1014,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         emit PoolBalanceChanged(
             params.pool,
             params.from,
+            _totalSupply(params.pool),
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false),
             swapFeeAmounts

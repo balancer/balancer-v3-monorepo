@@ -130,6 +130,7 @@ contract InitializerTest is BaseVaultTest {
         emit IVaultEvents.PoolBalanceChanged(
             pool,
             bob,
+            defaultAmount * 3,
             [defaultAmount, defaultAmount * 2].toMemoryArray().unsafeCastToInt256(true),
             new uint256[](2)
         );

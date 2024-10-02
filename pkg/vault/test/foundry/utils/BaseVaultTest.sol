@@ -123,7 +123,12 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     function setUp() public virtual override {
         BaseTest.setUp();
+        _setUpBaseVaultTest();
+        // Add initial liquidity
+        initPool();
+    }
 
+    function _setUpBaseVaultTest() internal {
         vault = deployVaultMock(vaultMockMinTradeAmount, vaultMockMinWrapAmount);
 
         vm.label(address(vault), "vault");
@@ -157,8 +162,6 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         if (pool != address(0)) {
             approveForPool(IERC20(pool));
         }
-        // Add initial liquidity.
-        initPool();
     }
 
     function approveForSender() internal virtual {
@@ -173,6 +176,12 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             erc4626Tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(erc4626Tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(
+                address(erc4626Tokens[i]),
+                address(compositeLiquidityRouter),
+                type(uint160).max,
+                type(uint48).max
+            );
 
             // Approve deposits from sender.
             IERC20 underlying = IERC20(erc4626Tokens[i].asset());

@@ -421,13 +421,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolBalances[i] = PackedTokenBalance.toPackedBalance(exactAmountsIn[i], exactAmountsInScaled18[i]);
         }
 
-        emit PoolBalanceChanged(
-            pool,
-            to,
-            exactAmountsIn.unsafeCastToInt256(true),
-            new uint256[](poolData.tokens.length)
-        );
-
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInitialized(true);
 
         // Store config and mark the pool as initialized.
@@ -450,6 +443,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         if (bptAmountOut < minBptAmountOut) {
             revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
         }
+
+        emit PoolBalanceChanged(
+            pool,
+            to,
+            _totalSupply(pool),
+            exactAmountsIn.unsafeCastToInt256(true),
+            new uint256[](poolData.tokens.length)
+        );
 
         // Emit an event to log the pool initialization.
         emit PoolInitialized(pool);
@@ -634,6 +635,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                   ERC4626 Buffers
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (bool) {
+        return _bufferAssets[wrappedToken] != address(0);
+    }
+
+    /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
 
@@ -789,6 +799,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         emit PoolBalanceChanged(
             pool,
             from,
+            _totalSupply(pool),
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false),
             new uint256[](numTokens)
