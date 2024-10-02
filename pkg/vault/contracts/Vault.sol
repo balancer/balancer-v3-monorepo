@@ -656,7 +656,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     IBasePool(params.pool)
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
-            poolData.poolConfigBits.requireAddCustomLiquidityEnabled();
+            poolData.poolConfigBits.requireAddLiquidityCustomEnabled();
 
             // Uses msg.sender as the Router (the contract that called the Vault).
             (amountsInScaled18, bptAmountOut, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
@@ -744,7 +744,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _mint(address(params.pool), params.to, bptAmountOut);
 
         // 8) Off-chain events.
-        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), swapFeeAmounts);
+        emit PoolBalanceChanged(
+            params.pool,
+            params.to,
+            _totalSupply(params.pool),
+            amountsInRaw.unsafeCastToInt256(true),
+            swapFeeAmounts
+        );
     }
 
     /***************************************************************************
@@ -902,7 +908,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool)
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
-            poolData.poolConfigBits.requireRemoveCustomLiquidityEnabled();
+            poolData.poolConfigBits.requireRemoveLiquidityCustomEnabled();
             // Uses msg.sender as the Router (the contract that called the Vault).
             (bptAmountIn, amountsOutScaled18, swapFeeAmounts, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
@@ -998,6 +1004,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         emit PoolBalanceChanged(
             params.pool,
             params.from,
+            _totalSupply(params.pool),
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false),
             swapFeeAmounts

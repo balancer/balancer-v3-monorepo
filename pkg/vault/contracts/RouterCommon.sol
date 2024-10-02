@@ -124,7 +124,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
         _weth = weth;
         _permit2 = permit2;
-        weth.approve(address(vault), type(uint256).max);
     }
 
     /*******************************************************************************
@@ -255,13 +254,19 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             // update Vault accounting.
             _vault.settle(_weth, amountIn);
         } else {
-            // Send the tokenIn amount to the Vault
-            _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
-            _vault.settle(tokenIn, amountIn);
+            if (amountIn > 0) {
+                // Send the tokenIn amount to the Vault
+                _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
+                _vault.settle(tokenIn, amountIn);
+            }
         }
     }
 
     function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
+        if (amountOut == 0) {
+            return;
+        }
+
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
             // Receive the WETH amountOut.
