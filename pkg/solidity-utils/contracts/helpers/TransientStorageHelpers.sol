@@ -8,7 +8,8 @@ import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
 import { StorageSlotExtension } from "../openzeppelin/StorageSlotExtension.sol";
 
 type TokenDeltaMappingSlotType is bytes32;
-type AddressMappingSlot is bytes32;
+type AddressToUintMappingSlot is bytes32;
+type AddressToBooleanMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
 
 /**
@@ -46,21 +47,29 @@ library TransientStorageHelpers {
         TokenDeltaMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tstore(value);
     }
 
-    function tGet(AddressMappingSlot slot, address key) internal view returns (uint256) {
-        return AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tload();
+    function tGet(AddressToUintMappingSlot slot, address key) internal view returns (uint256) {
+        return AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tload();
     }
 
-    function tSet(AddressMappingSlot slot, address key, uint256 value) internal {
-        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(value);
+    function tSet(AddressToUintMappingSlot slot, address key, uint256 value) internal {
+        AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(value);
+    }
+
+    function tGet(AddressToBooleanMappingSlot slot, address key) internal view returns (bool) {
+        return AddressToBooleanMappingSlot.unwrap(slot).deriveMapping(key).asBoolean().tload();
+    }
+
+    function tSet(AddressToBooleanMappingSlot slot, address key, bool value) internal {
+        AddressToBooleanMappingSlot.unwrap(slot).deriveMapping(key).asBoolean().tstore(value);
     }
 
     // Implement the common "+=" operation: map[key] += value.
-    function tAdd(AddressMappingSlot slot, address key, uint256 value) internal {
-        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) + value);
+    function tAdd(AddressToUintMappingSlot slot, address key, uint256 value) internal {
+        AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) + value);
     }
 
-    function tSub(AddressMappingSlot slot, address key, uint256 value) internal {
-        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
+    function tSub(AddressToUintMappingSlot slot, address key, uint256 value) internal {
+        AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
     }
 
     /***************************************************************************
