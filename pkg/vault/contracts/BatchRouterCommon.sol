@@ -13,7 +13,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
     TransientStorageHelpers,
-    AddressMappingSlot
+    AddressToUintMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
@@ -61,21 +61,21 @@ contract BatchRouterCommon is RouterCommon {
     }
 
     // token in -> amount: tracks token in amounts within a batch swap.
-    function _currentSwapTokenInAmounts() internal view returns (AddressMappingSlot slot) {
-        return AddressMappingSlot.wrap(_CURRENT_SWAP_TOKEN_IN_AMOUNTS_SLOT);
+    function _currentSwapTokenInAmounts() internal view returns (AddressToUintMappingSlot slot) {
+        return AddressToUintMappingSlot.wrap(_CURRENT_SWAP_TOKEN_IN_AMOUNTS_SLOT);
     }
 
     // token out -> amount: tracks token out amounts within a batch swap.
-    function _currentSwapTokenOutAmounts() internal view returns (AddressMappingSlot slot) {
-        return AddressMappingSlot.wrap(_CURRENT_SWAP_TOKEN_OUT_AMOUNTS_SLOT);
+    function _currentSwapTokenOutAmounts() internal view returns (AddressToUintMappingSlot slot) {
+        return AddressToUintMappingSlot.wrap(_CURRENT_SWAP_TOKEN_OUT_AMOUNTS_SLOT);
     }
 
     // token -> amount that is part of the current input / output amounts, but is settled preemptively.
     // This situation happens whenever there is BPT involved in the operation, which is minted and burned instantly.
     // Since those amounts are not tracked in the inputs / outputs to settle, we need to track them elsewhere
     // to return the correct total amounts in and out for each token involved in the operation.
-    function _settledTokenAmounts() internal view returns (AddressMappingSlot slot) {
-        return AddressMappingSlot.wrap(_SETTLED_TOKEN_AMOUNTS_SLOT);
+    function _settledTokenAmounts() internal view returns (AddressToUintMappingSlot slot) {
+        return AddressToUintMappingSlot.wrap(_SETTLED_TOKEN_AMOUNTS_SLOT);
     }
 
     function _calculateBatchRouterStorageSlot(string memory key) internal pure returns (bytes32) {

@@ -23,8 +23,6 @@ import { StablePool } from "./StablePool.sol";
  * Since this limit is less than Vault's maximum of 8 tokens, we need to enforce this at the factory level.
  */
 contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
-    // solhint-disable not-rely-on-time
-
     string private _poolVersion;
 
     constructor(

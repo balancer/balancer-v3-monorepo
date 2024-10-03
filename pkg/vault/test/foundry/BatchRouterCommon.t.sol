@@ -8,7 +8,7 @@ import {
 
 import {
     TransientStorageHelpers,
-    AddressMappingSlot
+    AddressToUintMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -36,21 +36,21 @@ contract BatchRouterCommonTest is BaseVaultTest {
 
     function testCurrentSwapTokenInAmountsSlot() external view {
         assertEq(
-            AddressMappingSlot.unwrap(batchRouter.manualGetCurrentSwapTokenInAmounts()),
+            AddressToUintMappingSlot.unwrap(batchRouter.manualGetCurrentSwapTokenInAmounts()),
             TransientStorageHelpers.calculateSlot(DOMAIN, "currentSwapTokenInAmounts")
         );
     }
 
     function testCurrentSwapTokenOutAmountsSlot() external view {
         assertEq(
-            AddressMappingSlot.unwrap(batchRouter.manualGetCurrentSwapTokenOutAmounts()),
+            AddressToUintMappingSlot.unwrap(batchRouter.manualGetCurrentSwapTokenOutAmounts()),
             TransientStorageHelpers.calculateSlot(DOMAIN, "currentSwapTokenOutAmounts")
         );
     }
 
     function testSettledTokenAmountsSlot() external view {
         assertEq(
-            AddressMappingSlot.unwrap(batchRouter.manualGetSettledTokenAmounts()),
+            AddressToUintMappingSlot.unwrap(batchRouter.manualGetSettledTokenAmounts()),
             TransientStorageHelpers.calculateSlot(DOMAIN, "settledTokenAmounts")
         );
     }
