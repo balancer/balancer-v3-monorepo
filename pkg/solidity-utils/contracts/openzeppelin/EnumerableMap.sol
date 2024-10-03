@@ -67,7 +67,7 @@ library EnumerableMap {
 
     /// @notice This error is thrown when attempting to retrieve an entry that is not present in the map.
     error KeyNotFound();
-    
+
     /**
      * @dev Adds a key-value pair to a map, or updates the value for an existing
      * key. O(1).
