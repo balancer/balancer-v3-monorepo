@@ -277,6 +277,8 @@ interface IVaultMainMock {
 
     function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
 
+    function manualSetAddLiquidityCalledFlag(address pool, bool flag) external;
+
     function manualSetPoolCreator(address pool, address newPoolCreator) external;
 
     function ensureValidTradeAmount(uint256 tradeAmount) external view;
