@@ -13,8 +13,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     TransientStorageHelpers,
-    AddressArraySlotType,
-    TokenDeltaMappingSlotType
+    TokenDeltaMappingSlotType,
+    AddressToBooleanMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -66,6 +66,7 @@ contract VaultStorage {
     bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
     bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
+    bytes32 private immutable _ADD_LIQUIDITY_CALLED_SLOT = _calculateVaultStorageSlot("addLiquidityCalled");
     // solhint-enable var-name-mixedcase
 
     /***************************************************************************
@@ -171,6 +172,10 @@ contract VaultStorage {
 
     function _tokenDeltas() internal view returns (TokenDeltaMappingSlotType slot) {
         return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTAS_SLOT);
+    }
+
+    function _addLiquidityCalled() internal view returns (AddressToBooleanMappingSlot slot) {
+        return AddressToBooleanMappingSlot.wrap(_ADD_LIQUIDITY_CALLED_SLOT);
     }
 
     function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {
