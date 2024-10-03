@@ -31,9 +31,6 @@ contract VaultFactory is Authentication {
      */
     event VaultCreated(address vault);
 
-    /// @notice Vault has already been deployed, so this factory is disabled.
-    error VaultAlreadyCreated();
-
     /// @notice The given salt does not match the generated address when attempting to create the Vault.
     error VaultAddressMismatch();
 
