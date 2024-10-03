@@ -68,8 +68,9 @@ interface IVaultExtension {
     function getReservesOf(IERC20 token) external view returns (uint256);
 
     /**
-     * @notice Returns `true` if `addLiquidity` was called for the given pool in this transaction.
-     * @param pool Address of the pool to check.
+     * @notice This flag is used to detect and tax "round trip" transactions (adding/removing liquidity in the same pool)
+     * @param pool Address of the pool to check
+     * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
      */
     function getAddLiquidityCalledFlag(address pool) external view returns (bool);
 
