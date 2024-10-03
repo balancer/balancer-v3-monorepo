@@ -176,6 +176,12 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             erc4626Tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(erc4626Tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(
+                address(erc4626Tokens[i]),
+                address(compositeLiquidityRouter),
+                type(uint160).max,
+                type(uint48).max
+            );
 
             // Approve deposits from sender.
             IERC20 underlying = IERC20(erc4626Tokens[i].asset());

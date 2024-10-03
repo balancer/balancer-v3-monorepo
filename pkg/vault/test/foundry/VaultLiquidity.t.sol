@@ -4,15 +4,19 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -376,6 +380,65 @@ contract VaultLiquidityTest is BaseVaultTest {
             false,
             bytes("")
         );
+    }
+
+    function testRoundtripFee() public {
+        uint256 swapFeePercentage = 10e16;
+        setSwapFeePercentage(swapFeePercentage);
+
+        uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
+
+        Balances memory balancesBefore = getBalances(alice);
+
+        assertFalse(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag is set");
+
+        vm.startPrank(alice);
+        amountsIn = router.addLiquidityProportional(pool, amountsIn, defaultAmount, false, bytes(""));
+
+        // The whole test runs in the same transaction, so transient storage is set.
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag not set");
+
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            pool,
+            IERC20(pool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        Balances memory balancesAfter = getBalances(alice);
+
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag not set");
+
+        // Amount out is 90% amount in after the roundtrip.
+        assertEq(amountsOut[0], amountsIn[0].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], amountsIn[1].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[1]");
+
+        // Tokens are transferred from the user to the Vault.
+        assertEq(
+            balancesAfter.userTokens[0],
+            balancesBefore.userTokens[0] - amountsIn[0] + amountsOut[0],
+            "Roundtrip - User balance: token 0"
+        );
+        assertEq(
+            balancesAfter.userTokens[1],
+            balancesBefore.userTokens[1] - amountsIn[1] + amountsOut[1],
+            "Roundtrip - User balance: token 1"
+        );
+
+        // Tokens are now in the Vault / pool.
+        assertEq(
+            balancesAfter.poolTokens[0],
+            balancesBefore.poolTokens[0] + amountsIn[0] - amountsOut[0],
+            "Roundtrip - Pool balance: token 0"
+        );
+        assertEq(
+            balancesAfter.poolTokens[1],
+            balancesBefore.poolTokens[1] + amountsIn[1] - amountsOut[0],
+            "Roundtrip - Pool balance: token 1"
+        );
+
+        assertEq(balancesAfter.userBpt, 0, "Roundtrip - User BPT balance after");
     }
 
     // Utils
