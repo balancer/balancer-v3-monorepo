@@ -95,7 +95,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     // Default amount of BPT to use in tests for user operations.
     uint256 internal bptAmount = 2e3 * 1e18;
     // Default amount of BPT round down.
-    uint256 internal bptAmountRoundDown = bptAmount - 1;
+    uint256 internal bptAmountRoundDown = bptAmount - 2;
     // Amount to use to init the mock pool.
     uint256 internal poolInitAmount = 1e3 * 1e18;
     // Default rate for the rate provider mock.
