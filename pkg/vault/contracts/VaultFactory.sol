@@ -14,6 +14,17 @@ import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 
 /// @notice One-off factory to deploy the Vault at a specific address.
 contract VaultFactory is Authentication {
+    bytes32 public immutable vaultCreationCodeHash;
+    bytes32 public immutable vaultAdminCreationCodeHash;
+    bytes32 public immutable vaultExtensionCreationCodeHash;
+
+    IAuthorizer private immutable _authorizer;
+    uint32 private immutable _pauseWindowDuration;
+    uint32 private immutable _bufferPeriodDuration;
+    uint256 private immutable _minTradeAmount;
+    uint256 private immutable _minWrapAmount;
+    address private immutable _deployer;
+
     /**
      * @notice Emitted when the Vault is deployed.
      * @param vault The Vault's address
@@ -28,19 +39,6 @@ contract VaultFactory is Authentication {
 
     /// @notice The bytecode for the given contract does not match the expected bytecode.
     error InvalidBytecode(string contractName);
-
-    bytes32 public immutable vaultCreationCodeHash;
-    bytes32 public immutable vaultAdminCreationCodeHash;
-    bytes32 public immutable vaultExtensionCreationCodeHash;
-
-    IAuthorizer private immutable _authorizer;
-    uint32 private immutable _pauseWindowDuration;
-    uint32 private immutable _bufferPeriodDuration;
-    uint256 private immutable _minTradeAmount;
-    uint256 private immutable _minWrapAmount;
-    address private immutable _deployer;
-
-    // solhint-disable not-rely-on-time
 
     constructor(
         IAuthorizer authorizer,
