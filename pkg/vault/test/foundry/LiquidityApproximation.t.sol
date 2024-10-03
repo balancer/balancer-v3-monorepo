@@ -322,6 +322,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
 
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
+
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
             IERC20(liquidityPool).balanceOf(alice),
@@ -360,6 +363,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
@@ -448,6 +454,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactIn(address(liquidityPool), exactBptAmountIn, usdc, 1, false, bytes(""));
 
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
+
         // Remove remaining liquidity.
         router.removeLiquidityProportional(
             address(liquidityPool),
@@ -499,6 +508,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         // Remove remaining liquidity.
         router.removeLiquidityProportional(
@@ -553,6 +565,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         // Remove remaining liquidity.
         router.removeLiquidityProportional(
