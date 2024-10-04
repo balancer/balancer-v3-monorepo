@@ -175,6 +175,8 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.prank(user);
         poolToken.revokePermit();
 
+        // Note that `revokePermit` doesn't affect allowances already granted by executed permits.
+        // It just invalidates signatures for permits that have not yet been executed.
         assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount, "allowance mismatch");
 
         // Nonce should be incremented by 2 now.
@@ -252,7 +254,25 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v2, r2, s2);
     }
 
-    function testFailPermitRevokedNonce() public {
+    function testFailPermitRevokedNonceV1() public {
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            user,
+            address(0xCAFE),
+            defaultAmount,
+            CURRENT_NONCE,
+            block.timestamp,
+            privateKey
+        );
+
+        vm.prank(user);
+        poolToken.revokePermit();
+        
+        vm.expectRevert(bytes(""));
+        poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
+    }
+
+    function testFailPermitRevokedNonceV2() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
