@@ -15,12 +15,6 @@ import { FixedPoint } from "./FixedPoint.sol";
 library WeightedMath {
     using FixedPoint for uint256;
 
-    /// @notice User Attempted to burn less BPT than allowed for a specific amountOut.
-    error MinBPTInForTokenOut();
-
-    /// @notice User attempted to mint more BPT than allowed for a specific amountIn.
-    error MaxOutBptForTokenIn();
-
     /// @notice User attempted to extract a disproportionate amountOut of tokens from a pool.
     error MaxOutRatio();
 

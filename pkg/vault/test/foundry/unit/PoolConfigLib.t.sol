@@ -145,18 +145,18 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is false (setter)");
     }
 
-    function testRequireAddCustomLiquidityEnabled() public pure {
+    function testRequireAddLiquidityCustomEnabled() public pure {
         PoolConfigBits config;
         config = config.setAddLiquidityCustom(true);
 
-        config.requireAddCustomLiquidityEnabled();
+        config.requireAddLiquidityCustomEnabled();
     }
 
-    function testRequireAddCustomLiquidityRevertIfIsDisabled() public {
+    function testRequireAddLiquidityCustomRevertIfIsDisabled() public {
         PoolConfigBits config;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
-        config.requireAddCustomLiquidityEnabled();
+        config.requireAddLiquidityCustomEnabled();
     }
 
     function testSupportsRemoveLiquidityCustom() public pure {
@@ -173,18 +173,18 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is false (setter)");
     }
 
-    function testRequireRemoveCustomLiquidityEnabled() public pure {
+    function testRequireRemoveLiquidityCustomEnabled() public pure {
         PoolConfigBits config;
         config = config.setRemoveLiquidityCustom(true);
 
-        config.requireRemoveCustomLiquidityEnabled();
+        config.requireRemoveLiquidityCustomEnabled();
     }
 
-    function testRequireRemoveCustomLiquidityReveryIfIsDisabled() public {
+    function testRequireRemoveLiquidityCustomReveryIfIsDisabled() public {
         PoolConfigBits config;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
-        config.requireRemoveCustomLiquidityEnabled();
+        config.requireRemoveLiquidityCustomEnabled();
     }
 
     function testSupportsDonation() public pure {
