@@ -164,6 +164,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
                     signatureParts.s
                 )
             {
+                // solhint-disable-previous-line no-empty-blocks
                 // OK; carry on.
             } catch (bytes memory returnData) {
                 // Did it fail because the permit was executed (possible DoS attack to make the transaction revert),
