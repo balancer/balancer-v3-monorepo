@@ -267,7 +267,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         vm.prank(user);
         poolToken.revokePermit();
-        
+
         vm.expectRevert(bytes(""));
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
