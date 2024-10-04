@@ -91,7 +91,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     // Default amount round up.
     uint256 internal defaultAmountRoundUp = defaultAmount + 1;
     // Default amount round down.
-    uint256 internal defaultAmountRoundDown = defaultAmount - 1;
+    uint256 internal defaultAmountRoundDown = defaultAmount - 2;
     // Default amount of BPT to use in tests for user operations.
     uint256 internal bptAmount = 2e3 * 1e18;
     // Default amount of BPT round down.

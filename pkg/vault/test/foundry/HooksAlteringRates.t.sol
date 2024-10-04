@@ -168,7 +168,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                     AddLiquidityKind.UNBALANCED,
                     expectedAmountsIn,
                     [defaultAmount, defaultAmount].toMemoryArray(),
-                    defaultAmount * 2,
+                    bptAmountRoundDown - 1,
                     expectedBalances,
                     bytes("")
                 )
@@ -178,7 +178,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmountRoundDown,
+            bptAmountRoundDown - 1,
             false,
             bytes("")
         );
@@ -198,7 +198,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -206,7 +206,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         uint256[] memory expectedAmountsOut = new uint256[](2);
         uint256[] memory expectedBalances = new uint256[](2);
 
-        expectedAmountsOut[daiIdx] = rateAdjustedAmount;
+        expectedAmountsOut[daiIdx] = rateAdjustedAmount - 1;
         expectedAmountsOut[usdcIdx] = defaultAmountRoundDown;
 
         expectedBalances[daiIdx] = defaultAmount;
@@ -217,13 +217,13 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             pool,
             abi.encodeCall(
                 IPoolLiquidity.onRemoveLiquidityCustom,
-                (address(router), bptAmount, expectedAmountsOut, expectedBalances, bytes(""))
+                (address(router), bptAmountRoundDown, expectedAmountsOut, expectedBalances, bytes(""))
             )
         );
         vm.prank(alice);
         router.removeLiquidityCustom(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
