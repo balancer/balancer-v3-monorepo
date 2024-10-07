@@ -458,7 +458,7 @@ contract E2eSwapTest is BaseVaultTest {
         {
             // If the amount given is below the guardrail, don't continue.
             uint256 rateTokenB = getRate(tokenB);
-            uint256 decimalScalingFactorTokenB = 1e18 * 10 ** (18 - decimalsTokenB);
+            uint256 decimalScalingFactorTokenB = 10 ** (18 - decimalsTokenB);
             vm.assume(
                 exactAmountOutDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
                     testLocals.poolSwapFeePercentage.complement()
@@ -573,7 +573,7 @@ contract E2eSwapTest is BaseVaultTest {
         {
             // If the amount given is below the guardrail, don't continue.
             uint256 rateTokenB = getRate(tokenB);
-            uint256 decimalScalingFactorTokenB = 1e18 * 10 ** (18 - decimalsTokenB);
+            uint256 decimalScalingFactorTokenB = 10 ** (18 - decimalsTokenB);
             vm.assume(
                 exactAmountInDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
                     testLocals.poolSwapFeePercentage.complement()

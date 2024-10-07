@@ -807,7 +807,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         for (uint256 i = 0; i < tokens.length; i++) {
             poolData.tokens[i] = tokens[i];
-            poolData.decimalScalingFactors[i] = 1e18;
+            poolData.decimalScalingFactors[i] = 1; // 18 decimals
             poolData.tokenRates[i] = 1e18 * (i + 1);
 
             poolData.balancesLiveScaled18[i] = 1000e18;

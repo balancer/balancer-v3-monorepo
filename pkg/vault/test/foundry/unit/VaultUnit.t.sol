@@ -173,12 +173,12 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         // check _updateRawAndLiveTokenBalancesInPoolData is called.
         assertEq(
             poolData.balancesLiveScaled18[0],
-            poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
+            (poolData.balancesRaw[0] * poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
             "Unexpected balancesLiveScaled18[0]"
         );
         assertEq(
             poolData.balancesLiveScaled18[1],
-            poolData.balancesRaw[1].mulUp(poolData.decimalScalingFactors[1]).mulUp(poolData.tokenRates[1]),
+            (poolData.balancesRaw[1] * poolData.decimalScalingFactors[1]).mulUp(poolData.tokenRates[1]),
             "Unexpected balancesLiveScaled18[1]"
         );
     }

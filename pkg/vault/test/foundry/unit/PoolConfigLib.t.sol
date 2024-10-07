@@ -362,8 +362,8 @@ contract PoolConfigLibTest is Test {
 
         uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
 
-        assertEq(scalingFactors[0], 1e23, "scalingFactors[0] mismatch");
-        assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
+        assertEq(scalingFactors[0], 1e5, "scalingFactors[0] mismatch"); // 1e23 / FP(1)
+        assertEq(scalingFactors[1], 1e20, "scalingFactors[1] mismatch"); // 1e38 / FP(1)
     }
 
     function testGetPauseWindowEndTime() public pure {

@@ -123,13 +123,13 @@ contract BigPoolDataTest is BaseVaultTest {
 
             if (roundUp) {
                 expectedLiveBalance = FixedPoint.mulUp(
-                    expectedRawBalances[i],
-                    expectedScalingFactors[i].mulUp(rates[i])
+                    expectedRawBalances[i] * expectedScalingFactors[i],
+                    rates[i]
                 );
             } else {
                 expectedLiveBalance = FixedPoint.mulDown(
-                    expectedRawBalances[i],
-                    expectedScalingFactors[i].mulDown(rates[i])
+                    expectedRawBalances[i] * expectedScalingFactors[i],
+                    rates[i]
                 );
             }
 

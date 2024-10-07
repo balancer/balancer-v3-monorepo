@@ -172,14 +172,14 @@ contract YieldFeesTest is BaseVaultTest {
             poolData = vault.updateLiveTokenBalanceInPoolData(poolData, balanceRaw, Rounding.ROUND_UP, 0);
             assertEq(
                 poolData.balancesLiveScaled18[0],
-                balanceRaw.mulUp(decimalScalingFactor).mulUp(tokenRate),
+                (balanceRaw * decimalScalingFactor).mulUp(tokenRate),
                 "Live scaled balance does not match (round up)"
             );
         } else {
             poolData = vault.updateLiveTokenBalanceInPoolData(poolData, balanceRaw, Rounding.ROUND_DOWN, 0);
             assertEq(
                 poolData.balancesLiveScaled18[0],
-                balanceRaw.mulDown(decimalScalingFactor).mulDown(tokenRate),
+                (balanceRaw * decimalScalingFactor).mulDown(tokenRate),
                 "Live scaled balance does not match (round down)"
             );
         }
@@ -211,8 +211,7 @@ contract YieldFeesTest is BaseVaultTest {
             assertEq(
                 protocolYieldFeesRaw,
                 (liveBalance - lastLiveBalance).mulUp(yieldFeePercentage).divDown(
-                    decimalScalingFactor.mulDown(tokenRate)
-                ),
+                    decimalScalingFactor * tokenRate),
                 "Wrong protocol yield fees"
             );
         }
@@ -305,13 +304,13 @@ contract YieldFeesTest is BaseVaultTest {
         for (uint256 i = 0; i < expectedRawBalances.length; ++i) {
             if (roundUp) {
                 expectedLiveBalance = FixedPoint.mulUp(
-                    expectedRawBalances[i],
-                    expectedScalingFactors[i].mulUp(expectedRates[i])
+                    expectedRawBalances[i] * expectedScalingFactors[i],
+                    expectedRates[i]
                 );
             } else {
                 expectedLiveBalance = FixedPoint.mulDown(
-                    expectedRawBalances[i],
-                    expectedScalingFactors[i].mulDown(expectedRates[i])
+                    expectedRawBalances[i] * expectedScalingFactors[i], 
+                    expectedRates[i]
                 );
             }
 
