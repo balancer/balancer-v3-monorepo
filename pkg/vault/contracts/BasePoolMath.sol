@@ -5,10 +5,12 @@ pragma solidity ^0.8.24;
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 library BasePoolMath {
     using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
     /**
      * @notice An add liquidity operation increased the invariant above the limit.
@@ -150,7 +152,7 @@ library BasePoolMath {
 
         // Loop through each token, updating the balance with the added amount.
         for (uint256 i = 0; i < numTokens; ++i) {
-            newBalances[i] = currentBalances[i] + exactAmounts[i];
+            newBalances[i] = (currentBalances[i] + exactAmounts[i]).roundDownIfNotInteger(); // Undo balance round up for new balances.
         }
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
@@ -290,7 +292,7 @@ library BasePoolMath {
 
         // Copy currentBalances to newBalances.
         for (uint256 i = 0; i < numTokens; ++i) {
-            newBalances[i] = currentBalances[i];
+            newBalances[i] = currentBalances[i].roundDownIfNotInteger();
         }
 
         // Update the balance of tokenOutIndex with exactAmountOut.

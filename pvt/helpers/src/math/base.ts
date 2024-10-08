@@ -43,6 +43,7 @@ export function computeAddLiquidityUnbalanced(
 
   for (let i = 0; i < numTokens; ++i) {
     newBalances[i] = currentBalances[i] + exactAmounts[i];
+    newBalances[i] = newBalances[i] % fp(1) == 0n ? newBalances[i] : newBalances[i] - 1n;
   }
 
   const currentInvariant = computeInvariantMock(currentBalances);

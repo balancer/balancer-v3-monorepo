@@ -342,4 +342,12 @@ library ScalingHelpers {
         }
         return roundedRate == rate ? rate : rate + 1;
     }
+
+    function roundDownIfNotInteger(uint256 rate) internal pure returns (uint256) {
+        uint256 roundedRate;
+        unchecked {
+            roundedRate = (rate / FixedPoint.ONE) * FixedPoint.ONE;
+        }
+        return roundedRate == rate ? rate : rate - 1;
+    }
 }
