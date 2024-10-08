@@ -194,4 +194,27 @@ contract StableMathTest is Test {
         assertEq(balance, balanceNotPermuted, "Mock function and base one should be equivalent.");
         assertGe(balance, balancePermuted, "Output should be greater than or equal to the permuted mock value.");
     }
+
+    function testCompareComputeBalancesWithSmallDiff__Fuzz(
+        uint256 amp,
+        uint256[NUM_TOKENS] calldata rawBalances,
+        uint256 tokenIndex,
+        uint256 invariantDiff
+    ) external view {
+        amp = boundAmp(amp);
+        uint256[] memory balances = boundBalances(rawBalances);
+        tokenIndex = bound(tokenIndex, 0, NUM_TOKENS - 1);
+        invariantDiff = bound(invariantDiff, 4, 100000);
+
+        try stableMathMock.computeInvariant(amp, balances) returns (uint256 invariant) {} catch {
+            vm.assume(false);
+        }
+
+        uint256 invariant = stableMathMock.computeInvariant(amp, balances);
+        uint256 balanceOne = stableMathMock.computeBalance(amp, balances, invariant, tokenIndex);
+        uint256 balanceTwo = stableMathMock.computeBalance(amp, balances, invariant + invariantDiff, tokenIndex);
+
+        console.log("invariantDiff: %d", invariantDiff);
+        assertGt(balanceTwo, balanceOne, "The balance should be greater when the invariant is greater.");
+    }
 }
