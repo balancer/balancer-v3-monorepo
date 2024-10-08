@@ -204,6 +204,6 @@ contract Permit2Test is BaseVaultTest {
         vm.prank(alice);
         router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);
 
-        assertEq(IERC20(pool).allowance(alice, address(router)), defaultAmount, "Router allowance still active");
+        assertEq(IERC20(pool).allowance(alice, address(router)), defaultAmount, "Router allowance was reset");
     }
 }
