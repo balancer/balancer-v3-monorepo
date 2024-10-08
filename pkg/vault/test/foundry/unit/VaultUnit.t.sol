@@ -95,7 +95,7 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         // The aggregate fee percentage is truncated in the pool config bits, so we do the same.
         aggregateSwapFeePercentage = (aggregateSwapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
 
-        uint256 expectedTotalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundUp(
+        uint256 expectedTotalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );

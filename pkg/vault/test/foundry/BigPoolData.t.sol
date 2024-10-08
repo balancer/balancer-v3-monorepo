@@ -122,15 +122,9 @@ contract BigPoolDataTest is BaseVaultTest {
             assertEq(data.tokenRates[i], rates[i]);
 
             if (roundUp) {
-                expectedLiveBalance = FixedPoint.mulUp(
-                    expectedRawBalances[i] * expectedScalingFactors[i],
-                    rates[i]
-                );
+                expectedLiveBalance = FixedPoint.mulUp(expectedRawBalances[i] * expectedScalingFactors[i], rates[i]);
             } else {
-                expectedLiveBalance = FixedPoint.mulDown(
-                    expectedRawBalances[i] * expectedScalingFactors[i],
-                    rates[i]
-                );
+                expectedLiveBalance = FixedPoint.mulDown(expectedRawBalances[i] * expectedScalingFactors[i], rates[i]);
             }
 
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
