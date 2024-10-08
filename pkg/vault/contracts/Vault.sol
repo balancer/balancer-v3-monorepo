@@ -1040,6 +1040,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) internal returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
         // If totalSwapFeeAmountScaled18 equals zero, no need to charge anything.
         if (totalSwapFeeAmountScaled18 > 0 && poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
+            // The total swap fee does not go into the pool; amountIn does, and the raw fee at this point does not
+            // modify it. Given that all of the fee may belong to the pool creator (i.e. outside pool balances),
+            // we round down to protect the invariant.
             totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
