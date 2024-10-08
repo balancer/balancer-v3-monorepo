@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { DeployPermit2 } from "permit2/test/utils/DeployPermit2.sol";
 
@@ -14,6 +16,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IStdMedusaCheats } from "@balancer-labs/v3-interfaces/contracts/test/IStdMedusaCheats.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
@@ -29,8 +32,10 @@ import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeL
 import { ProtocolFeeControllerMock } from "../../../contracts/test/ProtocolFeeControllerMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 
-contract BaseMedusaTest {
+contract BaseMedusaTest is Test {
     IStdMedusaCheats internal medusa = IStdMedusaCheats(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+
+    event Debug(string, uint256);
 
     IPermit2 internal permit2;
 
@@ -45,7 +50,10 @@ contract BaseMedusaTest {
     ProtocolFeeControllerMock internal feeController;
     PoolFactoryMock internal factoryMock;
 
-    uint256 internal constant DEFAULT_USER_BALANCE = 1e9 * 1e18;
+    IBasePool internal pool;
+    uint256 internal poolCreationNonce;
+
+    uint256 internal constant DEFAULT_USER_BALANCE = 1e18 * 1e18;
 
     // Set alice,bob and lp to addresses of medusa.json "senderAddresses" property
     address internal alice = address(0x10000);
@@ -56,8 +64,6 @@ contract BaseMedusaTest {
     ERC20TestToken internal usdc;
     WETHTestToken internal weth;
 
-    // Create Permit2
-    // Create Vault/Routers/etc
     // Set permissions for users
 
     constructor() {
@@ -77,6 +83,43 @@ contract BaseMedusaTest {
         router = new RouterMock(IVault(address(vault)), weth, permit2);
         batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
         compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
+
+        _setPermissionsForUsersAndTokens();
+
+        (IERC20[] memory tokens, uint256[] memory initialBalances) = getTokensAndInitialBalances();
+        pool = IBasePool(createPool(tokens, initialBalances));
+
+        _allowBptTransfers();
+    }
+
+    function createPool(IERC20[] memory tokens, uint256[] memory initialBalances) internal virtual returns (address) {
+        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+
+        // No hooks contract.
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens), address(0), lp);
+
+        // Initialize liquidity of new pool.
+        medusa.prank(lp);
+        router.initialize(address(newPool), tokens, initialBalances, 0, false, bytes(""));
+
+        return newPool;
+    }
+
+    function getTokensAndInitialBalances()
+        internal
+        virtual
+        returns (IERC20[] memory tokens, uint256[] memory initialBalances)
+    {
+        tokens = new IERC20[](3);
+        tokens[0] = dai;
+        tokens[1] = usdc;
+        tokens[2] = weth;
+        tokens = InputHelpers.sortTokens(tokens);
+
+        initialBalances = new uint256[](3);
+        initialBalances[0] = 10e18;
+        initialBalances[1] = 20e18;
+        initialBalances[2] = 30e18;
     }
 
     function _createERC20TestToken(
@@ -116,6 +159,64 @@ contract BaseMedusaTest {
         factoryMock = PoolFactoryMock(poolFactoryMock);
 
         vault = IVaultMock(address(newVault));
+    }
+
+    function _allowBptTransfers() private {
+        address[] memory users = new address[](3);
+        users[0] = alice;
+        users[1] = bob;
+        users[2] = lp;
+
+        for (uint256 j = 0; j < users.length; j++) {
+            _approveBptTokenForUser(IERC20(address(pool)), users[j]);
+        }
+    }
+
+    function _approveBptTokenForUser(IERC20 bptToken, address user) private {
+        medusa.prank(user);
+        bptToken.approve(address(router), type(uint256).max);
+        medusa.prank(user);
+        bptToken.approve(address(batchRouter), type(uint256).max);
+        medusa.prank(user);
+        bptToken.approve(address(compositeLiquidityRouter), type(uint256).max);
+
+        medusa.prank(user);
+        bptToken.approve(address(permit2), type(uint256).max);
+        medusa.prank(user);
+        permit2.approve(address(bptToken), address(router), type(uint160).max, type(uint48).max);
+        medusa.prank(user);
+        permit2.approve(address(bptToken), address(batchRouter), type(uint160).max, type(uint48).max);
+        medusa.prank(user);
+        permit2.approve(address(bptToken), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
+    }
+
+    function _setPermissionsForUsersAndTokens() private {
+        address[] memory tokens = new address[](3);
+        tokens[0] = address(dai);
+        tokens[1] = address(usdc);
+        tokens[2] = address(weth);
+
+        address[] memory users = new address[](3);
+        users[0] = alice;
+        users[1] = bob;
+        users[2] = lp;
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            for (uint256 j = 0; j < users.length; j++) {
+                _approveTokenForUser(tokens[i], users[j]);
+            }
+        }
+    }
+
+    function _approveTokenForUser(address token, address user) private {
+        medusa.prank(user);
+        IERC20(token).approve(address(permit2), type(uint256).max);
+        medusa.prank(user);
+        permit2.approve(token, address(router), type(uint160).max, type(uint48).max);
+        medusa.prank(user);
+        permit2.approve(token, address(batchRouter), type(uint160).max, type(uint48).max);
+        medusa.prank(user);
+        permit2.approve(token, address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
     }
 
     function _create3(bytes memory constructorArgs, bytes memory bytecode, bytes32 salt) private returns (address) {
