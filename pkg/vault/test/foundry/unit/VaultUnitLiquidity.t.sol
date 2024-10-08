@@ -472,7 +472,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         uint256[] memory swapFeeAmountsRaw = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundUp(
+            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
@@ -555,7 +555,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         uint256[] memory swapFeeAmountsRaw = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundUp(
+            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );

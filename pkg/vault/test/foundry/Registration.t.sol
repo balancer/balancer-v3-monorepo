@@ -182,27 +182,27 @@ contract RegistrationTest is BaseVaultTest {
         assertEq(poolConfig.pauseWindowEndTime, pauseWindowEndTime, "Wrong pause window end time");
     }
 
-    function testRegisterSetTokenDecimalDiffs__Fuzz(uint256 decimalDiff) public {
-        uint8 decimalDiffDai = uint8(bound(decimalDiff, 0, 18));
-        uint8 decimalDiffUsdc = uint8(bound(decimalDiffDai * 10, 0, 18));
+    function testRegisterSetTokenDecimalDiffs__Fuzz(uint256 decimals) public {
+        uint8 daiDecimals = uint8(bound(decimals, 0, 18));
+        uint8 usdcDecimals = uint8(bound(daiDecimals * 10, 0, 18));
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
-        vm.mockCall(address(dai), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(decimalDiffDai));
+        vm.mockCall(address(dai), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(daiDecimals));
         vm.mockCall(
             address(usdc),
             abi.encodeWithSelector(IERC20Metadata.decimals.selector),
-            abi.encode(decimalDiffUsdc)
+            abi.encode(usdcDecimals)
         );
         vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
         // Test end to end that the decimal scaling factors are correct.
         (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
-        assertEq(decimalScalingFactors[daiIdx], 1e18 * 10 ** (18 - decimalDiffDai), "Wrong dai decimal scaling factor");
+        assertEq(decimalScalingFactors[daiIdx], 10 ** (18 - daiDecimals), "Wrong dai decimal scaling factor");
         assertEq(
             decimalScalingFactors[usdcIdx],
-            1e18 * 10 ** (18 - decimalDiffUsdc),
+            10 ** (18 - usdcDecimals),
             "Wrong usdc decimal scaling factor"
         );
     }

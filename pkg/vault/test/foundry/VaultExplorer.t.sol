@@ -240,7 +240,7 @@ contract VaultExplorerTest is BaseVaultTest {
         for (uint256 i = 0; i < decimalScalingFactors.length; ++i) {
             assertEq(
                 decimalScalingFactors[i],
-                10 ** (18 - tokenDecimalDiffs[i]),
+                10 ** tokenDecimalDiffs[i],
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );
 
@@ -280,7 +280,7 @@ contract VaultExplorerTest is BaseVaultTest {
         for (uint256 i = 0; i < tokens.length; ++i) {
             assertEq(
                 poolData.decimalScalingFactors[i],
-                10 ** (18 - tokenDecimalDiffs[i]),
+                10 ** tokenDecimalDiffs[i],
                 string.concat("decimalScalingFactors of token ", Strings.toString(i), " should match tokenDecimalDiffs")
             );
 
