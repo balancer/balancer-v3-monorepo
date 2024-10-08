@@ -210,8 +210,7 @@ contract YieldFeesTest is BaseVaultTest {
         } else {
             assertEq(
                 protocolYieldFeesRaw,
-                (liveBalance - lastLiveBalance).mulUp(yieldFeePercentage).divDown(
-                    decimalScalingFactor * tokenRate),
+                (liveBalance - lastLiveBalance).mulUp(yieldFeePercentage).divDown(decimalScalingFactor * tokenRate),
                 "Wrong protocol yield fees"
             );
         }
@@ -309,7 +308,7 @@ contract YieldFeesTest is BaseVaultTest {
                 );
             } else {
                 expectedLiveBalance = FixedPoint.mulDown(
-                    expectedRawBalances[i] * expectedScalingFactors[i], 
+                    expectedRawBalances[i] * expectedScalingFactors[i],
                     expectedRates[i]
                 );
             }

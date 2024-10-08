@@ -48,11 +48,7 @@ contract ScalingTest is BaseTest {
         uint256 scalingFactorFp = FixedPoint.ONE * 10 ** decimalDiff;
 
         uint256 balanceLiveScaledWithRawScalingFactor = balanceRaw.toScaled18ApplyRateRoundUp(scalingFactorRaw, rate);
-        uint256 balanceLiveScaledWithFpScalingFactor = FP_toScaled18ApplyRateRoundUp(
-            balanceRaw,
-            scalingFactorFp,
-            rate
-        );
+        uint256 balanceLiveScaledWithFpScalingFactor = FP_toScaled18ApplyRateRoundUp(balanceRaw, scalingFactorFp, rate);
 
         assertEq(
             balanceLiveScaledWithRawScalingFactor,
@@ -71,11 +67,7 @@ contract ScalingTest is BaseTest {
         uint256 scalingFactorFp = FixedPoint.ONE * 10 ** decimalDiff;
 
         uint256 balanceRawScaledWithRawScalingFactor = balanceLive.toRawUndoRateRoundDown(scalingFactorRaw, rate);
-        uint256 balanceRawScaledWithFpScalingFactor = FP_toRawUndoRateRoundDown(
-            balanceLive,
-            scalingFactorFp,
-            rate
-        );
+        uint256 balanceRawScaledWithFpScalingFactor = FP_toRawUndoRateRoundDown(balanceLive, scalingFactorFp, rate);
 
         assertEq(
             balanceRawScaledWithRawScalingFactor,
@@ -94,11 +86,7 @@ contract ScalingTest is BaseTest {
         uint256 scalingFactorFp = FixedPoint.ONE * 10 ** decimalDiff;
 
         uint256 balanceRawScaledWithRawScalingFactor = balanceLive.toRawUndoRateRoundUp(scalingFactorRaw, rate);
-        uint256 balanceRawScaledWithFpScalingFactor = FP_toRawUndoRateRoundUp(
-            balanceLive,
-            scalingFactorFp,
-            rate
-        );
+        uint256 balanceRawScaledWithFpScalingFactor = FP_toRawUndoRateRoundUp(balanceLive, scalingFactorFp, rate);
 
         assertEq(
             balanceRawScaledWithRawScalingFactor,

@@ -191,20 +191,12 @@ contract RegistrationTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
         vm.mockCall(address(dai), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(daiDecimals));
-        vm.mockCall(
-            address(usdc),
-            abi.encodeWithSelector(IERC20Metadata.decimals.selector),
-            abi.encode(usdcDecimals)
-        );
+        vm.mockCall(address(usdc), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(usdcDecimals));
         vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
         // Test end to end that the decimal scaling factors are correct.
         (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
         assertEq(decimalScalingFactors[daiIdx], 10 ** (18 - daiDecimals), "Wrong dai decimal scaling factor");
-        assertEq(
-            decimalScalingFactors[usdcIdx],
-            10 ** (18 - usdcDecimals),
-            "Wrong usdc decimal scaling factor"
-        );
+        assertEq(decimalScalingFactors[usdcIdx], 10 ** (18 - usdcDecimals), "Wrong usdc decimal scaling factor");
     }
 
     function testRegisterSetWrongTokenDecimalDiffs() public {

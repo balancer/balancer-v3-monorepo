@@ -77,7 +77,7 @@ library ScalingHelpers {
         uint256 tokenRate
     ) internal pure returns (uint256) {
         // Do division last. Scaling factor is not a FP18, but a FP18 normalized by FP(1).
-        // `scalingFactor * tokenRate` is a precise FP18, so there is no rounding direction here. 
+        // `scalingFactor * tokenRate` is a precise FP18, so there is no rounding direction here.
         return FixedPoint.divDown(amount, scalingFactor * tokenRate);
     }
 
@@ -97,7 +97,7 @@ library ScalingHelpers {
         uint256 tokenRate
     ) internal pure returns (uint256) {
         // Do division last. Scaling factor is not a FP18, but a FP18 normalized by FP(1).
-        // `scalingFactor * tokenRate` is a precise FP18, so there is no rounding direction here. 
+        // `scalingFactor * tokenRate` is a precise FP18, so there is no rounding direction here.
         return FixedPoint.divUp(amount, scalingFactor * tokenRate);
     }
 
