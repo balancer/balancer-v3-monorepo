@@ -152,7 +152,8 @@ library BasePoolMath {
 
         // Loop through each token, updating the balance with the added amount.
         for (uint256 i = 0; i < numTokens; ++i) {
-            newBalances[i] = (currentBalances[i] + exactAmounts[i]).roundDownIfNotInteger(); // Undo balance round up for new balances.
+            // Undo balance round up for new balances.
+            newBalances[i] = (currentBalances[i] + exactAmounts[i]).roundDownIfNotInteger();
         }
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
@@ -292,6 +293,7 @@ library BasePoolMath {
 
         // Copy currentBalances to newBalances.
         for (uint256 i = 0; i < numTokens; ++i) {
+            // Round balances down even further to push invariant ratio below in the right direction.
             newBalances[i] = currentBalances[i].roundDownIfNotInteger();
         }
 

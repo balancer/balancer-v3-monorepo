@@ -138,7 +138,7 @@ contract RoundingDirectionStablePoolEdgeCasesTest is BasePoolTest {
         );
         rateProviderWstEth.mockRate(1.5e18);
         uint256 previousTotalSupply = StablePool(pool).totalSupply();
-        uint256[] memory exactAmountsIn = [tokenAmount * 2 , dustAmount * 2].toMemoryArray();
+        uint256[] memory exactAmountsIn = [tokenAmount * 2, dustAmount * 2].toMemoryArray();
         uint256 mintLp;
         vm.prank(alice);
         mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
