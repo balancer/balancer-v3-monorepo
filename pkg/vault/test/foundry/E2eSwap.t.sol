@@ -458,7 +458,7 @@ contract E2eSwapTest is BaseVaultTest {
         {
             // If the amount given is below the guardrail, don't continue.
             uint256 rateTokenB = getRate(tokenB);
-            uint256 decimalScalingFactorTokenB = 1e18 * 10 ** (18 - decimalsTokenB);
+            uint256 decimalScalingFactorTokenB = 10 ** (18 - decimalsTokenB);
             vm.assume(
                 exactAmountOutDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
                     testLocals.poolSwapFeePercentage.complement()
@@ -573,7 +573,7 @@ contract E2eSwapTest is BaseVaultTest {
         {
             // If the amount given is below the guardrail, don't continue.
             uint256 rateTokenB = getRate(tokenB);
-            uint256 decimalScalingFactorTokenB = 1e18 * 10 ** (18 - decimalsTokenB);
+            uint256 decimalScalingFactorTokenB = 10 ** (18 - decimalsTokenB);
             vm.assume(
                 exactAmountInDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
                     testLocals.poolSwapFeePercentage.complement()
@@ -713,11 +713,11 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 rateTokenB = getRate(tokenB);
 
         uint256[] memory newPoolBalanceLiveScaled18 = new uint256[](2);
-        newPoolBalanceLiveScaled18[tokenAIdx] = liquidityTokenA.toScaled18ApplyRateRoundUp(
+        newPoolBalanceLiveScaled18[tokenAIdx] = liquidityTokenA.toScaled18ApplyRateRoundDown(
             10 ** (18 - decimalsTokenA),
             rateTokenA
         );
-        newPoolBalanceLiveScaled18[tokenBIdx] = liquidityTokenB.toScaled18ApplyRateRoundUp(
+        newPoolBalanceLiveScaled18[tokenBIdx] = liquidityTokenB.toScaled18ApplyRateRoundDown(
             10 ** (18 - decimalsTokenB),
             rateTokenB
         );
