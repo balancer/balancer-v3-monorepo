@@ -12,12 +12,6 @@ import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
-
-import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
-
 import { BasePoolMath } from "../../../contracts/BasePoolMath.sol";
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 
@@ -38,6 +32,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     // State var for optimization mode
     int256 internal rateDecrease = 0;
+    int256 internal bptProfit = 0;
 
     constructor() BaseMedusaTest() {
         initialRate = getBptRate();
@@ -50,117 +45,166 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         return rateDecrease;
     }
 
-    //    function optimize_bptProfit() public view returns (int256) {
-    //        return int256(bptProfit);
-    //    }
+    function optimize_bptProfit() public view returns (int256) {
+        return int256(bptProfit);
+    }
 
     ////////////////////////////////////////
     // Symmetrical Add/Remove Liquidity
 
-    //    function computeAddAndRemoveLiquiditySingleToken(
-    //        uint256 tokenIndex,
-    //        uint256 bptMintAmt,
-    //        uint256 swapFeePercentage
-    //    ) public {
-    //        tokenIndex = boundTokenIndex(tokenIndex);
-    //        bptMintAmt = boundBptMint(bptMintAmt);
-    //
-    //        // deposit tokenAmt to mint exactly bptMintAmt
-    //        uint256 tokenAmt = computeAddLiquiditySingleTokenExactOut(
-    //            tokenIndex,
-    //            bptMintAmt,
-    //            swapFeePercentage
-    //        );
-    //
-    //        // withdraw exactly tokenAmt to burn bptBurnAmt
-    //        uint256 bptBurnAmt = computeRemoveLiquiditySingleTokenExactIn(
-    //            tokenIndex,
-    //            tokenAmt,
-    //            swapFeePercentage
-    //        );
-    //
-    //        emit Debug("BPT minted while adding liq:", bptMintAmt);
-    //        emit Debug("BPT burned while removing the same liq:", bptBurnAmt);
-    //        bptProfit = bptMintAmt - bptBurnAmt;
-    //        if (ASSERT_MODE) {
-    //            assert(bptProfit <= 0);
-    //        }
-    //    }
+    function computeAddAndRemoveLiquiditySingleToken(
+        uint256 tokenIndex,
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage
+    ) public {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
 
-    //    function computeRemoveAndAddLiquiditySingleToken(
-    //        uint256 tokenIndex,
-    //        uint256 tokenAmt,
-    //        uint256 swapFeePercentage
-    //    ) public {
-    //        tokenIndex = boundTokenIndex(tokenIndex);
-    //        tokenAmt = boundTokenWithdraw(tokenAmt, tokenIndex);
-    //
-    //        // withdraw exactly tokenAmt to burn bptBurnAmt
-    //        uint256 bptBurnAmt = computeRemoveLiquiditySingleTokenExactOut(
-    //            tokenIndex,
-    //            tokenAmt,
-    //            swapFeePercentage
-    //        );
-    //
-    //        // deposit exactly tokenAmt to mint bptMintAmt
-    //        uint256[] memory exactAmounts = new uint256[](getBalancesLength());
-    //        exactAmounts[tokenIndex] = tokenAmt;
-    //        uint256 bptMintAmt = computeAddLiquidityUnbalanced(exactAmounts, swapFeePercentage);
-    //
-    //        emit Debug("BPT burned while removing liq:", bptBurnAmt);
-    //        emit Debug("BPT minted while adding the same liq:", bptMintAmt);
-    //        bptProfit = bptMintAmt - bptBurnAmt;
-    //        if (ASSERT_MODE) {
-    //            assert(bptProfit <= 0);
-    //        }
-    //    }
-    //
-    //    function computeAddAndRemoveAddLiquidityMultiToken(
-    //        uint256 bptMintAmt,
-    //        uint256 swapFeePercentage
-    //    ) public {
-    //        bptMintAmt = boundBptMint(bptMintAmt);
-    //
-    //        // mint exactly bptMintAmt to deposit tokenAmts
-    //        uint256[] memory tokenAmts = computeProportionalAmountsIn(bptMintAmt);
-    //
-    //        // withdraw exactly tokenAmts to burn bptBurnAmt
-    //        // No computeRemoveLiquidityUnbalanced fn available, need to go one at a time to accomplish this
-    //        uint256 bptBurnAmt = 0;
-    //        for (uint256 i = 0; i < tokenAmts.length; i++) {
-    //            bptBurnAmt += computeRemoveLiquiditySingleTokenExactOut(i, tokenAmts[i], swapFeePercentage);
-    //        }
-    //
-    //        emit Debug("BPT minted while adding liquidity:", bptMintAmt);
-    //        emit Debug("BPT burned while removing same liquidity:", bptBurnAmt);
-    //        bptProfit = bptMintAmt - bptBurnAmt;
-    //        if (ASSERT_MODE) {
-    //            assert(bptProfit <= 0);
-    //        }
-    //    }
-    //
-    //    function computeRemoveAndAddLiquidityMultiToken(
-    //        uint256 bptBurnAmt,
-    //        uint256 swapFeePercentage
-    //    ) public {
-    //        bptBurnAmt = boundBptBurn(bptBurnAmt);
-    //
-    //        // burn exactly bptBurnAmt to withdraw tokenAmts
-    //        uint256[] memory tokenAmts = computeProportionalAmountsOut(bptBurnAmt);
-    //
-    //        // deposit exactly tokenAmts to mint bptMintAmt
-    //        uint256 bptMintAmt = computeAddLiquidityUnbalanced(tokenAmts, swapFeePercentage);
-    //
-    //        emit Debug("BPT burned while removing liquidity:", bptBurnAmt);
-    //        emit Debug("BPT minted while adding the same liquidity:", bptMintAmt);
-    //        bptProfit = bptMintAmt - bptBurnAmt;
-    //        if (ASSERT_MODE) {
-    //            assert(bptProfit <= 0);
-    //        }
-    //    }
-    //
+        tokenIndex = boundTokenIndex(tokenIndex);
+        exactBptAmountOut = boundBptMint(exactBptAmountOut);
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
+
+        // deposit tokenAmt to mint exactly bptMintAmt
+        medusa.prank(lp);
+        uint256 tokenAmountIn = router.addLiquiditySingleTokenExactOut(
+            address(pool),
+            tokens[tokenIndex],
+            type(uint128).max,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        // withdraw exactly tokenAmountIn to burn bptAmountIn
+        medusa.prank(lp);
+        uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            type(uint128).max,
+            tokens[tokenIndex],
+            tokenAmountIn,
+            false,
+            bytes("")
+        );
+
+        emit Debug("BPT minted while adding liquidity:", exactBptAmountOut);
+        emit Debug("BPT burned while removing the same liquidity:", bptAmountIn);
+        bptProfit += int256(exactBptAmountOut) - int256(bptAmountIn);
+    }
+
+    function computeRemoveAndAddLiquiditySingleToken(
+        uint256 tokenIndex,
+        uint256 tokenAmountOut,
+        uint256 swapFeePercentage
+    ) public {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
+
+        tokenIndex = boundTokenIndex(tokenIndex);
+        tokenAmountOut = boundTokenAmountOut(tokenAmountOut, tokenIndex);
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
+
+        // withdraw exactly tokenAmountOut to burn bptBurnAmt
+        medusa.prank(lp);
+        uint256 bptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            address(pool),
+            type(uint128).max,
+            tokens[tokenIndex],
+            tokenAmountOut,
+            false,
+            bytes("")
+        );
+
+        // deposit exactly tokenAmountOut to mint bptMintAmt
+        uint256[] memory exactAmountsIn = new uint256[](getBalancesLength());
+        exactAmountsIn[tokenIndex] = tokenAmountOut;
+
+        medusa.prank(lp);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), exactAmountsIn, 0, false, bytes(""));
+
+        emit Debug("BPT burned while removing liquidity:", bptAmountIn);
+        emit Debug("BPT minted while adding the same liquidity:", bptAmountOut);
+        bptProfit += int256(bptAmountOut) - int256(bptAmountIn);
+    }
+
+    function computeAddAndRemoveLiquidityMultiToken(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
+
+        exactBptAmountOut = boundBptMint(exactBptAmountOut);
+
+        uint256[] memory maxAmountsIn = getMaxAmountsIn();
+
+        // mint exactly bptAmountOut to deposit tokenAmountIn
+        medusa.prank(lp);
+        uint256[] memory tokenAmountsIn = router.addLiquidityProportional(
+            address(pool),
+            maxAmountsIn,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        // Withdraw exactly tokenAmountsIn to burn bptAmountIn. The function `removeLiquidityUnbalanced` does not
+        // exist, so we need to go one token at a time to accomplish this.
+        uint256 bptAmountIn = 0;
+        for (uint256 i = 0; i < tokenAmountsIn.length; i++) {
+            medusa.prank(lp);
+            bptAmountIn += router.removeLiquiditySingleTokenExactOut(
+                address(pool),
+                type(uint128).max,
+                tokens[i],
+                tokenAmountsIn[i],
+                false,
+                bytes("")
+            );
+        }
+
+        emit Debug("BPT minted while adding liquidity:", exactBptAmountOut);
+        emit Debug("BPT burned while removing same liquidity:", bptAmountIn);
+        bptProfit += int256(exactBptAmountOut) - int256(bptAmountIn);
+    }
+
+    function computeRemoveAndAddLiquidityMultiToken(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
+
+        exactBptAmountIn = boundBptBurn(exactBptAmountIn);
+
+        uint256[] memory minAmountsOut = getMinAmountsOut();
+
+        // Burn exactly exactBptAmountIn to withdraw tokenAmountsOut.
+        medusa.prank(lp);
+        uint256[] memory tokenAmountsOut = router.removeLiquidityProportional(
+            address(pool),
+            exactBptAmountIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+
+        // Deposit exactly tokenAmountsOut to mint bptAmountOut.
+        medusa.prank(lp);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), tokenAmountsOut, 0, false, bytes(""));
+
+        emit Debug("BPT burned while removing liquidity:", exactBptAmountIn);
+        emit Debug("BPT minted while adding the same liquidity:", bptAmountOut);
+        bptProfit += int256(bptAmountOut) - int256(exactBptAmountIn);
+    }
+
+    function property_no_bpt_profit() public returns (bool) {
+        return assertBptProfit(pool);
+    }
+
     ////////////////////////////////////////
-    // Rate Invariants
+    // Simple operations
 
     function computeProportionalAmountsIn(uint256 bptAmountOut) public returns (uint256[] memory amountsIn) {
         assumeValidTradeAmount(bptAmountOut);
@@ -188,6 +232,10 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256[] memory exactAmountsIn,
         uint256 swapFeePercentage
     ) public returns (uint256 bptAmountOut) {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
+
         exactAmountsIn = boundBalanceLength(exactAmountsIn);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
             exactAmountsIn[i] = boundTokenDeposit(exactAmountsIn[i], i);
@@ -204,6 +252,10 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) public returns (uint256 amountIn) {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
+
         assumeValidTradeAmount(exactBptAmountOut);
         tokenInIndex = boundTokenIndex(tokenInIndex);
         exactBptAmountOut = boundBptMint(exactBptAmountOut);
@@ -228,6 +280,10 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 exactAmountOut,
         uint256 swapFeePercentage
     ) public returns (uint256 bptAmountIn) {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
+
         assumeValidTradeAmount(exactAmountOut);
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactAmountOut = boundTokenAmountOut(exactAmountOut, tokenOutIndex);
@@ -252,6 +308,10 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 exactBptAmountIn,
         uint256 swapFeePercentage
     ) public returns (uint256 amountOut) {
+        // Fee % between 0% and 100%
+        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
+
         assumeValidTradeAmount(exactBptAmountIn);
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactBptAmountIn = boundBptBurn(exactBptAmountIn);
@@ -277,6 +337,10 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     ////////////////////////////////////////
     // Helpers (private functions, so they're not fuzzed)
+
+    function assertBptProfit(IBasePool pool) internal returns (bool) {
+        return bptProfit <= 0;
+    }
 
     function assertRate(IBasePool pool) internal returns (bool) {
         updateRateDecrease();
