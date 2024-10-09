@@ -98,6 +98,20 @@ $ yarn test:hardhat
 
 Hardhat tests will also update snapshots for bytecode size and gas usage if applicable for a given package.
 
+### Medusa tests
+
+Medusa is a tool, developed by Trail of Bits, that allow us to execute stateful fuzz tests in contracts, in a way
+smarter than Forge. That's because Medusa has an optimizer to create a path of transactions which is not completely
+random.
+
+To run Medusa tests, we first need to install Echidna. To do so, install `echidna` using the 
+[release page](https://github.com/crytic/echidna/releases) or `brew install echidna` in Mac.
+
+Then, install Medusa using this [installation guide](https://github.com/crytic/medusa/blob/master/docs/src/getting_started/installation.md#building-from-source).
+
+Finally, run `yarn fuzz:medusa`. This command is available inside the packages `vault`, `pool-weighted` and 
+`pool-stable`.
+
 ## Static analysis
 
 To run [Slither](https://github.com/crytic/slither) static analyzer, Python 3.8+ is a requirement.
