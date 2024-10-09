@@ -18,6 +18,7 @@ import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -150,17 +151,31 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             bytes memory signature = permitSignatures[i];
 
             SignatureParts memory signatureParts = _getSignatureParts(signature);
-
             PermitApproval memory permitApproval = permitBatch[i];
-            IERC20Permit(permitApproval.token).permit(
-                permitApproval.owner,
-                address(this),
-                permitApproval.amount,
-                permitApproval.deadline,
-                signatureParts.v,
-                signatureParts.r,
-                signatureParts.s
-            );
+
+            try
+                IERC20Permit(permitApproval.token).permit(
+                    permitApproval.owner,
+                    address(this),
+                    permitApproval.amount,
+                    permitApproval.deadline,
+                    signatureParts.v,
+                    signatureParts.r,
+                    signatureParts.s
+                )
+            {
+                // solhint-disable-previous-line no-empty-blocks
+                // OK; carry on.
+            } catch (bytes memory returnData) {
+                // Did it fail because the permit was executed (possible DoS attack to make the transaction revert),
+                // or was it something else (e.g., deadline, invalid signature)?
+                if (
+                    IERC20(permitApproval.token).allowance(permitApproval.owner, address(this)) != permitApproval.amount
+                ) {
+                    // It was something else, or allowance was used, so we should revert. Bubble up the revert reason.
+                    RevertCodec.bubbleUpRevert(returnData);
+                }
+            }
         }
 
         // Only call permit2 if there's something to do.

@@ -244,7 +244,7 @@ contract StableMathMock {
         uint256 inv2 = invariant * invariant;
         uint256 c = (inv2 * StableMath.AMP_PRECISION).mockDivRaw(ampTimesTotal * P_D, roundingPermutation[0]) *
             balances[tokenIndex];
-        uint256 b = sum + ((invariant / ampTimesTotal) * StableMath.AMP_PRECISION);
+        uint256 b = sum + ((invariant * StableMath.AMP_PRECISION) / ampTimesTotal);
         uint256 prevTokenBalance = 0;
         uint256 tokenBalance = (inv2 + c).mockDivRaw(invariant + b, roundingPermutation[1]);
 
