@@ -94,6 +94,10 @@ contract RoundingDirectionStablePoolEdgeCasesTest is BasePoolTest {
         );
     }
 
+    /**
+     * @dev In this specific scenario, `addLiquidityUnbalanced` mints too much BPT without the changes in
+     * https://github.com/balancer/balancer-v3-monorepo/pull/1020.
+     */
     function testMockPoolBalanceWithEdgeCase() public {
         setSwapFeePercentage(0);
 
