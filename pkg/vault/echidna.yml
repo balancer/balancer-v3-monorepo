@@ -1,4 +1,0 @@
-testMode: "assertion"
-coverage: false
-cryticArgs: ["--foundry-out-directory=forge-artifacts", "--foundry-compile-all"]
-allowFFI: true
