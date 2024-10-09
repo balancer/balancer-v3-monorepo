@@ -2,33 +2,37 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
-import {
-    TokenConfig,
-    PoolRoleAccounts,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
-import { WeightedPool } from "./WeightedPool.sol";
+import { WeightedPool } from "../WeightedPool.sol";
+import { LBPool } from "./LBPool.sol";
 
 /**
- * @notice General Weighted Pool factory
- * @dev This is the most general factory, which allows up to eight tokens and arbitrary weights.
+ * @notice LBPool Factory.
+ * @dev This is a factory specific to LBPools, allowing only 2 tokens.
  */
-contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
+contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
     string private _poolVersion;
+
+    // solhint-disable-next-line var-name-mixedcase
+    address internal immutable _TRUSTED_ROUTER;
 
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
-        string memory poolVersion
-    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {
+        string memory poolVersion,
+        address trustedRouter
+    ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
+
+        // LBPools are deployed with a router known to reliably report the originating address on operations.
+        _TRUSTED_ROUTER = trustedRouter;
     }
 
     /// @inheritdoc IPoolVersion
@@ -37,17 +41,14 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
     }
 
     /**
-     * @notice Deploys a new `WeightedPool`.
+     * @notice Deploys a new `LBPool`.
      * @dev Tokens must be sorted for pool registration.
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
-     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
-     * @param poolHooksContract Contract that implements the hooks for the pool
-     * @param enableDonation If true, the pool will support the donation add liquidity mechanism
-     * @param disableUnbalancedLiquidity If true, only proportional add and remove liquidity are accepted
+     * @param owner The owner address for pool; sole LP with swapEnable/swapFee change permissions
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -55,21 +56,15 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
-        PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
-        address poolHooksContract,
-        bool enableDonation,
-        bool disableUnbalancedLiquidity,
+        address owner,
+        bool swapEnabledOnStart,
         bytes32 salt
     ) external returns (address pool) {
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
-
-        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
-        liquidityManagement.enableDonation = enableDonation;
-        // disableUnbalancedLiquidity must be set to true if a hook has the flag enableHookAdjustedAmounts = true.
-        liquidityManagement.disableUnbalancedLiquidity = disableUnbalancedLiquidity;
+        PoolRoleAccounts memory roleAccounts;
+        // It's not necessary to set the pauseManager, as the owner can already effectively pause the pool
+        // by disabling swaps.
+        roleAccounts.swapFeeManager = owner;
 
         pool = _create(
             abi.encode(
@@ -80,7 +75,10 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
                     normalizedWeights: normalizedWeights,
                     version: _poolVersion
                 }),
-                getVault()
+                getVault(),
+                owner,
+                swapEnabledOnStart,
+                _TRUSTED_ROUTER
             ),
             salt
         );
@@ -89,10 +87,10 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
             pool,
             tokens,
             swapFeePercentage,
-            false, // not exempt from protocol fees
+            true, // protocol fee exempt
             roleAccounts,
-            poolHooksContract,
-            liquidityManagement
+            pool, // register the pool itself as the hook contract
+            getDefaultLiquidityManagement()
         );
     }
 }

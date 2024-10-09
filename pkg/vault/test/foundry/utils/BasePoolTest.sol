@@ -7,6 +7,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -52,12 +53,12 @@ abstract contract BasePoolTest is BaseVaultTest {
         poolMaxSwapFeePercentage = 1e18;
     }
 
-    function testPoolAddress() public view {
+    function testPoolAddress() public view virtual {
         address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
         assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
     }
 
-    function testPoolPausedState() public view {
+    function testPoolPausedState() public view virtual {
         (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(pool);
 
         assertFalse(paused, "Vault should not be paused initially");
@@ -66,7 +67,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         assertEq(pauseManager, address(0), "Pause manager should be 0");
     }
 
-    function testInitialize() public view {
+    function testInitialize() public view virtual {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
@@ -97,7 +98,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
 
-    function testAddLiquidity() public {
+    function testAddLiquidity() public virtual {
         vm.prank(bob);
         bptAmountOut = router.addLiquidityUnbalanced(pool, tokenAmounts, tokenAmountIn - DELTA, false, bytes(""));
 
@@ -130,7 +131,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
 
-    function testRemoveLiquidity() public {
+    function testRemoveLiquidity() public virtual {
         vm.startPrank(bob);
         router.addLiquidityUnbalanced(pool, tokenAmounts, tokenAmountIn - DELTA, false, bytes(""));
 
@@ -198,7 +199,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
 
-    function testSwap() public {
+    function testSwap() public virtual {
         if (!isTestSwapFeeEnabled) {
             vault.manuallySetSwapFee(pool, 0);
         }
@@ -253,22 +254,20 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testSetSwapFeeTooLow() public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
+        vm.prank(_getSwapFeeAdmin());
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         vault.setStaticSwapFeePercentage(pool, poolMinSwapFeePercentage - 1);
     }
 
     function testSetSwapFeeTooHigh() public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
+        vm.prank(_getSwapFeeAdmin());
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
         vault.setStaticSwapFeePercentage(pool, poolMaxSwapFeePercentage + 1);
     }
 
-    function testAddLiquidityUnbalanced() public {
+    function testAddLiquidityUnbalanced() public virtual {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(pool, 10e16);
@@ -299,5 +298,16 @@ abstract contract BasePoolTest is BaseVaultTest {
     // Decreases the amount value by base value. Example: base = 100, decrease by 1% / base = 1e4, 0.01% and etc.
     function _less(uint256 amount, uint256 base) private pure returns (uint256) {
         return (amount * (base - 1)) / base;
+    }
+
+    function _getSwapFeeAdmin() internal returns (address) {
+        PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
+        address swapFeeManager = roleAccounts.swapFeeManager;
+
+        if (swapFeeManager == address(0)) {
+            swapFeeManager = alice;
+            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), swapFeeManager);
+        }
+        return swapFeeManager;
     }
 }
