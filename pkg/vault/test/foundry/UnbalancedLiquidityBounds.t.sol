@@ -70,8 +70,13 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         // Adding `[8, 10] defaultAmount` will make the new invariant `20 * defaultAmount` (10x ratio).
         uint256[] memory amountsIn = [defaultAmount * 8, defaultAmount * 10].toMemoryArray();
 
+        // New invariant ratio has rounding errors favoring the vault.
         vm.expectRevert(
-            abi.encodeWithSelector(BasePoolMath.InvariantRatioAboveMax.selector, 10 * FixedPoint.ONE, maxInvariantRatio)
+            abi.encodeWithSelector(
+                BasePoolMath.InvariantRatioAboveMax.selector,
+                10 * FixedPoint.ONE - 1,
+                maxInvariantRatio
+            )
         );
         vm.prank(alice);
         router.addLiquidityUnbalanced(pool, amountsIn, minBptAmountOut, false, bytes(""));
@@ -143,7 +148,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExactOutBelowMinInvariantRatio() public {
         // Token balances are [defaultAmount, defaultAmount], so removing `defaultAmount` from one of the tokens will
         // cut the sum of the balances (i.e. the invariant) by half.
-        uint256 amountOut = defaultAmount;
+        uint256 amountOut = defaultAmountRoundDown;
         uint256 maxBptAmountIn = IERC20(pool).balanceOf(lp);
         uint256 minInvariantRatio = FixedPoint.ONE.mulDown(0.8e18);
 

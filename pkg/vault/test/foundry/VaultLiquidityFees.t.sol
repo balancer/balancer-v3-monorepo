@@ -64,13 +64,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
 
         // expectedBptAmountOut = defaultAmount - defaultAmount * 1% / 2
-        uint256 expectedBptAmountOut = (defaultAmount * 995) / 1000;
+        uint256 expectedBptAmountOut = (defaultAmountRoundDown * 995) / 1000;
 
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, expectedBptAmountOut, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
 
         // Should mint correct amount of BPT tokens.
-        assertEq(bptAmountOut, expectedBptAmountOut, "Invalid amount of BPT");
+        assertApproxEqAbs(bptAmountOut, expectedBptAmountOut, 10, "Invalid amount of BPT");
+        assertLe(bptAmountOut, expectedBptAmountOut, "Error goes in incorrect direction");
     }
 
     function testAddLiquidityUnbalanced() public {
@@ -114,7 +115,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         public
         returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory aggregateSwapFees)
     {
-        bptAmountIn = defaultAmount * 2;
+        bptAmountIn = bptAmount;
 
         aggregateSwapFees = new uint256[](2);
         uint256 swapFeeAmount = defaultAmount / 100;
@@ -162,7 +163,9 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         );
 
         // amount + (amount / ( 100% - swapFee%)) / 2 + 1
-        assertEq(bptAmountIn, defaultAmount + (defaultAmount / 99) / 2 + 1, "Wrong bptAmountIn");
+        uint256 expectedBptAmountIn = defaultAmount + (defaultAmount / 99) / 2 + 1;
+        assertApproxEqAbs(bptAmountIn, expectedBptAmountIn, 2, "Wrong bptAmountIn");
+        assertGt(bptAmount, expectedBptAmountIn, "Rounding error direction is incorrect");
     }
 
     function testRemoveLiquiditySingleTokenExactOut() public {
@@ -191,28 +194,43 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         );
 
         // Tokens are now in the Vault / pool.
-        assertEq(
+        assertApproxEqAbs(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0] - aggregateSwapFees[0],
+            10,
             "Add - Pool balance: token 0"
         );
 
-        assertEq(
+        assertApproxEqAbs(
             balancesAfter.poolTokens[1],
             balancesBefore.poolTokens[1] + amountsIn[1] - aggregateSwapFees[1],
+            10,
             "Add - Pool balance: token 1"
         );
 
         // Protocol + creator fees are charged.
-        assertEq(
+        assertApproxEqAbs(
             aggregateSwapFees[daiIdx],
             vault.manualGetAggregateSwapFeeAmount(pool, dai),
-            "Aggregate fee amount is wrong"
+            10,
+            "Aggregate fee amount is wrong (dai)"
         );
-        assertEq(
+        assertGe(
+            vault.manualGetAggregateSwapFeeAmount(pool, dai),
+            aggregateSwapFees[daiIdx],
+            "Swap fee rounding direction is wrong (dai)"
+        );
+
+        assertApproxEqAbs(
             aggregateSwapFees[usdcIdx],
             vault.manualGetAggregateSwapFeeAmount(pool, usdc),
-            "Aggregate fee amount is wrong"
+            10,
+            "Aggregate fee amount is wrong (usdc)"
+        );
+        assertGe(
+            vault.manualGetAggregateSwapFeeAmount(pool, usdc),
+            aggregateSwapFees[usdcIdx],
+            "Swap fee rounding direction is wrong (usdc)"
         );
 
         // User now has BPT.
@@ -223,10 +241,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
     function assertRemoveLiquidity(function() returns (uint256[] memory, uint256, uint256[] memory) testFunc) internal {
         vm.startPrank(alice);
 
-        router.addLiquidityUnbalanced(
+        // Simulate perfect add liquidity without rounding errors.
+        router.addLiquidityCustom(
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-            defaultAmount,
+            bptAmount,
             false,
             bytes("")
         );

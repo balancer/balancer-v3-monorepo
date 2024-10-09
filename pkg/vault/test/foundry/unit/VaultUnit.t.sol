@@ -95,7 +95,7 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         // The aggregate fee percentage is truncated in the pool config bits, so we do the same.
         aggregateSwapFeePercentage = (aggregateSwapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
 
-        uint256 expectedTotalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundUp(
+        uint256 expectedTotalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );
@@ -173,12 +173,12 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         // check _updateRawAndLiveTokenBalancesInPoolData is called.
         assertEq(
             poolData.balancesLiveScaled18[0],
-            poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
+            (poolData.balancesRaw[0] * poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),
             "Unexpected balancesLiveScaled18[0]"
         );
         assertEq(
             poolData.balancesLiveScaled18[1],
-            poolData.balancesRaw[1].mulUp(poolData.decimalScalingFactors[1]).mulUp(poolData.tokenRates[1]),
+            (poolData.balancesRaw[1] * poolData.decimalScalingFactors[1]).mulUp(poolData.tokenRates[1]),
             "Unexpected balancesLiveScaled18[1]"
         );
     }

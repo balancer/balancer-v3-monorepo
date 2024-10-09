@@ -140,7 +140,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         uint256[] memory newBalances = new uint256[](tokens.length);
         for (uint256 i = 0; i < newBalances.length; i++) {
-            newBalances[i] = poolData.balancesLiveScaled18[i] + maxAmountsInScaled18[i];
+            newBalances[i] = poolData.balancesLiveScaled18[i] + maxAmountsInScaled18[i] - 1;
         }
 
         vm.mockCall(
@@ -472,7 +472,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         uint256[] memory swapFeeAmountsRaw = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundUp(
+            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
@@ -518,7 +518,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
             uint256[] memory newBalances = new uint256[](tokens.length);
             for (uint256 i = 0; i < newBalances.length; i++) {
-                newBalances[i] = poolData.balancesLiveScaled18[i];
+                newBalances[i] = poolData.balancesLiveScaled18[i] - 1;
             }
             newBalances[tokenIndex] -= minAmountsOutScaled18[tokenIndex];
 
@@ -555,7 +555,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         uint256[] memory swapFeeAmountsRaw = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundUp(
+            swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
@@ -807,7 +807,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         for (uint256 i = 0; i < tokens.length; i++) {
             poolData.tokens[i] = tokens[i];
-            poolData.decimalScalingFactors[i] = 1e18;
+            poolData.decimalScalingFactors[i] = 1; // 18 decimals, so 10^(18-18) = 1
             poolData.tokenRates[i] = 1e18 * (i + 1);
 
             poolData.balancesLiveScaled18[i] = 1000e18;
