@@ -64,8 +64,6 @@ contract BaseMedusaTest is Test {
     ERC20TestToken internal usdc;
     WETHTestToken internal weth;
 
-    // Set permissions for users
-
     constructor() {
         dai = _createERC20TestToken("DAI", "DAI", 18);
         usdc = _createERC20TestToken("USDC", "USDC", 18);
