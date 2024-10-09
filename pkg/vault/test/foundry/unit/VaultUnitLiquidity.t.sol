@@ -140,7 +140,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
         uint256[] memory newBalances = new uint256[](tokens.length);
         for (uint256 i = 0; i < newBalances.length; i++) {
-            newBalances[i] = poolData.balancesLiveScaled18[i] + maxAmountsInScaled18[i];
+            newBalances[i] = poolData.balancesLiveScaled18[i] + maxAmountsInScaled18[i] - 1;
         }
 
         vm.mockCall(
@@ -518,7 +518,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
 
             uint256[] memory newBalances = new uint256[](tokens.length);
             for (uint256 i = 0; i < newBalances.length; i++) {
-                newBalances[i] = poolData.balancesLiveScaled18[i];
+                newBalances[i] = poolData.balancesLiveScaled18[i] - 1;
             }
             newBalances[tokenIndex] -= minAmountsOutScaled18[tokenIndex];
 

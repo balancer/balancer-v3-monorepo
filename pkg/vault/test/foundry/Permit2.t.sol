@@ -95,13 +95,14 @@ contract Permit2Test is BaseVaultTest {
         bytes[] memory multicallData = new bytes[](2);
         multicallData[0] = abi.encodeCall(
             IRouter.addLiquidityUnbalanced,
-            (pool, amountsIn, bptAmountOut, false, bytes(""))
+            (pool, amountsIn, bptAmountRoundDown, false, bytes(""))
         );
 
-        uint256[] memory minAmountsOut = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory minAmountsOut = [uint256(defaultAmountRoundDown), uint256(defaultAmountRoundDown)]
+            .toMemoryArray();
         multicallData[1] = abi.encodeCall(
             IRouter.removeLiquidityProportional,
-            (pool, bptAmountOut, minAmountsOut, false, bytes(""))
+            (pool, bptAmountRoundDown, minAmountsOut, false, bytes(""))
         );
 
         vm.prank(alice);
@@ -126,11 +127,10 @@ contract Permit2Test is BaseVaultTest {
         bytes[] memory multicallData = new bytes[](1);
 
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
-        bptAmountOut = defaultAmount * 2;
 
         multicallData[0] = abi.encodeCall(
             IRouter.addLiquidityUnbalanced,
-            (pool, amountsIn, bptAmountOut, false, bytes(""))
+            (pool, amountsIn, bptAmountRoundDown, false, bytes(""))
         );
 
         vm.expectCall(address(router), multicallData[0]);
