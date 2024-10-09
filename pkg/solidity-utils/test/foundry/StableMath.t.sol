@@ -67,8 +67,8 @@ contract StableMathTest is Test {
     function testComputeInvariant__Fuzz(uint256 amp, uint256[NUM_TOKENS] calldata rawBalances) external view {
         amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
-
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch {
+        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+            assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
@@ -88,7 +88,8 @@ contract StableMathTest is Test {
         (tokenIndexIn, tokenIndexOut) = boundTokenIndexes(tokenIndexIn, tokenIndexOut);
         tokenAmountIn = boundAmount(tokenAmountIn, balances[tokenIndexIn]);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch {
+        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+            assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
@@ -142,7 +143,8 @@ contract StableMathTest is Test {
         (tokenIndexIn, tokenIndexOut) = boundTokenIndexes(tokenIndexIn, tokenIndexOut);
         tokenAmountOut = boundAmount(tokenAmountOut, balances[tokenIndexOut]);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch {
+        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+            assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
@@ -192,7 +194,8 @@ contract StableMathTest is Test {
         amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch {
+        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+            assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
@@ -225,7 +228,8 @@ contract StableMathTest is Test {
         tokenIndex = bound(tokenIndex, 0, NUM_TOKENS - 1);
         invariantDiff = bound(invariantDiff, 1, 100000);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch {
+        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+            assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
