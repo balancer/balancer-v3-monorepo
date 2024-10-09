@@ -65,20 +65,28 @@ library Gyro2CLPMath {
             newBalances[i] = balances[i] + (rounding == Rounding.ROUND_UP ? 1 : 0);
         }
 
+        function(uint256, uint256) pure returns (uint256) _divUpOrDown = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.divDown
+            : FixedPoint.divUp;
+        function(uint256, uint256) pure returns (uint256) _mulUpOrDown = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.mulDown
+            : FixedPoint.mulUp;
+
         {
-            a = FixedPoint.ONE - sqrtAlpha.divDown(sqrtBeta);
-            uint256 bterm0 = newBalances[1].divDown(sqrtBeta);
-            uint256 bterm1 = newBalances[0].mulDown(sqrtAlpha);
+            a = FixedPoint.ONE - _divUpOrDown(sqrtAlpha, sqrtBeta);
+            uint256 bterm0 = _divUpOrDown(newBalances[1], sqrtBeta);
+            uint256 bterm1 = _mulUpOrDown(newBalances[0], sqrtAlpha);
             mb = bterm0 + bterm1;
-            mc = newBalances[0].mulDown(newBalances[1]);
+            mc = _mulUpOrDown(newBalances[0], newBalances[1]);
         }
         // For better fixed point precision, calculate in expanded form w/ re-ordering of multiplications
         // b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta
-        bSquare = (newBalances[0].mulDown(newBalances[0])).mulDown(sqrtAlpha).mulDown(sqrtAlpha);
-        uint256 bSq2 = (newBalances[0].mulDown(newBalances[1])).mulDown(2 * FixedPoint.ONE).mulDown(sqrtAlpha).divDown(
+        bSquare = _mulUpOrDown(_mulUpOrDown(newBalances[0], newBalances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
+        uint256 bSq2 = _divUpOrDown(
+            2 * _mulUpOrDown(_mulUpOrDown(newBalances[0], newBalances[1]), sqrtAlpha),
             sqrtBeta
         );
-        uint256 bSq3 = (newBalances[1].mulDown(newBalances[1])).divDown(sqrtBeta.mulUp(sqrtBeta));
+        uint256 bSq3 = _divUpOrDown(_mulUpOrDown(newBalances[1], newBalances[1]), sqrtBeta.mulUp(sqrtBeta));
         bSquare = bSquare + bSq2 + bSq3;
     }
 

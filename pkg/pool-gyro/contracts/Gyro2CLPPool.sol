@@ -84,7 +84,7 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
             balancesLiveScaled18,
             sqrtParams[0],
             sqrtParams[1],
-            Rounding.ROUND_DOWN
+            Rounding.ROUND_UP
         );
         // New invariant
         invariant = invariant.mulUp(invariantRatio);
