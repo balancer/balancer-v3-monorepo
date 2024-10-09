@@ -506,6 +506,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _vault.sendTo(token, params.sender, amountOut);
             }
         }
+
+        _returnEth(params.sender);
     }
 
     /**
@@ -532,6 +534,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _vault.sendTo(tokens[i], sender, amountOut);
             }
         }
+
+        _returnEth(sender);
     }
 
     /***************************************************************************
