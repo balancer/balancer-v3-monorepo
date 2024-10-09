@@ -153,7 +153,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
         uint256 expectedBptOut = daiAmount + usdcAmount + wethAmount + wstEthAmount;
-        assertEq(exactBptOut, expectedBptOut, "Exact BPT amount out is wrong");
+        assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
+        assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
         // Check LP Balances.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai - amountsIn[vars.daiIdx], "LP Dai Balance is wrong");
@@ -278,7 +279,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
         uint256 expectedBptOut = waDAI.previewDeposit(daiAmount) + usdcAmount + wethAmount;
-        assertEq(exactBptOut, expectedBptOut, "Exact BPT amount out is wrong");
+        assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
+        assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
         // Check LP Balances.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai - amountsIn[vars.daiIdx], "LP Dai Balance is wrong");
@@ -383,7 +385,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
         uint256 expectedBptOut = waDaiAmount + usdcAmount + wethAmount;
-        assertEq(exactBptOut, expectedBptOut, "Exact BPT amount out is wrong");
+        assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
+        assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
         // Check LP Balances.
         // Since LP passed the wrapper address as a token in, his DAI balance is not touched.
@@ -493,7 +496,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
         uint256 expectedBptOut = waDAI.previewDeposit(daiAmount) + waUSDC.previewDeposit(usdcAmount) + wethAmount;
-        assertEq(exactBptOut, expectedBptOut, "Exact BPT amount out is wrong");
+        assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
+        assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
         // Check LP Balances.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai - amountsIn[vars.daiIdx], "LP Dai Balance is wrong");
@@ -599,7 +603,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
         uint256 expectedBptOut = waDaiAmount + waUsdcAmount + wethAmount;
-        assertEq(exactBptOut, expectedBptOut, "Exact BPT amount out is wrong");
+        assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
+        assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
         // Check LP Balances.
         // Since LP passed the wrapper address as a token in, his DAI and USDC balances are not touched.
@@ -716,7 +721,13 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        assertEq(exactBptOut, queryBptOut, "BPTs out do not match");
+        // The actual `addLiquidity` changes rates of the wrappers when performing intermediate wrap / unwrap states,
+        // whereas `query` does not. Then, the final steps of the query are computed based off different values
+        // wrt. the actual operation, which in turn produces a different result. In general, the wrappers will round
+        // in their favor, so the query should produce a result that is more favorable to the user than the actual
+        // operation.
+        assertApproxEqAbs(exactBptOut, queryBptOut, 10, "BPTs out do not match");
+        assertLt(exactBptOut, queryBptOut, "Wrapper rounding direction is incorrect");
     }
 
     function testAddLiquidityNestedPoolMissingToken() public {
@@ -758,7 +769,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
         uint256 expectedBptOut = daiAmount + usdcAmount + wethAmount;
-        assertEq(exactBptOut, expectedBptOut, "Exact BPT amount out is wrong");
+        assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
+        assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
         // Check LP Balances.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai - amountsIn[vars.daiIdx], "LP Dai Balance is wrong");
@@ -839,8 +851,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 wethAmount = poolInitAmount;
         uint256 wstEthAmount = poolInitAmount;
 
-        // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
-        uint256 expectedBptOut = daiAmount + usdcAmount + wethAmount + wstEthAmount;
+        // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in
+        // minus rounding.
+        uint256 expectedBptOut = daiAmount + usdcAmount + wethAmount + wstEthAmount - 7;
         uint256 minBptOut = 10 * poolInitAmount;
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();

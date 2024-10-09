@@ -150,7 +150,7 @@ library BasePoolMath {
 
         // Loop through each token, updating the balance with the added amount.
         for (uint256 i = 0; i < numTokens; ++i) {
-            newBalances[i] = currentBalances[i] + exactAmounts[i];
+            newBalances[i] = currentBalances[i] + exactAmounts[i] - 1; // Undo balance round up for new balances.
         }
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
@@ -290,7 +290,7 @@ library BasePoolMath {
 
         // Copy currentBalances to newBalances.
         for (uint256 i = 0; i < numTokens; ++i) {
-            newBalances[i] = currentBalances[i];
+            newBalances[i] = currentBalances[i] - 1;
         }
 
         // Update the balance of tokenOutIndex with exactAmountOut.
