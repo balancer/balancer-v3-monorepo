@@ -237,7 +237,7 @@ library StableMath {
         uint256 inv2 = invariant * invariant;
         // We remove the balance from c by multiplying it.
         uint256 c = (inv2 * AMP_PRECISION).divUpRaw(ampTimesTotal * P_D) * balances[tokenIndex];
-        uint256 b = sum + ((invariant / ampTimesTotal) * AMP_PRECISION);
+        uint256 b = sum + ((invariant * AMP_PRECISION) / ampTimesTotal);
         // We iterate to find the balance.
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the

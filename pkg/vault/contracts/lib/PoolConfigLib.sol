@@ -251,8 +251,9 @@ library PoolConfigLib {
                 PoolConfigConst.DECIMAL_DIFF_BITLENGTH
             );
 
-            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
-            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
+            // This is a "raw" factor, not a fixed point number. It should be applied using raw math to raw amounts
+            // instead of using FP multiplication.
+            scalingFactors[i] = 10 ** decimalDiff;
         }
 
         return scalingFactors;
