@@ -157,8 +157,6 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
             IBasePool(params.pool)
         );
 
-        console.log("all good");
-
         uint256[] memory swapFeeAmountsRaw = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             swapFeeAmountsRaw[i] = swapFeeAmountsScaled18[i].toRawUndoRateRoundUp(

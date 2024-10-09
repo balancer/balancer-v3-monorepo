@@ -34,6 +34,11 @@ library StableMath {
     uint256 internal constant MAX_AMP = 5000;
     uint256 internal constant AMP_PRECISION = 1e3;
 
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 internal constant MIN_INVARIANT_RATIO = 60e16; // 60%
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 internal constant MAX_INVARIANT_RATIO = 500e16; // 500%
+
     // Note on unchecked arithmetic:
     // This contract performs a large number of additions, subtractions, multiplications and divisions, often inside
     // loops. Since many of these operations are gas-sensitive (as they happen e.g. during a swap), it is important to

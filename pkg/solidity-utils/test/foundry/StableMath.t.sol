@@ -8,6 +8,7 @@ import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 
 import { StableMath } from "../../contracts/math/StableMath.sol";
 import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
+import { ArrayHelpers } from "../../contracts/test/ArrayHelpers.sol";
 import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
 
 // In the `StableMath` functions, the protocol aims for computing a value either as small as possible or as large as possible
@@ -17,6 +18,7 @@ import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
 
 contract StableMathTest is Test {
     using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     uint256 constant NUM_TOKENS = 4;
 
@@ -30,6 +32,12 @@ contract StableMathTest is Test {
 
     uint256 constant MIN_AMP = StableMath.MIN_AMP * StableMath.AMP_PRECISION;
     uint256 constant MAX_AMP = StableMath.MAX_AMP * StableMath.AMP_PRECISION;
+
+    uint256 constant MIN_BALANCE_BOUND = 1000e18;
+    uint256 constant MAX_BALANCE_BOUND = 1_000_000e18;
+
+    uint256 constant MIN_AMOUNT_IN = 0.1e18;
+    uint256 constant MAX_AMOUNT_IN = 100_000e18;
 
     StableMathMock stableMathMock;
 
@@ -259,11 +267,11 @@ contract StableMathTest is Test {
         uint256 balance2,
         uint256 invariantRatio
     ) public view {
-        currentAmp = bound(currentAmp, 100, 1000);
-        balance0 = bound(balance0, 1000e18, 1_000_000e18);
-        balance1 = bound(balance1, 1000e18, 1_000_000e18);
-        balance2 = bound(balance2, 1000e18, 1_000_000e18);
-        invariantRatio = bound(invariantRatio, 60e16, 500e16);
+        currentAmp = bound(currentAmp, MIN_AMP, MAX_AMP);
+        balance0 = bound(balance0, MIN_BALANCE_BOUND, MAX_BALANCE_BOUND);
+        balance1 = bound(balance1, MIN_BALANCE_BOUND, MAX_BALANCE_BOUND);
+        balance2 = bound(balance2, MIN_BALANCE_BOUND, MAX_BALANCE_BOUND);
+        invariantRatio = bound(invariantRatio, StableMath.MIN_INVARIANT_RATIO, StableMath.MAX_INVARIANT_RATIO);
         uint256 tokenInIndex = bound(balance0 + balance1 + balance2, 0, 2);
 
         uint256[] memory balancesLiveScaled18 = new uint256[](3);
@@ -294,5 +302,70 @@ contract StableMathTest is Test {
         );
 
         assertGe(balanceRoundUp, balanceRoundDown, "Incorrect assumption");
+    }
+
+    function testComputeInvariantRatioRounding__Fuzz(
+        uint256 currentAmp,
+        uint256[3] memory currentBalances,
+        uint256[3] memory amountsIn
+    ) public view {
+        currentAmp = bound(currentAmp, MIN_AMP, MAX_AMP);
+        currentBalances[0] = bound(currentBalances[0], MIN_BALANCE_BOUND, MAX_BALANCE_BOUND);
+        currentBalances[1] = bound(currentBalances[1], MIN_BALANCE_BOUND, MAX_BALANCE_BOUND);
+        currentBalances[2] = bound(currentBalances[2], MIN_BALANCE_BOUND, MAX_BALANCE_BOUND);
+        amountsIn[0] = bound(amountsIn[0], MIN_AMOUNT_IN, MAX_AMOUNT_IN);
+        amountsIn[1] = bound(amountsIn[1], MIN_AMOUNT_IN, MAX_AMOUNT_IN);
+        amountsIn[2] = bound(amountsIn[2], MIN_AMOUNT_IN, MAX_AMOUNT_IN);
+
+        uint256[] memory newBalances = new uint256[](3);
+        newBalances[0] = currentBalances[0] + amountsIn[0];
+        newBalances[1] = currentBalances[0] + amountsIn[1];
+        newBalances[2] = currentBalances[0] + amountsIn[2];
+
+        uint256[] memory newBalancesRoundDown = new uint256[](3);
+        newBalancesRoundDown[0] = newBalances[0] - 1;
+        newBalancesRoundDown[1] = newBalances[1] - 1;
+        newBalancesRoundDown[2] = newBalances[2] - 1;
+
+        // Check that the invariant converges in every case.
+        try stableMathMock.computeInvariant(currentAmp, currentBalances.toMemoryArray(), Rounding.ROUND_DOWN) returns (
+            uint256
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        try stableMathMock.computeInvariant(currentAmp, newBalances, Rounding.ROUND_UP) returns (uint256) {} catch {
+            vm.assume(false);
+        }
+
+        try stableMathMock.computeInvariant(currentAmp, newBalancesRoundDown, Rounding.ROUND_UP) returns (
+            uint256
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        // Base case: use same rounding for balances in numerator and denominator, and use same rounding direction
+        // for `computeInvariant` calls (which is accurate to 1 wei in stable math).
+        uint256 currentInvariant = stableMathMock.computeInvariant(
+            currentAmp,
+            currentBalances.toMemoryArray(),
+            Rounding.ROUND_DOWN
+        );
+        uint256 invariantRatioRegular = stableMathMock
+            .computeInvariant(currentAmp, newBalances, Rounding.ROUND_DOWN)
+            .divDown(currentInvariant);
+
+        // Improved rounding down: use balances rounded down in numerator, and use rounding direction when calling
+        // `computeInvariant` (1 wei difference).
+        uint256 currentInvariantUp = stableMathMock.computeInvariant(
+            currentAmp,
+            currentBalances.toMemoryArray(),
+            Rounding.ROUND_UP
+        );
+        uint256 invariantRatioDown = stableMathMock
+            .computeInvariant(currentAmp, newBalancesRoundDown, Rounding.ROUND_DOWN)
+            .divDown(currentInvariantUp);
+
+        assertLe(invariantRatioDown, invariantRatioRegular, "Invariant ratio should have gone down");
     }
 }
