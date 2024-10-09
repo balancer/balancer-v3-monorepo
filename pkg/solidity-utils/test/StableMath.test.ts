@@ -9,6 +9,7 @@ import {
   getTokenBalanceGivenInvariantAndAllOtherBalances,
   calcInGivenExactOut,
   calcOutGivenExactIn,
+  Rounding,
 } from '@balancer-labs/v3-helpers/src/math/stable';
 
 const MAX_RELATIVE_ERROR = 0.0001; // Max relative error
@@ -30,8 +31,8 @@ describe('StableMath', function () {
     async function checkInvariant(balances: bigint[], amp: number): Promise<void> {
       const ampParameter = bn(amp) * AMP_PRECISION;
 
-      const actualInvariant = await mock.computeInvariant(ampParameter, balances);
-      const expectedInvariant = calculateInvariant(balances, amp);
+      const actualInvariant = await mock.computeInvariant(ampParameter, balances, Rounding.ROUND_DOWN);
+      const expectedInvariant = calculateInvariant(balances, amp, Rounding.ROUND_DOWN);
 
       expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
     }
@@ -53,7 +54,7 @@ describe('StableMath', function () {
         const amp = bn(100);
         const balances = [fp(10), fp(12)];
 
-        const result = await mock.computeInvariant(amp * AMP_PRECISION, balances);
+        const result = await mock.computeInvariant(amp * AMP_PRECISION, balances, Rounding.ROUND_DOWN);
         const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(balances, amp);
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
@@ -64,8 +65,8 @@ describe('StableMath', function () {
       const amp = bn(1);
       const balances = [fp(0.00000001), fp(1200000000), fp(300)];
 
-      const result = await mock.computeInvariant(amp * AMP_PRECISION, balances);
-      const expectedInvariant = calculateInvariant(balances, amp);
+      const result = await mock.computeInvariant(amp * AMP_PRECISION, balances, Rounding.ROUND_DOWN);
+      const expectedInvariant = calculateInvariant(balances, amp, Rounding.ROUND_DOWN);
 
       expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
     });
@@ -99,11 +100,11 @@ describe('StableMath', function () {
 
         it(`computes the token balance for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
-            const currentInvariant = calculateInvariant(balances, amp);
+            const currentInvariant = calculateInvariant(balances, amp, Rounding.ROUND_DOWN);
 
             // mutate the balances
             for (let tokenIndex = 0; tokenIndex < numTokens; tokenIndex++) {
-              const newBalances: BigNumberish[] = Object.assign([], balances);
+              const newBalances: bigint[] = Object.assign([], balances);
               newBalances[tokenIndex] = newBalances[tokenIndex] + fp(100);
 
               await checkTokenBalanceGivenInvariant(newBalances, currentInvariant, amp, tokenIndex);
@@ -122,7 +123,7 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountOut = fp(1);
-        const invariant = calculateInvariant(balances, amp);
+        const invariant = calculateInvariant(balances, amp, Rounding.ROUND_DOWN);
 
         const result = await mock.computeInGivenExactOut(
           amp * AMP_PRECISION,
@@ -144,7 +145,7 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountOut = fp(1);
-        const invariant = calculateInvariant(balances, amp);
+        const invariant = calculateInvariant(balances, amp, Rounding.ROUND_DOWN);
 
         const result = await mock.computeInGivenExactOut(
           amp * AMP_PRECISION,
@@ -169,7 +170,7 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountIn = fp(1);
-        const invariant = calculateInvariant(balances, amp);
+        const invariant = calculateInvariant(balances, amp, Rounding.ROUND_DOWN);
 
         const result = await mock.computeOutGivenExactIn(
           amp * AMP_PRECISION,
@@ -191,7 +192,7 @@ describe('StableMath', function () {
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountIn = fp(1);
-        const invariant = calculateInvariant(balances, amp);
+        const invariant = calculateInvariant(balances, amp, Rounding.ROUND_DOWN);
 
         const result = await mock.computeOutGivenExactIn(
           amp * AMP_PRECISION,

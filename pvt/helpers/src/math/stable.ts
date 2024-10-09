@@ -2,8 +2,21 @@ import { Decimal } from 'decimal.js';
 import { BigNumberish } from 'ethers';
 import { decimal, bn, fp, fromFp, toFp } from '../numbers';
 
-export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): bigint {
-  return calculateApproxInvariant(fpRawBalances, amplificationParameter);
+export enum Rounding {
+  ROUND_DOWN,
+  ROUND_UP,
+}
+
+export function calculateInvariant(
+  fpRawBalances: BigNumberish[],
+  amplificationParameter: BigNumberish,
+  rounding: Rounding
+): bigint {
+  let invariant = calculateApproxInvariant(fpRawBalances, amplificationParameter);
+  if (invariant > 0) {
+    invariant = rounding === Rounding.ROUND_DOWN ? invariant : invariant + 1n;
+  }
+  return invariant;
 }
 
 export function calculateApproxInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): bigint {
