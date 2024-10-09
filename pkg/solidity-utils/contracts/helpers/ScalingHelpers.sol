@@ -26,25 +26,12 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @notice Applies `scalingFactor` to `amount`.
-     * @dev This may result in a larger or equal value, depending on whether it needed scaling or not. The result
-     * is rounded down.
-     *
-     * @param amount Amount to be scaled up to 18 decimals
-     * @param scalingFactor The token decimal scaling factor
-     * @return result The final 18-decimal precision result, rounded down
-     */
-    function toScaled18RoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.mulDown(amount, scalingFactor);
-    }
-
-    /**
      * @notice Applies `scalingFactor` and `tokenRate` to `amount`.
      * @dev This may result in a larger or equal value, depending on whether it needed scaling/rate adjustment or not.
      * The result is rounded down.
      *
      * @param amount Amount to be scaled up to 18 decimals
-     * @param scalingFactor The token decimal scaling factor
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final 18-decimal precision result, rounded down
      */
@@ -53,20 +40,7 @@ library ScalingHelpers {
         uint256 scalingFactor,
         uint256 tokenRate
     ) internal pure returns (uint256) {
-        return amount.mulDown(scalingFactor).mulDown(tokenRate);
-    }
-
-    /**
-     * @notice Applies `scalingFactor` to `amount`.
-     * @dev This may result in a larger or equal value, depending on whether it needed scaling or not. The result
-     * is rounded up.
-     *
-     * @param amount Amount to be scaled up to 18 decimals
-     * @param scalingFactor The token decimal scaling factor
-     * @return result The final 18-decimal precision result, rounded up
-     */
-    function toScaled18RoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.mulUp(amount, scalingFactor);
+        return (amount * scalingFactor).mulDown(tokenRate);
     }
 
     /**
@@ -75,7 +49,7 @@ library ScalingHelpers {
      * The result is rounded up.
      *
      * @param amount Amount to be scaled up to 18 decimals
-     * @param scalingFactor The token decimal scaling factor
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final 18-decimal precision result, rounded up
      */
@@ -84,20 +58,7 @@ library ScalingHelpers {
         uint256 scalingFactor,
         uint256 tokenRate
     ) internal pure returns (uint256) {
-        return amount.mulUp(scalingFactor).mulUp(tokenRate);
-    }
-
-    /**
-     * @notice Reverses the `scalingFactor` applied to `amount`.
-     * @dev This may result in a smaller or equal value, depending on whether it needed scaling or not. The result
-     * is rounded down.
-     *
-     * @param amount Amount to be scaled down to native token decimals
-     * @param scalingFactor The token decimal scaling factor
-     * @return result The final native decimal result, rounded down
-     */
-    function toRawRoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divDown(amount, scalingFactor);
+        return (amount * scalingFactor).mulUp(tokenRate);
     }
 
     /**
@@ -106,7 +67,7 @@ library ScalingHelpers {
      * The result is rounded down.
      *
      * @param amount Amount to be scaled down to native token decimals
-     * @param scalingFactor The token decimal scaling factor
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final native decimal result, rounded down
      */
@@ -115,21 +76,9 @@ library ScalingHelpers {
         uint256 scalingFactor,
         uint256 tokenRate
     ) internal pure returns (uint256) {
-        // Do division last, and round scalingFactor * tokenRate up to divide by a larger number.
-        return FixedPoint.divDown(amount, scalingFactor.mulUp(tokenRate));
-    }
-
-    /**
-     * @notice Reverses the `scalingFactor` applied to `amount`.
-     * @dev This may result in a smaller or equal value, depending on whether it needed scaling or not. The result
-     * is rounded up.
-     *
-     * @param amount Amount to be scaled down to native token decimals
-     * @param scalingFactor The token decimal scaling factor
-     * @return result The final native decimal result, rounded up
-     */
-    function toRawRoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divUp(amount, scalingFactor);
+        // Do division last. Scaling factor is not a FP18, but a FP18 normalized by FP(1).
+        // `scalingFactor * tokenRate` is a precise FP18, so there is no rounding direction here.
+        return FixedPoint.divDown(amount, scalingFactor * tokenRate);
     }
 
     /**
@@ -138,7 +87,7 @@ library ScalingHelpers {
      * The result is rounded up.
      *
      * @param amount Amount to be scaled down to native token decimals
-     * @param scalingFactor The token decimal scaling factor
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final native decimal result, rounded up
      */
@@ -147,8 +96,9 @@ library ScalingHelpers {
         uint256 scalingFactor,
         uint256 tokenRate
     ) internal pure returns (uint256) {
-        // Do division last, and round scalingFactor * tokenRate down to divide by a smaller number.
-        return FixedPoint.divUp(amount, scalingFactor.mulDown(tokenRate));
+        // Do division last. Scaling factor is not a FP18, but a FP18 normalized by FP(1).
+        // `scalingFactor * tokenRate` is a precise FP18, so there is no rounding direction here.
+        return FixedPoint.divUp(amount, scalingFactor * tokenRate);
     }
 
     /***************************************************************************
@@ -161,21 +111,6 @@ library ScalingHelpers {
 
         for (uint256 i = 0; i < length; ++i) {
             to[i] = from[i];
-        }
-    }
-
-    /**
-     * @notice Same as `toScaled18RoundDown`, but for an entire array.
-     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
-     * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
-     * @param scalingFactors The token decimal scaling factors, sorted in token registration order
-     */
-    function toScaled18RoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = ScalingHelpers.toScaled18RoundDown(amounts[i], scalingFactors[i]);
         }
     }
 
@@ -223,21 +158,6 @@ library ScalingHelpers {
     }
 
     /**
-     * @notice Same as `toScaled18RoundUp`, but for an entire array.
-     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
-     * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
-     * @param scalingFactors The token decimal scaling factors, sorted in token registration order
-     */
-    function toScaled18RoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = ScalingHelpers.toScaled18RoundUp(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
      * @notice Same as `toScaled18ApplyRateRoundUp`, but for an entire array.
      * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
@@ -278,36 +198,6 @@ library ScalingHelpers {
         }
 
         return amountsScaled18;
-    }
-
-    /**
-     * @notice Same as `toRawRoundDown`, but for an entire array.
-     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
-     * @param amounts Amounts to be scaled down to native token decimals, sorted in token registration order
-     * @param scalingFactors The token decimal scaling factors, sorted in token registration order
-     */
-    function toRawRoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = ScalingHelpers.toRawRoundDown(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
-     * @notice Same as `toRawRoundUp`, but for an entire array.
-     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
-     * @param amounts Amounts to be scaled down to native token decimals, sorted in token registration order
-     * @param scalingFactors The token decimal scaling factors, sorted in token registration order
-     */
-    function toRawRoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = ScalingHelpers.toRawRoundUp(amounts[i], scalingFactors[i]);
-        }
     }
 
     /**

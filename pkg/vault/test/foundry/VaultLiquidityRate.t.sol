@@ -138,7 +138,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -146,8 +146,8 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         // TODO: Find a way to test rates inside the Vault.
         router.removeLiquidityProportional(
             pool,
-            defaultAmount * 2,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
         );
@@ -161,13 +161,12 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
 
         PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
-        uint256 bptAmountIn = defaultAmount * 2;
 
         vm.expectCall(
             pool,
@@ -176,12 +175,19 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
                 (
                     [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
                     wstethIdx, // tokenOutIndex
-                    50e16 // invariantRatio
+                    50e16 + 1 // invariantRatio
                 )
             )
         );
 
-        router.removeLiquiditySingleTokenExactIn(pool, bptAmountIn, wsteth, defaultAmount, false, bytes(""));
+        router.removeLiquiditySingleTokenExactIn(
+            pool,
+            bptAmountRoundDown,
+            wsteth,
+            defaultAmountRoundDown,
+            false,
+            bytes("")
+        );
     }
 
     function testRemoveLiquidityCustomWithRate() public {

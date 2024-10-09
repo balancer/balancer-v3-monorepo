@@ -42,7 +42,7 @@ export function computeAddLiquidityUnbalanced(
   const swapFeeAmountsDecimals: bigint[] = [];
 
   for (let i = 0; i < numTokens; ++i) {
-    newBalances[i] = currentBalances[i] + exactAmounts[i];
+    newBalances[i] = currentBalances[i] + exactAmounts[i] - 1n;
   }
 
   const currentInvariant = computeInvariantMock(currentBalances);

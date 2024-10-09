@@ -168,6 +168,7 @@ describe('BatchSwap', function () {
     let tokensOut: (ERC20TestToken | PoolMock)[];
     const pathExactAmountIn = fp(1);
     const pathMinAmountOut = fp(1);
+    const unbalancedAddRoundingError = 2n;
 
     let totalAmountIn: bigint, totalAmountOut: bigint, pathAmountsOut: bigint[], amountsOut: bigint[];
     let balanceChange: BalanceChange[];
@@ -204,9 +205,12 @@ describe('BatchSwap', function () {
 
       if (singleTransferOut) {
         it('performs single transfer for token out', async () => {
+          // Some operations have rounding error, and event arguments are precise. So we get the result from
+          // the query to check the event arguments.
+          const { amountsOut } = await runQuery();
           await expect(doSwap())
             .to.emit(tokensOut[0], 'Transfer')
-            .withArgs(vaultAddress, sender.address, totalAmountOut);
+            .withArgs(vaultAddress, sender.address, amountsOut[0]);
         });
       }
 
@@ -265,15 +269,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
+                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
+                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -642,7 +646,7 @@ describe('BatchSwap', function () {
                 { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
           ];
 
@@ -666,15 +670,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
+                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
+                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -688,7 +692,7 @@ describe('BatchSwap', function () {
                 { pool: poolBC, tokenOut: poolC, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
           ];
 
@@ -712,15 +716,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
+                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
+                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -733,7 +737,7 @@ describe('BatchSwap', function () {
                 { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
             {
               tokenIn: token0,
@@ -742,7 +746,7 @@ describe('BatchSwap', function () {
                 { pool: poolB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
           ];
 
@@ -940,7 +944,7 @@ describe('BatchSwap', function () {
                 { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
             },
           ];
 
@@ -971,6 +975,7 @@ describe('BatchSwap', function () {
     let tokenOut: ERC20TestToken | PoolMock;
     const pathExactAmountOut = fp(1);
     const pathMaxAmountIn = fp(1);
+    const unbalancedAddRoundingError = 2n;
 
     let totalAmountIn: bigint, totalAmountOut: bigint, pathAmountsIn: bigint[], amountsIn: bigint[];
     let balanceChange: BalanceChange[];
@@ -1001,7 +1006,11 @@ describe('BatchSwap', function () {
 
       if (singleTransferIn) {
         it('performs single transfer for token in', async () => {
-          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
+          // Some operations have rounding error, and event arguments are precise. So we get the result from
+          // the query to check the event arguments.
+          const { amountsIn } = await runQuery();
+
+          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, vaultAddress, amountsIn[0]);
         });
       }
 
@@ -1575,15 +1584,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -1596,7 +1605,7 @@ describe('BatchSwap', function () {
                 { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pathMaxAmountIn + unbalancedAddRoundingError,
             },
           ];
 
@@ -1606,8 +1615,12 @@ describe('BatchSwap', function () {
         itTestsBatchSwap(false, true);
 
         it('burns amount in', async () => {
+          // Some operations have rounding error, and event arguments are precise. So we get the result from
+          // the query to check the event arguments.
+          const { amountsIn } = await runQuery();
+
           // Router is the one that burns the tokens, not sender.
-          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(router, ZERO_ADDRESS, totalAmountIn);
+          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(router, ZERO_ADDRESS, amountsIn[0]);
         });
       });
 
@@ -1625,15 +1638,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -1647,7 +1660,7 @@ describe('BatchSwap', function () {
                 { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pathMaxAmountIn + unbalancedAddRoundingError,
             },
           ];
 
@@ -1692,7 +1705,7 @@ describe('BatchSwap', function () {
                 { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pathMaxAmountIn + unbalancedAddRoundingError,
             },
           ];
 
@@ -1748,7 +1761,7 @@ describe('BatchSwap', function () {
                 { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pct(pathMaxAmountIn, 1.001), // Rounding tolerance
             },
           ];
 

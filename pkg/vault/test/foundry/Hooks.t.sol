@@ -326,7 +326,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -390,7 +390,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -398,7 +398,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(alice);
         router.removeLiquidityProportional(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
@@ -414,7 +414,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -427,7 +427,7 @@ contract HooksTest is BaseVaultTest {
                     address(router),
                     pool,
                     RemoveLiquidityKind.PROPORTIONAL,
-                    bptAmount,
+                    bptAmountRoundDown,
                     [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
                     [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
                     bytes("")
@@ -437,7 +437,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(alice);
         router.removeLiquidityProportional(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
@@ -454,7 +454,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -466,7 +466,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.BeforeRemoveLiquidityHookFailed.selector);
         router.removeLiquidityProportional(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
@@ -483,7 +483,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -505,7 +505,7 @@ contract HooksTest is BaseVaultTest {
                     AddLiquidityKind.UNBALANCED,
                     [defaultAmount, defaultAmount].toMemoryArray(),
                     [defaultAmount, defaultAmount].toMemoryArray(),
-                    bptAmount,
+                    bptAmountRoundDown,
                     [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
                     bytes("")
                 )
@@ -567,7 +567,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -575,7 +575,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(alice);
         router.removeLiquidityProportional(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
@@ -591,7 +591,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -604,10 +604,10 @@ contract HooksTest is BaseVaultTest {
                     address(router),
                     pool,
                     RemoveLiquidityKind.PROPORTIONAL,
-                    bptAmount,
-                    [defaultAmount, defaultAmount].toMemoryArray(),
-                    [defaultAmount, defaultAmount].toMemoryArray(),
-                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    bptAmountRoundDown,
+                    [defaultAmount - 1, defaultAmount - 1].toMemoryArray(),
+                    [defaultAmount - 1, defaultAmount - 1].toMemoryArray(),
+                    [defaultAmount + 1, defaultAmount + 1].toMemoryArray(),
                     bytes("")
                 )
             )
@@ -616,7 +616,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(alice);
         router.removeLiquidityProportional(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
@@ -633,7 +633,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -645,7 +645,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.AfterRemoveLiquidityHookFailed.selector);
         router.removeLiquidityProportional(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
@@ -662,7 +662,7 @@ contract HooksTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -674,7 +674,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.AfterRemoveLiquidityHookFailed.selector);
         router.removeLiquidityProportional(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")

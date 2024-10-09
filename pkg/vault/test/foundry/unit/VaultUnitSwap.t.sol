@@ -41,7 +41,7 @@ contract VaultUnitSwapTest is BaseTest, VaultContractsDeployer {
 
     IERC20[] swapTokens;
     uint256[] initialBalances = [uint256(10e18), 10e18];
-    uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
+    uint256[] decimalScalingFactors = [uint256(1), 1]; // 18 decimals, so 10^(18-18) = 1
     uint256[] tokenRates = [uint256(1e18), 2e18];
 
     IProtocolFeeController feeController;
