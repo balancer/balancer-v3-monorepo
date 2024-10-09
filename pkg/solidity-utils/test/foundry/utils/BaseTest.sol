@@ -208,11 +208,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     function getDecimalScalingFactor(uint8 decimals) internal pure returns (uint256 scalingFactor) {
         require(decimals <= 18, "Decimals must be between 0 and 18");
         uint256 decimalDiff = 18 - decimals;
-        scalingFactor = 1;
-
-        for (uint256 i = 0; i < decimalDiff; ++i) {
-            scalingFactor *= 10;
-        }
+        scalingFactor = 10 ** decimalDiff;
 
         return scalingFactor;
     }

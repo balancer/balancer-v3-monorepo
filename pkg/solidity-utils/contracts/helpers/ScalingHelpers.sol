@@ -31,7 +31,7 @@ library ScalingHelpers {
      * The result is rounded down.
      *
      * @param amount Amount to be scaled up to 18 decimals
-     * @param scalingFactor The token decimal scaling factor `10^(18-tokenDecimals)`
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final 18-decimal precision result, rounded down
      */
@@ -49,7 +49,7 @@ library ScalingHelpers {
      * The result is rounded up.
      *
      * @param amount Amount to be scaled up to 18 decimals
-     * @param scalingFactor The raw token decimal scaling factor
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final 18-decimal precision result, rounded up
      */
@@ -67,7 +67,7 @@ library ScalingHelpers {
      * The result is rounded down.
      *
      * @param amount Amount to be scaled down to native token decimals
-     * @param scalingFactor The token raw decimal scaling factor
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final native decimal result, rounded down
      */
@@ -87,7 +87,7 @@ library ScalingHelpers {
      * The result is rounded up.
      *
      * @param amount Amount to be scaled down to native token decimals
-     * @param scalingFactor The token decimal scaling factor
+     * @param scalingFactor The token decimal scaling factor, `10^(18-tokenDecimals)`
      * @param tokenRate The token rate scaling factor
      * @return result The final native decimal result, rounded up
      */
