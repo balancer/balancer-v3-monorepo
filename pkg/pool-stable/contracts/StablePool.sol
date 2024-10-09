@@ -170,7 +170,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
                 tokenInIndex
             );
     }
