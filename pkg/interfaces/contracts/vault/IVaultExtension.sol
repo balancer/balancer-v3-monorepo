@@ -67,6 +67,19 @@ interface IVaultExtension {
      */
     function getReservesOf(IERC20 token) external view returns (uint256);
 
+    /**
+     * @notice This flag is used to detect and tax "round trip" transactions (adding and removing liquidity in the
+     * same pool).
+     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same transaction adds an extra
+     * layer of security, discouraging operations that try to undo others for profit. Remove liquidity proportional
+     * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
+     * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
+     * than a simple swap for every pool type.
+     * @param pool Address of the pool to check
+     * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
+     */
+    function getAddLiquidityCalledFlag(address pool) external view returns (bool);
+
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
@@ -313,6 +326,18 @@ interface IVaultExtension {
      * @return pauseManager The pause manager, or the zero address
      */
     function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
+
+    /*******************************************************************************
+                                   ERC4626 Buffers
+    *******************************************************************************/
+
+    /**
+     * @notice Checks if the wrapped token has an initialized buffer in the Vault.
+     * @dev An initialized buffer should have an asset registered in the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return isBufferInitialized True if the ERC4626 buffer is initialized
+     */
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized);
 
     /*******************************************************************************
                                           Fees

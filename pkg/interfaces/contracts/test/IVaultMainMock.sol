@@ -269,11 +269,15 @@ interface IVaultMainMock {
 
     function manualSetBufferTotalShares(IERC4626 wrappedToken, uint256 shares) external;
 
+    function manualSetBufferBalances(IERC4626 wrappedToken, uint256 underlyingAmount, uint256 wrappedAmount) external;
+
     function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
 
     function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
+
+    function manualSetAddLiquidityCalledFlag(address pool, bool flag) external;
 
     function manualSetPoolCreator(address pool, address newPoolCreator) external;
 

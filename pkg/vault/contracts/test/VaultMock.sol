@@ -667,6 +667,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _bufferTotalShares[wrappedToken] = shares;
     }
 
+    function manualSetBufferBalances(IERC4626 wrappedToken, uint256 underlyingAmount, uint256 wrappedAmount) external {
+        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(underlyingAmount, wrappedAmount);
+    }
+
     function manualErc4626BufferWrapOrUnwrapReentrancy(
         BufferWrapOrUnwrapParams memory params
     ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
@@ -683,6 +687,10 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) public pure returns (uint256 index) {
         return _findTokenIndex(tokens, token);
+    }
+
+    function manualSetAddLiquidityCalledFlag(address pool, bool flag) public {
+        _addLiquidityCalled().tSet(pool, flag);
     }
 
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {

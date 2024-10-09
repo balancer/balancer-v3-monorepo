@@ -500,6 +500,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         _ensureUnpaused(params.pool);
+        _addLiquidityCalled().tSet(params.pool, true);
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -744,7 +745,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _mint(address(params.pool), params.to, bptAmountOut);
 
         // 8) Off-chain events.
-        emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true), swapFeeAmounts);
+        emit PoolBalanceChanged(
+            params.pool,
+            params.to,
+            _totalSupply(params.pool),
+            amountsInRaw.unsafeCastToInt256(true),
+            swapFeeAmounts
+        );
     }
 
     /***************************************************************************
@@ -872,6 +879,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _totalSupply(params.pool),
                 bptAmountIn
             );
+
+            // Charge roundtrip fee.
+            if (_addLiquidityCalled().tGet(params.pool)) {
+                uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
+                for (uint256 i = 0; i < locals.numTokens; ++i) {
+                    swapFeeAmounts[i] = amountsOutScaled18[i].mulUp(swapFeePercentage);
+                    amountsOutScaled18[i] -= swapFeeAmounts[i];
+                }
+            }
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
             bptAmountIn = params.maxBptAmountIn;
@@ -998,6 +1014,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         emit PoolBalanceChanged(
             params.pool,
             params.from,
+            _totalSupply(params.pool),
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false),
             swapFeeAmounts
@@ -1023,7 +1040,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) internal returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
         // If totalSwapFeeAmountScaled18 equals zero, no need to charge anything.
         if (totalSwapFeeAmountScaled18 > 0 && poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
-            totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundUp(
+            // The total swap fee does not go into the pool; amountIn does, and the raw fee at this point does not
+            // modify it. Given that all of the fee may belong to the pool creator (i.e. outside pool balances),
+            // we round down to protect the invariant.
+            totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
             );
