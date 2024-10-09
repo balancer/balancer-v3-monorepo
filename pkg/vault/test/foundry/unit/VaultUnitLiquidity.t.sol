@@ -257,7 +257,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         for (uint256 i = 0; i < tokens.length; i++) {
             expectedAmountsInScaled18[i] = 1e18;
             expectedSwapFeeAmountsScaled18[i] = 1e16;
-            expectedSwapFeeAmountsRaw[i] = expectedSwapFeeAmountsScaled18[i].toRawUndoRateRoundUp(
+            expectedSwapFeeAmountsRaw[i] = expectedSwapFeeAmountsScaled18[i].toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
@@ -595,7 +595,7 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         for (uint256 i = 0; i < tokens.length; i++) {
             expectedAmountsOutScaled18[i] = 1e18;
             expectedSwapFeeAmountsScaled18[i] = 1e16;
-            expectedSwapFeeAmountsRaw[i] = expectedSwapFeeAmountsScaled18[i].toRawUndoRateRoundUp(
+            expectedSwapFeeAmountsRaw[i] = expectedSwapFeeAmountsScaled18[i].toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
