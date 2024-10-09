@@ -227,16 +227,20 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * returned ETH.
      */
     function _returnEth(address sender) internal {
+        // It's cheaper to check the balance and return early than checking a transient variable.
+        // Moreover, most operations will not have ETH to return.
+        uint256 excess = address(this).balance;
+        if (excess == 0) {
+            return;
+        }
+
         // If the return of ETH is locked, then don't return it,
         // because _returnEth will be called again at the end of the call.
         if (_isReturnEthLockedSlot().tload()) {
             return;
         }
 
-        uint256 excess = address(this).balance;
-        if (excess > 0) {
-            payable(sender).sendValue(excess);
-        }
+        payable(sender).sendValue(excess);
     }
 
     /**
