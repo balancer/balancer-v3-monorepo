@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { StableMath } from "../../contracts/math/StableMath.sol";
 import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
 import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
@@ -67,12 +69,14 @@ contract StableMathTest is Test {
     function testComputeInvariant__Fuzz(uint256 amp, uint256[NUM_TOKENS] calldata rawBalances) external view {
         amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+        try stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN) returns (uint256) {} catch (
+            bytes memory result
+        ) {
             assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
-        stableMathMock.computeInvariant(amp, balances);
+        stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN);
     }
 
     function testComputeOutGivenExactInRounding__Fuzz(
@@ -88,12 +92,14 @@ contract StableMathTest is Test {
         (tokenIndexIn, tokenIndexOut) = boundTokenIndexes(tokenIndexIn, tokenIndexOut);
         tokenAmountIn = boundAmount(tokenAmountIn, balances[tokenIndexIn]);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+        try stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN) returns (uint256) {} catch (
+            bytes memory result
+        ) {
             assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
-        uint256 invariant = stableMathMock.computeInvariant(amp, balances);
+        uint256 invariant = stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN);
 
         uint256 outGivenExactIn = stableMathMock.computeOutGivenExactIn(
             amp,
@@ -143,12 +149,14 @@ contract StableMathTest is Test {
         (tokenIndexIn, tokenIndexOut) = boundTokenIndexes(tokenIndexIn, tokenIndexOut);
         tokenAmountOut = boundAmount(tokenAmountOut, balances[tokenIndexOut]);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+        try stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN) returns (uint256) {} catch (
+            bytes memory result
+        ) {
             assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
-        uint256 invariant = stableMathMock.computeInvariant(amp, balances);
+        uint256 invariant = stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN);
 
         uint256 inGivenExactOut = stableMathMock.computeInGivenExactOut(
             amp,
@@ -194,12 +202,14 @@ contract StableMathTest is Test {
         amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+        try stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN) returns (uint256) {} catch (
+            bytes memory result
+        ) {
             assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
-        uint256 invariant = stableMathMock.computeInvariant(amp, balances);
+        uint256 invariant = stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN);
         tokenIndex = boundTokenIndex(tokenIndex);
 
         uint256 balance = stableMathMock.computeBalance(amp, balances, invariant, tokenIndex);
@@ -228,15 +238,61 @@ contract StableMathTest is Test {
         tokenIndex = bound(tokenIndex, 0, NUM_TOKENS - 1);
         invariantDiff = bound(invariantDiff, 1, 100000);
 
-        try stableMathMock.computeInvariant(amp, balances) returns (uint256) {} catch (bytes memory result) {
+        try stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN) returns (uint256) {} catch (
+            bytes memory result
+        ) {
             assertEq(bytes4(result), StableMath.StableInvariantDidNotConverge.selector, "Unexpected error");
             vm.assume(false);
         }
 
-        uint256 invariant = stableMathMock.computeInvariant(amp, balances);
+        uint256 invariant = stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN);
         uint256 balanceOne = stableMathMock.computeBalance(amp, balances, invariant, tokenIndex);
         uint256 balanceTwo = stableMathMock.computeBalance(amp, balances, invariant + invariantDiff, tokenIndex);
 
         assertGe(balanceTwo, balanceOne, "The balance should be greater or eq when the invariant is greater.");
+    }
+
+    function testComputeBalanceRounding__Fuzz(
+        uint256 currentAmp,
+        uint256 balance0,
+        uint256 balance1,
+        uint256 balance2,
+        uint256 invariantRatio
+    ) public view {
+        currentAmp = bound(currentAmp, 100, 1000);
+        balance0 = bound(balance0, 1000e18, 1_000_000e18);
+        balance1 = bound(balance1, 1000e18, 1_000_000e18);
+        balance2 = bound(balance2, 1000e18, 1_000_000e18);
+        invariantRatio = bound(invariantRatio, 60e16, 500e16);
+        uint256 tokenInIndex = bound(balance0 + balance1 + balance2, 0, 2);
+
+        uint256[] memory balancesLiveScaled18 = new uint256[](3);
+        balancesLiveScaled18[0] = balance0;
+        balancesLiveScaled18[1] = balance1;
+        balancesLiveScaled18[2] = balance2;
+
+        try stableMathMock.computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_DOWN) returns (
+            uint256
+        ) {} catch {
+            vm.assume(false);
+        }
+
+        uint256 balanceRoundDown = StableMath.computeBalance(
+            currentAmp,
+            balancesLiveScaled18,
+            stableMathMock.computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(
+                invariantRatio
+            ),
+            tokenInIndex
+        );
+
+        uint256 balanceRoundUp = StableMath.computeBalance(
+            currentAmp,
+            balancesLiveScaled18,
+            stableMathMock.computeInvariant(currentAmp, balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
+            tokenInIndex
+        );
+
+        assertGe(balanceRoundUp, balanceRoundDown, "Incorrect assumption");
     }
 }

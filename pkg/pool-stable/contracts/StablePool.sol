@@ -147,10 +147,15 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding) public view returns (uint256) {
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+        uint256 invariant = StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+        if (invariant > 0) {
+            invariant = rounding == Rounding.ROUND_DOWN ? invariant : invariant + 1;
+        }
+
+        return invariant;
     }
 
     /// @inheritdoc IBasePool
@@ -165,7 +170,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
                 tokenInIndex
             );
     }

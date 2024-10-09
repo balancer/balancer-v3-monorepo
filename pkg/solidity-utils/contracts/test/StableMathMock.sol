@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { StableMath } from "../math/StableMath.sol";
 import { FixedPoint } from "../math/FixedPoint.sol";
 import { RoundingMock } from "./RoundingMock.sol";
@@ -17,9 +19,13 @@ contract StableMathMock {
 
     function computeInvariant(
         uint256 amplificationParameter,
-        uint256[] memory balances
-    ) external pure returns (uint256) {
-        return StableMath.computeInvariant(amplificationParameter, balances);
+        uint256[] memory balances,
+        Rounding rounding
+    ) external pure returns (uint256 invariant) {
+        invariant = StableMath.computeInvariant(amplificationParameter, balances);
+        if (invariant > 0) {
+            invariant = rounding == Rounding.ROUND_DOWN ? invariant : invariant + 1;
+        }
     }
 
     function computeOutGivenExactIn(
