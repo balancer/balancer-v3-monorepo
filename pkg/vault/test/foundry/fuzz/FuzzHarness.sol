@@ -125,12 +125,18 @@ contract FuzzHarness is Test {
 
         // deposit tokenAmt to mint exactly bptMintAmt
         uint256 tokenAmt = computeAddLiquiditySingleTokenExactOut(
-            tokenIndex, bptMintAmt, swapFeePercentage, useStablePool
+            tokenIndex,
+            bptMintAmt,
+            swapFeePercentage,
+            useStablePool
         );
 
         // withdraw exactly tokenAmt to burn bptBurnAmt
         uint256 bptBurnAmt = computeRemoveLiquiditySingleTokenExactIn(
-            tokenIndex, tokenAmt, swapFeePercentage, useStablePool
+            tokenIndex,
+            tokenAmt,
+            swapFeePercentage,
+            useStablePool
         );
 
         emit Debug("BPT minted while adding liq:", bptMintAmt);
@@ -152,15 +158,16 @@ contract FuzzHarness is Test {
 
         // withdraw exactly tokenAmt to burn bptBurnAmt
         uint256 bptBurnAmt = computeRemoveLiquiditySingleTokenExactOut(
-            tokenIndex, tokenAmt, swapFeePercentage, useStablePool
+            tokenIndex,
+            tokenAmt,
+            swapFeePercentage,
+            useStablePool
         );
 
         // deposit exactly tokenAmt to mint bptMintAmt
         uint256[] memory exactAmounts = new uint256[](getBalancesLength(useStablePool));
         exactAmounts[tokenIndex] = tokenAmt;
-        uint256 bptMintAmt = computeAddLiquidityUnbalanced(
-            exactAmounts, swapFeePercentage, useStablePool
-        );
+        uint256 bptMintAmt = computeAddLiquidityUnbalanced(exactAmounts, swapFeePercentage, useStablePool);
 
         emit Debug("BPT burned while removing liq:", bptBurnAmt);
         emit Debug("BPT minted while adding the same liq:", bptMintAmt);
@@ -178,17 +185,13 @@ contract FuzzHarness is Test {
         bptMintAmt = boundBptMint(useStablePool, bptMintAmt);
 
         // mint exactly bptMintAmt to deposit tokenAmts
-        uint256[] memory tokenAmts = computeProportionalAmountsIn(
-            bptMintAmt, useStablePool
-        );
+        uint256[] memory tokenAmts = computeProportionalAmountsIn(bptMintAmt, useStablePool);
 
         // withdraw exactly tokenAmts to burn bptBurnAmt
         // No computeRemoveLiquidityUnbalanced fn available, need to go one at a time to accomplish this
         uint256 bptBurnAmt = 0;
         for (uint256 i = 0; i < tokenAmts.length; i++) {
-            bptBurnAmt += computeRemoveLiquiditySingleTokenExactOut(
-                i, tokenAmts[i], swapFeePercentage, useStablePool
-            );
+            bptBurnAmt += computeRemoveLiquiditySingleTokenExactOut(i, tokenAmts[i], swapFeePercentage, useStablePool);
         }
 
         emit Debug("BPT minted while adding liquidity:", bptMintAmt);
@@ -226,7 +229,7 @@ contract FuzzHarness is Test {
     function computeProportionalAmountsIn(
         uint256 bptAmountOut,
         bool useStablePool
-    ) public returns(uint256[] memory amountsIn) {
+    ) public returns (uint256[] memory amountsIn) {
         assumeValidTradeAmount(bptAmountOut);
         bptAmountOut = boundBptMint(useStablePool, bptAmountOut);
         (uint256[] memory balances, uint256 bptTotalSupply) = loadState(useStablePool);
@@ -235,11 +238,7 @@ contract FuzzHarness is Test {
         amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
 
         uint256[] memory balancesAfter = sumBalances(balances, amountsIn);
-        uint256 rateAfter = getBptRate(
-            getPool(useStablePool),
-            balancesAfter,
-            bptTotalSupply + bptAmountOut
-        );
+        uint256 rateAfter = getBptRate(getPool(useStablePool), balancesAfter, bptTotalSupply + bptAmountOut);
         updateState(useStablePool, balancesAfter, 0, bptAmountOut);
         rateDecrease = rateBefore - rateAfter;
         if (ASSERT_MODE) {
@@ -250,7 +249,7 @@ contract FuzzHarness is Test {
     function computeProportionalAmountsOut(
         uint256 bptAmountIn,
         bool useStablePool
-    ) public returns(uint256[] memory amountsOut) {
+    ) public returns (uint256[] memory amountsOut) {
         assumeValidTradeAmount(bptAmountIn);
         bptAmountIn = boundBptBurn(useStablePool, bptAmountIn);
         (uint256[] memory balances, uint256 bptTotalSupply) = loadState(useStablePool);
@@ -259,11 +258,7 @@ contract FuzzHarness is Test {
         amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptTotalSupply, bptAmountIn);
 
         uint256[] memory balancesAfter = subBalances(balances, amountsOut);
-        uint256 rateAfter = getBptRate(
-            getPool(useStablePool),
-            balancesAfter,
-            bptTotalSupply - bptAmountIn
-        );
+        uint256 rateAfter = getBptRate(getPool(useStablePool), balancesAfter, bptTotalSupply - bptAmountIn);
         updateState(useStablePool, balancesAfter, bptAmountIn, 0);
         rateDecrease = rateBefore - rateAfter;
         if (ASSERT_MODE) {
@@ -275,7 +270,7 @@ contract FuzzHarness is Test {
         uint256[] memory exactAmounts,
         uint256 swapFeePercentage,
         bool useStablePool
-    ) public returns(uint256 bptAmountOut) {
+    ) public returns (uint256 bptAmountOut) {
         exactAmounts = boundBalanceLength(exactAmounts, useStablePool);
         (uint256[] memory balances, uint256 bptTotalSupply) = loadState(useStablePool);
         for (uint256 i = 0; i < exactAmounts.length; i++) {
@@ -284,7 +279,7 @@ contract FuzzHarness is Test {
         IBasePool pool = getPool(useStablePool);
         uint256 rateBefore = getBptRate(pool, balances, bptTotalSupply);
 
-        (uint256 amountOut,) = BasePoolMath.computeAddLiquidityUnbalanced(
+        (uint256 amountOut, ) = BasePoolMath.computeAddLiquidityUnbalanced(
             balances,
             exactAmounts,
             bptTotalSupply,
@@ -377,7 +372,7 @@ contract FuzzHarness is Test {
         (uint256[] memory balances, uint256 bptTotalSupply) = loadState(useStablePool);
         uint256 rateBefore = getBptRate(getPool(useStablePool), balances, bptTotalSupply);
 
-        (uint256 amountOutMinusFee,) = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
+        (uint256 amountOutMinusFee, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
             balances,
             tokenOutIndex,
             exactBptAmountIn,
@@ -429,11 +424,7 @@ contract FuzzHarness is Test {
         }
     }
 
-    function getBptRate(
-        IBasePool pool,
-        uint256[] memory balances,
-        uint256 bptTotalSupply
-    ) private returns (uint256) {
+    function getBptRate(IBasePool pool, uint256[] memory balances, uint256 bptTotalSupply) private returns (uint256) {
         uint256 invariant = pool.computeInvariant(balances, Rounding.ROUND_DOWN);
         return invariant.divDown(bptTotalSupply);
     }
@@ -442,31 +433,39 @@ contract FuzzHarness is Test {
         return useStablePool ? stablePool : weightedPool;
     }
 
-    function getBalancesLength(bool useStablePool) private view returns(uint256 length) {
+    function getBalancesLength(bool useStablePool) private view returns (uint256 length) {
         length = useStablePool ? stableBalanceLive.length : weightedBalanceLive.length;
     }
 
-    function boundTokenIndex(bool useStablePool, uint256 tokenIndex) private view returns(uint256 boundedIndex) {
+    function boundTokenIndex(bool useStablePool, uint256 tokenIndex) private view returns (uint256 boundedIndex) {
         uint256 len = getBalancesLength(useStablePool);
         boundedIndex = bound(tokenIndex, 0, len - 1);
     }
 
-    function boundTokenDeposit(bool useStablePool, uint256 tokenAmt, uint256 tokenIndex) private view returns(uint256 boundedAmt) {
+    function boundTokenDeposit(
+        bool useStablePool,
+        uint256 tokenAmt,
+        uint256 tokenIndex
+    ) private view returns (uint256 boundedAmt) {
         uint256[] memory balances = useStablePool ? stableBalanceLive : weightedBalanceLive;
         boundedAmt = bound(tokenAmt, 0, _MAX_BALANCE - balances[tokenIndex]);
     }
 
-    function boundTokenWithdraw(bool useStablePool, uint256 tokenAmt, uint256 tokenIndex) private view returns(uint256 boundedAmt) {
+    function boundTokenWithdraw(
+        bool useStablePool,
+        uint256 tokenAmt,
+        uint256 tokenIndex
+    ) private view returns (uint256 boundedAmt) {
         uint256[] memory balances = useStablePool ? stableBalanceLive : weightedBalanceLive;
         boundedAmt = bound(tokenAmt, 0, balances[tokenIndex]);
     }
 
-    function boundBptMint(bool useStablePool, uint256 bptAmt) private view returns(uint256 boundedAmt) {
+    function boundBptMint(bool useStablePool, uint256 bptAmt) private view returns (uint256 boundedAmt) {
         uint256 totalSupply = useStablePool ? stableBPTSupply : weightedBPTSupply;
         boundedAmt = bound(bptAmt, 0, _MAX_BALANCE - totalSupply);
     }
 
-    function boundBptBurn(bool useStablePool, uint256 bptAmt) private view returns(uint256 boundedAmt) {
+    function boundBptBurn(bool useStablePool, uint256 bptAmt) private view returns (uint256 boundedAmt) {
         uint256 totalSupply = useStablePool ? stableBPTSupply : weightedBPTSupply;
         boundedAmt = bound(bptAmt, 0, totalSupply);
     }
