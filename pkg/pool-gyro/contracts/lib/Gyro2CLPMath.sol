@@ -60,11 +60,6 @@ library Gyro2CLPMath {
         uint256 sqrtBeta,
         Rounding rounding
     ) internal pure returns (uint256 a, uint256 mb, uint256 bSquare, uint256 mc) {
-        uint256[] memory newBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            newBalances[i] = balances[i] + (rounding == Rounding.ROUND_UP ? 1 : 0);
-        }
-
         function(uint256, uint256) pure returns (uint256) _divUpOrDown = rounding == Rounding.ROUND_DOWN
             ? FixedPoint.divDown
             : FixedPoint.divUp;
@@ -74,19 +69,16 @@ library Gyro2CLPMath {
 
         {
             a = FixedPoint.ONE - _divUpOrDown(sqrtAlpha, sqrtBeta);
-            uint256 bterm0 = _divUpOrDown(newBalances[1], sqrtBeta);
-            uint256 bterm1 = _mulUpOrDown(newBalances[0], sqrtAlpha);
+            uint256 bterm0 = _divUpOrDown(balances[1], sqrtBeta);
+            uint256 bterm1 = _mulUpOrDown(balances[0], sqrtAlpha);
             mb = bterm0 + bterm1;
-            mc = _mulUpOrDown(newBalances[0], newBalances[1]);
+            mc = _mulUpOrDown(balances[0], balances[1]);
         }
         // For better fixed point precision, calculate in expanded form w/ re-ordering of multiplications
         // b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta
-        bSquare = _mulUpOrDown(_mulUpOrDown(newBalances[0], newBalances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
-        uint256 bSq2 = _divUpOrDown(
-            2 * _mulUpOrDown(_mulUpOrDown(newBalances[0], newBalances[1]), sqrtAlpha),
-            sqrtBeta
-        );
-        uint256 bSq3 = _divUpOrDown(_mulUpOrDown(newBalances[1], newBalances[1]), sqrtBeta.mulUp(sqrtBeta));
+        bSquare = _mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
+        uint256 bSq2 = _divUpOrDown(2 * _mulUpOrDown(_mulUpOrDown(balances[0], balances[1]), sqrtAlpha), sqrtBeta);
+        uint256 bSq3 = _divUpOrDown(_mulUpOrDown(balances[1], balances[1]), sqrtBeta.mulUp(sqrtBeta));
         bSquare = bSquare + bSq2 + bSq3;
     }
 
