@@ -70,11 +70,6 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
-    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
-    uint256 private constant _MIN_INVARIANT_RATIO = 60e16; // 60%
-    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
-    uint256 private constant _MAX_INVARIANT_RATIO = 500e16; // 500%
-
     /// @notice Store amplification state.
     AmplificationState private _amplificationState;
 
@@ -147,10 +142,15 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding) public view returns (uint256) {
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+        uint256 invariant = StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+        if (invariant > 0) {
+            invariant = rounding == Rounding.ROUND_DOWN ? invariant : invariant + 1;
+        }
+
+        return invariant;
     }
 
     /// @inheritdoc IBasePool
@@ -165,7 +165,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
                 tokenInIndex
             );
     }
@@ -326,12 +326,12 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMinimumInvariantRatio() external pure returns (uint256) {
-        return _MIN_INVARIANT_RATIO;
+        return StableMath.MIN_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
-        return _MAX_INVARIANT_RATIO;
+        return StableMath.MAX_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IStablePool
