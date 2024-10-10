@@ -76,7 +76,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bytes(""));
+        uint256 queryAmountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, address(this),bytes(""));
 
         vm.revertTo(snapshotId);
 
@@ -111,7 +111,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountIn = router.querySwapSingleTokenExactOut(pool, dai, usdc, exactAmountOut, bytes(""));
+        uint256 queryAmountIn = router.querySwapSingleTokenExactOut(pool, dai, usdc, exactAmountOut,address(this), bytes(""));
 
         vm.revertTo(snapshotId);
 
@@ -148,7 +148,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(pool, exactBptAmountOut, bytes(""));
+        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(pool, exactBptAmountOut,address(this), bytes(""));
 
         vm.revertTo(snapshotId);
 
@@ -191,7 +191,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryBptAmountOut = router.queryAddLiquidityUnbalanced(pool, exactAmountsInRaw, bytes(""));
+        uint256 queryBptAmountOut = router.queryAddLiquidityUnbalanced(pool, exactAmountsInRaw,address(this), bytes(""));
 
         vm.revertTo(snapshotId);
 
@@ -229,7 +229,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountIn = router.queryAddLiquiditySingleTokenExactOut(pool, dai, exactBptAmountOut, bytes(""));
+        uint256 queryAmountIn = router.queryAddLiquiditySingleTokenExactOut(pool, dai, exactBptAmountOut,address(this), bytes(""));
 
         vm.revertTo(snapshotId);
 
@@ -271,6 +271,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             pool,
             maxAmountsIn,
             expectedBptAmountOut,
+            address(this),
             bytes("")
         );
 
@@ -312,7 +313,12 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityProportional(pool, exactBptAmountIn, bytes(""));
+        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityProportional(
+            pool,
+            exactBptAmountIn,
+            address(this),
+            bytes("")
+        );
 
         vm.revertTo(snapshotId);
 
@@ -356,7 +362,13 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountOut = router.queryRemoveLiquiditySingleTokenExactIn(pool, exactBptAmountIn, dai, bytes(""));
+        uint256 queryAmountOut = router.queryRemoveLiquiditySingleTokenExactIn(
+            pool,
+            exactBptAmountIn,
+            dai,
+            address(this),
+            bytes("")
+        );
 
         vm.revertTo(snapshotId);
 
@@ -398,7 +410,13 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryBptAmountIn = router.queryRemoveLiquiditySingleTokenExactOut(pool, dai, exactAmountOut, bytes(""));
+        uint256 queryBptAmountIn = router.queryRemoveLiquiditySingleTokenExactOut(
+            pool,
+            dai,
+            exactAmountOut,
+            address(this),
+            bytes("")
+        );
 
         vm.revertTo(snapshotId);
 
@@ -440,6 +458,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             pool,
             expectedBptAmountIn,
             minAmountsOut,
+            address(this),
             bytes("")
         );
 

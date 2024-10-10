@@ -83,7 +83,7 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) internal saveSender returns (uint256[] memory amountsIn) {
+    ) internal returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
@@ -175,7 +175,7 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) internal saveSender returns (uint256[] memory amountsOut) {
+    ) internal returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(

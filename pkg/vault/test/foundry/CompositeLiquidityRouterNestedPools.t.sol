@@ -708,7 +708,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 queryBptOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedNestedPool(
             parentPoolWithWrapper,
             tokensIn,
-            amountsIn,
+            amountsIn,address(this),
             bytes("")
         );
 
@@ -1307,7 +1307,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256[] memory queryAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityProportionalNestedPool(
             parentPoolWithWrapper,
             exactBptIn,
-            tokensOut,
+            tokensOut,address(this),
             bytes("")
         );
         vm.revertTo(snapshotId);

@@ -315,7 +315,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256[] memory queryPathAmountsOut,
             address[] memory queryTokensOut,
             uint256[] memory queryAmountsOut
-        ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        ) = batchRouter.querySwapExactIn(paths, address(this),bytes(""));
         vm.revertTo(snapshotId);
 
         // Measure tokens before actual swap
@@ -436,7 +436,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256[] memory queryPathAmountsIn,
             address[] memory queryTokensIn,
             uint256[] memory queryAmountsIn
-        ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        ) = batchRouter.querySwapExactOut(paths, address(this),bytes(""));
         vm.revertTo(snapshotId);
 
         // Measure tokens before actual swap

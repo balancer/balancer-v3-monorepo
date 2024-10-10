@@ -17,7 +17,7 @@ contract RouterCommonMock is RouterCommon {
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {}
 
-    function call(address to, bytes calldata data) external saveSender returns (bytes memory) {
+    function call(address to, bytes calldata data) external saveSender(msg.sender) returns (bytes memory) {
         (bool success, bytes memory result) = to.call(data);
         require(success, "PoolCommonMock: call failed");
         return result;

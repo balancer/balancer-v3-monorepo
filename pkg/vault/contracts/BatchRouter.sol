@@ -62,7 +62,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     )
         external
         payable
-        saveSender
+        saveSender(msg.sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         return
@@ -92,7 +92,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     )
         external
         payable
-        saveSender
+        saveSender(msg.sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         return
@@ -601,10 +601,11 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     /// @inheritdoc IBatchRouter
     function querySwapExactIn(
         SwapPathExactAmountIn[] memory paths,
+        address sender,
         bytes calldata userData
     )
         external
-        saveSender
+        saveSender(sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         for (uint256 i = 0; i < paths.length; ++i) {
@@ -632,10 +633,11 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     /// @inheritdoc IBatchRouter
     function querySwapExactOut(
         SwapPathExactAmountOut[] memory paths,
+        address sender,
         bytes calldata userData
     )
         external
-        saveSender
+        saveSender(sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         for (uint256 i = 0; i < paths.length; ++i) {
