@@ -282,7 +282,7 @@ describe('ERC4626VaultPrimitive', function () {
         },
       ];
 
-      const queryOutput = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
       expect(queryOutput.pathAmountsOut).to.have.length(1, 'Wrong query pathAmountsOut length');
       expect(queryOutput.amountsOut).to.have.length(1, 'Wrong query amountsOut length');
       expect(queryOutput.tokensOut).to.have.length(1, 'Wrong query tokensOut length');
@@ -339,7 +339,7 @@ describe('ERC4626VaultPrimitive', function () {
         },
       ];
 
-      const queryOutput = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
       expect(queryOutput.pathAmountsIn).to.have.length(1, 'Wrong query pathAmountsIn length');
       expect(queryOutput.amountsIn).to.have.length(1, 'Wrong query amountsIn length');
       expect(queryOutput.tokensIn).to.have.length(1, 'Wrong query tokensIn length');

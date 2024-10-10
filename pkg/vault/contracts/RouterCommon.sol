@@ -82,8 +82,8 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the Router.
      *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
-    modifier saveSender() {
-        bool isExternalSender = _saveSender();
+    modifier saveSender(address sender) {
+        bool isExternalSender = _saveSender(sender);
         _;
         _discardSenderIfRequired(isExternalSender);
     }
@@ -93,7 +93,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * @dev This also encompasses the `saveSender` functionality.
      */
     modifier saveSenderAndManageEth() {
-        bool isExternalSender = _saveSender();
+        bool isExternalSender = _saveSender(msg.sender);
 
         // Lock the return of ETH during execution
         _isReturnEthLockedSlot().tstore(true);
@@ -104,12 +104,12 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         _discardSenderIfRequired(isExternalSender);
     }
 
-    function _saveSender() internal returns (bool isExternalSender) {
-        address sender = _getSenderSlot().tload();
+    function _saveSender(address sender) internal returns (bool isExternalSender) {
+        address savedSender = _getSenderSlot().tload();
 
         // NOTE: Only the most external sender will be saved by the Router.
-        if (sender == address(0)) {
-            _getSenderSlot().tstore(msg.sender);
+        if (savedSender == address(0)) {
+            _getSenderSlot().tstore(sender);
             isExternalSender = true;
         }
     }
@@ -144,7 +144,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external payable virtual saveSender returns (bytes[] memory results) {
+    ) external payable virtual saveSender(msg.sender) returns (bytes[] memory results) {
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
         // and grant allowances to Vault for BPT tokens.
         for (uint256 i = 0; i < permitBatch.length; ++i) {

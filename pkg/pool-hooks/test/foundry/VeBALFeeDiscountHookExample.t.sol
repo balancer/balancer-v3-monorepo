@@ -152,7 +152,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         expectedAmountOut -= expectedHookFee;
 
         vm.prank(bob, address(0));
-        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bytes(""));
+        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bob, bytes(""));
 
         assertEq(amountOut, expectedAmountOut, "Wrong veBal hook fee");
     }
@@ -177,7 +177,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         expectedAmountOut -= expectedHookFee;
 
         vm.prank(bob, address(0));
-        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bytes(""));
+        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bob, bytes(""));
 
         assertEq(amountOut, expectedAmountOut, "Wrong veBal hook fee");
     }

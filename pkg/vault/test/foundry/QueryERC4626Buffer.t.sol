@@ -63,7 +63,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
             uint256[] memory queryPathAmountsOut,
             address[] memory queryTokensOut,
             uint256[] memory queryAmountsOut
-        ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        ) = batchRouter.querySwapExactIn(paths, address(this), bytes(""));
 
         // Restores the network state to snapshot.
         vm.revertTo(snapshotId);
@@ -92,7 +92,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
             uint256[] memory queryPathAmountsIn,
             address[] memory queryTokensIn,
             uint256[] memory queryAmountsIn
-        ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        ) = batchRouter.querySwapExactOut(paths, address(this), bytes(""));
 
         // Restores the network state to snapshot.
         vm.revertTo(snapshotId);

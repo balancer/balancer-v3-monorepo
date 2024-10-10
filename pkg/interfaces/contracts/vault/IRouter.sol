@@ -354,12 +354,14 @@ interface IRouter {
      * @notice Queries an `addLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
     function queryAddLiquidityProportional(
         address pool,
         uint256 exactBptAmountOut,
+        address sender,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn);
 
@@ -367,12 +369,14 @@ interface IRouter {
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
+        address sender,
         bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
@@ -381,6 +385,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return amountIn Expected amount of tokens to add
      */
@@ -388,6 +393,7 @@ interface IRouter {
         address pool,
         IERC20 tokenIn,
         uint256 exactBptAmountOut,
+        address sender,
         bytes memory userData
     ) external returns (uint256 amountIn);
 
@@ -396,6 +402,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum amount of pool tokens to receive
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      * @return bptAmountOut Expected amount of pool tokens to receive
@@ -405,6 +412,7 @@ interface IRouter {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        address sender,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
@@ -412,12 +420,14 @@ interface IRouter {
      * @notice Queries a `removeLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
     function queryRemoveLiquidityProportional(
         address pool,
         uint256 exactBptAmountIn,
+        address sender,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
 
@@ -426,6 +436,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param tokenOut Token used to remove liquidity
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return amountOut Expected amount of tokens to receive
      */
@@ -433,6 +444,7 @@ interface IRouter {
         address pool,
         uint256 exactBptAmountIn,
         IERC20 tokenOut,
+        address sender,
         bytes memory userData
     ) external returns (uint256 amountOut);
 
@@ -441,6 +453,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Expected exact amount of tokens to receive
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      */
@@ -448,6 +461,7 @@ interface IRouter {
         address pool,
         IERC20 tokenOut,
         uint256 exactAmountOut,
+        address sender,
         bytes memory userData
     ) external returns (uint256 bptAmountIn);
 
@@ -456,6 +470,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Expected minimum amounts of tokens to receive, sorted in token registration order
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
@@ -465,6 +480,7 @@ interface IRouter {
         address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
+        address sender,
         bytes memory userData
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
@@ -485,6 +501,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountIn Exact amounts of input tokens to send
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
@@ -493,6 +510,7 @@ interface IRouter {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountIn,
+        address sender,
         bytes calldata userData
     ) external returns (uint256 amountOut);
 
@@ -502,6 +520,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountOut Exact amounts of input tokens to receive
+     * @param sender Address of the real account that called the swap function
      * @param userData Additional (optional) data sent with the query request
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
@@ -510,6 +529,7 @@ interface IRouter {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
+        address sender,
         bytes calldata userData
     ) external returns (uint256 amountIn);
 }

@@ -189,7 +189,7 @@ describe('BatchSwap', function () {
           tokensOut: string[];
           amountsOut: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
@@ -996,7 +996,7 @@ describe('BatchSwap', function () {
           tokensIn: string[];
           amountsIn: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
