@@ -214,7 +214,7 @@ contract Permit2Test is BaseVaultTest {
         bytes[] memory multicallData = new bytes[](2);
 
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
-        bptAmountOut = defaultAmount * 2;
+        bptAmountOut = bptAmountRoundDown;
 
         multicallData[0] = abi.encodeCall(
             IRouter.addLiquidityUnbalanced,
@@ -247,7 +247,7 @@ contract Permit2Test is BaseVaultTest {
         bytes[] memory multicallData = new bytes[](2);
 
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
-        bptAmountOut = defaultAmount * 2;
+        bptAmountOut = bptAmountRoundDown;
 
         multicallData[0] = abi.encodeCall(
             IRouter.addLiquidityUnbalanced,
