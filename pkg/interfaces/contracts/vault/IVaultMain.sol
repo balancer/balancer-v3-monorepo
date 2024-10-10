@@ -29,7 +29,7 @@ interface IVaultMain {
 
     /**
      * @notice Settles deltas for a token; must be successful for the current lock to be released.
-     * @dev Protects the caller against leftover dust in the vault for the token being settled. The caller
+     * @dev Protects the caller against leftover dust in the Vault for the token being settled. The caller
      * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
      * excess in the Vault balance.
      *

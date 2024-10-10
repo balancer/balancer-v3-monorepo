@@ -70,21 +70,21 @@ abstract contract BasePoolTest is BaseVaultTest {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            // Tokens are transferred from lp
+            // Tokens are transferred from lp.
             assertEq(
                 defaultBalance - poolTokens[i].balanceOf(lp),
                 tokenAmounts[i],
                 string.concat("LP: Wrong balance for ", Strings.toString(i))
             );
 
-            // Tokens are stored in the Vault
+            // Tokens are stored in the Vault.
             assertEq(
                 poolTokens[i].balanceOf(address(vault)),
                 tokenAmounts[i],
                 string.concat("LP: Vault balance for ", Strings.toString(i))
             );
 
-            // Tokens are deposited to the pool
+            // Tokens are deposited to the pool.
             assertEq(
                 balances[i],
                 tokenAmounts[i],
@@ -92,8 +92,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             );
         }
 
-        // should mint correct amount of BPT poolTokens
-        // Account for the precision loss
+        // Should mint the correct amount of BPT poolTokens, within a maximum error of DELTA due to precision loss.
         assertApproxEqAbs(IERC20(pool).balanceOf(lp), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
@@ -105,14 +104,14 @@ abstract contract BasePoolTest is BaseVaultTest {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            // Tokens are transferred from Bob
+            // Tokens are transferred from Bob.
             assertEq(
                 defaultBalance - poolTokens[i].balanceOf(bob),
                 tokenAmounts[i],
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
             );
 
-            // Tokens are stored in the Vault
+            // Tokens are stored in the Vault.
             assertEq(
                 poolTokens[i].balanceOf(address(vault)),
                 tokenAmounts[i] * 2,
@@ -126,7 +125,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             );
         }
 
-        // should mint correct amount of BPT poolTokens
+        // Should mint the correct amount of BPT poolTokens, within a maximum error of DELTA due to precision loss.
         assertApproxEqAbs(IERC20(pool).balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
@@ -145,6 +144,9 @@ abstract contract BasePoolTest is BaseVaultTest {
             minAmountsOut[i] = _less(tokenAmounts[i], 1e4);
         }
 
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(pool, false);
+
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             pool,
             bptAmountIn,
@@ -158,7 +160,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            // Tokens are transferred to Bob
+            // Tokens are transferred to Bob.
             assertApproxEqAbs(
                 poolTokens[i].balanceOf(bob),
                 defaultBalance,
@@ -166,7 +168,7 @@ abstract contract BasePoolTest is BaseVaultTest {
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
             );
 
-            // Tokens are stored in the Vault
+            // Tokens are stored in the Vault.
             assertApproxEqAbs(
                 poolTokens[i].balanceOf(address(vault)),
                 tokenAmounts[i],
@@ -174,7 +176,7 @@ abstract contract BasePoolTest is BaseVaultTest {
                 string.concat("Vault: Wrong token balance for ", Strings.toString(i))
             );
 
-            // Tokens are deposited to the pool
+            // Tokens are deposited to the pool.
             assertApproxEqAbs(
                 balances[i],
                 tokenAmounts[i],
@@ -182,7 +184,7 @@ abstract contract BasePoolTest is BaseVaultTest {
                 string.concat("Pool: Wrong token balance for ", Strings.toString(i))
             );
 
-            // amountsOut are correct
+            // `amountsOut` are correct.
             assertApproxEqAbs(
                 amountsOut[i],
                 tokenAmounts[i],
@@ -191,7 +193,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             );
         }
 
-        // should mint correct amount of BPT poolTokens
+        // Should burn the correct amount of BPT poolTokens.
         assertEq(IERC20(pool).balanceOf(bob), 0, "LP: Wrong BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
@@ -216,11 +218,11 @@ abstract contract BasePoolTest is BaseVaultTest {
             bytes("")
         );
 
-        // Tokens are transferred from Bob
+        // Tokens are transferred from Bob.
         assertEq(tokenOut.balanceOf(bob), defaultBalance + amountCalculated, "LP: Wrong tokenOut balance");
         assertEq(tokenIn.balanceOf(bob), defaultBalance - tokenAmountIn, "LP: Wrong tokenIn balance");
 
-        // Tokens are stored in the Vault
+        // Tokens are stored in the Vault.
         assertEq(
             tokenOut.balanceOf(address(vault)),
             tokenAmounts[tokenIndexOut] - amountCalculated,

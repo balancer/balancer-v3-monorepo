@@ -68,8 +68,8 @@ describe('Queries', function () {
     }
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
-    // to comply with the vault's required minimum.
-    // Also need to sort the amounts, or initialization would break if we made DAI_AMOUNT_IN != USDC_AMOUNT_IN
+    // to comply with the Vault's required minimum.
+    // Also need to sort the amounts, or initialization would break if we made DAI_AMOUNT_IN != USDC_AMOUNT_IN.
 
     const tokenAmounts =
       tokenAddresses[0] == (await DAI.getAddress())
@@ -79,7 +79,7 @@ describe('Queries', function () {
     await router.connect(alice).initialize(pool, tokenAddresses, tokenAmounts, 0, false, '0x');
   });
 
-  // TODO: query a pool that has an actual invariant (introduced in #145)
+  // TODO: query a pool that has an actual invariant (introduced in #145).
   describe('swap', () => {
     const DAI_AMOUNT_OUT = fp(250);
 
@@ -128,7 +128,7 @@ describe('Queries', function () {
       const bptAmountOut = await router
         .connect(zero)
         .queryAddLiquidityUnbalanced.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], '0x');
-      expect(bptAmountOut).to.be.eq(BPT_AMOUNT);
+      expect(bptAmountOut).to.be.eq(BPT_AMOUNT - 2n); // addLiquidity unbalanced has rounding error favoring the Vault.
     });
 
     it('reverts if not a static call', async () => {
@@ -207,7 +207,7 @@ describe('Queries', function () {
         .connect(zero)
         .queryRemoveLiquiditySingleTokenExactOut.staticCall(pool, DAI, DAI_AMOUNT_IN, '0x');
 
-      expect(amountIn).to.be.eq(BPT_AMOUNT / 2n);
+      expect(amountIn).to.be.eq(BPT_AMOUNT / 2n + 2n); // Has rounding error favoring the Vault.
     });
 
     it('reverts if not a static call', async () => {

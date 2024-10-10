@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -87,6 +88,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
+        poolInitAmount = 1e9 * 1e18;
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
 
@@ -109,48 +111,53 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        poolInitAmount = 1e9 * 1e18;
-
         vm.startPrank(lp);
         _initPool(swapPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         _initPool(liquidityPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
     }
 
-    /// Add
+    // Add
+
     function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
+        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
+        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
         addUnbalancedOnlyDai(daiAmountIn, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
     function testAddLiquiditySingleTokenExactOut__Fuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         addExactOutArbitraryBptOut(exactBptAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
     function testAddLiquidityProportionalAndRemoveExactIn__Fuzz(
-        uint256 exactBptAmountOut,
+        uint256 exactBptAmount,
         uint256 swapFeePercentage
     ) public {
+        exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-        uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactInAllBptIn(exactBptAmount, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
-    function testAddLiquidityProportionalAndRemoveExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
-        removeExactInAllBptIn(exactBptAmountIn, 0);
+    function testAddLiquidityProportionalAndRemoveExactInNoSwapFee__Fuzz(uint256 exactBptAmount) public {
+        exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
+        removeExactInAllBptIn(exactBptAmount, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -158,45 +165,64 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+
         uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testAddLiquidityProportionalAndRemoveExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
+
         removeExactOutAllUsdcAmountOut(exactBptAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
-    /// Remove
+    // Remove
 
-    function testRemoveLiquiditySingleTokenExactOut__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
+    function testRemoveLiquiditySingleTokenExactOut__Fuzz(
+        uint256 exactAmountOut,
+        uint256 swapFeePercentage
+    ) public virtual {
+        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+
         uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
-    function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactAmountOut) public {
+    function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactAmountOut) public virtual {
+        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
+
         removeExactOutArbitraryAmountOut(exactAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
     function testRemoveLiquiditySingleTokenExactIn__Fuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testRemoveLiquiditySingleTokenExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
         removeExactInArbitraryBptIn(exactBptAmountIn, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
-    /// Utils
+    // Utils
 
     function assertLiquidityOperationNoSwapFee() internal {
         vault.manuallySetSwapFee(liquidityPool, 0);
         vault.manuallySetSwapFee(swapPool, 0);
+
+        // Alice and Bob have no BPT tokens.
+        assertEq(IERC20(swapPool).balanceOf(alice), 0, "Alice should have 0 BPT");
+        assertEq(IERC20(liquidityPool).balanceOf(alice), 0, "Alice should have 0 BPT");
+        assertEq(IERC20(swapPool).balanceOf(bob), 0, "Bob should have 0 BPT");
+        assertEq(IERC20(liquidityPool).balanceOf(bob), 0, "Bob should have 0 BPT");
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
@@ -212,23 +238,33 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
         uint256 bobToAliceRatio = bobAmountOut.divDown(aliceAmountOut);
 
+        // Early returns:
+        // - 0 output for direct swaps: check that the indirect swap output is very low.
+        // - Very small indirect output: it's not worth checking relative error.
+        if (bobAmountOut == 0) {
+            assertLe(aliceAmountOut, PRODUCTION_MIN_TRADE_AMOUNT, "Bob got 0 and Alice got something");
+            return;
+        } else if (aliceAmountOut < absoluteRoundingDelta) {
+            assertGe(bobToAliceRatio, 1e18, "Bob got less USDC than Alice");
+            return;
+        }
+
         // `bobAmountOut >= aliceAmountOut - absoluteRoundingDelta`
-        // solve for `aliceAmountOut` to prevent underflows when `aliceAmountOut` is too small.
-        assertGe(bobAmountOut + absoluteRoundingDelta, aliceAmountOut, "Swap fee delta is too big");
+        assertGe(bobAmountOut, aliceAmountOut - absoluteRoundingDelta, "Swap fee delta is too big");
 
         // It's ok if a direct swap is more convenient than an indirect swap, up to `excessRoundingDelta`.
         // In the other direction, the margin is tighter.
         assertGe(bobToAliceRatio, 1e18 - defectRoundingDelta, "Bob has less USDC compared to Alice");
         assertLe(bobToAliceRatio, 1e18 + excessRoundingDelta, "Bob has too much USDC compared to Alice");
-
-        // Alice and Bob have no BPT tokens.
-        assertEq(PoolMock(swapPool).balanceOf(alice), 0, "Alice should have 0 BPT");
-        assertEq(PoolMock(liquidityPool).balanceOf(alice), 0, "Alice should have 0 BPT");
-        assertEq(PoolMock(swapPool).balanceOf(bob), 0, "Bob should have 0 BPT");
-        assertEq(PoolMock(liquidityPool).balanceOf(bob), 0, "Bob should have 0 BPT");
     }
 
     function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal view {
+        // Alice and Bob have no BPT tokens.
+        assertEq(IERC20(swapPool).balanceOf(alice), 0, "Alice should have 0 BPT");
+        assertEq(IERC20(liquidityPool).balanceOf(alice), 0, "Alice should have 0 BPT");
+        assertEq(IERC20(swapPool).balanceOf(bob), 0, "Bob should have 0 BPT");
+        assertEq(IERC20(liquidityPool).balanceOf(bob), 0, "Bob should have 0 BPT");
+
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
         if (usdc.balanceOf(alice) <= defaultBalance) {
@@ -267,17 +303,12 @@ contract LiquidityApproximationTest is BaseVaultTest {
             uint256 discountPercentage = 1e18 - bobToAliceRatio;
             assertLt(discountPercentage, swapFeePercentage, "Discount percentage is larger than swap fee percentage");
         } else {
-            // OK case: Bob got more than Alice
-            if (bobAmountOut - aliceAmountOut > 1e16) {
-                // Check relative excess only if the absolute difference is somewhat meaningful.
-                // Bob might get much more in relative terms, but it does not matter for the purposes of this test
-                // if the actual absolute difference is small.
-                assertLe(
-                    bobToAliceRatio,
-                    1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + excessRoundingDelta,
-                    "Bob has too much USDC compared to Alice"
-                );
-            }
+            // OK case: Bob got more than Alice.
+            assertLe(
+                bobToAliceRatio,
+                1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + excessRoundingDelta,
+                "Bob has too much USDC compared to Alice"
+            );
         }
     }
 
@@ -285,13 +316,14 @@ contract LiquidityApproximationTest is BaseVaultTest {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
-
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
         router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
@@ -322,8 +354,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
-
         vm.startPrank(alice);
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
@@ -333,6 +363,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
@@ -357,19 +390,17 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function removeExactInAllBptIn(
-        uint256 exactBptAmountOut,
+        uint256 exactBptAmount,
         uint256 swapFeePercentage
     ) internal returns (uint256 amountOut) {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
-
         vm.startPrank(alice);
         router.addLiquidityProportional(
             address(liquidityPool),
             [MAX_UINT128, MAX_UINT128].toMemoryArray(),
-            exactBptAmountOut,
+            exactBptAmount,
             false,
             bytes("")
         );
@@ -407,8 +438,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
-
         // Add liquidity so we have something to remove.
         vm.prank(alice);
         router.addLiquidityProportional(
@@ -419,8 +448,14 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
 
+        // Cap exact amount in to the total BPT balance for Alice (can't exit without enough BPT).
+        exactBptAmountIn = Math.min(IERC20(liquidityPool).balanceOf(alice), exactBptAmountIn);
+
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactIn(address(liquidityPool), exactBptAmountIn, usdc, 1, false, bytes(""));
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         // Remove remaining liquidity.
         router.removeLiquidityProportional(
@@ -455,8 +490,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
-
         vm.startPrank(alice);
         uint256[] memory amountsIn = router.addLiquidityProportional(
             address(liquidityPool),
@@ -475,6 +508,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         // Remove remaining liquidity.
         router.removeLiquidityProportional(
@@ -509,14 +545,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
-
         // Add liquidity so we have something to remove.
+        uint256 currentTotalSupply = IERC20(liquidityPool).totalSupply();
         vm.prank(alice);
         router.addLiquidityProportional(
             address(liquidityPool),
             [MAX_UINT128, MAX_UINT128].toMemoryArray(),
-            2 * maxAmount,
+            currentTotalSupply * 10,
             false,
             bytes("")
         );
@@ -524,12 +559,15 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactOut(
             address(liquidityPool),
-            2 * maxAmount,
+            IERC20(liquidityPool).balanceOf(alice),
             usdc,
             exactAmountOut,
             false,
             bytes("")
         );
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(liquidityPool, false);
 
         // Remove remaining liquidity.
         router.removeLiquidityProportional(

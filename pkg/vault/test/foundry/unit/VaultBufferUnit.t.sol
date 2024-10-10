@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -15,6 +16,8 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultBufferUnitTest is BaseVaultTest {
+    using ScalingHelpers for uint256;
+
     ERC4626TestToken internal wDaiInitialized;
     ERC4626TestToken internal wUSDCNotInitialized;
 
@@ -29,12 +32,12 @@ contract VaultBufferUnitTest is BaseVaultTest {
         _initializeBuffer();
     }
 
-    function testUnderlyingSurplusBalanceZero() public view {
-        uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wUSDCNotInitialized)));
-        assertEq(surplus, 0, "Wrong underlying surplus");
+    function testUnderlyingImbalanceBalanceZero() public view {
+        int256 imbalance = vault.internalGetBufferUnderlyingImbalance(IERC4626(address(wUSDCNotInitialized)));
+        assertEq(imbalance, int256(0), "Wrong underlying imbalance");
     }
 
-    function testUnderlyingSurplusWrongBalance() public {
+    function testUnderlyingImbalanceOfWrappedBalance() public {
         // Unbalances buffer so that buffer has less underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
@@ -47,12 +50,20 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
-        assertEq(surplus, 0, "Wrong underlying surplus");
+        (uint256 underlyingBalance, uint256 wrappedBalance) = vault.getBufferBalance(
+            IERC4626(address(wDaiInitialized))
+        );
+        assertEq(underlyingBalance, _wrapAmount / 2, "Wrong buffer underlying balance");
+        assertEq(wrappedBalance, (3 * _wrapAmount) / 2, "Wrong wrapped underlying balance");
+
+        int256 imbalance = vault.internalGetBufferUnderlyingImbalance(IERC4626(address(wDaiInitialized)));
+        // The wrapped rate is 1. Buffer imbalance = `(underlyingBalance - wrappedBalance) / 2`, and it has more wrapped
+        // than underlying, so the imbalance is negative.
+        assertEq(imbalance, -int256(_wrapAmount / 2), "Wrong underlying imbalance");
     }
 
-    function testUnderlyingSurplusCorrectBalance() public {
-        // Unbalances buffer so that buffer has more underlying than wrapped (so it has a surplus of underlying).
+    function testUnderlyingImbalanceOfUnderlyingBalance() public {
+        // Unbalances buffer so that buffer has more underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -64,27 +75,37 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.startPrank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        // rate = assets / supply. If we double the assets, we double the rate.
-        // Donate to wrapped token to inflate rate to 2
-        dai.transfer(address(wDaiInitialized), wDaiInitialized.totalAssets());
+        // Mock token rate to 2, so we can validate the calculation of imbalance taking the rate into consideration.
+        wDaiInitialized.mockRate(2e18);
         vm.stopPrank();
 
-        assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI rate");
+        // Rounds up to make sure division is done properly.
+        assertEq(wDaiInitialized.getRate().computeRateRoundUp(), 2e18, "Wrong wDAI rate");
 
-        uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
+        int256 imbalance = vault.internalGetBufferUnderlyingImbalance(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
-        // After swap, buffer has 3/2 _wrapAmount of underlying and (1/2 _wrapAmount + vaultConvertFactor) of wrapped.
-        // surplus = (3/2 _wrapAmount - ((1/2 _wrapAmount + vaultConvertFactor)* rate)) / 2 =
-        // `1/4 _wrapAmount - vaultConvertFactor`.
-        assertApproxEqAbs(surplus, _wrapAmount / 4 - vaultConvertFactor, 1, "Wrong underlying surplus");
+        // After swap, buffer has 3/2 _wrapAmount of underlying and 1/2 _wrapAmount of wrapped.
+        // imbalance = (3/2 _wrapAmount - (1/2 _wrapAmount* rate)) / 2 =
+        // `1/4 _wrapAmount`.
+        uint256 bufferUnderlyingBalance = (3 * _wrapAmount) / 2;
+        uint256 bufferWrappedBalance = _wrapAmount / 2;
+        uint256 bufferWrappedBalanceAsUnderlying = wDaiInitialized.previewMint(bufferWrappedBalance);
+        uint256 exactUnderlyingImbalance = (bufferUnderlyingBalance - bufferWrappedBalanceAsUnderlying) / 2;
+        assertEq(imbalance, int256(exactUnderlyingImbalance), "Underlying imbalance different than exact calculation");
+        assertApproxEqAbs(
+            imbalance,
+            int256(_wrapAmount / 4),
+            1,
+            "Underlying imbalance different than theoretical value"
+        );
     }
 
-    function testWrappedSurplusBalanceZero() public view {
-        uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wUSDCNotInitialized)));
-        assertEq(surplus, 0, "Wrong wrapped surplus");
+    function testWrappedImbalanceBalanceZero() public view {
+        int256 imbalance = vault.internalGetBufferWrappedImbalance(IERC4626(address(wUSDCNotInitialized)));
+        assertEq(imbalance, int256(0), "Wrong wrapped imbalance");
     }
 
-    function testWrappedSurplusWrongBalance() public {
+    function testWrappedImbalanceOfUnderlyingBalance() public {
         // Unbalances buffer so that buffer has more underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
@@ -97,12 +118,20 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
-        assertEq(surplus, 0, "Wrong wrapped surplus");
+        (uint256 underlyingBalance, uint256 wrappedBalance) = vault.getBufferBalance(
+            IERC4626(address(wDaiInitialized))
+        );
+        assertEq(underlyingBalance, (3 * _wrapAmount) / 2, "Wrong buffer underlying balance");
+        assertEq(wrappedBalance, _wrapAmount / 2, "Wrong wrapped underlying balance");
+
+        int256 imbalance = vault.internalGetBufferWrappedImbalance(IERC4626(address(wDaiInitialized)));
+        // The wrapped rate is 1. Buffer imbalance = `(wrappedBalance - underlyingBalance) / 2`, and it has more
+        // underlying than wrapped, so the imbalance is negative.
+        assertEq(imbalance, -int256(_wrapAmount / 2), "Wrong wrapped imbalance");
     }
 
-    function testWrappedSurplusCorrectBalance() public {
-        // Unbalances buffer so that buffer has less underlying than wrapped (so it has a surplus of wrapped).
+    function testWrappedImbalanceOfWrappedBalance() public {
+        // Unbalances buffer so that buffer has less underlying than wrapped (so it has an imbalance of wrapped).
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -115,18 +144,28 @@ contract VaultBufferUnitTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // rate = assets / supply. If we double the assets, we double the rate.
-        // Donate to wrapped token to inflate rate to 2.
-        dai.transfer(address(wDaiInitialized), wDaiInitialized.totalAssets());
+        // Donate to wrapped token to inflate rate to 2
+        wDaiInitialized.mockRate(2e18);
         vm.stopPrank();
 
-        assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI rate");
+        // Rounds up to make sure division is done properly.
+        assertEq(wDaiInitialized.getRate().computeRateRoundUp(), 2e18, "Wrong wDAI rate");
 
-        uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
+        int256 imbalance = vault.internalGetBufferWrappedImbalance(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
-        // After swap, buffer has `1/2 _wrapAmount + vaultConvertFactor` of underlying and 3/2 _wrapAmount of wrapped.
-        // surplus = (3/2 _wrapAmount - ((1/2 _wrapAmount + vaultConvertFactor) / rate)) / 2 =
-        // `5/8 _wrapAmount - vaultConvertFactor/4`.
-        assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8 - (vaultConvertFactor / 4), 1, "Wrong wrapped surplus");
+        // After swap, buffer has `1/2 _wrapAmount` of underlying and 3/2 _wrapAmount of wrapped.
+        // imbalance = (3/2 _wrapAmount - (1/2 _wrapAmount / rate)) / 2 = `5/8 _wrapAmount`.
+        uint256 bufferWrappedBalance = (3 * _wrapAmount) / 2;
+        uint256 bufferUnderlyingBalance = _wrapAmount / 2;
+        uint256 bufferUnderlyingBalanceAsWrapped = wDaiInitialized.previewWithdraw(bufferUnderlyingBalance);
+        uint256 exactWrappedImbalance = (bufferWrappedBalance - bufferUnderlyingBalanceAsWrapped) / 2;
+        assertEq(imbalance, int256(exactWrappedImbalance), "Wrapped imbalance different than exact calculation");
+        assertApproxEqAbs(
+            imbalance,
+            int256((5 * _wrapAmount) / 8),
+            1,
+            "Wrapped imbalance different than theoretical value"
+        );
     }
 
     function testSettleWrap() public {
@@ -361,13 +400,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesAfter = vault.getReservesOf(dai);
 
-        // Assumes that the expected amount was deposited and discards any surplus of underlying tokens.
+        // Assumes that the expected amount was deposited and discards any imbalance of underlying tokens.
         assertEq(
             underlyingReservesBefore - underlyingReservesAfter,
             underlyingDeltaHint,
             "Wrong reserves of underlying"
         );
-        // Assumes that the expected amount was minted and discards any surplus of wrapped tokens.
+        // Assumes that the expected amount was minted and discards any imbalance of wrapped tokens.
         assertEq(wrappedReservesAfter - wrappedReservesBefore, wrappedDeltaHint, "Wrong reserves of wrapped");
     }
 
@@ -381,13 +420,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesAfter = vault.getReservesOf(dai);
 
-        // Assumes that the expected amount was withdrawn and discards any surplus of underlying tokens.
+        // Assumes that the expected amount was withdrawn and discards any imbalance of underlying tokens.
         assertEq(
             underlyingReservesAfter - underlyingReservesBefore,
             underlyingDeltaHint,
             "Wrong reserves of underlying"
         );
-        // Assumes that the expected amount was burned and discards any surplus of wrapped tokens.
+        // Assumes that the expected amount was burned and discards any imbalance of wrapped tokens.
         assertEq(wrappedReservesBefore - wrappedReservesAfter, wrappedDeltaHint, "Wrong reserves of wrapped");
     }
 

@@ -18,8 +18,9 @@ import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoo
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract BigWeightedPoolTest is BasePoolTest {
+contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
@@ -40,7 +41,7 @@ contract BigWeightedPoolTest is BasePoolTest {
     }
 
     function createPool() internal override returns (address) {
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         uint256 numTokens = vault.getMaximumPoolTokens();
@@ -119,17 +120,5 @@ contract BigWeightedPoolTest is BasePoolTest {
             expectedAddLiquidityBptAmountOut - DELTA
         );
         vm.stopPrank();
-    }
-
-    function testGetBptRate() public {
-        uint256[] memory amountsIn = new uint256[](poolTokens.length);
-        amountsIn[0] = TOKEN_AMOUNT;
-
-        uint256 invariantBefore = WeightedMath.computeInvariantDown(weights, tokenAmounts);
-
-        tokenAmounts[0] += TOKEN_AMOUNT;
-        uint256 invariantAfter = WeightedMath.computeInvariantDown(weights, tokenAmounts);
-
-        _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
     }
 }

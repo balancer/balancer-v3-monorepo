@@ -30,9 +30,8 @@ library BasePoolMath {
      */
     error InvariantRatioBelowMin(uint256 invariantRatio, uint256 minInvariantRatio);
 
-    // For security reasons, to help ensure that for all possible "round trip" paths
-    // the caller always receives the same or fewer tokens than supplied,
-    // we have chosen the rounding direction to favor the protocol in all cases.
+    // For security reasons, to help ensure that for all possible "round trip" paths the caller always receives the
+    // same or fewer tokens than supplied, we have chosen the rounding direction to favor the protocol in all cases.
 
     /**
      * @notice Computes the proportional amounts of tokens to be deposited into the pool.
@@ -40,8 +39,8 @@ library BasePoolMath {
      * amount of pool tokens (BPT). It ensures that the amounts of tokens deposited are proportional to the current
      * pool balances.
      *
-     * Calculation: For each token, amountIn = balance * (bptAmountOut / bptTotalSupply)
-     * Rounding up is used to ensure that the pool is not underfunded
+     * Calculation: For each token, amountIn = balance * (bptAmountOut / bptTotalSupply).
+     * Rounding up is used to ensure that the pool is not underfunded.
      *
      * @param balances Array of current token balances in the pool
      * @param bptTotalSupply Total supply of the pool tokens (BPT)
@@ -151,7 +150,7 @@ library BasePoolMath {
 
         // Loop through each token, updating the balance with the added amount.
         for (uint256 i = 0; i < numTokens; ++i) {
-            newBalances[i] = currentBalances[i] + exactAmounts[i];
+            newBalances[i] = currentBalances[i] + exactAmounts[i] - 1; // Undo balance round up for new balances.
         }
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
@@ -175,7 +174,7 @@ library BasePoolMath {
                 unchecked {
                     taxableAmount = newBalances[i] - proportionalTokenBalance;
                 }
-                // Calculate fee amount
+                // Calculate the fee amount.
                 swapFeeAmounts[i] = taxableAmount.mulUp(swapFeePercentage);
 
                 // Subtract the fee from the new balance.
@@ -230,7 +229,7 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         IBasePool pool
     ) internal view returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
-        // Calculate new supply after minting exactBptAmountOut
+        // Calculate new supply after minting exactBptAmountOut.
         uint256 newSupply = exactBptAmountOut + totalSupply;
 
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
@@ -249,18 +248,18 @@ library BasePoolMath {
         // Rounding down makes `taxableAmount` larger, which in turn makes `fee` larger below.
         uint256 nonTaxableBalance = (newSupply * currentBalances[tokenInIndex]) / totalSupply;
 
-        // Calculate the taxable amount, which is the difference
-        // between the actual new balance and the non-taxable balance
+        // Calculate the taxable amount, which is the difference between the actual new balance and
+        // the non-taxable balance.
         uint256 taxableAmount = newBalance - nonTaxableBalance;
 
-        // Calculate the swap fee based on the taxable amount and the swap fee percentage
+        // Calculate the swap fee based on the taxable amount and the swap fee percentage.
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
 
-        // Create swap fees amount array and set the single fee we charge
+        // Create swap fees amount array and set the single fee we charge.
         swapFeeAmounts = new uint256[](currentBalances.length);
         swapFeeAmounts[tokenInIndex] = fee;
 
-        // Return the total amount of input token needed, including the swap fee
+        // Return the total amount of input token needed, including the swap fee.
         amountInWithFee = amountIn + fee;
     }
 
@@ -289,9 +288,9 @@ library BasePoolMath {
         // Create a new array to hold the updated balances.
         uint256[] memory newBalances = new uint256[](numTokens);
 
-        // Copy currentBalances to newBalances
+        // Copy currentBalances to newBalances.
         for (uint256 i = 0; i < numTokens; ++i) {
-            newBalances[i] = currentBalances[i];
+            newBalances[i] = currentBalances[i] - 1;
         }
 
         // Update the balance of tokenOutIndex with exactAmountOut.
@@ -303,6 +302,7 @@ library BasePoolMath {
         // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
         // We round `currentInvariant` up as it affects the calculated `bptAmountIn` directly (see below).
         uint256 currentInvariant = pool.computeInvariant(currentBalances, Rounding.ROUND_UP);
+
         // We round invariant ratio up (see reason below).
         // This invariant ratio could be rounded up even more by rounding `currentInvariant` down. But since it only
         // affects the taxable amount and the fee calculation, whereas `currentInvariant` affects BPT in more directly,
@@ -318,23 +318,25 @@ library BasePoolMath {
         // Fee is proportional to taxable amount; larger fee rounds in the Vault's favor.
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
 
-        // Update new balances array with a fee
+        // Update new balances array with a fee.
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - fee;
 
         // Calculate the new invariant with fees applied.
         // Larger fee means `invariantWithFeesApplied` goes lower.
         uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances, Rounding.ROUND_DOWN);
 
-        // Create swap fees amount array and set the single fee we charge
+        // Create swap fees amount array and set the single fee we charge.
         swapFeeAmounts = new uint256[](numTokens);
         swapFeeAmounts[tokenOutIndex] = fee;
 
         // Calculate the amount of BPT to burn. This is done by multiplying the total supply by the ratio of the
         // invariant delta to the current invariant.
+        //
         // Calculating BPT amount in, so we round up. This is the most important result of this function, equivalent to:
         // `totalSupply * (1 - invariantWithFeesApplied / currentInvariant)`.
         // Then, to round `bptAmountIn` up we use `invariantWithFeesApplied` rounded down and `currentInvariant`
         // rounded up.
+        //
         // Since `currentInvariant` is rounded up and `invariantWithFeesApplied` is rounded down, the difference
         // should always be positive. The checked math will revert if that is not the case.
         bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
@@ -361,7 +363,7 @@ library BasePoolMath {
         uint256 swapFeePercentage,
         IBasePool pool
     ) internal view returns (uint256 amountOutWithFee, uint256[] memory swapFeeAmounts) {
-        // Calculate new supply accounting for burning exactBptAmountIn
+        // Calculate new supply accounting for burning exactBptAmountIn.
         uint256 newSupply = totalSupply - exactBptAmountIn;
         uint256 invariantRatio = newSupply.divUp(totalSupply);
         ensureInvariantRatioAboveMinimumBound(pool, invariantRatio);
@@ -386,7 +388,7 @@ library BasePoolMath {
         // Calculate the swap fee on the taxable amount.
         uint256 fee = taxableAmount.mulUp(swapFeePercentage);
 
-        // Create swap fees amount array and set the single fee we charge
+        // Create swap fees amount array and set the single fee we charge.
         swapFeeAmounts = new uint256[](currentBalances.length);
         swapFeeAmounts[tokenOutIndex] = fee;
 

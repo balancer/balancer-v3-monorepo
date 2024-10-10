@@ -27,7 +27,7 @@ abstract contract BaseHooks is IHooks {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public virtual returns (bool) {
-        // By default, deny all factories. This method must be overwritten by the hook contract
+        // By default, deny all factories. This method must be overwritten by the hook contract.
         return false;
     }
 

@@ -28,9 +28,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultTokenTest is BaseVaultTest {
     PoolFactoryMock poolFactory;
 
-    ERC4626TestToken waDAI;
     ERC4626TestToken cDAI;
-    ERC4626TestToken waUSDC;
 
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
     uint256 internal waDaiIdx;
@@ -43,11 +41,9 @@ contract VaultTokenTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
         cDAI = new ERC4626TestToken(dai, "Wrapped cDAI", "cDAI", 18);
-        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
-        poolFactory = new PoolFactoryMock(vault, 365 days);
+        poolFactory = deployPoolFactoryMock(vault, 365 days);
 
         // Allow pools from factory poolFactory to use the hook PoolHooksMock.
         PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));
@@ -55,7 +51,7 @@ contract VaultTokenTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
-        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
     function createPool() internal pure override returns (address) {

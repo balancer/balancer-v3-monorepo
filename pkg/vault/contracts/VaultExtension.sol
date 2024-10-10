@@ -8,7 +8,6 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -66,7 +65,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
 
-    /// @dev Functions with this modifier can only be delegate-called by the vault.
+    /// @dev Functions with this modifier can only be delegate-called by the Vault.
     modifier onlyVaultDelegateCall() {
         _ensureVaultDelegateCall();
         _;
@@ -125,6 +124,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getReservesOf(IERC20 token) external view onlyVaultDelegateCall returns (uint256) {
         return _reservesOf[token];
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getAddLiquidityCalledFlag(address pool) external view onlyVaultDelegateCall returns (bool) {
+        return _addLiquidityCalled().tGet(pool);
     }
 
     /*******************************************************************************
@@ -273,12 +277,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
 
-                // Gets the default HooksConfig from the hook contract and saves in the vault state.
+                // Gets the default HooksConfig from the hook contract and saves it in the Vault state.
                 // Storing into hooksConfig first avoids stack-too-deep.
                 HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
                 // When enableHookAdjustedAmounts == true, hooks are able to modify the result of a liquidity or swap
-                // operation by implementing an after hook. For simplicity, the vault only supports modifying the
+                // operation by implementing an after hook. For simplicity, the Vault only supports modifying the
                 // calculated part of the operation. As such, when a hook supports adjusted amounts, it cannot support
                 // unbalanced liquidity operations, as this would introduce instances where the amount calculated is the
                 // input amount (EXACT_OUT).
@@ -417,8 +421,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolBalances[i] = PackedTokenBalance.toPackedBalance(exactAmountsIn[i], exactAmountsInScaled18[i]);
         }
 
-        emit PoolBalanceChanged(pool, to, exactAmountsIn.unsafeCastToInt256(true));
-
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInitialized(true);
 
         // Store config and mark the pool as initialized.
@@ -441,6 +443,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         if (bptAmountOut < minBptAmountOut) {
             revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
         }
+
+        emit PoolBalanceChanged(
+            pool,
+            to,
+            _totalSupply(pool),
+            exactAmountsIn.unsafeCastToInt256(true),
+            new uint256[](poolData.tokens.length)
+        );
 
         // Emit an event to log the pool initialization.
         emit PoolInitialized(pool);
@@ -551,7 +561,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 liquidityManagement: LiquidityManagement({
-                    // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported.
+                    // NOTE: In contrast to the other flags, supportsUnbalancedLiquidity is enabled by default.
                     disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
                     enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
                     enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom(),
@@ -622,6 +632,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;
+    }
+
+    /*******************************************************************************
+                                   ERC4626 Buffers
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (bool) {
+        return _bufferAssets[wrappedToken] != address(0);
     }
 
     /*******************************************************************************
@@ -773,14 +792,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
+        //
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(pool, from, exactBptAmountIn);
 
         emit PoolBalanceChanged(
             pool,
             from,
+            _totalSupply(pool),
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
-            amountsOutRaw.unsafeCastToInt256(false)
+            amountsOutRaw.unsafeCastToInt256(false),
+            new uint256[](numTokens)
         );
     }
 
@@ -858,7 +880,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the VaultExtension does when handling the request.
+     * This function actually returns whatever the VaultAdmin does when handling the request.
      */
     fallback() external payable override {
         if (msg.value > 0) {

@@ -43,15 +43,15 @@ contract GetBptRateTest is BaseVaultTest {
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         PoolRoleAccounts memory roleAccounts;
 
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1");
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1"); //TODO: hardhat
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
-        RateProviderMock rateProviderDai = new RateProviderMock();
+        RateProviderMock rateProviderDai = deployRateProviderMock();
         rateProviderDai.mockRate(daiMockRate);
-        RateProviderMock rateProviderUsdc = new RateProviderMock();
+        RateProviderMock rateProviderUsdc = deployRateProviderMock();
         rateProviderUsdc.mockRate(usdcMockRate);
 
-        // The rate providers will be sorted along with the tokens, by `buildTokenConfig`
+        // The rate providers will be sorted along with the tokens, by `buildTokenConfig`.
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[0] = IRateProvider(rateProviderDai);
         rateProviders[1] = IRateProvider(rateProviderUsdc);

@@ -16,8 +16,9 @@ import { E2eBatchSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eBatchS
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract E2eBatchSwapWeightedTest is E2eBatchSwapTest {
+contract E2eBatchSwapWeightedTest is WeightedPoolContractsDeployer, E2eBatchSwapTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
@@ -55,7 +56,7 @@ contract E2eBatchSwapWeightedTest is E2eBatchSwapTest {
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(
+        WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",

@@ -69,7 +69,6 @@ contract VaultExplorerTest is BaseVaultTest {
 
     VaultExplorer internal explorer;
     IAuthentication feeControllerAuth;
-    ERC4626TestToken internal waDAI;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -90,10 +89,10 @@ contract VaultExplorerTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        rateProviderDai = new RateProviderMock();
+        rateProviderDai = deployRateProviderMock();
         rateProviderDai.mockRate(DAI_MOCK_RATE);
 
-        rateProviderUsdc = new RateProviderMock();
+        rateProviderUsdc = deployRateProviderMock();
         rateProviderUsdc.mockRate(USDC_MOCK_RATE);
 
         rateProviders = new IRateProvider[](2);
@@ -108,9 +107,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         feeControllerAuth = IAuthentication(address(feeController));
 
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-
-        explorer = new VaultExplorer(vault);
+        explorer = deployVaultExplorer(vault);
     }
 
     function testGetVaultContracts() public view {
@@ -177,7 +174,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(vault.isPoolRegistered(pool), "Default pool not registered (Vault)");
         assertTrue(explorer.isPoolRegistered(pool), "Default pool not registered (Explorer)");
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         assertFalse(vault.isPoolRegistered(newPool), "New pool magically registered (Vault)");
         assertFalse(explorer.isPoolRegistered(newPool), "New pool magically registered (Explorer)");
@@ -192,7 +189,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(vault.isPoolInitialized(pool), "Default pool not initialized (Vault)");
         assertTrue(explorer.isPoolInitialized(pool), "Default pool not initialized (Explorer)");
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         _registerPool(newPool, true);
 
@@ -243,7 +240,7 @@ contract VaultExplorerTest is BaseVaultTest {
         for (uint256 i = 0; i < decimalScalingFactors.length; ++i) {
             assertEq(
                 decimalScalingFactors[i],
-                10 ** (18 + tokenDecimalDiffs[i]),
+                10 ** tokenDecimalDiffs[i],
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );
 
@@ -283,7 +280,7 @@ contract VaultExplorerTest is BaseVaultTest {
         for (uint256 i = 0; i < tokens.length; ++i) {
             assertEq(
                 poolData.decimalScalingFactors[i],
-                10 ** (18 + tokenDecimalDiffs[i]),
+                10 ** tokenDecimalDiffs[i],
                 string.concat("decimalScalingFactors of token ", Strings.toString(i), " should match tokenDecimalDiffs")
             );
 
@@ -518,9 +515,9 @@ contract VaultExplorerTest is BaseVaultTest {
 
         assertEq(vaultRoleAccounts.poolCreator, lp, "Pool creator is not LP");
 
-        assertEq(vaultRoleAccounts.pauseManager, explorerRoleAccounts.pauseManager, "Pause manager mmismatch");
-        assertEq(vaultRoleAccounts.swapFeeManager, explorerRoleAccounts.swapFeeManager, "Swap fee manager mmismatch");
-        assertEq(vaultRoleAccounts.poolCreator, explorerRoleAccounts.poolCreator, "Pool creator mmismatch");
+        assertEq(vaultRoleAccounts.pauseManager, explorerRoleAccounts.pauseManager, "Pause manager mismatch");
+        assertEq(vaultRoleAccounts.swapFeeManager, explorerRoleAccounts.swapFeeManager, "Swap fee manager mismatch");
+        assertEq(vaultRoleAccounts.poolCreator, explorerRoleAccounts.poolCreator, "Pool creator mismatch");
     }
 
     function testComputeDynamicSwapFeePercentage() public {
@@ -753,7 +750,7 @@ contract VaultExplorerTest is BaseVaultTest {
         uint256 lpShares = explorer.getBufferOwnerShares(waDAI, lp);
         uint256 totalShares = explorer.getBufferTotalShares(waDAI);
 
-        // A single depositor has all the shares (except for the security premint).
+        // A single depositor has all the shares (except for the security pre-mint).
         assertTrue(lpShares > 0, "LP has no shares");
         assertEq(totalShares - BUFFER_MINIMUM_TOTAL_SUPPLY, lpShares, "Share value mismatch");
     }
@@ -765,10 +762,10 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(vaultUnderlyingBalanceRaw > 0, "Zero underlying balance");
         assertTrue(vaultWrappedBalanceRaw > 0, "Zero wrapped balance");
 
-        (uint256 explorerUnderlyingBalanceRaw, uint256 explorertWrappedBalanceRaw) = explorer.getBufferBalance(waDAI);
+        (uint256 explorerUnderlyingBalanceRaw, uint256 explorerWrappedBalanceRaw) = explorer.getBufferBalance(waDAI);
 
         assertEq(explorerUnderlyingBalanceRaw, vaultUnderlyingBalanceRaw, "Underlying balance mismatch");
-        assertEq(explorertWrappedBalanceRaw, vaultWrappedBalanceRaw, "Wrapped balance mismatch");
+        assertEq(explorerWrappedBalanceRaw, vaultWrappedBalanceRaw, "Wrapped balance mismatch");
     }
 
     function _registerPool(address newPool, bool initializeNewPool) private {

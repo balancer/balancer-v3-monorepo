@@ -27,7 +27,7 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    // #region Bit offsets for main pool config settings
+    // Bit offsets for main pool config settings.
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_REGISTERED_OFFSET);
     }
@@ -69,9 +69,7 @@ library PoolConfigLib {
             );
     }
 
-    // #endregion
-
-    // #region Bit offsets for liquidity operations
+    // Bit offsets for liquidity operations.
     function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
         // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
         // This function returns the inverted value.
@@ -101,7 +99,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ADD_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireAddCustomLiquidityEnabled(PoolConfigBits config) internal pure {
+    function requireAddLiquidityCustomEnabled(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityCustom() == false) {
             revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
         }
@@ -124,7 +122,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireRemoveCustomLiquidityEnabled(PoolConfigBits config) internal pure {
+    function requireRemoveLiquidityCustomEnabled(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityCustom() == false) {
             revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
         }
@@ -160,9 +158,7 @@ library PoolConfigLib {
         }
     }
 
-    // #endregion
-
-    // #region Bit offsets for uint values
+    // Bit offsets for uint values.
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return
             PoolConfigBits.unwrap(config).decodeUint(PoolConfigConst.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
@@ -255,8 +251,9 @@ library PoolConfigLib {
                 PoolConfigConst.DECIMAL_DIFF_BITLENGTH
             );
 
-            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
-            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
+            // This is a "raw" factor, not a fixed point number. It should be applied using raw math to raw amounts
+            // instead of using FP multiplication.
+            scalingFactors[i] = 10 ** decimalDiff;
         }
 
         return scalingFactors;
@@ -293,8 +290,6 @@ library PoolConfigLib {
                 )
             );
     }
-
-    // #endregion
 
     // Convert from an array of decimal differences, to the encoded 40-bit value (8 tokens * 5 bits/token).
     function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint40) {

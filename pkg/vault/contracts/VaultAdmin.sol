@@ -2,23 +2,24 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
-import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib, PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -37,10 +38,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     using PoolConfigLib for PoolConfigBits;
     using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
-    using SafeERC20 for IERC20;
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
+    using SafeCast for *;
 
-    /// @dev Functions with this modifier can only be delegate-called by the vault.
+    // Minimum BPT amount minted upon initialization.
+    uint256 internal constant _BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+
+    /// @dev Functions with this modifier can only be delegate-called by the Vault.
     modifier onlyVaultDelegateCall() {
         _vault.ensureVaultDelegateCall();
         _;
@@ -77,7 +82,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         }
 
         // solhint-disable-next-line not-rely-on-time
-        uint32 pauseWindowEndTime = uint32(block.timestamp) + pauseWindowDuration;
+        uint32 pauseWindowEndTime = (block.timestamp + pauseWindowDuration).toUint32();
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
@@ -303,6 +308,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         onlyProtocolFeeController
     {
         _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
+
+        emit AggregateSwapFeePercentageChanged(pool, newAggregateSwapFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -317,6 +324,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         onlyProtocolFeeController
     {
         _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
+
+        emit AggregateYieldFeePercentageChanged(pool, newAggregateYieldFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -467,8 +476,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
 
         // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
-        // buffer token balances, converted to underlying.
-        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
+        // since `redeem` is an EXACT_IN operation that rounds down the result.
+        issuedShares = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
         _ensureBufferMinimumTotalSupply(issuedShares);
 
         // Divide `issuedShares` between the zero address, which receives the minimum supply, and the account
@@ -484,8 +494,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @inheritdoc IVaultAdmin
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
+        uint256 exactSharesToIssue,
         address sharesOwner
     )
         public
@@ -494,27 +503,27 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         whenVaultBuffersAreNotPaused
         withInitializedBuffer(wrappedToken)
         nonReentrant
-        returns (uint256 issuedShares)
+        returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw)
     {
         // Check wrapped token asset correctness.
         address underlyingToken = wrappedToken.asset();
         _ensureCorrectBufferAsset(wrappedToken, underlyingToken);
 
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
+
+        // To proportionally add liquidity to buffer, we need to calculate the buffer invariant ratio. It's calculated
+        // as the amount of buffer shares the sender wants to issue (which in practice is the value that the sender
+        // will add to the buffer, expressed in underlying token amounts), divided by the total shares of
+        // the buffer.
+        // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
+        // tokens to add, keeping the proportion of the buffer.
+        uint256 totalShares = _bufferTotalShares[wrappedToken];
+        amountUnderlyingRaw = bufferBalances.getBalanceRaw().mulDivUp(exactSharesToIssue, totalShares);
+        amountWrappedRaw = bufferBalances.getBalanceDerived().mulDivUp(exactSharesToIssue, totalShares);
+
         // Take debt for assets going into the buffer (wrapped and underlying).
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
         _takeDebt(wrappedToken, amountWrappedRaw);
-
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-
-        // The buffer invariant is the sum of buffer token balances converted to underlying.
-        uint256 currentInvariant = bufferBalances.getBalanceRaw() +
-            wrappedToken.convertToAssets(bufferBalances.getBalanceDerived());
-
-        // The invariant delta is the amount we're adding (at the current rate) in terms of underlying.
-        uint256 bufferInvariantDelta = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
-        // The new share amount is the invariant ratio normalized by the total supply.
-        // Rounds down, as the shares are "outgoing," in the sense that they can be redeemed for tokens.
-        issuedShares = (_bufferTotalShares[wrappedToken] * bufferInvariantDelta) / currentInvariant;
 
         // Add the amountsIn to the current buffer balances.
         bufferBalances = PackedTokenBalance.toPackedBalance(
@@ -524,7 +533,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         // Mint new shares to the owner.
-        _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
+        _mintBufferShares(wrappedToken, sharesOwner, exactSharesToIssue);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
     }
@@ -622,10 +631,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // Ensures we cannot drop the supply below the minimum.
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
-        // This triggers an external call to itself; the vault is acting as a Router in this case.
+        // This triggers an external call to itself; the Vault is acting as a Router in this case.
         // `sendTo` makes external calls (`transfer`) but is non-reentrant.
-        _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
-        _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
+        if (removedUnderlyingBalanceRaw > 0) {
+            _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
+        }
+        if (removedWrappedBalanceRaw > 0) {
+            _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
+        }
 
         emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
     }
@@ -725,5 +738,23 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @dev Access control is delegated to the Authorizer. `where` refers to the target contract.
     function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
         return _authorizer.canPerform(actionId, user, where);
+    }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    // solhint-disable no-complex-fallback
+
+    fallback() external payable {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        revert("Not implemented");
     }
 }

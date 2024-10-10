@@ -104,12 +104,14 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
         return true;
     }
 
-    /// Accounting is centralized in the MultiToken contract, and the actual transfers and approvals
-    /// are done there. Operations can be initiated from either the token contract or the MultiToken.
-    ///
-    /// To maintain compliance with the ERC-20 standard, and conform to the expectations of off-chain processes,
-    /// the MultiToken calls `emitTransfer` and `emitApproval` during those operations, so that the event is emitted
-    /// only from the token contract. These events are NOT defined in the MultiToken contract.
+    /**
+     * Accounting is centralized in the MultiToken contract, and the actual transfers and approvals are done there.
+     * Operations can be initiated from either the token contract or the MultiToken.
+     *
+     * To maintain compliance with the ERC-20 standard, and conform to the expectations of off-chain processes,
+     * the MultiToken calls `emitTransfer` and `emitApproval` during those operations, so that the event is emitted
+     * only from the token contract. These events are NOT defined in the MultiToken contract.
+     */
 
     /// @dev Emit the Transfer event. This function can only be called by the MultiToken.
     function emitTransfer(address from, address to, uint256 amount) external onlyVault {
@@ -151,6 +153,11 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     // @inheritdoc IERC20Permit
     function nonces(address owner) public view virtual override(IERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
+    }
+
+    /// @notice Increment the sender's nonce to revoke any currently granted (but not yet executed) `permit`.
+    function revokePermit() external {
+        _useNonce(msg.sender);
     }
 
     // @inheritdoc IERC20Permit

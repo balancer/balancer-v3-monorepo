@@ -111,7 +111,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         uint256 finalSwapFee = _dynamicSwapFee;
 
         if (_specialSender != address(0)) {
-            // Check the sender
+            // Check the sender.
             address swapper = IRouterCommon(params.router).getSender();
             if (swapper == _specialSender) {
                 finalSwapFee = 0;
@@ -145,7 +145,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
     }
 
     function onAfterSwap(AfterSwapParams calldata params) public override returns (bool, uint256) {
-        // check that actual pool balances match
+        // Check that actual pool balances match.
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = _vault.getPoolTokenInfo(params.pool);
 
         uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(params.pool);
@@ -181,26 +181,32 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         uint256 hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
         if (hookSwapFeePercentage > 0) {
             uint256 hookFee = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapFeePercentage);
-            if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountCalculatedRaw -= hookFee;
-                _vault.sendTo(params.tokenOut, address(this), hookFee);
-            } else {
-                hookAdjustedAmountCalculatedRaw += hookFee;
-                _vault.sendTo(params.tokenIn, address(this), hookFee);
+            if (hookFee > 0) {
+                if (params.kind == SwapKind.EXACT_IN) {
+                    hookAdjustedAmountCalculatedRaw -= hookFee;
+                    _vault.sendTo(params.tokenOut, address(this), hookFee);
+                } else {
+                    hookAdjustedAmountCalculatedRaw += hookFee;
+                    _vault.sendTo(params.tokenIn, address(this), hookFee);
+                }
             }
         } else if (hookSwapDiscountPercentage > 0) {
             uint256 hookDiscount = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapDiscountPercentage);
-            if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountCalculatedRaw += hookDiscount;
-                if (shouldSettleDiscount) {
-                    params.tokenOut.transfer(address(_vault), hookDiscount);
-                    _vault.settle(params.tokenOut, hookDiscount);
-                }
-            } else {
-                hookAdjustedAmountCalculatedRaw -= hookDiscount;
-                if (shouldSettleDiscount) {
-                    params.tokenIn.transfer(address(_vault), hookDiscount);
-                    _vault.settle(params.tokenIn, hookDiscount);
+            if (hookDiscount > 0) {
+                if (params.kind == SwapKind.EXACT_IN) {
+                    hookAdjustedAmountCalculatedRaw += hookDiscount;
+
+                    if (shouldSettleDiscount) {
+                        params.tokenOut.transfer(address(_vault), hookDiscount);
+                        _vault.settle(params.tokenOut, hookDiscount);
+                    }
+                } else {
+                    hookAdjustedAmountCalculatedRaw -= hookDiscount;
+
+                    if (shouldSettleDiscount) {
+                        params.tokenIn.transfer(address(_vault), hookDiscount);
+                        _vault.settle(params.tokenIn, hookDiscount);
+                    }
                 }
             }
         }
@@ -268,7 +274,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         uint256[] memory,
         bytes memory
     ) public override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
-        // Forces the hook answer to test HooksConfigLib
+        // Forces the hook answer to test HooksConfigLib.
         if (shouldForceHookAdjustedAmounts) {
             return (true, forcedHookAdjustedAmountsLiquidity);
         }
@@ -279,15 +285,21 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         if (addLiquidityHookFeePercentage > 0) {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
                 uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
-                hookAdjustedAmountsInRaw[i] += hookFee;
-                _vault.sendTo(tokens[i], address(this), hookFee);
+                if (hookFee > 0) {
+                    hookAdjustedAmountsInRaw[i] += hookFee;
+                    _vault.sendTo(tokens[i], address(this), hookFee);
+                }
             }
         } else if (addLiquidityHookDiscountPercentage > 0) {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                IERC20 token = tokens[i];
+
                 uint256 hookDiscount = amountsInRaw[i].mulDown(addLiquidityHookDiscountPercentage);
-                tokens[i].transfer(address(_vault), hookDiscount);
-                _vault.settle(tokens[i], hookDiscount);
-                hookAdjustedAmountsInRaw[i] -= hookDiscount;
+                if (hookDiscount > 0) {
+                    token.transfer(address(_vault), hookDiscount);
+                    hookAdjustedAmountsInRaw[i] -= hookDiscount;
+                    _vault.settle(token, hookDiscount);
+                }
             }
         }
 
@@ -304,7 +316,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         uint256[] memory,
         bytes memory
     ) public override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
-        // Forces the hook answer to test HooksConfigLib
+        // Forces the hook answer to test HooksConfigLib.
         if (shouldForceHookAdjustedAmounts) {
             return (true, forcedHookAdjustedAmountsLiquidity);
         }
@@ -315,15 +327,21 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         if (removeLiquidityHookFeePercentage > 0) {
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                 uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
-                hookAdjustedAmountsOutRaw[i] -= hookFee;
-                _vault.sendTo(tokens[i], address(this), hookFee);
+                if (hookFee > 0) {
+                    hookAdjustedAmountsOutRaw[i] -= hookFee;
+                    _vault.sendTo(tokens[i], address(this), hookFee);
+                }
             }
         } else if (removeLiquidityHookDiscountPercentage > 0) {
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                 uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
-                tokens[i].transfer(address(_vault), hookDiscount);
-                _vault.settle(tokens[i], hookDiscount);
-                hookAdjustedAmountsOutRaw[i] += hookDiscount;
+                IERC20 token = tokens[i];
+
+                if (hookDiscount > 0) {
+                    token.transfer(address(_vault), hookDiscount);
+                    hookAdjustedAmountsOutRaw[i] += hookDiscount;
+                    _vault.settle(token, hookDiscount);
+                }
             }
         }
 
@@ -518,7 +536,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
 
     function _setBalancesInVault() private {
         IERC20[] memory poolTokens = _vault.getPoolTokens(_pool);
-        // We don't care about last live balances here, so we just use the same raw balances
+        // We don't care about last live balances here, so we just use the same raw balances.
         IVaultMock(address(_vault)).manualSetPoolTokensAndBalances(_pool, poolTokens, _newBalancesRaw, _newBalancesRaw);
     }
 }

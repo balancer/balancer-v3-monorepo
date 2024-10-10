@@ -180,7 +180,9 @@ interface IVaultAdmin {
      * @notice Update an aggregate swap fee percentage.
      * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE, and also
+     * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
+     * Emits an `AggregateSwapFeePercentageChanged` event.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
@@ -191,7 +193,9 @@ interface IVaultAdmin {
      * @notice Update an aggregate yield fee percentage.
      * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE, and also
+     * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
+     * Emits an `AggregateYieldFeePercentageChanged` event.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage
@@ -285,22 +289,21 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault.
+     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault, proportionally.
      * @dev The buffer needs to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
-     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
+     * in underlying token decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
      * liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
-     * (it is the BPT of an internal ERC4626 buffer). It is expressed in underlying token native decimals.
+     * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
+     * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
+        uint256 exactSharesToIssue,
         address sharesOwner
-    ) external returns (uint256 issuedShares);
+    ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
 
     /**
      * @notice Removes liquidity from an internal ERC4626 buffer in the Vault.
@@ -309,7 +312,7 @@ interface IVaultAdmin {
      *
      * Pre-conditions:
      * - The buffer needs to be initialized.
-     * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
+     * - sharesOwner is the original msg.sender, it needs to be checked in the Router. That's why
      *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
      * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
      *
@@ -354,7 +357,7 @@ interface IVaultAdmin {
     function getBufferTotalShares(IERC4626 wrappedToken) external view returns (uint256 bufferShares);
 
     /**
-     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
+     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the Vault.
      * @dev All values are in native token decimals of the wrapped or underlying tokens.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer, in native token decimals

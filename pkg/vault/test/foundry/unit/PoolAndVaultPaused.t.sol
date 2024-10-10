@@ -10,7 +10,7 @@ import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTy
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract PoolAndVaultPausedTest is BaseVaultTest {
-    // A number that is much smaller than the vault pause buffer end time, so we can play with
+    // A number that is much smaller than the Vault pause buffer end time, so we can play with
     // pool and vault pause windows.
     uint32 private constant _FIXED_POOL_PAUSE_END_TIME = 1e5;
     uint256 private _vaultBufferPeriodEndTimeTest;
@@ -67,7 +67,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
     *******************************************************************************/
 
     function testVaultPausedByFlag() public {
-        // Sets the time before the vault pause buffer period.
+        // Sets the time before the Vault pause buffer period.
         vm.warp(_vaultBufferPeriodEndTimeTest - 1);
         vault.manualSetVaultPaused(true);
 
@@ -76,7 +76,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
     }
 
     function testVaultPausedByFlagAfterBufferTime() public {
-        // Sets the time before the vault pause buffer period.
+        // Sets the time before the Vault pause buffer period.
         vm.warp(_vaultBufferPeriodEndTimeTest + 1);
         vault.manualSetVaultPaused(true);
 

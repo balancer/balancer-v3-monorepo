@@ -52,7 +52,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
-    // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
+    // over a minimum time period much larger than the block time, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
 
     // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiple the
@@ -69,11 +69,6 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
-
-    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
-    uint256 private constant _MIN_INVARIANT_RATIO = 60e16; // 60%
-    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
-    uint256 private constant _MAX_INVARIANT_RATIO = 500e16; // 500%
 
     /// @notice Store amplification state.
     AmplificationState private _amplificationState;
@@ -147,10 +142,15 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding) public view returns (uint256) {
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+        uint256 invariant = StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
+        if (invariant > 0) {
+            invariant = rounding == Rounding.ROUND_DOWN ? invariant : invariant + 1;
+        }
+
+        return invariant;
     }
 
     /// @inheritdoc IBasePool
@@ -165,13 +165,13 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18, Rounding.ROUND_UP).mulUp(invariantRatio),
                 tokenInIndex
             );
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view virtual onlyVault returns (uint256) {
         uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
@@ -326,12 +326,12 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMinimumInvariantRatio() external pure returns (uint256) {
-        return _MIN_INVARIANT_RATIO;
+        return StableMath.MIN_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
-        return _MAX_INVARIANT_RATIO;
+        return StableMath.MAX_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IStablePool

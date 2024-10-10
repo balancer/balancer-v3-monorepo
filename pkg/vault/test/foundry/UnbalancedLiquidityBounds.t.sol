@@ -27,7 +27,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
     // Create a pool with flexible invariant ratio bounds.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        address newPool = address(new PoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
+        address newPool = address(deployPoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
@@ -64,14 +64,19 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256 minBptAmountOut = defaultAmount;
         uint256 maxInvariantRatio = FixedPoint.ONE * 2; // 200%
 
-        // Reasonable invariant ratio
+        // Reasonable invariant ratio.
         PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);
         // Pool balances are [defaultAmount, defaultAmount]; invariant is `2 * defaultAmount`.
         // Adding `[8, 10] defaultAmount` will make the new invariant `20 * defaultAmount` (10x ratio).
         uint256[] memory amountsIn = [defaultAmount * 8, defaultAmount * 10].toMemoryArray();
 
+        // New invariant ratio has rounding errors favoring the vault.
         vm.expectRevert(
-            abi.encodeWithSelector(BasePoolMath.InvariantRatioAboveMax.selector, 10 * FixedPoint.ONE, maxInvariantRatio)
+            abi.encodeWithSelector(
+                BasePoolMath.InvariantRatioAboveMax.selector,
+                10 * FixedPoint.ONE - 1,
+                maxInvariantRatio
+            )
         );
         vm.prank(alice);
         router.addLiquidityUnbalanced(pool, amountsIn, minBptAmountOut, false, bytes(""));
@@ -143,7 +148,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExactOutBelowMinInvariantRatio() public {
         // Token balances are [defaultAmount, defaultAmount], so removing `defaultAmount` from one of the tokens will
         // cut the sum of the balances (i.e. the invariant) by half.
-        uint256 amountOut = defaultAmount;
+        uint256 amountOut = defaultAmountRoundDown;
         uint256 maxBptAmountIn = IERC20(pool).balanceOf(lp);
         uint256 minInvariantRatio = FixedPoint.ONE.mulDown(0.8e18);
 

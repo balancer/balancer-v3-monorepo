@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { StableMath } from "../math/StableMath.sol";
 import { FixedPoint } from "../math/FixedPoint.sol";
 import { RoundingMock } from "./RoundingMock.sol";
@@ -17,9 +19,13 @@ contract StableMathMock {
 
     function computeInvariant(
         uint256 amplificationParameter,
-        uint256[] memory balances
-    ) external pure returns (uint256) {
-        return StableMath.computeInvariant(amplificationParameter, balances);
+        uint256[] memory balances,
+        Rounding rounding
+    ) external pure returns (uint256 invariant) {
+        invariant = StableMath.computeInvariant(amplificationParameter, balances);
+        if (invariant > 0) {
+            invariant = rounding == Rounding.ROUND_DOWN ? invariant : invariant + 1;
+        }
     }
 
     function computeOutGivenExactIn(
@@ -244,7 +250,7 @@ contract StableMathMock {
         uint256 inv2 = invariant * invariant;
         uint256 c = (inv2 * StableMath.AMP_PRECISION).mockDivRaw(ampTimesTotal * P_D, roundingPermutation[0]) *
             balances[tokenIndex];
-        uint256 b = sum + ((invariant / ampTimesTotal) * StableMath.AMP_PRECISION);
+        uint256 b = sum + ((invariant * StableMath.AMP_PRECISION) / ampTimesTotal);
         uint256 prevTokenBalance = 0;
         uint256 tokenBalance = (inv2 + c).mockDivRaw(invariant + b, roundingPermutation[1]);
 
@@ -265,6 +271,6 @@ contract StableMathMock {
             }
         }
 
-        revert StableMath.StableGetBalanceDidNotConverge();
+        revert StableMath.StableComputeBalanceDidNotConverge();
     }
 }

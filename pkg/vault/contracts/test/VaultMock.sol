@@ -507,12 +507,12 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
+        uint256 totalSwapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalFeesRaw) {
-        return _computeAndChargeAggregateSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
+    ) external returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
+        return _computeAndChargeAggregateSwapFees(poolData, totalSwapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(
@@ -595,14 +595,14 @@ contract VaultMock is IVaultMainMock, Vault {
         _removeLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
-    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+    function internalGetBufferUnderlyingImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferUnderlyingSurplus(wrappedToken);
+        return bufferBalance.getBufferUnderlyingImbalance(wrappedToken);
     }
 
-    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+    function internalGetBufferWrappedImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferWrappedSurplus(wrappedToken);
+        return bufferBalance.getBufferWrappedImbalance(wrappedToken);
     }
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32) {
@@ -667,6 +667,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _bufferTotalShares[wrappedToken] = shares;
     }
 
+    function manualSetBufferBalances(IERC4626 wrappedToken, uint256 underlyingAmount, uint256 wrappedAmount) external {
+        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(underlyingAmount, wrappedAmount);
+    }
+
     function manualErc4626BufferWrapOrUnwrapReentrancy(
         BufferWrapOrUnwrapParams memory params
     ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
@@ -685,6 +689,10 @@ contract VaultMock is IVaultMainMock, Vault {
         return _findTokenIndex(tokens, token);
     }
 
+    function manualSetAddLiquidityCalledFlag(address pool, bool flag) public {
+        _addLiquidityCalled().tSet(pool, flag);
+    }
+
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.enableAddLiquidityCustom = true;
@@ -696,7 +704,11 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolRoleAccounts[pool].poolCreator = newPoolCreator;
     }
 
-    function getConvertFactor() public pure returns (uint16) {
-        return _CONVERT_FACTOR;
+    function ensureValidTradeAmount(uint256 tradeAmount) external view {
+        _ensureValidTradeAmount(tradeAmount);
+    }
+
+    function ensureValidSwapAmount(uint256 tradeAmount) external view {
+        _ensureValidSwapAmount(tradeAmount);
     }
 }

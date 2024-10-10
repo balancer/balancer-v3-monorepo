@@ -133,7 +133,7 @@ contract RouterMutationTest is BaseVaultTest {
 
     function testAddLiquidityToBufferHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0), false);
+        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
     function testAddLiquidityToBufferHookReentrancy() public {
@@ -206,7 +206,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.querySwapSingleTokenExactIn(pool, dai, usdc, amountsIn[0], bytes(""));
 
@@ -220,7 +220,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.querySwapSingleTokenExactOut(pool, dai, usdc, amountsIn[1], bytes(""));
 
@@ -234,7 +234,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.queryAddLiquidityProportional(pool, poolInitAmount.mulDown(2e18), bytes(""));
 
@@ -248,7 +248,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.queryAddLiquidityUnbalanced(pool, amountsIn, bytes(""));
 
@@ -262,7 +262,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.queryAddLiquiditySingleTokenExactOut(pool, dai, poolInitAmount, bytes(""));
 
@@ -276,7 +276,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.queryAddLiquidityCustom(pool, amountsIn, poolInitAmount.mulDown(2e18), bytes(""));
 
@@ -290,7 +290,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.queryRemoveLiquidityProportional(pool, poolInitAmount, bytes(""));
 
@@ -304,7 +304,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.queryRemoveLiquiditySingleTokenExactIn(pool, poolInitAmount, usdc, bytes(""));
 
@@ -318,9 +318,9 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
-        router.queryRemoveLiquiditySingleTokenExactOut(pool, usdc, poolInitAmount, bytes(""));
+        router.queryRemoveLiquiditySingleTokenExactOut(pool, usdc, poolInitAmount / 2, bytes(""));
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
     }
@@ -332,7 +332,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
-        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
         vm.prank(address(bob), address(0));
         router.queryRemoveLiquidityCustom(
             pool,

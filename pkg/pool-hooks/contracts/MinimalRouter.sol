@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.24;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
@@ -18,6 +19,7 @@ import { RouterCommon } from "@balancer-labs/v3-vault/contracts/RouterCommon.sol
 
 abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     using Address for address payable;
+    using SafeCast for *;
 
     /**
      * @notice Data for the add liquidity hook.
@@ -129,12 +131,16 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
             })
         );
 
-        // maxAmountsIn length is checked against tokens length at the vault.
+        // maxAmountsIn length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
+
+            if (amountIn == 0) {
+                continue;
+            }
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
@@ -146,7 +152,9 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
+                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
                 _vault.settle(token, amountIn);
             }
         }
@@ -215,12 +223,16 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
             })
         );
 
-        // minAmountsOut length is checked against tokens length at the vault.
+        // minAmountsOut length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountOut = 0;
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
+
+            if (amountOut == 0) {
+                continue;
+            }
+
             IERC20 token = tokens[i];
 
             // There can be only one WETH token in the pool.
@@ -228,16 +240,12 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                 // Send WETH here and unwrap to native ETH.
                 _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
-                ethAmountOut = amountOut;
+                // Send ETH to receiver.
+                payable(params.receiver).sendValue(amountOut);
             } else {
                 // Transfer the token to the receiver (amountOut).
                 _vault.sendTo(token, params.receiver, amountOut);
             }
-        }
-
-        if (ethAmountOut > 0) {
-            // Send ETH to receiver.
-            payable(params.receiver).sendValue(ethAmountOut);
         }
     }
 }

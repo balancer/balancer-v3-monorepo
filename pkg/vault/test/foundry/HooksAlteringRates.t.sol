@@ -40,7 +40,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     function createPool() internal virtual override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         // Rate providers will by sorted along with tokens by `buildTokenConfig`.
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
         rateProviders[0] = rateProvider;
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
@@ -48,7 +48,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             rateProviders
         );
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
@@ -96,7 +96,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             rateProviders
         );
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
@@ -168,7 +168,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                     AddLiquidityKind.UNBALANCED,
                     expectedAmountsIn,
                     [defaultAmount, defaultAmount].toMemoryArray(),
-                    defaultAmount * 2,
+                    bptAmountRoundDown - 1,
                     expectedBalances,
                     bytes("")
                 )
@@ -178,7 +178,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmountRoundDown,
+            bptAmountRoundDown - 1,
             false,
             bytes("")
         );
@@ -198,7 +198,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
+            bptAmountRoundDown,
             false,
             bytes("")
         );
@@ -206,7 +206,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         uint256[] memory expectedAmountsOut = new uint256[](2);
         uint256[] memory expectedBalances = new uint256[](2);
 
-        expectedAmountsOut[daiIdx] = rateAdjustedAmount;
+        expectedAmountsOut[daiIdx] = rateAdjustedAmount - 1;
         expectedAmountsOut[usdcIdx] = defaultAmountRoundDown;
 
         expectedBalances[daiIdx] = defaultAmount;
@@ -217,13 +217,13 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             pool,
             abi.encodeCall(
                 IPoolLiquidity.onRemoveLiquidityCustom,
-                (address(router), bptAmount, expectedAmountsOut, expectedBalances, bytes(""))
+                (address(router), bptAmountRoundDown, expectedAmountsOut, expectedBalances, bytes(""))
             )
         );
         vm.prank(alice);
         router.removeLiquidityCustom(
             pool,
-            bptAmount,
+            bptAmountRoundDown,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")

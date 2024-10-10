@@ -13,8 +13,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     TransientStorageHelpers,
-    AddressArraySlotType,
-    TokenDeltaMappingSlotType
+    TokenDeltaMappingSlotType,
+    AddressToBooleanMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -44,15 +44,6 @@ contract VaultStorage {
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
-    // Minimum BPT amount minted upon initialization.
-    uint256 internal constant _BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
-
-    // When using the ERC4626 buffer liquidity directly to wrap/unwrap, convert is used to calculate how many tokens to
-    // return to the user. However, convert is not equal to the actual operation and may return an optimistic result.
-    // This factor makes sure that the use of buffer liquidity does not return more tokens than executing the
-    // wrap/unwrap operation directly.
-    uint16 internal constant _CONVERT_FACTOR = 100;
-
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors.
     // solhint-disable-next-line var-name-mixedcase
@@ -75,6 +66,7 @@ contract VaultStorage {
     bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
     bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
+    bytes32 private immutable _ADD_LIQUIDITY_CALLED_SLOT = _calculateVaultStorageSlot("addLiquidityCalled");
     // solhint-enable var-name-mixedcase
 
     /***************************************************************************
@@ -180,6 +172,10 @@ contract VaultStorage {
 
     function _tokenDeltas() internal view returns (TokenDeltaMappingSlotType slot) {
         return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTAS_SLOT);
+    }
+
+    function _addLiquidityCalled() internal view returns (AddressToBooleanMappingSlot slot) {
+        return AddressToBooleanMappingSlot.wrap(_ADD_LIQUIDITY_CALLED_SLOT);
     }
 
     function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {

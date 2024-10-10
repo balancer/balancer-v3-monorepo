@@ -6,7 +6,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ZERO, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -21,7 +21,11 @@ import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { BatchRouter, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
-import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import {
+  ERC20WithRateTestToken,
+  ERC4626TestToken,
+  WETHTestToken,
+} from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { BaseContract } from 'ethers';
 import { IERC20 } from '@balancer-labs/v3-interfaces/typechain-types';
 
@@ -31,6 +35,8 @@ export class Benchmark {
   vault!: IVault;
   tokenA!: ERC20WithRateTestToken;
   tokenB!: ERC20WithRateTestToken;
+  wTokenA!: ERC4626TestToken;
+  wTokenB!: ERC4626TestToken;
   WETH!: WETHTestToken;
   factory!: WeightedPoolFactory;
   pool!: BaseContract;
@@ -50,6 +56,7 @@ export class Benchmark {
     const MAX_PROTOCOL_YIELD_FEE = fp(0.2);
 
     const TOKEN_AMOUNT = fp(100);
+    const BUFFER_INITIALIZE_AMOUNT = bn(1e4);
 
     const SWAP_AMOUNT = fp(20);
     const SWAP_FEE = fp(0.01);
@@ -64,6 +71,8 @@ export class Benchmark {
 
     let tokenAAddress: string;
     let tokenBAddress: string;
+    let wTokenAAddress: string;
+    let wTokenBAddress: string;
     let wethAddress: string;
 
     let poolTokens: string[];
@@ -88,6 +97,15 @@ export class Benchmark {
       tokenAAddress = await this.tokenA.getAddress();
       tokenBAddress = await this.tokenB.getAddress();
       wethAddress = await this.WETH.getAddress();
+
+      this.wTokenA = await deploy('v3-solidity-utils/ERC4626TestToken', {
+        args: [tokenAAddress, 'wTokenA', 'wTokenA', 18],
+      });
+      this.wTokenB = await deploy('v3-solidity-utils/ERC4626TestToken', {
+        args: [tokenBAddress, 'wTokenB', 'wTokenB', 18],
+      });
+      wTokenAAddress = await this.wTokenA.getAddress();
+      wTokenBAddress = await this.wTokenB.getAddress();
     });
 
     sharedBeforeEach('protocol fees configuration', async () => {
@@ -105,14 +123,23 @@ export class Benchmark {
     });
 
     sharedBeforeEach('token setup', async () => {
-      await this.tokenA.mint(alice, TOKEN_AMOUNT * 10n);
-      await this.tokenB.mint(alice, TOKEN_AMOUNT * 10n);
+      await this.tokenA.mint(alice, TOKEN_AMOUNT * 20n);
+      await this.tokenB.mint(alice, TOKEN_AMOUNT * 20n);
       await this.WETH.connect(alice).deposit({ value: TOKEN_AMOUNT });
 
-      for (const token of [this.tokenA, this.tokenB, this.WETH]) {
+      for (const token of [this.tokenA, this.tokenB, this.WETH, this.wTokenA, this.wTokenB]) {
         await token.connect(alice).approve(permit2, MAX_UINT256);
         await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
         await permit2.connect(alice).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
+      }
+
+      for (const token of [this.wTokenA, this.wTokenB]) {
+        const underlying = (await deployedAt(
+          'v3-solidity-utils/ERC20WithRateTestToken',
+          await token.asset()
+        )) as unknown as ERC20WithRateTestToken;
+        await underlying.connect(alice).approve(await token.getAddress(), TOKEN_AMOUNT * 10n);
+        await token.connect(alice).deposit(TOKEN_AMOUNT * 10n, await alice.getAddress());
       }
     });
 
@@ -126,7 +153,7 @@ export class Benchmark {
       it(`measures initialization gas ${ethStatus}`, async () => {
         initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
 
-        // Measure
+        // Measure gas on initialization.
         const value = useEth ? TOKEN_AMOUNT : 0;
         const tx = await router
           .connect(alice)
@@ -149,7 +176,7 @@ export class Benchmark {
       });
 
       it('measures gas (Router)', async () => {
-        // Warm up
+        // Warm up.
         let tx = await router
           .connect(alice)
           .swapSingleTokenExactIn(this.pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
@@ -163,7 +190,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await router
           .connect(alice)
           .swapSingleTokenExactIn(this.pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
@@ -176,7 +203,7 @@ export class Benchmark {
       });
 
       it('measures gas (BatchRouter)', async () => {
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -205,7 +232,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -254,7 +281,7 @@ export class Benchmark {
       });
 
       it('measures gas', async () => {
-        // Warm up
+        // Warm up.
         const tx = await router.connect(alice).donate(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
         const receipt = await tx.wait();
         await saveSnap(this._testDirname, `[${this._poolType}] donation`, receipt);
@@ -290,14 +317,14 @@ export class Benchmark {
 
       it('measures gas (single token exact in)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         await router
           .connect(alice)
           .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[0], 1, false, '0x');
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure remove liquidity gas.
         const tx = await router
           .connect(alice)
           .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[0], 1, false, '0x');
@@ -311,7 +338,7 @@ export class Benchmark {
 
       it('measures gas (single token exact in - BatchRouter)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -334,7 +361,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -365,7 +392,7 @@ export class Benchmark {
 
       it('measures gas (single token exact out)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         await router
           .connect(alice)
           .removeLiquiditySingleTokenExactOut(
@@ -379,7 +406,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure remove liquidity gas.
         const tx = await router
           .connect(alice)
           .removeLiquiditySingleTokenExactOut(
@@ -400,7 +427,7 @@ export class Benchmark {
 
       it('measures gas (single token exact out - BatchRouter)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -423,7 +450,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -478,12 +505,12 @@ export class Benchmark {
           .fill(TOKEN_AMOUNT)
           .map((amount, index) => BigInt(amount / BigInt(index + 1)));
 
-        // Warm up
+        // Warm up.
         await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure add liquidity gas.
         const tx = await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
         const receipt = await tx.wait();
         await saveSnap(
@@ -494,7 +521,7 @@ export class Benchmark {
       });
 
       it('measures gas (unbalanced - BatchRouter)', async () => {
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -517,7 +544,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
@@ -549,14 +576,14 @@ export class Benchmark {
       it('measures gas (single token exact out)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
 
-        // Warm up
+        // Warm up.
         await router
           .connect(alice)
           .addLiquiditySingleTokenExactOut(this.pool, poolTokens[0], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure add liquidity gas.
         const tx = await router
           .connect(alice)
           .addLiquiditySingleTokenExactOut(this.pool, poolTokens[0], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
@@ -572,7 +599,7 @@ export class Benchmark {
       it('measures gas (single token exact out - BatchRouter)', async () => {
         const bptBalance = await this.vault.balanceOf(this.pool, alice);
 
-        // Warm up
+        // Warm up.
         let tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -595,7 +622,7 @@ export class Benchmark {
 
         await actionAfterFirstTx();
 
-        // Measure
+        // Measure gas for the swap.
         tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
@@ -707,6 +734,319 @@ export class Benchmark {
 
     describe('test donation', () => {
       itTestsDonation();
+    });
+
+    describe('test ERC4626 pool', () => {
+      const amountToTrade = TOKEN_AMOUNT / 10n;
+
+      sharedBeforeEach('Deploy and Initialize pool', async () => {
+        poolTokens = sortAddresses([wTokenAAddress, wTokenBAddress]);
+        this.tokenConfig = buildTokenConfig(poolTokens, true);
+        await deployAndInitializePool();
+        await this.wTokenA.mockRate(fp(1.1));
+        await this.wTokenB.mockRate(fp(1.1));
+      });
+
+      sharedBeforeEach('Initialize buffers', async () => {
+        await router
+          .connect(alice)
+          .initializeBuffer(wTokenAAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
+        await router
+          .connect(alice)
+          .initializeBuffer(wTokenBAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
+      });
+
+      it('measures gas (buffers without liquidity exact in - BatchRouter)', async () => {
+        // Warm up.
+        await batchRouter.connect(alice).swapExactIn(
+          [
+            {
+              tokenIn: tokenAAddress,
+              steps: [
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: tokenBAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountIn: amountToTrade,
+              minAmountOut: 0,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        // Measure gas for the swap.
+        const tx = await batchRouter.connect(alice).swapExactIn(
+          [
+            {
+              tokenIn: tokenBAddress,
+              steps: [
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: tokenAAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountIn: amountToTrade,
+              minAmountOut: 0,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ERC4626 - BatchRouter] swapExactIn - no buffer liquidity - warm slots`,
+          receipt
+        );
+      });
+
+      it('measures gas (buffers without liquidity exact out - BatchRouter)', async () => {
+        // Warm up.
+        await batchRouter.connect(alice).swapExactOut(
+          [
+            {
+              tokenIn: tokenAAddress,
+              steps: [
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: tokenBAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountOut: amountToTrade,
+              maxAmountIn: TOKEN_AMOUNT,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        // Measure gas for the swap.
+        const tx = await batchRouter.connect(alice).swapExactOut(
+          [
+            {
+              tokenIn: tokenBAddress,
+              steps: [
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: tokenAAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountOut: amountToTrade,
+              maxAmountIn: TOKEN_AMOUNT,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ERC4626 - BatchRouter] swapExactOut - no buffer liquidity - warm slots`,
+          receipt
+        );
+      });
+
+      it('measures gas (buffers with liquidity exact in - BatchRouter)', async () => {
+        // Add liquidity to buffers.
+        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
+        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
+
+        // Warm up.
+        await batchRouter.connect(alice).swapExactIn(
+          [
+            {
+              tokenIn: tokenAAddress,
+              steps: [
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: tokenBAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountIn: amountToTrade,
+              minAmountOut: 0,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        // Measure gas for the swap.
+        const tx = await batchRouter.connect(alice).swapExactIn(
+          [
+            {
+              tokenIn: tokenBAddress,
+              steps: [
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: tokenAAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountIn: amountToTrade,
+              minAmountOut: 0,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ERC4626 - BatchRouter] swapExactIn - with buffer liquidity - warm slots`,
+          receipt
+        );
+      });
+
+      it('measures gas (buffers with liquidity exact out - BatchRouter)', async () => {
+        // Add liquidity to buffers.
+        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
+        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
+
+        // Warm up.
+        await batchRouter.connect(alice).swapExactOut(
+          [
+            {
+              tokenIn: tokenAAddress,
+              steps: [
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: tokenBAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountOut: amountToTrade,
+              maxAmountIn: TOKEN_AMOUNT,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        // Measure gas for the swap.
+        const tx = await batchRouter.connect(alice).swapExactOut(
+          [
+            {
+              tokenIn: tokenBAddress,
+              steps: [
+                {
+                  pool: wTokenBAddress,
+                  tokenOut: wTokenBAddress,
+                  isBuffer: true,
+                },
+                {
+                  pool: this.pool,
+                  tokenOut: wTokenAAddress,
+                  isBuffer: false,
+                },
+                {
+                  pool: wTokenAAddress,
+                  tokenOut: tokenAAddress,
+                  isBuffer: true,
+                },
+              ],
+              exactAmountOut: amountToTrade,
+              maxAmountIn: TOKEN_AMOUNT,
+            },
+          ],
+          MAX_UINT256,
+          false,
+          '0x'
+        );
+
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ERC4626 - BatchRouter] swapExactOut - with buffer liquidity - warm slots`,
+          receipt
+        );
+      });
     });
   };
 }

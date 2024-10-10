@@ -67,9 +67,9 @@ interface IVaultMainMock {
 
     function ensureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
 
-    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
+    function internalGetBufferUnderlyingImbalance(IERC4626 wrappedToken) external view returns (int256);
 
-    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
+    function internalGetBufferWrappedImbalance(IERC4626 wrappedToken) external view returns (int256);
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32);
 
@@ -185,11 +185,11 @@ interface IVaultMainMock {
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
+        uint256 totalSwapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalFeesRaw);
+    ) external returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw);
 
     function manualUpdatePoolDataLiveBalancesAndRates(
         address pool,
@@ -269,13 +269,19 @@ interface IVaultMainMock {
 
     function manualSetBufferTotalShares(IERC4626 wrappedToken, uint256 shares) external;
 
+    function manualSetBufferBalances(IERC4626 wrappedToken, uint256 underlyingAmount, uint256 wrappedAmount) external;
+
     function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
 
     function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
 
+    function manualSetAddLiquidityCalledFlag(address pool, bool flag) external;
+
     function manualSetPoolCreator(address pool, address newPoolCreator) external;
 
-    function getConvertFactor() external pure returns (uint16);
+    function ensureValidTradeAmount(uint256 tradeAmount) external view;
+
+    function ensureValidSwapAmount(uint256 tradeAmount) external view;
 }
