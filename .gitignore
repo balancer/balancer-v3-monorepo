@@ -50,3 +50,7 @@ slither/
 # Misc
 .vscode/
 .idea/
+
+# Fuzz tests
+crytic-export/
+pkg/vault/medusa-corpus/
