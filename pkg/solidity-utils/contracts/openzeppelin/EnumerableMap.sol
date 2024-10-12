@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @notice Library for managing an enumerable variant of Solidity's
@@ -61,6 +61,12 @@ library EnumerableMap {
         // because index 0 means a key is not in the map.
         mapping(IERC20 tokenKey => uint256 indexValue) indexes;
     }
+
+    /// @notice An index is beyond the current bounds of the set.
+    error IndexOutOfBounds();
+
+    /// @notice This error is thrown when attempting to retrieve an entry that is not present in the map.
+    error KeyNotFound();
 
     /**
      * @dev Adds a key-value pair to a map, or updates the value for an existing
@@ -263,12 +269,6 @@ library EnumerableMap {
         // because index 0 means a key is not in the map.
         mapping(IERC20 tokenKey => uint256 indexValue) indexes;
     }
-
-    /// @notice An index is beyond the current bounds of the set.
-    error IndexOutOfBounds();
-
-    /// @notice This error is thrown when attempting to retrieve an entry that is not present in the map.
-    error KeyNotFound();
 
     /**
      * @dev Adds a key-value pair to a map, or updates the value for an existing

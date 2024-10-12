@@ -33,7 +33,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     // 10% exit fee
-    uint64 exitFeePercentage = 10e16;
+    uint64 internal constant EXIT_FEE_PERCENTAGE = 10e16;
 
     function setUp() public override {
         super.setUp();
@@ -50,8 +50,8 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation)
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
@@ -102,14 +102,14 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     }
 
     // Exit fee returns to LPs
-    function testExitFeeReturnToLPs() public {
+    function testExitFeeReturnToLPs() public virtual {
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, exitFeePercentage);
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, EXIT_FEE_PERCENTAGE);
 
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
         uint256 amountOut = poolInitAmount / 2;
-        uint256 hookFee = amountOut.mulDown(exitFeePercentage);
+        uint256 hookFee = amountOut.mulDown(EXIT_FEE_PERCENTAGE);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
@@ -173,7 +173,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         uint64 highFee = uint64(FixedPoint.ONE);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ExitFeeHookExample.ExitFeeAboveLimit.selector, highFee, exitFeePercentage)
+            abi.encodeWithSelector(ExitFeeHookExample.ExitFeeAboveLimit.selector, highFee, EXIT_FEE_PERCENTAGE)
         );
         vm.prank(lp);
         ExitFeeHookExample(poolHooksContract).setExitFeePercentage(highFee);
@@ -181,7 +181,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
 
     // Registry tests require a new pool, because an existent pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
-        newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
         vm.label(newPool, "Exit Fee Pool");
     }
 

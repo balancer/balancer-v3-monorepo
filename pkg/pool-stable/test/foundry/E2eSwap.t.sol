@@ -16,8 +16,9 @@ import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol"
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
-contract E2eSwapStableTest is E2eSwapTest {
+contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
@@ -47,15 +48,15 @@ contract E2eSwapStableTest is E2eSwapTest {
         // the same. So, minAmountGivenScaled18 > MIN_TRADE_AMOUNT. To derive the formula below, note that
         // `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`. There's an adjustment for stable math
         // in the following steps.
-        uint256 tokenAMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
-        uint256 tokenBMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
+        uint256 tokenAMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
+        uint256 tokenBMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
 
         // Also, since we undo the operation (reverse swap with the output of the first swap), amountCalculatedRaw
         // cannot be 0. Considering that amountCalculated is tokenB, and amountGiven is tokenA:
         // 1) amountCalculatedRaw > 0
         // 2) amountCalculatedRaw = amountCalculatedScaled18 * 10^(decimalsB) / (rateB * 10^18)
         // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math, there's a factor to stable math
-        // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
+        // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decimalsA)
         // Using the four formulas above, we determine that:
         // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
@@ -82,7 +83,7 @@ contract E2eSwapStableTest is E2eSwapTest {
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        StablePoolFactory factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.

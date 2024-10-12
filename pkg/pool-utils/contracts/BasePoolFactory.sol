@@ -10,16 +10,14 @@ import {
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 /**
  * @notice Base contract for Pool factories.
  *
- * Pools are deployed from factories to allow third parties to more easiliy reason about them. Unknown Pools may have
+ * Pools are deployed from factories to allow third parties to more easily reason about them. Unknown Pools may have
  * arbitrary logic: being able to assert that a Pool's behavior follows certain rules (those imposed by the contracts
  * created by the factory) is very powerful.
  *

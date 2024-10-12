@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IRateProvider } from "./IRateProvider.sol";
+import { IRateProvider } from "../solidity-utils/helpers/IRateProvider.sol";
 
 /**
  * @notice Represents a pool's liquidity management configuration.
@@ -202,7 +202,7 @@ enum SwapKind {
 //
 // `PoolSwapParams` passes some of this information through (kind, userData), but "translates" the parameters to fit
 // the internal swap API used by `IBasePool`. It scales amounts to full 18-decimal precision, adds the token balances,
-// converts the raw token addresses to indices, and adds the address of the router originating the request. It does
+// converts the raw token addresses to indices, and adds the address of the Router originating the request. It does
 // not need the limit, since this is checked at the Router level.
 
 /**
@@ -352,7 +352,6 @@ enum WrappingDirection {
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depends on the type of swap and wrapping direction)
  * @param limitRaw Minimum or maximum amount specified for the other token (depends on the type of swap and wrapping
  * direction)
- * @param userData Optional user data
  */
 struct BufferWrapOrUnwrapParams {
     SwapKind kind;
@@ -360,11 +359,11 @@ struct BufferWrapOrUnwrapParams {
     IERC4626 wrappedToken;
     uint256 amountGivenRaw;
     uint256 limitRaw;
-    bytes userData;
 }
 
-// Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
-// they can be set to any value between 0% and 100% (step 0.00001%).
+// Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so that they can be set to any value
+// between 0% and 100% (step 0.00001%). Protocol and pool creator fees are set in the `ProtocolFeeController`, and
+// ensure both constituent and aggregate fees do not exceed this precision.
 uint256 constant FEE_BITLENGTH = 24;
 uint256 constant MAX_FEE_PERCENTAGE = 1e18; // 100%
 uint256 constant FEE_SCALING_FACTOR = 1e11;

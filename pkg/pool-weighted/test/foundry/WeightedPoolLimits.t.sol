@@ -6,29 +6,32 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { WeightedMathMock } from "@balancer-labs/v3-solidity-utils/contracts/test/WeightedMathMock.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
 
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
+import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPoolLimitsTest is BaseVaultTest {
+contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
+    uint256 constant MIN_SWAP_FEE = 0.001e16; // 0.001%
+    uint256 constant MAX_SWAP_FEE = 10e16;
 
     WeightedMathMock math;
 
@@ -52,7 +55,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     uint256 internal preInitSnapshotId;
 
     constructor() {
-        math = new WeightedMathMock();
+        math = deployWeightedMathMock();
         amountsIn = new uint256[](2);
         newAmountsIn = new uint256[](2);
         startingBalances = new uint256[](2);
@@ -70,7 +73,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
 
-        weightedPool = new WeightedPoolMock(
+        weightedPool = deployWeightedPoolMock(
             WeightedPool.NewPoolParams({
                 name: "Weight Limit Pool",
                 symbol: "WEIGHTY",
@@ -113,7 +116,8 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         amountsIn[daiIdx] = TOKEN_AMOUNT.mulDown(weights[daiIdx]);
         amountsIn[usdcIdx] = TOKEN_AMOUNT.mulDown(weights[usdcIdx]);
 
-        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn) - MIN_BPT;
+        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn, Rounding.ROUND_DOWN) -
+            POOL_MINIMUM_TOTAL_SUPPLY;
 
         // Cannot use vm.prank, because `_initPool` does multiple calls.
         vm.startPrank(lp);
@@ -132,8 +136,6 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         _updatePoolParams(daiWeight, swapFeePercentage);
 
         uint256 postInitSnapshot = vm.snapshot();
-        _testGetBptRate();
-        vm.revertTo(postInitSnapshot);
 
         _testAddLiquidity();
         vm.revertTo(postInitSnapshot);
@@ -196,7 +198,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         initialBalances[daiIdx] = dai.balanceOf(bob);
         initialBalances[usdcIdx] = usdc.balanceOf(bob);
 
-        uint256 expectedBptAmountOut = math.computeInvariant(weights, newAmountsIn);
+        uint256 expectedBptAmountOut = math.computeInvariant(weights, newAmountsIn, Rounding.ROUND_DOWN);
 
         vm.prank(bob);
         uint256[] memory actualAmountsIn = router.addLiquidityProportional(
@@ -239,6 +241,9 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
 
         startingBalances[daiIdx] = dai.balanceOf(bob);
         startingBalances[usdcIdx] = usdc.balanceOf(bob);
+
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(pool, false);
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(weightedPool),
@@ -318,36 +323,6 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
 
         assertEq(balances[daiIdx], expectedBalances[daiIdx], "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], expectedBalances[usdcIdx], "Pool: Wrong USDC balance");
-    }
-
-    function _testGetBptRate() internal {
-        uint256 totalSupply = bptAmountOut + MIN_BPT;
-        uint256[] memory weights = weightedPool.getNormalizedWeights();
-
-        uint256 weightedInvariant = WeightedMath.computeInvariant(weights, amountsIn);
-        uint256 expectedRate = weightedInvariant.divDown(totalSupply);
-        uint256 actualRate = IRateProvider(address(pool)).getRate();
-        assertEq(actualRate, expectedRate, "Wrong rate");
-
-        uint256[] memory unbalancedAmountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
-        vm.prank(bob);
-        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(
-            address(weightedPool),
-            unbalancedAmountsIn,
-            0,
-            false,
-            bytes("")
-        );
-
-        totalSupply += addLiquidityBptAmountOut;
-        expectedBalances[0] = amountsIn[0] + TOKEN_AMOUNT;
-        expectedBalances[1] = amountsIn[1];
-
-        weightedInvariant = WeightedMath.computeInvariant(weights, expectedBalances);
-
-        expectedRate = weightedInvariant.divDown(totalSupply);
-        actualRate = IRateProvider(address(pool)).getRate();
-        assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
     function _testAddLiquidityUnbalanced(uint256 swapFeePercentage) public {

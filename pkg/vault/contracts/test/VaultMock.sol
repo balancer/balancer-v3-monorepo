@@ -5,32 +5,32 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import { BufferHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BufferHelpers.sol";
 import {
     TransientStorageHelpers,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
-import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
-import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
-import { BufferHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BufferHelpers.sol";
 
 import { VaultStateLib, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigLib, PoolConfigBits } from "../lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
+import { InputHelpersMock } from "./InputHelpersMock.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
-import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
+import { Vault } from "../Vault.sol";
 
 struct SwapInternalStateLocals {
     VaultSwapParams vaultSwapParams;
@@ -55,9 +55,8 @@ contract VaultMock is IVaultMainMock, Vault {
     constructor(
         IVaultExtension vaultExtension,
         IAuthorizer authorizer,
-        IProtocolFeeController protocolFeeController,
-        uint256 minTradeAmount
-    ) Vault(vaultExtension, authorizer, protocolFeeController, minTradeAmount) {
+        IProtocolFeeController protocolFeeController
+    ) Vault(vaultExtension, authorizer, protocolFeeController) {
         uint32 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         uint32 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
@@ -508,12 +507,12 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
+        uint256 totalSwapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 totalFeesRaw) {
-        return _computeAndChargeAggregateSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
+    ) external returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
+        return _computeAndChargeAggregateSwapFees(poolData, totalSwapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(
@@ -540,11 +539,15 @@ contract VaultMock is IVaultMainMock, Vault {
             bytes memory returnData
         )
     {
+        bytes32 paramsHashBefore = keccak256(abi.encode(params));
+
         (amountsInRaw, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
             poolData,
             params,
             maxAmountsInScaled18
         );
+
+        require(paramsHashBefore == keccak256(abi.encode(params)), "Input parameters have changed");
 
         updatedPoolData = poolData;
     }
@@ -571,11 +574,15 @@ contract VaultMock is IVaultMainMock, Vault {
             bytes memory returnData
         )
     {
+        bytes32 paramsHashBefore = keccak256(abi.encode(params));
+
         (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
             params,
             minAmountsOutScaled18
         );
+
+        require(paramsHashBefore == keccak256(abi.encode(params)), "Input parameters have changed");
 
         updatedPoolData = poolData;
     }
@@ -588,25 +595,36 @@ contract VaultMock is IVaultMainMock, Vault {
         _removeLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
-    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+    function internalGetBufferUnderlyingImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferUnderlyingSurplus(wrappedToken);
+        return bufferBalance.getBufferUnderlyingImbalance(wrappedToken);
     }
 
-    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+    function internalGetBufferWrappedImbalance(IERC4626 wrappedToken) external view returns (int256) {
         bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
-        return bufferBalance.getBufferWrappedSurplus(wrappedToken);
+        return bufferBalance.getBufferWrappedImbalance(wrappedToken);
     }
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32) {
         return _bufferTokenBalances[wrappedToken];
     }
 
-    function manualUpdateReservesAfterWrapping(
+    function manualSettleWrap(
         IERC20 underlyingToken,
-        IERC20 wrappedToken
-    ) external returns (uint256, uint256) {
-        return _updateReservesAfterWrapping(underlyingToken, wrappedToken);
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external {
+        _settleWrap(underlyingToken, wrappedToken, underlyingHint, wrappedHint);
+    }
+
+    function manualSettleUnwrap(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external {
+        _settleUnwrap(underlyingToken, wrappedToken, underlyingHint, wrappedHint);
     }
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external {
@@ -649,6 +667,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _bufferTotalShares[wrappedToken] = shares;
     }
 
+    function manualSetBufferBalances(IERC4626 wrappedToken, uint256 underlyingAmount, uint256 wrappedAmount) external {
+        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(underlyingAmount, wrappedAmount);
+    }
+
     function manualErc4626BufferWrapOrUnwrapReentrancy(
         BufferWrapOrUnwrapParams memory params
     ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
@@ -667,6 +689,10 @@ contract VaultMock is IVaultMainMock, Vault {
         return _findTokenIndex(tokens, token);
     }
 
+    function manualSetAddLiquidityCalledFlag(address pool, bool flag) public {
+        _addLiquidityCalled().tSet(pool, flag);
+    }
+
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.enableAddLiquidityCustom = true;
@@ -676,5 +702,13 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolCreator(address pool, address newPoolCreator) public {
         _poolRoleAccounts[pool].poolCreator = newPoolCreator;
+    }
+
+    function ensureValidTradeAmount(uint256 tradeAmount) external view {
+        _ensureValidTradeAmount(tradeAmount);
+    }
+
+    function ensureValidSwapAmount(uint256 tradeAmount) external view {
+        _ensureValidSwapAmount(tradeAmount);
     }
 }

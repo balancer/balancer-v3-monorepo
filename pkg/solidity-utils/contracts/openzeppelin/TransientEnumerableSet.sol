@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.24;
 
+import { StorageSlotExtension } from "./StorageSlotExtension.sol";
 import {
     AddressArraySlotType,
-    AddressMappingSlot,
+    AddressToUintMappingSlot,
     TransientStorageHelpers
 } from "../helpers/TransientStorageHelpers.sol";
-import "./StorageSlotExtension.sol";
 
 /**
  * @notice Library for managing sets of primitive types.
@@ -212,7 +212,7 @@ library TransientEnumerableSet {
         }
     }
 
-    function _indexes(AddressSet storage set) private view returns (AddressMappingSlot slot) {
+    function _indexes(AddressSet storage set) private view returns (AddressToUintMappingSlot slot) {
         mapping(address addressKey => uint256 indexValue) storage indexes = set.__indexes;
 
         assembly ("memory-safe") {

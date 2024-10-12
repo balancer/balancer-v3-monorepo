@@ -7,15 +7,15 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { TokenInfo, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -40,11 +40,11 @@ contract BigPoolDataTest is BaseVaultTest {
         for (uint8 i = 0; i < numTokens; ++i) {
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18 - i);
             ERC20TestToken(address(bigPoolTokens[i])).mint(lp, poolInitAmount);
-            bigPoolRateProviders[i] = new RateProviderMock();
+            bigPoolRateProviders[i] = deployRateProviderMock();
             initAmounts[i] = poolInitAmount;
         }
 
-        address newPool = address(new PoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
 
         _approveForPool(IERC20(newPool));
 
@@ -122,15 +122,9 @@ contract BigPoolDataTest is BaseVaultTest {
             assertEq(data.tokenRates[i], rates[i]);
 
             if (roundUp) {
-                expectedLiveBalance = FixedPoint.mulUp(
-                    expectedRawBalances[i],
-                    expectedScalingFactors[i].mulUp(rates[i])
-                );
+                expectedLiveBalance = FixedPoint.mulUp(expectedRawBalances[i] * expectedScalingFactors[i], rates[i]);
             } else {
-                expectedLiveBalance = FixedPoint.mulDown(
-                    expectedRawBalances[i],
-                    expectedScalingFactors[i].mulDown(rates[i])
-                );
+                expectedLiveBalance = FixedPoint.mulDown(expectedRawBalances[i] * expectedScalingFactors[i], rates[i]);
             }
 
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);

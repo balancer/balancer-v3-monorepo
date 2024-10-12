@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import {
     FEE_SCALING_FACTOR,
     PoolData,
@@ -14,14 +14,14 @@ import {
     PoolRoleAccounts
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -53,8 +53,8 @@ contract YieldFeesTest is BaseVaultTest {
     function createPool() internal override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 
-        wstETHRateProvider = new RateProviderMock();
-        daiRateProvider = new RateProviderMock();
+        wstETHRateProvider = deployRateProviderMock();
+        daiRateProvider = deployRateProviderMock();
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldFeeFlags = new bool[](2);
@@ -98,7 +98,7 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function testSwapWithProtocolYieldFeesSnapshot() public {
-        // yield fee 20% and creator yield fees 0%
+        // yield fee 20% and creator yield fees 0%.
         uint256 aggregateYieldFeePercentage = 20e16;
 
         uint256 wstethRate = 1.3e18;
@@ -132,21 +132,21 @@ contract YieldFeesTest is BaseVaultTest {
 
         vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
 
-        // Warm-up storage slots (using a different pool)
-        // Pump the original rates [pumpRate / 2] times
+        // Warm-up storage slots (using a different pool).
+        // Pump the original rates [pumpRate / 2] times.
         wstETHRateProvider.mockRate((wstethRate * pumpRate) / 2);
         daiRateProvider.mockRate((daiRate * pumpRate) / 2);
 
         vm.prank(alice);
-        uint256 amountOut = router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
+        uint256 amountOut = router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, bytes(""));
 
-        // Pump the original rates [pumpRate] times
+        // Pump the original rates [pumpRate] times.
         wstETHRateProvider.mockRate(wstethRate * pumpRate);
         daiRateProvider.mockRate(daiRate * pumpRate);
 
-        // Dummy swap
+        // Dummy swap.
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, "");
+        router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
     }
 
     function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {

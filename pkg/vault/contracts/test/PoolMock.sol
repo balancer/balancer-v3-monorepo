@@ -16,8 +16,6 @@ import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
     using FixedPoint for uint256;
 
-    uint256 public constant MIN_INIT_BPT = 1e6;
-
     // Amounts in are multiplied by the multiplier, amounts out are divided by it.
     uint256 private _multiplier = FixedPoint.ONE;
 
@@ -32,7 +30,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         // solhint-previous-line no-empty-blocks
     }
 
-    function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
+    function computeInvariant(uint256[] memory balances, Rounding) public pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
         for (uint256 i = 0; i < balances.length; ++i) {
@@ -48,7 +46,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         uint256 invariantRatio
     ) external pure returns (uint256 newBalance) {
         // inv = x + y
-        uint256 invariant = computeInvariant(balances);
+        uint256 invariant = computeInvariant(balances, Rounding.ROUND_DOWN);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
@@ -101,7 +99,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
     }
 
     function getMaximumInvariantRatio() external view virtual override returns (uint256) {
-        return 1e40; // Something just really big; should always work.
+        return 1e40; // Something just really big; should always work
     }
 
     function setMockRate(uint256 mockRate) external {

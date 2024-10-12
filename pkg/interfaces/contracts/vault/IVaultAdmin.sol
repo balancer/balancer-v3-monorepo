@@ -8,47 +8,93 @@ import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
+/**
+ * @notice Interface for functions defined on the `VaultAdmin` contract.
+ * @dev `VaultAdmin` is the Proxy extension of `VaultExtension`, and handles the least critical operations,
+ * as two delegate calls add gas to each call. Most of the permissioned calls are here.
+ */
 interface IVaultAdmin {
     /*******************************************************************************
                                Constants and immutables
     *******************************************************************************/
 
-    /// @dev Returns the main Vault address.
+    /**
+     * @notice Returns the main Vault address.
+     * @dev The main Vault contains the entrypoint and main liquidity operation implementations.
+     * @return vault The address of the main Vault
+     */
     function vault() external view returns (IVault);
 
     /**
-     * @notice Returns Vault's pause window end time.
-     * @dev This value is immutable; the getter can be called by anyone.
+     * @notice Returns the Vault's pause window end time.
+     * @dev This value is immutable, and represents the timestamp after which the Vault can no longer be paused
+     * by governance.
+     *
+     * @return pauseWindowEndTime The timestamp when the Vault's pause window ends
      */
     function getPauseWindowEndTime() external view returns (uint32);
 
     /**
-     * @notice Returns Vault's buffer period duration.
-     * @dev This value is immutable; the getter can be called by anyone.
+     * @notice Returns the Vault's buffer period duration.
+     * @dev This value is immutable. It represents the period during which, if paused, the Vault will remain paused.
+     * This ensures there is time available to address whatever issue caused the Vault to be paused.
+     *
+     * @return bufferPeriodDuration The length of the buffer period in seconds
      */
     function getBufferPeriodDuration() external view returns (uint32);
 
     /**
-     * @notice Returns Vault's buffer period end time.
-     * @dev This value is immutable; the getter can be called by anyone.
+     * @notice Returns the Vault's buffer period end time.
+     * @dev This value is immutable. If already paused, the Vault can be unpaused until this timestamp.
+     * @return bufferPeriodEndTime The timestamp after which the Vault remains permanently unpaused
      */
     function getBufferPeriodEndTime() external view returns (uint32);
 
     /**
      * @notice Get the minimum number of tokens in a pool.
      * @dev We expect the vast majority of pools to be 2-token.
-     * @return The minimum token count of a pool
+     * @return minTokens The minimum token count of a pool
      */
     function getMinimumPoolTokens() external pure returns (uint256);
 
     /**
      * @notice Get the maximum number of tokens in a pool.
-     * @dev This is 4 for v3, vs. 8 in v2. This was changed mainly for performance reasons, and because very few pools
-     * went over this token count.
-     *
-     * @return The maximum token count of a pool
+     * @return maxTokens The maximum token count of a pool
      */
     function getMaximumPoolTokens() external pure returns (uint256);
+
+    /**
+     * @notice Get the minimum total supply of pool tokens (BPT) for an initialized pool.
+     * @dev This prevents pools from being completely drained. When the pool is initialized, this minimum amount of BPT
+     * is minted to the zero address. This is an 18-decimal floating point number; BPT are always 18 decimals.
+     *
+     * @return minimumTotalSupply The minimum total supply a pool can have after initialization
+     */
+    function getPoolMinimumTotalSupply() external pure returns (uint256);
+
+    /**
+     * @notice Get the minimum total supply of an ERC4626 wrapped token buffer in the Vault.
+     * @dev This prevents buffers from being completely drained. When the buffer is initialized, this minimum number
+     * of shares is added to the shares resulting from the initial deposit. Buffer total supply accounting is internal
+     * to the Vault, as buffers are not tokenized.
+     *
+     * @return minimumTotalSupply The minimum total supply a buffer can have after initialization
+     */
+    function getBufferMinimumTotalSupply() external pure returns (uint256);
+
+    /**
+     * @notice Get the minimum trade amount in a pool operation.
+     * @dev This limit is applied to the 18-decimal "upscaled" amount in any operation (swap, add/remove liquidity).
+     * @return minimumTradeAmount The minimum trade amount as an 18-decimal floating point number
+     */
+    function getMinimumTradeAmount() external view returns (uint256);
+
+    /**
+     * @notice Get the minimum wrap amount in a buffer operation.
+     * @dev This limit is applied to the wrap operation amount, in native underlying token decimals.
+     * @return minimumWrapAmount The minimum wrap amount in native underlying token decimals
+     */
+    function getMinimumWrapAmount() external view returns (uint256);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -56,7 +102,8 @@ interface IVaultAdmin {
 
     /**
      * @notice Indicates whether the Vault is paused.
-     * @return True if the Vault is paused
+     * @dev If the Vault is paused, all non-Recovery Mode state-changing operations will revert.
+     * @return paused True if the Vault is paused
      */
     function isVaultPaused() external view returns (bool);
 
@@ -89,6 +136,8 @@ interface IVaultAdmin {
      * @notice Pause the Pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
      * deployment.
+     *
+     * @param pool The pool being paused
      */
     function pausePool(address pool) external;
 
@@ -96,6 +145,8 @@ interface IVaultAdmin {
      * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
      * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
      * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
+     *
+     * @param pool The pool being unpaused
      */
     function unpausePool(address pool) external;
 
@@ -129,7 +180,9 @@ interface IVaultAdmin {
      * @notice Update an aggregate swap fee percentage.
      * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE, and also
+     * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
+     * Emits an `AggregateSwapFeePercentageChanged` event.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
@@ -140,7 +193,9 @@ interface IVaultAdmin {
      * @notice Update an aggregate yield fee percentage.
      * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE, and also
+     * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
+     * Emits an `AggregateYieldFeePercentageChanged` event.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage
@@ -149,8 +204,8 @@ interface IVaultAdmin {
 
     /**
      * @notice Sets a new Protocol Fee Controller for the Vault.
-     * @dev This is a permissioned call.
-     * Emits a `ProtocolFeeControllerChanged` event.
+     * @dev This is a permissioned call. Emits a `ProtocolFeeControllerChanged` event.
+     * @param newProtocolFeeController The address of the new Protocol Fee Controller
      */
     function setProtocolFeeController(IProtocolFeeController newProtocolFeeController) external;
 
@@ -160,14 +215,19 @@ interface IVaultAdmin {
 
     /**
      * @notice Enable recovery mode for a pool.
-     * @dev This is a permissioned function.
+     * @dev This is a permissioned function. It enables a safe proportional withdrawal, with no external calls.
+     * Since there are no external calls, live balances cannot be updated while in Recovery Mode.
+     *
      * @param pool The address of the pool
      */
     function enableRecoveryMode(address pool) external;
 
     /**
      * @notice Disable recovery mode for a pool.
-     * @dev This is a permissioned function.
+     * @dev This is a permissioned function. It re-syncs live balances (which could not be updated during
+     * Recovery Mode), forfeiting any yield fees that accrued while enabled. It makes external calls, and could
+     * potentially fail if there is an issue with any associated Rate Providers.
+     *
      * @param pool The address of the pool
      */
     function disableRecoveryMode(address pool) external;
@@ -186,25 +246,28 @@ interface IVaultAdmin {
     /**
      * @notice Indicates whether the Vault buffers are paused.
      * @dev When buffers are paused, all buffer operations (i.e., calls on the Router with `isBuffer` true)
-     * will revert.
+     * will revert. Pausing buffers is reversible.
      *
-     * @return True if the Vault buffers are paused
+     * @return buffersPaused True if the Vault buffers are paused
      */
     function areBuffersPaused() external view returns (bool);
 
     /**
-     * @notice Pauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
-     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove
-     * liquidity. Currently it's not possible to pause vault buffers individually.
-     * @dev This is a permissioned call.
+     * @notice Pauses native vault buffers globally.
+     * @dev When buffers are paused, it's not possible to add liquidity or wrap/unwrap tokens using the Vault's
+     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity. Currently it's not
+     * possible to pause vault buffers individually.
+     *
+     * This is a permissioned call, and is reversible (see `unpauseVaultBuffers`).
      */
     function pauseVaultBuffers() external;
 
     /**
-     * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
-     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove
-     * liquidity.
-     * @dev This is a permissioned call.
+     * @notice Unpauses native vault buffers globally.
+     * @dev When buffers are paused, it's not possible to add liquidity or wrap/unwrap tokens using the Vault's
+     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
+     *
+     * This is a permissioned call.
      */
     function unpauseVaultBuffers() external;
 
@@ -216,7 +279,7 @@ interface IVaultAdmin {
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
      * liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
-     * (it is the BPT of an internal ERC4626 buffer)
+     * (it is the BPT of an internal ERC4626 buffer). It is expressed in underlying token native decimals.
      */
     function initializeBuffer(
         IERC4626 wrappedToken,
@@ -226,22 +289,21 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault.
+     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault, proportionally.
      * @dev The buffer needs to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
-     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
+     * in underlying token decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
      * liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
-     * (it is the BPT of an internal ERC4626 buffer)
+     * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
+     * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
+        uint256 exactSharesToIssue,
         address sharesOwner
-    ) external returns (uint256 issuedShares);
+    ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
 
     /**
      * @notice Removes liquidity from an internal ERC4626 buffer in the Vault.
@@ -250,13 +312,13 @@ interface IVaultAdmin {
      *
      * Pre-conditions:
      * - The buffer needs to be initialized.
-     * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
+     * - sharesOwner is the original msg.sender, it needs to be checked in the Router. That's why
      *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
      * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
-     * total shares
+     * total shares. It is expressed in underlying token native decimals.
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
@@ -280,7 +342,7 @@ interface IVaultAdmin {
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
-     * @return ownerShares Amount of shares allocated to the liquidity owner
+     * @return ownerShares Amount of shares allocated to the liquidity owner, in native underlying token decimals
      */
     function getBufferOwnerShares(
         IERC4626 wrappedToken,
@@ -290,15 +352,16 @@ interface IVaultAdmin {
     /**
      * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 buffer.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @return bufferShares Amount of supply shares of the buffer
+     * @return bufferShares Amount of supply shares of the buffer, in native underlying token decimals
      */
     function getBufferTotalShares(IERC4626 wrappedToken) external view returns (uint256 bufferShares);
 
     /**
-     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
+     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the Vault.
+     * @dev All values are in native token decimals of the wrapped or underlying tokens.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer
-     * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer
+     * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer, in native token decimals
+     * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer, in native token decimals
      */
     function getBufferBalance(
         IERC4626 wrappedToken
@@ -310,8 +373,8 @@ interface IVaultAdmin {
 
     /**
      * @notice Sets a new Authorizer for the Vault.
-     * @dev This is a permissioned call.
-     * Emits an `AuthorizerChanged` event.
+     * @dev This is a permissioned call. Emits an `AuthorizerChanged` event.
+     * @param newAuthorizer The address of the new authorizer
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
 }

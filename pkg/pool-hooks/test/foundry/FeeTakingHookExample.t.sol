@@ -19,8 +19,8 @@ import {
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -35,9 +35,6 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
-
-    uint256 private constant _minSwapAmount = 1e6;
-    uint256 private constant _minBptOut = 1e6;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -55,7 +52,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
@@ -79,8 +76,8 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
     }
 
     function testFeeSwapExactIn__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
-        // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
-        swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
+        // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear)
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
 
         // Fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, FixedPoint.ONE));
@@ -111,7 +108,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -147,8 +144,8 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
     }
 
     function testFeeSwapExactOut__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
-        // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
-        swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
+        // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear)
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
 
         // Fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, FixedPoint.ONE));
@@ -179,7 +176,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -237,7 +234,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         // pool liquidity, or else the hook won't be able to charge fees
         expectedBptOut = bound(
             expectedBptOut,
-            _minBptOut * MIN_TRADE_AMOUNT,
+            POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
             hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount.divDown(hookFeePercentage)
         );
 
@@ -313,7 +310,11 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         FeeTakingHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction
-        expectedBptIn = bound(expectedBptIn, _minBptOut * MIN_TRADE_AMOUNT, BalancerPoolToken(pool).balanceOf(bob));
+        expectedBptIn = bound(
+            expectedBptIn,
+            POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
+            BalancerPoolToken(pool).balanceOf(bob)
+        );
 
         // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(

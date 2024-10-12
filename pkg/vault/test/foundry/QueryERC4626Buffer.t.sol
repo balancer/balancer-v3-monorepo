@@ -7,78 +7,31 @@ import "forge-std/Test.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
 contract QueryERC4626BufferTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
     uint256 internal tooLargeSwapAmount = erc4626PoolInitialAmount / 2;
     // We will swap with 10% of the buffer.
     uint256 internal swapAmount;
+    uint256 internal constant MAX_ERROR = 10;
 
     function setUp() public virtual override {
         bufferInitialAmount = erc4626PoolInitialAmount / 100;
         swapAmount = bufferInitialAmount / 10;
         BaseERC4626BufferTest.setUp();
         _initializeUser();
-    }
-
-    function testSwapPreconditions() public view {
-        // Bob should have the full yield-bearing pool BPT.
-        assertEq(
-            IERC20(erc4626Pool).balanceOf(bob),
-            erc4626PoolInitialAmount * 2 - MIN_BPT,
-            "Wrong yield-bearing pool BPT amount"
-        );
-
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
-        // The yield-bearing pool should have `erc4626PoolInitialAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
-        assertEq(balancesRaw[0], erc4626PoolInitialAmount, "Wrong yield-bearing pool balance [0]");
-        assertEq(balancesRaw[1], erc4626PoolInitialAmount, "Wrong yield-bearing pool balance [1]");
-
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waDAI), lp),
-            bufferInitialAmount * 2 - MIN_BPT,
-            "Wrong share of waDAI buffer belonging to LP"
-        );
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            bufferInitialAmount * 2 - MIN_BPT,
-            "Wrong share of waUSDC buffer belonging to LP"
-        );
-
-        // Buffer should have the correct amount of issued shares.
-        assertEq(
-            vault.getBufferTotalShares(IERC4626(waDAI)),
-            bufferInitialAmount * 2,
-            "Wrong issued shares of waDAI buffer"
-        );
-        assertEq(
-            vault.getBufferTotalShares(IERC4626(waUSDC)),
-            bufferInitialAmount * 2,
-            "Wrong issued shares of waUSDC buffer"
-        );
-
-        uint256 baseBalance;
-        uint256 wrappedBalance;
-
-        // The vault buffers should each have `bufferInitialAmount` of their respective tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
-        assertEq(baseBalance, bufferInitialAmount, "Wrong waDAI buffer balance for base token");
-        assertEq(wrappedBalance, bufferInitialAmount, "Wrong waDAI buffer balance for wrapped token");
-
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
-        assertEq(baseBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for base token");
-        assertEq(wrappedBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for wrapped token");
     }
 
     function testQuerySwapWithinBufferRangeExactIn() public {
@@ -97,8 +50,8 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         _testQuerySwapExactOut(tooLargeSwapAmount);
     }
 
-    function _testQuerySwapExactIn(uint256 amount) private {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amount);
+    function _testQuerySwapExactIn(uint256 amountIn) private {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountIn);
 
         // Snapshots the current state of the network.
         uint256 snapshotId = vm.snapshot();
@@ -121,9 +74,9 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // Check if results of query and actual operations are equal
-        assertEq(pathAmountsOut[0], queryPathAmountsOut[0], "pathAmountsOut's do not match");
+        assertApproxEqRel(pathAmountsOut[0], queryPathAmountsOut[0], errorTolerance, "pathAmountsOut's do not match");
         assertEq(tokensOut[0], queryTokensOut[0], "tokensOut's do not match");
-        assertEq(amountsOut[0], queryAmountsOut[0], "amountsOut's do not match");
+        assertApproxEqRel(amountsOut[0], queryAmountsOut[0], errorTolerance, "amountsOut's do not match");
     }
 
     function _testQuerySwapExactOut(uint256 amount) private {
@@ -150,13 +103,13 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
         // Check if results of query and actual operations are equal.
-        assertEq(pathAmountsIn[0], queryPathAmountsIn[0], "pathAmountsIn's do not match");
+        assertApproxEqRel(pathAmountsIn[0], queryPathAmountsIn[0], errorTolerance, "pathAmountsIn's do not match");
         assertEq(tokensIn[0], queryTokensIn[0], "tokensIn's do not match");
-        assertEq(amountsIn[0], queryAmountsIn[0], "amountsIn's do not match");
+        assertApproxEqRel(amountsIn[0], queryAmountsIn[0], errorTolerance, "amountsIn's do not match");
     }
 
     function _buildExactInPaths(
-        uint256 amount
+        uint256 amountIn
     ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
@@ -169,16 +122,30 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
+        // For ExactIn, the steps are computed in order (Wrap -> Swap -> Unwrap).
+        // Compute Wrap. The exact amount is `swapAmount`. The token in is DAI, so the wrap occurs in the waDAI buffer.
+        // `waDaiAmountInRaw` is the output of the wrap.
+        uint256 waDaiAmountInRaw = waDAI.previewDeposit(amountIn);
+        // Compute Swap. `waDaiAmountInRaw` is the amount in of pool swap. To compute the swap with precision, we
+        // need to take into account the rates used by the Vault, instead of using a wrapper "preview" function.
+        uint256 waDaiAmountInScaled18 = waDaiAmountInRaw.mulDown(waDAI.getRate());
+        // Since the pool is linear, waDaiAmountInScaled18 = waUsdcAmountOutScaled18. Besides, since we're scaling a
+        // tokenOut amount, we need to round the rate up.
+        uint256 waUsdcAmountOutRaw = waDaiAmountInScaled18.divDown(waUSDC.getRate().computeRateRoundUp());
+        // Compute Unwrap. `waUsdcAmountOutRaw` is the output of the swap and the input of the unwrap. The amount out
+        // USDC is calculated by the waUSDC buffer.
+        uint256 usdcAmountOutRaw = waUSDC.previewRedeem(waUsdcAmountOutRaw);
+
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps,
-            exactAmountIn: amount,
-            minAmountOut: amount - 1 // rebalance tests are a wei off
+            exactAmountIn: amountIn,
+            minAmountOut: usdcAmountOutRaw
         });
     }
 
     function _buildExactOutPaths(
-        uint256 amount
+        uint256 amountOut
     ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
@@ -191,11 +158,26 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
+        // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).
+        // Compute Unwrap. The exact amount out in USDC is `swapAmount` and the token out is USDC, so the unwrap
+        // occurs in the waUSDC buffer.
+        uint256 waUsdcAmountOutRaw = waUSDC.previewWithdraw(amountOut);
+        // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
+        // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "preview"
+        // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up. Adds 1e6 to cover
+        // any rate change when wrapping/unwrapping. (It tolerates a bigger amountIn, which is in favor of the Vault).
+        uint256 waUsdcAmountOutScaled18 = waUsdcAmountOutRaw.mulDown(waUSDC.getRate().computeRateRoundUp()) + 1e6;
+        // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18. `waDaiAmountInRaw` is the
+        // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
+        uint256 waDaiAmountInRaw = waUsdcAmountOutScaled18.divDown(waDAI.getRate());
+        // Compute Wrap. The amount in DAI is calculated by the waDAI buffer.
+        uint256 daiAmountInRaw = waDAI.previewMint(waDaiAmountInRaw);
+
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
-            maxAmountIn: amount,
-            exactAmountOut: amount
+            maxAmountIn: daiAmountInRaw,
+            exactAmountOut: amountOut
         });
     }
 

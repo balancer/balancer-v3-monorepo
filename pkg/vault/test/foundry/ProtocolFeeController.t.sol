@@ -6,18 +6,19 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { PoolConfig, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
+import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -193,7 +194,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     function testPoolRegistrationWithCreatorFee() public {
         _registerPoolWithMaxProtocolFees();
 
-        // Aggregate percentage with no creator fee should just be the global fee percentages
+        // Aggregate percentages with no creator fee should just be the global fee percentages.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         assertEq(
             poolConfigBits.aggregateSwapFeePercentage,
@@ -402,6 +403,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
 
         vm.expectEmit();
+        emit IVaultEvents.AggregateSwapFeePercentageChanged(pool, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
+        vm.expectEmit();
         emit IProtocolFeeController.ProtocolSwapFeePercentageChanged(pool, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
 
         // Have governance override a swap fee.
@@ -456,6 +459,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             admin
         );
 
+        vm.expectEmit();
+        emit IVaultEvents.AggregateYieldFeePercentageChanged(pool, CUSTOM_PROTOCOL_YIELD_FEE_PCT);
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolYieldFeePercentageChanged(pool, CUSTOM_PROTOCOL_YIELD_FEE_PCT);
 
@@ -607,8 +612,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         // Check initial conditions: aggregate swap fee percentage should be 100%.
         (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = IPoolInfo(pool)
             .getAggregateFeePercentages();
-        assertEq(aggregateSwapFeePercentage, FixedPoint.ONE, "Aggregage swap fee != 100%");
-        assertEq(aggregateYieldFeePercentage, 0, "Aggregage swap fee is not zero");
+        assertEq(aggregateSwapFeePercentage, FixedPoint.ONE, "Aggregate swap fee != 100%");
+        assertEq(aggregateYieldFeePercentage, 0, "Aggregate swap fee is not zero");
 
         vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
 
@@ -674,7 +679,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     }
 
     function testWithdrawalWithNoCreator() public {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
         factoryMock.registerTestPool(address(newPool), vault.buildTokenConfig(tokens));
 
@@ -699,7 +704,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
         vm.stopPrank();
 
-        // Check that the aggregate percentages are set in the pool config
+        // Check that the aggregate percentages are set in the pool config.
         uint256 expectedSwapFeePercentage = MAX_PROTOCOL_SWAP_FEE_PCT +
             MAX_PROTOCOL_SWAP_FEE_PCT.complement().mulDown(POOL_CREATOR_SWAP_FEE_PCT);
         uint256 expectedYieldFeePercentage = MAX_PROTOCOL_YIELD_FEE_PCT +
@@ -754,7 +759,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
         uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
 
-        // Check reserves
+        // Check reserves.
         assertEq(
             vault.getReservesOf(dai),
             reservesOfDaiBeforeCollect - protocolFeeAmounts[daiIdx] - poolCreatorFeeAmounts[daiIdx],
@@ -922,6 +927,25 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         // Test permissionless collection of pool creator fees.
         feeController.withdrawPoolCreatorFees(pool);
+    }
+
+    function testSetMaliciousGlobalFeePercentages() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        vm.startPrank(admin);
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
+        feeController.setGlobalProtocolSwapFeePercentage(CUSTOM_PROTOCOL_SWAP_FEE_PCT + 1234567890123);
+
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
+        feeController.setGlobalProtocolYieldFeePercentage(CUSTOM_PROTOCOL_SWAP_FEE_PCT + 123456890123);
+        vm.stopPrank();
     }
 
     function _registerPoolWithMaxProtocolFees() internal {

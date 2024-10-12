@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -16,8 +17,9 @@ import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
-contract LiquidityApproximationStableTest is LiquidityApproximationTest {
+contract LiquidityApproximationStableTest is LiquidityApproximationTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
 
     uint256 poolCreationNonce;
@@ -35,10 +37,13 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
             IAuthentication(swapPool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
             admin
         );
+
+        minSwapFeePercentage = IBasePool(swapPool).getMinimumSwapFeePercentage();
+        maxSwapFeePercentage = IBasePool(swapPool).getMaximumSwapFeePercentage();
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        StablePoolFactory factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use PoolHooksMock hooks.
@@ -51,7 +56,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                MIN_SWAP_FEE,
+                0.01e16, // Initial swap fee: 0.01%
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
@@ -69,6 +74,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
@@ -80,6 +86,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
@@ -91,6 +98,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
@@ -102,6 +110,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
@@ -113,6 +122,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
@@ -124,13 +134,14 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 newAmplificationParameter
     ) public {
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
         uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
-    /// Utils
+    // Utils
 
     function _setAmplificationParameterAndSwapFee(
         uint256 swapFeePercentage,
@@ -142,8 +153,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         _setAmplificationParameter(liquidityPool, newAmplificationParameter);
         _setAmplificationParameter(swapPool, newAmplificationParameter);
 
-        // Vary swap fee from 0.0001% (min swap fee) - 10% (max swap fee).
-        swapFeePercentage = bound(swapFeePercentage, 1e12, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         return swapFeePercentage;
     }
 

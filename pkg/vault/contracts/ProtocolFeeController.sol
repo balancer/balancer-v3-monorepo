@@ -3,21 +3,20 @@
 pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 import { VaultGuard } from "./VaultGuard.sol";
 
 /**
@@ -55,6 +54,7 @@ contract ProtocolFeeController is
 {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
+    using SafeCast for *;
 
     enum ProtocolFeeType {
         SWAP,
@@ -126,6 +126,7 @@ contract ProtocolFeeController is
         if (newSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
+        _ensureValidPrecision(newSwapFeePercentage);
         _;
     }
 
@@ -134,6 +135,7 @@ contract ProtocolFeeController is
         if (newYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
+        _ensureValidPrecision(newYieldFeePercentage);
         _;
     }
 
@@ -175,7 +177,7 @@ contract ProtocolFeeController is
     }
 
     /**
-     * @notice Settle fee credits from the vault.
+     * @notice Settle fee credits from the Vault.
      * @dev This must be called after calling `collectAggregateFees` in the Vault. Note that since charging protocol
      * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
      * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
@@ -341,14 +343,7 @@ contract ProtocolFeeController is
             protocolFeePercentage +
             protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
 
-        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
-        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
-        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
-        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
-        // aggregate fee calculated here and that stored in the Vault.
-        if ((aggregateFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != aggregateFeePercentage) {
-            revert IVaultErrors.FeePrecisionTooHigh();
-        }
+        _ensureValidPrecision(aggregateFeePercentage);
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
@@ -386,12 +381,14 @@ contract ProtocolFeeController is
 
         // `isOverride` is true if the pool is protocol fee exempt; otherwise, default to false.
         // If exempt, this pool cannot be updated to the current global percentage permissionlessly.
+        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
+        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(aggregateSwapFeePercentage),
+            feePercentage: aggregateSwapFeePercentage.toUint64(),
             isOverride: protocolFeeExempt
         });
         _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(aggregateYieldFeePercentage),
+            feePercentage: aggregateYieldFeePercentage.toUint64(),
             isOverride: protocolFeeExempt
         });
     }
@@ -451,16 +448,18 @@ contract ProtocolFeeController is
         uint256 poolCreatorFeePercentage,
         ProtocolFeeType feeType
     ) internal {
-        // Need to set locally, and update the aggregate percentage in the vault.
+        // Need to set locally, and update the aggregate percentage in the Vault.
         if (feeType == ProtocolFeeType.SWAP) {
             _poolCreatorSwapFeePercentages[pool] = poolCreatorFeePercentage;
 
+            // The Vault will also emit an `AggregateSwapFeePercentageChanged` event.
             _vault.updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
 
             emit PoolCreatorSwapFeePercentageChanged(pool, poolCreatorFeePercentage);
         } else {
             _poolCreatorYieldFeePercentages[pool] = poolCreatorFeePercentage;
 
+            // The Vault will also emit an `AggregateYieldFeePercentageChanged` event.
             _vault.updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
             emit PoolCreatorYieldFeePercentageChanged(pool, poolCreatorFeePercentage);
@@ -512,9 +511,12 @@ contract ProtocolFeeController is
 
     /// @dev Common code shared between set/update. `isOverride` will be true if governance is setting the percentage.
     function _updatePoolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage, bool isOverride) private {
-        // Update local storage of the raw percentage
+        // Update local storage of the raw percentage.
+        //
+        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
+        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(newProtocolSwapFeePercentage),
+            feePercentage: newProtocolSwapFeePercentage.toUint64(),
             isOverride: isOverride
         });
 
@@ -531,8 +533,10 @@ contract ProtocolFeeController is
         bool isOverride
     ) private {
         // Update local storage of the raw percentage.
+        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
+        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
         _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(newProtocolYieldFeePercentage),
+            feePercentage: newProtocolYieldFeePercentage.toUint64(),
             isOverride: isOverride
         });
 
@@ -540,5 +544,16 @@ contract ProtocolFeeController is
         _vault.updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
         emit ProtocolYieldFeePercentageChanged(pool, newProtocolYieldFeePercentage);
+    }
+
+    function _ensureValidPrecision(uint256 feePercentage) private pure {
+        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
+        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
+        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
+        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
+        // aggregate fee calculated here and that stored in the Vault.
+        if ((feePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != feePercentage) {
+            revert IVaultErrors.FeePrecisionTooHigh();
+        }
     }
 }

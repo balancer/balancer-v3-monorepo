@@ -47,7 +47,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
@@ -152,6 +152,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vault.manualSetHooksConfig(pool, config);
 
         uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();
+        uint256[] memory amountsOutRoundDown = [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray();
 
         vm.prank(alice);
         // Add liquidity to have BPTs to remove liquidity later.
@@ -172,7 +173,15 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeCall(
                 IHooks.onBeforeRemoveLiquidity,
-                (address(router), pool, RemoveLiquidityKind.CUSTOM, bptAmount, amountsOut, originalBalances, bytes(""))
+                (
+                    address(router),
+                    pool,
+                    RemoveLiquidityKind.CUSTOM,
+                    bptAmountRoundDown,
+                    amountsOutRoundDown,
+                    originalBalances,
+                    bytes("")
+                )
             )
         );
 
@@ -181,10 +190,10 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             pool,
             abi.encodeCall(
                 IPoolLiquidity.onRemoveLiquidityCustom,
-                (address(router), bptAmount, amountsOut, newBalances, bytes(""))
+                (address(router), bptAmountRoundDown, amountsOutRoundDown, newBalances, bytes(""))
             )
         );
         vm.prank(alice);
-        router.removeLiquidityCustom(pool, bptAmount, amountsOut, false, bytes(""));
+        router.removeLiquidityCustom(pool, bptAmountRoundDown, amountsOutRoundDown, false, bytes(""));
     }
 }

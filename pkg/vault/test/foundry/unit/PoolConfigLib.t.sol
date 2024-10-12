@@ -41,7 +41,7 @@ contract PoolConfigLibTest is Test {
         assertEq(config.getPauseWindowEndTime(), 0, "getPauseWindowEndTime mismatch (zero config)");
     }
 
-    // #region Tests for main pool config settings
+    // Tests for main pool config settings.
 
     function testIsPoolRegistered() public pure {
         PoolConfigBits config;
@@ -99,9 +99,7 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (setter)");
     }
 
-    // #endregion
-
-    // #region Tests for liquidity operations
+    // Tests for liquidity operations.
     function testSupportsUnbalancedLiquidity() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
@@ -147,18 +145,18 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is false (setter)");
     }
 
-    function testRequireAddCustomLiquidityEnabled() public pure {
+    function testRequireAddLiquidityCustomEnabled() public pure {
         PoolConfigBits config;
         config = config.setAddLiquidityCustom(true);
 
-        config.requireAddCustomLiquidityEnabled();
+        config.requireAddLiquidityCustomEnabled();
     }
 
-    function testRequireAddCustomLiquidityRevertIfIsDisabled() public {
+    function testRequireAddLiquidityCustomRevertIfIsDisabled() public {
         PoolConfigBits config;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
-        config.requireAddCustomLiquidityEnabled();
+        config.requireAddLiquidityCustomEnabled();
     }
 
     function testSupportsRemoveLiquidityCustom() public pure {
@@ -175,23 +173,47 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is false (setter)");
     }
 
-    function testRequireRemoveCustomLiquidityEnabled() public pure {
+    function testRequireRemoveLiquidityCustomEnabled() public pure {
         PoolConfigBits config;
         config = config.setRemoveLiquidityCustom(true);
 
-        config.requireRemoveCustomLiquidityEnabled();
+        config.requireRemoveLiquidityCustomEnabled();
     }
 
-    function testRequireRemoveCustomLiquidityReveryIfIsDisabled() public {
+    function testRequireRemoveLiquidityCustomReveryIfIsDisabled() public {
         PoolConfigBits config;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
-        config.requireRemoveCustomLiquidityEnabled();
+        config.requireRemoveLiquidityCustomEnabled();
     }
 
-    // #endregion
+    function testSupportsDonation() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.DONATION_OFFSET));
+        assertTrue(config.supportsDonation(), "supportDonation is false (getter)");
+    }
 
-    // #region Tests for uint values
+    function testSetDonation() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+        assertTrue(config.supportsDonation(), "supportDonation is false (setter)");
+    }
+
+    function testRequireDonationEnabled() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+
+        config.requireDonationEnabled();
+    }
+
+    function testRequireDonationRevertIfIsDisabled() public {
+        PoolConfigBits config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
+        config.requireDonationEnabled();
+    }
+
+    // Tests for uint values.
     function testGetAggregateSwapFeePercentage() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
@@ -340,8 +362,8 @@ contract PoolConfigLibTest is Test {
 
         uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
 
-        assertEq(scalingFactors[0], 1e23, "scalingFactors[0] mismatch");
-        assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
+        assertEq(scalingFactors[0], 1e5, "scalingFactors[0] mismatch");
+        assertEq(scalingFactors[1], 1e20, "scalingFactors[1] mismatch");
     }
 
     function testGetPauseWindowEndTime() public pure {
@@ -366,8 +388,6 @@ contract PoolConfigLibTest is Test {
         config = config.setPauseWindowEndTime(value);
         assertEq(config.getPauseWindowEndTime(), value, "pauseWindowEndTime mismatch (testSetPauseWindowEndTime)");
     }
-
-    // #endregion
 
     function testToTokenDecimalDiffs() public pure {
         uint8[] memory tokenDecimalDiffs = new uint8[](2);

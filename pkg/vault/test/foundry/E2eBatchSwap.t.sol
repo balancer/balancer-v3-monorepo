@@ -10,6 +10,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -48,7 +49,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
     uint256 internal minSwapAmountTokenD;
     uint256 internal maxSwapAmountTokenD;
 
+    uint256 internal poolMinSwapFeePercentage;
+    uint256 internal poolMaxSwapFeePercentage;
+
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         IProtocolFeeController feeController = vault.getProtocolFeeController();
@@ -62,14 +69,14 @@ contract E2eBatchSwapTest is BaseVaultTest {
         _setUpVariables();
 
         // Initialize pools that will be used by batch router.
-        // Create poolA
+        // Create poolA.
         vm.startPrank(lp);
         poolA = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "poolA");
         _initPool(poolA, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
-        // Create poolB
+        // Create poolB.
         poolB = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
         _initPool(poolB, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
-        // Create poolC
+        // Create poolC.
         poolC = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
         _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
@@ -88,6 +95,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         tokenBIdx = 1;
         tokenCIdx = 2;
         tokenDIdx = 3;
+
+        poolMinSwapFeePercentage = IBasePool(poolA).getMinimumSwapFeePercentage();
+        poolMaxSwapFeePercentage = IBasePool(poolA).getMaximumSwapFeePercentage();
+
+        // These tests rely on a minimum fee to work; set something very small for pool mock.
+        poolMinSwapFeePercentage = (poolMinSwapFeePercentage == 0 ? 1e12 : poolMinSwapFeePercentage);
+        poolMaxSwapFeePercentage = (poolMaxSwapFeePercentage == 1e18 ? 10e16 : poolMaxSwapFeePercentage);
     }
 
     /**
@@ -105,10 +119,10 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenA = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
         maxSwapAmountTokenA = poolInitAmount / 2;
 
-        minSwapAmountTokenD = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenD = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
         maxSwapAmountTokenD = poolInitAmount / 2;
     }
 
@@ -132,8 +146,8 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
         vm.stopPrank();
 
-        assertTrue(feesTokenA > 0, "No fees on tokenA");
-        assertTrue(feesTokenD > 0, "No fees on tokenD");
+        assertGt(feesTokenA, 0, "No aggregate fees on tokenA (token in)");
+        assertEq(feesTokenD, 0, "Aggregate fees on token D (token out)");
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsAfter = _getPoolInvariants();
@@ -189,9 +203,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
     }
 
     function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn, uint256 poolFeePercentage) public {
-        poolFeePercentage = bound(poolFeePercentage, 1e12, 10e16);
+        poolFeePercentage = bound(poolFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
 
-        // For this test, we need equal fees to ensure symetry between exact_in and out.
+        // For this test, we need equal fees to ensure symmetry between exact_in and out.
         vault.manualSetStaticSwapFeePercentage(poolA, poolFeePercentage);
         vault.manualSetStaticSwapFeePercentage(poolB, poolFeePercentage);
         vault.manualSetStaticSwapFeePercentage(poolC, poolFeePercentage);
@@ -456,7 +470,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         for (uint256 i = 0; i < pools.length; i++) {
             (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pools[i]);
-            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18);
+            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
         }
     }
 
@@ -465,9 +479,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 poolBFeePercentage,
         uint256 poolCFeePercentage
     ) private {
-        poolAFeePercentage = bound(poolAFeePercentage, 1e12, 10e16);
-        poolBFeePercentage = bound(poolBFeePercentage, 1e12, 10e16);
-        poolCFeePercentage = bound(poolCFeePercentage, 1e12, 10e16);
+        poolAFeePercentage = bound(poolAFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
+        poolBFeePercentage = bound(poolBFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
+        poolCFeePercentage = bound(poolCFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
 
         vault.manualSetStaticSwapFeePercentage(poolA, poolAFeePercentage);
         vault.manualSetStaticSwapFeePercentage(poolB, poolBFeePercentage);

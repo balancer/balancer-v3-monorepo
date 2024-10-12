@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "../solidity-utils/helpers/IAuthentication.sol";
+import { IAuthentication } from "../solidity-utils/helpers/IAuthentication.sol";
 
 /**
  * @notice Base interface for a Balancer Pool Factory.

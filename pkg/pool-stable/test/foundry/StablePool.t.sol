@@ -16,8 +16,9 @@ import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoo
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
-contract StablePoolTest is BasePoolTest {
+contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -28,10 +29,13 @@ contract StablePoolTest is BasePoolTest {
         expectedAddLiquidityBptAmountOut = TOKEN_AMOUNT * 2;
 
         BasePoolTest.setUp();
+
+        poolMinSwapFeePercentage = 1e12;
+        poolMaxSwapFeePercentage = 10e16;
     }
 
     function createPool() internal override returns (address) {
-        factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 
         TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
@@ -56,7 +60,7 @@ contract StablePoolTest is BasePoolTest {
                     tokenConfigs,
                     DEFAULT_AMP_FACTOR,
                     roleAccounts,
-                    MIN_SWAP_FEE,
+                    BASE_MIN_SWAP_FEE,
                     poolHooksContract,
                     false, // Do not enable donations
                     false, // Do not disable unbalanced add/remove liquidity

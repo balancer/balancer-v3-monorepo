@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "../math/LogExpMath.sol";
+import { LogExpMath } from "../math/LogExpMath.sol";
 
 contract LogExpMathMock {
     function pow(uint256 x, uint256 y) public pure returns (uint256) {

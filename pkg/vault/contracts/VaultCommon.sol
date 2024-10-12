@@ -104,17 +104,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
 
-        unchecked {
+        if (next == 0) {
             // If the resultant delta becomes zero after this operation,
             // decrease the count of non-zero deltas.
-            if (next == 0) {
-                _nonZeroDeltaCount().tDecrement();
-            }
+            _nonZeroDeltaCount().tDecrement();
+        } else if (current == 0) {
             // If there was no previous delta (i.e., it was zero) and now we have one,
             // increase the count of non-zero deltas.
-            else if (current == 0) {
-                _nonZeroDeltaCount().tIncrement();
-            }
+            _nonZeroDeltaCount().tIncrement();
         }
 
         // Update the delta for this token.
@@ -288,6 +285,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
+    /**
+     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+     * In normal operation, we update both balances and fees together. However, while Recovery Mode is enabled,
+     * we cannot track yield fees, as that would involve making external calls that could fail and block withdrawals.
+     *
+     * Therefore, disabling Recovery Mode requires writing *only* the balances to storage, so we still need this
+     * as a separate function. It is normally called by `_loadPoolDataUpdatingBalancesAndYieldFees`, but in the
+     * Recovery Mode special case, it is called separately, with the result passed into `_writePoolBalancesToStorage`.
+     */
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         poolData.load(
             _poolTokenBalances[pool],
@@ -300,8 +306,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
-     * calls, it must be nonReentrant.
+     * This function modifies protocol fees and balance storage. Out of an abundance of caution, since `_loadPoolData`
+     * makes external calls, we are making anything that calls it and then modifies storage non-reentrant.
      * Side effects: updates `_aggregateFeeAmounts` and `_poolTokenBalances` in storage.
      */
     function _loadPoolDataUpdatingBalancesAndYieldFees(

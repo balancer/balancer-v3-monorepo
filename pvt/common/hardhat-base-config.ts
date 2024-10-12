@@ -9,22 +9,34 @@ type SolcConfig = {
     optimizer: {
       enabled: boolean;
       runs?: number;
+      details: {
+        yulDetails: {
+          optimizerSteps: string;
+        };
+      };
     };
   };
 };
 
 // The coverage report doesn't work well with via-ir flags, so we disable it
 const viaIR = !process.env.COVERAGE;
+const optimizerSteps =
+  'dhfoDgvulfnTUtnIf [ xa[r]EscLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LSsTFOtfDnca[r]Iulc ] jmul[jul] VcTOcul jmul : fDnTOcmu';
 
 export const compilers: [SolcConfig] = [
   {
-    version: '0.8.24',
+    version: '0.8.26',
     settings: {
       viaIR,
       evmVersion: 'cancun',
       optimizer: {
         enabled: true,
         runs: 9999,
+        details: {
+          yulDetails: {
+            optimizerSteps,
+          },
+        },
       },
     },
   },
@@ -46,13 +58,28 @@ const contractSettings: ContractSettings = {
     viaIR,
   },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
-    version: '0.8.24',
-    runs: 200,
+    version: '0.8.26',
+    runs: 500,
     viaIR,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
-    version: '0.8.24',
+    version: '0.8.26',
     runs: 500,
+    viaIR,
+  },
+  '@balancer-labs/v3-vault/contracts/CompositeLiquidityRouter.sol': {
+    version: '0.8.26',
+    runs: 500,
+    viaIR: false,
+  },
+  '@balancer-labs/v3-vault/contracts/test/CompositeLiquidityRouterMock.sol': {
+    version: '0.8.26',
+    runs: 9999,
+    viaIR: false,
+  },
+  '@balancer-labs/v3-vault/contracts/VaultExplorer.sol': {
+    version: '0.8.24',
+    runs: 9999,
     viaIR,
   },
 };
@@ -86,6 +113,11 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
         optimizer: {
           enabled: true,
           runs: contractSettings[contract].runs,
+          details: {
+            yulDetails: {
+              optimizerSteps,
+            },
+          },
         },
       },
     };

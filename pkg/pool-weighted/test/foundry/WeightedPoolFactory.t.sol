@@ -16,8 +16,9 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPoolFactoryTest is BaseVaultTest {
+contract WeightedPoolFactoryTest is WeightedPoolContractsDeployer, BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -32,7 +33,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     function setUp() public override {
         super.setUp();
 
-        weightedPoolFactory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         vm.label(address(weightedPoolFactory), "weighted pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -100,7 +101,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
 
         // Initialize pool.
         vm.prank(lp);
-        router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
 
         return weightedPool;
     }

@@ -282,7 +282,7 @@ describe('Vault', function () {
         expectedRates = Array(poolATokens.length).fill(FP_ONE);
 
         poolC = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool C', 'POOLC'],
+          args: [vault, 'Pool C', 'POOL_C'],
         });
 
         await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders));
@@ -314,7 +314,7 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX'],
+          args: [vault, 'Pool X', 'POOL_X'],
         });
         poolAddress = await pool.getAddress();
 
@@ -353,7 +353,7 @@ describe('Vault', function () {
 
     sharedBeforeEach('get old and deploy new authorizer', async () => {
       oldAuthorizerAddress = await vault.getAuthorizer();
-      oldAuthorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', oldAuthorizerAddress);
+      oldAuthorizer = await deployedAt('BasicAuthorizerMock', oldAuthorizerAddress);
 
       newAuthorizer = await deploy('NullAuthorizer');
     });
@@ -403,9 +403,9 @@ describe('Vault', function () {
       const result: number[] = [];
 
       for (let i = 0; i < numTokens; i++) {
-        // Compute the 5-bit mask for each token
+        // Compute the 5-bit mask for each token.
         const mask = (2 ** DECIMAL_DIFF_BITS - 1) << (i * DECIMAL_DIFF_BITS);
-        // Logical AND with the input, and shift back down to get the final result
+        // Logical AND with the input, and shift back down to get the final result.
         result[i] = (diff & mask) >> (i * DECIMAL_DIFF_BITS);
       }
 
@@ -433,9 +433,9 @@ describe('Vault', function () {
     });
 
     it('computes the scaling factors', async () => {
-      // Get them from the pool (mock), using ScalingHelpers
+      // Get them from the pool (mock), using ScalingHelpers.
       const poolScalingFactors = await poolA.getDecimalScalingFactors();
-      // Get them from the Vault (using PoolConfig)
+      // Get them from the Vault (using PoolConfig).
       const { decimalScalingFactors } = await vault.getPoolTokenRates(poolA);
 
       expect(decimalScalingFactors).to.deep.equal(poolScalingFactors);

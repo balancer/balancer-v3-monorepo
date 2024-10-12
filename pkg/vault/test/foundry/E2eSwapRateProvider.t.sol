@@ -6,16 +6,17 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
 import { E2eSwapTest } from "./E2eSwap.t.sol";
 
-contract E2eSwapRateProviderTest is E2eSwapTest {
+contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
@@ -26,8 +27,8 @@ contract E2eSwapRateProviderTest is E2eSwapTest {
         address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
         vm.label(newPool, label);
 
-        rateProviderTokenA = new RateProviderMock();
-        rateProviderTokenB = new RateProviderMock();
+        rateProviderTokenA = deployRateProviderMock();
+        rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
         rateProviderTokenA.mockRate(5.2453235e18);
         rateProviderTokenB.mockRate(0.4362784e18);

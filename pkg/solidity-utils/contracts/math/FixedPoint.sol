@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "./LogExpMath.sol";
+import { LogExpMath } from "./LogExpMath.sol";
 
 /// @notice Support 18-decimal fixed point arithmetic. All Vault calculations use this for high and uniform precision.
 library FixedPoint {
@@ -28,12 +28,6 @@ library FixedPoint {
         // Multiplication overflow protection is provided by Solidity 0.8.x
         uint256 product = a * b;
 
-        // The traditional divUp formula is:
-        // divUp(x, y) := (x + y - 1) / y
-        // To avoid intermediate overflow in the addition, we distribute the division and get:
-        // divUp(x, y) := (x - 1) / y + 1
-        // Note that this requires x != 0, if x == 0 then the result is zero
-        //
         // Equivalent to:
         // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
         assembly ("memory-safe") {
@@ -55,7 +49,7 @@ library FixedPoint {
 
     /// @dev Return (a * b) / c, rounding up.
     function mulDivUp(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
-        // This check is required because Yul's `div` doesn't revert on b==0
+        // This check is required because Yul's `div` doesn't revert on c==0
         if (c == 0) {
             revert ZeroDivision();
         }

@@ -2,23 +2,24 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
-import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib, PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -37,9 +38,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     using PoolConfigLib for PoolConfigBits;
     using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
+    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
+    using SafeCast for *;
 
-    /// @dev Functions with this modifier can only be delegate-called by the vault.
+    // Minimum BPT amount minted upon initialization.
+    uint256 internal constant _BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+
+    /// @dev Functions with this modifier can only be delegate-called by the Vault.
     modifier onlyVaultDelegateCall() {
         _vault.ensureVaultDelegateCall();
         _;
@@ -64,7 +70,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     constructor(
         IVault mainVault,
         uint32 pauseWindowDuration,
-        uint32 bufferPeriodDuration
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) VaultGuard(mainVault) {
         if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
@@ -74,11 +82,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         }
 
         // solhint-disable-next-line not-rely-on-time
-        uint32 pauseWindowEndTime = uint32(block.timestamp) + pauseWindowDuration;
+        uint32 pauseWindowEndTime = (block.timestamp + pauseWindowDuration).toUint32();
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+
+        _MINIMUM_TRADE_AMOUNT = minTradeAmount;
+        _MINIMUM_WRAP_AMOUNT = minWrapAmount;
     }
 
     /*******************************************************************************
@@ -113,6 +124,26 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @inheritdoc IVaultAdmin
     function getMaximumPoolTokens() external pure returns (uint256) {
         return _MAX_TOKENS;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getPoolMinimumTotalSupply() external pure returns (uint256) {
+        return _POOL_MINIMUM_TOTAL_SUPPLY;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferMinimumTotalSupply() external pure returns (uint256) {
+        return _BUFFER_MINIMUM_TOTAL_SUPPLY;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getMinimumTradeAmount() external view returns (uint256) {
+        return _MINIMUM_TRADE_AMOUNT;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getMinimumWrapAmount() external view returns (uint256) {
+        return _MINIMUM_WRAP_AMOUNT;
     }
 
     /*******************************************************************************
@@ -277,6 +308,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         onlyProtocolFeeController
     {
         _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
+
+        emit AggregateSwapFeePercentageChanged(pool, newAggregateSwapFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -291,6 +324,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         onlyProtocolFeeController
     {
         _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
+
+        emit AggregateYieldFeePercentageChanged(pool, newAggregateYieldFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -344,7 +379,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         if (recoveryMode == false) {
-            _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
+            _syncPoolBalancesAfterRecoveryMode(pool);
         }
 
         // Update poolConfigBits. `_writePoolBalancesToStorage` updates *only* balances, not yield fees, which are
@@ -353,6 +388,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInRecoveryMode(recoveryMode);
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
+    }
+
+    /**
+     * @dev Raw and live balances will diverge as tokens are withdrawn during Recovery Mode. Live balances cannot
+     * be updated in Recovery Mode, as this would require making external calls to update rates, which could fail.
+     * When Recovery Mode is disabled, re-sync the balances.
+     */
+    function _syncPoolBalancesAfterRecoveryMode(address pool) private nonReentrant {
+        _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
     }
 
     /*******************************************************************************
@@ -429,22 +473,20 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(wrappedToken, amountWrappedRaw);
 
         // Update buffer balances.
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-        bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
-            bufferBalances.getBalanceDerived() + amountWrappedRaw
-        );
+        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
 
-        _bufferTokenBalances[wrappedToken] = bufferBalances;
+        // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
+        // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
+        // since `redeem` is an EXACT_IN operation that rounds down the result.
+        issuedShares = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
+        _ensureBufferMinimumTotalSupply(issuedShares);
 
-        // Amount of shares to issue is the total underlying token that the user is depositing.
-        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        // Divide `issuedShares` between the zero address, which receives the minimum supply, and the account
+        // depositing the tokens to initialize the buffer, which receives the balance.
+        issuedShares -= _BUFFER_MINIMUM_TOTAL_SUPPLY;
 
-        _ensureMinimumTotalSupply(issuedShares);
-
-        issuedShares -= _MINIMUM_TOTAL_SUPPLY;
-        _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
         _mintMinimumBufferSupplyReserve(wrappedToken);
+        _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
     }
@@ -452,8 +494,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @inheritdoc IVaultAdmin
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
+        uint256 exactSharesToIssue,
         address sharesOwner
     )
         public
@@ -462,29 +503,46 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         whenVaultBuffersAreNotPaused
         withInitializedBuffer(wrappedToken)
         nonReentrant
-        returns (uint256 issuedShares)
+        returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw)
     {
         // Check wrapped token asset correctness.
         address underlyingToken = wrappedToken.asset();
         _ensureCorrectBufferAsset(wrappedToken, underlyingToken);
 
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
+
+        // To proportionally add liquidity to buffer, we need to calculate the buffer invariant ratio. It's calculated
+        // as the amount of buffer shares the sender wants to issue (which in practice is the value that the sender
+        // will add to the buffer, expressed in underlying token amounts), divided by the total shares of
+        // the buffer.
+        // Multiply the current buffer balance by the invariant ratio to calculate the amount of underlying and wrapped
+        // tokens to add, keeping the proportion of the buffer.
+        uint256 totalShares = _bufferTotalShares[wrappedToken];
+        amountUnderlyingRaw = bufferBalances.getBalanceRaw().mulDivUp(exactSharesToIssue, totalShares);
+        amountWrappedRaw = bufferBalances.getBalanceDerived().mulDivUp(exactSharesToIssue, totalShares);
+
         // Take debt for assets going into the buffer (wrapped and underlying).
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
         _takeDebt(wrappedToken, amountWrappedRaw);
 
-        // Update buffer balances
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
+        // Add the amountsIn to the current buffer balances.
         bufferBalances = PackedTokenBalance.toPackedBalance(
             bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
             bufferBalances.getBalanceDerived() + amountWrappedRaw
         );
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        // Amount of shares to issue is the total underlying token that the user is depositing.
-        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
-        _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
+        // Mint new shares to the owner.
+        _mintBufferShares(wrappedToken, sharesOwner, exactSharesToIssue);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+    }
+
+    function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
+        _bufferTotalShares[wrappedToken] = _BUFFER_MINIMUM_TOTAL_SUPPLY;
+        _bufferLpShares[wrappedToken][address(0)] = _BUFFER_MINIMUM_TOTAL_SUPPLY;
+
+        emit BufferSharesMinted(wrappedToken, address(0), _BUFFER_MINIMUM_TOTAL_SUPPLY);
     }
 
     function _mintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) internal {
@@ -494,19 +552,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] + amount;
 
-        _ensureMinimumTotalSupply(newTotalSupply);
+        // This is called on buffer initialization - after the minimum reserve amount has been minted - and during
+        // subsequent adds, when we're increasing it, so we do not really need to check it against the minimum.
+        // We do it anyway out of an abundance of caution, and to preserve symmetry with `_burnBufferShares`.
+        _ensureBufferMinimumTotalSupply(newTotalSupply);
 
         _bufferTotalShares[wrappedToken] = newTotalSupply;
         _bufferLpShares[wrappedToken][to] += amount;
 
         emit BufferSharesMinted(wrappedToken, to, amount);
-    }
-
-    function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
-        _bufferTotalShares[wrappedToken] += _MINIMUM_TOTAL_SUPPLY;
-        _bufferLpShares[wrappedToken][address(0)] += _MINIMUM_TOTAL_SUPPLY;
-
-        emit BufferSharesMinted(wrappedToken, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -574,12 +628,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
+        // Ensures we cannot drop the supply below the minimum.
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
-        // This triggers an external call to itself; the vault is acting as a Router in this case.
+        // This triggers an external call to itself; the Vault is acting as a Router in this case.
         // `sendTo` makes external calls (`transfer`) but is non-reentrant.
-        _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
-        _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
+        if (removedUnderlyingBalanceRaw > 0) {
+            _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
+        }
+        if (removedWrappedBalanceRaw > 0) {
+            _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
+        }
 
         emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
     }
@@ -591,7 +650,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] - amount;
 
-        _ensureMinimumTotalSupply(newTotalSupply);
+        // Ensure that the buffer can never be drained below the minimum total supply.
+        _ensureBufferMinimumTotalSupply(newTotalSupply);
 
         _bufferTotalShares[wrappedToken] = newTotalSupply;
         _bufferLpShares[wrappedToken][from] -= amount;
@@ -623,6 +683,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     function getBufferBalance(IERC4626 token) external view onlyVaultDelegateCall returns (uint256, uint256) {
         // The first balance is underlying, and the last is wrapped balance.
         return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
+    }
+
+    function _ensureBufferMinimumTotalSupply(uint256 newTotalSupply) private pure {
+        if (newTotalSupply < _BUFFER_MINIMUM_TOTAL_SUPPLY) {
+            revert BufferTotalSupplyTooLow(newTotalSupply);
+        }
     }
 
     /*******************************************************************************
@@ -672,5 +738,23 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @dev Access control is delegated to the Authorizer. `where` refers to the target contract.
     function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
         return _authorizer.canPerform(actionId, user, where);
+    }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    // solhint-disable no-complex-fallback
+
+    fallback() external payable {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        revert("Not implemented");
     }
 }

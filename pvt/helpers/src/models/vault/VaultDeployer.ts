@@ -13,11 +13,11 @@ import {
   VaultExtension,
   VaultExtensionMock,
 } from '@balancer-labs/v3-vault/typechain-types';
-import { VaultMock } from '@balancer-labs/v3-vault/typechain-types';
-import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { VaultMock, BasicAuthorizerMock } from '@balancer-labs/v3-vault/typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 
 const _MINIMUM_TRADE_AMOUNT = 1e6;
+const _MINIMUM_WRAP_AMOUNT = 1e3;
 
 export async function deploy(params: VaultDeploymentInputParams = {}): Promise<Vault> {
   const deployment = await TypesConverter.toVaultDeployment(params);
@@ -39,7 +39,7 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
   const futureVaultAddress = await getVaultAddress(admin);
 
   const vaultAdmin: VaultAdmin = await contract.deploy('v3-vault/VaultAdmin', {
-    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
+    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration, _MINIMUM_TRADE_AMOUNT, _MINIMUM_WRAP_AMOUNT],
     from: admin,
   });
 
@@ -54,7 +54,7 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
   });
 
   return await contract.deploy('v3-vault/Vault', {
-    args: [vaultExtension, authorizer, protocolFeeController, _MINIMUM_TRADE_AMOUNT],
+    args: [vaultExtension, authorizer, protocolFeeController],
     from: admin,
   });
 }
@@ -65,7 +65,7 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
   const futureVaultAddress = await getVaultAddress(admin);
 
   const vaultAdmin: VaultAdminMock = await contract.deploy('v3-vault/VaultAdminMock', {
-    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
+    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration, 0, 0],
     from: admin,
   });
 
@@ -80,7 +80,7 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
   });
 
   return await contract.deploy('v3-vault/VaultMock', {
-    args: [vaultExtension, authorizer, protocolFeeController, 0],
+    args: [vaultExtension, authorizer, protocolFeeController],
     from: admin,
   });
 }
@@ -96,5 +96,5 @@ async function getVaultAddress(from: SignerWithAddress): Promise<string> {
 }
 
 async function deployBasicAuthorizer(admin: SignerWithAddress): Promise<BasicAuthorizerMock> {
-  return contract.deploy('v3-solidity-utils/BasicAuthorizerMock', { args: [], from: admin });
+  return contract.deploy('v3-vault/BasicAuthorizerMock', { args: [], from: admin });
 }

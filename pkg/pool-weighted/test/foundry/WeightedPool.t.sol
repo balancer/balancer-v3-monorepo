@@ -6,21 +6,24 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPoolTest is BasePoolTest {
+contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -40,6 +43,9 @@ contract WeightedPoolTest is BasePoolTest {
         BasePoolTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        poolMinSwapFeePercentage = 0.001e16; // 0.001%
+        poolMaxSwapFeePercentage = 10e16;
     }
 
     function createPool() internal override returns (address) {
@@ -51,7 +57,7 @@ contract WeightedPoolTest is BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         PoolRoleAccounts memory roleAccounts;
@@ -87,14 +93,8 @@ contract WeightedPoolTest is BasePoolTest {
     }
 
     function testGetBptRate() public {
-        uint256 invariantBefore = WeightedMath.computeInvariant(weights, [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray());
-        uint256 invariantAfter = WeightedMath.computeInvariant(
-            weights,
-            [2 * TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
-        );
-
-        uint256[] memory amountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
-        _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
+        vm.expectRevert(WeightedPool.WeightedPoolBptRateUnsupported.selector);
+        IRateProvider(pool).getRate();
     }
 
     function testFailSwapFeeTooLow() public {
@@ -110,7 +110,7 @@ contract WeightedPoolTest is BasePoolTest {
             tokenConfigs,
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
-            MIN_SWAP_FEE - 1, // Swap fee too low
+            IBasePool(pool).getMinimumSwapFeePercentage() - 1, // Swap fee too low
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity

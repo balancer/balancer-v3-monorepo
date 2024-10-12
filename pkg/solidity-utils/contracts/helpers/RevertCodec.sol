@@ -42,14 +42,14 @@ library RevertCodec {
     }
 
     /// @dev Taken from Openzeppelin's Address.
-    function bubbleUpRevert(bytes memory returndata) internal pure {
+    function bubbleUpRevert(bytes memory returnData) internal pure {
         // Look for revert reason and bubble it up if present.
-        if (returndata.length > 0) {
+        if (returnData.length > 0) {
             // The easiest way to bubble the revert reason is using memory via assembly.
 
             assembly ("memory-safe") {
-                let returndata_size := mload(returndata)
-                revert(add(32, returndata), returndata_size)
+                let return_data_size := mload(returnData)
+                revert(add(32, returnData), return_data_size)
             }
         } else {
             revert ErrorSelectorNotFound();

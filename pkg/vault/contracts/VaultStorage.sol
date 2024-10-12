@@ -13,8 +13,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     TransientStorageHelpers,
-    AddressArraySlotType,
-    TokenDeltaMappingSlotType
+    TokenDeltaMappingSlotType,
+    AddressToBooleanMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -40,15 +40,18 @@ contract VaultStorage {
     // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
     uint256 internal constant _MAX_TOKENS = 8;
 
-    // Minimum BPT amount minted upon initialization.
-    uint256 internal constant _MINIMUM_BPT = 1e6;
-
-    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
-    uint256 internal constant _MINIMUM_WRAP_AMOUNT = 1e3;
-
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
+
+    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors.
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
+
+    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_WRAP_AMOUNT;
 
     /***************************************************************************
                           Transient Storage Declarations
@@ -63,6 +66,7 @@ contract VaultStorage {
     bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
     bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
+    bytes32 private immutable _ADD_LIQUIDITY_CALLED_SLOT = _calculateVaultStorageSlot("addLiquidityCalled");
     // solhint-enable var-name-mixedcase
 
     /***************************************************************************
@@ -168,6 +172,10 @@ contract VaultStorage {
 
     function _tokenDeltas() internal view returns (TokenDeltaMappingSlotType slot) {
         return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTAS_SLOT);
+    }
+
+    function _addLiquidityCalled() internal view returns (AddressToBooleanMappingSlot slot) {
+        return AddressToBooleanMappingSlot.wrap(_ADD_LIQUIDITY_CALLED_SLOT);
     }
 
     function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {

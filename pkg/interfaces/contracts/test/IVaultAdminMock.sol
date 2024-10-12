@@ -24,10 +24,16 @@ interface IVaultAdminMock {
         address sharesOwner
     ) external;
 
+    /// @dev Adds liquidity to buffer unbalanced, so it can unbalance the buffer.
+    function addLiquidityToBufferUnbalancedForTests(
+        IERC4626 wrappedToken,
+        uint256 underlyingAmount,
+        uint256 wrappedAmount
+    ) external;
+
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 exactSharesToIssue,
         address sharesOwner
     ) external;
 
@@ -36,6 +42,8 @@ interface IVaultAdminMock {
         uint256 sharesToRemove,
         address sharesOwner
     ) external;
+
+    function manualReentrancyDisableRecoveryMode(address pool) external;
 
     function mockWithValidPercentage(uint256 percentage) external view;
 

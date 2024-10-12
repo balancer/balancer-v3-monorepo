@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -19,7 +20,7 @@ import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract InitializerTest is BaseVaultTest {
-    using CastingHelpers for address[];
+    using CastingHelpers for *;
     using ArrayHelpers for *;
 
     IERC20[] standardPoolTokens;
@@ -93,7 +94,11 @@ contract InitializerTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeCall(
                 IHooks.onAfterInitialize,
-                ([defaultAmount, defaultAmount].toMemoryArray(), 2 * defaultAmount - MIN_BPT, bytes("0xff"))
+                (
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    2 * defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY,
+                    bytes("0xff")
+                )
             )
         );
         router.initialize(
@@ -114,6 +119,27 @@ contract InitializerTest is BaseVaultTest {
             pool,
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
+    }
+
+    function testInitializeEmitsPoolBalanceChangedEvent() public {
+        vm.expectEmit();
+        emit IVaultEvents.PoolBalanceChanged(
+            pool,
+            bob,
+            defaultAmount * 3,
+            [defaultAmount, defaultAmount * 2].toMemoryArray().unsafeCastToInt256(true),
+            new uint256[](2)
+        );
+
+        vm.prank(bob);
+        router.initialize(
+            pool,
+            standardPoolTokens,
+            [defaultAmount, defaultAmount * 2].toMemoryArray(),
             0,
             false,
             bytes("0xff")

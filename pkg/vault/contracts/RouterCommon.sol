@@ -2,31 +2,33 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
 /// @notice Contract for functions shared between the `Router` and `BatchRouter`.
 abstract contract RouterCommon is IRouterCommon, VaultGuard {
-    using Address for address payable;
-    using SafeERC20 for IWETH;
-    using StorageSlotExtension for *;
     using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
+    using Address for address payable;
+    using StorageSlotExtension for *;
+    using SafeERC20 for IWETH;
+    using SafeCast for *;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used by what is written
     // after =. If you use immutable, the value is first calculated and then replaced everywhere. That means that if a
@@ -34,6 +36,10 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _IS_RETURN_ETH_LOCKED_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "isReturnEthLocked");
 
     /// @notice Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -55,25 +61,25 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
 
     /**
      * @notice Saves the user or contract that initiated the current operation.
-     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the router's
-     * `getSender` function will always be the "outermost" caller. Some transactions require the router to identify
+     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the Router's
+     * `getSender` function will always be the "outermost" caller. Some transactions require the Router to identify
      * multiple senders. Consider the following example:
      *
-     * - ContractA has a function that calls the router, then calls ContractB with the output. ContractB in turn
-     * calls back into the router.
-     * - Imagine further that ContractA is a pool with a "before" hook that also calls the router.
+     * - ContractA has a function that calls the Router, then calls ContractB with the output. ContractB in turn
+     * calls back into the Router.
+     * - Imagine further that ContractA is a pool with a "before" hook that also calls the Router.
      *
-     * When the user calls the function on ContractA, there are three calls to the router in the same transaction:
-     * - 1st call: When ContractA calls the router directly, to initiate an operation on the pool (say, a swap).
+     * When the user calls the function on ContractA, there are three calls to the Router in the same transaction:
+     * - 1st call: When ContractA calls the Router directly, to initiate an operation on the pool (say, a swap).
      *             (Sender is contractA, initiator of the operation.)
      *
-     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the router.
+     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the Router.
      *             This is a "nested" call within the original pool operation. The nested call returns, then the
-     *             before hook returns, the router completes the operation, and finally returns back to ContractA
+     *             before hook returns, the Router completes the operation, and finally returns back to ContractA
      *             with the result (e.g., a calculated amount of tokens).
      *             (Nested call; sender is still ContractA through all of this.)
      *
-     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the router.
+     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the Router.
      *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
     modifier saveSender() {
@@ -82,10 +88,26 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         _discardSenderIfRequired(isExternalSender);
     }
 
+    /**
+     * @notice Locks the return of excess ETH to the sender until the end of the function.
+     * @dev This also encompasses the `saveSender` functionality.
+     */
+    modifier saveSenderAndManageEth() {
+        bool isExternalSender = _saveSender();
+
+        // Lock the return of ETH during execution
+        _isReturnEthLockedSlot().tstore(true);
+        _;
+        _isReturnEthLockedSlot().tstore(false);
+
+        _returnEth(_getSenderSlot().tload());
+        _discardSenderIfRequired(isExternalSender);
+    }
+
     function _saveSender() internal returns (bool isExternalSender) {
         address sender = _getSenderSlot().tload();
 
-        // NOTE: Only the most external sender will be saved by the router.
+        // NOTE: Only the most external sender will be saved by the Router.
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
             isExternalSender = true;
@@ -103,7 +125,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
         _weth = weth;
         _permit2 = permit2;
-        weth.approve(address(vault), type(uint256).max);
     }
 
     /*******************************************************************************
@@ -130,17 +151,31 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             bytes memory signature = permitSignatures[i];
 
             SignatureParts memory signatureParts = _getSignatureParts(signature);
-
             PermitApproval memory permitApproval = permitBatch[i];
-            IERC20Permit(permitApproval.token).permit(
-                permitApproval.owner,
-                address(this),
-                permitApproval.amount,
-                permitApproval.deadline,
-                signatureParts.v,
-                signatureParts.r,
-                signatureParts.s
-            );
+
+            try
+                IERC20Permit(permitApproval.token).permit(
+                    permitApproval.owner,
+                    address(this),
+                    permitApproval.amount,
+                    permitApproval.deadline,
+                    signatureParts.v,
+                    signatureParts.r,
+                    signatureParts.s
+                )
+            {
+                // solhint-disable-previous-line no-empty-blocks
+                // OK; carry on.
+            } catch (bytes memory returnData) {
+                // Did it fail because the permit was executed (possible DoS attack to make the transaction revert),
+                // or was it something else (e.g., deadline, invalid signature)?
+                if (
+                    IERC20(permitApproval.token).allowance(permitApproval.owner, address(this)) != permitApproval.amount
+                ) {
+                    // It was something else, or allowance was used, so we should revert. Bubble up the revert reason.
+                    RevertCodec.bubbleUpRevert(returnData);
+                }
+            }
         }
 
         // Only call permit2 if there's something to do.
@@ -154,7 +189,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     }
 
     /// @inheritdoc IRouterCommon
-    function multicall(bytes[] calldata data) public virtual saveSender returns (bytes[] memory results) {
+    function multicall(
+        bytes[] calldata data
+    ) public payable virtual saveSenderAndManageEth returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
@@ -190,11 +227,20 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * returned ETH.
      */
     function _returnEth(address sender) internal {
+        // It's cheaper to check the balance and return early than checking a transient variable.
+        // Moreover, most operations will not have ETH to return.
         uint256 excess = address(this).balance;
-
-        if (excess > 0) {
-            payable(sender).sendValue(excess);
+        if (excess == 0) {
+            return;
         }
+
+        // If the return of ETH is locked, then don't return it,
+        // because _returnEth will be called again at the end of the call.
+        if (_isReturnEthLockedSlot().tload()) {
+            return;
+        }
+
+        payable(sender).sendValue(excess);
     }
 
     /**
@@ -213,19 +259,13 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         amountsGiven[tokenIndex] = amountGiven;
     }
 
-    function _takeTokenIn(
-        address sender,
-        IERC20 tokenIn,
-        uint256 amountIn,
-        bool wethIsEth
-    ) internal returns (uint256 ethAmountIn) {
+    function _takeTokenIn(address sender, IERC20 tokenIn, uint256 amountIn, bool wethIsEth) internal {
         // If the tokenIn is ETH, then wrap `amountIn` into WETH.
         if (wethIsEth && tokenIn == _weth) {
             if (address(this).balance < amountIn) {
                 revert InsufficientEth();
             }
 
-            ethAmountIn = amountIn;
             // wrap amountIn to WETH.
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault.
@@ -233,13 +273,19 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             // update Vault accounting.
             _vault.settle(_weth, amountIn);
         } else {
-            // Send the tokenIn amount to the Vault
-            _permit2.transferFrom(sender, address(_vault), uint160(amountIn), address(tokenIn));
-            _vault.settle(tokenIn, amountIn);
+            if (amountIn > 0) {
+                // Send the tokenIn amount to the Vault
+                _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
+                _vault.settle(tokenIn, amountIn);
+            }
         }
     }
 
     function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
+        if (amountOut == 0) {
+            return;
+        }
+
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
             // Receive the WETH amountOut.
@@ -285,5 +331,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
 
     function _getSenderSlot() internal view returns (StorageSlotExtension.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
+    }
+
+    function _isReturnEthLockedSlot() internal view returns (StorageSlotExtension.BooleanSlotType) {
+        return _IS_RETURN_ETH_LOCKED_SLOT.asBoolean();
     }
 }

@@ -6,21 +6,24 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
+
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterQueriesDiffRatesTest is BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
+    using ScalingHelpers for uint256;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -44,8 +47,8 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         vm.label(newPool, label);
 
         rateProviders = new IRateProvider[](2);
-        rateProviders[0] = IRateProvider(address(new RateProviderMock()));
-        rateProviders[1] = IRateProvider(address(new RateProviderMock()));
+        rateProviders[0] = IRateProvider(address(deployRateProviderMock()));
+        rateProviders[1] = IRateProvider(address(deployRateProviderMock()));
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20(), rateProviders));
 
@@ -69,7 +72,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
         uint256 exactAmountIn = biggerPoolInitAmount.mulUp(1e16);
         // Round down to favor vault.
-        uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate);
+        uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate.computeRateRoundUp());
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -103,8 +106,8 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations. The mock pool math is linear,
         // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
         uint256 exactAmountOut = biggerPoolInitAmount.mulUp(1e16);
-        // Round up to favor vault.
-        uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate).divUp(daiMockRate);
+        // Round up to favor the Vault.
+        uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate.computeRateRoundUp()).divUp(daiMockRate);
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -386,7 +389,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         (uint256 expectedBptAmountIn, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
             vault.getCurrentLiveBalances(pool),
             daiIdx,
-            // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals)
+            // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals).
             exactAmountOut.mulUp(daiMockRate),
             IERC20(pool).totalSupply(),
             0,

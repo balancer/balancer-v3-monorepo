@@ -6,25 +6,26 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
+import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -33,7 +34,7 @@ contract RouterTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for *;
 
-    uint256 internal usdcAmountIn = 1e3 * 1e6;
+    uint256 internal usdcAmountIn = 1e3 * 1e6; // USDC has 6 decimals
     uint256 internal daiAmountIn = 1e3 * 1e18;
     uint256 internal daiAmountOut = 1e2 * 1e18;
     uint256 internal ethAmountIn = 1e3 ether;
@@ -55,7 +56,7 @@ contract RouterTest is BaseVaultTest {
     IERC20[] internal wethDaiTokens;
 
     function setUp() public virtual override {
-        rateProvider = new RateProviderMock();
+        rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
 
@@ -63,7 +64,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
@@ -85,7 +86,7 @@ contract RouterTest is BaseVaultTest {
         );
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
+        wethPool = deployPoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
         factoryMock.registerTestPool(
@@ -103,7 +104,7 @@ contract RouterTest is BaseVaultTest {
         wethDaiAmountsIn[wethIdx] = ethAmountIn;
         wethDaiAmountsIn[daiIdxWethPool] = daiAmountIn;
 
-        wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
+        wethPoolNoInit = deployPoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
 
         factoryMock.registerTestPool(
@@ -120,7 +121,7 @@ contract RouterTest is BaseVaultTest {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
 
         vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
 
         vm.prank(lp);
         bool wethIsEth = true;
@@ -130,6 +131,26 @@ contract RouterTest is BaseVaultTest {
             wethDaiAmountsIn,
             initBpt,
             wethIsEth,
+            bytes("")
+        );
+    }
+
+    function testInitBalanceOverflow() public {
+        address newPool = address(deployPoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
+        vm.label(address(newPool), "big pool");
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens), address(0), lp);
+
+        vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
+        vm.prank(lp);
+        router.initialize(
+            address(newPool),
+            tokens,
+            [type(uint168).max, poolInitAmount].toMemoryArray(),
+            0,
+            false,
             bytes("")
         );
     }
@@ -145,7 +166,7 @@ contract RouterTest is BaseVaultTest {
 
         vault.disableQuery();
 
-        // Authorize alice
+        // Authorize alice.
         bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQuery.selector);
 
         authorizer.grantRole(disableQueryRole, alice);
@@ -163,7 +184,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testInitializeBelowMinimum() public {
-        vm.expectRevert(abi.encodeWithSelector(IERC20MultiTokenErrors.TotalSupplyTooLow.selector, 0, 1e6));
+        vm.expectRevert(abi.encodeWithSelector(IERC20MultiTokenErrors.PoolTotalSupplyTooLow.selector, 0));
         router.initialize(
             address(wethPoolNoInit),
             wethDaiTokens,
@@ -333,7 +354,7 @@ contract RouterTest is BaseVaultTest {
         checkRemoveLiquidityPreConditions();
 
         wethIsEth = false;
-        router.removeLiquidityCustom(address(wethPool), exactBptAmount, wethDaiAmountsIn, wethIsEth, "");
+        router.removeLiquidityCustom(address(wethPool), exactBptAmount, wethDaiAmountsIn, wethIsEth, bytes(""));
 
         // Liquidity position was removed, Alice gets weth back.
         assertEq(weth.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong WETH balance");
@@ -362,7 +383,7 @@ contract RouterTest is BaseVaultTest {
             exactBptAmount,
             [uint256(ethAmountIn), uint256(daiAmountIn)].toMemoryArray(),
             wethIsEth,
-            ""
+            bytes("")
         );
 
         // Liquidity position was removed, Alice gets ETH back.
@@ -375,8 +396,9 @@ contract RouterTest is BaseVaultTest {
         // Add initial liquidity.
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
+        // Perfect add liquidity without rounding errors.
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+        (, bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
@@ -530,7 +552,7 @@ contract RouterTest is BaseVaultTest {
             0,
             MAX_UINT256,
             wethIsEth,
-            ""
+            bytes("")
         );
 
         assertEq(weth.balanceOf(alice), defaultBalance - ethAmountIn, "Wrong WETH balance");
@@ -550,7 +572,7 @@ contract RouterTest is BaseVaultTest {
             MAX_UINT256,
             MAX_UINT256,
             wethIsEth,
-            ""
+            bytes("")
         );
 
         assertEq(weth.balanceOf(alice), defaultBalance - outputTokenAmount, "Wrong WETH balance");
@@ -572,7 +594,7 @@ contract RouterTest is BaseVaultTest {
             0,
             MAX_UINT256,
             wethIsEth,
-            ""
+            bytes("")
         );
 
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
@@ -595,7 +617,7 @@ contract RouterTest is BaseVaultTest {
             MAX_UINT256,
             MAX_UINT256,
             wethIsEth,
-            ""
+            bytes("")
         );
 
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
@@ -618,10 +640,10 @@ contract RouterTest is BaseVaultTest {
             0,
             MAX_UINT256,
             wethIsEth,
-            ""
+            bytes("")
         );
 
-        // Only ethAmountIn is sent to the router
+        // Only ethAmountIn is sent to the Router.
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
         assertEq(dai.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong DAI balance");
         assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");

@@ -15,8 +15,9 @@ import { E2eBatchSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eBatchS
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
-contract E2eBatchSwapStableTest is E2eBatchSwapTest {
+contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
 
     uint256 internal constant DEFAULT_SWAP_FEE_STABLE = 1e12; // 0.0001%
@@ -32,8 +33,8 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest {
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
-        minSwapAmountTokenD = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenA = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
+        minSwapAmountTokenD = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
 
         // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // balance).
@@ -43,7 +44,7 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest {
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eBatchSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        StablePoolFactory factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         StablePool newPool = StablePool(
