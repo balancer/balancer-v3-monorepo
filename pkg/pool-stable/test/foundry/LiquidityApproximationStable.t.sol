@@ -161,17 +161,17 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
     function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {
         uint256 updateInterval = 5000 days;
 
-        (uint256 value, bool isUpdating, uint256 precision) = IStablePool(pool).getAmplificationParameter();
+        (uint256 value, bool isUpdating, ) = IStablePool(pool).getAmplificationParameter();
 
         vm.prank(admin);
         uint256 endTime = block.timestamp + updateInterval;
         StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
 
-        AmplificationState memory ampState = IStablePool(pool).getAmplificationState();
+        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
         assertEq(ampState.startTime, block.timestamp, "Wrong amp update start time");
         assertEq(ampState.endTime, endTime, "Wrong amp update end time");
-        assertEq(ampState.startValue, value / precision, "Wrong amp update start value");
-        assertEq(ampState.endValue, newAmplificationParameter / precision, "Wrong amp update start value");
+        assertEq(ampState.startValue, value, "Wrong amp update start value");
+        assertEq(ampState.endValue, newAmplificationParameter * precision, "Wrong amp update end value");
 
         vm.warp(block.timestamp + updateInterval + 1);
 
