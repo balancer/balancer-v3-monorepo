@@ -106,7 +106,10 @@ interface IStablePool is IBasePool {
      * @return amplificationState Struct containing the update data
      * @return precision The raw parameter value is multiplied by this number for greater precision during updates
      */
-    function getAmplificationState() external view returns (AmplificationState memory amplificationState, uint256 precision);
+    function getAmplificationState()
+        external
+        view
+        returns (AmplificationState memory amplificationState, uint256 precision);
 
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.

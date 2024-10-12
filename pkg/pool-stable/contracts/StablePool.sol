@@ -257,7 +257,11 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IStablePool
-    function getAmplificationState() external view returns (AmplificationState memory amplificationState, uint256 precision) {
+    function getAmplificationState()
+        external
+        view
+        returns (AmplificationState memory amplificationState, uint256 precision)
+    {
         amplificationState = _amplificationState;
         precision = StableMath.AMP_PRECISION;
     }
