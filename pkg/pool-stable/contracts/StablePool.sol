@@ -7,7 +7,8 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {
     IStablePool,
     StablePoolDynamicData,
-    StablePoolImmutableData
+    StablePoolImmutableData,
+    AmplificationState
 } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import {
@@ -43,13 +44,6 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, PoolInfo, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
-
-    struct AmplificationState {
-        uint64 startValue;
-        uint64 endValue;
-        uint32 startTime;
-        uint32 endTime;
-    }
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the block time, making timestamp manipulation a non-issue.
@@ -262,6 +256,11 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         precision = StableMath.AMP_PRECISION;
     }
 
+    /// @inheritdoc IStablePool
+    function getAmplificationState() external view returns (AmplificationState memory amplificationState) {
+        return _amplificationState;
+    }
+
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
         AmplificationState memory state = _amplificationState;
 
@@ -342,6 +341,12 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         data.totalSupply = totalSupply();
         data.bptRate = getRate();
         (data.amplificationParameter, data.isAmpUpdating) = _getAmplificationParameter();
+
+        AmplificationState memory state = _amplificationState;
+        data.startValue = state.startValue;
+        data.endValue = state.endValue;
+        data.startTime = state.startTime;
+        data.endTime = state.endTime;
 
         PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
         data.isPoolInitialized = poolConfig.isPoolInitialized;
