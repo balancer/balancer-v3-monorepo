@@ -79,7 +79,7 @@ contract StableSurgeHookExampleTest is BaseVaultTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 AMP_FACTOR,
                 roleAccounts,
-                MIN_SWAP_FEE,
+                BASE_MIN_SWAP_FEE,
                 poolHooksContract,
                 false, // Does not allow donations
                 false, // Do not disable unbalanced add/remove liquidity
