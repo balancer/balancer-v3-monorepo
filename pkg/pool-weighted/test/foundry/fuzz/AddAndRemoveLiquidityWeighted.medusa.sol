@@ -19,6 +19,8 @@ import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol"
 import { WeightedPool } from "../../../contracts/WeightedPool.sol";
 
 contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaTest {
+    uint256 private constant DEFAULT_SWAP_FEE = 1e16;
+
     uint256 private constant _WEIGHT1 = 33e16;
     uint256 private constant _WEIGHT2 = 33e16;
 
@@ -26,7 +28,7 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         // Weighted Pool rate is not reliable, since the Pow function introduces rounding issues to the invariant.
         // For testing purposes, we are using the Weighted Pool rate, but with a tolerance to errors, just to check
         // whether the rate change is contained and small, but in production we should avoid using Weighted Pool rate.
-        maxRateTolerance = 500;
+        maxRateTolerance = 10;
     }
 
     function createPool(
@@ -54,7 +56,7 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
                 vault.buildTokenConfig(tokens),
                 weights,
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee
+                DEFAULT_SWAP_FEE, // Swap fee is set to 0 in the test constructor
                 address(0), // No hooks
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity

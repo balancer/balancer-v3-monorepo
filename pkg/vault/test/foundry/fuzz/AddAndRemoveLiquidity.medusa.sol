@@ -20,8 +20,6 @@ import "../utils/BaseMedusaTest.sol";
 contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     using FixedPoint for uint256;
 
-    uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
-
     uint256 private constant _MAX_BALANCE = 2 ** (128) - 1; // from PackedTokenBalance.sol
     uint256 private constant _MINIMUM_TRADE_AMOUNT = 1e6;
     uint256 private constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
@@ -36,6 +34,9 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     constructor() BaseMedusaTest() {
         initialRate = vault.getBptRate(address(pool));
+        // Set swap fee percentage to 0, which is the worst scenario since there's no LP fees. Circumvent minimum swap
+        // fees, for testing purposes.
+        vault.manuallySetSwapFee(address(pool), 0);
     }
 
     /*******************************************************************************
@@ -54,15 +55,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
                           Symmetrical Add/Remove Liquidity
     *******************************************************************************/
 
-    function computeAddAndRemoveLiquiditySingleToken(
-        uint256 tokenIndex,
-        uint256 exactBptAmountOut,
-        uint256 swapFeePercentage
-    ) public {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
+    function computeAddAndRemoveLiquiditySingleToken(uint256 tokenIndex, uint256 exactBptAmountOut) public {
         tokenIndex = boundTokenIndex(tokenIndex);
         exactBptAmountOut = boundBptMint(exactBptAmountOut);
 
@@ -95,15 +88,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         bptProfit += int256(exactBptAmountOut) - int256(bptAmountIn);
     }
 
-    function computeRemoveAndAddLiquiditySingleToken(
-        uint256 tokenIndex,
-        uint256 tokenAmountOut,
-        uint256 swapFeePercentage
-    ) public {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
+    function computeRemoveAndAddLiquiditySingleToken(uint256 tokenIndex, uint256 tokenAmountOut) public {
         tokenIndex = boundTokenIndex(tokenIndex);
         tokenAmountOut = boundTokenAmountOut(tokenAmountOut, tokenIndex);
 
@@ -132,11 +117,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         bptProfit += int256(bptAmountOut) - int256(bptAmountIn);
     }
 
-    function computeAddAndRemoveLiquidityMultiToken(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
+    function computeAddAndRemoveLiquidityMultiToken(uint256 exactBptAmountOut) public {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         exactBptAmountOut = boundBptMint(exactBptAmountOut);
@@ -173,11 +154,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         bptProfit += int256(exactBptAmountOut) - int256(bptAmountIn);
     }
 
-    function computeRemoveAndAddLiquidityMultiToken(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
+    function computeRemoveAndAddLiquidityMultiToken(uint256 exactBptAmountIn) public {
         exactBptAmountIn = boundBptBurn(exactBptAmountIn);
 
         uint256[] memory minAmountsOut = getMinAmountsOut();
@@ -231,14 +208,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         updateRateDecrease();
     }
 
-    function computeAddLiquidityUnbalanced(
-        uint256[] memory exactAmountsIn,
-        uint256 swapFeePercentage
-    ) public returns (uint256 bptAmountOut) {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
+    function computeAddLiquidityUnbalanced(uint256[] memory exactAmountsIn) public returns (uint256 bptAmountOut) {
         exactAmountsIn = boundBalanceLength(exactAmountsIn);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
             exactAmountsIn[i] = boundTokenDeposit(exactAmountsIn[i], i);
@@ -252,13 +222,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     function computeAddLiquiditySingleTokenExactOut(
         uint256 tokenInIndex,
-        uint256 exactBptAmountOut,
-        uint256 swapFeePercentage
+        uint256 exactBptAmountOut
     ) public returns (uint256 amountIn) {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
         assumeValidTradeAmount(exactBptAmountOut);
         tokenInIndex = boundTokenIndex(tokenInIndex);
         exactBptAmountOut = boundBptMint(exactBptAmountOut);
@@ -280,13 +245,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     function computeRemoveLiquiditySingleTokenExactOut(
         uint256 tokenOutIndex,
-        uint256 exactAmountOut,
-        uint256 swapFeePercentage
+        uint256 exactAmountOut
     ) public returns (uint256 bptAmountIn) {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
         assumeValidTradeAmount(exactAmountOut);
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactAmountOut = boundTokenAmountOut(exactAmountOut, tokenOutIndex);
@@ -308,13 +268,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     function computeRemoveLiquiditySingleTokenExactIn(
         uint256 tokenOutIndex,
-        uint256 exactBptAmountIn,
-        uint256 swapFeePercentage
+        uint256 exactBptAmountIn
     ) public returns (uint256 amountOut) {
-        // Fee % between 0% and 100%
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
-        vault.manualSetStaticSwapFeePercentage(address(pool), swapFeePercentage);
-
         assumeValidTradeAmount(exactBptAmountIn);
         tokenOutIndex = boundTokenIndex(tokenOutIndex);
         exactBptAmountIn = boundBptBurn(exactBptAmountIn);

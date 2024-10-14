@@ -19,6 +19,7 @@ import { StablePoolFactory } from "../../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../../contracts/StablePool.sol";
 
 contract AddAndRemoveLiquidityStableMedusaTest is AddAndRemoveLiquidityMedusaTest {
+    uint256 private constant DEFAULT_SWAP_FEE = 1e16;
     uint256 internal constant _AMPLIFICATION_PARAMETER = 1000;
 
     constructor() AddAndRemoveLiquidityMedusaTest() {
@@ -39,7 +40,7 @@ contract AddAndRemoveLiquidityStableMedusaTest is AddAndRemoveLiquidityMedusaTes
                 vault.buildTokenConfig(tokens),
                 _AMPLIFICATION_PARAMETER,
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
+                DEFAULT_SWAP_FEE, // Swap fee is set to 0 in the test constructor
                 address(0), // No hooks
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
