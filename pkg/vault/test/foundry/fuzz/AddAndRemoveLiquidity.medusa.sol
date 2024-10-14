@@ -120,8 +120,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
             bytes("")
         );
 
-        // deposit exactly tokenAmountOut to mint bptMintAmt
-        uint256[] memory exactAmountsIn = new uint256[](getBalancesLength());
+        // deposit exactly tokenAmountOut to mint bptAmountOut.
+        uint256[] memory exactAmountsIn = new uint256[](vault.getPoolTokens(address(pool)).length);
         exactAmountsIn[tokenIndex] = tokenAmountOut;
 
         medusa.prank(lp);
@@ -367,13 +367,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         return invariant.divDown(bptTotalSupply);
     }
 
-    function getBalancesLength() internal view returns (uint256 length) {
-        (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        length = balancesRaw.length;
-    }
-
     function boundTokenIndex(uint256 tokenIndex) internal view returns (uint256 boundedIndex) {
-        uint256 len = getBalancesLength();
+        uint256 len = vault.getPoolTokens(address(pool)).length;
         boundedIndex = bound(tokenIndex, 0, len - 1);
     }
 
