@@ -33,8 +33,14 @@ import { ProtocolFeeControllerMock } from "../../../contracts/test/ProtocolFeeCo
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 
 contract BaseMedusaTest is Test {
+    // Forge has vm commands, which allow us to prank callers, deal ETH and ERC20 tokens to users, etc. Medusa is not
+    // compatible with it and has its own StdCheats, in the address below. So, instead of calling `vm.prank`, we should
+    // use `medusa.prank`. The interface documents which functions are available. Notice that Medusa's StdCheats and
+    // Forge's StdCheats implement different methods.
     IStdMedusaCheats internal medusa = IStdMedusaCheats(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
+    // In certain places, console.log will not print to stdout the intended message, so we use this event to print
+    // messages and values.
     event Debug(string, uint256);
 
     IPermit2 internal permit2;
