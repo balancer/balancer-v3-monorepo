@@ -35,7 +35,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     int256 internal bptProfit = 0;
 
     constructor() BaseMedusaTest() {
-        initialRate = getBptRate();
+        initialRate = vault.getBptRate(address(pool));
     }
 
     /*******************************************************************************
@@ -352,19 +352,11 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     }
 
     function updateRateDecrease() internal {
-        uint256 rateAfter = getBptRate();
+        uint256 rateAfter = vault.getBptRate(address(pool));
         rateDecrease = int256(initialRate) - int256(rateAfter);
 
         emit Debug("initial rate", initialRate);
         emit Debug("rate after", rateAfter);
-    }
-
-    function getBptRate() internal returns (uint256) {
-        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
-        uint256 bptTotalSupply = BalancerPoolToken(address(pool)).totalSupply();
-
-        uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
-        return invariant.divDown(bptTotalSupply);
     }
 
     function boundTokenIndex(uint256 tokenIndex) internal view returns (uint256 boundedIndex) {
