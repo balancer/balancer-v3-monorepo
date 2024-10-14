@@ -19,7 +19,6 @@ import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol"
 import { WeightedPool } from "../../../contracts/WeightedPool.sol";
 
 contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaTest {
-    uint256 private constant _MIN_WEIGHT = 1e16; // 1% (from WeightedPool.sol)
     uint256 private constant _WEIGHT1 = 33e16;
     uint256 private constant _WEIGHT2 = 33e16;
 

@@ -60,6 +60,7 @@ contract BaseMedusaTest is Test {
     uint256 internal poolCreationNonce;
 
     uint256 internal constant DEFAULT_USER_BALANCE = 1e18 * 1e18;
+    uint256 internal constant DEFAULT_INITIAL_POOL_BALANCE = 1e6 * 1e18;
 
     // Set alice,bob and lp to addresses of medusa.json "senderAddresses" property
     address internal alice = address(0x10000);
@@ -121,9 +122,9 @@ contract BaseMedusaTest is Test {
         tokens = InputHelpers.sortTokens(tokens);
 
         initialBalances = new uint256[](3);
-        initialBalances[0] = 10e18;
-        initialBalances[1] = 20e18;
-        initialBalances[2] = 30e18;
+        initialBalances[0] = DEFAULT_INITIAL_POOL_BALANCE;
+        initialBalances[1] = DEFAULT_INITIAL_POOL_BALANCE;
+        initialBalances[2] = DEFAULT_INITIAL_POOL_BALANCE;
     }
 
     function _createERC20TestToken(
