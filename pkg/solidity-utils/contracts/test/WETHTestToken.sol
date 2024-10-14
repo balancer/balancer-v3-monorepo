@@ -27,8 +27,4 @@ contract WETHTestToken is IWETH, ERC20 {
         payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad);
     }
-
-    function mint(address to, uint256 value) public {
-        _mint(to, value);
-    }
 }

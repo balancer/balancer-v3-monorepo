@@ -13,13 +13,13 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IStdMedusaCheats } from "@balancer-labs/v3-interfaces/contracts/test/IStdMedusaCheats.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { VaultAdminMock } from "../../../contracts/test/VaultAdminMock.sol";
@@ -62,25 +62,25 @@ contract BaseMedusaTest is Test {
 
     ERC20TestToken internal dai;
     ERC20TestToken internal usdc;
-    WETHTestToken internal weth;
+    ERC20TestToken internal weth;
 
     constructor() {
         dai = _createERC20TestToken("DAI", "DAI", 18);
         usdc = _createERC20TestToken("USDC", "USDC", 18);
-        weth = new WETHTestToken();
-
-        // The only function used by _mintTokenToUsers is mint, which has the same signature as ERC20TestToken. So,
-        // cast weth as ERC20TestToken to use the same funtion.
-        _mintTokenToUsers(ERC20TestToken(address(weth)));
+        weth = _createERC20TestToken("WETH", "WETH", 18);
 
         DeployPermit2 _deployPermit2 = new DeployPermit2();
         permit2 = IPermit2(_deployPermit2.deployPermit2());
 
         _deployVaultMock(0, 0);
 
-        router = new RouterMock(IVault(address(vault)), weth, permit2);
-        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
-        compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
+        router = new RouterMock(IVault(address(vault)), IWETH(address(weth)), permit2);
+        batchRouter = new BatchRouterMock(IVault(address(vault)), IWETH(address(weth)), permit2);
+        compositeLiquidityRouter = new CompositeLiquidityRouterMock(
+            IVault(address(vault)),
+            IWETH(address(weth)),
+            permit2
+        );
 
         _setPermissionsForUsersAndTokens();
 
