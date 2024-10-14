@@ -19,7 +19,7 @@ type SolcConfig = {
 };
 
 // The coverage report doesn't work well with via-ir flags, so we disable it
-const viaIR = !process.env.COVERAGE;
+const viaIR = !(process.env.COVERAGE === 'true' ? true : false);
 const optimizerSteps =
   'dhfoDgvulfnTUtnIf [ xa[r]EscLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LSsTFOtfDnca[r]Iulc ] jmul[jul] VcTOcul jmul : fDnTOcmu';
 
@@ -70,12 +70,12 @@ const contractSettings: ContractSettings = {
   '@balancer-labs/v3-vault/contracts/CompositeLiquidityRouter.sol': {
     version: '0.8.26',
     runs: 500,
-    viaIR: false,
+    viaIR,
   },
   '@balancer-labs/v3-vault/contracts/test/CompositeLiquidityRouterMock.sol': {
     version: '0.8.26',
     runs: 9999,
-    viaIR: false,
+    viaIR,
   },
   '@balancer-labs/v3-vault/contracts/VaultExplorer.sol': {
     version: '0.8.24',
