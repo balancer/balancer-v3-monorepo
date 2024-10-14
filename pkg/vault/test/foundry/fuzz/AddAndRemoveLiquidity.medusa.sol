@@ -38,8 +38,9 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         initialRate = getBptRate();
     }
 
-    ////////////////////////////////////////
-    // Optimizations
+    /*******************************************************************************
+                                    Optimizations
+    *******************************************************************************/
 
     function optimize_rateDecrease() public view returns (int256) {
         return rateDecrease;
@@ -49,8 +50,9 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         return int256(bptProfit);
     }
 
-    ////////////////////////////////////////
-    // Symmetrical Add/Remove Liquidity
+    /*******************************************************************************
+                          Symmetrical Add/Remove Liquidity
+    *******************************************************************************/
 
     function computeAddAndRemoveLiquiditySingleToken(
         uint256 tokenIndex,
@@ -203,8 +205,9 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         return assertBptProfit(pool);
     }
 
-    ////////////////////////////////////////
-    // Simple operations
+    /*******************************************************************************
+                          Simple Add/Remove operations
+    *******************************************************************************/
 
     function computeProportionalAmountsIn(uint256 bptAmountOut) public returns (uint256[] memory amountsIn) {
         assumeValidTradeAmount(bptAmountOut);
@@ -335,8 +338,9 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         return assertRate(pool);
     }
 
-    ////////////////////////////////////////
-    // Helpers (private functions, so they're not fuzzed)
+    /*******************************************************************************
+                  Helpers (private functions, so they're not fuzzed)
+    *******************************************************************************/
 
     function assertBptProfit(IBasePool pool) internal returns (bool) {
         return bptProfit <= 0;
