@@ -32,11 +32,10 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         uint256[] memory initialBalances
     ) internal override returns (address newPool) {
         uint256[] memory weights = new uint256[](3);
-        weights[0] = bound(_WEIGHT1, _MIN_WEIGHT, 98e16); // any weight between min & 100%-2(min)
-        uint256 remainingWeight = 99e16 - weights[0]; // weights 0 + 1 must <= 100%-min so there's >=1% left for weight 2
-        weights[1] = bound(_WEIGHT2, _MIN_WEIGHT, remainingWeight);
-        remainingWeight = 100e16 - (weights[0] + weights[1]);
-        weights[2] = remainingWeight;
+        weights[0] = _WEIGHT1;
+        weights[1] = _WEIGHT2;
+        // Sum of weights should equal 100%.
+        weights[2] = 100e16 - (weights[0] + weights[1]);
 
         WeightedPoolFactory factory = new WeightedPoolFactory(
             IVault(address(vault)),
