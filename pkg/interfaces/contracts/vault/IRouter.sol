@@ -220,7 +220,7 @@ interface IRouter {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+    ) external payable returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
      * @notice Removes liquidity proportionally, burning an exact pool token amount. Only available in Recovery Mode.
@@ -231,7 +231,7 @@ interface IRouter {
     function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
+    ) external payable returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                        Swaps
