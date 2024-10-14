@@ -23,6 +23,9 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
     uint256 private constant _WEIGHT2 = 33e16;
 
     constructor() AddAndRemoveLiquidityMedusaTest() {
+        // Weighted Pool rate is not reliable, since the Pow function introduces rounding issues to the invariant.
+        // For testing purposes, we are using the Weighted Pool rate, but with a tolerance to errors, just to check
+        // whether the rate change is contained and small, but in production we should avoid using Weighted Pool rate.
         maxRateTolerance = 500;
     }
 
