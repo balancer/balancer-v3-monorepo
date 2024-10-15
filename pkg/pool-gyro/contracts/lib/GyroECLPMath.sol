@@ -3,7 +3,6 @@
 
 pragma solidity ^0.8.24;
 
-
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import "./SignedFixedPoint.sol";
@@ -134,14 +133,16 @@ library GyroECLPMath {
         if (derived.w > ONE_XP) revert DerivedUvwzWrong();
         if (derived.z > ONE_XP) revert DerivedUvwzWrong();
 
-        if (ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP > derived.dSq || derived.dSq > ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP) {
+        if (
+            ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP > derived.dSq || derived.dSq > ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP
+        ) {
             revert DerivedDsqWrong();
         }
 
         // NB No anti-overflow checks are required given the checks done above and in validateParams().
         int256 mulDenominator = ONE_XP.divXpU(calcAChiAChiInXp(params, derived) - ONE_XP);
 
-         if (mulDenominator > _MAX_INV_INVARIANT_DENOMINATOR_XP) {
+        if (mulDenominator > _MAX_INV_INVARIANT_DENOMINATOR_XP) {
             revert InvariantDenominatorWrong();
         }
     }
@@ -164,7 +165,9 @@ library GyroECLPMath {
         // NB: This function is only used inside calculatePrice(). This is why we can make two simplifications:
         // 1. We don't correct for precision of s, c using d.dSq because that level of precision is not important in this context.
         // 2. We don't need to check for over/underflow b/c these are impossible in that context and given the (checked) assumptions on the various values.
-        t.x = params.c.mulDownMagU(tp.x).divDownMagU(params.lambda) - params.s.mulDownMagU(tp.y).divDownMagU(params.lambda);
+        t.x =
+            params.c.mulDownMagU(tp.x).divDownMagU(params.lambda) -
+            params.s.mulDownMagU(tp.y).divDownMagU(params.lambda);
         t.y = params.s.mulDownMagU(tp.x) + params.c.mulDownMagU(tp.y);
     }
 
@@ -290,22 +293,17 @@ library GyroECLPMath {
         // error in denominator is lambda^2 * 2e-37 and scales relative to the result / denominator
         // Scale by a constant to account for errors in the scaling factor itself and limited compounding.
         // calculating lambda^2 w/o decimals so that the calculation will never overflow, the lost precision isn't important
-        err = err + ((invariant.mulUpXpToNpU(mulDenominator) * ((params.lambda * params.lambda) / 1e36)) * 40) / ONE_XP + 1;
+        err =
+            err +
+            ((invariant.mulUpXpToNpU(mulDenominator) * ((params.lambda * params.lambda) / 1e36)) * 40) /
+            ONE_XP +
+            1;
 
         if (invariant + err > _MAX_INVARIANT) {
             revert MaxInvariantExceeded();
         }
 
         return (invariant, err);
-    }
-
-    function calculateInvariant(
-        uint256[] memory balances,
-        Params memory params,
-        DerivedParams memory derived
-    ) external pure returns (uint256 uinvariant) {
-        (int256 invariant, ) = calculateInvariantWithError(balances, params, derived);
-        uinvariant = invariant.toUint256();
     }
 
     /// @dev calculate At \cdot A chi, ignores rounding direction. We will later compensate for the rounding error.
@@ -376,13 +374,19 @@ library GyroECLPMath {
         int256 termNp = x.mulUpMagU(x).mulUpMagU(p.c).mulUpMagU(p.c) + y.mulUpMagU(y).mulUpMagU(p.s).mulUpMagU(p.s);
         termNp = termNp - x.mulDownMagU(y).mulDownMagU(p.c * 2).mulDownMagU(p.s);
 
-        int256 termXp = d.u.mulXpU(d.u) + (2 * d.u).mulXpU(d.v).divDownMagU(p.lambda) + d.v.mulXpU(d.v).divDownMagU(p.lambda).divDownMagU(p.lambda);
+        int256 termXp = d.u.mulXpU(d.u) +
+            (2 * d.u).mulXpU(d.v).divDownMagU(p.lambda) +
+            d.v.mulXpU(d.v).divDownMagU(p.lambda).divDownMagU(p.lambda);
         termXp = termXp.divXpU(d.dSq.mulXpU(d.dSq).mulXpU(d.dSq).mulXpU(d.dSq));
         val = (-termNp).mulDownXpToNpU(termXp);
 
         // now calculate (At)_x^2 accounting for possible rounding error to round down
         // need to do 1/dSq in a way so that there is no overflow for large balances
-        val = val + (termNp - 9).divDownMagU(p.lambda).divDownMagU(p.lambda).mulDownXpToNpU(SignedFixedPoint.ONE_XP.divXpU(d.dSq));
+        val =
+            val +
+            (termNp - 9).divDownMagU(p.lambda).divDownMagU(p.lambda).mulDownXpToNpU(
+                SignedFixedPoint.ONE_XP.divXpU(d.dSq)
+            );
     }
 
     /// @dev calculate 2(At)_x * (At)_y * (A chi)_x * (A chi)_y, ignores rounding direction
@@ -556,7 +560,7 @@ library GyroECLPMath {
         int256 balInNew = calcGiven(balOutNew, params, derived, invariant);
         // The checks in the following two lines should really always succeed; we keep them as extra safety against numerical error.
         checkAssetBounds(params, derived, invariant, balInNew, ixIn);
-        amountIn = balInNew.toUint256() -balances[ixIn];
+        amountIn = balInNew.toUint256() - balances[ixIn];
     }
 
     /** @dev Variables are named for calculating y given x
@@ -712,6 +716,15 @@ library GyroECLPMath {
         // note that the error correction in the invariant should more than make up for uncaught rounding directions (in 38 decimals) in virtual offsets
         Vector2 memory ba = Vector2(virtualOffset1(params, d, r), virtualOffset0(params, d, r));
         // change x->y, s->c, c->s, b->a, a->b, tauBeta.x -> -tauAlpha.x, tauBeta.y -> tauAlpha.y vs calcYGivenX
-        x = solveQuadraticSwap(params.lambda, y, params.c, params.s, r, ba, Vector2(-d.tauAlpha.x, d.tauAlpha.y), d.dSq);
+        x = solveQuadraticSwap(
+            params.lambda,
+            y,
+            params.c,
+            params.s,
+            r,
+            ba,
+            Vector2(-d.tauAlpha.x, d.tauAlpha.y),
+            d.dSq
+        );
     }
 }

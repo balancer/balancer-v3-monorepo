@@ -87,13 +87,23 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding) public view returns (uint256) {
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
         (
             GyroECLPMath.Params memory eclpParams,
             GyroECLPMath.DerivedParams memory derivedECLPParams
         ) = reconstructECLPParams();
 
-        return GyroECLPMath.calculateInvariant(balancesLiveScaled18, eclpParams, derivedECLPParams);
+        (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
+            balancesLiveScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+
+        if (rounding == Rounding.ROUND_DOWN) {
+            return currentInvariant.toUint256();
+        } else {
+            return (currentInvariant + 2 * invErr).toUint256();
+        }
     }
 
     /// @inheritdoc IBasePool
