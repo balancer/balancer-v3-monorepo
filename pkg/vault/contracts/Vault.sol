@@ -406,8 +406,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         } else {
             // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
-            // `amountCalculated * fee% / (100% - fee%)`. Add it to the calculated amountIn. Round up to avoid losses
-            // during precision loss.
+            // `amountCalculated * fee% / (100% - fee%)`. Add it to the calculated amountIn. Round up to avoid losing
+            // value due to precision loss. Note that if the `swapFeePercentage` were 100% here, this would revert with
+            // division by zero. We protect against this by ensuring in PoolConfigLib that the static swap fee cannot
+            // be set >= 100%, and likewise checking in HooksConfigLib that the value returned by the dynamic fee hook
+            // is strictly < 100%.
             locals.totalSwapFeeAmountScaled18 = amountCalculatedScaled18.mulDivUp(
                 swapState.swapFeePercentage,
                 swapState.swapFeePercentage.complement()
