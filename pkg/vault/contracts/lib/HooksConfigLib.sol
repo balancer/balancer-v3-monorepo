@@ -189,7 +189,8 @@ library HooksConfigLib {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
         }
 
-        if (swapFeePercentage > FixedPoint.ONE) {
+        // A 100% fee is not supported. In the ExactOut case, the Vault divides by the complement of the swap fee.
+        if (swapFeePercentage >= MAX_FEE_PERCENTAGE) {
             revert IVaultErrors.PercentageAboveMax();
         }
 
