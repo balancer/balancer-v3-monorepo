@@ -424,7 +424,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external saveSender returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
+    ) external payable saveSender returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
             abi.decode(
                 _vault.unlock(
@@ -449,7 +449,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut) {
+    ) external payable returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
             _vault.unlock(abi.encodeCall(Router.removeLiquidityRecoveryHook, (pool, msg.sender, exactBptAmountIn))),
             (uint256[])
@@ -506,6 +506,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _vault.sendTo(token, params.sender, amountOut);
             }
         }
+
+        _returnEth(params.sender);
     }
 
     /**
@@ -532,6 +534,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _vault.sendTo(tokens[i], sender, amountOut);
             }
         }
+
+        _returnEth(sender);
     }
 
     /***************************************************************************

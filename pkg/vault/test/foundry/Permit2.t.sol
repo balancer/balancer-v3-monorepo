@@ -95,13 +95,14 @@ contract Permit2Test is BaseVaultTest {
         bytes[] memory multicallData = new bytes[](2);
         multicallData[0] = abi.encodeCall(
             IRouter.addLiquidityUnbalanced,
-            (pool, amountsIn, bptAmountOut, false, bytes(""))
+            (pool, amountsIn, bptAmountRoundDown, false, bytes(""))
         );
 
-        uint256[] memory minAmountsOut = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory minAmountsOut = [uint256(defaultAmountRoundDown), uint256(defaultAmountRoundDown)]
+            .toMemoryArray();
         multicallData[1] = abi.encodeCall(
             IRouter.removeLiquidityProportional,
-            (pool, bptAmountOut, minAmountsOut, false, bytes(""))
+            (pool, bptAmountRoundDown, minAmountsOut, false, bytes(""))
         );
 
         vm.prank(alice);
@@ -126,11 +127,10 @@ contract Permit2Test is BaseVaultTest {
         bytes[] memory multicallData = new bytes[](1);
 
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
-        bptAmountOut = defaultAmount * 2;
 
         multicallData[0] = abi.encodeCall(
             IRouter.addLiquidityUnbalanced,
-            (pool, amountsIn, bptAmountOut, false, bytes(""))
+            (pool, amountsIn, bptAmountRoundDown, false, bytes(""))
         );
 
         vm.expectCall(address(router), multicallData[0]);
@@ -205,5 +205,67 @@ contract Permit2Test is BaseVaultTest {
         router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);
 
         assertEq(IERC20(pool).allowance(alice, address(router)), defaultAmount, "Router allowance was reset");
+    }
+
+    function testCustomRemoveBatchAndCall() public {
+        IRouterCommon.PermitApproval[] memory permitBatch = new IRouterCommon.PermitApproval[](0);
+        bytes[] memory permitSignatures = new bytes[](0);
+        IAllowanceTransfer.PermitBatch memory permit2Batch;
+        bytes[] memory multicallData = new bytes[](2);
+
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        bptAmountOut = bptAmountRoundDown;
+
+        multicallData[0] = abi.encodeCall(
+            IRouter.addLiquidityUnbalanced,
+            (pool, amountsIn, bptAmountOut, false, bytes(""))
+        );
+
+        uint256[] memory amountsOut = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        multicallData[1] = abi.encodeCall(
+            IRouter.removeLiquidityCustom,
+            (pool, bptAmountOut, amountsOut, false, bytes(""))
+        );
+
+        vault.manualEnableRecoveryMode(pool);
+
+        vm.expectCall(address(router), multicallData[0]);
+        vm.prank(alice);
+        router.permitBatchAndCall{ value: 1 ether }(
+            permitBatch,
+            permitSignatures,
+            permit2Batch,
+            bytes(""),
+            multicallData
+        );
+    }
+
+    function testRecoveryModeBatchAndCall() public {
+        IRouterCommon.PermitApproval[] memory permitBatch = new IRouterCommon.PermitApproval[](0);
+        bytes[] memory permitSignatures = new bytes[](0);
+        IAllowanceTransfer.PermitBatch memory permit2Batch;
+        bytes[] memory multicallData = new bytes[](2);
+
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        bptAmountOut = bptAmountRoundDown;
+
+        multicallData[0] = abi.encodeCall(
+            IRouter.addLiquidityUnbalanced,
+            (pool, amountsIn, bptAmountOut, false, bytes(""))
+        );
+
+        multicallData[1] = abi.encodeCall(IRouter.removeLiquidityRecovery, (pool, bptAmountOut));
+
+        vault.manualEnableRecoveryMode(pool);
+
+        vm.expectCall(address(router), multicallData[0]);
+        vm.prank(alice);
+        router.permitBatchAndCall{ value: 1 ether }(
+            permitBatch,
+            permitSignatures,
+            permit2Batch,
+            bytes(""),
+            multicallData
+        );
     }
 }
