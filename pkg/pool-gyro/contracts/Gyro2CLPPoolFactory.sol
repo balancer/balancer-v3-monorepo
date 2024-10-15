@@ -29,12 +29,15 @@ contract Gyro2CLPPoolFactory is BasePoolFactory {
     }
 
     /**
-     * @notice Deploys a new `StablePool`.
+     * @notice Deploys a new `Gyro2CLPPool`.
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param sqrtAlpha square root of first element in price range
      * @param sqrtBeta square root of last element in price range
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
+     * @param swapFeePercentage Initial swap fee percentage
+     * @param poolHooksContract Contract that implements the hooks for the pool
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
