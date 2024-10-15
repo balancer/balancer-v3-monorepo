@@ -48,7 +48,7 @@ library Gyro2CLPMath {
             rounding
         );
 
-        return _calculateQuadratic(a, mb, bSquare, mc);
+        return _calculateQuadratic(a, mb, bSquare, mc, rounding);
     }
 
     /** @dev Prepares quadratic terms for input to _calculateQuadratic
@@ -96,17 +96,30 @@ library Gyro2CLPMath {
         uint256 a,
         uint256 mb,
         uint256 bSquare, // b^2 can be calculated separately with more precision
-        uint256 mc
+        uint256 mc,
+        Rounding rounding
     ) internal pure returns (uint256 invariant) {
-        uint256 denominator = a.mulUp(2 * FixedPoint.ONE);
-        // order multiplications for fixed point precision
-        uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
-        // The minus sign in the radicand cancels out in this special case, so we add
-        uint256 radicand = bSquare + addTerm;
-        uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
-        // The minus sign in the numerator cancels out in this special case
-        uint256 numerator = mb + sqrResult;
-        invariant = numerator.divDown(denominator);
+        if (rounding == Rounding.ROUND_DOWN) {
+            uint256 denominator = a.mulUp(2 * FixedPoint.ONE);
+            // order multiplications for fixed point precision
+            uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
+            // The minus sign in the radicand cancels out in this special case, so we add
+            uint256 radicand = bSquare + addTerm;
+            uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5, rounding);
+            // The minus sign in the numerator cancels out in this special case
+            uint256 numerator = mb + sqrResult;
+            invariant = numerator.divDown(denominator);
+        } else {
+            uint256 denominator = a.mulDown(2 * FixedPoint.ONE);
+            // order multiplications for fixed point precision
+            uint256 addTerm = (mc.mulUp(4 * FixedPoint.ONE)).mulUp(a);
+            // The minus sign in the radicand cancels out in this special case, so we add
+            uint256 radicand = bSquare + addTerm;
+            uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5, rounding);
+            // The minus sign in the numerator cancels out in this special case
+            uint256 numerator = mb + sqrResult;
+            invariant = numerator.divUp(denominator);
+        }
     }
 
     /** @dev Computes how many tokens can be taken out of a pool if `amountIn' are sent, given current balances
@@ -153,7 +166,7 @@ library Gyro2CLPMath {
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + (virtualOffsetOut).mulDown(FixedPoint.ONE - 1);
 
-            amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn) - 1;
+            amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn);
         }
 
         // This ensures amountOut < balanceOut.
@@ -196,20 +209,36 @@ library Gyro2CLPMath {
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + virtualOffsetOut.mulDown(FixedPoint.ONE - 1);
 
-            amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut) + 1;
+            amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut);
         }
     }
 
     /** @dev Calculate virtual offset a for reserves x, as in (x+a)*(y+b)=L^2
      */
-    function _calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
-        return invariant.divDown(_sqrtBeta);
+    function _calculateVirtualParameter0(
+        uint256 invariant,
+        uint256 _sqrtBeta,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        if (rounding == Rounding.ROUND_UP) {
+            return invariant.divUp(_sqrtBeta);
+        } else {
+            return invariant.divDown(_sqrtBeta);
+        }
     }
 
     /** @dev Calculate virtual offset b for reserves y, as in (x+a)*(y+b)=L^2
      */
-    function _calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
-        return invariant.mulDown(_sqrtAlpha);
+    function _calculateVirtualParameter1(
+        uint256 invariant,
+        uint256 _sqrtAlpha,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        if (rounding == Rounding.ROUND_UP) {
+            return invariant.mulUp(_sqrtAlpha);
+        } else {
+            return invariant.mulDown(_sqrtAlpha);
+        }
     }
 
     /** @dev Calculates the spot price of token A in units of token B.

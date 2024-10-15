@@ -4,6 +4,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 library GyroPoolMath {
@@ -20,7 +22,7 @@ library GyroPoolMath {
     uint256 private constant _SQRT_1E_NEG_17 = 3162277660;
 
     /** @dev Implements square root algorithm using Newton's method and a first-guess optimisation **/
-    function sqrt(uint256 input, uint256 tolerance) internal pure returns (uint256) {
+    function sqrt(uint256 input, uint256 tolerance, Rounding rounding) internal pure returns (uint256) {
         if (input == 0) {
             return 0;
         }
@@ -44,7 +46,7 @@ library GyroPoolMath {
             "_sqrt FAILED"
         );
 
-        return guess;
+        return guess + (rounding == Rounding.ROUND_UP ? 1 : 0);
     }
 
     function _makeInitialGuess(uint256 input) private pure returns (uint256) {

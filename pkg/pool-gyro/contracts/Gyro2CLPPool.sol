@@ -114,7 +114,7 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
             balanceTokenInScaled18,
             balanceTokenOutScaled18,
             tokenInIsToken0,
-            request.kind == SwapKind.EXACT_IN ? Rounding.ROUND_DOWN : Rounding.ROUND_UP
+            request.kind
         );
 
         if (request.kind == SwapKind.EXACT_IN) {
@@ -153,42 +153,74 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
 
     function _getVirtualParameters(
         uint256[2] memory sqrtParams,
-        uint256 invariant
-    ) internal view virtual returns (uint256[2] memory virtualParameters) {
-        virtualParameters[0] = _virtualParameters(true, sqrtParams[1], invariant);
-        virtualParameters[1] = _virtualParameters(false, sqrtParams[0], invariant);
-        return virtualParameters;
+        SwapKind kind,
+        bool tokenInIsToken0,
+        uint256 invariantDown,
+        uint256 invariantUp
+    ) internal view virtual returns (uint256 virtualParamIn, uint256 virtualParamOut) {
+        if (kind == SwapKind.EXACT_IN) {
+            if (tokenInIsToken0) {
+                virtualParamIn = _virtualParameters(true, sqrtParams[1], invariantUp, Rounding.ROUND_UP);
+                virtualParamOut = _virtualParameters(false, sqrtParams[0], invariantDown, Rounding.ROUND_DOWN);
+            } else {
+                virtualParamIn = _virtualParameters(false, sqrtParams[0], invariantUp, Rounding.ROUND_UP);
+                virtualParamOut = _virtualParameters(true, sqrtParams[1], invariantDown, Rounding.ROUND_DOWN);
+            }
+        } else {
+            if (tokenInIsToken0) {
+                virtualParamIn = _virtualParameters(true, sqrtParams[1], invariantDown, Rounding.ROUND_DOWN);
+                virtualParamOut = _virtualParameters(false, sqrtParams[0], invariantUp, Rounding.ROUND_UP);
+            } else {
+                virtualParamIn = _virtualParameters(false, sqrtParams[0], invariantDown, Rounding.ROUND_DOWN);
+                virtualParamOut = _virtualParameters(true, sqrtParams[1], invariantUp, Rounding.ROUND_UP);
+            }
+        }
     }
 
     function _virtualParameters(
         bool parameter0,
         uint256 sqrtParam,
-        uint256 invariant
+        uint256 invariant,
+        Rounding rounding
     ) internal view virtual returns (uint256) {
         return
             parameter0
-                ? (Gyro2CLPMath._calculateVirtualParameter0(invariant, sqrtParam))
-                : (Gyro2CLPMath._calculateVirtualParameter1(invariant, sqrtParam));
+                ? (Gyro2CLPMath._calculateVirtualParameter0(invariant, sqrtParam, rounding))
+                : (Gyro2CLPMath._calculateVirtualParameter1(invariant, sqrtParam, rounding));
     }
 
     function _calculateCurrentValues(
         uint256 balanceTokenInScaled18,
         uint256 balanceTokenOutScaled18,
         bool tokenInIsToken0,
-        Rounding rounding
-    ) internal view returns (uint256 currentInvariant, uint256 virtualParamIn, uint256 virtualParamOut) {
+        SwapKind kind
+    ) internal view returns (uint256 currentInvariantDown, uint256 virtualParamIn, uint256 virtualParamOut) {
         uint256[] memory balances = new uint256[](2);
         balances[0] = tokenInIsToken0 ? balanceTokenInScaled18 : balanceTokenOutScaled18;
         balances[1] = tokenInIsToken0 ? balanceTokenOutScaled18 : balanceTokenInScaled18;
 
         uint256[2] memory sqrtParams = _sqrtParameters();
 
-        currentInvariant = Gyro2CLPMath._calculateInvariant(balances, sqrtParams[0], sqrtParams[1], rounding);
+        currentInvariantDown = Gyro2CLPMath._calculateInvariant(
+            balances,
+            sqrtParams[0],
+            sqrtParams[1],
+            Rounding.ROUND_DOWN
+        );
+        uint256 currentInvariantUp = Gyro2CLPMath._calculateInvariant(
+            balances,
+            sqrtParams[0],
+            sqrtParams[1],
+            Rounding.ROUND_UP
+        );
 
-        uint256[2] memory virtualParam = _getVirtualParameters(sqrtParams, currentInvariant);
-
-        virtualParamIn = tokenInIsToken0 ? virtualParam[0] : virtualParam[1];
-        virtualParamOut = tokenInIsToken0 ? virtualParam[1] : virtualParam[0];
+        (virtualParamIn, virtualParamOut) = _getVirtualParameters(
+            sqrtParams,
+            kind,
+            tokenInIsToken0,
+            currentInvariantDown,
+            currentInvariantUp
+        );
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
