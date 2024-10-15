@@ -4,6 +4,8 @@
 
 pragma solidity ^0.8.24;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -20,6 +22,7 @@ import "./lib/GyroECLPMath.sol";
 
 contract GyroECLPPool is IBasePool, BalancerPoolToken {
     using FixedPoint for uint256;
+    using SafeCast for *;
 
     /// @dev Parameters of the ECLP pool
     int256 internal immutable _paramsAlpha;
@@ -99,9 +102,37 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
-        computeInvariant(balancesLiveScaled18, Rounding.ROUND_UP);
+        (
+            GyroECLPMath.Params memory eclpParams,
+            GyroECLPMath.DerivedParams memory derivedECLPParams
+        ) = reconstructECLPParams();
 
-        revert NotImplemented();
+        GyroECLPMath.Vector2 memory invariant;
+        {
+            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
+                balancesLiveScaled18,
+                eclpParams,
+                derivedECLPParams
+            );
+
+            // invariant = overestimate in x-component, underestimate in y-component.
+            invariant = GyroECLPMath.Vector2(
+                (currentInvariant + 2 * invErr).toUint256().mulUp(invariantRatio).toInt256(),
+                currentInvariant.toUint256().mulUp(invariantRatio).toInt256()
+            );
+        }
+
+        if (tokenInIndex == 0) {
+            return
+                GyroECLPMath
+                    .calcXGivenY(balancesLiveScaled18[1].toInt256(), eclpParams, derivedECLPParams, invariant)
+                    .toUint256();
+        } else {
+            return
+                GyroECLPMath
+                    .calcYGivenX(balancesLiveScaled18[0].toInt256(), eclpParams, derivedECLPParams, invariant)
+                    .toUint256();
+        }
     }
 
     /// @inheritdoc IBasePool
