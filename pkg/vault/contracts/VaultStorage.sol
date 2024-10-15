@@ -39,6 +39,8 @@ contract VaultStorage {
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
     uint256 internal constant _MAX_TOKENS = 8;
+    // Tokens with more than 18 decimals are not supported.
+    uint8 internal constant _MAX_TOKEN_DECIMALS = 18;
 
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
