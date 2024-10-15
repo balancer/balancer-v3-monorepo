@@ -365,5 +365,6 @@ struct BufferWrapOrUnwrapParams {
 // between 0% and 100% (step 0.00001%). Protocol and pool creator fees are set in the `ProtocolFeeController`, and
 // ensure both constituent and aggregate fees do not exceed this precision.
 uint256 constant FEE_BITLENGTH = 24;
-uint256 constant MAX_FEE_PERCENTAGE = 1e18; // 100%
 uint256 constant FEE_SCALING_FACTOR = 1e11;
+// Used to ensure the safety of fee-related math (e.g., pools or hooks don't set it greater than 100%).
+uint256 constant MAX_FEE_PERCENTAGE = 1e18; // 100%
