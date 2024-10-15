@@ -15,7 +15,6 @@ import {
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import "./lib/GyroPoolMath.sol";
 import "./lib/Gyro2CLPMath.sol";
 
 contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
@@ -80,6 +79,11 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         **********************************************************************************************/
 
         uint256[2] memory sqrtParams = _sqrtParameters();
+
+        // `computeBalance` is used to calculate unbalanced adds and removes, when the BPT value is specified.
+        // A bigger invariant in `computeAddLiquiditySingleTokenExactOut` means that more tokens are required to
+        // fulfill the trade, and a bigger invariant in `computeRemoveLiquiditySingleTokenExactIn` means that the
+        // amount out is lower. So, the invariant should always be rounded up.
         uint256 invariant = Gyro2CLPMath._calculateInvariant(
             balancesLiveScaled18,
             sqrtParams[0],

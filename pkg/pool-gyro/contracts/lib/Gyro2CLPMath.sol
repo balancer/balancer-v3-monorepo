@@ -51,9 +51,15 @@ library Gyro2CLPMath {
         return _calculateQuadratic(a, mb, bSquare, mc);
     }
 
-    /** @dev Prepares quadratic terms for input to _calculateQuadratic
-     *   works with a special case of quadratic that works nicely w/o negative numbers
-     *   assumes a > 0, b < 0, and c <= 0 and returns a, -b, -c
+    /**
+     * @notice Prepares quadratic terms for input to _calculateQuadratic.
+     * @dev It works with a special case of quadratic that works nicely without negative numbers and assumes a > 0,
+     * b < 0, and c <= 0.
+     *
+     * @return a Bhaskara's `a` term
+     * @return mb Bhaskara's `b` term, negative (stands for minus b)
+     * @return bSquare Bhaskara's `b^2` term. The calculation is optimized to be more precise than just b*b
+     * @return mc Bhaskara's `c` term, negative (stands for minus c)
      */
     function _calculateQuadraticTerms(
         uint256[] memory balances,
@@ -69,14 +75,20 @@ library Gyro2CLPMath {
             : FixedPoint.mulUp;
 
         {
+            // `a` follows the opposite rounding than `b` and `c`, since the most significant term is in the
+            // denominator of Bhaskara's formula. To round invariant up, we need to round `a` down, which means that
+            // the division `sqrtAlpha/sqrtBeta` needs to be rounded up.
             a = FixedPoint.ONE - _divUpOrDown(sqrtAlpha, sqrtBeta);
+
+            // `b` is a term in the numerator and should be rounded up if we want to increase the invariant.
             uint256 bterm0 = _divUpOrDown(balances[1], sqrtBeta);
             uint256 bterm1 = _mulUpOrDown(balances[0], sqrtAlpha);
             mb = bterm0 + bterm1;
+            // `c` is a term in the numerator and should be rounded up if we want to increase the invariant.
             mc = _mulUpOrDown(balances[0], balances[1]);
         }
-        // For better fixed point precision, calculate in expanded form w/ re-ordering of multiplications
-        // b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta
+        // For better fixed point precision, calculate in expanded form re-ordering multiplications.
+        // `b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta`
         bSquare = _mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
         uint256 bSq2 = _divUpOrDown(2 * _mulUpOrDown(_mulUpOrDown(balances[0], balances[1]), sqrtAlpha), sqrtBeta);
         uint256 bSq3 = _divUpOrDown(_mulUpOrDown(balances[1], balances[1]), sqrtBeta.mulUp(sqrtBeta));
