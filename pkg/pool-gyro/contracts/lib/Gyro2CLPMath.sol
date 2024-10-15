@@ -153,7 +153,7 @@ library Gyro2CLPMath {
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + (virtualOffsetOut).mulDown(FixedPoint.ONE - 1);
 
-            amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn) - 1;
+            amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn);
         }
 
         // This ensures amountOut < balanceOut.
@@ -196,7 +196,7 @@ library Gyro2CLPMath {
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + virtualOffsetOut.mulDown(FixedPoint.ONE - 1);
 
-            amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut) + 1;
+            amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut);
         }
     }
 
