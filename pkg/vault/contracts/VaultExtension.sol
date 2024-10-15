@@ -232,6 +232,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 revert InvalidTokenType();
             }
 
+            // Store the token decimal conversion factor as a 5-bit delta from the maximum supported value.
             uint8 tokenDecimals = IERC20Metadata(address(token)).decimals();
 
             if (tokenDecimals > _MAX_TOKEN_DECIMALS) {

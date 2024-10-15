@@ -39,7 +39,7 @@ contract VaultStorage {
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
     uint256 internal constant _MAX_TOKENS = 8;
-    // Tokens with more than 18 decimals are not supported.
+    // Tokens with more than 18 decimals are not supported. Tokens must also implement `IERC20Metadata.decimals`.
     uint8 internal constant _MAX_TOKEN_DECIMALS = 18;
 
     // Maximum pause and buffer period durations.

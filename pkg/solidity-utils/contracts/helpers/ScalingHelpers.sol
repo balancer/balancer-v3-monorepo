@@ -15,6 +15,9 @@ import { InputHelpers } from "./InputHelpers.sol";
  * represented as 1e18. This allows us to not consider differences in token decimals in the internal Pool
  * math, simplifying it greatly.
  *
+ * The Vault does not support tokens with more than 18 decimals (see `_MAX_TOKEN_DECIMALS` in `VaultStorage`),
+ * or tokens that do not implement `IERC20Metadata.decimals`.
+ *
  * These helpers can also be used to scale amounts by other 18-decimal floating point values, such as rates.
  */
 library ScalingHelpers {
