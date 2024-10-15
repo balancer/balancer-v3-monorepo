@@ -51,8 +51,8 @@ contract E2eBatchSwapGyro2CLPTest is E2eBatchSwapTest {
 
         Gyro2CLPPool newPool = Gyro2CLPPool(
             factory.create(
-                "Gyro 2CLP Pool",
-                "GRP",
+                label,
+                label,
                 vault.buildTokenConfig(tokens.asIERC20()),
                 _sqrtAlpha,
                 _sqrtBeta,

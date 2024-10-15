@@ -47,6 +47,7 @@ library Gyro2CLPMath {
             sqrtBeta,
             rounding
         );
+
         return _calculateQuadratic(a, mb, bSquare, mc);
     }
 
@@ -150,9 +151,9 @@ library Gyro2CLPMath {
             // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
             // very slightly larger than 3e-18.
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
-            uint256 virtOutUnder = balanceOut + virtualOffsetOut.mulDown(FixedPoint.ONE - 1);
+            uint256 virtOutUnder = balanceOut + (virtualOffsetOut).mulDown(FixedPoint.ONE - 1);
 
-            amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn);
+            amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn) - 1;
         }
 
         // This ensures amountOut < balanceOut.
@@ -195,7 +196,7 @@ library Gyro2CLPMath {
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + virtualOffsetOut.mulDown(FixedPoint.ONE - 1);
 
-            amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut);
+            amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut) + 1;
         }
     }
 

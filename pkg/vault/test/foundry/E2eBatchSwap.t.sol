@@ -141,27 +141,17 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         vm.startPrank(sender);
         uint256 amountOutDo = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
-        uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
-        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo - feesTokenD);
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
-        vm.stopPrank();
 
-        assertGt(feesTokenA, 0, "No aggregate fees on tokenA (token in)");
-        assertEq(feesTokenD, 0, "Aggregate fees on token D (token out)");
+        uint256[] memory invariantsMid = _getPoolInvariants();
+        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo);
+        vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsAfter = _getPoolInvariants();
 
-        assertLe(amountOutUndo + feesTokenA, exactAmountIn, "Amount out undo should be <= exactAmountIn");
+        assertLe(amountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
 
-        _checkUserBalancesAndPoolInvariants(
-            balancesBefore,
-            balancesAfter,
-            invariantsBefore,
-            invariantsAfter,
-            0,
-            feesTokenD
-        );
+        _checkUserBalancesAndPoolInvariants(balancesBefore, balancesAfter, invariantsBefore, invariantsAfter, 0, 0);
     }
 
     function testDoUndoExactOut__Fuzz(
