@@ -29,7 +29,7 @@ contract ComputeBalanceTest is BaseVaultTest {
         vm.label(address(_gyroPool), "GyroPool");
     }
 
-    function testComputeNewXBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaX) public {
+    function testComputeNewXBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaX) public view {
         balanceX = bound(balanceX, 1e16, 1e27);
         // Price range is [alpha,beta], so balanceY needs to be between alpha*balanceX and beta*balanceX
         balanceY = bound(
@@ -54,7 +54,7 @@ contract ComputeBalanceTest is BaseVaultTest {
         assertApproxEqRel(newXBalance, balanceX + deltaX, 2e4);
     }
 
-    function testComputeNewYBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaY) public {
+    function testComputeNewYBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaY) public view {
         balanceX = bound(balanceX, 1e16, 1e27);
         // Price range is [alpha,beta], so balanceY needs to be between alpha*balanceX and beta*balanceX
         balanceY = bound(
