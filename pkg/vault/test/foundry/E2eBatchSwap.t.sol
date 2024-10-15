@@ -141,8 +141,6 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         vm.startPrank(sender);
         uint256 amountOutDo = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
-
-        uint256[] memory invariantsMid = _getPoolInvariants();
         uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo);
         vm.stopPrank();
 
