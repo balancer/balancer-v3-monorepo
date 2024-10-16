@@ -82,6 +82,8 @@ contract ProtocolFeeController is
         bool isOverride;
     }
 
+    // Note that the `ProtocolFeePercentagesProvider` assumes the maximum fee bounds are constant.
+
     // Maximum protocol swap fee percentage. FixedPoint.ONE corresponds to a 100% fee.
     uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
@@ -126,7 +128,7 @@ contract ProtocolFeeController is
         if (newSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
-        _ensureValidPrecision(newSwapFeePercentage);
+        ensureValidPrecision(newSwapFeePercentage);
         _;
     }
 
@@ -135,7 +137,7 @@ contract ProtocolFeeController is
         if (newYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
-        _ensureValidPrecision(newYieldFeePercentage);
+        ensureValidPrecision(newYieldFeePercentage);
         _;
     }
 
@@ -159,6 +161,11 @@ contract ProtocolFeeController is
     /// @inheritdoc IProtocolFeeController
     function vault() external view returns (IVault) {
         return _vault;
+    }
+
+    /// @inheritdoc IProtocolFeeController
+    function getMaximumProtocolFeePercentages() external pure returns (uint256, uint256) {
+        return (_MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE);
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -343,7 +350,7 @@ contract ProtocolFeeController is
             protocolFeePercentage +
             protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
 
-        _ensureValidPrecision(aggregateFeePercentage);
+        ensureValidPrecision(aggregateFeePercentage);
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
@@ -493,6 +500,18 @@ contract ProtocolFeeController is
         _withdrawPoolCreatorFees(pool, _poolCreators[pool]);
     }
 
+    /// @inheritdoc IProtocolFeeController
+    function ensureValidPrecision(uint256 feePercentage) public pure {
+        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
+        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
+        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
+        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
+        // aggregate fee calculated here and that stored in the Vault.
+        if ((feePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != feePercentage) {
+            revert IVaultErrors.FeePrecisionTooHigh();
+        }
+    }
+
     function _withdrawPoolCreatorFees(address pool, address recipient) private {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
@@ -544,16 +563,5 @@ contract ProtocolFeeController is
         _vault.updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
         emit ProtocolYieldFeePercentageChanged(pool, newProtocolYieldFeePercentage);
-    }
-
-    function _ensureValidPrecision(uint256 feePercentage) private pure {
-        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
-        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
-        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
-        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
-        // aggregate fee calculated here and that stored in the Vault.
-        if ((feePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != feePercentage) {
-            revert IVaultErrors.FeePrecisionTooHigh();
-        }
     }
 }
