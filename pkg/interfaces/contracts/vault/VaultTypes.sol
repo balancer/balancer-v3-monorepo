@@ -105,6 +105,55 @@ struct PoolRoleAccounts {
     address poolCreator;
 }
 
+/*******************************************************************************
+                                   Tokens
+*******************************************************************************/
+
+// Note that the following tokens are unsupported by the Vault; this list is not meant to be exhaustive, but covers
+// many common types of tokens that will not work with the Vault architecture. (See https://github.com/d-xo/weird-erc20
+// for more examples.)
+//
+// * Rebasing tokens (e.g., aDAI). The Vault keeps track of token balances in its internal accounting; any token whose
+//   balance changes asynchronously (i.e., outside a swap or liquidity operation), would get out-of-sync with this
+//   internal accounting. This category would also include "airdrop" tokens, whose balances can change unexpectedly.
+//
+// * Double entrypoint (e.g., old Synthetix tokens, now fixed). These could likewise bypass internal accounting, by
+//   registering the token under one address, and then accessing it through another. This is especially troublesome
+//   in v3, with the introduction of ERC4626 buffers.
+//
+// * Fee on transfer (e.g., PAXG). The Vault issues credits and debits according to given and calculated token amounts,
+//   and settlement assumes that the send/receive transfer functions transfer exactly the given number of tokens.
+//   If this is not the case, transactions will not settle. Unlike with the other types, which are fundamentally
+//   incompatible, it would be possible to design the Vault to handle this - but it was thought this was too much
+//   complexity and gas to support an edge case.
+//
+// * Tokens with greater than 18 decimals (e.g., YAM-V2). The Vault handles token scaling: i.e., handling I/O for
+//   amounts in native token decimals, but doing calculations with full 18-decimal precision. This requires reading
+//   and storing the decimals for each token. Since virtually all tokens are 18 or fewer decimals, and we have limited
+//   storage space, 18 was a reasonable maximum. Unlike the other types, this is enforceable by the Vault. Attempting
+//   to register such tokens will revert with `InvalidTokenDecimals`. Of course, we must also be able to read the token
+//   decimals, so the Vault only supports tokens that implement `IERC20Metadata.decimals`, and return a value less than
+//   or equal to 18.
+//
+// These types of tokens are supported, but discouraged, as they don't tend to play well with AMMs generally.
+//
+// * Very low-decimal tokens (e.g., GUSD). The Vault has been extensively tested with 6-decimal tokens (e.g., USDC),
+//   but going much below that may lead to unanticipated effects due to precision loss, especially with smaller trade
+//   values. Also, the Vault enforces a minimum trade size for security (e.g. 1e6), which would correspond to 10,000
+//   GUSD, making it impossible to trade smaller amounts of low-decimal tokens.
+//
+// * Revert on zero value approval/transfer. The Vault has been tested against these, but peripheral contracts, such
+//   as hooks, might not have been designed with this in mind.
+//
+// * Other types from "weird-erc20," such as upgradeable, pausable, or tokens with blocklists. We have seen cases
+//   where a token upgrade fails, "bricking" the token - and many operations on pools containing that token. Any
+//   sort of "permissioned" token that can make transfers fail can cause operations on pools containing them to
+//   revert. Even Recovery Mode cannot help then, as it does a proportional withdrawal of all tokens. If one of
+//   them is bricked, the whole operation will revert.
+//
+//   Of course, many tokens in common use have some of these "features" (especially centralized stable coins), so
+//   we have to support them anyway. Working with common centralized tokens is a risk common to all of DeFi.
+
 /**
  * @notice Token types supported by the Vault.
  * @dev In general, pools may contain any combination of these tokens.
