@@ -41,7 +41,7 @@ contract LiquidityApproximationECLPTest is LiquidityApproximationTest {
         LiquidityApproximationTest.setUp();
 
         // The invariant of ECLP pools are smaller.
-        maxAmount = 3e5 * 1e18;
+        maxAmount = 1e6 * 1e18;
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {

@@ -102,7 +102,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         if (rounding == Rounding.ROUND_DOWN) {
             return currentInvariant.toUint256();
         } else {
-            return (currentInvariant + 2 * invErr).toUint256();
+            return (currentInvariant + 20 * invErr).toUint256();
         }
     }
 
