@@ -277,7 +277,7 @@ library GyroECLPMath {
             revert MaxAssetsExceeded();
         }
 
-        int256 AtAChi = calcAtAChi(x, y, params, derived);
+        int256 atAChi = calcAtAChi(x, y, params, derived);
         (int256 sqrt, int256 err) = calcInvariantSqrt(x, y, params, derived);
         // Calculate the error in the square root term, separates cases based on sqrt >= 1/2
         // somedayTODO: can this be improved for cases of large balances (when xp error magnifies to np)
@@ -300,7 +300,7 @@ library GyroECLPMath {
         // NOTE: Anti-overflow limits on mulDenominator are checked on contract creation.
 
         // As alternative, could do, but could overflow: invariant = (AtAChi.add(sqrt) - err).divXp(denominator);
-        int256 invariant = (AtAChi + sqrt - err).mulDownXpToNpU(mulDenominator);
+        int256 invariant = (atAChi + sqrt - err).mulDownXpToNpU(mulDenominator);
         // Error scales if denominator is small.
         // NB: This error calculation computes the error in the expression "numerator / denominator", but in this code
         // We actually use the formula "numerator * (1 / denominator)" to compute the invariant. This affects this line
@@ -497,7 +497,8 @@ library GyroECLPMath {
         int256 invariant
     ) external pure returns (uint256 px) {
         // Shift by virtual offsets to get v(t).
-        Vector2 memory r = Vector2(invariant, invariant); // ignore r rounding for spot price, precision will be lost in TWAP anyway
+        // Ignore r rounding for spot price, precision will be lost in TWAP anyway.
+        Vector2 memory r = Vector2(invariant, invariant);
         Vector2 memory ab = Vector2(virtualOffset0(params, derived, r), virtualOffset1(params, derived, r));
         Vector2 memory vec = Vector2(balances[0].toInt256() - ab.x, balances[1].toInt256() - ab.y);
 

@@ -91,7 +91,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         (
             GyroECLPMath.Params memory eclpParams,
             GyroECLPMath.DerivedParams memory derivedECLPParams
-        ) = reconstructECLPParams();
+        ) = _reconstructECLPParams();
 
         (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
             balancesLiveScaled18,
@@ -115,7 +115,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         (
             GyroECLPMath.Params memory eclpParams,
             GyroECLPMath.DerivedParams memory derivedECLPParams
-        ) = reconstructECLPParams();
+        ) = _reconstructECLPParams();
 
         GyroECLPMath.Vector2 memory invariant;
         {
@@ -152,7 +152,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         (
             GyroECLPMath.Params memory eclpParams,
             GyroECLPMath.DerivedParams memory derivedECLPParams
-        ) = reconstructECLPParams();
+        ) = _reconstructECLPParams();
         GyroECLPMath.Vector2 memory invariant;
         {
             (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
@@ -192,8 +192,8 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
     }
 
     /** @dev reconstructs ECLP params structs from immutable arrays */
-    function reconstructECLPParams()
-        internal
+    function _reconstructECLPParams()
+        private
         view
         returns (GyroECLPMath.Params memory params, GyroECLPMath.DerivedParams memory d)
     {
@@ -213,7 +213,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         view
         returns (GyroECLPMath.Params memory params, GyroECLPMath.DerivedParams memory d)
     {
-        return reconstructECLPParams();
+        return _reconstructECLPParams();
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
