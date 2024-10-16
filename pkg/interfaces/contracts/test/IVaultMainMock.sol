@@ -53,6 +53,8 @@ interface IVaultMainMock {
     /// @dev Does not check the value against any min/max limits normally enforced by the pool.
     function manualUnsafeSetStaticSwapFeePercentage(address pool, uint256 value) external;
 
+    function manualSetPoolTokens(address pool, IERC20[] memory tokens) external;
+
     function manualSetPoolTokensAndBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
 
     function manualSetPoolBalances(address, uint256[] memory, uint256[] memory) external;
@@ -84,6 +86,8 @@ interface IVaultMainMock {
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory);
+
+    function manualWritePoolBalancesToStorage(address pool, PoolData memory poolData) external;
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 
