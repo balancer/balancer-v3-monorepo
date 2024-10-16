@@ -109,16 +109,16 @@ struct PoolRoleAccounts {
                                    Tokens
 *******************************************************************************/
 
-// Note that the following tokens are unsupported by the Vault; this list is not meant to be exhaustive, but covers
+// Note that the following tokens are unsupported by the Vault. This list is not meant to be exhaustive, but covers
 // many common types of tokens that will not work with the Vault architecture. (See https://github.com/d-xo/weird-erc20
-// for more examples.)
+// for examples of token features that are problematic for many protocols.)
 //
 // * Rebasing tokens (e.g., aDAI). The Vault keeps track of token balances in its internal accounting; any token whose
 //   balance changes asynchronously (i.e., outside a swap or liquidity operation), would get out-of-sync with this
 //   internal accounting. This category would also include "airdrop" tokens, whose balances can change unexpectedly.
 //
-// * Double entrypoint (e.g., old Synthetix tokens, now fixed). These could likewise bypass internal accounting, by
-//   registering the token under one address, and then accessing it through another. This is especially troublesome
+// * Double entrypoint (e.g., old Synthetix tokens, now fixed). These could likewise bypass internal accounting by
+//   registering the token under one address, then accessing it through another. This is especially troublesome
 //   in v3, with the introduction of ERC4626 buffers.
 //
 // * Fee on transfer (e.g., PAXG). The Vault issues credits and debits according to given and calculated token amounts,
@@ -135,12 +135,12 @@ struct PoolRoleAccounts {
 //   decimals, so the Vault only supports tokens that implement `IERC20Metadata.decimals`, and return a value less than
 //   or equal to 18.
 //
-// These types of tokens are supported, but discouraged, as they don't tend to play well with AMMs generally.
+// These types of tokens are supported but discouraged, as they don't tend to play well with AMMs generally.
 //
 // * Very low-decimal tokens (e.g., GUSD). The Vault has been extensively tested with 6-decimal tokens (e.g., USDC),
 //   but going much below that may lead to unanticipated effects due to precision loss, especially with smaller trade
-//   values. Also, the Vault enforces a minimum trade size for security (e.g. 1e6), which would correspond to 10,000
-//   GUSD, making it impossible to trade smaller amounts of low-decimal tokens.
+//   values. Also, the Vault enforces a minimum trade size for security. Using a minimum of 1e6 corresponds to 10,000
+//   GUSD, making it impossible to trade small amounts of low-decimal tokens.
 //
 // * Revert on zero value approval/transfer. The Vault has been tested against these, but peripheral contracts, such
 //   as hooks, might not have been designed with this in mind.
@@ -149,7 +149,8 @@ struct PoolRoleAccounts {
 //   where a token upgrade fails, "bricking" the token - and many operations on pools containing that token. Any
 //   sort of "permissioned" token that can make transfers fail can cause operations on pools containing them to
 //   revert. Even Recovery Mode cannot help then, as it does a proportional withdrawal of all tokens. If one of
-//   them is bricked, the whole operation will revert.
+//   them is bricked, the whole operation will revert. Since v3 does not have "internal balances" like v2, there
+//   is no recourse.
 //
 //   Of course, many tokens in common use have some of these "features" (especially centralized stable coins), so
 //   we have to support them anyway. Working with common centralized tokens is a risk common to all of DeFi.
