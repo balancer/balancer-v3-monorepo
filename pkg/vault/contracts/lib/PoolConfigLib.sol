@@ -167,7 +167,8 @@ library PoolConfigLib {
 
     function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
         // A 100% fee is not supported. In the ExactOut case, the Vault divides by the complement of the swap fee.
-        if (value >= MAX_FEE_PERCENTAGE) {
+        // The minimum precision constraint provides an additional buffer.
+        if (value > MAX_FEE_PERCENTAGE) {
             revert IVaultErrors.PercentageAboveMax();
         }
         value /= FEE_SCALING_FACTOR;
