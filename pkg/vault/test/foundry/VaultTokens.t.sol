@@ -101,6 +101,8 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function testInvalidTokenDecimals() public {
+        // This is technically a duplicate test (see `testRegisterSetWrongTokenDecimalDiffs` in Registration.t.sol),
+        // but doesn't use a mockCall.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         ERC20TestToken invalidToken = createERC20("INV", 19);
         uint256 invalidIdx;
