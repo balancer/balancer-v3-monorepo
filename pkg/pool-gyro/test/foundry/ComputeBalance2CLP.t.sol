@@ -12,7 +12,7 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 
 import { Gyro2CLPPool } from "../../contracts/Gyro2CLPPool.sol";
 
-contract ComputeBalanceTest is BaseVaultTest {
+contract ComputeBalance2CLPTest is BaseVaultTest {
     using FixedPoint for uint256;
 
     Gyro2CLPPool private _gyroPool;

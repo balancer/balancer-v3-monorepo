@@ -64,6 +64,9 @@ interface IVaultErrors {
     /// @notice The data in a TokenConfig struct is inconsistent or unsupported.
     error InvalidTokenConfiguration();
 
+    /// @notice Tokens with more than 18 decimals are not supported.
+    error InvalidTokenDecimals();
+
     /**
      * @notice The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
