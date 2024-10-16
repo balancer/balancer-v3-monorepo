@@ -8,12 +8,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { PoolConfig, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -601,18 +601,18 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawPoolCreatorFees(pool, alice);
     }
 
-    function test100PercentPoolCreatorFee() public {
+    function testMaxPoolCreatorFee() public {
         // Protocol fees will be zero.
         pool = createPool();
 
         // Set 100% pool creator fees
         vm.startPrank(lp);
-        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+        feeController.setPoolCreatorSwapFeePercentage(pool, MAX_FEE_PERCENTAGE);
 
         // Check initial conditions: aggregate swap fee percentage should be 100%.
         (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = IPoolInfo(pool)
             .getAggregateFeePercentages();
-        assertEq(aggregateSwapFeePercentage, FixedPoint.ONE, "Aggregate swap fee != 100%");
+        assertEq(aggregateSwapFeePercentage, MAX_FEE_PERCENTAGE, "Aggregate swap fee != max (~100%)");
         assertEq(aggregateYieldFeePercentage, 0, "Aggregate swap fee is not zero");
 
         vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);

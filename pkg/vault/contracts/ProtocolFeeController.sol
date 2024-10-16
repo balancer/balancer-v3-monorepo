@@ -6,8 +6,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { FEE_SCALING_FACTOR, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -140,7 +140,7 @@ contract ProtocolFeeController is
     }
 
     modifier withValidPoolCreatorFee(uint256 newPoolCreatorFeePercentage) {
-        if (newPoolCreatorFeePercentage > FixedPoint.ONE) {
+        if (newPoolCreatorFeePercentage > MAX_FEE_PERCENTAGE) {
             revert PoolCreatorFeePercentageTooHigh();
         }
         _;

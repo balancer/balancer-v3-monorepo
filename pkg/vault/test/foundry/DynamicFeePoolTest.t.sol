@@ -165,16 +165,6 @@ contract DynamicFeePoolTest is BaseVaultTest {
         router.swapSingleTokenExactOut(pool, dai, usdc, defaultAmount, MAX_UINT256, MAX_UINT256, false, bytes(""));
     }
 
-    function testSwapTooSmallAmountCalculated() public {
-        // Near 100% swap fee will result in near 0 amount calculated.
-        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE - 1);
-        PoolHooksMock(poolHooksContract).setSpecialSender(bob);
-
-        vm.prank(alice);
-        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
-    }
-
     function testSwapCallsComputeFeeWithSender() public {
         // Set a near 100% fee, and bob as 0 swap fee sender.
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(99e16);
@@ -249,11 +239,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
-        dynamicSwapFeePercentage = bound(
-            dynamicSwapFeePercentage,
-            0,
-            FixedPoint.ONE - PRODUCTION_MIN_TRADE_AMOUNT.divDown(defaultAmount)
-        );
+        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, MAX_FEE_PERCENTAGE);
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
         vm.prank(alice);
