@@ -8,9 +8,9 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
-import { EclpPoolDeployer } from "./utils/EclpPoolDeployer.sol";
+import { GyroEclpPoolDeployer } from "./utils/GyroEclpPoolDeployer.sol";
 
-contract LiquidityApproximationECLPTest is LiquidityApproximationTest, EclpPoolDeployer {
+contract LiquidityApproximationECLPTest is LiquidityApproximationTest, GyroEclpPoolDeployer {
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
 

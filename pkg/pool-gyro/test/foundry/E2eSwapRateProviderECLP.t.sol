@@ -12,9 +12,9 @@ import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RatePro
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 
-import { EclpPoolDeployer } from "./utils/EclpPoolDeployer.sol";
+import { GyroEclpPoolDeployer } from "./utils/GyroEclpPoolDeployer.sol";
 
-contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProviderTest, EclpPoolDeployer {
+contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProviderTest, GyroEclpPoolDeployer {
     using FixedPoint for uint256;
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.

@@ -18,7 +18,7 @@ import { GyroECLPPoolFactory } from "../../../contracts/GyroECLPPoolFactory.sol"
 import { GyroECLPPool } from "../../../contracts/GyroECLPPool.sol";
 import { GyroECLPMath } from "../../../contracts/lib/GyroECLPMath.sol";
 
-contract EclpPoolDeployer is Test {
+contract GyroEclpPoolDeployer is Test {
     using CastingHelpers for address[];
 
     // Extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet.

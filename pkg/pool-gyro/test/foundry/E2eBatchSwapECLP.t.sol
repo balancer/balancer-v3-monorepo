@@ -10,9 +10,9 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 
 import { E2eBatchSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eBatchSwap.t.sol";
 
-import { EclpPoolDeployer } from "./utils/EclpPoolDeployer.sol";
+import { GyroEclpPoolDeployer } from "./utils/GyroEclpPoolDeployer.sol";
 
-contract E2eBatchSwapECLPTest is E2eBatchSwapTest, EclpPoolDeployer {
+contract E2eBatchSwapECLPTest is E2eBatchSwapTest, GyroEclpPoolDeployer {
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eBatchSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);

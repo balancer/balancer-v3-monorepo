@@ -10,9 +10,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
-import { EclpPoolDeployer } from "./utils/EclpPoolDeployer.sol";
+import { GyroEclpPoolDeployer } from "./utils/GyroEclpPoolDeployer.sol";
 
-contract E2eSwapECLPTest is E2eSwapTest, EclpPoolDeployer {
+contract E2eSwapECLPTest is E2eSwapTest, GyroEclpPoolDeployer {
     using FixedPoint for uint256;
 
     function setUp() public override {
