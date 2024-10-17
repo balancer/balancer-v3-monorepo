@@ -27,7 +27,7 @@ contract FungibilityTest is BaseVaultTest {
         vm.prank(lp);
         uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, bytes(""));
 
-        // Ensure issued BPT is close 0.0001% from what it ideally should be.
+        // Ensure minted BPT is close 0.0001% from what it ideally should be.
         assertApproxEqRel(totalSupplyBefore.mulDown(proportion), bptAmountOut, 1e12, "BPT out is wrong");
     }
 }
