@@ -45,13 +45,15 @@ contract ComputeBalance2CLPTest is BaseVaultTest {
         deltaX = bound(deltaX, 1e16, 1e30);
         balances[0] = balances[0] + deltaX;
         uint256 newInvariant = _gyroPool.computeInvariant(balances, Rounding.ROUND_DOWN);
-        balances[0] = balances[0] - deltaX;
+
+        // Restores the balances to original balances, to calculate computeBalance properly.
+        balances[0] = balanceX;
 
         uint256 invariantRatio = newInvariant.divDown(oldInvariant);
         uint256 newXBalance = _gyroPool.computeBalance(balances, 0, invariantRatio);
 
         // 0.000000000002% error
-        assertApproxEqRel(newXBalance, balanceX + deltaX, 2e4);
+        assertApproxEqRel(newXBalance, balanceX + deltaX, 2e4, "Balance of X does not match");
     }
 
     function testComputeNewYBalance__Fuzz(uint256 balanceX, uint256 balanceY, uint256 deltaY) public view {
@@ -70,12 +72,14 @@ contract ComputeBalance2CLPTest is BaseVaultTest {
         deltaY = bound(deltaY, 1e16, 1e30);
         balances[1] = balances[1] + deltaY;
         uint256 newInvariant = _gyroPool.computeInvariant(balances, Rounding.ROUND_DOWN);
-        balances[1] = balances[1] - deltaY;
+
+        // Restores the balances to original balances, to calculate computeBalance properly.
+        balances[1] = balanceY;
 
         uint256 invariantRatio = newInvariant.divDown(oldInvariant);
         uint256 newYBalance = _gyroPool.computeBalance(balances, 1, invariantRatio);
 
         // 0.000000000002% error
-        assertApproxEqRel(newYBalance, balanceY + deltaY, 2e4);
+        assertApproxEqRel(newYBalance, balanceY + deltaY, 2e4, "Balance of Y does not match");
     }
 }
