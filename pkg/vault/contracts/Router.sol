@@ -126,7 +126,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsIn) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -153,7 +153,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256 bptAmountOut) {
+    ) external payable saveSender(msg.sender) returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -181,7 +181,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256 amountIn) {
+    ) external payable saveSender(msg.sender) returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
@@ -215,7 +215,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256[] memory amountsIn,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender {
+    ) external payable saveSender(msg.sender) {
         _vault.unlock(
             abi.encodeCall(
                 Router.addLiquidityHook,
@@ -239,7 +239,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    )
+        external
+        payable
+        saveSender(msg.sender)
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
         return
             abi.decode(
                 _vault.unlock(
@@ -330,7 +335,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsOut) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -358,7 +363,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 minAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256 amountOut) {
+    ) external payable saveSender(msg.sender) returns (uint256 amountOut) {
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenOut,
@@ -394,7 +399,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256 bptAmountIn) {
+    ) external payable saveSender(msg.sender) returns (uint256 bptAmountIn) {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
@@ -425,7 +430,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
+    )
+        external
+        payable
+        saveSender(msg.sender)
+        returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
+    {
         return
             abi.decode(
                 _vault.unlock(
@@ -553,7 +563,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -587,7 +597,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -760,8 +770,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function queryAddLiquidityProportional(
         address pool,
         uint256 exactBptAmountOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsIn) {
+    ) external saveSender(sender) returns (uint256[] memory amountsIn) {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
@@ -790,8 +801,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256 bptAmountOut) {
+    ) external saveSender(sender) returns (uint256 bptAmountOut) {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
@@ -821,8 +833,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         IERC20 tokenIn,
         uint256 exactBptAmountOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256 amountIn) {
+    ) external saveSender(sender) returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
@@ -862,8 +875,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    ) external saveSender(sender) returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
@@ -915,8 +929,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function queryRemoveLiquidityProportional(
         address pool,
         uint256 exactBptAmountIn,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsOut) {
+    ) external saveSender(sender) returns (uint256[] memory amountsOut) {
         uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
 
         try
@@ -948,8 +963,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256 exactBptAmountIn,
         IERC20 tokenOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256 amountOut) {
+    ) external saveSender(sender) returns (uint256 amountOut) {
         // We cannot use 0 as min amount out, as this value is used to figure out the token index.
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, 1);
 
@@ -986,8 +1002,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         IERC20 tokenOut,
         uint256 exactAmountOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256 bptAmountIn) {
+    ) external saveSender(sender) returns (uint256 bptAmountIn) {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         try
@@ -1019,8 +1036,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
+    ) external saveSender(sender) returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
@@ -1107,8 +1125,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountIn,
-        bytes calldata userData
-    ) external saveSender returns (uint256 amountCalculated) {
+        address sender,
+        bytes memory userData
+    ) external saveSender(sender) returns (uint256 amountCalculated) {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
@@ -1140,8 +1159,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
-        bytes calldata userData
-    ) external saveSender returns (uint256 amountCalculated) {
+        address sender,
+        bytes memory userData
+    ) external saveSender(sender) returns (uint256 amountCalculated) {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
