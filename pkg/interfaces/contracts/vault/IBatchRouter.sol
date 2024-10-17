@@ -100,7 +100,7 @@ interface IBatchRouter {
      * @notice Queries a swap operation involving multiple paths (steps), specifying exact input token amounts.
      * @dev Min amounts out specified in the paths are ignored.
      * @param paths Swap paths from token in to token out, specifying exact amounts in
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
      * @return pathAmountsOut Calculated amounts of output tokens corresponding to the last step of each given path
      * @return tokensOut Output token addresses
@@ -116,7 +116,7 @@ interface IBatchRouter {
      * @notice Queries a swap operation involving multiple paths (steps), specifying exact output token amounts.
      * @dev Max amounts in specified in the paths are ignored.
      * @param paths Swap paths from token in to token out, specifying exact amounts out
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
      * @return pathAmountsIn Calculated amounts of input tokens corresponding to the last step of each given path
      * @return tokensIn Input token addresses

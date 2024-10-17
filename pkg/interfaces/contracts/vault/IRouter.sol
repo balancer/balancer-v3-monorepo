@@ -354,7 +354,7 @@ interface IRouter {
      * @notice Queries an `addLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
@@ -369,7 +369,7 @@ interface IRouter {
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
@@ -385,7 +385,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountIn Expected amount of tokens to add
      */
@@ -402,7 +402,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum amount of pool tokens to receive
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      * @return bptAmountOut Expected amount of pool tokens to receive
@@ -420,7 +420,7 @@ interface IRouter {
      * @notice Queries a `removeLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
@@ -436,7 +436,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param tokenOut Token used to remove liquidity
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountOut Expected amount of tokens to receive
      */
@@ -453,7 +453,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Expected exact amount of tokens to receive
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      */
@@ -470,7 +470,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Expected minimum amounts of tokens to receive, sorted in token registration order
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
@@ -501,7 +501,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountIn Exact amounts of input tokens to send
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
@@ -520,7 +520,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountOut Exact amounts of input tokens to receive
-     * @param sender Address of the real account that called the swap function
+     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
