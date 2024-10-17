@@ -142,6 +142,10 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
             if (hookFee > 0) {
                 IERC20 feeToken;
 
+                // Note that we can only alter the calculated amount in this function. This means that the fee will be
+                // charged in different tokens depending on whether the swap is exact in / out, potentially breaking
+                // the equivalence (i.e., one direction might "cost" less than the other).
+
                 if (params.kind == SwapKind.EXACT_IN) {
                     // For EXACT_IN swaps, the `amountCalculated` is the amount of `tokenOut`. The fee must be taken
                     // from `amountCalculated`, so we decrease the amount of tokens the Vault will send to the caller.
