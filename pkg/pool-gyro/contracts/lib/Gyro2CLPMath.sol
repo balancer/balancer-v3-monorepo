@@ -78,6 +78,11 @@ library Gyro2CLPMath {
             ? FixedPoint.mulDown
             : FixedPoint.mulUp;
 
+        // This is the inverse of mulUpAndDown, used to round denominator terms.
+        function(uint256, uint256) pure returns (uint256) _mulDownOrUp = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.mulUp
+            : FixedPoint.mulDown;
+
         {
             // `a` follows the opposite rounding than `b` and `c`, since the most significant term is in the
             // denominator of Bhaskara's formula. To round invariant up, we need to round `a` down, which means that
@@ -96,7 +101,7 @@ library Gyro2CLPMath {
         // `b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta`
         bSquare = _mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
         uint256 bSq2 = _divUpOrDown(2 * _mulUpOrDown(_mulUpOrDown(balances[0], balances[1]), sqrtAlpha), sqrtBeta);
-        uint256 bSq3 = _divUpOrDown(_mulUpOrDown(balances[1], balances[1]), sqrtBeta.mulUp(sqrtBeta));
+        uint256 bSq3 = _divUpOrDown(_mulUpOrDown(balances[1], balances[1]), _mulDownOrUp(sqrtBeta, sqrtBeta));
         bSquare = bSquare + bSq2 + bSq3;
     }
 
