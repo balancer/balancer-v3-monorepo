@@ -94,9 +94,9 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         invariant = invariant.mulUp(invariantRatio);
         uint256 squareNewInv = invariant * invariant;
         // L / sqrt(beta)
-        uint256 a = invariant.divUp(sqrtParams[1]);
+        uint256 a = invariant.divDown(sqrtParams[1]);
         // L * sqrt(alpha)
-        uint256 b = invariant.mulUp(sqrtParams[0]);
+        uint256 b = invariant.mulDown(sqrtParams[0]);
 
         if (tokenInIndex == 0) {
             // if newBalance = newX
