@@ -9,6 +9,7 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 
+import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
@@ -16,11 +17,20 @@ import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/tes
 import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol";
 import { Gyro2CLPPool } from "../../../contracts/Gyro2CLPPool.sol";
 
-contract Gyro2ClpPoolDeployer is Test {
+contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
     using CastingHelpers for address[];
 
     uint256 private _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
     uint256 private _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
+
+    string private artifactsRootDir = "artifacts/";
+
+    constructor() {
+        // if this external artifact path exists, it means we are running outside of this repo
+        if (vm.exists("artifacts/@balancer-labs/v3-pool-gyro/")) {
+            artifactsRootDir = "artifacts/@balancer-labs/v3-pool-gyro/";
+        }
+    }
 
     function createGyro2ClpPool(
         address[] memory tokens,
@@ -29,7 +39,7 @@ contract Gyro2ClpPoolDeployer is Test {
         IVaultMock vault,
         address poolCreator
     ) internal returns (address) {
-        Gyro2CLPPoolFactory factory = new Gyro2CLPPoolFactory(IVault(address(vault)), 365 days);
+        Gyro2CLPPoolFactory factory = deployGyro2CLPPoolFactory(vault);
 
         PoolRoleAccounts memory roleAccounts;
 
@@ -55,5 +65,20 @@ contract Gyro2ClpPoolDeployer is Test {
         feeController.manualSetPoolCreator(address(newPool), poolCreator);
 
         return address(newPool);
+    }
+
+    function deployGyro2CLPPoolFactory(IVault vault) internal returns (Gyro2CLPPoolFactory) {
+        if (reusingArtifacts) {
+            return
+                Gyro2CLPPoolFactory(
+                    deployCode(_computeGyro2CLPPath(type(Gyro2CLPPoolFactory).name), abi.encode(vault, 365 days))
+                );
+        } else {
+            return new Gyro2CLPPoolFactory(vault, 365 days);
+        }
+    }
+
+    function _computeGyro2CLPPath(string memory name) private view returns (string memory) {
+        return string(abi.encodePacked(artifactsRootDir, "contracts/", name, ".sol/", name, ".json"));
     }
 }
