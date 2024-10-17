@@ -56,6 +56,10 @@ library Gyro2CLPMath {
      * @dev It works with a special case of quadratic that works nicely without negative numbers and assumes a > 0,
      * b < 0, and c <= 0.
      *
+     * @param balances Pool balances
+     * @param sqrtAlpha Square root of Gyro's 2CLP alpha parameter
+     * @param sqrtBeta Square root of Gyro's 2CLP beta parameter
+     * @param rounding Rounding direction of the invariant, which will be calculated using the quadratic terms
      * @return a Bhaskara's `a` term
      * @return mb Bhaskara's `b` term, negative (stands for minus b)
      * @return bSquare Bhaskara's `b^2` term. The calculation is optimized to be more precise than just b*b
@@ -77,7 +81,8 @@ library Gyro2CLPMath {
         {
             // `a` follows the opposite rounding than `b` and `c`, since the most significant term is in the
             // denominator of Bhaskara's formula. To round invariant up, we need to round `a` down, which means that
-            // the division `sqrtAlpha/sqrtBeta` needs to be rounded up.
+            // the division `sqrtAlpha/sqrtBeta` needs to be rounded up. In other words, if the given rounding
+            // direction is UP, 'a' will be rounded DOWN and vice versa.
             a = FixedPoint.ONE - _divUpOrDown(sqrtAlpha, sqrtBeta);
 
             // `b` is a term in the numerator and should be rounded up if we want to increase the invariant.
