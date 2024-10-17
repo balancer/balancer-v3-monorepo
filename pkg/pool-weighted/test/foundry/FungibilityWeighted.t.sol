@@ -11,7 +11,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { FungibilityTest } from "@balancer-labs/v3-vault/test/foundry/Fungibility.t.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
@@ -23,12 +22,6 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
     using CastingHelpers for address[];
 
     uint256 internal poolCreationNonce;
-
-    function setUp() public override {
-        super.setUp();
-
-        vault.manuallySetSwapFee(pool, 0);
-    }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by FungibilityTest.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
@@ -45,12 +38,12 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
 
         WeightedPool newPool = WeightedPool(
             factory.create(
-                "50/50 Weighted Pool",
-                "50_50WP",
+                "80/20 Weighted Pool",
+                "80_20WP",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                [uint256(80e16), uint256(20e16)].toMemoryArray(),
                 roleAccounts,
-                swapFeePercentage, // 1% swap fee, but test will override it
+                swapFeePercentage, // 1% swap fee, but test will force it to be 0
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
@@ -59,12 +52,6 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
             )
         );
         vm.label(address(newPool), label);
-
-        // Cannot set the pool creator directly on a standard Balancer weighted pool factory.
-        vault.manualSetPoolCreator(address(newPool), lp);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), lp);
 
         return address(newPool);
     }

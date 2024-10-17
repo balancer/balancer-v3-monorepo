@@ -10,7 +10,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { FungibilityTest } from "@balancer-labs/v3-vault/test/foundry/Fungibility.t.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
@@ -20,7 +19,7 @@ import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer
 contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
     using CastingHelpers for address[];
 
-    uint256 internal constant DEFAULT_AMP_FACTOR = 200;
+    uint256 internal constant DEFAULT_AMP_FACTOR = 2000;
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by FungibilityTest.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
@@ -37,7 +36,7 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                swapFeePercentage, // 1% swap fee, but test will override it
+                swapFeePercentage, // 1% swap fee, but test will force it to be 0
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
@@ -45,12 +44,6 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
             )
         );
         vm.label(address(newPool), label);
-
-        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
-        vault.manualSetPoolCreator(address(newPool), lp);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), lp);
 
         return address(newPool);
     }
