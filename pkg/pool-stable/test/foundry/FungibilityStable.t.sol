@@ -20,7 +20,6 @@ import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer
 contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
     using CastingHelpers for address[];
 
-    uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by FungibilityTest.
@@ -38,7 +37,7 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
+                swapFeePercentage, // 1% swap fee, but test will override it
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity

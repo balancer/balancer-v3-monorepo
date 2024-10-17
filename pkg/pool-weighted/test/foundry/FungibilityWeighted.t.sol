@@ -22,8 +22,6 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
-    uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
-
     uint256 internal poolCreationNonce;
 
     function setUp() public override {
@@ -52,7 +50,7 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
+                swapFeePercentage, // 1% swap fee, but test will override it
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
