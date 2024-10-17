@@ -35,6 +35,7 @@ contract FungibilityTest is BaseVaultTest {
         uint256 exactBptOutProportional = totalSupplyBefore.mulDown(proportion);
 
         uint256 snapshotId = vm.snapshot();
+        // Execute unbalanced add liquidity, because this is the kind of addLiquidity that computes the invariant.
         vm.prank(lp);
         uint256 bptAmountOutUnbalanced = router.addLiquidityUnbalanced(
             pool,
@@ -46,6 +47,8 @@ contract FungibilityTest is BaseVaultTest {
         vm.revertTo(snapshotId);
 
         vm.prank(lp);
+        // Compare the BPTs minted by addLiquidityUnbalanced with the BPTs of proportional, to make sure it's a
+        // smaller value.
         uint256[] memory exactAmountsInProportional = router.addLiquidityProportional(
             pool,
             maxAmountsIn,
