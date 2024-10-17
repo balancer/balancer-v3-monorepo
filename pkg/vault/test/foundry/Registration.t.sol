@@ -205,7 +205,7 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         vm.mockCall(address(dai), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(19));
 
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(IVaultErrors.InvalidTokenDecimals.selector);
         vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
