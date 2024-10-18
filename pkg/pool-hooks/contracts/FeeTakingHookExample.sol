@@ -137,10 +137,14 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
     ) public override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
         hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
         if (hookSwapFeePercentage > 0) {
-            uint256 hookFee = params.amountCalculatedRaw.mulDown(hookSwapFeePercentage);
+            uint256 hookFee = params.amountCalculatedRaw.mulUp(hookSwapFeePercentage);
 
             if (hookFee > 0) {
                 IERC20 feeToken;
+
+                // Note that we can only alter the calculated amount in this function. This means that the fee will be
+                // charged in different tokens depending on whether the swap is exact in / out, potentially breaking
+                // the equivalence (i.e., one direction might "cost" less than the other).
 
                 if (params.kind == SwapKind.EXACT_IN) {
                     // For EXACT_IN swaps, the `amountCalculated` is the amount of `tokenOut`. The fee must be taken
@@ -199,7 +203,7 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
         if (addLiquidityHookFeePercentage > 0) {
             // Charge fees proportional to amounts in of each token.
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
-                uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
+                uint256 hookFee = amountsInRaw[i].mulUp(addLiquidityHookFeePercentage);
 
                 if (hookFee > 0) {
                     hookAdjustedAmountsInRaw[i] += hookFee;
@@ -239,7 +243,7 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
         if (removeLiquidityHookFeePercentage > 0) {
             // Charge fees proportional to amounts out of each token
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
-                uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
+                uint256 hookFee = amountsOutRaw[i].mulUp(removeLiquidityHookFeePercentage);
 
                 if (hookFee > 0) {
                     hookAdjustedAmountsOutRaw[i] -= hookFee;
