@@ -83,8 +83,8 @@ contract E2eSwapTest is BaseVaultTest {
         );
 
         vm.prank(poolCreator);
-        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+        // Set pool creator fee near 100%, so protocol + creator fees ~ the total charged fees.
+        feeController.setPoolCreatorSwapFeePercentage(pool, MAX_FEE_PERCENTAGE);
 
         minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
         maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();

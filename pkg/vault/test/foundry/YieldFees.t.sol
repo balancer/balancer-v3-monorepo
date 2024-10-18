@@ -232,9 +232,9 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function testYieldFeesOnSwap() public {
-        // Protocol yield fee 20%, and pool creator yield fees 100%.
+        // Protocol yield fee 20%, and pool creator yield fees near 100%.
         uint256 protocolYieldFeePercentage = 20e16;
-        uint256 poolCreatorFeePercentage = 100e16;
+        uint256 poolCreatorFeePercentage = 99e16;
 
         uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
             protocolYieldFeePercentage,
