@@ -4,10 +4,16 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IStablePool, AmplificationState } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    IStablePool,
+    AmplificationState,
+    StablePoolImmutableData,
+    StablePoolDynamicData
+} from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -132,5 +138,46 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         assertEq(ampState.endTime, endTime, "Wrong amp update end time");
         assertEq(ampState.startValue, DEFAULT_AMP_FACTOR * precision, "Wrong amp update start value");
         assertEq(ampState.endValue, newAmplificationParameter * precision, "Wrong amp update end value");
+    }
+
+    function testGetStablePoolImmutableData() public view {
+        StablePoolImmutableData memory data = IStablePool(pool).getStablePoolImmutableData();
+        (, , uint256 precision) = IStablePool(pool).getAmplificationParameter();
+        (uint256[] memory scalingFactors, ) = vault.getPoolTokenRates(pool);
+        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
+
+        assertEq(data.amplificationParameterPrecision, precision, "Wrong amplification parameter precision");
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            assertEq(address(data.tokens[i]), address(tokens[i]), "Token mismatch");
+            assertEq(data.decimalScalingFactors[i], scalingFactors[i], "Decimal scaling factors mismatch");
+        }
+    }
+
+    function testGetStablePoolDynamicData() public view {
+        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
+        StablePoolDynamicData memory data = IStablePool(pool).getStablePoolDynamicData();
+        (, uint256[] memory tokenRates) = vault.getPoolTokenRates(pool);
+        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
+        uint256 totalSupply = IERC20(pool).totalSupply();
+        uint256 bptRate = vault.getBptRate(pool);
+
+        assertTrue(data.isPoolInitialized, "Pool not initialized");
+        assertFalse(data.isPoolPaused, "Pool paused");
+        assertFalse(data.isPoolInRecoveryMode, "Pool in Recovery Mode");
+
+        assertEq(data.amplificationParameter, DEFAULT_AMP_FACTOR * precision, "Amp factor mismatch");
+        assertEq(data.startValue, ampState.startValue, "Start value mismatch");
+        assertEq(data.endValue, ampState.endValue, "End value mismatch");
+        assertEq(data.startTime, ampState.startTime, "Start time mismatch");
+        assertEq(data.endTime, ampState.endTime, "End time mismatch");
+        assertEq(data.bptRate, bptRate, "BPT rate mismatch");
+        assertEq(data.totalSupply, totalSupply, "Total supply mismatch");
+
+        assertEq(data.staticSwapFeePercentage, BASE_MIN_SWAP_FEE, "Swap fee mismatch");
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            assertEq(data.balancesLiveScaled18[i], defaultAmount, "Live balance mismatch");
+            assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
+        }
     }
 }
