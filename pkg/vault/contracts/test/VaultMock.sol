@@ -234,6 +234,10 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
+    function manualSetPoolTokens(address pool, IERC20[] memory tokens) public {
+        _poolTokens[pool] = tokens;
+    }
+
     function manualSetPoolTokensAndBalances(
         address pool,
         IERC20[] memory tokens,
@@ -380,6 +384,10 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 aggregateYieldFeePercentage
     ) external pure returns (uint256) {
         return PoolDataLib._computeYieldFeesDue(poolData, lastLiveBalance, tokenIndex, aggregateYieldFeePercentage);
+    }
+
+    function manualWritePoolBalancesToStorage(address pool, PoolData memory poolData) external {
+        _writePoolBalancesToStorage(pool, poolData);
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
