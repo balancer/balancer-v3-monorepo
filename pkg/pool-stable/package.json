@@ -28,6 +28,7 @@
     "test:hardhat": "hardhat test",
     "test:forge": "yarn build && REUSING_HARDHAT_ARTIFACTS=true forge test --ffi -vvv",
     "test:stress": "FOUNDRY_PROFILE=intense forge test --ffi -vvv",
+    "fuzz:medusa": "medusa fuzz --config medusa.json",
     "coverage": "./coverage.sh forge",
     "coverage:hardhat": "./coverage.sh hardhat",
     "coverage:all": "./coverage.sh all",
