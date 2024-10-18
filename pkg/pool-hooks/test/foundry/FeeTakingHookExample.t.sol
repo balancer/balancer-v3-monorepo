@@ -87,7 +87,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         vm.prank(lp);
         FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
-        uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
+        uint256 hookFee = swapAmount.mulUp(hookFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
@@ -155,7 +155,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         vm.prank(lp);
         FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
-        uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
+        uint256 hookFee = swapAmount.mulUp(hookFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
@@ -249,7 +249,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             expectedBptOut
         );
         uint256 actualAmountIn = actualAmountsIn[daiIdx]; // Proportional, so doesn't matter which token
-        uint256 hookFee = actualAmountIn.mulDown(hookFeePercentage);
+        uint256 hookFee = actualAmountIn.mulUp(hookFeePercentage);
 
         uint256[] memory expectedBalances = [poolInitAmount + actualAmountIn, poolInitAmount + actualAmountIn]
             .toMemoryArray();
@@ -323,7 +323,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             expectedBptIn
         );
         uint256 actualAmountOut = actualAmountsOut[usdcIdx];
-        uint256 hookFee = actualAmountOut.mulDown(hookFeePercentage);
+        uint256 hookFee = actualAmountOut.mulUp(hookFeePercentage);
 
         uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
             .toMemoryArray();

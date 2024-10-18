@@ -709,6 +709,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
+            address(this),
             bytes("")
         );
 
@@ -1308,6 +1309,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPoolWithWrapper,
             exactBptIn,
             tokensOut,
+            address(this),
             bytes("")
         );
         vm.revertTo(snapshotId);
