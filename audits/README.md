@@ -8,7 +8,7 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | :warning: | Audits are not a guarantee of correctness. Some of the contracts were modified after they were audited.      |
 | --------- | :----------------------------------------------------------------------------------------------------------- |
 
-| Scope                             | Firm          | Report                                         |
-| --------------------------------- | ------------- | ---------------------------------------------- |
-| Vault, Weighted Pool, Stable Pool | Certora       | [`2024-09`](./certora/2024-09.pdf)             |
-| Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2024-10`](./trail-of-bits/2024-10.pdf)       |
+| Scope                             | Firm          | Report                                               |
+| --------------------------------- | ------------- | ---------------------------------------------------- |
+| Vault, Weighted Pool, Stable Pool | Certora       | [`2024-09-04`](./certora/2024-09-04.pdf)             |
+| Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2024-10-08`](./trail-of-bits/2024-10-08.pdf)       |
