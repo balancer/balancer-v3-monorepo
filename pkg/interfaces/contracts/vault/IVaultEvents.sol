@@ -212,4 +212,12 @@ interface IVaultEvents {
      * @param paused True if the Vault buffers were paused
      */
     event VaultBuffersPausedStateChanged(bool paused);
+
+    /**
+     * @notice Pools can use this event to emit event data from the Vault.
+     * @param from Pool address
+     * @param eventKey Event key
+     * @param eventData Encoded event data
+     */
+    event VaultAuxiliary(address from, string eventKey, bytes eventData);
 }
