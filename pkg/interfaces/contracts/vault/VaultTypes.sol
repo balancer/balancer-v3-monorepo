@@ -124,8 +124,8 @@ struct PoolRoleAccounts {
 // * Fee on transfer (e.g., PAXG). The Vault issues credits and debits according to given and calculated token amounts,
 //   and settlement assumes that the send/receive transfer functions transfer exactly the given number of tokens.
 //   If this is not the case, transactions will not settle. Unlike with the other types, which are fundamentally
-//   incompatible, it would be possible to design the Vault to handle this - but it was thought this was too much
-//   complexity and gas to support an edge case.
+//   incompatible, it would be possible to design a Router to handle this - but we didn't try it. In any case, it's
+//   not supported in the current Routers.
 //
 // * Tokens with greater than 18 decimals (e.g., YAM-V2). The Vault handles token scaling: i.e., handling I/O for
 //   amounts in native token decimals, but doing calculations with full 18-decimal precision. This requires reading
@@ -139,8 +139,7 @@ struct PoolRoleAccounts {
 //
 // * Very low-decimal tokens (e.g., GUSD). The Vault has been extensively tested with 6-decimal tokens (e.g., USDC),
 //   but going much below that may lead to unanticipated effects due to precision loss, especially with smaller trade
-//   values. Also, the Vault enforces a minimum trade size for security. Using a minimum of 1e6 corresponds to 10,000
-//   GUSD, making it impossible to trade small amounts of low-decimal tokens.
+//   values.
 //
 // * Revert on zero value approval/transfer. The Vault has been tested against these, but peripheral contracts, such
 //   as hooks, might not have been designed with this in mind.
