@@ -4,19 +4,21 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IStablePool, AmplificationState } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
-import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
 contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
@@ -96,5 +98,39 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
 
         uint256[] memory amountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
         _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
+    }
+
+    function testGetAmplificationState() public {
+        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
+
+        // Should be initialized to the default values.
+        assertEq(ampState.startTime, block.timestamp, "Wrong initial amp update start time");
+        assertEq(ampState.endTime, block.timestamp, "Wrong initial amp update end time");
+        assertEq(ampState.startValue, DEFAULT_AMP_FACTOR * precision, "Wrong initial amp update start value");
+        assertEq(ampState.endValue, DEFAULT_AMP_FACTOR * precision, "Wrong initial amp update end value");
+
+        authorizer.grantRole(
+            IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
+            admin
+        );
+
+        uint256 currentTime = block.timestamp;
+        uint256 updateInterval = 5000 days;
+
+        uint256 endTime = currentTime + updateInterval;
+        uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
+
+        vm.prank(admin);
+        StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+
+        vm.warp(currentTime + updateInterval + 1);
+
+        (ampState, precision) = IStablePool(pool).getAmplificationState();
+
+        // Should be initialized to the default values.
+        assertEq(ampState.startTime, currentTime, "Wrong amp update start time");
+        assertEq(ampState.endTime, endTime, "Wrong amp update end time");
+        assertEq(ampState.startValue, DEFAULT_AMP_FACTOR * precision, "Wrong amp update start value");
+        assertEq(ampState.endValue, newAmplificationParameter * precision, "Wrong amp update end value");
     }
 }

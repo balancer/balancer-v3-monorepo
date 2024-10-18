@@ -4,21 +4,20 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IStablePool, AmplificationState } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
-import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
+import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
-import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
 contract LiquidityApproximationStableTest is LiquidityApproximationTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
@@ -161,21 +160,11 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
     function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {
         uint256 updateInterval = 5000 days;
 
-        (uint256 value, bool isUpdating, ) = IStablePool(pool).getAmplificationParameter();
-
         vm.prank(admin);
-        uint256 endTime = block.timestamp + updateInterval;
-        StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
-
-        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
-        assertEq(ampState.startTime, block.timestamp, "Wrong amp update start time");
-        assertEq(ampState.endTime, endTime, "Wrong amp update end time");
-        assertEq(ampState.startValue, value, "Wrong amp update start value");
-        assertEq(ampState.endValue, newAmplificationParameter * precision, "Wrong amp update end value");
-
+        StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, block.timestamp + updateInterval);
         vm.warp(block.timestamp + updateInterval + 1);
 
-        (value, isUpdating, ) = IStablePool(pool).getAmplificationParameter();
+        (uint256 value, bool isUpdating, uint256 precision) = StablePool(pool).getAmplificationParameter();
         assertFalse(isUpdating, "Pool amplification parameter is updating");
         assertEq(value / precision, newAmplificationParameter, "Amplification Parameter is wrong");
     }
