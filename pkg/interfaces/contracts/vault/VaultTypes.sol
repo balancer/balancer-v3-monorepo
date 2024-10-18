@@ -127,7 +127,7 @@ struct PoolRoleAccounts {
 //   incompatible, it would be possible to design a Router to handle this - but we didn't try it. In any case, it's
 //   not supported in the current Routers.
 //
-// * Tokens with greater than 18 decimals (e.g., YAM-V2). The Vault handles token scaling: i.e., handling I/O for
+// * Tokens with more than 18 decimals (e.g., YAM-V2). The Vault handles token scaling: i.e., handling I/O for
 //   amounts in native token decimals, but doing calculations with full 18-decimal precision. This requires reading
 //   and storing the decimals for each token. Since virtually all tokens are 18 or fewer decimals, and we have limited
 //   storage space, 18 was a reasonable maximum. Unlike the other types, this is enforceable by the Vault. Attempting
