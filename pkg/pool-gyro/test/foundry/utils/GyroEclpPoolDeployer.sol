@@ -38,7 +38,7 @@ contract GyroEclpPoolDeployer is Test {
     int256 internal _z = -28859471639991253843240999485797747790;
     int256 internal _dSq = 99999999999999999886624093342106115200;
 
-    function createEclpPool(
+    function createGyroEclpPool(
         address[] memory tokens,
         IRateProvider[] memory rateProviders,
         string memory label,

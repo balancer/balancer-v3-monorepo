@@ -16,7 +16,7 @@ contract E2eBatchSwapECLPTest is E2eBatchSwapTest, GyroEclpPoolDeployer {
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eBatchSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
-        return createEclpPool(tokens, rateProviders, label, vault, lp);
+        return createGyroEclpPool(tokens, rateProviders, label, vault, lp);
     }
 
     function _setUpVariables() internal override {

@@ -29,7 +29,7 @@ contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProvi
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        return createEclpPool(tokens, rateProviders, label, vault, lp);
+        return createGyroEclpPool(tokens, rateProviders, label, vault, lp);
     }
 
     function calculateMinAndMaxSwapAmounts() internal virtual override {
