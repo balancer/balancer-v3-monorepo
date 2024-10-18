@@ -32,7 +32,7 @@ interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRa
      * effectively add liquidity after the swap - but it should never decrease.
      *
      * 2) The invariant must be "linear"; i.e., increasing the balances proportionally must increase the invariant in
-     * the same proportion: inv(a * n,b * n,c * n) = inv(a, b, c) * n
+     * the same proportion: inv(a * n, b * n, c * n) = inv(a, b, c) * n
      *
      * Property #1 is required to prevent "round trip" paths that drain value from the pool (and all LP shareholders).
      * Intuitively, an accurate pricing algorithm ensures the user gets an equal value of token out given token in, so
