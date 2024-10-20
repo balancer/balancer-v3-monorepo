@@ -87,144 +87,144 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
-    function testAddLiquidityUnbalancedToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
-        uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
-        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+    // function testAddLiquidityUnbalancedToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    //     uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
+    //     uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        exactWrappedAmountsIn[waDaiIdx] = waDAI.previewDeposit(operationAmount);
-        exactWrappedAmountsIn[waUsdcIdx] = waUSDC.previewDeposit(operationAmount);
+    //     uint256[] memory exactWrappedAmountsIn = new uint256[](2);
+    //     exactWrappedAmountsIn[waDaiIdx] = waDAI.previewDeposit(operationAmount);
+    //     exactWrappedAmountsIn[waUsdcIdx] = waUSDC.previewDeposit(operationAmount);
 
-        uint256 snapshot = vm.snapshot();
-        _prankStaticCall();
-        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(erc4626Pool, exactWrappedAmountsIn, bytes(""));
-        vm.revertTo(snapshot);
+    //     uint256 snapshot = vm.snapshot();
+    //     _prankStaticCall();
+    //     uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(erc4626Pool, exactWrappedAmountsIn, bytes(""));
+    //     vm.revertTo(snapshot);
 
-        TestBalances memory balancesBefore = _getTestBalances(alice);
+    //     TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        vm.prank(alice);
-        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
-            erc4626Pool,
-            exactUnderlyingAmountsIn,
-            1,
-            false,
-            bytes("")
-        );
+    //     vm.prank(alice);
+    //     uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+    //         erc4626Pool,
+    //         exactUnderlyingAmountsIn,
+    //         1,
+    //         false,
+    //         bytes("")
+    //     );
 
-        TestBalances memory balancesAfter = _getTestBalances(alice);
+    //     TestBalances memory balancesAfter = _getTestBalances(alice);
 
-        TestLocals memory vars;
-        vars.underlyingDaiAmountDelta = exactUnderlyingAmountsIn[waDaiIdx];
-        vars.underlyingUsdcAmountDelta = exactUnderlyingAmountsIn[waUsdcIdx];
-        vars.wrappedDaiPoolDelta = exactWrappedAmountsIn[waDaiIdx];
-        vars.wrappedUsdcPoolDelta = exactWrappedAmountsIn[waUsdcIdx];
-        vars.isPartialERC4626Pool = false;
+    //     TestLocals memory vars;
+    //     vars.underlyingDaiAmountDelta = exactUnderlyingAmountsIn[waDaiIdx];
+    //     vars.underlyingUsdcAmountDelta = exactUnderlyingAmountsIn[waUsdcIdx];
+    //     vars.wrappedDaiPoolDelta = exactWrappedAmountsIn[waDaiIdx];
+    //     vars.wrappedUsdcPoolDelta = exactWrappedAmountsIn[waUsdcIdx];
+    //     vars.isPartialERC4626Pool = false;
 
-        _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
+    //     _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        assertEq(bptOut, expectBPTOut, "BPT operationAmount should match expected");
-        assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
-    }
+    //     assertEq(bptOut, expectBPTOut, "BPT operationAmount should match expected");
+    //     assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
+    // }
 
-    function testAddLiquidityUnbalancedToPartialERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
-        uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
-        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+    // function testAddLiquidityUnbalancedToPartialERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    //     uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
+    //     uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        exactWrappedAmountsIn[partialWaDaiIdx] = waDAI.previewDeposit(operationAmount);
-        exactWrappedAmountsIn[partialUsdcIdx] = operationAmount;
+    //     uint256[] memory exactWrappedAmountsIn = new uint256[](2);
+    //     exactWrappedAmountsIn[partialWaDaiIdx] = waDAI.previewDeposit(operationAmount);
+    //     exactWrappedAmountsIn[partialUsdcIdx] = operationAmount;
 
-        uint256 snapshot = vm.snapshot();
-        _prankStaticCall();
-        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(partialErc4626Pool, exactWrappedAmountsIn, bytes(""));
-        vm.revertTo(snapshot);
+    //     uint256 snapshot = vm.snapshot();
+    //     _prankStaticCall();
+    //     uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(partialErc4626Pool, exactWrappedAmountsIn, bytes(""));
+    //     vm.revertTo(snapshot);
 
-        TestBalances memory balancesBefore = _getTestBalances(alice);
+    //     TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        vm.prank(alice);
-        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
-            partialErc4626Pool,
-            exactUnderlyingAmountsIn,
-            0,
-            false,
-            bytes("")
-        );
+    //     vm.prank(alice);
+    //     uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+    //         partialErc4626Pool,
+    //         exactUnderlyingAmountsIn,
+    //         0,
+    //         false,
+    //         bytes("")
+    //     );
 
-        TestBalances memory balancesAfter = _getTestBalances(alice);
+    //     TestBalances memory balancesAfter = _getTestBalances(alice);
 
-        TestLocals memory vars;
-        vars.underlyingDaiAmountDelta = exactUnderlyingAmountsIn[partialWaDaiIdx];
-        vars.underlyingUsdcAmountDelta = exactUnderlyingAmountsIn[partialUsdcIdx];
-        vars.wrappedDaiPoolDelta = exactWrappedAmountsIn[partialWaDaiIdx];
-        vars.isPartialERC4626Pool = true;
+    //     TestLocals memory vars;
+    //     vars.underlyingDaiAmountDelta = exactUnderlyingAmountsIn[partialWaDaiIdx];
+    //     vars.underlyingUsdcAmountDelta = exactUnderlyingAmountsIn[partialUsdcIdx];
+    //     vars.wrappedDaiPoolDelta = exactWrappedAmountsIn[partialWaDaiIdx];
+    //     vars.isPartialERC4626Pool = true;
 
-        _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
+    //     _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        assertEq(bptOut, expectBPTOut, "Wrong BPT out");
-        assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
-    }
+    //     assertEq(bptOut, expectBPTOut, "Wrong BPT out");
+    //     assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
+    // }
 
-    function testAddLiquidityUnbalancedToERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(alice) {
-        uint256 operationAmount = bufferInitialAmount / 2;
-        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+    // function testAddLiquidityUnbalancedToERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(alice) {
+    //     uint256 operationAmount = bufferInitialAmount / 2;
+    //     uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        vm.prank(alice, address(0));
-        compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
-            erc4626Pool,
-            exactUnderlyingAmountsIn,
-            bytes("")
-        );
-    }
+    //     vm.prank(alice, address(0));
+    //     compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+    //         erc4626Pool,
+    //         exactUnderlyingAmountsIn,
+    //         bytes("")
+    //     );
+    // }
 
-    function testQueryAddLiquidityUnbalancedToERC4626Pool() public {
-        uint256 operationAmount = bufferInitialAmount / 2;
-        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+    // function testQueryAddLiquidityUnbalancedToERC4626Pool() public {
+    //     uint256 operationAmount = bufferInitialAmount / 2;
+    //     uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        uint256 snapshotId = vm.snapshot();
-        vm.prank(alice, address(0));
-        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
-            erc4626Pool,
-            exactUnderlyingAmountsIn,
-            bytes("")
-        );
-        vm.revertTo(snapshotId);
+    //     uint256 snapshotId = vm.snapshot();
+    //     vm.prank(alice, address(0));
+    //     uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+    //         erc4626Pool,
+    //         exactUnderlyingAmountsIn,
+    //         bytes("")
+    //     );
+    //     vm.revertTo(snapshotId);
 
-        vm.prank(alice);
-        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
-            erc4626Pool,
-            exactUnderlyingAmountsIn,
-            1,
-            false,
-            bytes("")
-        );
+    //     vm.prank(alice);
+    //     uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+    //         erc4626Pool,
+    //         exactUnderlyingAmountsIn,
+    //         1,
+    //         false,
+    //         bytes("")
+    //     );
 
-        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
-    }
+    //     assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
+    // }
 
-    function testQueryAddLiquidityUnbalancedToPartialERC4626Pool() public {
-        uint256 operationAmount = bufferInitialAmount / 2;
-        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+    // function testQueryAddLiquidityUnbalancedToPartialERC4626Pool() public {
+    //     uint256 operationAmount = bufferInitialAmount / 2;
+    //     uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        uint256 snapshotId = vm.snapshot();
-        vm.prank(alice, address(0));
-        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
-            partialErc4626Pool,
-            exactUnderlyingAmountsIn,
-            bytes("")
-        );
-        vm.revertTo(snapshotId);
+    //     uint256 snapshotId = vm.snapshot();
+    //     vm.prank(alice, address(0));
+    //     uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+    //         partialErc4626Pool,
+    //         exactUnderlyingAmountsIn,
+    //         bytes("")
+    //     );
+    //     vm.revertTo(snapshotId);
 
-        vm.prank(alice);
-        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
-            partialErc4626Pool,
-            exactUnderlyingAmountsIn,
-            1,
-            false,
-            bytes("")
-        );
+    //     vm.prank(alice);
+    //     uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+    //         partialErc4626Pool,
+    //         exactUnderlyingAmountsIn,
+    //         1,
+    //         false,
+    //         bytes("")
+    //     );
 
-        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
-    }
+    //     assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
+    // }
 
     function testAddLiquidityProportionalToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);

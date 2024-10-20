@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.26;
 
+import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
@@ -20,7 +21,8 @@ import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
-    TransientStorageHelpers
+    TransientStorageHelpers,
+    Bytes32ToUintMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
@@ -35,6 +37,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
+    bytes32 private immutable _INDEX_BY_POOL_MAPPING_SLOT = _calculateBatchRouterStorageSlot("indexByPoolMapping");
+
     constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -42,33 +46,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /*******************************************************************************
                                 ERC4626 Pools
     *******************************************************************************/
-
-    /// @inheritdoc ICompositeLiquidityRouter
-    function addLiquidityUnbalancedToERC4626Pool(
-        address pool,
-        uint256[] memory exactUnderlyingAmountsIn,
-        uint256 minBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable saveSender returns (uint256 bptAmountOut) {
-        bptAmountOut = abi.decode(
-            _vault.unlock(
-                abi.encodeCall(
-                    CompositeLiquidityRouter.addLiquidityERC4626PoolUnbalancedHook,
-                    AddLiquidityHookParams({
-                        sender: msg.sender,
-                        pool: pool,
-                        maxAmountsIn: exactUnderlyingAmountsIn,
-                        minBptAmountOut: minBptAmountOut,
-                        kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: wethIsEth,
-                        userData: userData
-                    })
-                )
-            ),
-            (uint256)
-        );
-    }
 
     /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityProportionalToERC4626Pool(
@@ -125,31 +102,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
-    function queryAddLiquidityUnbalancedToERC4626Pool(
-        address pool,
-        uint256[] memory exactUnderlyingAmountsIn,
-        bytes memory userData
-    ) external saveSender returns (uint256 bptAmountOut) {
-        bptAmountOut = abi.decode(
-            _vault.quote(
-                abi.encodeCall(
-                    CompositeLiquidityRouter.addLiquidityERC4626PoolUnbalancedHook,
-                    AddLiquidityHookParams({
-                        sender: msg.sender,
-                        pool: pool,
-                        maxAmountsIn: exactUnderlyingAmountsIn,
-                        minBptAmountOut: 0,
-                        kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: false,
-                        userData: userData
-                    })
-                )
-            ),
-            (uint256)
-        );
-    }
-
-    /// @inheritdoc ICompositeLiquidityRouter
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
         uint256 exactBptAmountOut,
@@ -199,31 +151,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         );
     }
 
-    function addLiquidityERC4626PoolUnbalancedHook(
-        AddLiquidityHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
-        (, uint256[] memory wrappedAmountsIn) = _wrapTokens(
-            params,
-            erc4626PoolTokens,
-            params.maxAmountsIn,
-            SwapKind.EXACT_IN,
-            new uint256[](erc4626PoolTokens.length)
-        );
-
-        // Add wrapped amounts to the ERC4626 pool.
-        (, bptAmountOut, ) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: params.sender,
-                maxAmountsIn: wrappedAmountsIn,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
-        );
-    }
-
     function addLiquidityERC4626PoolProportionalHook(
         AddLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsIn) {
@@ -247,13 +174,18 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        (underlyingAmountsIn, ) = _wrapTokens(
-            params,
-            erc4626PoolTokens,
-            wrappedAmountsIn,
-            SwapKind.EXACT_OUT,
-            params.maxAmountsIn
-        );
+        underlyingAmountsIn = new uint256[](poolTokensLength);
+        for (uint256 i = 0; i < poolTokensLength; i++) {
+            (underlyingAmountsIn[i], ) = _wrapToken(
+                params.sender,
+                erc4626PoolTokens[i],
+                wrappedAmountsIn[i],
+                SwapKind.EXACT_OUT,
+                params.maxAmountsIn[i],
+                EVMCallModeHelpers.isStaticCall(),
+                params.wethIsEth
+            );
+        }
     }
 
     function removeLiquidityERC4626PoolProportionalHook(
@@ -307,67 +239,57 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
-    function _wrapTokens(
-        AddLiquidityHookParams calldata params,
-        IERC20[] memory erc4626PoolTokens,
-        uint256[] memory amountsIn,
+    function _wrapToken(
+        address sender,
+        IERC20 erc4626PoolToken,
+        uint256 amountsIn,
         SwapKind kind,
-        uint256[] memory limits
-    ) private returns (uint256[] memory underlyingAmounts, uint256[] memory wrappedAmounts) {
-        uint256 poolTokensLength = erc4626PoolTokens.length;
-        underlyingAmounts = new uint256[](poolTokensLength);
-        wrappedAmounts = new uint256[](poolTokensLength);
+        uint256 limit,
+        bool isStaticCall,
+        bool wethIsEth
+    ) private returns (uint256 underlyingAmount, uint256 wrappedAmount) {
+        // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
+        // a valid ERC4626.
+        IERC4626 wrappedToken = IERC4626(address(erc4626PoolToken));
+        IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
-
-        // Wrap given underlying tokens for wrapped tokens.
-        for (uint256 i = 0; i < poolTokensLength; ++i) {
-            // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
-            // a valid ERC4626.
-            IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
-            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
-
-            // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the Router treats it as a non-ERC4626 token.
-            if (address(underlyingToken) == address(0)) {
-                underlyingAmounts[i] = amountsIn[i];
-                wrappedAmounts[i] = amountsIn[i];
-
-                if (isStaticCall == false) {
-                    _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
-                }
-
-                continue;
-            }
-
+        // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+        // initialized. Thus, the Router treats it as a non-ERC4626 token.
+        if (address(underlyingToken) == address(0)) {
             if (isStaticCall == false) {
-                if (kind == SwapKind.EXACT_IN) {
-                    // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
-                    _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
-                } else {
-                    // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
-                    // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
-                    // between the limit and the actual underlying amount is returned to the sender.
-                    _takeTokenIn(params.sender, underlyingToken, limits[i], params.wethIsEth);
-                }
+                _takeTokenIn(sender, erc4626PoolToken, amountsIn, wethIsEth);
             }
 
-            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-            (, underlyingAmounts[i], wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: kind,
-                    direction: WrappingDirection.WRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: amountsIn[i],
-                    limitRaw: limits[i]
-                })
-            );
+            return (amountsIn, amountsIn);
+        }
 
-            if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
-                // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
-                // difference between limit and exact underlying amount needs to be returned to the sender.
-                _vault.sendTo(underlyingToken, params.sender, limits[i] - underlyingAmounts[i]);
+        if (isStaticCall == false) {
+            if (kind == SwapKind.EXACT_IN) {
+                // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
+                _takeTokenIn(sender, underlyingToken, amountsIn, wethIsEth);
+            } else {
+                // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
+                // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
+                // between the limit and the actual underlying amount is returned to the sender.
+                _takeTokenIn(sender, underlyingToken, limit, wethIsEth);
             }
+        }
+
+        // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+        (, underlyingAmount, wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: kind,
+                direction: WrappingDirection.WRAP,
+                wrappedToken: wrappedToken,
+                amountGivenRaw: amountsIn,
+                limitRaw: limit
+            })
+        );
+
+        if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
+            // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
+            // difference between limit and exact underlying amount needs to be returned to the sender.
+            _vault.sendTo(underlyingToken, sender, limit - underlyingAmount);
         }
     }
 
@@ -378,26 +300,19 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityUnbalancedNestedPool(
         address parentPool,
-        address[] memory tokensIn,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
-        bytes memory userData
+        NestedPoolOperation[] calldata nestedPoolOperations
     ) external saveSender returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
                     abi.encodeWithSelector(
                         CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
-                        AddLiquidityHookParams({
+                        AddLiquidityNestedPoolHookParams({
                             pool: parentPool,
                             sender: msg.sender,
-                            maxAmountsIn: exactAmountsIn,
-                            minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.UNBALANCED,
-                            wethIsEth: false,
-                            userData: userData
-                        }),
-                        tokensIn
+                            nestedPoolOperations: nestedPoolOperations
+                        })
                     )
                 ),
                 (uint256)
@@ -433,87 +348,92 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     function addLiquidityUnbalancedNestedPoolHook(
-        AddLiquidityHookParams calldata params,
-        address[] memory tokensIn
+        AddLiquidityNestedPoolHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
-        // Revert if tokensIn length does not match with maxAmountsIn length.
-        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
+        _fillNestedPoolOperationIndexByPoolMapping(params.nestedPoolOperations);
 
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+        return _addLiquidityNestedPool(params.pool, address(0), params.pool, params, EVMCallModeHelpers.isStaticCall());
+    }
 
-        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate in the tokens
-        // array to find the child pool amounts to insert.
-        for (uint256 i = 0; i < tokensIn.length; ++i) {
-            _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
-        }
+    function _addLiquidityNestedPool(
+        address mainPool,
+        address prevPool,
+        address pool,
+        AddLiquidityNestedPoolHookParams calldata params,
+        bool isStaticCall
+    ) internal returns (uint256 bptAmountOut) {
+        IERC20[] memory childTokens = _vault.getPoolTokens(pool);
+        uint256[] memory childTokensAmountsIn = new uint256[](childTokens.length);
 
-        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+        (
+            bool isPoolNestedPoolOperationExist,
+            NestedPoolOperation memory nestedPoolOperation
+        ) = _getNestedPoolOperationByPool(prevPool, pool, params.nestedPoolOperations);
 
-        // Iterate over each token of the parent pool. If it's a BPT, add liquidity unbalanced to it.
-        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
-            address childToken = address(parentPoolTokens[i]);
+        bool doNeedToAddLiquidityToPool = isPoolNestedPoolOperationExist;
+
+        for (uint256 i = 0; i < childTokens.length; i++) {
+            address childToken = address(childTokens[i]);
 
             if (_vault.isPoolRegistered(childToken)) {
-                // Token is a BPT, so add liquidity to the child pool.
+                childTokensAmountsIn[i] = _addLiquidityNestedPool(mainPool, pool, childToken, params, isStaticCall);
 
-                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                uint256[] memory childPoolAmountsIn = _getPoolAmountsIn(childPoolTokens);
+                if (doNeedToAddLiquidityToPool == false && childTokensAmountsIn[i] > 0) {
+                    doNeedToAddLiquidityToPool = true;
+                }
+            } else if (_vault.isERC4626BufferInitialized(IERC4626(childToken))) {
+                (
+                    bool isERC4626PoolOperationExist,
+                    NestedPoolOperation memory erc4626NestedPoolOperation
+                ) = _getNestedPoolOperationByPool(pool, childToken, params.nestedPoolOperations);
 
-                // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent pool
-                // will be a logic insertion, not a token transfer.
-                (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
-                    AddLiquidityParams({
-                        pool: childToken,
-                        to: address(_vault),
-                        maxAmountsIn: childPoolAmountsIn,
-                        minBptAmountOut: 0,
-                        kind: params.kind,
-                        userData: params.userData
-                    })
-                );
+                if (isERC4626PoolOperationExist) {
+                    bool isStaticCall_ = isStaticCall; // Avoid stack too deep error
+                    (, uint256 wrappedAmount) = _wrapToken(
+                        params.sender,
+                        IERC20(childToken),
+                        erc4626NestedPoolOperation.tokensInAmounts[0], // Only one token can be wrapped in ERC4626 pools
+                        SwapKind.EXACT_IN,
+                        0,
+                        isStaticCall_,
+                        erc4626NestedPoolOperation.wethIsEth
+                    );
+                    childTokensAmountsIn[i] = wrappedAmount;
+                } else if (isPoolNestedPoolOperationExist && nestedPoolOperation.tokensInAmounts[i] > 0) {
+                    childTokensAmountsIn[i] = nestedPoolOperation.tokensInAmounts[i];
 
-                // Sets the amount in of child BPT to the exactBptAmountOut of the child pool, so all the minted BPT
-                // will be added to the parent pool.
-                _currentSwapTokenInAmounts().tSet(childToken, exactChildBptAmountOut);
+                    if (!isStaticCall) {
+                        _takeTokenIn(params.sender, IERC20(childToken), childTokensAmountsIn[i], false);
+                    }
+                }
+            } else if (isPoolNestedPoolOperationExist && nestedPoolOperation.tokensInAmounts[i] > 0) {
+                childTokensAmountsIn[i] = nestedPoolOperation.tokensInAmounts[i];
 
-                // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
-                // advance.
-                _vault.settle(IERC20(childToken), exactChildBptAmountOut);
-            } else if (
-                _vault.isERC4626BufferInitialized(IERC4626(childToken)) &&
-                _currentSwapTokenInAmounts().tGet(childToken) == 0 // wrapped amount in was not specified
-            ) {
-                // The ERC4626 token has a buffer initialized within the Vault. Additionally, since the sender did not
-                // specify an input amount for the wrapped token, the function will wrap the underlying asset and use
-                // the resulting wrapped tokens to add liquidity to the pool.
-                _wrapAndUpdateTokenInAmounts(IERC4626(childToken));
+                if (!isStaticCall) {
+                    _takeTokenIn(params.sender, IERC20(childToken), childTokensAmountsIn[i], false);
+                }
             }
         }
 
-        uint256[] memory parentPoolAmountsIn = _getPoolAmountsIn(parentPoolTokens);
+        if (doNeedToAddLiquidityToPool == false) {
+            return 0;
+        }
 
-        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
-        (, exactBptAmountOut, ) = _vault.addLiquidity(
+        (, bptAmountOut, ) = _vault.addLiquidity(
             AddLiquidityParams({
-                pool: params.pool,
-                to: isStaticCall ? address(this) : params.sender,
-                maxAmountsIn: parentPoolAmountsIn,
-                minBptAmountOut: params.minBptAmountOut,
+                pool: pool,
+                to: isStaticCall ? address(0) : params.sender,
+                maxAmountsIn: childTokensAmountsIn,
+                minBptAmountOut: isPoolNestedPoolOperationExist ? nestedPoolOperation.minBptAmountOut : 0,
                 kind: params.kind,
-                userData: params.userData
+                userData: isPoolNestedPoolOperationExist ? nestedPoolOperation.userData : new bytes(0)
             })
         );
 
-        // Since all values from _currentSwapTokenInAmounts are erased, recreates the set of amounts in so
-        // `_settlePaths()` can charge the sender.
-        for (uint256 i = 0; i < tokensIn.length; ++i) {
-            _currentSwapTokensIn().add(tokensIn[i]);
-            _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
-        }
-
-        // Settle the amounts in.
-        if (isStaticCall == false) {
-            _settlePaths(params.sender, false);
+        if (pool != mainPool) {
+            // // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
+            // // advance
+            _takeTokenIn(params.sender, IERC20(pool), bptAmountOut, false);
         }
     }
 
@@ -752,5 +672,33 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address underlyingToken = wrappedToken.asset();
         _currentSwapTokensOut().add(underlyingToken);
         _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmountOut);
+    }
+
+    function _getNestedPoolOperationByPool(
+        address prevPool,
+        address pool,
+        NestedPoolOperation[] calldata nestedPoolOperations
+    ) private view returns (bool isExist, NestedPoolOperation memory parentNestedPoolOperation) {
+        uint256 index = _nestedPoolOperationIndexByPoolMapping().tGet(keccak256(abi.encodePacked(prevPool, pool)));
+
+        if (index != 0) {
+            parentNestedPoolOperation = nestedPoolOperations[index - 1];
+            isExist = true;
+        }
+    }
+
+    function _fillNestedPoolOperationIndexByPoolMapping(NestedPoolOperation[] calldata nestedPoolOperations) private {
+        for (uint256 i = 0; i < nestedPoolOperations.length; i++) {
+            bytes32 key = keccak256(abi.encodePacked(nestedPoolOperations[i].prevPool, nestedPoolOperations[i].pool));
+            if (_nestedPoolOperationIndexByPoolMapping().tGet(key) != 0) {
+                revert("Some nestedPoolOperations have the same pool");
+            }
+
+            _nestedPoolOperationIndexByPoolMapping().tSet(key, i + 1); // 0 is reserved for not found
+        }
+    }
+
+    function _nestedPoolOperationIndexByPoolMapping() private view returns (Bytes32ToUintMappingSlot slot) {
+        return Bytes32ToUintMappingSlot.wrap(_INDEX_BY_POOL_MAPPING_SLOT);
     }
 }
