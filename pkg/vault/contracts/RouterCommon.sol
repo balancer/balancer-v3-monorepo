@@ -23,7 +23,12 @@ import {
 
 import { VaultGuard } from "./VaultGuard.sol";
 
-/// @notice Contract for functions shared between the `Router` and `BatchRouter`.
+/**
+ * @notice Abstract base contract for functions shared among all Routers.
+ * @dev Common functionality includes access to the sender (which would normally be obscured, since msg.sender in the
+ * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
+ * invocation functions (`permitBatchAndCall` and `multicall`).
+ */
 abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
     using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
     using Address for address payable;
