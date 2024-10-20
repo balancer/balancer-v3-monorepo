@@ -35,7 +35,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) BatchRouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
