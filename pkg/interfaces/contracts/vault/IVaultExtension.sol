@@ -466,4 +466,11 @@ interface IVaultExtension {
      * @return queryDisabled If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /**
+     * @notice Pools can use this event to emit event data from the Vault.
+     * @param eventKey Event key
+     * @param eventData Encoded event data
+     */
+    function emitAuxiliaryEvent(string calldata eventKey, bytes calldata eventData) external;
 }
