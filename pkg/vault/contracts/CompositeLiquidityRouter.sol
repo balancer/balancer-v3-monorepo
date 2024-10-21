@@ -247,7 +247,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityUnbalancedNestedPool(
-        address parentPool,
+        address mainPool,
         NestedPoolOperation[] calldata nestedPoolOperations
     ) external saveSender(msg.sender) returns (uint256) {
         return
@@ -256,7 +256,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     abi.encodeWithSelector(
                         CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
                         AddLiquidityNestedPoolHookParams({
-                            pool: parentPool,
+                            pool: mainPool,
                             sender: msg.sender,
                             kind: AddLiquidityKind.UNBALANCED,
                             nestedPoolOperations: nestedPoolOperations
@@ -269,27 +269,21 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     /// @inheritdoc ICompositeLiquidityRouter
     function queryAddLiquidityUnbalancedNestedPool(
-        address parentPool,
-        address[] memory tokensIn,
-        uint256[] memory exactAmountsIn,
-        address sender,
-        bytes memory userData
+        address mainPool,
+        NestedPoolOperation[] calldata nestedPoolOperations,
+        address sender
     ) external saveSender(sender) returns (uint256) {
         return
             abi.decode(
                 _vault.quote(
                     abi.encodeWithSelector(
                         CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
-                        AddLiquidityHookParams({
-                            pool: parentPool,
-                            sender: msg.sender,
-                            maxAmountsIn: exactAmountsIn,
-                            minBptAmountOut: 0,
+                        AddLiquidityNestedPoolHookParams({
+                            pool: mainPool,
+                            sender: sender,
                             kind: AddLiquidityKind.UNBALANCED,
-                            wethIsEth: false,
-                            userData: userData
-                        }),
-                        tokensIn
+                            nestedPoolOperations: nestedPoolOperations
+                        })
                     )
                 ),
                 (uint256)
@@ -326,10 +320,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             if (_vault.isPoolRegistered(childToken)) {
                 childTokensAmountsIn[i] = _addLiquidityNestedPool(mainPool, pool, childToken, params, isStaticCall);
-
-                if (doNeedToAddLiquidityToPool == false && childTokensAmountsIn[i] > 0) {
-                    doNeedToAddLiquidityToPool = true;
-                }
             } else if (_vault.isERC4626BufferInitialized(IERC4626(childToken))) {
                 (
                     bool isERC4626PoolOperationExist,
@@ -351,16 +341,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 } else if (isPoolNestedPoolOperationExist && nestedPoolOperation.tokensInAmounts[i] > 0) {
                     childTokensAmountsIn[i] = nestedPoolOperation.tokensInAmounts[i];
 
-                    if (!isStaticCall) {
+                    if (isStaticCall == false) {
                         _takeTokenIn(params.sender, IERC20(childToken), childTokensAmountsIn[i], false);
                     }
                 }
             } else if (isPoolNestedPoolOperationExist && nestedPoolOperation.tokensInAmounts[i] > 0) {
                 childTokensAmountsIn[i] = nestedPoolOperation.tokensInAmounts[i];
 
-                if (!isStaticCall) {
+                if (isStaticCall == false) {
                     _takeTokenIn(params.sender, IERC20(childToken), childTokensAmountsIn[i], false);
                 }
+            }
+
+            if (doNeedToAddLiquidityToPool == false && childTokensAmountsIn[i] > 0) {
+                doNeedToAddLiquidityToPool = true;
             }
         }
 
@@ -371,7 +365,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         (, bptAmountOut, ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
-                to: isStaticCall ? address(0) : params.sender,
+                to: params.sender,
                 maxAmountsIn: childTokensAmountsIn,
                 minBptAmountOut: isPoolNestedPoolOperationExist ? nestedPoolOperation.minBptAmountOut : 0,
                 kind: params.kind,
@@ -379,7 +373,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        if (pool != mainPool) {
+        if (pool != mainPool && isStaticCall == false) {
             // // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
             // // advance
             _takeTokenIn(params.sender, IERC20(pool), bptAmountOut, false);
