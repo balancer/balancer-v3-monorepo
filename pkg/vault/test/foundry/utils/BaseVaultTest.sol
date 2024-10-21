@@ -25,6 +25,7 @@ import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
 import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
+import { AggRouterMock } from "../../../contracts/test/AggRouterMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";

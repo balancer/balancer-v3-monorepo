@@ -11,6 +11,7 @@ describe('ContractSizes', function () {
       'Router',
       'BatchRouter',
       'CompositeLiquidityRouter',
+      'AggRouter',
     ]) {
       const artifact = getArtifact(`v3-vault/${contractName}`);
 

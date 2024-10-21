@@ -41,23 +41,47 @@ contract AggRouter is IAggRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        AggRouter.swapSingleTokenDonatedHook.selector,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountIn,
-                            limit: minAmountOut,
-                            deadline: deadline,
-                            wethIsEth: wethIsEth,
-                            userData: userData
-                        })
+                    _swapSingleTokenArgs(
+                        pool,
+                        tokenIn,
+                        tokenOut,
+                        exactAmountIn,
+                        minAmountOut,
+                        deadline,
+                        wethIsEth,
+                        userData
                     )
                 ),
                 (uint256)
+            );
+    }
+
+    // Addresses stack-too-deep.
+    function _swapSingleTokenArgs(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
+        uint256 minAmountOut,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) private view returns (bytes memory) {
+        return
+            abi.encodeWithSelector(
+                AggRouter.swapSingleTokenDonatedHook.selector,
+                SwapSingleTokenHookParams({
+                    sender: msg.sender,
+                    kind: SwapKind.EXACT_IN,
+                    pool: pool,
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    amountGiven: exactAmountIn,
+                    limit: minAmountOut,
+                    deadline: deadline,
+                    wethIsEth: wethIsEth,
+                    userData: userData
+                })
             );
     }
 
