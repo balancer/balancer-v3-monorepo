@@ -22,6 +22,22 @@ interface ICompositeLiquidityRouter {
     /// @notice `tokensOut` array does not have all the tokens from `expectedTokensOut`.
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
 
+    struct NestedPoolOperation {
+        address prevPool;
+        address pool;
+        uint256[] tokensInAmounts;
+        uint256 minBptAmountOut;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    struct AddLiquidityNestedPoolHookParams {
+        address sender;
+        address pool;
+        AddLiquidityKind kind;
+        NestedPoolOperation[] nestedPoolOperations;
+    }
+
     /***************************************************************************
                                    ERC4626 Pools
     ***************************************************************************/
@@ -100,22 +116,20 @@ interface ICompositeLiquidityRouter {
                                    Nested pools
     ***************************************************************************/
 
-    struct NestedPoolOperation {
-        address prevPool;
-        address pool;
-        uint256[] tokensInAmounts;
-        uint256 minBptAmountOut;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    struct AddLiquidityNestedPoolHookParams {
-        address sender;
-        address pool;
-        AddLiquidityKind kind;
-        NestedPoolOperation[] nestedPoolOperations;
-    }
-
+    /**
+     * @notice Adds liquidity unbalanced to a nested pool.
+     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
+     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
+     * the token in amounts.
+     *
+     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
+     * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
+     * child pools and all tokens that are not BPTs from the nested pool (parent pool).
+     * @param exactAmountsIn Amount of each underlying token in, sorted according to tokensIn array
+     * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
+     * @param userData Additional (optional) data required for the operation
+     * @return bptAmountOut Expected amount of parent pool tokens to receive
+     */
     function addLiquidityUnbalancedNestedPool(
         address mainPool,
         NestedPoolOperation[] calldata nestedPoolOperations

@@ -239,60 +239,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
-    function _wrapToken(
-        address sender,
-        IERC20 erc4626PoolToken,
-        uint256 amountsIn,
-        SwapKind kind,
-        uint256 limit,
-        bool isStaticCall,
-        bool wethIsEth
-    ) private returns (uint256 underlyingAmount, uint256 wrappedAmount) {
-        // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
-        // a valid ERC4626.
-        IERC4626 wrappedToken = IERC4626(address(erc4626PoolToken));
-        IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
-
-        // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-        // initialized. Thus, the Router treats it as a non-ERC4626 token.
-        if (address(underlyingToken) == address(0)) {
-            if (isStaticCall == false) {
-                _takeTokenIn(sender, erc4626PoolToken, amountsIn, wethIsEth);
-            }
-
-            return (amountsIn, amountsIn);
-        }
-
-        if (isStaticCall == false) {
-            if (kind == SwapKind.EXACT_IN) {
-                // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
-                _takeTokenIn(sender, underlyingToken, amountsIn, wethIsEth);
-            } else {
-                // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
-                // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
-                // between the limit and the actual underlying amount is returned to the sender.
-                _takeTokenIn(sender, underlyingToken, limit, wethIsEth);
-            }
-        }
-
-        // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-        (, underlyingAmount, wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: kind,
-                direction: WrappingDirection.WRAP,
-                wrappedToken: wrappedToken,
-                amountGivenRaw: amountsIn,
-                limitRaw: limit
-            })
-        );
-
-        if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
-            // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
-            // difference between limit and exact underlying amount needs to be returned to the sender.
-            _vault.sendTo(underlyingToken, sender, limit - underlyingAmount);
-        }
-    }
-
     /***************************************************************************
                                    Nested pools
     ***************************************************************************/
@@ -434,35 +380,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             // // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
             // // advance
             _takeTokenIn(params.sender, IERC20(pool), bptAmountOut, false);
-        }
-    }
-
-    /**
-     * @notice Creates an array of amounts in to insert in a pool, givben an array of tokens.
-     * @dev This function requires the transient set `_currentSwapTokenInAmounts` to be initialized first with all the
-     * amount in values that the sender informed in the addLiquidity call.
-     */
-    function _getPoolAmountsIn(IERC20[] memory poolTokens) private returns (uint256[] memory poolAmountsIn) {
-        poolAmountsIn = new uint256[](poolTokens.length);
-
-        for (uint256 j = 0; j < poolTokens.length; j++) {
-            address poolToken = address(poolTokens[j]);
-            if (
-                _vault.isERC4626BufferInitialized(IERC4626(poolToken)) &&
-                _currentSwapTokenInAmounts().tGet(poolToken) == 0 // wrapped amount in was not specified
-            ) {
-                // The token is an ERC4626 and has a buffer initialized within the Vault. Additionally, since the
-                // sender did not specify an input amount for the wrapped token, the function will wrap the underlying
-                // asset and use the resulting wrapped tokens to add liquidity to the pool.
-                uint256 wrappedAmount = _wrapAndUpdateTokenInAmounts(IERC4626(poolToken));
-                poolAmountsIn[j] = wrappedAmount;
-            } else {
-                poolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(poolToken);
-                // This operation does not support adding liquidity multiple times to the same token. So, we set
-                // the amount in of the child pool token to 0. If the same token appears more times, the amount in
-                // will be 0 for any other pool.
-                _currentSwapTokenInAmounts().tSet(poolToken, 0);
-            }
         }
     }
 
@@ -646,6 +563,64 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         if (isStaticCall == false) {
             _settlePaths(params.sender, false);
+        }
+    }
+
+    /***************************************************************************
+                            Internal & Private functions
+    ***************************************************************************/
+
+    function _wrapToken(
+        address sender,
+        IERC20 erc4626PoolToken,
+        uint256 amountsIn,
+        SwapKind kind,
+        uint256 limit,
+        bool isStaticCall,
+        bool wethIsEth
+    ) private returns (uint256 underlyingAmount, uint256 wrappedAmount) {
+        // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
+        // a valid ERC4626.
+        IERC4626 wrappedToken = IERC4626(address(erc4626PoolToken));
+        IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
+
+        // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+        // initialized. Thus, the Router treats it as a non-ERC4626 token.
+        if (address(underlyingToken) == address(0)) {
+            if (isStaticCall == false) {
+                _takeTokenIn(sender, erc4626PoolToken, amountsIn, wethIsEth);
+            }
+
+            return (amountsIn, amountsIn);
+        }
+
+        if (isStaticCall == false) {
+            if (kind == SwapKind.EXACT_IN) {
+                // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
+                _takeTokenIn(sender, underlyingToken, amountsIn, wethIsEth);
+            } else {
+                // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
+                // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
+                // between the limit and the actual underlying amount is returned to the sender.
+                _takeTokenIn(sender, underlyingToken, limit, wethIsEth);
+            }
+        }
+
+        // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+        (, underlyingAmount, wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: kind,
+                direction: WrappingDirection.WRAP,
+                wrappedToken: wrappedToken,
+                amountGivenRaw: amountsIn,
+                limitRaw: limit
+            })
+        );
+
+        if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
+            // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
+            // difference between limit and exact underlying amount needs to be returned to the sender.
+            _vault.sendTo(underlyingToken, sender, limit - underlyingAmount);
         }
     }
 
