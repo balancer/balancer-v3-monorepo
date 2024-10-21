@@ -37,7 +37,7 @@ contract AggRouter is IAggRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -95,7 +95,7 @@ contract AggRouter is IAggRouter, RouterCommon, ReentrancyGuardTransient {
         }
 
         (amountCalculated, amountIn, amountOut) = _vault.swap(
-            SwapParams({
+            VaultSwapParams({
                 kind: params.kind,
                 pool: params.pool,
                 tokenIn: params.tokenIn,

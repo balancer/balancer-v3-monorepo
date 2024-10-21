@@ -4,19 +4,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
-import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract PoolDonationTest is BaseVaultTest {
-    using ArrayHelpers for *;
-
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
@@ -36,14 +28,14 @@ contract PoolDonationTest is BaseVaultTest {
         uint256[] memory amountsToDonate = new uint256[](2);
         amountsToDonate[daiIdx] = amountToDonate;
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         router.donate(pool, amountsToDonate, false, bytes(""));
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
-        // Bob balances
+        // Bob balances.
         assertEq(
             balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
             amountToDonate,
@@ -52,7 +44,7 @@ contract PoolDonationTest is BaseVaultTest {
         assertEq(balancesAfter.userTokens[usdcIdx], balancesBefore.userTokens[usdcIdx], "Bob USDC balance is wrong");
         assertEq(balancesAfter.userBpt, balancesBefore.userBpt, "Bob BPT balance is wrong");
 
-        // Pool balances
+        // Pool balances.
         assertEq(
             balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],
             amountToDonate,
@@ -61,7 +53,7 @@ contract PoolDonationTest is BaseVaultTest {
         assertEq(balancesAfter.poolTokens[usdcIdx], balancesBefore.poolTokens[usdcIdx], "Pool USDC balance is wrong");
         assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "Pool BPT supply is wrong");
 
-        // Vault Balances
+        // Vault Balances.
         assertEq(
             balancesAfter.vaultTokens[daiIdx] - balancesBefore.vaultTokens[daiIdx],
             amountToDonate,

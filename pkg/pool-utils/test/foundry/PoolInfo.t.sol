@@ -6,18 +6,30 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { TokenInfo, TokenType, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
+import { VaultAdminMock } from "@balancer-labs/v3-vault/contracts/test/VaultAdminMock.sol";
+import { VaultExtensionMock } from "@balancer-labs/v3-vault/contracts/test/VaultExtensionMock.sol";
+import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
+import { BasicAuthorizerMock } from "@balancer-labs/v3-vault/contracts/test/BasicAuthorizerMock.sol";
+import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
+import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { PoolInfo } from "../../contracts/PoolInfo.sol";
 
-contract PoolInfoTest is BaseTest {
+contract PoolInfoTest is BaseTest, VaultContractsDeployer {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     IVaultMock vault;
@@ -26,7 +38,7 @@ contract PoolInfoTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = deployVaultMock();
         poolInfo = new PoolInfo(vault);
         poolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
 
@@ -38,7 +50,7 @@ contract PoolInfoTest is BaseTest {
         vm.mockCall(
             address(poolInfo),
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
-            abi.encode(1e18)
+            abi.encode(FixedPoint.ONE) // 100%
         );
         vault.manualRegisterPool(address(poolInfo), poolTokens);
     }
@@ -53,7 +65,12 @@ contract PoolInfoTest is BaseTest {
     function testGetTokenInfo() public {
         uint256[] memory expectedRawBalances = [uint256(1), uint256(2)].toMemoryArray();
         uint256[] memory expectedLastLiveBalances = [uint256(3), uint256(4)].toMemoryArray();
-        vault.manualSetPoolTokenBalances(address(poolInfo), poolTokens, expectedRawBalances, expectedLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(
+            address(poolInfo),
+            poolTokens,
+            expectedRawBalances,
+            expectedLastLiveBalances
+        );
 
         TokenInfo[] memory expectedTokenInfo = new TokenInfo[](2);
         expectedTokenInfo[0] = TokenInfo({
@@ -72,7 +89,7 @@ contract PoolInfoTest is BaseTest {
             IERC20[] memory actualTokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         ) = poolInfo.getTokenInfo();
 
         // Tokens
@@ -117,15 +134,20 @@ contract PoolInfoTest is BaseTest {
         assertEq(balancesRaw.length, 2, "Incorrect balancesRaw length");
         assertEq(balancesRaw[0], expectedRawBalances[0], "Incorrect balancesRaw[0]");
         assertEq(balancesRaw[1], expectedRawBalances[1], "Incorrect balancesRaw[1]");
-        assertEq(lastLiveBalances.length, 2, "Incorrect lastLiveBalances length");
-        assertEq(lastLiveBalances[0], expectedLastLiveBalances[0], "Incorrect lastLiveBalances[0]");
-        assertEq(lastLiveBalances[1], expectedLastLiveBalances[1], "Incorrect lastLiveBalances[1]");
+        assertEq(lastBalancesLiveScaled18.length, 2, "Incorrect lastBalancesLiveScaled18 length");
+        assertEq(lastBalancesLiveScaled18[0], expectedLastLiveBalances[0], "Incorrect lastBalancesLiveScaled18[0]");
+        assertEq(lastBalancesLiveScaled18[1], expectedLastLiveBalances[1], "Incorrect lastBalancesLiveScaled18[1]");
     }
 
     function testGetCurrentLiveBalances() public {
         uint256[] memory expectedRawBalances = [uint256(12), uint256(34)].toMemoryArray();
         uint256[] memory expectedLastLiveBalances = [uint256(56), uint256(478)].toMemoryArray();
-        vault.manualSetPoolTokenBalances(address(poolInfo), poolTokens, expectedRawBalances, expectedLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(
+            address(poolInfo),
+            poolTokens,
+            expectedRawBalances,
+            expectedLastLiveBalances
+        );
 
         PoolConfig memory config;
         config.isPoolRegistered = true;
@@ -144,5 +166,20 @@ contract PoolInfoTest is BaseTest {
 
         uint256 swapFeePercentage = poolInfo.getStaticSwapFeePercentage();
         assertEq(swapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
+    }
+
+    function testGetAggregateFeePercentages() public {
+        // Use unusual values that aren't used anywhere else.
+        uint256 expectedSwapFeePercentage = 32e16;
+        uint256 expectedYieldFeePercentage = 21e16;
+
+        vault.manualSetAggregateSwapFeePercentage(address(poolInfo), expectedSwapFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(address(poolInfo), expectedYieldFeePercentage);
+
+        (uint256 actualAggregateSwapFeePercentage, uint256 actualAggregateYieldFeePercentage) = poolInfo
+            .getAggregateFeePercentages();
+
+        assertEq(actualAggregateSwapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
+        assertEq(actualAggregateYieldFeePercentage, expectedYieldFeePercentage, "Incorrect yield fee percentage");
     }
 }

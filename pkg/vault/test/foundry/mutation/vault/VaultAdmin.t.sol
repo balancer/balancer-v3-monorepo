@@ -8,22 +8,19 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
+import { VaultAdmin } from "../../../../contracts/VaultAdmin.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract VaultAdminMutationTest is BaseVaultTest {
-    using ArrayHelpers for *;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
@@ -48,6 +45,26 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.pauseVault();
     }
 
+    function testPauseVaultSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
+        vm.prank(admin);
+        vault.pauseVault();
+        assertTrue(vault.isVaultPaused(), "Vault is not paused");
+    }
+
+    function testPauseVaultBuffersSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+
+        assertFalse(vault.areBuffersPaused(), "Vault buffers are already paused");
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultBuffersPausedStateChanged(true);
+
+        vm.prank(admin);
+        vault.pauseVaultBuffers();
+        assertTrue(vault.areBuffersPaused(), "Vault buffers are not paused");
+    }
+
     function testUnpauseVaultWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.unpauseVault();
@@ -56,6 +73,35 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testUnpauseVaultWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.unpauseVault();
+    }
+
+    function testUnpauseVaultSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVault.selector), admin);
+
+        vm.startPrank(admin);
+        vault.pauseVault();
+        assertTrue(vault.isVaultPaused(), "Vault is not paused");
+
+        vault.unpauseVault();
+        assertFalse(vault.isVaultPaused(), "Vault is not unpaused");
+        vm.stopPrank();
+    }
+
+    function testUnpauseVaultBuffersSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
+
+        vm.prank(admin);
+        vault.pauseVaultBuffers();
+        assertTrue(vault.areBuffersPaused(), "Vault buffers are not paused");
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultBuffersPausedStateChanged(false);
+
+        vm.prank(admin);
+        vault.unpauseVaultBuffers();
+        assertFalse(vault.areBuffersPaused(), "Vault buffers are still paused");
     }
 
     function testPausePoolWithoutRegisteredPool() public {
@@ -126,7 +172,20 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vaultAdmin.collectAggregateFees(pool);
     }
 
+    function testCollectAggregateFeesWhenNotUnlocked() public {
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
+        vault.collectAggregateFees(address(0));
+    }
+
+    function testCollectAggregateFeesWhenNotProtocolFeeController() public {
+        vault.forceUnlock();
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        vault.collectAggregateFees(address(0));
+    }
+
     function testCollectAggregateFeesWithoutRegisteredPool() public {
+        vault.forceUnlock();
+        vm.prank(address(vault.getProtocolFeeController()));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
         vault.collectAggregateFees(address(0));
     }
@@ -161,6 +220,20 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.setProtocolFeeController(IProtocolFeeController(address(1)));
     }
 
+    function testSetProtocolFeeControllerSuccessfully() public {
+        IProtocolFeeController newProtocolFeeController = IProtocolFeeController(address(0x123));
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolFeeController.selector), admin);
+        vm.prank(admin);
+        vault.setProtocolFeeController(newProtocolFeeController);
+
+        assertEq(
+            address(vault.getProtocolFeeController()),
+            address(newProtocolFeeController),
+            "ProtocolFeeController is wrong"
+        );
+    }
+
     function testEnableRecoveryModeWithoutRegisteredPool() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
         vault.enableRecoveryMode(address(0));
@@ -186,6 +259,16 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.disableRecoveryMode(pool);
     }
 
+    function testDisableRecoveryModeNonReentrant() public {
+        vault.manualEnableRecoveryMode(pool);
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), address(vault));
+        vm.prank(admin);
+
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        vault.manualReentrancyDisableRecoveryMode(pool);
+    }
+
     function testDisableQueryWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.disableQuery();
@@ -194,6 +277,11 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testDisableQueryWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.disableQuery();
+    }
+
+    function testAreBuffersPausedWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultAdmin.areBuffersPaused();
     }
 
     function testUnpauseVaultBuffersWhenNotAuthenticated() public {
@@ -216,69 +304,124 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vaultAdmin.pauseVaultBuffers();
     }
 
-    function testAddLiquidityToBufferWhenNotVault() public {
+    function testInitializeBufferWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.addLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
+        vaultAdmin.initializeBuffer(IERC4626(address(0)), 0, 0, address(0));
     }
 
-    function testAddLiquidityToBufferWhenNotUnlocked() public {
+    function testInitializeBufferWhenNotUnlocked() public {
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
-        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
+        vault.initializeBuffer(IERC4626(address(0)), 0, 0, address(0));
     }
 
-    function testAddLiquidityToBufferWhenPaused() public {
-        vault.manualSetIsUnlocked(true);
+    function testInitializeBufferWhenPaused() public {
+        vault.forceUnlock();
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         vm.prank(admin);
         vault.pauseVaultBuffers();
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
-        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
+        vault.initializeBuffer(IERC4626(address(0)), 0, 0, address(0));
+    }
+
+    function testInitializeBufferNonReentrant() public {
+        IERC4626 wrappedToken = IERC4626(address(123));
+        address underlyingToken = address(345); // Anything non-zero
+        vault.forceUnlock();
+        vault.manualSetBufferAsset(wrappedToken, underlyingToken);
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        vault.manualReentrancyInitializeBuffer(wrappedToken, 0, 0, address(0));
+    }
+
+    function testAddLiquidityToBufferWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultAdmin.addLiquidityToBuffer(IERC4626(address(0)), 0, address(0));
+    }
+
+    function testAddLiquidityToBufferWhenNotUnlocked() public {
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
+        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, address(0));
+    }
+
+    function testAddLiquidityToBufferWhenPaused() public {
+        vault.forceUnlock();
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+        vm.prank(admin);
+        vault.pauseVaultBuffers();
+
+        vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
+        vault.addLiquidityToBuffer(IERC4626(address(0)), 0, address(0));
+    }
+
+    function testAddLiquidityFromBufferWhenNotInitialized() public {
+        IERC4626 wrappedToken = IERC4626(address(123));
+        vault.forceUnlock();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
+        vault.addLiquidityToBuffer(wrappedToken, 0, address(0));
     }
 
     function testAddLiquidityToBufferNonReentrant() public {
-        vault.manualSetIsUnlocked(true);
+        IERC4626 wrappedToken = IERC4626(address(123));
+        address underlyingToken = address(345); // Anything non-zero
+        vault.forceUnlock();
+        vault.manualSetBufferAsset(wrappedToken, underlyingToken);
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.manualReentrancyAddLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
+        vault.manualReentrancyAddLiquidityToBuffer(wrappedToken, 0, address(0));
     }
 
-    function testRemoveLiquidityFromBufferWhenNotVault() public {
+    function testRemoveLiquidityFromBufferHookWhenNotVaultDelegateCall() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.removeLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
+        VaultAdmin(payable(address(vaultAdmin))).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
-    function testRemoveLiquidityFromBufferWhenNotUnlocked() public {
+    function testRemoveLiquidityFromBufferHookWhenVaultIsNotSender() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        VaultAdmin(payable(address(vault))).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
+    }
+
+    function testRemoveLiquidityFromBufferHookWhenNotUnlocked() public {
+        vm.prank(address(vault));
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
-        vault.removeLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
+        VaultAdmin(payable(address(vault))).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
-    function testRemoveLiquidityFromBufferWhenNonAuthenticated() public {
-        vault.manualSetIsUnlocked(true);
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.removeLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
+    function testRemoveLiquidityFromBufferHookWhenNotInitialized() public {
+        IERC4626 wrappedToken = IERC4626(address(123));
+        vault.forceUnlock();
+        vm.prank(address(vault));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
+        VaultAdmin(payable(address(vault))).removeLiquidityFromBufferHook(wrappedToken, 0, address(0));
     }
 
     function testRemoveLiquidityFromBufferNonReentrant() public {
-        vault.manualSetIsUnlocked(true);
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(vault));
+        IERC4626 wrappedToken = IERC4626(address(123));
+        address underlyingToken = address(345); // Anything non-zero
+        vault.forceUnlock();
+        vault.manualSetBufferAsset(wrappedToken, underlyingToken);
+
+        // Manually set balances, owner and total shares so that the call doesn't revert before hitting the reentrancy guard.
+        vault.manualSetBufferOwnerShares(wrappedToken, bob, 1000e18);
+        vault.manualSetBufferTotalShares(wrappedToken, 2000e18);
+
+        vault.manualSetBufferBalances(wrappedToken, 500e18, 500e18);
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.manualReentrancyRemoveLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
+        vault.manualReentrancyRemoveLiquidityFromBufferHook(wrappedToken, 1e18, bob);
     }
 
     function testGetBufferOwnerSharesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferOwnerShares(dai, alice);
+        vaultAdmin.getBufferOwnerShares(IERC4626(address(dai)), alice);
     }
 
     function testGetBufferTotalSharesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferTotalShares(dai);
+        vaultAdmin.getBufferTotalShares(IERC4626(address(dai)));
     }
 
     function testGetBufferBalanceWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferBalance(dai);
+        vaultAdmin.getBufferBalance(IERC4626(address(dai)));
     }
 
     function testSetAuthorizerWhenNotAuthenticated() public {
@@ -289,5 +432,15 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testSetAuthorizerWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.setAuthorizer(_authorizer);
+    }
+
+    function testSetAuthorizer() public {
+        IAuthorizer newAuthorizer = IAuthorizer(address(0x123));
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setAuthorizer.selector), admin);
+        vm.prank(admin);
+        vault.setAuthorizer(newAuthorizer);
+
+        assertEq(address(vault.getAuthorizer()), address(newAuthorizer), "Authorizer is wrong");
     }
 }

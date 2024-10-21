@@ -4,6 +4,11 @@ import path from 'path';
 const SNAPS_DIR = '.contract-sizes';
 
 export async function saveSizeSnap(basePath: string, snap: string, deployedCodeSize: number, initCodeSize: number) {
+  if (process.env.COVERAGE) {
+    // When coverage reports are running Via-IR flag is disabled, so contract-size measurement is not reliable
+    return;
+  }
+
   // see EIPs 170 and 3860 for more information
   // https://eips.ethereum.org/EIPS/eip-170
   // https://eips.ethereum.org/EIPS/eip-3860
@@ -19,7 +24,7 @@ export async function saveSizeSnap(basePath: string, snap: string, deployedCodeS
 
   let fmtDeploySize = formatSize(deployedCodeSize, 'KiB');
   if (deployedCodeSize > DEPLOYED_SIZE_LIMIT) {
-    fmtDeploySize += '*';
+    fmtDeploySize += '* (' + (deployedCodeSize - DEPLOYED_SIZE_LIMIT) + ' over)';
   }
   let fmtInitSize = formatSize(initCodeSize, 'KiB');
   if (initCodeSize > INIT_SIZE_LIMIT) {

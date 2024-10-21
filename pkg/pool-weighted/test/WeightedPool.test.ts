@@ -89,7 +89,8 @@ describe('WeightedPool', function () {
       { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
       SWAP_FEE,
       ZERO_ADDRESS,
-      false,
+      false, // no donations
+      false, // keep support to unbalanced add/remove liquidity
       ZERO_BYTES32
     );
     const receipt = await tx.wait();
@@ -115,7 +116,7 @@ describe('WeightedPool', function () {
     const setPoolSwapFeeAction = await actionId(vault, 'setStaticSwapFeePercentage');
 
     const authorizerAddress = await vault.getAuthorizer();
-    const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+    const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
 
     await authorizer.grantRole(setPoolSwapFeeAction, bob.address);
 

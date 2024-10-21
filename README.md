@@ -35,7 +35,7 @@ One option to quickly select the suggested Node version is using `nvm`, and runn
 $ nvm use
 ```
 
-Solidity 0.8.24 or higher is required to support the upcoming Cancun hardfork with transient storage. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.24), to incorporate all the latest bug fixes.
+Solidity 0.8.24 or higher is required to support the upcoming Cancun hard fork with transient storage. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.24), to incorporate all the latest bug fixes.
 
 ## Build and Test
 
@@ -51,7 +51,7 @@ You will also need to configure your environment variables to point to RPC endpo
 Write your preferred RPC URL to `.env`, and source it. For example:
 
 ```bash
-$ sed 's,YOUR_MAINNET_RPC_URL,<YOUR_RPC_URL>' .env.example > .env
+$ sed 's,YOUR_MAINNET_RPC_URL,<YOUR_RPC_URL>,g' .env.example > .env
 $ source .env
 ```
 
@@ -132,7 +132,9 @@ $ yarn slither:triage
 $ yarn coverage
 ```
 
-The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script is used to merge HardHat and Forge coverage reports into a unified report, leveraging the lcov command-line utility.
+The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script can generate Forge and Hardhat reports and/or merge them. The Yarn command uses Forge by default as most of the tests are written with it, and it's the most reliable option.
+
+**Note: We suggest adopting [lcov 1.16](https://github.com/linux-test-project/lcov/releases/tag/v1.16) since `forge coverage --report lcov` command works better in this version.**
 
 ## Security
 

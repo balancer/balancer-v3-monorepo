@@ -2,23 +2,20 @@
 
 pragma solidity ^0.8.24;
 
-import { StorageSlot } from "./StorageSlot.sol";
+import { StorageSlotExtension } from "./StorageSlotExtension.sol";
 
 /**
- * @dev Variant of {ReentrancyGuard} that uses transient storage.
- *
- * NOTE: This variant only works on networks where EIP-1153 is available.
+ * @notice Variant of {ReentrancyGuard} that uses transient storage.
+ * @dev NOTE: This variant only works on networks where EIP-1153 is available.
  */
 abstract contract ReentrancyGuardTransient {
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
 
     // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ReentrancyGuard")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _REENTRANCY_GUARD_STORAGE =
         0x9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f00;
 
-    /**
-     * @dev Unauthorized reentrant call.
-     */
+    /// @notice Unauthorized reentrant call.
     error ReentrancyGuardReentrantCall();
 
     /**

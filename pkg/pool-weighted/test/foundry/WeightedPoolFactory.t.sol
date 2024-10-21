@@ -4,29 +4,36 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPoolFactoryTest is BaseVaultTest {
+contract WeightedPoolFactoryTest is WeightedPoolContractsDeployer, BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
+
+    // Maximum swap fee of 10%
+    uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
 
     WeightedPoolFactory internal weightedPoolFactory;
 
     function setUp() public override {
         super.setUp();
 
-        weightedPoolFactory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         vm.label(address(weightedPoolFactory), "weighted pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -77,7 +84,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     function _deployAndInitializeWeightedPool(bool supportsDonation) private returns (address) {
         PoolRoleAccounts memory roleAccounts;
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
-        uint256[] memory weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         address weightedPool = weightedPoolFactory.create(
             supportsDonation ? "Pool With Donation" : "Pool Without Donation",
@@ -85,15 +92,16 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
             vault.buildTokenConfig(tokens),
             weights,
             roleAccounts,
-            1e17,
+            MAX_SWAP_FEE_PERCENTAGE,
             address(0),
             supportsDonation,
+            false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 
-        // Initialize pool
+        // Initialize pool.
         vm.prank(lp);
-        router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
 
         return weightedPool;
     }
@@ -118,9 +126,9 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     }
 
     function _createHookTestLocals(address pool) private view returns (HookTestLocals memory vars) {
-        vars.bob.daiBefore = dai.balanceOf(address(bob));
-        vars.bob.usdcBefore = usdc.balanceOf(address(bob));
-        vars.bob.bptBefore = IERC20(pool).balanceOf(address(bob));
+        vars.bob.daiBefore = dai.balanceOf(bob);
+        vars.bob.usdcBefore = usdc.balanceOf(bob);
+        vars.bob.bptBefore = IERC20(pool).balanceOf(bob);
         vars.vault.daiBefore = dai.balanceOf(address(vault));
         vars.vault.usdcBefore = usdc.balanceOf(address(vault));
         vars.poolBefore = vault.getRawBalances(pool);
@@ -128,9 +136,9 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     }
 
     function _fillAfterHookTestLocals(HookTestLocals memory vars, address pool) private view {
-        vars.bob.daiAfter = dai.balanceOf(address(bob));
-        vars.bob.usdcAfter = usdc.balanceOf(address(bob));
-        vars.bob.bptAfter = IERC20(pool).balanceOf(address(bob));
+        vars.bob.daiAfter = dai.balanceOf(bob);
+        vars.bob.usdcAfter = usdc.balanceOf(bob);
+        vars.bob.bptAfter = IERC20(pool).balanceOf(bob);
         vars.vault.daiAfter = dai.balanceOf(address(vault));
         vars.vault.usdcAfter = usdc.balanceOf(address(vault));
         vars.poolAfter = vault.getRawBalances(pool);

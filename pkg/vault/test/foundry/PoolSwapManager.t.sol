@@ -9,7 +9,8 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
@@ -17,6 +18,7 @@ import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract PoolSwapManagerTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     uint256 internal constant NEW_SWAP_FEE = 0.012345e18;
@@ -37,7 +39,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
         PoolRoleAccounts memory adminRoleAccounts;
         adminRoleAccounts.swapFeeManager = admin;
 
-        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         // Make admin the swap fee manager.
         factoryMock.registerGeneralTestPool(
@@ -50,7 +52,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             poolHooksContract
         );
 
-        unmanagedPool = new PoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
+        unmanagedPool = deployPoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
 
         // Pass zero for the swap fee manager.
         factoryMock.registerGeneralTestPool(
@@ -64,7 +66,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
         );
 
         // Pass zero for the swap fee manager.
-        otherPool = new PoolMock(IVault(address(vault)), "Other Pool", "OTHER");
+        otherPool = deployPoolMock(IVault(address(vault)), "Other Pool", "OTHER");
 
         // Pass zero for the swap fee manager.
         factoryMock.registerGeneralTestPool(
@@ -77,7 +79,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             poolHooksContract
         );
 
-        factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
+        factory = deployPoolFactoryMock(IVault(address(vault)), 365 days);
     }
 
     function testHasSwapFeeManager() public view {
@@ -91,7 +93,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
     function testSwapFeeManagerCanSetFees() public {
         require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 
-        // swap fee manager can set the static swap fee.
+        // Swap fee manager can set the static swap fee.
         vm.prank(admin);
         vault.setStaticSwapFeePercentage(pool, NEW_SWAP_FEE);
 
@@ -99,7 +101,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
     }
 
     function testCannotSetSwapFeePercentageIfNotManager() public {
-        require(vault.getPoolRoleAccounts(pool).swapFeeManager == address(admin), "Wrong swap fee manager");
+        require(vault.getPoolRoleAccounts(pool).swapFeeManager == admin, "Wrong swap fee manager");
 
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
@@ -121,13 +123,13 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
         assertEq(vault.getStaticSwapFeePercentage(address(unmanagedPool)), NEW_SWAP_FEE, "Could not set swap fee");
 
-        // Granting specific permission to bob on unmanagedPool doesn't grant it on otherPool
+        // Granting specific permission to bob on `unmanagedPool` doesn't grant it on `otherPool`.
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(otherPool), NEW_SWAP_FEE);
     }
 
-    // It is onlyOwner, so governance cannot override
+    // It is onlyOwner, so governance cannot override.
     function testGovernanceCannotSetSwapFeeWithManager() public {
         require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 

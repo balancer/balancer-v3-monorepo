@@ -21,7 +21,7 @@ import {
   VaultMock,
 } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ZERO, bn, fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
@@ -35,6 +35,10 @@ describe('ERC4626VaultPrimitive', function () {
   const SWAP_AMOUNT = fp(100);
   const MIN_BPT = bn(1e6);
 
+  // Donate to wrapped tokens to generate different rates.
+  const daiToDonate = fp((Math.random() * 1000 + 10).toFixed(0));
+  const usdcToDonate = fp((Math.random() * 1000 + 10).toFixed(0));
+
   let permit2: IPermit2;
   let vault: IVaultMock;
   let router: Router;
@@ -45,7 +49,7 @@ describe('ERC4626VaultPrimitive', function () {
   let DAI: ERC20TestToken;
   let wUSDC: ERC4626TestToken;
   let USDC: ERC20TestToken;
-  let boostedPoolTokens: string[];
+  let yieldBearingPoolTokens: string[];
 
   let lp: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -70,23 +74,23 @@ describe('ERC4626VaultPrimitive', function () {
       args: [DAI, 'Wrapped DAI', 'wDAI', 18],
     });
 
-    // Using USDC as 18 decimals for simplicity
+    // Using USDC as 18 decimals for simplicity.
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
     wUSDC = await deploy('v3-solidity-utils/ERC4626TestToken', {
       args: [USDC, 'Wrapped USDC', 'wUSDC', 18],
     });
 
     await DAI.mint(alice, TOKEN_AMOUNT);
-    await DAI.connect(alice).approve(permit2, TOKEN_AMOUNT);
+    await DAI.connect(alice).approve(permit2, MAX_UINT256);
     await permit2.connect(alice).approve(DAI, batchRouter, MAX_UINT160, MAX_UINT48);
 
-    boostedPoolTokens = sortAddresses([await wDAI.getAddress(), await wUSDC.getAddress()]);
+    yieldBearingPoolTokens = sortAddresses([await wDAI.getAddress(), await wUSDC.getAddress()]);
 
     factory = await deploy('v3-vault/PoolFactoryMock', { args: [vault, 12 * MONTH] });
   });
 
-  async function createBoostedPool(): Promise<PoolMock> {
-    // initialize assets and supply
+  async function createYieldBearingPool(): Promise<PoolMock> {
+    // Initialize assets and supply.
     await DAI.mint(lp, TOKEN_AMOUNT);
     await DAI.connect(lp).approve(wDAI, TOKEN_AMOUNT);
     await wDAI.connect(lp).deposit(TOKEN_AMOUNT, lp);
@@ -96,7 +100,7 @@ describe('ERC4626VaultPrimitive', function () {
     await wUSDC.connect(lp).deposit(TOKEN_AMOUNT, lp);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [await vault.getAddress(), 'Boosted Pool DAI-USDC', 'BP-DAI_USDC'],
+      args: [await vault.getAddress(), 'Yield-bearing Pool DAI-USDC', 'BP-DAI_USDC'],
     });
 
     const rpwDAI: ERC4626RateProvider = await deploy('v3-vault/ERC4626RateProvider', {
@@ -108,36 +112,42 @@ describe('ERC4626VaultPrimitive', function () {
     });
 
     const rateProviders: string[] = [];
-    rateProviders[boostedPoolTokens.indexOf(await wDAI.getAddress())] = await rpwDAI.getAddress();
-    rateProviders[boostedPoolTokens.indexOf(await wUSDC.getAddress())] = await rpwUSDC.getAddress();
+    rateProviders[yieldBearingPoolTokens.indexOf(await wDAI.getAddress())] = await rpwDAI.getAddress();
+    rateProviders[yieldBearingPoolTokens.indexOf(await wUSDC.getAddress())] = await rpwUSDC.getAddress();
 
-    await factory.connect(lp).registerTestPool(pool, buildTokenConfig(boostedPoolTokens, rateProviders));
+    await factory.connect(lp).registerTestPool(pool, buildTokenConfig(yieldBearingPoolTokens, rateProviders));
 
     return (await deployedAt('PoolMock', await pool.getAddress())) as unknown as PoolMock;
   }
 
-  async function createAndInitializeBoostedPool(): Promise<PoolMock> {
-    pool = await createBoostedPool();
+  async function createAndInitializeYieldBearingPool(): Promise<PoolMock> {
+    pool = await createYieldBearingPool();
 
     await pool.connect(lp).approve(router, MAX_UINT256);
-    for (const token of [wDAI, wUSDC]) {
-      await token.connect(lp).approve(permit2, MAX_UINT256);
-      await permit2.connect(lp).approve(token, router, MAX_UINT160, MAX_UINT48);
-      await permit2.connect(lp).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
-    }
+    await setupTokenApprovals(lp);
 
-    await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+    await router
+      .connect(lp)
+      .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
     return pool;
   }
 
+  async function setupTokenApprovals(signer: SignerWithAddress) {
+    for (const token of [wDAI, wUSDC, DAI, USDC]) {
+      await token.connect(signer).approve(permit2, MAX_UINT256);
+      await permit2.connect(signer).approve(token, router, MAX_UINT160, MAX_UINT48);
+      await permit2.connect(signer).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
+    }
+  }
+
   describe('registration', () => {
     sharedBeforeEach('register factory and create pool', async () => {
-      pool = await createBoostedPool();
+      pool = await createYieldBearingPool();
     });
 
     it('pool has correct metadata', async () => {
-      expect(await pool.name()).to.eq('Boosted Pool DAI-USDC');
+      expect(await pool.name()).to.eq('Yield-bearing Pool DAI-USDC');
       expect(await pool.symbol()).to.eq('BP-DAI_USDC');
     });
 
@@ -151,7 +161,7 @@ describe('ERC4626VaultPrimitive', function () {
     it('has the correct tokens', async () => {
       const actualTokens = await vault.getPoolTokens(pool);
 
-      expect(actualTokens).to.deep.equal(boostedPoolTokens);
+      expect(actualTokens).to.deep.equal(yieldBearingPoolTokens);
     });
 
     it('configures the pool correctly', async () => {
@@ -180,7 +190,7 @@ describe('ERC4626VaultPrimitive', function () {
 
   describe('initialization', () => {
     sharedBeforeEach('create pool', async () => {
-      pool = await createBoostedPool();
+      pool = await createYieldBearingPool();
 
       await pool.connect(lp).approve(router, MAX_UINT256);
       for (const token of [wDAI, wUSDC]) {
@@ -196,14 +206,18 @@ describe('ERC4626VaultPrimitive', function () {
 
     it('emits an event', async () => {
       expect(
-        await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+        await router
+          .connect(lp)
+          .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       )
         .to.emit(vault, 'PoolInitialized')
         .withArgs(pool);
     });
 
     it('updates the state', async () => {
-      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+      await router
+        .connect(lp)
+        .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
@@ -217,28 +231,43 @@ describe('ERC4626VaultPrimitive', function () {
       const [, tokenInfo, balances] = await vault.getPoolTokenInfo(pool);
       const tokenTypes = tokenInfo.map((config) => config.tokenType);
 
-      const expectedTokenTypes = boostedPoolTokens.map(() => TokenType.WITH_RATE);
+      const expectedTokenTypes = yieldBearingPoolTokens.map(() => TokenType.WITH_RATE);
       expect(tokenTypes).to.deep.equal(expectedTokenTypes);
       expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
     });
 
     it('cannot be initialized twice', async () => {
-      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+      await router
+        .connect(lp)
+        .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
       await expect(
-        router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+        router.connect(lp).initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       ).to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized');
     });
   });
 
   describe('queries', () => {
+    const bufferInitAmount = fp(1);
+
     sharedBeforeEach('create and initialize pool', async () => {
-      pool = await createAndInitializeBoostedPool();
+      pool = await createAndInitializeYieldBearingPool();
+
+      // Donate to wrapped tokens to generate different rates.
+      await DAI.mint(lp, daiToDonate);
+      await DAI.connect(lp).transfer(await wDAI.getAddress(), daiToDonate);
+      await USDC.mint(lp, usdcToDonate);
+      await USDC.connect(lp).transfer(await wUSDC.getAddress(), usdcToDonate);
+
+      await DAI.mint(lp, bufferInitAmount);
+      await USDC.mint(lp, bufferInitAmount);
+      await router.connect(lp).initializeBuffer(wDAI, bufferInitAmount, 0);
+      await router.connect(lp).initializeBuffer(wUSDC, bufferInitAmount, 0);
     });
 
     it('should not require tokens in advance to querySwapExactIn using buffer', async () => {
-      // Check that vault does not have tokenIn balance (DAI)
+      // Check that vault does not have tokenIn balance (DAI).
       const reservesBefore = await vault.getReservesOf(await DAI.getAddress());
-      expect(reservesBefore).to.be.eq(0, 'DAI balance is wrong');
+      expect(reservesBefore).to.be.eq(bufferInitAmount, 'DAI balance is wrong');
 
       const paths = [
         {
@@ -249,30 +278,39 @@ describe('ERC4626VaultPrimitive', function () {
             { pool: wUSDC, tokenOut: USDC, isBuffer: true },
           ],
           exactAmountIn: SWAP_AMOUNT,
-          minAmountOut: SWAP_AMOUNT,
+          minAmountOut: 0,
         },
       ];
 
-      const queryOutput = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
       expect(queryOutput.pathAmountsOut).to.have.length(1, 'Wrong query pathAmountsOut length');
-      expect(queryOutput.pathAmountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong query pathAmountsOut value');
       expect(queryOutput.amountsOut).to.have.length(1, 'Wrong query amountsOut length');
-      expect(queryOutput.amountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong query amountsOut value');
       expect(queryOutput.tokensOut).to.have.length(1, 'Wrong query tokensOut length');
       expect(queryOutput.tokensOut[0]).to.be.equal(await USDC.getAddress(), 'Wrong query tokensOut value');
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Connect Alice since the real transaction requires user to have tokens.
       const staticActualOutput = await batchRouter
         .connect(alice)
         .swapExactIn.staticCall(paths, MAX_UINT256, false, '0x');
       expect(staticActualOutput.pathAmountsOut).to.have.length(1, 'Wrong actual pathAmountsOut length');
-      expect(staticActualOutput.pathAmountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong actual pathAmountsOut value');
       expect(staticActualOutput.amountsOut).to.have.length(1, 'Wrong actual amountsOut length');
-      expect(staticActualOutput.amountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong actual amountsOut value');
       expect(staticActualOutput.tokensOut).to.have.length(1, 'Wrong actual tokensOut length');
       expect(staticActualOutput.tokensOut[0]).to.be.equal(await USDC.getAddress(), 'Wrong actual tokensOut value');
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Check if real transaction and query transaction are approx the same (tolerates an error when token is
+      // wrapped/unwrapped and rate changes in the real operation).
+      expect(staticActualOutput.pathAmountsOut[0]).to.be.almostEqual(
+        queryOutput.pathAmountsOut[0],
+        1e-10,
+        'Wrong actual pathAmountsOut value'
+      );
+      expect(staticActualOutput.amountsOut[0]).to.be.almostEqual(
+        queryOutput.amountsOut[0],
+        1e-10,
+        'Wrong actual amountsOut value'
+      );
+
+      // Connect Alice since the real transaction requires user to have tokens.
       const actualOutput = await batchRouter.connect(alice).swapExactIn(paths, MAX_UINT256, false, '0x');
       expect(actualOutput)
         .to.emit(await DAI.getAddress(), 'Transfer')
@@ -283,9 +321,9 @@ describe('ERC4626VaultPrimitive', function () {
     });
 
     it('should not require tokens in advance to querySwapExactOut using buffer', async () => {
-      // Check that vault does not have tokenIn balance (DAI)
+      // Check that vault does not have tokenIn balance (DAI).
       const reservesBefore = await vault.getReservesOf(await DAI.getAddress());
-      expect(reservesBefore).to.be.eq(0, 'DAI balance is wrong');
+      expect(reservesBefore).to.be.eq(bufferInitAmount, 'DAI balance is wrong');
 
       const paths = [
         {
@@ -296,30 +334,40 @@ describe('ERC4626VaultPrimitive', function () {
             { pool: wUSDC, tokenOut: USDC, isBuffer: true },
           ],
           exactAmountOut: SWAP_AMOUNT,
-          maxAmountIn: SWAP_AMOUNT,
+          // max amount is twice the SWAP_AMOUNT.
+          maxAmountIn: pct(SWAP_AMOUNT, 2),
         },
       ];
 
-      const queryOutput = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
       expect(queryOutput.pathAmountsIn).to.have.length(1, 'Wrong query pathAmountsIn length');
-      expect(queryOutput.pathAmountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong query pathAmountsIn value');
       expect(queryOutput.amountsIn).to.have.length(1, 'Wrong query amountsIn length');
-      expect(queryOutput.amountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong query amountsIn value');
       expect(queryOutput.tokensIn).to.have.length(1, 'Wrong query tokensIn length');
       expect(queryOutput.tokensIn[0]).to.be.equal(await DAI.getAddress(), 'Wrong query tokensIn value');
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Connect Alice since the real transaction requires user to have tokens.
       const staticActualOutput = await batchRouter
         .connect(alice)
         .swapExactOut.staticCall(paths, MAX_UINT256, false, '0x');
       expect(staticActualOutput.pathAmountsIn).to.have.length(1, 'Wrong actual pathAmountsIn length');
-      expect(staticActualOutput.pathAmountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong actual pathAmountsIn value');
       expect(staticActualOutput.amountsIn).to.have.length(1, 'Wrong actual amountsIn length');
-      expect(staticActualOutput.amountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong actual amountsIn value');
       expect(staticActualOutput.tokensIn).to.have.length(1, 'Wrong actual tokensIn length');
       expect(staticActualOutput.tokensIn[0]).to.be.equal(await DAI.getAddress(), 'Wrong actual tokensIn value');
 
-      // Connect Alice since the real transaction requires user to have tokens
+      // Check if real transaction and query transaction are approx the same (tolerates an error when token is
+      // wrapped/unwrapped and rate changes in the real operation).
+      expect(staticActualOutput.pathAmountsIn[0]).to.be.almostEqual(
+        queryOutput.pathAmountsIn[0],
+        1e-10,
+        'Wrong actual pathAmountsIn value'
+      );
+      expect(staticActualOutput.amountsIn[0]).to.be.almostEqual(
+        queryOutput.amountsIn[0],
+        1e-10,
+        'Wrong actual amountsIn value'
+      );
+
+      // Connect Alice since the real transaction requires user to have tokens.
       const actualOutput = await batchRouter.connect(alice).swapExactOut(paths, MAX_UINT256, false, '0x');
       expect(actualOutput)
         .to.emit(await DAI.getAddress(), 'Transfer')

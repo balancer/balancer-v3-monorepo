@@ -7,9 +7,14 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-import { AddressMappingSlot } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import {
+    AddressToUintMappingSlot
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import {
+    TransientEnumerableSet
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 
-import "../BatchRouter.sol";
+import { BatchRouter } from "../BatchRouter.sol";
 
 contract BatchRouterMock is BatchRouter {
     constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouter(vault, weth, permit2) {
@@ -38,15 +43,15 @@ contract BatchRouterMock is BatchRouter {
         return slot;
     }
 
-    function manualGetCurrentSwapTokenInAmounts() external view returns (AddressMappingSlot) {
+    function manualGetCurrentSwapTokenInAmounts() external view returns (AddressToUintMappingSlot) {
         return _currentSwapTokenInAmounts();
     }
 
-    function manualGetCurrentSwapTokenOutAmounts() external view returns (AddressMappingSlot) {
+    function manualGetCurrentSwapTokenOutAmounts() external view returns (AddressToUintMappingSlot) {
         return _currentSwapTokenOutAmounts();
     }
 
-    function manualGetSettledTokenAmounts() external view returns (AddressMappingSlot) {
+    function manualGetSettledTokenAmounts() external view returns (AddressToUintMappingSlot) {
         return _settledTokenAmounts();
     }
 }

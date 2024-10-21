@@ -4,21 +4,23 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract WeightedPoolSwaps is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     IRateProvider[] rateProviders;
@@ -50,8 +52,8 @@ contract WeightedPoolSwaps is BaseVaultTest {
 
     function createPool() internal override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
-        rateProviders.push(new RateProviderMock());
-        rateProviders.push(new RateProviderMock());
+        rateProviders.push(deployRateProviderMock());
+        rateProviders.push(deployRateProviderMock());
 
         wsteth.mint(bob, initialFunds);
         dai.mint(bob, initialFunds);
@@ -66,10 +68,11 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 poolRoleAccounts,
                 swapFee,
                 address(0),
+                false,
                 false,
                 bytes32(0)
             )
@@ -80,10 +83,11 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20()),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 poolRoleAccounts,
                 swapFee,
                 address(0),
+                false,
                 false,
                 bytes32(uint256(1))
             )

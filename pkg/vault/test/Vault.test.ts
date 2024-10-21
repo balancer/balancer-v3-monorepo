@@ -27,6 +27,7 @@ describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
   const POOL_SWAP_FEE = fp(0.01);
+  const MAX_TOKENS = 8;
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
@@ -219,7 +220,7 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too many tokens', async () => {
-      const tokens = await ERC20TokenList.create(5, { sorted: true });
+      const tokens = await ERC20TokenList.create(MAX_TOKENS + 1, { sorted: true });
 
       await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
         vaultExtension,
@@ -281,7 +282,7 @@ describe('Vault', function () {
         expectedRates = Array(poolATokens.length).fill(FP_ONE);
 
         poolC = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool C', 'POOLC'],
+          args: [vault, 'Pool C', 'POOL_C'],
         });
 
         await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders));
@@ -313,7 +314,7 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX'],
+          args: [vault, 'Pool X', 'POOL_X'],
         });
         poolAddress = await pool.getAddress();
 
@@ -352,7 +353,7 @@ describe('Vault', function () {
 
     sharedBeforeEach('get old and deploy new authorizer', async () => {
       oldAuthorizerAddress = await vault.getAuthorizer();
-      oldAuthorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', oldAuthorizerAddress);
+      oldAuthorizer = await deployedAt('BasicAuthorizerMock', oldAuthorizerAddress);
 
       newAuthorizer = await deploy('NullAuthorizer');
     });
@@ -402,9 +403,9 @@ describe('Vault', function () {
       const result: number[] = [];
 
       for (let i = 0; i < numTokens; i++) {
-        // Compute the 5-bit mask for each token
+        // Compute the 5-bit mask for each token.
         const mask = (2 ** DECIMAL_DIFF_BITS - 1) << (i * DECIMAL_DIFF_BITS);
-        // Logical AND with the input, and shift back down to get the final result
+        // Logical AND with the input, and shift back down to get the final result.
         result[i] = (diff & mask) >> (i * DECIMAL_DIFF_BITS);
       }
 
@@ -416,7 +417,7 @@ describe('Vault', function () {
       const maxTokens = await vault.getMaximumPoolTokens();
 
       expect(minTokens).to.eq(2);
-      expect(maxTokens).to.eq(4);
+      expect(maxTokens).to.eq(MAX_TOKENS);
     });
 
     it('stores the decimal differences', async () => {
@@ -432,9 +433,9 @@ describe('Vault', function () {
     });
 
     it('computes the scaling factors', async () => {
-      // Get them from the pool (mock), using ScalingHelpers
+      // Get them from the pool (mock), using ScalingHelpers.
       const poolScalingFactors = await poolA.getDecimalScalingFactors();
-      // Get them from the Vault (using PoolConfig)
+      // Get them from the Vault (using PoolConfig).
       const { decimalScalingFactors } = await vault.getPoolTokenRates(poolA);
 
       expect(decimalScalingFactors).to.deep.equal(poolScalingFactors);

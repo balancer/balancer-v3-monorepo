@@ -4,29 +4,32 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { TokenInfo, SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    TokenConfig,
+    TokenType,
+    LiquidityManagement,
+    PoolRoleAccounts
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultTokenTest is BaseVaultTest {
-    using ArrayHelpers for *;
-
     PoolFactoryMock poolFactory;
 
-    ERC4626TestToken waDAI;
     ERC4626TestToken cDAI;
-    ERC4626TestToken waUSDC;
 
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
     uint256 internal waDaiIdx;
@@ -39,19 +42,17 @@ contract VaultTokenTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
         cDAI = new ERC4626TestToken(dai, "Wrapped cDAI", "cDAI", 18);
-        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
-        poolFactory = new PoolFactoryMock(vault, 365 days);
+        poolFactory = deployPoolFactoryMock(vault, 365 days);
 
-        // Allow pools from factory poolFactory to use the hook poolHooksMock
+        // Allow pools from factory poolFactory to use the hook PoolHooksMock.
         PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
-        pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
     function createPool() internal pure override returns (address) {
@@ -59,7 +60,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        // Do nothing for this test
+        // Do nothing for this test.
     }
 
     function testGetRegularPoolTokens() public {
@@ -75,7 +76,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function testInvalidStandardTokenWithRateProvider() public {
-        // Standard token with a rate provider is invalid
+        // Standard token with a rate provider is invalid.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[daiIdx].token = IERC20(dai);
         tokenConfig[0].rateProvider = IRateProvider(waDAI);
@@ -86,7 +87,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function testInvalidRateTokenWithoutProvider() public {
-        // Rated token without a rate provider is invalid
+        // Rated token without a rate provider is invalid.
 
         (uint256 ethIdx, uint256 localUsdcIdx) = getSortedIndexes(address(wsteth), address(usdc));
 
@@ -99,21 +100,37 @@ contract VaultTokenTest is BaseVaultTest {
         _registerPool(tokenConfig);
     }
 
+    function testInvalidTokenDecimals() public {
+        // This is technically a duplicate test (see `testRegisterSetWrongTokenDecimalDiffs` in Registration.t.sol),
+        // but doesn't use a mockCall.
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        ERC20TestToken invalidToken = createERC20("INV", 19);
+        uint256 invalidIdx;
+
+        (invalidIdx, usdcIdx) = getSortedIndexes(address(invalidToken), address(usdc));
+
+        tokenConfig[invalidIdx].token = IERC20(invalidToken);
+        tokenConfig[usdcIdx].token = IERC20(usdc);
+
+        vm.expectRevert(IVaultErrors.InvalidTokenDecimals.selector);
+        _registerPool(tokenConfig);
+    }
+
     function registerBuffers() private {
-        // Establish assets and supply so that buffer creation doesn't fail
+        // Establish assets and supply so that buffer creation doesn't fail.
         vm.startPrank(alice);
 
-        dai.mint(address(alice), 2 * defaultAmount);
+        dai.mint(alice, 2 * defaultAmount);
 
         dai.approve(address(waDAI), defaultAmount);
-        waDAI.deposit(defaultAmount, address(alice));
+        waDAI.deposit(defaultAmount, alice);
 
         dai.approve(address(cDAI), defaultAmount);
-        cDAI.deposit(defaultAmount, address(alice));
+        cDAI.deposit(defaultAmount, alice);
 
-        usdc.mint(address(alice), defaultAmount);
+        usdc.mint(alice, defaultAmount);
         usdc.approve(address(waUSDC), defaultAmount);
-        waUSDC.deposit(defaultAmount, address(alice));
+        waUSDC.deposit(defaultAmount, alice);
         vm.stopPrank();
     }
 

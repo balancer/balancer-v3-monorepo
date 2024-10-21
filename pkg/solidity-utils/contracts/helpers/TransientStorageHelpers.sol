@@ -5,16 +5,26 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
-import { StorageSlot } from "../openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "../openzeppelin/StorageSlotExtension.sol";
 
 type TokenDeltaMappingSlotType is bytes32;
-type AddressMappingSlot is bytes32;
+type AddressToUintMappingSlot is bytes32;
+type AddressToBooleanMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
 
+/**
+ * @notice Helper functions to read and write values from transient storage, including support for arrays and mappings.
+ * @dev This is temporary, based on Open Zeppelin's partially released library. When the final version is published, we
+ * should be able to remove our copies and import directly from OZ. When Solidity catches up and puts direct support
+ * for transient storage in the language, we should be able to get rid of this altogether.
+ *
+ * This only works on networks where EIP-1153 is supported.
+ */
 library TransientStorageHelpers {
     using SlotDerivation for *;
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
 
+    /// @notice An index is out of bounds on an array operation (e.g., at).
     error TransientIndexOutOfBounds();
 
     // Calculate the slot for a transient storage variable.
@@ -25,7 +35,9 @@ library TransientStorageHelpers {
             ) & ~bytes32(uint256(0xff));
     }
 
-    // Mappings
+    /***************************************************************************
+                                    Mappings
+    ***************************************************************************/
 
     function tGet(TokenDeltaMappingSlotType slot, IERC20 k1) internal view returns (int256) {
         return TokenDeltaMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tload();
@@ -35,24 +47,34 @@ library TransientStorageHelpers {
         TokenDeltaMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tstore(value);
     }
 
-    function tGet(AddressMappingSlot slot, address key) internal view returns (uint256) {
-        return AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tload();
+    function tGet(AddressToUintMappingSlot slot, address key) internal view returns (uint256) {
+        return AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tload();
     }
 
-    function tSet(AddressMappingSlot slot, address key, uint256 value) internal {
-        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(value);
+    function tSet(AddressToUintMappingSlot slot, address key, uint256 value) internal {
+        AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(value);
+    }
+
+    function tGet(AddressToBooleanMappingSlot slot, address key) internal view returns (bool) {
+        return AddressToBooleanMappingSlot.unwrap(slot).deriveMapping(key).asBoolean().tload();
+    }
+
+    function tSet(AddressToBooleanMappingSlot slot, address key, bool value) internal {
+        AddressToBooleanMappingSlot.unwrap(slot).deriveMapping(key).asBoolean().tstore(value);
     }
 
     // Implement the common "+=" operation: map[key] += value.
-    function tAdd(AddressMappingSlot slot, address key, uint256 value) internal {
-        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) + value);
+    function tAdd(AddressToUintMappingSlot slot, address key, uint256 value) internal {
+        AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) + value);
     }
 
-    function tSub(AddressMappingSlot slot, address key, uint256 value) internal {
-        AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
+    function tSub(AddressToUintMappingSlot slot, address key, uint256 value) internal {
+        AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
     }
 
-    // Arrays
+    /***************************************************************************
+                                      Arrays
+    ***************************************************************************/
 
     function tLength(AddressArraySlotType slot) internal view returns (uint256) {
         return AddressArraySlotType.unwrap(slot).asUint256().tload();
@@ -95,7 +117,7 @@ library TransientStorageHelpers {
         uint256 lastElementIndex = AddressArraySlotType.unwrap(slot).asUint256().tload() - 1;
         // Update length to last element. When the index is 0, the slot that holds the length is cleared out.
         AddressArraySlotType.unwrap(slot).asUint256().tstore(lastElementIndex);
-        StorageSlot.AddressSlotType lastElementSlot = AddressArraySlotType
+        StorageSlotExtension.AddressSlotType lastElementSlot = AddressArraySlotType
             .unwrap(slot)
             .deriveArray()
             .offset(lastElementIndex)
@@ -106,13 +128,15 @@ library TransientStorageHelpers {
         lastElementSlot.tstore(address(0));
     }
 
-    // Uint256
+    /***************************************************************************
+                                  Uint256 Values
+    ***************************************************************************/
 
-    function tIncrement(StorageSlot.Uint256SlotType slot) internal {
+    function tIncrement(StorageSlotExtension.Uint256SlotType slot) internal {
         slot.tstore(slot.tload() + 1);
     }
 
-    function tDecrement(StorageSlot.Uint256SlotType slot) internal {
+    function tDecrement(StorageSlotExtension.Uint256SlotType slot) internal {
         slot.tstore(slot.tload() - 1);
     }
 }

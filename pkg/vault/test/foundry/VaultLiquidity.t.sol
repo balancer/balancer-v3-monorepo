@@ -4,37 +4,43 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig, HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    /// Add
+    // Add
 
     function addLiquidityProportional() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         bptAmountOut = defaultAmount;
-        amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
 
         vm.prank(alice);
         amountsIn = router.addLiquidityProportional(pool, amountsIn, bptAmountOut, false, bytes(""));
 
-        // should mint correct amount of BPT tokens
+        // should mint correct amount of BPT tokens.
         assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
     }
 
@@ -49,21 +55,29 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function addLiquidityUnbalanced() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
-        amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
 
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, bptAmountRoundDown, false, bytes(""));
 
-        // should mint correct amount of BPT tokens
-        assertEq(bptAmountOut, defaultAmount * 2, "Invalid amount of BPT");
+        // Should mint correct amount of BPT tokens.
+        assertEq(bptAmountOut, bptAmountRoundDown, "Invalid amount of BPT");
     }
 
     function testAddLiquidityUnbalanced() public {
         assertAddLiquidity(addLiquidityUnbalanced);
     }
 
+    function testAddLiquidityTradeLimit() public {
+        uint256[] memory amountsIn = [defaultAmount, PRODUCTION_MIN_TRADE_AMOUNT - 1].toMemoryArray();
+
+        vm.prank(alice);
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+    }
+
     function testAddLiquidityUnbalancedDisabled() public {
-        // Disable unbalanced liquidity
+        // Disable unbalanced liquidity.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
         vault.manualSetPoolConfig(pool, poolConfigBits);
@@ -72,7 +86,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         router.addLiquidityUnbalanced(
             pool,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
             bytes("")
@@ -93,7 +107,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
 
-        // should mint correct amount of BPT tokens
+        // Should mint correct amount of BPT tokens.
         assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
     }
 
@@ -102,7 +116,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquiditySingleTokenExactOutDisabled() public {
-        // Disable unbalanced liquidity
+        // Disable unbalanced liquidity.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
         vault.manualSetPoolConfig(pool, poolConfigBits);
@@ -116,13 +130,13 @@ contract VaultLiquidityTest is BaseVaultTest {
         vm.prank(alice);
         (amountsIn, bptAmountOut, ) = router.addLiquidityCustom(
             pool,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
             bytes("")
         );
 
-        // should mint correct amount of BPT tokens
+        // Should mint correct amount of BPT tokens.
         assertEq(bptAmountOut, defaultAmount);
     }
 
@@ -131,7 +145,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquidityCustomDisabled() public {
-        // Disable add custom liquidity
+        // Disable add custom liquidity.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.enableAddLiquidityCustom = false;
         vault.manualSetPoolConfig(pool, poolConfigBits);
@@ -140,7 +154,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
         router.addLiquidityCustom(
             pool,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
             bytes("")
@@ -153,7 +167,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, pool));
         router.addLiquidityUnbalanced(
             pool,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
             bytes("")
@@ -162,13 +176,17 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testAddLiquidityBptAmountOutBelowMin() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.BptAmountOutBelowMin.selector, 2 * defaultAmount, 2 * defaultAmount + 1)
+            abi.encodeWithSelector(
+                IVaultErrors.BptAmountOutBelowMin.selector,
+                bptAmountRoundDown,
+                bptAmountRoundDown + 1
+            )
         );
         vm.prank(alice);
         router.addLiquidityUnbalanced(
             pool,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-            2 * defaultAmount + 1,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown + 1,
             false,
             bytes("")
         );
@@ -188,7 +206,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         router.addLiquiditySingleTokenExactOut(pool, dai, defaultAmount - 1, bptAmountOut, false, bytes(""));
     }
 
-    /// Remove
+    // Remove
 
     function removeLiquidityProportional() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         bptAmountIn = defaultAmount * 2;
@@ -196,18 +214,29 @@ contract VaultLiquidityTest is BaseVaultTest {
         amountsOut = router.removeLiquidityProportional(
             pool,
             bptAmountIn,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
         );
 
-        // amountsOut are correct
+        // Ensure `amountsOut` are correct.
         assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
         assertEq(amountsOut[1], defaultAmount, "Wrong AmountOut[1]");
     }
 
     function testRemoveLiquidityProportional() public {
         assertRemoveLiquidity(removeLiquidityProportional);
+    }
+
+    function testRemoveLiquidityTradeLimit() public {
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        router.removeLiquidityProportional(
+            pool,
+            PRODUCTION_MIN_TRADE_AMOUNT * 2 - 1,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            false,
+            bytes("")
+        );
     }
 
     function removeLiquiditySingleTokenExactIn() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
@@ -224,7 +253,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
-        // amountsOut are correct
+        // Ensure `amountsOut` are correct.
         assertEq(amountsOut[daiIdx], defaultAmount * 2, "Wrong AmountOut[dai]");
         assertEq(amountsOut[usdcIdx], 0, "AmountOut[usdc] > 0");
     }
@@ -234,7 +263,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactInDisabled() public {
-        // Disable unbalanced liquidity
+        // Disable unbalanced liquidity.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
         vault.manualSetPoolConfig(pool, poolConfigBits);
@@ -246,13 +275,14 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function removeLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         amountsOut = new uint256[](2);
-        amountsOut[daiIdx] = defaultAmount * 2;
+        // We can't remove more than this, otherwise it fails
+        amountsOut[daiIdx] = defaultAmount + defaultAmountRoundDown;
 
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             pool,
-            2 * defaultAmount,
+            bptAmount,
             dai,
-            uint256(2 * defaultAmount),
+            amountsOut[daiIdx],
             false,
             bytes("")
         );
@@ -263,7 +293,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactOutDisabled() public {
-        // Disable unbalanced liquidity
+        // Disable unbalanced liquidity.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
 
@@ -278,12 +308,12 @@ contract VaultLiquidityTest is BaseVaultTest {
         (bptAmountIn, amountsOut, ) = router.removeLiquidityCustom(
             pool,
             defaultAmount * 2,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
         );
 
-        // amountsOut are correct
+        // Ensure `amountsOut` are correct.
         assertEq(amountsOut[daiIdx], defaultAmount, "Wrong AmountOut[dai]");
         assertEq(amountsOut[usdcIdx], defaultAmount, "Wrong AmountOut[usdc]");
     }
@@ -293,7 +323,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityCustomDisabled() public {
-        // Disable remove custom liquidity
+        // Disable remove custom liquidity.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.enableRemoveLiquidityCustom = false;
 
@@ -304,7 +334,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         router.removeLiquidityCustom(
             pool,
             defaultAmount * 2,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
         );
@@ -319,7 +349,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         router.removeLiquidityProportional(
             pool,
             defaultAmount,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
+            [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
         );
@@ -351,13 +381,72 @@ contract VaultLiquidityTest is BaseVaultTest {
             pool,
             defaultAmount / 2 - 1, // Exit with only one token, so the expected BPT amount in is 1/2 of the total.
             dai,
-            uint256(defaultAmount),
+            defaultAmountRoundDown,
             false,
             bytes("")
         );
     }
 
-    /// Utils
+    function testRoundtripFee() public {
+        uint256 swapFeePercentage = 10e16;
+        setSwapFeePercentage(swapFeePercentage);
+
+        uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
+
+        Balances memory balancesBefore = getBalances(alice);
+
+        assertFalse(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag is set");
+
+        vm.startPrank(alice);
+        amountsIn = router.addLiquidityProportional(pool, amountsIn, defaultAmount, false, bytes(""));
+
+        // The whole test runs in the same transaction, so transient storage is set.
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag not set");
+
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            pool,
+            IERC20(pool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        Balances memory balancesAfter = getBalances(alice);
+
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag not set");
+
+        // Amount out is 90% amount in after the roundtrip.
+        assertEq(amountsOut[0], amountsIn[0].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], amountsIn[1].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[1]");
+
+        // Tokens are transferred from the user to the Vault.
+        assertEq(
+            balancesAfter.userTokens[0],
+            balancesBefore.userTokens[0] - amountsIn[0] + amountsOut[0],
+            "Roundtrip - User balance: token 0"
+        );
+        assertEq(
+            balancesAfter.userTokens[1],
+            balancesBefore.userTokens[1] - amountsIn[1] + amountsOut[1],
+            "Roundtrip - User balance: token 1"
+        );
+
+        // Tokens are now in the Vault / pool.
+        assertEq(
+            balancesAfter.poolTokens[0],
+            balancesBefore.poolTokens[0] + amountsIn[0] - amountsOut[0],
+            "Roundtrip - Pool balance: token 0"
+        );
+        assertEq(
+            balancesAfter.poolTokens[1],
+            balancesBefore.poolTokens[1] + amountsIn[1] - amountsOut[0],
+            "Roundtrip - Pool balance: token 1"
+        );
+
+        assertEq(balancesAfter.userBpt, 0, "Roundtrip - User BPT balance after");
+    }
+
+    // Utils
 
     function assertAddLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
         Balances memory balancesBefore = getBalances(alice);
@@ -366,7 +455,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         Balances memory balancesAfter = getBalances(alice);
 
-        // Tokens are transferred from the user to the vault
+        // Tokens are transferred from the user to the Vault.
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] - amountsIn[0],
@@ -378,7 +467,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             "Add - User balance: token 1"
         );
 
-        // Tokens are now in the vault / pool
+        // Tokens are now in the Vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0],
@@ -390,31 +479,25 @@ contract VaultLiquidityTest is BaseVaultTest {
             "Add - Pool balance: token 1"
         );
 
-        // User now has BPT
+        // User now has BPT.
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
         assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
 
-        // Ensure raw and last live balances are in sync after the operation
+        // Ensure raw and last live balances are in sync after the operation.
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+        uint256[] memory lastBalancesLiveScaled18 = vault.getLastLiveBalances(pool);
 
-        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+        assertEq(currentLiveBalances.length, lastBalancesLiveScaled18.length);
 
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
-            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+            assertEq(currentLiveBalances[i], lastBalancesLiveScaled18[i]);
         }
     }
 
     function assertRemoveLiquidity(function() returns (uint256[] memory, uint256) testFunc) internal {
         vm.startPrank(alice);
 
-        router.addLiquidityUnbalanced(
-            pool,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-            defaultAmount,
-            false,
-            bytes("")
-        );
+        router.addLiquidityCustom(pool, [defaultAmount, defaultAmount].toMemoryArray(), bptAmount, false, bytes(""));
 
         Balances memory balancesBefore = getBalances(alice);
 
@@ -424,7 +507,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         Balances memory balancesAfter = getBalances(alice);
 
-        // Tokens are transferred back to user
+        // Tokens are transferred back to user.
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] + amountsOut[0],
@@ -436,7 +519,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             "Remove - User balance: token 1"
         );
 
-        // Tokens are no longer in the vault / pool
+        // Tokens are no longer in the Vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] - amountsOut[0],
@@ -448,18 +531,18 @@ contract VaultLiquidityTest is BaseVaultTest {
             "Remove - Pool balance: token 1"
         );
 
-        // User has burnt the correct amount of BPT
+        // User has burned the correct amount of BPT.
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
         assertEq(balancesAfter.userBpt, 0, "Remove - User BPT balance after");
 
-        // Ensure raw and last live balances are in sync after the operation
+        // Ensure raw and last live balances are in sync after the operation.
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+        uint256[] memory lastBalancesLiveScaled18 = vault.getLastLiveBalances(pool);
 
-        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+        assertEq(currentLiveBalances.length, lastBalancesLiveScaled18.length);
 
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
-            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+            assertEq(currentLiveBalances[i], lastBalancesLiveScaled18[i]);
         }
     }
 }

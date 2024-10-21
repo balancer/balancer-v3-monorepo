@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import {
     FEE_SCALING_FACTOR,
     PoolData,
@@ -14,22 +14,23 @@ import {
     PoolRoleAccounts
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract YieldFeesTest is BaseVaultTest {
-    using ArrayHelpers for *;
-    using FixedPoint for uint256;
+    using CastingHelpers for address[];
     using ScalingHelpers for uint256;
+    using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     RateProviderMock internal wstETHRateProvider;
     RateProviderMock internal daiRateProvider;
@@ -52,8 +53,8 @@ contract YieldFeesTest is BaseVaultTest {
     function createPool() internal override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 
-        wstETHRateProvider = new RateProviderMock();
-        daiRateProvider = new RateProviderMock();
+        wstETHRateProvider = deployRateProviderMock();
+        daiRateProvider = deployRateProviderMock();
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         bool[] memory yieldFeeFlags = new bool[](2);
@@ -75,10 +76,11 @@ contract YieldFeesTest is BaseVaultTest {
                     rateProviders,
                     yieldFeeFlags
                 ),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 poolRoleAccounts,
                 swapFee,
                 address(0),
+                false,
                 false,
                 bytes32(0)
             )
@@ -89,63 +91,62 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function testSwapWithoutYieldFeesSnapshot() public {
-        uint256 yieldFeePercentage;
-        uint256 creatorYieldFeePercentage;
-
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, 10, yieldFeePercentage, creatorYieldFeePercentage);
+        _testYieldFeesOnSwap(wstethRate, daiRate, 10, 0);
     }
 
     function testSwapWithProtocolYieldFeesSnapshot() public {
-        // yield fee 20% and creator yield fees 100%
-        (uint256 yieldFeePercentage, uint256 creatorYieldFeePercentage) = _initializeFees(2e6, 0);
+        // yield fee 20% and creator yield fees 0%.
+        uint256 aggregateYieldFeePercentage = 20e16;
 
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, 10, yieldFeePercentage, creatorYieldFeePercentage);
+        _testYieldFeesOnSwap(wstethRate, daiRate, 10, aggregateYieldFeePercentage);
     }
 
     function testSwapWithProtocolAndCreatorYieldFeesSnapshot() public {
-        (uint256 yieldFeePercentage, uint256 creatorYieldFeePercentage) = _initializeFees(2e6, 1e7);
+        uint256 protocolYieldFeePercentage = 20e16;
+        uint256 poolCreatorFeePercentage = FixedPoint.ONE; // 100%
+
+        uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
+        );
 
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, 10, yieldFeePercentage, creatorYieldFeePercentage);
+        _testYieldFeesOnSwap(wstethRate, daiRate, 10, aggregateYieldFeePercentage);
     }
 
     function _testYieldFeesOnSwap(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 pumpRate,
-        uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage
+        uint256 aggregateYieldFeePercentage
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
-        vault.manualSetAggregateYieldFeePercentage(
-            pool,
-            _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
-        );
+        vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
 
-        // Warm-up storage slots (using a different pool)
-        // Pump the original rates [pumpRate / 2] times
+        // Warm-up storage slots (using a different pool).
+        // Pump the original rates [pumpRate / 2] times.
         wstETHRateProvider.mockRate((wstethRate * pumpRate) / 2);
         daiRateProvider.mockRate((daiRate * pumpRate) / 2);
 
         vm.prank(alice);
-        uint256 amountOut = router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
+        uint256 amountOut = router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, bytes(""));
 
-        // Pump the original rates [pumpRate] times
+        // Pump the original rates [pumpRate] times.
         wstETHRateProvider.mockRate(wstethRate * pumpRate);
         daiRateProvider.mockRate(daiRate * pumpRate);
 
-        // Dummy swap
+        // Dummy swap.
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, "");
+        router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
     }
 
     function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {
@@ -154,16 +155,5 @@ contract YieldFeesTest is BaseVaultTest {
         daiRateProvider.mockRate(daiRate);
 
         initPool();
-    }
-
-    function _initializeFees(
-        uint256 fixedYieldFee,
-        uint256 fixedCreatorFee
-    ) private pure returns (uint256 finalYieldFeePercentage, uint256 finalCreatorFeePercentage) {
-        // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfigBits
-        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
-
-        finalYieldFeePercentage = fixedYieldFee * FEE_SCALING_FACTOR;
-        finalCreatorFeePercentage = fixedCreatorFee * FEE_SCALING_FACTOR;
     }
 }

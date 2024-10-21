@@ -4,33 +4,33 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
-
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import {
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    SwapKind,
+    HooksConfig
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-import { PoolMock } from "../../../../contracts/test/PoolMock.sol";
-import { Router } from "../../../../contracts/Router.sol";
-import { RouterCommon } from "../../../../contracts/RouterCommon.sol";
-import { VaultMock } from "../../../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../../../contracts/test/VaultExtensionMock.sol";
-import { VaultMockDeployer } from "../../utils/VaultMockDeployer.sol";
+import { PoolHooksMock } from "../../../../contracts/test/PoolHooksMock.sol";
+import { BasePoolMath } from "../../../../contracts/BasePoolMath.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
+import { Router } from "../../../../contracts/Router.sol";
 
 contract RouterMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
 
@@ -38,12 +38,6 @@ contract RouterMutationTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    /*
-        initializeHook
-            [x] onlyVault
-            [] nonReentrant
-        TODO: Missing reentrancy
-    */
     function testInitializeHookWhenNotVault() public {
         IRouter.InitializeHookParams memory hookParams = IRouter.InitializeHookParams(
             msg.sender,
@@ -59,13 +53,13 @@ contract RouterMutationTest is BaseVaultTest {
         router.initializeHook(hookParams);
     }
 
-    /*
-        addLiquidityHook
-            [x] onlyVault
-            [] nonReentrant
-    */
+    function testInitializeHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        router.manualReentrancyInitializeHook();
+    }
+
     function testAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -79,22 +73,41 @@ contract RouterMutationTest is BaseVaultTest {
         router.addLiquidityHook(hookParams);
     }
 
-    /*
-        removeLiquidityRecoveryHook
-            [x] onlyVault
-            [] nonReentrant
-        TODO: Missing reentrancy
-    */
+    function testAddLiquidityHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        router.manualReentrancyAddLiquidityHook();
+    }
+
+    function testRemoveLiquidityHookWhenNotVault() public {
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
+            msg.sender,
+            pool,
+            [uint256(0), uint256(0)].toMemoryArray(),
+            0,
+            RemoveLiquidityKind.PROPORTIONAL,
+            false,
+            bytes("")
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        router.removeLiquidityHook(params);
+    }
+
+    function testRemoveLiquidityHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        router.manualReentrancyRemoveLiquidityHook();
+    }
+
     function testRemoveLiquidityRecoveryHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
         router.removeLiquidityRecoveryHook(pool, msg.sender, amountsIn[0]);
     }
 
-    /*
-        swapSingleTokenHook
-            [x] onlyVault
-            [] nonReentrant
-    */
+    function testRemoveLiquidityRecoveryHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        router.manualReentrancyRemoveLiquidityRecoveryHook();
+    }
+
     function testSwapSingleTokenHookWhenNotVault() public {
         IRouter.SwapSingleTokenHookParams memory params = IRouter.SwapSingleTokenHookParams(
             msg.sender,
@@ -113,11 +126,21 @@ contract RouterMutationTest is BaseVaultTest {
         router.swapSingleTokenHook(params);
     }
 
-    /*
-        querySwapHook
-            [x] onlyVault
-            [] nonReentrant   
-    */
+    function testSwapSingleTokenHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        router.manualReentrancySwapSingleTokenHook();
+    }
+
+    function testAddLiquidityToBufferHookWhenNotVault() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, address(0));
+    }
+
+    function testAddLiquidityToBufferHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        router.manualReentrancyAddLiquidityToBufferHook();
+    }
+
     function testQuerySwapHookWhenNotVault() public {
         IRouter.SwapSingleTokenHookParams memory params = IRouter.SwapSingleTokenHookParams(
             msg.sender,
@@ -136,13 +159,13 @@ contract RouterMutationTest is BaseVaultTest {
         router.querySwapHook(params);
     }
 
-    /*
-        queryAddLiquidityHook
-            [x] onlyVault
-            [] nonReentrant        
-    */
+    function testQuerySwapHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        router.manualReentrancyQuerySwapHook();
+    }
+
     function testQueryAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -156,13 +179,8 @@ contract RouterMutationTest is BaseVaultTest {
         router.queryAddLiquidityHook(hookParams);
     }
 
-    /*
-        queryRemoveLiquidityHook
-            [x] onlyVault
-            [] nonReentrant        
-    */
     function testQueryRemoveLiquidityHookWhenNotVault() public {
-        IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -176,13 +194,154 @@ contract RouterMutationTest is BaseVaultTest {
         router.queryRemoveLiquidityHook(params);
     }
 
-    /*
-        queryRemoveLiquidityRecoveryHook
-            [x] onlyVault
-            [] nonReentrant    
-    */
     function testQueryRemoveLiquidityRecoveryHookWhenNoVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
         router.queryRemoveLiquidityRecoveryHook(pool, msg.sender, 10);
+    }
+
+    function testQuerySwapSingleTokenExactInSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeSwap = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.querySwapSingleTokenExactIn(pool, dai, usdc, amountsIn[0], bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQuerySwapSingleTokenExactOutSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeSwap = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.querySwapSingleTokenExactOut(pool, dai, usdc, amountsIn[1], bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquidityProportionalSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryAddLiquidityProportional(pool, poolInitAmount.mulDown(2e18), bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquidityUnbalancedSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryAddLiquidityUnbalanced(pool, amountsIn, bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquiditySingleTokenExactOutSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryAddLiquiditySingleTokenExactOut(pool, dai, poolInitAmount, bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquidityCustomSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryAddLiquidityCustom(pool, amountsIn, poolInitAmount.mulDown(2e18), bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquidityProportionalSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryRemoveLiquidityProportional(pool, poolInitAmount, bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquiditySingleTokenExactInSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryRemoveLiquiditySingleTokenExactIn(pool, poolInitAmount, usdc, bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquiditySingleTokenExactOutSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryRemoveLiquiditySingleTokenExactOut(pool, usdc, poolInitAmount / 2, bob, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquidityCustomSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query.
+        vm.prank(bob, address(0));
+        router.queryRemoveLiquidityCustom(
+            pool,
+            poolInitAmount,
+            [poolInitAmount.divDown(2e18), poolInitAmount.divDown(2e18)].toMemoryArray(),
+            bob,
+            bytes("")
+        );
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
     }
 }

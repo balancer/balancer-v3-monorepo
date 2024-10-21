@@ -4,22 +4,30 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
-contract StablePoolFactoryTest is BaseVaultTest {
+contract StablePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
+
+    // Maximum swap fee of 10%
+    uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
 
     StablePoolFactory internal stablePoolFactory;
 
@@ -28,7 +36,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
     function setUp() public override {
         super.setUp();
 
-        stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         vm.label(address(stablePoolFactory), "stable pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -76,6 +84,30 @@ contract StablePoolFactoryTest is BaseVaultTest {
         assertEq(vars.vault.usdcAfter - vars.vault.usdcBefore, amountToDonate, "Vault USDC balance is wrong");
     }
 
+    function testCreatePoolWithTooManyTokens() public {
+        IERC20[] memory bigPoolTokens = new IERC20[](StableMath.MAX_STABLE_TOKENS + 1);
+        for (uint256 i = 0; i < bigPoolTokens.length; ++i) {
+            bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
+        }
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(bigPoolTokens);
+        PoolRoleAccounts memory roleAccounts;
+
+        vm.expectRevert(IVaultErrors.MaxTokens.selector);
+        stablePoolFactory.create(
+            "Big Pool",
+            "TOO_BIG",
+            tokenConfig,
+            DEFAULT_AMP_FACTOR,
+            roleAccounts,
+            MAX_SWAP_FEE_PERCENTAGE,
+            address(0),
+            false,
+            false,
+            ZERO_BYTES32
+        );
+    }
+
     function _deployAndInitializeStablePool(bool supportsDonation) private returns (address) {
         PoolRoleAccounts memory roleAccounts;
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
@@ -86,15 +118,16 @@ contract StablePoolFactoryTest is BaseVaultTest {
             vault.buildTokenConfig(tokens),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            1e17,
+            MAX_SWAP_FEE_PERCENTAGE,
             address(0),
             supportsDonation,
+            false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 
         // Initialize pool
         vm.prank(lp);
-        router.initialize(stablePool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(stablePool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
 
         return stablePool;
     }
@@ -119,9 +152,9 @@ contract StablePoolFactoryTest is BaseVaultTest {
     }
 
     function _createHookTestLocals(address pool) private view returns (HookTestLocals memory vars) {
-        vars.bob.daiBefore = dai.balanceOf(address(bob));
-        vars.bob.usdcBefore = usdc.balanceOf(address(bob));
-        vars.bob.bptBefore = IERC20(pool).balanceOf(address(bob));
+        vars.bob.daiBefore = dai.balanceOf(bob);
+        vars.bob.usdcBefore = usdc.balanceOf(bob);
+        vars.bob.bptBefore = IERC20(pool).balanceOf(bob);
         vars.vault.daiBefore = dai.balanceOf(address(vault));
         vars.vault.usdcBefore = usdc.balanceOf(address(vault));
         vars.poolBefore = vault.getRawBalances(pool);
@@ -129,9 +162,9 @@ contract StablePoolFactoryTest is BaseVaultTest {
     }
 
     function _fillAfterHookTestLocals(HookTestLocals memory vars, address pool) private view {
-        vars.bob.daiAfter = dai.balanceOf(address(bob));
-        vars.bob.usdcAfter = usdc.balanceOf(address(bob));
-        vars.bob.bptAfter = IERC20(pool).balanceOf(address(bob));
+        vars.bob.daiAfter = dai.balanceOf(bob);
+        vars.bob.usdcAfter = usdc.balanceOf(bob);
+        vars.bob.bptAfter = IERC20(pool).balanceOf(bob);
         vars.vault.daiAfter = dai.balanceOf(address(vault));
         vars.vault.usdcAfter = usdc.balanceOf(address(vault));
         vars.poolAfter = vault.getRawBalances(pool);

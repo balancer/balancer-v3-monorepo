@@ -4,8 +4,12 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    PoolConfigBits,
+    FEE_BITLENGTH,
+    MAX_FEE_PERCENTAGE,
+    FEE_SCALING_FACTOR
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigConst } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigConst.sol";
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
@@ -17,6 +21,7 @@ contract PoolConfigLibTest is Test {
 
     uint256 private constant _MAX_UINT32_VALUE = type(uint32).max;
     uint256 private constant _MAX_UINT24_VALUE = type(uint24).max;
+    uint256 private constant _MAX_UINT40_VALUE = type(uint40).max;
     uint256 private constant _ARBITRARY_FEE_PCT = 3.14e16;
 
     function testZeroConfigBytes() public pure {
@@ -36,7 +41,7 @@ contract PoolConfigLibTest is Test {
         assertEq(config.getPauseWindowEndTime(), 0, "getPauseWindowEndTime mismatch (zero config)");
     }
 
-    // #region Tests for main pool config settings
+    // Tests for main pool config settings.
 
     function testIsPoolRegistered() public pure {
         PoolConfigBits config;
@@ -94,9 +99,7 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (setter)");
     }
 
-    // #endregion
-
-    // #region Tests for liquidity operations
+    // Tests for liquidity operations.
     function testSupportsUnbalancedLiquidity() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
@@ -142,18 +145,18 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is false (setter)");
     }
 
-    function testRequireAddCustomLiquidityEnabled() public pure {
+    function testRequireAddLiquidityCustomEnabled() public pure {
         PoolConfigBits config;
         config = config.setAddLiquidityCustom(true);
 
-        config.requireAddCustomLiquidityEnabled();
+        config.requireAddLiquidityCustomEnabled();
     }
 
-    function testRequireAddCustomLiquidityRevertIfIsDisabled() public {
+    function testRequireAddLiquidityCustomRevertIfIsDisabled() public {
         PoolConfigBits config;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
-        config.requireAddCustomLiquidityEnabled();
+        config.requireAddLiquidityCustomEnabled();
     }
 
     function testSupportsRemoveLiquidityCustom() public pure {
@@ -170,23 +173,47 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is false (setter)");
     }
 
-    function testRequireRemoveCustomLiquidityEnabled() public pure {
+    function testRequireRemoveLiquidityCustomEnabled() public pure {
         PoolConfigBits config;
         config = config.setRemoveLiquidityCustom(true);
 
-        config.requireRemoveCustomLiquidityEnabled();
+        config.requireRemoveLiquidityCustomEnabled();
     }
 
-    function testRequireRemoveCustomLiquidityReveryIfIsDisabled() public {
+    function testRequireRemoveLiquidityCustomReveryIfIsDisabled() public {
         PoolConfigBits config;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
-        config.requireRemoveCustomLiquidityEnabled();
+        config.requireRemoveLiquidityCustomEnabled();
     }
 
-    // #endregion
+    function testSupportsDonation() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.DONATION_OFFSET));
+        assertTrue(config.supportsDonation(), "supportDonation is false (getter)");
+    }
 
-    // #region Tests for uint values
+    function testSetDonation() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+        assertTrue(config.supportsDonation(), "supportDonation is false (setter)");
+    }
+
+    function testRequireDonationEnabled() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+
+        config.requireDonationEnabled();
+    }
+
+    function testRequireDonationRevertIfIsDisabled() public {
+        PoolConfigBits config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
+        config.requireDonationEnabled();
+    }
+
+    // Tests for uint values.
     function testGetAggregateSwapFeePercentage() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
@@ -214,9 +241,19 @@ contract PoolConfigLibTest is Test {
         );
     }
 
+    function testSetAggregateSwapFeePercentageAlmostMaxFee() public pure {
+        PoolConfigBits config;
+        config = config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE);
+        assertEq(
+            config.getAggregateSwapFeePercentage(),
+            MAX_FEE_PERCENTAGE,
+            "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentageAlmostMaxFee)"
+        );
+    }
+
     function testSetAggregateSwapFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
@@ -249,7 +286,7 @@ contract PoolConfigLibTest is Test {
 
     function testSetAggregateYieldFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setAggregateYieldFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
@@ -282,7 +319,7 @@ contract PoolConfigLibTest is Test {
 
     function testSetStaticSwapFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setStaticSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
@@ -290,21 +327,21 @@ contract PoolConfigLibTest is Test {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertUint(
-                _MAX_UINT24_VALUE,
+                _MAX_UINT40_VALUE,
                 PoolConfigConst.DECIMAL_SCALING_FACTORS_OFFSET,
                 PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH
             )
         );
         assertEq(
             config.getTokenDecimalDiffs(),
-            _MAX_UINT24_VALUE,
+            _MAX_UINT40_VALUE,
             "tokenDecimalDiffs mismatch (testGetTokenDecimalDiffs)"
         );
     }
 
     function testSetTokenDecimalDiffs() public pure {
         PoolConfigBits config;
-        uint24 value = uint24(_MAX_UINT24_VALUE);
+        uint40 value = uint40(_MAX_UINT40_VALUE);
         config = config.setTokenDecimalDiffs(value);
         assertEq(config.getTokenDecimalDiffs(), value, "tokenDecimalDiffs mismatch (testSetTokenDecimalDiffs)");
     }
@@ -321,12 +358,12 @@ contract PoolConfigLibTest is Test {
             PoolConfigConst.DECIMAL_DIFF_BITLENGTH
         );
 
-        config = config.setTokenDecimalDiffs(uint24(uint256(value)));
+        config = config.setTokenDecimalDiffs(uint40(uint256(value)));
 
         uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
 
-        assertEq(scalingFactors[0], 1e23, "scalingFactors[0] mismatch");
-        assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
+        assertEq(scalingFactors[0], 1e5, "scalingFactors[0] mismatch");
+        assertEq(scalingFactors[1], 1e20, "scalingFactors[1] mismatch");
     }
 
     function testGetPauseWindowEndTime() public pure {
@@ -351,8 +388,6 @@ contract PoolConfigLibTest is Test {
         config = config.setPauseWindowEndTime(value);
         assertEq(config.getPauseWindowEndTime(), value, "pauseWindowEndTime mismatch (testSetPauseWindowEndTime)");
     }
-
-    // #endregion
 
     function testToTokenDecimalDiffs() public pure {
         uint8[] memory tokenDecimalDiffs = new uint8[](2);

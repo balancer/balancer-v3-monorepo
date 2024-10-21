@@ -2,27 +2,42 @@
 
 pragma solidity ^0.8.24;
 
-import "./FixedPoint.sol";
+import { FixedPoint } from "./FixedPoint.sol";
 
-// Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
-// solhint-disable private-vars-leading-underscore, var-name-mixedcase
-
+/**
+ * @notice Stable Pool math library based on Curve's `StableSwap`.
+ * @dev See https://docs.curve.fi/references/whitepapers/stableswap/
+ *
+ * For security reasons, to help ensure that for all possible "round trip" paths the caller always receives the same
+ * or fewer tokens than supplied, we have used precise math (i.e., '*', '/' vs. FixedPoint) whenever possible, and
+ * chosen the rounding direction to favor the protocol elsewhere.
+ *
+ * `computeInvariant` does not use the rounding direction from `IBasePool`, effectively always rounding down to match
+ * the Curve implementation.
+ */
 library StableMath {
     using FixedPoint for uint256;
 
-    // For security reasons, to help ensure that for all possible "round trip" paths
-    // the caller always receives the same or fewer tokens than supplied,
-    // we have chosen the rounding direction to favor the protocol in all cases.
+    // Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
+    // solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
-    /// @dev The iterations to calculate the invariant didn't converge.
+    /// @notice The iterations to calculate the invariant didn't converge.
     error StableInvariantDidNotConverge();
 
-    /// @dev The iterations to calculate the balance didn't converge.
-    error StableGetBalanceDidNotConverge();
+    /// @notice The iterations to calculate the balance didn't converge.
+    error StableComputeBalanceDidNotConverge();
+
+    // The max token count is limited by the math, and is less than the Vault's maximum.
+    uint256 public constant MAX_STABLE_TOKENS = 5;
 
     uint256 internal constant MIN_AMP = 1;
     uint256 internal constant MAX_AMP = 5000;
     uint256 internal constant AMP_PRECISION = 1e3;
+
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 internal constant MIN_INVARIANT_RATIO = 60e16; // 60%
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 internal constant MAX_INVARIANT_RATIO = 500e16; // 500%
 
     // Note on unchecked arithmetic:
     // This contract performs a large number of additions, subtractions, multiplications and divisions, often inside
@@ -37,14 +52,22 @@ library StableMath {
     // Any add or remove that is not perfectly balanced (e.g. all single token operations) is mathematically
     // equivalent to a perfectly balanced add or remove followed by a series of swaps. Since these swaps would charge
     // swap fees, it follows that unbalanced adds and removes should as well.
+    //
     // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
     // is the one to which swap fees are applied.
 
-    // Computes the invariant given the current balances, using the Newton-Raphson approximation.
-    // The amplification parameter equals: A n^(n-1)
     // See: https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pool-templates/base/SwapTemplateBase.vy#L206
     // solhint-disable-previous-line max-line-length
 
+    /**
+     * @notice Computes the invariant given the current balances.
+     * @dev It uses the Newton-Raphson approximation. The amplification parameter is given by: A n^(n-1).
+     * There is no closed-form solution, so the calculation is iterative and may revert.
+     *
+     * @param amplificationParameter The current amplification parameter
+     * @param balances The current balances
+     * @return invariant The calculated invariant of the pool
+     */
     function computeInvariant(
         uint256 amplificationParameter,
         uint256[] memory balances
@@ -58,7 +81,6 @@ library StableMath {
         // n = number of tokens                                                                      //
         **********************************************************************************************/
 
-        // Always round down, to match Vyper's arithmetic (which always truncates).
         uint256 sum = 0; // S in the Curve version
         uint256 numTokens = balances.length;
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -99,8 +121,17 @@ library StableMath {
         revert StableInvariantDidNotConverge();
     }
 
-    // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
-    // The amplification parameter equals: A n^(n-1)
+    /**
+     * @notice Computes the required `amountOut` of tokenOut, for `tokenAmountIn` of tokenIn.
+     * @dev The calculation uses the Newton-Raphson approximation. The amplification parameter is given by: A n^(n-1).
+     * @param amplificationParameter The current amplification factor
+     * @param balances The current pool balances
+     * @param tokenIndexIn The index of tokenIn
+     * @param tokenIndexOut The index of tokenOut
+     * @param tokenAmountIn The exact amount of tokenIn specified for the swap
+     * @param invariant The current invariant
+     * @return amountOut The calculated amount of tokenOut required for the swap
+     */
     function computeOutGivenExactIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
@@ -121,23 +152,32 @@ library StableMath {
         // P = product of final balances but y                                                                       //
         **************************************************************************************************************/
 
-        // Amount out, so we round down overall.
         balances[tokenIndexIn] += tokenAmountIn;
 
+        // `computeBalance` rounds up.
         uint256 finalBalanceOut = computeBalance(amplificationParameter, balances, invariant, tokenIndexOut);
 
         // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
-        // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
+        // calling `computeBalance`, which doesn't alter the balances array.
         unchecked {
             balances[tokenIndexIn] -= tokenAmountIn;
         }
 
+        // Amount out, so we round down overall.
         return balances[tokenIndexOut] - finalBalanceOut - 1;
     }
 
-    // Computes how many tokens must be sent to a pool if `tokenAmountOut` are sent given the
-    // current balances, using the Newton-Raphson approximation.
-    // The amplification parameter equals: A n^(n-1)
+    /**
+     * @notice Computes the required `amountIn` of tokenIn, for `tokenAmountOut` of tokenOut.
+     * @dev The calculation uses the Newton-Raphson approximation. The amplification parameter is given by: A n^(n-1).
+     * @param amplificationParameter The current amplification factor
+     * @param balances The current pool balances
+     * @param tokenIndexIn The index of tokenIn
+     * @param tokenIndexOut The index of tokenOut
+     * @param tokenAmountOut The exact amount of tokenOut specified for the swap
+     * @param invariant The current invariant
+     * @return amountIn The calculated amount of tokenIn required for the swap
+     */
     function computeInGivenExactOut(
         uint256 amplificationParameter,
         uint256[] memory balances,
@@ -158,29 +198,36 @@ library StableMath {
         // P = product of final balances but x                                                                       //
         **************************************************************************************************************/
 
-        // Amount in, so we round up overall.
         balances[tokenIndexOut] -= tokenAmountOut;
 
+        // `computeBalance` rounds up.
         uint256 finalBalanceIn = computeBalance(amplificationParameter, balances, invariant, tokenIndexIn);
 
         // No need to use checked arithmetic since `tokenAmountOut` was actually subtracted from the same balance right
-        // before calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
+        // before calling `computeBalance`, which doesn't alter the balances array.
         unchecked {
             balances[tokenIndexOut] += tokenAmountOut;
         }
 
+        // Amount in, so we round up overall.
         return finalBalanceIn - balances[tokenIndexIn] + 1;
     }
 
-    // This function calculates the balance of a given token (tokenIndex)
-    // given all the other balances and the invariant.
+    /**
+     * @notice Calculate the balance of a given token (at tokenIndex), given all other balances and the invariant.
+     * @dev Rounds result up overall. There is no closed-form solution, so the calculation is iterative and may revert.
+     * @param amplificationParameter The current amplification factor
+     * @param balances The current pool balances
+     * @param invariant The current invariant
+     * @param tokenIndex The index of the token balance we are calculating
+     * @return tokenBalance The adjusted balance of the token at `tokenIn` that matches the given invariant
+     */
     function computeBalance(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 invariant,
         uint256 tokenIndex
     ) internal pure returns (uint256) {
-        // Rounds result up overall.
         uint256 numTokens = balances.length;
         uint256 ampTimesTotal = amplificationParameter * numTokens;
         uint256 sum = balances[0];
@@ -194,8 +241,8 @@ library StableMath {
         // Use divUpRaw with inv2, as it is a "raw" 36 decimal value.
         uint256 inv2 = invariant * invariant;
         // We remove the balance from c by multiplying it.
-        uint256 c = (inv2.divUpRaw(ampTimesTotal * P_D) * AMP_PRECISION) * balances[tokenIndex];
-        uint256 b = sum + ((invariant / ampTimesTotal) * AMP_PRECISION);
+        uint256 c = (inv2 * AMP_PRECISION).divUpRaw(ampTimesTotal * P_D) * balances[tokenIndex];
+        uint256 b = sum + ((invariant * AMP_PRECISION) / ampTimesTotal);
         // We iterate to find the balance.
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the
@@ -220,6 +267,6 @@ library StableMath {
             }
         }
 
-        revert StableGetBalanceDidNotConverge();
+        revert StableComputeBalanceDidNotConverge();
     }
 }

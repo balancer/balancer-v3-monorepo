@@ -3,49 +3,82 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVault } from "./IVault.sol";
 import { IHooks } from "./IHooks.sol";
-import { IBasePool } from "./IBasePool.sol";
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
 
+/**
+ * @notice Interface for functions defined on the `VaultExtension` contract.
+ * @dev `VaultExtension` handles less critical or frequently used functions, since delegate calls through
+ * the Vault are more expensive than direct calls. The main Vault contains the core code for swaps and
+ * liquidity operations.
+ */
 interface IVaultExtension {
     /*******************************************************************************
                               Constants and immutables
     *******************************************************************************/
 
-    /// @dev Returns the main Vault address.
+    /**
+     * @notice Returns the main Vault address.
+     * @dev The main Vault contains the entrypoint and main liquidity operation implementations.
+     * @return vault The address of the main Vault
+     */
     function vault() external view returns (IVault);
+
+    /**
+     * @notice Returns the VaultAdmin contract address.
+     * @dev The VaultAdmin contract mostly implements permissioned functions.
+     * @return vaultAdmin The address of the Vault admin
+     */
+    function getVaultAdmin() external view returns (address);
 
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
 
     /**
-     * @notice Returns True if the Vault is unlocked, false otherwise.
+     * @notice Returns whether the Vault is unlocked (i.e., executing an operation).
+     * @dev The Vault must be unlocked to perform state-changing liquidity operations.
+     * @return unlocked True if the Vault is unlocked, false otherwise
      */
     function isUnlocked() external view returns (bool);
 
     /**
      *  @notice Returns the count of non-zero deltas.
-     *  @return The current value of _nonzeroDeltaCount
+     *  @return nonzeroDeltaCount The current value of `_nonzeroDeltaCount`
      */
     function getNonzeroDeltaCount() external view returns (uint256);
 
     /**
-     * @notice Retrieves the token delta for a specific user and token.
+     * @notice Retrieves the token delta for a specific token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
      * @param token The token for which the delta is being fetched
-     * @return The delta of the specified token for the specified user
+     * @return tokenDelta The delta of the specified token
      */
     function getTokenDelta(IERC20 token) external view returns (int256);
 
     /**
      * @notice Retrieves the reserve (i.e., total Vault balance) of a given token.
      * @param token The token for which to retrieve the reserve
-     * @return The amount of reserves for the given token
+     * @return reserveAmount The amount of reserves for the given token
      */
     function getReservesOf(IERC20 token) external view returns (uint256);
+
+    /**
+     * @notice This flag is used to detect and tax "round trip" transactions (adding and removing liquidity in the
+     * same pool).
+     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same transaction adds an extra
+     * layer of security, discouraging operations that try to undo others for profit. Remove liquidity proportional
+     * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
+     * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
+     * than a simple swap for every pool type.
+     * @param pool Address of the pool to check
+     * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
+     */
+    function getAddLiquidityCalledFlag(address pool) external view returns (bool);
 
     /*******************************************************************************
                                     Pool Registration
@@ -88,7 +121,7 @@ interface IVaultExtension {
     /**
      * @notice Checks whether a pool is registered.
      * @param pool Address of the pool to check
-     * @return True if the pool is registered, false otherwise
+     * @return registered True if the pool is registered, false otherwise
      */
     function isPoolRegistered(address pool) external view returns (bool);
 
@@ -119,7 +152,7 @@ interface IVaultExtension {
      * @notice Checks whether a pool is initialized.
      * @dev An initialized pool can be considered registered as well.
      * @param pool Address of the pool to check
-     * @return True if the pool is initialized, false otherwise
+     * @return initialized True if the pool is initialized, false otherwise
      */
     function isPoolInitialized(address pool) external view returns (bool);
 
@@ -136,23 +169,29 @@ interface IVaultExtension {
      * registration order.
      *
      * @param pool Address of the pool
-     * @return decimalScalingFactors Token decimal scaling factors
-     * @return tokenRates Token rates for yield-bearing tokens, or FP(1) for standard tokens
+     * @return decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
+     * calculations. FP(1) for 18-decimal tokens
+     * @return tokenRates 18-decimal FP values for rate tokens (e.g., yield-bearing), or FP(1) for standard tokens
      */
     function getPoolTokenRates(
         address pool
     ) external view returns (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates);
 
-    /// @notice Returns pool data for a given pool.
+    /**
+     * @notice Returns comprehensive pool data for the given pool.
+     * @dev This contains the pool configuration (flags), tokens and token types, rates, scaling factors, and balances.
+     * @param pool The address of the pool
+     * @return poolData The `PoolData` result
+     */
     function getPoolData(address pool) external view returns (PoolData memory);
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @param pool Address of the pool
-     * @return tokens The pool tokens, in registration order
-     * @return tokenInfo Corresponding token info
-     * @return balancesRaw Corresponding raw balances of the tokens
-     * @return scalingFactors Corresponding scalingFactors of the tokens
+     * @return tokens The pool tokens, sorted in registration order
+     * @return tokenInfo Token info structs (type, rate provider, yield flag), sorted in pool registration order
+     * @return balancesRaw Current native decimal balances of the pool tokens, sorted in pool registration order
+     * @return lastBalancesLiveScaled18 Last saved live balances, sorted in token registration order
      */
     function getPoolTokenInfo(
         address pool
@@ -163,75 +202,90 @@ interface IVaultExtension {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory scalingFactors
+            uint256[] memory lastBalancesLiveScaled18
         );
 
     /**
      * @notice Gets current live balances of a given pool (fixed-point, 18 decimals), corresponding to its tokens in
      * registration order.
+     *
      * @param pool Address of the pool
-     * @return balancesLiveScaled18  Token balances after paying yield fees, applying decimal scaling and rates
+     * @return balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      */
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory balancesLiveScaled18);
 
     /**
      * @notice Gets the configuration parameters of a pool.
+     * @dev The `PoolConfig` contains liquidity management and other state flags, fee percentages, the pause window.
      * @param pool Address of the pool
-     * @return Pool configuration
+     * @return poolConfig The pool configuration as a `PoolConfig` struct
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
     /**
      * @notice Gets the hooks configuration parameters of a pool.
+     * @dev The `HooksConfig` contains flags indicating which pool hooks are implemented.
      * @param pool Address of the pool
-     * @return Hooks configuration
+     * @return hooksConfig The hooks configuration as a `HooksConfig` struct
      */
     function getHooksConfig(address pool) external view returns (HooksConfig memory);
 
     /**
-     * @notice Gets the current bpt rate of a pool, by dividing the current invariant by the total supply of BPT.
+     * @notice The current rate of a pool token (BPT) = invariant / totalSupply.
      * @param pool Address of the pool
      * @return rate BPT rate
      */
     function getBptRate(address pool) external view returns (uint256 rate);
 
     /*******************************************************************************
-                                    Pool Tokens
+                                 Balancer Pool Tokens
     *******************************************************************************/
 
     /**
-     * @notice Gets total supply of a given ERC20 token.
-     * @param token Token's address
-     * @return Total supply of the token
+     * @notice Gets the total supply of a given ERC20 token.
+     * @param token The token address
+     * @return totalSupply Total supply of the token
      */
     function totalSupply(address token) external view returns (uint256);
 
     /**
-     * @notice Gets balance of an account for a given ERC20 token.
-     * @param token Token's address
-     * @param account Account's address
-     * @return Balance of the account for the token
+     * @notice Gets the balance of an account for a given ERC20 token.
+     * @param token Address of the token
+     * @param account Address of the account
+     * @return balance Balance of the account for the token
      */
     function balanceOf(address token, address account) external view returns (uint256);
 
     /**
-     * @notice Gets allowance of a spender for a given ERC20 token and owner.
-     * @param token Token's address
-     * @param owner Owner's address
-     * @param spender Spender's address
-     * @return Amount of tokens the spender is allowed to spend
+     * @notice Gets the allowance of a spender for a given ERC20 token and owner.
+     * @param token Address of the token
+     * @param owner Address of the owner
+     * @param spender Address of the spender
+     * @return allowance Amount of tokens the spender is allowed to spend
      */
     function allowance(address token, address owner, address spender) external view returns (uint256);
+
+    /**
+     * @notice Approves a spender to spend pool tokens on behalf of sender.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Address of the owner
+     * @param spender Address of the spender
+     * @param amount Amount of tokens to approve
+     * @return success True if successful, false otherwise
+     */
+    function approve(address owner, address spender, uint256 amount) external returns (bool);
 
     /**
      * @notice Transfers pool token from owner to a recipient.
      * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
      * the pool contract, so msg.sender is used as the token address.
      *
-     * @param owner Owner's address
-     * @param to Recipient's address
+     * @param owner Address of the owner
+     * @param to Address of the recipient
      * @param amount Amount of tokens to transfer
-     * @return True if successful, false otherwise
+     * @return success True if successful, false otherwise
      */
     function transfer(address owner, address to, uint256 amount) external returns (bool);
 
@@ -241,33 +295,22 @@ interface IVaultExtension {
      * the pool contract, so msg.sender is used as the token address.
      *
      * @param spender Address allowed to perform the transfer
-     * @param from Sender's address
-     * @param to Recipient's address
+     * @param from Address of the sender
+     * @param to Address of the recipient
      * @param amount Amount of tokens to transfer
-     * @return True if successful, false otherwise
+     * @return success True if successful, false otherwise
      */
     function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
 
-    /**
-     * @notice Approves a spender to spend pool tokens on behalf of sender.
-     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
-     * the pool contract, so msg.sender is used as the token address.
-     *
-     * @param owner Owner's address
-     * @param spender Spender's address
-     * @param amount Amount of tokens to approve
-     * @return True if successful, false otherwise
-     */
-    function approve(address owner, address spender, uint256 amount) external returns (bool);
-
     /*******************************************************************************
-                                    Pool Pausing
+                                     Pool Pausing
     *******************************************************************************/
 
     /**
      * @notice Indicates whether a pool is paused.
+     * @dev If a pool is paused, all non-Recovery Mode state-changing operations will revert.
      * @param pool The pool to be checked
-     * @return True if the pool is paused
+     * @return paused True if the pool is paused
      */
     function isPoolPaused(address pool) external view returns (bool);
 
@@ -285,14 +328,26 @@ interface IVaultExtension {
     function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
-                                   Fees
+                                   ERC4626 Buffers
+    *******************************************************************************/
+
+    /**
+     * @notice Checks if the wrapped token has an initialized buffer in the Vault.
+     * @dev An initialized buffer should have an asset registered in the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return isBufferInitialized True if the ERC4626 buffer is initialized
+     */
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized);
+
+    /*******************************************************************************
+                                          Fees
     *******************************************************************************/
 
     /**
      * @notice Returns the accumulated swap fees (including aggregate fees) in `token` collected by the pool.
      * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
-     * @return The total amount of fees accumulated in the specified token
+     * @return swapFeeAmount The total amount of fees accumulated in the specified token
      */
     function getAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
@@ -300,14 +355,14 @@ interface IVaultExtension {
      * @notice Returns the accumulated yield fees (including aggregate fees) in `token` collected by the pool.
      * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
-     * @return The total amount of fees accumulated in the specified token
+     * @return yieldFeeAmount The total amount of fees accumulated in the specified token
      */
     function getAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.
      * @param pool The address of the pool whose static swap fee percentage is being queried
-     * @return The current static swap fee percentage for the specified pool
+     * @return swapFeePercentage The current static swap fee percentage for the specified pool
      */
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
@@ -319,25 +374,32 @@ interface IVaultExtension {
     function getPoolRoleAccounts(address pool) external view returns (PoolRoleAccounts memory);
 
     /**
-     * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
+     * @notice Query the current dynamic swap fee percentage of a pool, given a set of swap parameters.
+     * @dev Reverts if the hook doesn't return the success flag set to `true`.
      * @param pool The pool
      * @param swapParams The swap parameters used to compute the fee
-     * @return success True if the pool has a dynamic swap fee and it can be successfully computed
-     * @return dynamicSwapFee The dynamic swap fee percentage
+     * @return dynamicSwapFeePercentage The dynamic swap fee percentage
      */
-    function computeDynamicSwapFee(
+    function computeDynamicSwapFeePercentage(
         address pool,
-        IBasePool.PoolSwapParams memory swapParams
-    ) external view returns (bool, uint256);
+        PoolSwapParams memory swapParams
+    ) external view returns (uint256);
+
+    /**
+     * @notice Returns the Protocol Fee Controller address.
+     * @return protocolFeeController Address of the ProtocolFeeController
+     */
+    function getProtocolFeeController() external view returns (IProtocolFeeController);
 
     /*******************************************************************************
-                                    Recovery Mode
+                                     Recovery Mode
     *******************************************************************************/
 
     /**
-     * @notice Checks whether a pool is in recovery mode.
+     * @notice Checks whether a pool is in Recovery Mode.
+     * @dev Recovery Mode enables a safe proportional withdrawal path, with no external calls.
      * @param pool Address of the pool to check
-     * @return True if the pool is initialized, false otherwise
+     * @return recoveryMode True if the pool is in Recovery Mode, false otherwise
      */
     function isPoolInRecoveryMode(address pool) external view returns (bool);
 
@@ -358,16 +420,6 @@ interface IVaultExtension {
     ) external returns (uint256[] memory amountsOut);
 
     /*******************************************************************************
-                                    Buffer Operations
-    *******************************************************************************/
-
-    function calculateBufferAmounts(
-        SwapKind kind,
-        IERC4626 wrappedToken,
-        uint256 amountGiven
-    ) external returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped);
-
-    /*******************************************************************************
                                     Queries
     *******************************************************************************/
 
@@ -385,37 +437,33 @@ interface IVaultExtension {
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function quote(bytes calldata data) external payable returns (bytes memory result);
+    function quote(bytes calldata data) external returns (bytes memory result);
 
     /**
      * @notice Performs a callback on msg.sender with arguments provided in `data`.
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     * Allows querying any operation on the Vault that has the `onlyWhenUnlocked` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withLocker`.
+     * access Vault's functions guarded by `onlyWhenUnlocked`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * This call always reverts, returning the result in the revert reason.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
      */
-    function quoteAndRevert(bytes calldata data) external payable;
+    function quoteAndRevert(bytes calldata data) external;
 
     /**
      * @notice Checks if the queries enabled on the Vault.
-     * @return If true, then queries are disabled
+     * @dev This is a one-way switch. Once queries are disabled, they can never be re-enabled.
+     * The query functions rely on a specific EVM feature to detect static calls. Query operations are exempt from
+     * settlement constraints, so it's critical that no state changes can occur. We retain the ability to disable
+     * queries in the unlikely event that EVM changes violate its assumptions (perhaps on an L2).
+     *
+     * @return queryDisabled If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
-
-    /*******************************************************************************
-                                     Miscellaneous
-    *******************************************************************************/
-
-    /**
-     * @notice Returns the Vault Admin contract address.
-     */
-    function getVaultAdmin() external view returns (address);
 }

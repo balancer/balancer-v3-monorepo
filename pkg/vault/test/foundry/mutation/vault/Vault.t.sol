@@ -4,27 +4,21 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
-import { PoolConfigLib } from "../../../../contracts/lib/PoolConfigLib.sol";
-import { BalancerPoolToken } from "../../../../contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract VaultMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
-    using ScalingHelpers for *;
-    using PoolConfigLib for PoolConfigBits;
 
     struct TestAddLiquidityParams {
         AddLiquidityParams addLiquidityParams;
@@ -72,7 +66,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSettleReentrancy() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualSettleReentrancy(dai);
     }
@@ -83,13 +77,13 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSendToReentrancy() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualSendToReentrancy(dai, address(0), 0);
     }
 
     function testSwapWithLockedVault() public {
-        SwapParams memory params = SwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
+        VaultSwapParams memory params = VaultSwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.swap(params);
@@ -124,7 +118,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSwapReentrancy() public {
-        SwapParams memory params;
+        VaultSwapParams memory params;
         SwapState memory state;
         PoolData memory poolData;
 
@@ -157,8 +151,18 @@ contract VaultMutationTest is BaseVaultTest {
         vault.erc4626BufferWrapOrUnwrap(params);
     }
 
+    function testErc4626BufferWrapOrUnwrapWhenNotInitialized() public {
+        IERC4626 wrappedToken = IERC4626(address(123));
+        vault.forceUnlock();
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
+        BufferWrapOrUnwrapParams memory params;
+        params.wrappedToken = wrappedToken;
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
     function testErc4626BufferWrapOrUnwrapWhenBuffersArePaused() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         vm.prank(admin);
         vault.pauseVaultBuffers();
@@ -169,10 +173,14 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testErc4626BufferWrapOrUnwrapReentrancy() public {
-        vault.manualSetIsUnlocked(true);
+        IERC4626 wrappedToken = IERC4626(address(123));
+        address underlyingToken = address(345); // Anything non-zero
+        vault.forceUnlock();
+        vault.manualSetBufferAsset(wrappedToken, underlyingToken);
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         BufferWrapOrUnwrapParams memory params;
+        params.wrappedToken = wrappedToken;
         vault.manualErc4626BufferWrapOrUnwrapReentrancy(params);
     }
 }
