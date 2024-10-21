@@ -9,6 +9,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -107,14 +108,36 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
+        ICompositeLiquidityRouter.NestedPoolOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](3);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: erc4626Pool,
+            pool: address(waDAI),
+            tokensInAmounts: [exactUnderlyingAmountsIn[waDaiIdx]].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: erc4626Pool,
+            pool: address(waUSDC),
+            tokensInAmounts: [exactUnderlyingAmountsIn[waUsdcIdx]].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+
+        nestedPoolOperations[2] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: address(0),
+            pool: erc4626Pool,
+            tokensInAmounts: [0, uint256(0)].toMemoryArray(),
+            minBptAmountOut: 1,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+
         vm.prank(alice);
-        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
-            erc4626Pool,
-            exactUnderlyingAmountsIn,
-            1,
-            false,
-            bytes("")
-        );
+        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(erc4626Pool, nestedPoolOperations);
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
@@ -151,13 +174,31 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
+        uint256[] memory tokensInAmounts = new uint256[](2);
+        tokensInAmounts[partialUsdcIdx] = exactUnderlyingAmountsIn[partialUsdcIdx];
+        ICompositeLiquidityRouter.NestedPoolOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](2);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: partialErc4626Pool,
+            pool: address(waDAI),
+            tokensInAmounts: [exactUnderlyingAmountsIn[partialWaDaiIdx]].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: address(0),
+            pool: partialErc4626Pool,
+            tokensInAmounts: tokensInAmounts,
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+
         vm.prank(alice);
-        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             partialErc4626Pool,
-            exactUnderlyingAmountsIn,
-            0,
-            false,
-            bytes("")
+            nestedPoolOperations
         );
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
@@ -174,40 +215,42 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityUnbalancedToERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(alice) {
-        uint256 operationAmount = bufferInitialAmount / 2;
-        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
-
-        vm.prank(alice, address(0));
-        compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
-            erc4626Pool,
-            exactUnderlyingAmountsIn,
-            address(this),
-            bytes("")
-        );
-    }
-
     function testQueryAddLiquidityUnbalancedToERC4626Pool() public {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
+        ICompositeLiquidityRouter.NestedPoolOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](2);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: erc4626Pool,
+            pool: address(waDAI),
+            tokensInAmounts: [exactUnderlyingAmountsIn[waDaiIdx]].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: erc4626Pool,
+            pool: address(waUSDC),
+            tokensInAmounts: [exactUnderlyingAmountsIn[waUsdcIdx]].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+
         uint256 snapshotId = vm.snapshot();
         vm.prank(alice, address(0));
-        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedNestedPool(
             erc4626Pool,
-            exactUnderlyingAmountsIn,
-            address(this),
-            bytes("")
+            nestedPoolOperations,
+            address(alice)
         );
         vm.revertTo(snapshotId);
 
         vm.prank(alice);
-        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             erc4626Pool,
-            exactUnderlyingAmountsIn,
-            1,
-            false,
-            bytes("")
+            nestedPoolOperations
         );
 
         assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
@@ -217,23 +260,41 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
+        uint256[] memory tokensInAmounts = new uint256[](2);
+        tokensInAmounts[partialUsdcIdx] = exactUnderlyingAmountsIn[partialUsdcIdx];
+
+        ICompositeLiquidityRouter.NestedPoolOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](2);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: partialErc4626Pool,
+            pool: address(waDAI),
+            tokensInAmounts: [exactUnderlyingAmountsIn[partialWaDaiIdx]].toMemoryArray(),
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+            prevPool: address(0),
+            pool: partialErc4626Pool,
+            tokensInAmounts: tokensInAmounts,
+            minBptAmountOut: 0,
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+
         uint256 snapshotId = vm.snapshot();
         vm.prank(alice, address(0));
-        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+        uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedNestedPool(
             partialErc4626Pool,
-            exactUnderlyingAmountsIn,
-            address(this),
-            bytes("")
+            nestedPoolOperations,
+            address(alice)
         );
         vm.revertTo(snapshotId);
 
         vm.prank(alice);
-        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+        uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             partialErc4626Pool,
-            exactUnderlyingAmountsIn,
-            1,
-            false,
-            bytes("")
+            nestedPoolOperations
         );
 
         assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
