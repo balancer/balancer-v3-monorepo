@@ -25,6 +25,7 @@ import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
 import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
+import { AggRouterMock } from "../../../contracts/test/AggRouterMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
@@ -78,6 +79,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     RateProviderMock internal rateProvider;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
     BasicAuthorizerMock internal authorizer;
+    AggRouterMock internal aggRouter;
 
     // Fee controller deployed with the Vault.
     IProtocolFeeController internal feeController;
@@ -144,6 +146,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
+        aggRouter = new AggRouterMock(IVault(address(vault)), weth, permit2);
+        vm.label(address(aggRouter), "agg router");
         compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
         feeController = vault.getProtocolFeeController();
