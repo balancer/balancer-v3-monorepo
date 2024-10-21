@@ -121,8 +121,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         wethAmount = bound(wethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         wstEthAmount = bound(wstEthAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
 
-        console.log("daiAmount", daiAmount);
-
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
 
         ICompositeLiquidityRouter.NestedPoolOperation[]
@@ -135,10 +133,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             wethIsEth: false,
             userData: new bytes(0)
         });
-        console.log("usdcAmount", usdcAmount);
-        console.log("wethAmount", wethAmount);
-        console.log("wstEthAmount", wstEthAmount);
-        console.log("daiAmount", daiAmount);
+
         nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
             prevPool: parentPool,
             pool: childPoolB,
@@ -176,9 +171,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
         assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
-        console.log(" vars.lpBefore.dai ", vars.lpBefore.dai);
-        console.log(" vars.lpAfter.dai ", vars.lpAfter.dai);
-        console.log("amountsIn[vars.daiIdx]", amountsIn[vars.daiIdx]);
         // Check LP Balances.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai - amountsIn[vars.daiIdx], "LP Dai Balance is wrong");
         assertEq(vars.lpAfter.weth, vars.lpBefore.weth - amountsIn[vars.wethIdx], "LP Weth Balance is wrong");
