@@ -62,7 +62,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         vm.label(address(batchRouter), "batch router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
-        nftRouter = new NftLiquidityPositionExample(IVault(address(vault)), weth, permit2);
+        nftRouter = new NftLiquidityPositionExample(IVault(address(vault)), weth, permit2, "NFT LiquidityPosition v1");
         vm.label(address(nftRouter), "nftRouter");
 
         // Here the Router is also the hook.
