@@ -145,7 +145,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
                 // The preceding swap operation has already credited the original `amountCalculated`. Since we're
                 // returning `amountCalculated - feeToPay` here, it will only register debt for that reduced amount
                 // on settlement. This call to `sendTo` pulls `feeToPay` tokens of `tokenOut` from the Vault to this
-                // contract, and registers the additional debt, so that the total debts match the credits and
+                // contract, and registers the additional debt, so that the total debits match the credits and
                 // settlement succeeds.
                 uint256 feeToPay = _chargeFeeOrPayWinner(params.router, drawnNumber, params.tokenOut, hookFee);
                 if (feeToPay > 0) {
@@ -158,7 +158,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
                 // The preceding swap operation has already registered debt for the original `amountCalculated`.
                 // Since we're returning `amountCalculated + feeToPay` here, it will supply credit for that increased
                 // amount on settlement. This call to `sendTo` pulls `feeToPay` tokens of `tokenIn` from the Vault to
-                // this contract, and registers the additional debt, so that the total debts match the credits and
+                // this contract, and registers the additional debt, so that the total debits match the credits and
                 // settlement succeeds.
 
                 uint256 feeToPay = _chargeFeeOrPayWinner(params.router, drawnNumber, params.tokenIn, hookFee);

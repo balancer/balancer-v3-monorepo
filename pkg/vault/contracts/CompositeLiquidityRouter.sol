@@ -54,7 +54,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory underlyingAmountsIn) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory underlyingAmountsIn) {
         underlyingAmountsIn = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -81,7 +81,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256[] memory minUnderlyingAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory underlyingAmountsOut) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory underlyingAmountsOut) {
         underlyingAmountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -105,8 +105,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
         uint256 exactBptAmountOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory underlyingAmountsIn) {
+    ) external saveSender(sender) returns (uint256[] memory underlyingAmountsIn) {
         underlyingAmountsIn = abi.decode(
             _vault.quote(
                 abi.encodeCall(
@@ -130,8 +131,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory underlyingAmountsOut) {
+    ) external saveSender(sender) returns (uint256[] memory underlyingAmountsOut) {
         underlyingAmountsOut = abi.decode(
             _vault.quote(
                 abi.encodeCall(
@@ -247,7 +249,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     function addLiquidityUnbalancedNestedPool(
         address parentPool,
         NestedPoolOperation[] calldata nestedPoolOperations
-    ) external saveSender returns (uint256) {
+    ) external saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -270,8 +272,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address parentPool,
         address[] memory tokensIn,
         uint256[] memory exactAmountsIn,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256) {
+    ) external saveSender(sender) returns (uint256) {
         return
             abi.decode(
                 _vault.quote(
@@ -421,7 +424,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address[] memory tokensOut,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsOut) {
+    ) external saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         (amountsOut) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
@@ -447,8 +450,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address parentPool,
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
+        address sender,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsOut) {
+    ) external saveSender(sender) returns (uint256[] memory amountsOut) {
         (amountsOut) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(

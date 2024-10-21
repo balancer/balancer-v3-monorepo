@@ -86,7 +86,7 @@ contract BatchRouterCommon is RouterCommon {
                                     Settlement
     *******************************************************************************/
 
-    /// @notice Settles batch and composite liquidity operations, after debts and credits are computed.
+    /// @notice Settles batch and composite liquidity operations, after credits and debits are computed.
     function _settlePaths(address sender, bool wethIsEth) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
