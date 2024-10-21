@@ -36,6 +36,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
+    // solhint-disable var-name-mixedcase
     bytes32 private immutable _INDEX_BY_POOL_MAPPING_SLOT = _calculateBatchRouterStorageSlot("indexByPoolMapping");
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
