@@ -41,13 +41,13 @@ contract PriceImpact is ReentrancyGuard {
         uint256[] memory exactAmountsIn
     ) external returns (uint256 priceImpact) {
         // query addLiquidityUnbalanced
-        uint256 bptAmountOut = _queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, "");
+        uint256 bptAmountOut = queryAddLiquidityUnbalanced(pool, exactAmountsIn, 0, bytes(""));
         // query removeLiquidityProportional
-        uint256[] memory proportionalAmountsOut = _queryRemoveLiquidityProportional(
+        uint256[] memory proportionalAmountsOut = queryRemoveLiquidityProportional(
             pool,
             bptAmountOut,
             new uint256[](exactAmountsIn.length),
-            ""
+            bytes("")
         );
         // get deltas between exactAmountsIn and proportionalAmountsOut
         int256[] memory deltas = new int256[](exactAmountsIn.length);
@@ -60,11 +60,11 @@ contract PriceImpact is ReentrancyGuard {
             deltaBPTs[i] = _queryAddLiquidityForTokenDelta(pool, i, deltas);
         }
         // zero out deltas leaving only a remaining delta within a single token
-        uint256 remaininDeltaIndex = _zeroOutDeltas(pool, deltas, deltaBPTs);
+        uint256 remainingDeltaIndex = _zeroOutDeltas(pool, deltas, deltaBPTs);
         // calculate price impact ABA with remaining delta and its respective exactAmountIn
         // remaining delta is always negative, so by multiplying by -1 we get a positive number
-        uint256 delta = uint(deltas[remaininDeltaIndex] * -1);
-        return delta.divDown(exactAmountsIn[remaininDeltaIndex]) / 2;
+        uint256 delta = uint(deltas[remainingDeltaIndex] * -1);
+        return delta.divDown(exactAmountsIn[remainingDeltaIndex]) / 2;
     }
 
     /*******************************************************************************
@@ -81,10 +81,10 @@ contract PriceImpact is ReentrancyGuard {
             return 0;
         } else if (deltas[tokenIndex] > 0) {
             zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex]);
-            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, ""));
+            return int(queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, bytes("")));
         } else {
             zerosWithSingleDelta[tokenIndex] = uint(deltas[tokenIndex] * -1);
-            return int(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, "")) * -1;
+            return int(queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, 0, bytes(""))) * -1;
         }
     }
 
@@ -108,22 +108,22 @@ contract PriceImpact is ReentrancyGuard {
             if (deltaBPTs[minPositiveDeltaIndex] < deltaBPTs[minNegativeDeltaIndex] * -1) {
                 givenTokenIndex = minPositiveDeltaIndex;
                 resultTokenIndex = minNegativeDeltaIndex;
-                resultAmount = _querySwapSingleTokenExactIn(
+                resultAmount = querySwapSingleTokenExactIn(
                     pool,
                     poolTokens[givenTokenIndex],
                     poolTokens[resultTokenIndex],
                     uint(deltas[givenTokenIndex]),
-                    ""
+                    bytes("")
                 );
             } else {
                 givenTokenIndex = minNegativeDeltaIndex;
                 resultTokenIndex = minPositiveDeltaIndex;
-                resultAmount = _querySwapSingleTokenExactOut(
+                resultAmount = querySwapSingleTokenExactOut(
                     pool,
                     poolTokens[resultTokenIndex],
                     poolTokens[givenTokenIndex],
                     uint(deltas[givenTokenIndex] * -1),
-                    ""
+                    bytes("")
                 );
             }
 
@@ -194,42 +194,29 @@ contract PriceImpact is ReentrancyGuard {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountIn,
-        bytes calldata userData
-    ) external returns (uint256 amountCalculated) {
-        return _querySwapSingleTokenExactIn(pool, tokenIn, tokenOut, exactAmountIn, userData);
-    }
-
-    function _querySwapSingleTokenExactIn(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
         bytes memory userData
-    ) internal returns (uint256 amountCalculated) {
-        try
-            _vault.quoteAndRevert(
-                abi.encodeWithSelector(
-                    PriceImpact.querySwapHook.selector,
-                    IRouter.SwapSingleTokenHookParams({
-                        sender: msg.sender,
-                        kind: SwapKind.EXACT_IN,
-                        pool: pool,
-                        tokenIn: tokenIn,
-                        tokenOut: tokenOut,
-                        amountGiven: exactAmountIn,
-                        limit: 0,
-                        deadline: type(uint256).max,
-                        wethIsEth: false,
-                        userData: userData
-                    })
-                )
-            )
-        {
-            revert("Unexpected success");
-        } catch (bytes memory result) {
-            amountCalculated = abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
-            return amountCalculated;
-        }
+    ) public returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        PriceImpact.querySwapHook.selector,
+                        IRouter.SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_IN,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountIn,
+                            limit: 0,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     function querySwapSingleTokenExactOut(
@@ -237,42 +224,29 @@ contract PriceImpact is ReentrancyGuard {
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
-        bytes calldata userData
-    ) external returns (uint256 amountCalculated) {
-        return _querySwapSingleTokenExactOut(pool, tokenIn, tokenOut, exactAmountOut, userData);
-    }
-
-    function _querySwapSingleTokenExactOut(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
         bytes memory userData
-    ) internal returns (uint256 amountCalculated) {
-        try
-            _vault.quoteAndRevert(
-                abi.encodeWithSelector(
-                    PriceImpact.querySwapHook.selector,
-                    IRouter.SwapSingleTokenHookParams({
-                        sender: msg.sender,
-                        kind: SwapKind.EXACT_OUT,
-                        pool: pool,
-                        tokenIn: tokenIn,
-                        tokenOut: tokenOut,
-                        amountGiven: exactAmountOut,
-                        limit: type(uint256).max,
-                        deadline: type(uint256).max,
-                        wethIsEth: false,
-                        userData: userData
-                    })
-                )
-            )
-        {
-            revert("Unexpected success");
-        } catch (bytes memory result) {
-            amountCalculated = abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
-            return amountCalculated;
-        }
+    ) public returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        PriceImpact.querySwapHook.selector,
+                        IRouter.SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: type(uint256).max,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     /**
@@ -294,39 +268,27 @@ contract PriceImpact is ReentrancyGuard {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external returns (uint256 bptAmountOut) {
-        return _queryAddLiquidityUnbalanced(pool, exactAmountsIn, minBptAmountOut, userData);
-    }
-
-    function _queryAddLiquidityUnbalanced(
-        address pool,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
-        bytes memory userData
-    ) internal returns (uint256 bptAmountOut) {
-        try
-            _vault.quoteAndRevert(
-                abi.encodeWithSelector(
-                    PriceImpact.queryAddLiquidityHook.selector,
-                    IRouterCommon.AddLiquidityHookParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
-                        sender: address(this),
-                        pool: pool,
-                        maxAmountsIn: exactAmountsIn,
-                        minBptAmountOut: minBptAmountOut,
-                        kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: false,
-                        userData: userData
-                    })
-                )
-            )
-        {
-            revert("Unexpected success");
-        } catch (bytes memory result) {
-            (, bptAmountOut, ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256[], uint256, bytes));
-            return bptAmountOut;
-        }
+    ) public returns (uint256 bptAmountOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        PriceImpact.queryAddLiquidityHook.selector,
+                        IRouterCommon.AddLiquidityHookParams({
+                            // we use router as a sender to simplify basic query functions
+                            // but it is possible to add liquidity to any recipient
+                            sender: address(this),
+                            pool: pool,
+                            maxAmountsIn: exactAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            kind: AddLiquidityKind.UNBALANCED,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     /**
@@ -363,39 +325,27 @@ contract PriceImpact is ReentrancyGuard {
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut) {
-        return _queryRemoveLiquidityProportional(pool, exactBptAmountIn, minAmountsOut, userData);
-    }
-
-    function _queryRemoveLiquidityProportional(
-        address pool,
-        uint256 exactBptAmountIn,
-        uint256[] memory minAmountsOut,
-        bytes memory userData
-    ) internal returns (uint256[] memory amountsOut) {
-        try
-            _vault.quoteAndRevert(
-                abi.encodeWithSelector(
-                    PriceImpact.queryRemoveLiquidityHook.selector,
-                    IRouterCommon.RemoveLiquidityHookParams({
-                        // We use router as a sender to simplify basic query functions
-                        // but it is possible to remove liquidity from any sender
-                        sender: address(this),
-                        pool: pool,
-                        minAmountsOut: minAmountsOut,
-                        maxBptAmountIn: exactBptAmountIn,
-                        kind: RemoveLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
-                        userData: userData
-                    })
-                )
-            )
-        {
-            revert("Unexpected success");
-        } catch (bytes memory result) {
-            (, amountsOut, ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256, uint256[], bytes));
-            return amountsOut;
-        }
+    ) public returns (uint256[] memory amountsOut) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        PriceImpact.queryRemoveLiquidityHook.selector,
+                        IRouterCommon.RemoveLiquidityHookParams({
+                            // We use router as a sender to simplify basic query functions
+                            // but it is possible to remove liquidity from any sender
+                            sender: address(this),
+                            pool: pool,
+                            minAmountsOut: minAmountsOut,
+                            maxBptAmountIn: exactBptAmountIn,
+                            kind: RemoveLiquidityKind.PROPORTIONAL,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256[])
+            );
     }
 
     /**
