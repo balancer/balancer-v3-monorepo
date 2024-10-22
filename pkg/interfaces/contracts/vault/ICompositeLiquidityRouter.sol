@@ -22,7 +22,7 @@ interface ICompositeLiquidityRouter {
     /// @notice `tokensOut` array does not have all the tokens from `expectedTokensOut`.
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
 
-    struct NestedPoolOperation {
+    struct NestedPoolAddOperation {
         address prevPool;
         address pool;
         uint256[] tokensInAmounts;
@@ -34,8 +34,29 @@ interface ICompositeLiquidityRouter {
     struct AddLiquidityNestedPoolHookParams {
         address sender;
         address pool;
-        AddLiquidityKind kind;
-        NestedPoolOperation[] nestedPoolOperations;
+        NestedPoolAddOperation[] nestedPoolOperations;
+    }
+
+    struct NestedPoolRemoveOperation {
+        address prevPool;
+        address pool;
+        uint256[] minAmountsOut;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    struct RemoveLiquidityNestedPoolHookParams {
+        address sender;
+        address pool;
+        uint256 targetPoolExactBptAmountIn;
+        uint256 expectedAmountOutCount;
+        NestedPoolRemoveOperation[] nestedPoolOperations;
+    }
+
+    struct RemoveAmountOut {
+        address pool;
+        IERC20 token;
+        uint256 amountOut;
     }
 
     /***************************************************************************
@@ -125,7 +146,7 @@ interface ICompositeLiquidityRouter {
      */
     function addLiquidityUnbalancedNestedPool(
         address mainPool,
-        NestedPoolOperation[] calldata nestedPoolOperations
+        NestedPoolAddOperation[] calldata nestedPoolOperations
     ) external returns (uint256);
 
     /**
@@ -133,32 +154,19 @@ interface ICompositeLiquidityRouter {
      */
     function queryAddLiquidityUnbalancedNestedPool(
         address mainPool,
-        NestedPoolOperation[] calldata nestedPoolOperations,
+        NestedPoolAddOperation[] calldata nestedPoolOperations,
         address sender
     ) external returns (uint256 bptAmountOut);
 
     /**
-     * @notice Removes liquidity of a nested pool.
-     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
-     * the token out amounts.
-     *
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
-     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
-     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
-     * @param minAmountsOut Minimum amounts of each outgoing underlying token, sorted according to tokensIn array
-     * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
+     TODO: Add documentation
      */
     function removeLiquidityProportionalNestedPool(
-        address parentPool,
-        uint256 exactBptAmountIn,
-        address[] memory tokensOut,
-        uint256[] memory minAmountsOut,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+        address mainPool,
+        uint256 targetPoolExactBptAmountIn,
+        uint256 expectedAmountOutCount,
+        NestedPoolRemoveOperation[] calldata nestedPoolOperations
+    ) external returns (RemoveAmountOut[] memory totalAmountsOut);
 
     /**
      * @notice Queries an `removeLiquidityProportionalNestedPool` operation without actually executing it.

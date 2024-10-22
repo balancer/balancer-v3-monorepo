@@ -108,9 +108,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        ICompositeLiquidityRouter.NestedPoolOperation[]
-            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](3);
-        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+        ICompositeLiquidityRouter.NestedPoolAddOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolAddOperation[](3);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: erc4626Pool,
             pool: address(waDAI),
             tokensInAmounts: [exactUnderlyingAmountsIn[waDaiIdx]].toMemoryArray(),
@@ -118,7 +118,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             wethIsEth: false,
             userData: new bytes(0)
         });
-        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: erc4626Pool,
             pool: address(waUSDC),
             tokensInAmounts: [exactUnderlyingAmountsIn[waUsdcIdx]].toMemoryArray(),
@@ -127,7 +127,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             userData: new bytes(0)
         });
 
-        nestedPoolOperations[2] = ICompositeLiquidityRouter.NestedPoolOperation({
+        nestedPoolOperations[2] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: address(0),
             pool: erc4626Pool,
             tokensInAmounts: [0, uint256(0)].toMemoryArray(),
@@ -176,9 +176,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory tokensInAmounts = new uint256[](2);
         tokensInAmounts[partialUsdcIdx] = exactUnderlyingAmountsIn[partialUsdcIdx];
-        ICompositeLiquidityRouter.NestedPoolOperation[]
-            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](2);
-        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+        ICompositeLiquidityRouter.NestedPoolAddOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolAddOperation[](2);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: partialErc4626Pool,
             pool: address(waDAI),
             tokensInAmounts: [exactUnderlyingAmountsIn[partialWaDaiIdx]].toMemoryArray(),
@@ -186,7 +186,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             wethIsEth: false,
             userData: new bytes(0)
         });
-        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: address(0),
             pool: partialErc4626Pool,
             tokensInAmounts: tokensInAmounts,
@@ -219,9 +219,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        ICompositeLiquidityRouter.NestedPoolOperation[]
-            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](2);
-        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+        ICompositeLiquidityRouter.NestedPoolAddOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolAddOperation[](2);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: erc4626Pool,
             pool: address(waDAI),
             tokensInAmounts: [exactUnderlyingAmountsIn[waDaiIdx]].toMemoryArray(),
@@ -229,7 +229,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             wethIsEth: false,
             userData: new bytes(0)
         });
-        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: erc4626Pool,
             pool: address(waUSDC),
             tokensInAmounts: [exactUnderlyingAmountsIn[waUsdcIdx]].toMemoryArray(),
@@ -263,9 +263,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory tokensInAmounts = new uint256[](2);
         tokensInAmounts[partialUsdcIdx] = exactUnderlyingAmountsIn[partialUsdcIdx];
 
-        ICompositeLiquidityRouter.NestedPoolOperation[]
-            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolOperation[](2);
-        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolOperation({
+        ICompositeLiquidityRouter.NestedPoolAddOperation[]
+            memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolAddOperation[](2);
+        nestedPoolOperations[0] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: partialErc4626Pool,
             pool: address(waDAI),
             tokensInAmounts: [exactUnderlyingAmountsIn[partialWaDaiIdx]].toMemoryArray(),
@@ -273,7 +273,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             wethIsEth: false,
             userData: new bytes(0)
         });
-        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolOperation({
+        nestedPoolOperations[1] = ICompositeLiquidityRouter.NestedPoolAddOperation({
             prevPool: address(0),
             pool: partialErc4626Pool,
             tokensInAmounts: tokensInAmounts,
