@@ -13,6 +13,7 @@ import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -772,8 +773,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256[] memory amountsIn) {
-        (amountsIn, , ) = abi.decode(
-            _vault.quote(
+        try
+            _vault.quoteAndRevert(
                 abi.encodeCall(
                     Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
@@ -788,9 +789,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         userData: userData
                     })
                 )
-            ),
-            (uint256[], uint256, bytes)
-        );
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (amountsIn, , ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256[], uint256, bytes));
+        }
     }
 
     /// @inheritdoc IRouter
@@ -800,8 +804,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256 bptAmountOut) {
-        (, bptAmountOut, ) = abi.decode(
-            _vault.quote(
+        try
+            _vault.quoteAndRevert(
                 abi.encodeCall(
                     Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
@@ -816,9 +820,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         userData: userData
                     })
                 )
-            ),
-            (uint256[], uint256, bytes)
-        );
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (, bptAmountOut, ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256[], uint256, bytes));
+        }
     }
 
     /// @inheritdoc IRouter
@@ -835,8 +842,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             _MAX_AMOUNT
         );
 
-        (uint256[] memory amountsIn, , ) = abi.decode(
-            _vault.quote(
+        try
+            _vault.quoteAndRevert(
                 abi.encodeCall(
                     Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
@@ -851,11 +858,16 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         userData: userData
                     })
                 )
-            ),
-            (uint256[], uint256, bytes)
-        );
-
-        return amountsIn[tokenIndex];
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (uint256[] memory amountsIn, , ) = abi.decode(
+                RevertCodec.catchEncodedResult(result),
+                (uint256[], uint256, bytes)
+            );
+            return amountsIn[tokenIndex];
+        }
     }
 
     /// @inheritdoc IRouter
@@ -866,26 +878,28 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(
-                        Router.queryAddLiquidityHook,
-                        AddLiquidityHookParams({
-                            // We use the Router as a sender to simplify basic query functions,
-                            // but it is possible to add liquidity to any recipient.
-                            sender: address(this),
-                            pool: pool,
-                            maxAmountsIn: maxAmountsIn,
-                            minBptAmountOut: minBptAmountOut,
-                            kind: AddLiquidityKind.CUSTOM,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256[], uint256, bytes)
-            );
+        try
+            _vault.quoteAndRevert(
+                abi.encodeCall(
+                    Router.queryAddLiquidityHook,
+                    AddLiquidityHookParams({
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to add liquidity to any recipient.
+                        sender: address(this),
+                        pool: pool,
+                        maxAmountsIn: maxAmountsIn,
+                        minBptAmountOut: minBptAmountOut,
+                        kind: AddLiquidityKind.CUSTOM,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256[], uint256, bytes));
+        }
     }
 
     /**
@@ -919,8 +933,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external saveSender(sender) returns (uint256[] memory amountsOut) {
         uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
-        (, amountsOut, ) = abi.decode(
-            _vault.quote(
+
+        try
+            _vault.quoteAndRevert(
                 abi.encodeCall(
                     Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
@@ -935,9 +950,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         userData: userData
                     })
                 )
-            ),
-            (uint256, uint256[], bytes)
-        );
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (, amountsOut, ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256, uint256[], bytes));
+        }
     }
 
     /// @inheritdoc IRouter
@@ -951,8 +969,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // We cannot use 0 as min amount out, as this value is used to figure out the token index.
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, 1);
 
-        (, uint256[] memory amountsOut, ) = abi.decode(
-            _vault.quote(
+        try
+            _vault.quoteAndRevert(
                 abi.encodeCall(
                     Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
@@ -967,11 +985,16 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         userData: userData
                     })
                 )
-            ),
-            (uint256, uint256[], bytes)
-        );
-
-        return amountsOut[tokenIndex];
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (, uint256[] memory amountsOut, ) = abi.decode(
+                RevertCodec.catchEncodedResult(result),
+                (uint256, uint256[], bytes)
+            );
+            return amountsOut[tokenIndex];
+        }
     }
 
     /// @inheritdoc IRouter
@@ -984,8 +1007,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external saveSender(sender) returns (uint256 bptAmountIn) {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
-        (bptAmountIn, , ) = abi.decode(
-            _vault.quote(
+        try
+            _vault.quoteAndRevert(
                 abi.encodeCall(
                     Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
@@ -1000,11 +1023,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         userData: userData
                     })
                 )
-            ),
-            (uint256, uint256[], bytes)
-        );
-
-        return bptAmountIn;
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            (bptAmountIn, , ) = abi.decode(RevertCodec.catchEncodedResult(result), (uint256, uint256[], bytes));
+        }
     }
 
     /// @inheritdoc IRouter
@@ -1015,26 +1039,28 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(
-                        Router.queryRemoveLiquidityHook,
-                        RemoveLiquidityHookParams({
-                            // We use the Router as a sender to simplify basic query functions,
-                            // but it is possible to remove liquidity from any sender.
-                            sender: address(this),
-                            pool: pool,
-                            minAmountsOut: minAmountsOut,
-                            maxBptAmountIn: maxBptAmountIn,
-                            kind: RemoveLiquidityKind.CUSTOM,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256, uint256[], bytes)
-            );
+        try
+            _vault.quoteAndRevert(
+                abi.encodeCall(
+                    Router.queryRemoveLiquidityHook,
+                    RemoveLiquidityHookParams({
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to remove liquidity from any sender.
+                        sender: address(this),
+                        pool: pool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: maxBptAmountIn,
+                        kind: RemoveLiquidityKind.CUSTOM,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256, uint256[], bytes));
+        }
     }
 
     /// @inheritdoc IRouter
@@ -1042,13 +1068,15 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(Router.queryRemoveLiquidityRecoveryHook, (pool, address(this), exactBptAmountIn))
-                ),
-                (uint256[])
-            );
+        try
+            _vault.quoteAndRevert(
+                abi.encodeCall(Router.queryRemoveLiquidityRecoveryHook, (pool, address(this), exactBptAmountIn))
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256[]));
+        }
     }
 
     /**
@@ -1100,27 +1128,29 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(
-                        Router.querySwapHook,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountIn,
-                            limit: 0,
-                            deadline: _MAX_AMOUNT,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
+        try
+            _vault.quoteAndRevert(
+                abi.encodeCall(
+                    Router.querySwapHook,
+                    SwapSingleTokenHookParams({
+                        sender: msg.sender,
+                        kind: SwapKind.EXACT_IN,
+                        pool: pool,
+                        tokenIn: tokenIn,
+                        tokenOut: tokenOut,
+                        amountGiven: exactAmountIn,
+                        limit: 0,
+                        deadline: _MAX_AMOUNT,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     /// @inheritdoc IRouter
@@ -1132,27 +1162,29 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(
-                        Router.querySwapHook,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_OUT,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountOut,
-                            limit: _MAX_AMOUNT,
-                            deadline: type(uint256).max,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
+        try
+            _vault.quoteAndRevert(
+                abi.encodeCall(
+                    Router.querySwapHook,
+                    SwapSingleTokenHookParams({
+                        sender: msg.sender,
+                        kind: SwapKind.EXACT_OUT,
+                        pool: pool,
+                        tokenIn: tokenIn,
+                        tokenOut: tokenOut,
+                        amountGiven: exactAmountOut,
+                        limit: _MAX_AMOUNT,
+                        deadline: type(uint256).max,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            )
+        {
+            revert("Unexpected success");
+        } catch (bytes memory result) {
+            return abi.decode(RevertCodec.catchEncodedResult(result), (uint256));
+        }
     }
 
     /**
