@@ -72,6 +72,10 @@ contract PriceImpactTest is BaseVaultTest {
                 ZERO_BYTES32
             )
         );
+
+        // Reset fee to 0.
+        vault.manualSetAggregateSwapFeePercentage(address(weightedPool), 0);
+
         return address(weightedPool);
     }
 
@@ -93,7 +97,7 @@ contract PriceImpactTest is BaseVaultTest {
         vm.startPrank(address(0), address(0));
 
         // calculate spotPrice
-        uint256 infinitesimalAmountIn = 1e5;
+        uint256 infinitesimalAmountIn = 1e18;
         uint256 infinitesimalBptOut = priceImpactHelper.queryAddLiquidityUnbalanced(
             pool,
             [infinitesimalAmountIn, 0].toMemoryArray(),
