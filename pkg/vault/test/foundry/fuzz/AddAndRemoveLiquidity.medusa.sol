@@ -61,7 +61,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
-        // deposit tokenAmt to mint exactly bptMintAmt
+        // deposit tokenAmountIn to mint exactly exactBptAmountOut
         medusa.prank(lp);
         uint256 tokenAmountIn = router.addLiquiditySingleTokenExactOut(
             address(pool),
