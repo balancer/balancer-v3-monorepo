@@ -777,9 +777,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeCall(
                     Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
-                        // We use the Router as a sender to simplify basic query functions,
-                        // but it is possible to add liquidity to any recipient.
-                        sender: address(this),
+                        sender: sender,
                         pool: pool,
                         maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
@@ -805,9 +803,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeCall(
                     Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
-                        // We use the Router as a sender to simplify basic query functions,
-                        // but it is possible to add liquidity to any recipient.
-                        sender: address(this),
+                        sender: sender,
                         pool: pool,
                         maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: 0,
@@ -840,9 +836,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeCall(
                     Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
-                        // We use the Router as a sender to simplify basic query functions,
-                        // but it is possible to add liquidity to any recipient.
-                        sender: address(this),
+                        sender: sender,
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
@@ -872,9 +866,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeCall(
                         Router.queryAddLiquidityHook,
                         AddLiquidityHookParams({
-                            // We use the Router as a sender to simplify basic query functions,
-                            // but it is possible to add liquidity to any recipient.
-                            sender: address(this),
+                            sender: sender,
                             pool: pool,
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
@@ -924,9 +916,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeCall(
                     Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
-                        // We use the Router as a sender to simplify basic query functions,
-                        // but it is possible to remove liquidity from any sender.
-                        sender: address(this),
+                        sender: sender,
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
@@ -956,9 +946,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeCall(
                     Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
-                        // We use the Router as a sender to simplify basic query functions,
-                        // but it is possible to remove liquidity from any sender.
-                        sender: address(this),
+                        sender: sender,
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
@@ -989,9 +977,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeCall(
                     Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
-                        // We use the Router as a sender to simplify basic query functions,
-                        // but it is possible to remove liquidity from any sender.
-                        sender: address(this),
+                        sender: sender,
                         pool: pool,
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: _MAX_AMOUNT,
@@ -1021,9 +1007,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeCall(
                         Router.queryRemoveLiquidityHook,
                         RemoveLiquidityHookParams({
-                            // We use the Router as a sender to simplify basic query functions,
-                            // but it is possible to remove liquidity from any sender.
-                            sender: address(this),
+                            sender: sender,
                             pool: pool,
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
@@ -1106,7 +1090,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeCall(
                         Router.querySwapHook,
                         SwapSingleTokenHookParams({
-                            sender: msg.sender,
+                            sender: sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
                             tokenIn: tokenIn,
@@ -1138,7 +1122,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeCall(
                         Router.querySwapHook,
                         SwapSingleTokenHookParams({
-                            sender: msg.sender,
+                            sender: sender,
                             kind: SwapKind.EXACT_OUT,
                             pool: pool,
                             tokenIn: tokenIn,

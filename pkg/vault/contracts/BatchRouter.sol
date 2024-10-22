@@ -618,7 +618,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                     abi.encodeCall(
                         BatchRouter.querySwapExactInHook,
                         SwapExactInHookParams({
-                            sender: address(this),
+                            sender: sender,
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
@@ -650,7 +650,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                     abi.encodeCall(
                         BatchRouter.querySwapExactOutHook,
                         SwapExactOutHookParams({
-                            sender: address(this),
+                            sender: sender,
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
