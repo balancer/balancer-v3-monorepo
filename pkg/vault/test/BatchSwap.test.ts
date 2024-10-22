@@ -9,7 +9,7 @@ import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { BatchRouter, Router, PoolFactoryMock, Vault } from '../typechain-types';
+import { BatchRouter, RouterExtension, Router, PoolFactoryMock, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
@@ -28,7 +28,7 @@ describe('BatchSwap', function () {
   let poolAB: PoolMock, poolAC: PoolMock, poolBC: PoolMock;
   let pools: PoolMock[];
   let tokens: ERC20TokenList;
-  let router: BatchRouter, basicRouter: Router;
+  let router: BatchRouter, routerExtension: RouterExtension, basicRouter: Router;
 
   let lp: SignerWithAddress, sender: SignerWithAddress, zero: VoidSigner;
 
@@ -48,7 +48,8 @@ describe('BatchSwap', function () {
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
     router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2] });
-    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
+    routerExtension = await deploy('RouterExtension', { args: [vaultAddress, WETH, permit2] });
+    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2, routerExtension] });
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 

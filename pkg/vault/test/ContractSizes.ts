@@ -9,6 +9,7 @@ describe('ContractSizes', function () {
       'VaultExtension',
       'VaultAdmin',
       'Router',
+      'RouterExtension',
       'BatchRouter',
       'CompositeLiquidityRouter',
     ]) {

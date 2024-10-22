@@ -705,15 +705,6 @@ contract Router is IRouterMain, RouterCommon, ReentrancyGuardTransient, Proxy {
 
     /**
      * @inheritdoc Proxy
-     * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the VaultExtension does when handling the request.
-     */
-    fallback() external payable override {
-        _fallback();
-    }
-
-    /**
-     * @inheritdoc Proxy
      * @dev Returns the RouterExtension contract, to which fallback requests are forwarded.
      */
     function _implementation() internal view override returns (address) {

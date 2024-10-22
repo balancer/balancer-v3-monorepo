@@ -5,6 +5,7 @@ import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
+import { RouterExtension } from '@balancer-labs/v3-vault/typechain-types/contracts/RouterExtension';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
@@ -64,6 +65,7 @@ export class Benchmark {
     let permit2: IPermit2;
     let feeCollector: ProtocolFeeController;
     let router: Router;
+    let routerExtension: RouterExtension;
     let batchRouter: BatchRouter;
     let alice: SignerWithAddress;
     let admin: SignerWithAddress;
@@ -89,7 +91,8 @@ export class Benchmark {
       )) as unknown as ProtocolFeeController;
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       permit2 = await deployPermit2();
-      router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, permit2] });
+      routerExtension = await deploy('v3-vault/RouterExtension', { args: [this.vault, this.WETH, permit2] });
+      router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, permit2, routerExtension] });
       batchRouter = await deploy('v3-vault/BatchRouter', { args: [this.vault, this.WETH, permit2] });
       this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
       this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });

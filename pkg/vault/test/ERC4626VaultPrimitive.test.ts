@@ -10,6 +10,7 @@ import {
   PoolMock,
   PoolFactoryMock,
   Router,
+  RouterExtension,
 } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { currentTimestamp, MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -42,6 +43,7 @@ describe('ERC4626VaultPrimitive', function () {
   let permit2: IPermit2;
   let vault: IVaultMock;
   let router: Router;
+  let routerExtension: RouterExtension;
   let batchRouter: BatchRouter;
   let factory: PoolFactoryMock;
   let pool: PoolMock;
@@ -67,7 +69,8 @@ describe('ERC4626VaultPrimitive', function () {
     permit2 = await deployPermit2();
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     batchRouter = await deploy('v3-vault/BatchRouter', { args: [vault, await WETH.getAddress(), permit2] });
-    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2] });
+    routerExtension = await deploy('v3-vault/RouterExtension', { args: [vault, await WETH.getAddress(), permit2] });
+    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2, routerExtension] });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'DAI', 18] });
     wDAI = await deploy('v3-solidity-utils/ERC4626TestToken', {
