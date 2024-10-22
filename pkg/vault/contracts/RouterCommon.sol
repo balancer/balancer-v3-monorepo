@@ -8,7 +8,9 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { VaultSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -306,6 +308,28 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         for (uint256 i = 0; i < numTokens; ++i) {
             maxLimits[i] = _MAX_AMOUNT;
         }
+    }
+
+    function _swapHook(
+        SwapSingleTokenHookParams calldata params
+    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert SwapDeadline();
+        }
+
+        (amountCalculated, amountIn, amountOut) = _vault.swap(
+            VaultSwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                amountGivenRaw: params.amountGiven,
+                limitRaw: params.limit,
+                userData: params.userData
+            })
+        );
     }
 
     /**

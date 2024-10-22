@@ -2,8 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
-import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
+import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
 /// @notice Interface for functions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
@@ -43,6 +45,32 @@ interface IRouterCommon {
         uint256[] minAmountsOut;
         uint256 maxBptAmountIn;
         RemoveLiquidityKind kind;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    /**
+     * @notice Data for the swap hook.
+     * @param sender Account initiating the swap operation
+     * @param kind Type of swap (exact in or exact out)
+     * @param pool Address of the liquidity pool
+     * @param tokenIn Token to be swapped from
+     * @param tokenOut Token to be swapped to
+     * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for exact in)
+     * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for exact out)
+     * @param deadline Deadline for the swap, after which it will revert
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param userData Additional (optional) data sent with the swap request
+     */
+    struct SwapSingleTokenHookParams {
+        address sender;
+        SwapKind kind;
+        address pool;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        uint256 amountGiven;
+        uint256 limit;
+        uint256 deadline;
         bool wethIsEth;
         bytes userData;
     }

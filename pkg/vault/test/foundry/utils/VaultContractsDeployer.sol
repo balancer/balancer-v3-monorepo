@@ -34,6 +34,7 @@ import { PoolMockFlexibleInvariantRatio } from "../../../contracts/test/PoolMock
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { RouterCommonMock } from "../../../contracts/test/RouterCommonMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
+import { RouterExtension } from "../../../contracts/RouterExtension.sol";
 
 /**
  * @dev This contract contains functions for deploying mocks and contracts related to the "Vault". These functions should have support for reusing artifacts from the hardhat compilation.
@@ -262,13 +263,25 @@ contract VaultContractsDeployer is BaseContractsDeployer {
     }
 
     function deployRouterMock(IVault vault, IWETH weth, IPermit2 permit2) internal returns (RouterMock) {
+        RouterExtension routerExtension;
+
         if (reusingArtifacts) {
+            routerExtension = RouterExtension(
+                payable(deployCode(_computeVaultTestPath(type(RouterExtension).name), abi.encode(vault, weth, permit2)))
+            );
+
             return
                 RouterMock(
-                    payable(deployCode(_computeVaultTestPath(type(RouterMock).name), abi.encode(vault, weth, permit2)))
+                    payable(
+                        deployCode(
+                            _computeVaultTestPath(type(RouterMock).name),
+                            abi.encode(vault, weth, permit2, routerExtension)
+                        )
+                    )
                 );
         } else {
-            return new RouterMock(vault, weth, permit2);
+            routerExtension = new RouterExtension(vault, weth, permit2);
+            return new RouterMock(vault, weth, permit2, routerExtension);
         }
     }
 
