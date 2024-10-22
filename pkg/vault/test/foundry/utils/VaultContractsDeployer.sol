@@ -267,7 +267,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
         if (reusingArtifacts) {
             routerExtension = RouterExtension(
-                payable(deployCode(_computeVaultTestPath(type(RouterExtension).name), abi.encode(vault, weth, permit2)))
+                payable(deployCode(_computeVaultPath(type(RouterExtension).name), abi.encode(vault, weth, permit2)))
             );
 
             return

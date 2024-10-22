@@ -158,7 +158,7 @@ contract RouterTest is BaseVaultTest {
     function testQuerySwap() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
+        routerExtension.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
     }
 
     function testDisableQueries() public {
@@ -180,7 +180,7 @@ contract RouterTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.QueriesDisabled.selector);
 
         _prankStaticCall();
-        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
+        routerExtension.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
     }
 
     function testInitializeBelowMinimum() public {

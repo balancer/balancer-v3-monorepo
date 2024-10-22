@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IRouterExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterExtension.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
@@ -73,6 +74,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IVaultExtension internal vaultExtension;
     IVaultAdmin internal vaultAdmin;
     RouterMock internal router;
+    IRouterExtension internal routerExtension;
     BatchRouterMock internal batchRouter;
     PoolFactoryMock internal factoryMock;
     RateProviderMock internal rateProvider;
@@ -141,6 +143,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
         router = deployRouterMock(IVault(address(vault)), weth, permit2);
+        routerExtension = IRouterExtension(address(router));
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");

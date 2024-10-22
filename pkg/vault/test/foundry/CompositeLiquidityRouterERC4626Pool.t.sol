@@ -97,7 +97,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(
+        uint256 expectBPTOut = routerExtension.queryAddLiquidityUnbalanced(
             erc4626Pool,
             exactWrappedAmountsIn,
             address(this),
@@ -141,7 +141,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(
+        uint256 expectBPTOut = routerExtension.queryAddLiquidityUnbalanced(
             partialErc4626Pool,
             exactWrappedAmountsIn,
             address(this),
@@ -247,7 +247,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsIn = router.queryAddLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsIn = routerExtension.queryAddLiquidityProportional(
             erc4626Pool,
             exactBptAmountOut,
             address(this),
@@ -304,7 +304,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsIn = router.queryAddLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsIn = routerExtension.queryAddLiquidityProportional(
             partialErc4626Pool,
             exactBptAmountOut,
             address(this),
@@ -438,7 +438,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsOut = routerExtension.queryRemoveLiquidityProportional(
             erc4626Pool,
             exactBptAmountIn,
             address(this),
@@ -489,7 +489,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsOut = routerExtension.queryRemoveLiquidityProportional(
             partialErc4626Pool,
             exactBptAmountIn,
             address(this),
@@ -558,7 +558,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsOut = routerExtension.queryRemoveLiquidityProportional(
             erc4626Pool,
             exactBptAmountIn,
             address(this),
@@ -600,7 +600,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsOut = routerExtension.queryRemoveLiquidityProportional(
             partialErc4626Pool,
             exactBptAmountIn,
             address(this),

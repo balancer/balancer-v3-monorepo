@@ -76,7 +76,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountOut = router.querySwapSingleTokenExactIn(
+        uint256 queryAmountOut = routerExtension.querySwapSingleTokenExactIn(
             pool,
             dai,
             usdc,
@@ -118,7 +118,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountIn = router.querySwapSingleTokenExactOut(
+        uint256 queryAmountIn = routerExtension.querySwapSingleTokenExactOut(
             pool,
             dai,
             usdc,
@@ -162,7 +162,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(
+        uint256[] memory queryAmountsIn = routerExtension.queryAddLiquidityProportional(
             pool,
             exactBptAmountOut,
             address(this),
@@ -210,7 +210,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryBptAmountOut = router.queryAddLiquidityUnbalanced(
+        uint256 queryBptAmountOut = routerExtension.queryAddLiquidityUnbalanced(
             pool,
             exactAmountsInRaw,
             address(this),
@@ -253,7 +253,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountIn = router.queryAddLiquiditySingleTokenExactOut(
+        uint256 queryAmountIn = routerExtension.queryAddLiquiditySingleTokenExactOut(
             pool,
             dai,
             exactBptAmountOut,
@@ -297,7 +297,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        (uint256[] memory queryAmountsIn, uint256 queryBptOut, ) = router.queryAddLiquidityCustom(
+        (uint256[] memory queryAmountsIn, uint256 queryBptOut, ) = routerExtension.queryAddLiquidityCustom(
             pool,
             maxAmountsIn,
             expectedBptAmountOut,
@@ -343,7 +343,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityProportional(
+        uint256[] memory queryAmountsOut = routerExtension.queryRemoveLiquidityProportional(
             pool,
             exactBptAmountIn,
             address(this),
@@ -392,7 +392,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountOut = router.queryRemoveLiquiditySingleTokenExactIn(
+        uint256 queryAmountOut = routerExtension.queryRemoveLiquiditySingleTokenExactIn(
             pool,
             exactBptAmountIn,
             dai,
@@ -440,7 +440,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256 queryBptAmountIn = router.queryRemoveLiquiditySingleTokenExactOut(
+        uint256 queryBptAmountIn = routerExtension.queryRemoveLiquiditySingleTokenExactOut(
             pool,
             dai,
             exactAmountOut,
@@ -484,7 +484,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        (uint256 queryBptIn, uint256[] memory queryAmountsOut, ) = router.queryRemoveLiquidityCustom(
+        (uint256 queryBptIn, uint256[] memory queryAmountsOut, ) = routerExtension.queryRemoveLiquidityCustom(
             pool,
             expectedBptAmountIn,
             minAmountsOut,
@@ -532,7 +532,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
+        uint256[] memory queryAmountsOut = routerExtension.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
 
         vm.revertTo(snapshotId);
 
