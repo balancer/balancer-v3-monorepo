@@ -86,8 +86,8 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     ) internal returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    MinimalRouter.addLiquidityHook.selector,
+                abi.encodeCall(
+                    MinimalRouter.addLiquidityHook,
                     ExtendedAddLiquidityHookParams({
                         sender: sender,
                         receiver: receiver,
@@ -178,8 +178,8 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     ) internal returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    MinimalRouter.removeLiquidityHook.selector,
+                abi.encodeCall(
+                    MinimalRouter.removeLiquidityHook,
                     ExtendedRemoveLiquidityHookParams({
                         sender: sender,
                         receiver: receiver,
