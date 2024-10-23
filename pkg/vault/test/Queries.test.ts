@@ -2,14 +2,14 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
-import { Router } from '../typechain-types/contracts/Router';
-import { RouterExtension } from '../typechain-types/contracts/RouterExtension';
+import { IRouterMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import * as RouterDeployer from '@balancer-labs/v3-helpers/src/models/vault/RouterDeployer';
 import { PoolFactoryMock, PoolMock, RouterMock, Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -21,8 +21,7 @@ import { deployPermit2 } from './Permit2Deployer';
 describe('Queries', function () {
   let permit2: IPermit2;
   let vault: Vault;
-  let router: Router;
-  let routerExtension: RouterExtension;
+  let router: IRouterMock;
   let factory: PoolFactoryMock;
   let pool: PoolMock;
   let DAI: ERC20TestToken;
@@ -46,8 +45,7 @@ describe('Queries', function () {
     const vaultAddress = await vault.getAddress();
     WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    routerExtension = await deploy('RouterExtension', { args: [vaultAddress, WETH, permit2] });
-    router = await deploy('Router', { args: [vaultAddress, WETH, permit2, routerExtension] });
+    router = await RouterDeployer.deployRouter(vaultAddress, WETH, permit2);
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
@@ -86,14 +84,14 @@ describe('Queries', function () {
     const DAI_AMOUNT_OUT = fp(250);
 
     it('queries a swap exact in correctly', async () => {
-      const amountCalculated = await routerExtension
+      const amountCalculated = await router
         .connect(zero)
         .querySwapSingleTokenExactIn.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, zero.address, '0x');
       expect(amountCalculated).to.be.eq(DAI_AMOUNT_IN);
     });
 
     it('queries a swap exact out correctly', async () => {
-      const amountCalculated = await routerExtension
+      const amountCalculated = await router
         .connect(zero)
         .querySwapSingleTokenExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, zero.address, '0x');
       expect(amountCalculated).to.be.eq(DAI_AMOUNT_OUT);
@@ -101,20 +99,20 @@ describe('Queries', function () {
 
     it('reverts if not a static call (exact in)', async () => {
       await expect(
-        routerExtension.querySwapSingleTokenExactIn.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, zero.address, '0x')
+        router.querySwapSingleTokenExactIn.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
 
     it('reverts if not a static call (exact out)', async () => {
       await expect(
-        routerExtension.querySwapSingleTokenExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, zero.address, '0x')
+        router.querySwapSingleTokenExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 
   describe('addLiquidityProportional', () => {
     it('queries addLiquidityProportional correctly', async () => {
-      const amountsIn = await routerExtension
+      const amountsIn = await router
         .connect(zero)
         .queryAddLiquidityProportional.staticCall(pool, BPT_AMOUNT, zero.address, '0x');
       expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
@@ -122,14 +120,14 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryAddLiquidityProportional.staticCall(pool, BPT_AMOUNT, zero.address, '0x')
+        router.queryAddLiquidityProportional.staticCall(pool, BPT_AMOUNT, zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 
   describe('addLiquidityUnbalanced', () => {
     it('queries addLiquidityUnbalanced correctly', async () => {
-      const bptAmountOut = await routerExtension
+      const bptAmountOut = await router
         .connect(zero)
         .queryAddLiquidityUnbalanced.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], zero.address, '0x');
       expect(bptAmountOut).to.be.eq(BPT_AMOUNT - 2n); // addLiquidity unbalanced has rounding error favoring the Vault.
@@ -137,19 +135,14 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryAddLiquidityUnbalanced.staticCall(
-          pool,
-          [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
-          zero.address,
-          '0x'
-        )
+        router.queryAddLiquidityUnbalanced.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 
   describe('addLiquiditySingleTokenExactOut', () => {
     it('queries addLiquiditySingleTokenExactOut correctly', async () => {
-      const amountsIn = await routerExtension
+      const amountsIn = await router
         .connect(zero)
         .queryAddLiquiditySingleTokenExactOut.staticCall(pool, DAI, DAI_AMOUNT_IN * 2n, zero.address, '0x');
       expect(amountsIn).to.be.eq(DAI_AMOUNT_IN * 2n);
@@ -157,20 +150,14 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryAddLiquiditySingleTokenExactOut.staticCall(
-          pool,
-          DAI,
-          DAI_AMOUNT_IN * 2n,
-          zero.address,
-          '0x'
-        )
+        router.queryAddLiquiditySingleTokenExactOut.staticCall(pool, DAI, DAI_AMOUNT_IN * 2n, zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 
   describe('addLiquidityCustom', () => {
     it('queries addLiquidityCustom correctly', async () => {
-      const { amountsIn, bptAmountOut, returnData } = await routerExtension
+      const { amountsIn, bptAmountOut, returnData } = await router
         .connect(zero)
         .queryAddLiquidityCustom.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], BPT_AMOUNT, zero.address, '0xbeef');
       expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
@@ -180,7 +167,7 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryAddLiquidityCustom.staticCall(
+        router.queryAddLiquidityCustom.staticCall(
           pool,
           [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
           BPT_AMOUNT,
@@ -193,7 +180,7 @@ describe('Queries', function () {
 
   describe('removeLiquidityProportional', () => {
     it('queries removeLiquidityProportional correctly', async () => {
-      const amountsOut = await routerExtension
+      const amountsOut = await router
         .connect(zero)
         .queryRemoveLiquidityProportional.staticCall(pool, BPT_AMOUNT, zero.address, '0x');
 
@@ -203,14 +190,14 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryRemoveLiquidityProportional.staticCall(pool, BPT_AMOUNT, zero.address, '0x')
+        router.queryRemoveLiquidityProportional.staticCall(pool, BPT_AMOUNT, zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 
   describe('removeLiquiditySingleTokenExactIn', () => {
     it('queries removeLiquiditySingleTokenExactIn correctly', async () => {
-      const amountOut = await routerExtension
+      const amountOut = await router
         .connect(zero)
         .queryRemoveLiquiditySingleTokenExactIn.staticCall(pool, BPT_AMOUNT, DAI, zero.address, '0x');
 
@@ -219,14 +206,14 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryRemoveLiquiditySingleTokenExactIn.staticCall(pool, BPT_AMOUNT, DAI, zero.address, '0x')
+        router.queryRemoveLiquiditySingleTokenExactIn.staticCall(pool, BPT_AMOUNT, DAI, zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 
   describe('removeLiquiditySingleTokenExactOut', () => {
     it('queries removeLiquiditySingleTokenExactOut correctly', async () => {
-      const amountIn = await routerExtension
+      const amountIn = await router
         .connect(zero)
         .queryRemoveLiquiditySingleTokenExactOut.staticCall(pool, DAI, DAI_AMOUNT_IN, zero.address, '0x');
 
@@ -235,14 +222,14 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryRemoveLiquiditySingleTokenExactOut.staticCall(pool, DAI, DAI_AMOUNT_IN, zero.address, '0x')
+        router.queryRemoveLiquiditySingleTokenExactOut.staticCall(pool, DAI, DAI_AMOUNT_IN, zero.address, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
 
   describe('removeLiquidityCustom', () => {
     it('queries removeLiquidityCustom correctly', async () => {
-      const { bptAmountIn, amountsOut, returnData } = await routerExtension
+      const { bptAmountIn, amountsOut, returnData } = await router
         .connect(zero)
         .queryRemoveLiquidityCustom.staticCall(
           pool,
@@ -259,7 +246,7 @@ describe('Queries', function () {
 
     it('reverts if not a static call', async () => {
       await expect(
-        routerExtension.queryRemoveLiquidityCustom.staticCall(
+        router.queryRemoveLiquidityCustom.staticCall(
           pool,
           BPT_AMOUNT,
           [DAI_AMOUNT_IN, USDC_AMOUNT_IN],
@@ -274,7 +261,7 @@ describe('Queries', function () {
     let router: RouterMock;
 
     sharedBeforeEach('deploy mock router', async () => {
-      router = await deploy('RouterMock', { args: [vault, WETH, permit2, routerExtension] });
+      router = await RouterDeployer.deployRouterMock(await vault.getAddress(), WETH, permit2);
     });
 
     describe('swap', () => {

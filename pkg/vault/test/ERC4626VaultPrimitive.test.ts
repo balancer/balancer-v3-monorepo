@@ -4,14 +4,8 @@ import { VoidSigner } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import {
-  BatchRouter,
-  ERC4626RateProvider,
-  PoolMock,
-  PoolFactoryMock,
-  Router,
-  RouterExtension,
-} from '@balancer-labs/v3-vault/typechain-types';
+import * as RouterDeployer from '@balancer-labs/v3-helpers/src/models/vault/RouterDeployer';
+import { BatchRouter, ERC4626RateProvider, PoolMock, PoolFactoryMock } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { currentTimestamp, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
@@ -23,7 +17,7 @@ import {
 } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, bn, fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
-import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { IRouterMock, IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { deployPermit2 } from './Permit2Deployer';
@@ -42,8 +36,7 @@ describe('ERC4626VaultPrimitive', function () {
 
   let permit2: IPermit2;
   let vault: IVaultMock;
-  let router: Router;
-  let routerExtension: RouterExtension;
+  let router: IRouterMock;
   let batchRouter: BatchRouter;
   let factory: PoolFactoryMock;
   let pool: PoolMock;
@@ -69,8 +62,7 @@ describe('ERC4626VaultPrimitive', function () {
     permit2 = await deployPermit2();
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     batchRouter = await deploy('v3-vault/BatchRouter', { args: [vault, await WETH.getAddress(), permit2] });
-    routerExtension = await deploy('v3-vault/RouterExtension', { args: [vault, await WETH.getAddress(), permit2] });
-    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2, routerExtension] });
+    router = await RouterDeployer.deployRouter(await vault.getAddress(), WETH, permit2);
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'DAI', 18] });
     wDAI = await deploy('v3-solidity-utils/ERC4626TestToken', {
