@@ -11,6 +11,7 @@ type TokenDeltaMappingSlotType is bytes32;
 type AddressToUintMappingSlot is bytes32;
 type AddressToBooleanMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
+type Bytes32ToUintMappingSlot is bytes32;
 
 /**
  * @notice Helper functions to read and write values from transient storage, including support for arrays and mappings.
@@ -61,6 +62,14 @@ library TransientStorageHelpers {
 
     function tSet(AddressToBooleanMappingSlot slot, address key, bool value) internal {
         AddressToBooleanMappingSlot.unwrap(slot).deriveMapping(key).asBoolean().tstore(value);
+    }
+
+    function tGet(Bytes32ToUintMappingSlot slot, bytes32 key) internal view returns (uint256) {
+        return Bytes32ToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tload();
+    }
+
+    function tSet(Bytes32ToUintMappingSlot slot, bytes32 key, uint256 value) internal {
+        Bytes32ToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(value);
     }
 
     // Implement the common "+=" operation: map[key] += value.

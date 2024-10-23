@@ -22,28 +22,69 @@ interface ICompositeLiquidityRouter {
     /// @notice `tokensOut` array does not have all the tokens from `expectedTokensOut`.
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
 
+    /**
+     * @notice Struct to represent a nested pool add liquidity operation.
+     * @param prevPool Address of the previous pool in the nested pool chain. Zero address if it is the main pool.
+     * @param pool Address of the pool
+     * @param tokensInAmounts Array of amounts of tokens to add to the nested pool
+     * @param minBptAmountOut Minimum amount of BPT tokens to receive from the nested pool
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH
+     * @param userData Additional (optional) data required for adding liquidity
+     **/
+    struct NestedPoolAddOperation {
+        address prevPool;
+        address pool;
+        uint256[] tokensInAmounts;
+        uint256 minBptAmountOut;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    struct AddLiquidityNestedPoolHookParams {
+        address sender;
+        address pool;
+        NestedPoolAddOperation[] nestedPoolOperations;
+    }
+
+    /**
+     * @notice Struct to represent a nested pool remove liquidity operation.
+     * @param prevPool Address of the previous pool in the nested pool chain. Zero address if it is the main pool.
+     * @param pool Address of the pool
+     * @param minAmountsOut Array of minimum amounts of tokens to receive from the nested pool
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH
+     * @param userData Additional (optional) data required for removing liquidity
+     */
+    struct NestedPoolRemoveOperation {
+        address prevPool;
+        address pool;
+        uint256[] minAmountsOut;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    struct RemoveLiquidityNestedPoolHookParams {
+        address sender;
+        address pool;
+        uint256 targetPoolExactBptAmountIn;
+        uint256 expectedAmountOutCount;
+        NestedPoolRemoveOperation[] nestedPoolOperations;
+    }
+
+    /**
+     * @notice Struct to represent a remove amount out operation.
+     * @param pool Address of the pool
+     * @param token Token to remove
+     * @param amountOut Amount of token to remove
+     */
+    struct RemoveAmountOut {
+        address pool;
+        IERC20 token;
+        uint256 amountOut;
+    }
+
     /***************************************************************************
                                    ERC4626 Pools
     ***************************************************************************/
-
-    /**
-     * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
-     * @param pool Address of the liquidity pool
-     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
-     * wrapped tokens in the pool
-     * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding liquidity
-     * @return bptAmountOut Actual amount of pool tokens received
-     */
-    function addLiquidityUnbalancedToERC4626Pool(
-        address pool,
-        uint256[] memory exactUnderlyingAmountsIn,
-        uint256 minBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256 bptAmountOut);
 
     /**
      * @notice Add proportional amounts of underlying tokens to an ERC4626 pool through the buffer.
@@ -66,43 +107,6 @@ interface ICompositeLiquidityRouter {
     ) external payable returns (uint256[] memory underlyingAmountsIn);
 
     /**
-     * @notice Remove proportional amounts of underlying from an ERC4626 pool, burning an exact pool token amount.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
-     * @param pool Address of the liquidity pool
-     * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minUnderlyingAmountsOut Minimum amounts of underlying tokens out, sorted in token registration order of
-     * wrapped tokens in the pool
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for removing liquidity
-     * @return underlyingAmountsOut Actual amounts of tokens received, sorted in token registration order of wrapped
-     * tokens in the pool
-     */
-    function removeLiquidityProportionalFromERC4626Pool(
-        address pool,
-        uint256 exactBptAmountIn,
-        uint256[] memory minUnderlyingAmountsOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256[] memory underlyingAmountsOut);
-
-    /**
-     * @notice Queries an `addLiquidityUnbalancedToERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
-     * @param pool Address of the liquidity pool
-     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
-     * wrapped tokens in the pool
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data required for the query
-     * @return bptAmountOut Expected amount of pool tokens to receive
-     */
-    function queryAddLiquidityUnbalancedToERC4626Pool(
-        address pool,
-        uint256[] memory exactUnderlyingAmountsIn,
-        address sender,
-        bytes memory userData
-    ) external returns (uint256 bptAmountOut);
-
-    /**
      * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
@@ -119,106 +123,67 @@ interface ICompositeLiquidityRouter {
         bytes memory userData
     ) external returns (uint256[] memory underlyingAmountsIn);
 
-    /**
-     * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
-     * @param pool Address of the liquidity pool
-     * @param exactBptAmountIn Exact amount of pool tokens provided for the query
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data required for the query
-     * @return underlyingAmountsOut Expected amounts of tokens to receive, sorted in token registration order of
-     * wrapped tokens in the pool
-     */
-    function queryRemoveLiquidityProportionalFromERC4626Pool(
-        address pool,
-        uint256 exactBptAmountIn,
-        address sender,
-        bytes memory userData
-    ) external returns (uint256[] memory underlyingAmountsOut);
-
     /***************************************************************************
                                    Nested pools
     ***************************************************************************/
 
     /**
-     * @notice Adds liquidity unbalanced to a nested pool.
-     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
-     * the token in amounts.
-     *
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each underlying token in, sorted according to tokensIn array
-     * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
-     * @param userData Additional (optional) data required for the operation
-     * @return bptAmountOut Expected amount of parent pool tokens to receive
+     * @notice Add liquidity to a main pool and nested pools in a single transaction.
+     * @dev This function allows adding liquidity to a main pool and nested pools in a single transaction. The main pool is a pool that contains nested pools.
+     * @param mainPool Address of the main pool
+     * @param nestedPoolOperations Array of nested pool operations
+     * @return bptAmountOut Amount of main pool BPT tokens received
      */
     function addLiquidityUnbalancedNestedPool(
-        address parentPool,
-        address[] memory tokensIn,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
-        bytes memory userData
-    ) external returns (uint256 bptAmountOut);
+        address mainPool,
+        NestedPoolAddOperation[] calldata nestedPoolOperations
+    ) external returns (uint256);
 
     /**
      * @notice Queries an `addLiquidityUnbalancedNestedPool` operation without actually executing it.
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each underlying token in, sorted according to tokensIn array
+     * @dev This function allows querying for adding liquidity to the main pool and its nested pools in a single transaction. The main pool is a parent pool that contains nested pools.
+     * @param mainPool Address of the main pool
+     * @param nestedPoolOperations Array of nested pool operations
      * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data required for the operation
-     * @return bptAmountOut Expected amount of parent pool tokens to receive
+     * @return bptAmountOut Expected amount of main pool BPT tokens to receive
      */
     function queryAddLiquidityUnbalancedNestedPool(
-        address parentPool,
-        address[] memory tokensIn,
-        uint256[] memory exactAmountsIn,
-        address sender,
-        bytes memory userData
+        address mainPool,
+        NestedPoolAddOperation[] calldata nestedPoolOperations,
+        address sender
     ) external returns (uint256 bptAmountOut);
 
     /**
-     * @notice Removes liquidity of a nested pool.
-     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
-     * the token out amounts.
-     *
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
-     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
-     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
-     * @param minAmountsOut Minimum amounts of each outgoing underlying token, sorted according to tokensIn array
-     * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
+     * @notice Remove liquidity from a main pool and nested pools in a single transaction.
+     * @dev This function allows removing liquidity from a main pool and nested pools in a single transaction. The main pool is a pool that contains nested pools.
+     * @param mainPool Address of the main pool
+     * @param targetPoolExactBptAmountIn Exact amount of BPT tokens to remove from the main pool
+     * @param expectedAmountOutCount Expected number of tokens to receive
+     * @param nestedPoolOperations Array of nested pool operations
+     * @return totalAmountsOut Array of amounts received from the main pool and nested pools
      */
     function removeLiquidityProportionalNestedPool(
-        address parentPool,
-        uint256 exactBptAmountIn,
-        address[] memory tokensOut,
-        uint256[] memory minAmountsOut,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+        address mainPool,
+        uint256 targetPoolExactBptAmountIn,
+        uint256 expectedAmountOutCount,
+        NestedPoolRemoveOperation[] calldata nestedPoolOperations
+    ) external returns (RemoveAmountOut[] memory totalAmountsOut);
 
     /**
-     * @notice Queries an `removeLiquidityProportionalNestedPool` operation without actually executing it.
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
-     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
-     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
+     * @notice Queries a `removeLiquidityProportionalNestedPool` operation without actually executing it.
+     * @dev This function allows querying for removing liquidity from the main pool and its nested pools in a single transaction. The main pool is a parent pool that contains nested pools.
+     * @param mainPool Address of the main pool
+     * @param targetPoolExactBptAmountIn Exact amount of BPT tokens to remove from the main pool
+     * @param expectedAmountOutCount Expected number of tokens to receive
      * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
+     * @param nestedPoolOperations Array of nested pool operations
+     * @return totalAmountsOut Array of expected amounts to receive from the main pool and nested pools
      */
     function queryRemoveLiquidityProportionalNestedPool(
-        address parentPool,
-        uint256 exactBptAmountIn,
-        address[] memory tokensOut,
+        address mainPool,
+        uint256 targetPoolExactBptAmountIn,
+        uint256 expectedAmountOutCount,
         address sender,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+        NestedPoolRemoveOperation[] calldata nestedPoolOperations
+    ) external returns (RemoveAmountOut[] memory totalAmountsOut);
 }
