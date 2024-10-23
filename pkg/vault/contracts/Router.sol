@@ -710,4 +710,9 @@ contract Router is IRouterMain, RouterCommon, ReentrancyGuardTransient, Proxy {
     function _implementation() internal view override returns (address) {
         return address(_routerExtension);
     }
+
+    /// @inheritdoc IRouterMain
+    function getRouterExtension() external view returns (address) {
+        return _implementation();
+    }
 }

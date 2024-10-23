@@ -11,6 +11,7 @@ import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/v
 import { IRouterExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterExtension.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IRouterMock } from "@balancer-labs/v3-interfaces/contracts/test/IRouterMock.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -20,18 +21,18 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
-import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
-import { Permit2Helpers } from "./Permit2Helpers.sol";
 import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
+import { Permit2Helpers } from "./Permit2Helpers.sol";
 
 abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
     using CastingHelpers for address[];
@@ -73,7 +74,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IVaultMock internal vault;
     IVaultExtension internal vaultExtension;
     IVaultAdmin internal vaultAdmin;
-    RouterMock internal router;
+    IRouterMock internal router;
     IRouterExtension internal routerExtension;
     BatchRouterMock internal batchRouter;
     PoolFactoryMock internal factoryMock;
@@ -142,8 +143,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
-        router = deployRouterMock(IVault(address(vault)), weth, permit2);
-        routerExtension = IRouterExtension(address(router));
+        router = IRouterMock(address(deployRouterMock(IVault(address(vault)), weth, permit2)));
+        routerExtension = IRouterExtension(router.getRouterExtension());
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
