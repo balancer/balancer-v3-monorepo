@@ -33,7 +33,7 @@ contract Router is IRouterMain, RouterCommon, ReentrancyGuardTransient, Proxy {
     using SafeCast for *;
 
     // Local reference to the Proxy pattern Router extension contract.
-    IRouterExtension private _routerExtension;
+    IRouterExtension private immutable _routerExtension;
 
     constructor(
         IVault vault,
