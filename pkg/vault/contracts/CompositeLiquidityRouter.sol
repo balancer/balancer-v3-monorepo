@@ -95,7 +95,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
                     AddLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: pool,
                         maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
@@ -184,7 +184,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
                         AddLiquidityNestedPoolHookParams({
                             pool: mainPool,
-                            sender: sender,
+                            sender: address(this),
                             nestedPoolOperations: nestedPoolOperations
                         })
                     )
@@ -239,13 +239,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 expectedAmountOutCount,
         address sender,
         NestedPoolRemoveOperation[] calldata nestedPoolOperations
-    ) external saveSender(msg.sender) returns (RemoveAmountOut[] memory totalAmountsOut) {
+    ) external saveSender(sender) returns (RemoveAmountOut[] memory totalAmountsOut) {
         (totalAmountsOut) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
                     CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook.selector,
                     RemoveLiquidityNestedPoolHookParams({
-                        sender: sender,
+                        sender: address(this),
                         pool: mainPool,
                         targetPoolExactBptAmountIn: targetPoolExactBptAmountIn,
                         expectedAmountOutCount: expectedAmountOutCount,

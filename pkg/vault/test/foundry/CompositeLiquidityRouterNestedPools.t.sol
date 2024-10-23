@@ -1279,13 +1279,13 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         });
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(lp, address(0));
+        _prankStaticCall();
         ICompositeLiquidityRouter.RemoveAmountOut[] memory queryAmountsOut = compositeLiquidityRouter
             .queryRemoveLiquidityProportionalNestedPool(
                 parentPoolWithWrapper,
                 exactBptIn,
                 3,
-                address(lp),
+                address(this),
                 nestedPoolRemoveOperations
             );
         vm.revertTo(snapshotId);
