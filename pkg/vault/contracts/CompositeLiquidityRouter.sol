@@ -318,7 +318,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     (, uint256 wrappedAmount) = _wrapToken(
                         params.sender,
                         IERC20(childToken),
-                        erc4626NestedPoolAddOperation.tokensInAmounts[0], // Only one token can be wrapped in ERC4626 pools
+                        // Only one token can be wrapped in ERC4626 pools
+                        erc4626NestedPoolAddOperation.tokensInAmounts[0],
                         SwapKind.EXACT_IN,
                         0,
                         isStaticCall_,
