@@ -60,25 +60,6 @@ library WordCodec {
     }
 
     /**
-     * @dev Inserts an address (160 bits), shifted by an offset, into a 256 bit word,
-     * replacing the old value. Returns the new word.
-     */
-    function insertAddress(bytes32 word, address value, uint256 offset) internal pure returns (bytes32 result) {
-        uint256 addressBitLength = 160;
-        _validateEncodingParams(uint256(uint160(value)), offset, addressBitLength);
-        // Equivalent to:
-        // uint256 mask = (1 << bitLength) - 1;
-        // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
-        // result = clearedWord | bytes32(value << offset);
-
-        assembly ("memory-safe") {
-            let mask := sub(shl(addressBitLength, 1), 1)
-            let clearedWord := and(word, not(shl(offset, mask)))
-            result := or(clearedWord, shl(offset, value))
-        }
-    }
-
-    /**
      * @dev Inserts a signed integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
      *
