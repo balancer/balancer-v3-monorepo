@@ -7,7 +7,11 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IRouterCommon } from "./IRouterCommon.sol";
 
-/// @notice User-friendly interface to basic Vault operations: swap, add/remove liquidity, and associated queries.
+/**
+ * @notice Interface for functions defined on the main Router contract.
+ * @dev The main interface defines state-changing functions (swap, add/remove liquidity), and buffer operations, implemented
+ * by the main `Router` contract. Query functions are defined in `IRouterExtension`.
+ */
 interface IRouterMain {
     /***************************************************************************
                                 Pool Initialization
@@ -408,4 +412,15 @@ interface IRouterMain {
         uint256 exactSharesToIssue,
         address sharesOwner
     ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
+
+    /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the RouterExtension contract address.
+     * @dev Function is in the main Router contract. The RouterExtension handles queries.
+     * @return routerExtension Address of the RouterExtension
+     */
+    function getRouterExtension() external view returns (address);
 }

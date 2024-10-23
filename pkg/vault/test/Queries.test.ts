@@ -18,7 +18,7 @@ import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types'
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { deployPermit2 } from './Permit2Deployer';
 
-describe.only('Queries', function () {
+describe('Queries', function () {
   let permit2: IPermit2;
   let vault: Vault;
   let router: Router;

@@ -6,7 +6,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouterCommon } from "./IRouterCommon.sol";
 
-/// @notice User-friendly interface to basic Vault operations: swap, add/remove liquidity, and associated queries.
+/**
+ * @notice Interface for query functions defined on the `RouterExtension` contract.
+ * @dev `RouterExtension` handles query functions, which are non-state-changing and must be called statically.
+ */
 interface IRouterExtension {
     /***************************************************************************
                                       Queries
