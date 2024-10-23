@@ -516,10 +516,26 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
-            .removeLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, minAmountsOut, false, bytes(""));
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory removeAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalNestedPool(
+                erc4626Pool,
+                exactBptAmountIn,
+                2,
+                new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](0)
+            );
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
+
+        uint256[] memory actualUnderlyingAmountsOut = new uint256[](2);
+        for (uint256 i = 0; i < removeAmountsOut.length; i++) {
+            if (removeAmountsOut[i].token == dai) {
+                actualUnderlyingAmountsOut[partialWaDaiIdx] = removeAmountsOut[i].amountOut;
+            } else if (removeAmountsOut[i].token == usdc) {
+                actualUnderlyingAmountsOut[partialUsdcIdx] = removeAmountsOut[i].amountOut;
+            } else {
+                revert("Unexpected token");
+            }
+        }
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = actualUnderlyingAmountsOut[waDaiIdx];
@@ -567,14 +583,24 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
-            .removeLiquidityProportionalFromERC4626Pool(
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory removeAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalNestedPool(
                 partialErc4626Pool,
                 exactBptAmountIn,
-                minAmountsOut,
-                false,
-                bytes("")
+                2,
+                new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](0)
             );
+
+        uint256[] memory actualUnderlyingAmountsOut = new uint256[](2);
+        for (uint256 i = 0; i < removeAmountsOut.length; i++) {
+            if (removeAmountsOut[i].token == dai) {
+                actualUnderlyingAmountsOut[partialWaDaiIdx] = removeAmountsOut[i].amountOut;
+            } else if (removeAmountsOut[i].token == usdc) {
+                actualUnderlyingAmountsOut[partialUsdcIdx] = removeAmountsOut[i].amountOut;
+            } else {
+                revert("Unexpected token");
+            }
+        }
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
@@ -606,11 +632,12 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 exactBptAmountIn = bufferInitialAmount / 2;
 
         vm.prank(bob, address(0));
-        compositeLiquidityRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
+        compositeLiquidityRouter.queryRemoveLiquidityProportionalNestedPool(
             erc4626Pool,
             exactBptAmountIn,
-            address(this),
-            bytes("")
+            2,
+            address(bob),
+            new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](0)
         );
     }
 
@@ -633,24 +660,29 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(bob, address(0));
-        uint256[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter
-            .queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, address(this), bytes(""));
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter
+            .queryRemoveLiquidityProportionalNestedPool(
+                erc4626Pool,
+                exactBptAmountIn,
+                2,
+                address(bob),
+                new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](0)
+            );
         vm.revertTo(snapshotId);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
-            .removeLiquidityProportionalFromERC4626Pool(
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalNestedPool(
                 erc4626Pool,
                 exactBptAmountIn,
-                minUnderlyingAmountsOut,
-                false,
-                bytes("")
+                2,
+                new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](0)
             );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsOut.length; i++) {
             assertEq(
-                actualUnderlyingAmountsOut[i],
-                queryUnderlyingAmountsOut[i],
+                actualUnderlyingAmountsOut[i].amountOut,
+                queryUnderlyingAmountsOut[i].amountOut,
                 "Query and actual underlying amounts out do not match"
             );
         }
@@ -675,35 +707,35 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(bob, address(0));
-        uint256[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter
-            .queryRemoveLiquidityProportionalFromERC4626Pool(
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter
+            .queryRemoveLiquidityProportionalNestedPool(
                 partialErc4626Pool,
                 exactBptAmountIn,
-                address(this),
-                bytes("")
+                2,
+                address(bob),
+                new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](0)
             );
         vm.revertTo(snapshotId);
 
         vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
-            .removeLiquidityProportionalFromERC4626Pool(
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalNestedPool(
                 partialErc4626Pool,
                 exactBptAmountIn,
-                minUnderlyingAmountsOut,
-                false,
-                bytes("")
+                2,
+                new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](0)
             );
 
         assertEq(
-            actualUnderlyingAmountsOut[partialWaDaiIdx],
-            queryUnderlyingAmountsOut[partialWaDaiIdx],
-            "Query and actual DAI amounts out do not match"
+            actualUnderlyingAmountsOut[0].amountOut,
+            queryUnderlyingAmountsOut[0].amountOut,
+            "Query and actual amounts[0] out do not match"
         );
 
         assertEq(
-            queryUnderlyingAmountsOut[partialUsdcIdx],
-            actualUnderlyingAmountsOut[partialUsdcIdx],
-            "Query and actual USDC amounts out do not match"
+            actualUnderlyingAmountsOut[1].amountOut,
+            queryUnderlyingAmountsOut[1].amountOut,
+            "Query and actual amounts[1] out do not match"
         );
     }
 

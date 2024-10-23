@@ -359,10 +359,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         wethAmount = bound(wethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
-        // Override indexes, since wstEth is not used in this test.
-        vars.waDaiIdx = 0;
-        vars.usdcIdx = 1;
-        vars.wethIdx = 2;
 
         ICompositeLiquidityRouter.NestedPoolAddOperation[]
             memory nestedPoolOperations = new ICompositeLiquidityRouter.NestedPoolAddOperation[](3);
@@ -937,8 +933,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         expectedAmountsOut[vars.wstethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
         expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
 
-        console.log("exactBptIn", exactBptIn);
-        console.log("parentPool", parentPool);
         vm.prank(lp);
         ICompositeLiquidityRouter.RemoveAmountOut[] memory removeAmountsOut = compositeLiquidityRouter
             .removeLiquidityProportionalNestedPool(
@@ -1149,7 +1143,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             } else if (removeAmountsOut[i].token == usdc) {
                 amountsOut[vars.usdcIdx] += removeAmountsOut[i].amountOut;
             } else {
-                console.log("removeAmountsOut[i].token", address(removeAmountsOut[i].token));
                 revert("Unexpected token");
             }
         }
@@ -1243,247 +1236,177 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
     }
 
-    // function testQueryRemoveLiquidityNestedERC4626Pool__Fuzz(uint256 proportionToRemove) public {
-    //     // Remove between 0.0001% and 50% of each pool liquidity.
-    //     proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
+    function testQueryRemoveLiquidityNestedERC4626Pool__Fuzz(uint256 proportionToRemove) public {
+        // Remove between 0.0001% and 50% of each pool liquidity.
+        proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
 
-    //     uint256 totalPoolBPTs = BalancerPoolToken(parentPoolWithWrapper).totalSupply();
-    //     // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
-    //     // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
-    //     uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPoolWithWrapper).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
 
-    //     NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
-    //     // Override indexes, since wstEth is not used in this test.
-    //     vars.daiIdx = 0;
-    //     vars.usdcIdx = 1;
-    //     vars.wethIdx = 2;
+        // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
+        // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
+        // we can extract from the child pools.
+        uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 4).mulDown(proportionToRemove);
 
-    //     // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
-    //     // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
-    //     // we can extract from the child pools.
-    //     uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 4).mulDown(proportionToRemove);
+        ICompositeLiquidityRouter.NestedPoolRemoveOperation[]
+            memory nestedPoolRemoveOperations = new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](3);
+        nestedPoolRemoveOperations[0] = ICompositeLiquidityRouter.NestedPoolRemoveOperation({
+            prevPool: parentPoolWithWrapper,
+            pool: address(waUSDC),
+            minAmountsOut: [waUSDC.previewRedeem(poolInitAmount.mulDown(proportionToRemove) - MAX_ROUND_ERROR)]
+                .toMemoryArray(),
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+        nestedPoolRemoveOperations[1] = ICompositeLiquidityRouter.NestedPoolRemoveOperation({
+            prevPool: childPoolERC4626,
+            pool: address(waDAI),
+            minAmountsOut: [
+                waDAI.previewRedeem(poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR)
+            ].toMemoryArray(),
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+        nestedPoolRemoveOperations[2] = ICompositeLiquidityRouter.NestedPoolRemoveOperation({
+            prevPool: parentPoolWithoutWrapper,
+            pool: address(childPoolERC4626),
+            minAmountsOut: [poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR, 0]
+                .toMemoryArray(),
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
 
-    //     address[] memory tokensOut = new address[](3);
-    //     tokensOut[vars.daiIdx] = address(dai);
-    //     tokensOut[vars.wethIdx] = address(weth);
-    //     tokensOut[vars.usdcIdx] = address(usdc);
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(lp, address(0));
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory queryAmountsOut = compositeLiquidityRouter
+            .queryRemoveLiquidityProportionalNestedPool(
+                parentPoolWithWrapper,
+                exactBptIn,
+                3,
+                address(lp),
+                nestedPoolRemoveOperations
+            );
+        vm.revertTo(snapshotId);
 
-    //     uint256[] memory expectedAmountsOut = new uint256[](3);
-    //     // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
-    //     // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
-    //     // totalSupply (so the burned POOL_MINIMUM_TOTAL_SUPPLY amount does not affect the BPT in circulation, and the
-    //     // amounts out are perfectly proportional to the parent pool balance).
-    //     expectedAmountsOut[vars.daiIdx] = waDAI.previewRedeem(
-    //         poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR
-    //     );
-    //     expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
-    //     expectedAmountsOut[vars.usdcIdx] = waUSDC.previewRedeem(
-    //         poolInitAmount.mulDown(proportionToRemove) - MAX_ROUND_ERROR
-    //     );
+        vm.prank(lp);
+        ICompositeLiquidityRouter.RemoveAmountOut[] memory amountsOut = compositeLiquidityRouter
+            .removeLiquidityProportionalNestedPool(parentPoolWithWrapper, exactBptIn, 3, nestedPoolRemoveOperations);
 
-    //     uint256 snapshotId = vm.snapshot();
-    //     vm.prank(lp, address(0));
-    //     uint256[] memory queryAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityProportionalNestedPool(
-    //         parentPoolWithWrapper,
-    //         exactBptIn,
-    //         tokensOut,
-    //         address(this),
-    //         bytes("")
-    //     );
-    //     vm.revertTo(snapshotId);
+        for (uint256 i = 0; i < amountsOut.length; i++) {
+            assertEq(
+                amountsOut[i].amountOut,
+                queryAmountsOut[i].amountOut,
+                "AmountsOut and QueryAmountsOut do not match"
+            );
+        }
+    }
 
-    //     vm.prank(lp);
-    //     uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
-    //         parentPoolWithWrapper,
-    //         exactBptIn,
-    //         tokensOut,
-    //         expectedAmountsOut,
-    //         bytes("")
-    //     );
+    function testRemoveLiquidityNestedPoolLimits() public {
+        // Remove 10% of pool liquidity.
+        uint256 proportionToRemove = 10e16;
 
-    //     for (uint256 i = 0; i < amountsOut.length; i++) {
-    //         assertEq(amountsOut[i], queryAmountsOut[i], "AmountsOut and QueryAmountsOut do not match");
-    //     }
-    // }
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
 
-    // function testRemoveLiquidityNestedPoolLimits() public {
-    //     // Remove 10% of pool liquidity.
-    //     uint256 proportionToRemove = 10e16;
+        ICompositeLiquidityRouter.NestedPoolRemoveOperation[]
+            memory nestedPoolRemoveOperations = new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](1);
+        nestedPoolRemoveOperations[0] = ICompositeLiquidityRouter.NestedPoolRemoveOperation({
+            prevPool: address(0),
+            pool: parentPool,
+            minAmountsOut: [poolInitAmount, 0, 0].toMemoryArray(),
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
 
-    //     uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
-    //     // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
-    //     // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
-    //     uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+        uint256 daiExpectedAmountOut = poolInitAmount.mulDown(proportionToRemove);
 
-    //     NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                address(dai),
+                daiExpectedAmountOut,
+                poolInitAmount
+            )
+        );
+        vm.prank(lp);
+        compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+            parentPool,
+            exactBptIn,
+            5,
+            nestedPoolRemoveOperations
+        );
+    }
 
-    //     // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
-    //     // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
-    //     // we can extract from the child pools.
-    //     uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
+    function testRemoveLiquidityNestedPoolWrongMinAmountsOut() public {
+        // Remove 10% of pool liquidity.
+        uint256 proportionToRemove = 10e16;
 
-    //     address[] memory tokensOut = new address[](4);
-    //     tokensOut[vars.daiIdx] = address(dai);
-    //     tokensOut[vars.wethIdx] = address(weth);
-    //     tokensOut[vars.wstethIdx] = address(wsteth);
-    //     tokensOut[vars.usdcIdx] = address(usdc);
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
 
-    //     uint256[] memory minAmountsOut = new uint256[](4);
-    //     // Expect minAmountsOut to be the liquidity of the pool, which is more than what we should return,
-    //     // causing it to revert.
-    //     minAmountsOut[vars.daiIdx] = poolInitAmount;
-    //     minAmountsOut[vars.wethIdx] = poolInitAmount;
-    //     minAmountsOut[vars.wstethIdx] = poolInitAmount;
-    //     minAmountsOut[vars.usdcIdx] = poolInitAmount;
+        ICompositeLiquidityRouter.NestedPoolRemoveOperation[]
+            memory nestedPoolRemoveOperations = new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](1);
+        nestedPoolRemoveOperations[0] = ICompositeLiquidityRouter.NestedPoolRemoveOperation({
+            prevPool: address(0),
+            pool: parentPool,
+            minAmountsOut: [uint256(1), 0].toMemoryArray(),
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
 
-    //     // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
-    //     // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
-    //     // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
-    //     // totalSupply (so the burned POOL_MINIMUM_TOTAL_SUPPLY amount does not affect the BPT in circulation, and the
-    //     // amounts out are perfectly proportional to the parent pool balance).
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
 
-    //     uint256 daiExpectedAmountOut = (poolInitAmount.mulDown(proportionToRemove) * 2) - deadTokens;
+        vm.prank(lp);
+        compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+            parentPool,
+            exactBptIn,
+            5,
+            nestedPoolRemoveOperations
+        );
+    }
 
-    //     vm.expectRevert(
-    //         abi.encodeWithSelector(
-    //             IVaultErrors.AmountOutBelowMin.selector,
-    //             address(dai),
-    //             daiExpectedAmountOut,
-    //             poolInitAmount
-    //         )
-    //     );
-    //     vm.prank(lp);
-    //     compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
-    //         parentPool,
-    //         exactBptIn,
-    //         tokensOut,
-    //         minAmountsOut,
-    //         bytes("")
-    //     );
-    // }
+    function testRemoveLiquidityNestedPoolRepeatedTokens() public {
+        // Remove 10% of pool liquidity.
+        uint256 proportionToRemove = 10e16;
 
-    // function testRemoveLiquidityNestedPoolWrongMinAmountsOut() public {
-    //     // Remove 10% of pool liquidity.
-    //     uint256 proportionToRemove = 10e16;
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
 
-    //     uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
-    //     // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
-    //     // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
-    //     uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+        ICompositeLiquidityRouter.NestedPoolRemoveOperation[]
+            memory nestedPoolRemoveOperations = new ICompositeLiquidityRouter.NestedPoolRemoveOperation[](12);
+        nestedPoolRemoveOperations[0] = ICompositeLiquidityRouter.NestedPoolRemoveOperation({
+            prevPool: address(0),
+            pool: parentPool,
+            minAmountsOut: [poolInitAmount, 0, 0].toMemoryArray(),
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
+        nestedPoolRemoveOperations[1] = ICompositeLiquidityRouter.NestedPoolRemoveOperation({
+            prevPool: address(0),
+            pool: parentPool,
+            minAmountsOut: [poolInitAmount, 0, 0].toMemoryArray(),
+            wethIsEth: false,
+            userData: new bytes(0)
+        });
 
-    //     NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+        vm.expectRevert("Some nestedPoolOperations have the same pool");
 
-    //     address[] memory tokensOut = new address[](4);
-    //     tokensOut[vars.daiIdx] = address(dai);
-    //     tokensOut[vars.wethIdx] = address(weth);
-    //     tokensOut[vars.wstethIdx] = address(wsteth);
-    //     tokensOut[vars.usdcIdx] = address(usdc);
-
-    //     // Notice that minAmountsOut have a different length than tokensOut, so the transaction should revert.
-    //     uint256[] memory minAmountsOut = new uint256[](3);
-    //     minAmountsOut[0] = 1;
-    //     minAmountsOut[1] = 1;
-    //     minAmountsOut[2] = 1;
-
-    //     vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
-
-    //     vm.prank(lp);
-    //     compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
-    //         parentPool,
-    //         exactBptIn,
-    //         tokensOut,
-    //         minAmountsOut,
-    //         bytes("")
-    //     );
-    // }
-
-    // function testRemoveLiquidityNestedPoolWrongTokenArray() public {
-    //     // Remove 10% of pool liquidity.
-    //     uint256 proportionToRemove = 10e16;
-
-    //     uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
-    //     // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
-    //     // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
-    //     uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
-
-    //     // DAI should be in the tokensOut array, but is not, so the transaction should revert.
-    //     // Order extracted from _currentSwapTokensOut().values() of `removeLiquidityProportionalNestedPool` after
-    //     // all child pools were called.
-    //     address[] memory expectedTokensOut = new address[](4);
-    //     expectedTokensOut[0] = address(dai);
-    //     expectedTokensOut[1] = address(wsteth);
-    //     expectedTokensOut[2] = address(weth);
-    //     expectedTokensOut[3] = address(usdc);
-
-    //     // Notice that tokensOut and minAmountsOut do not have DAI, so the transaction will revert.
-    //     address[] memory tokensOut = new address[](3);
-    //     tokensOut[0] = address(weth);
-    //     tokensOut[1] = address(wsteth);
-    //     tokensOut[2] = address(usdc);
-
-    //     uint256[] memory minAmountsOut = new uint256[](3);
-    //     minAmountsOut[0] = 1;
-    //     minAmountsOut[1] = 1;
-    //     minAmountsOut[2] = 1;
-
-    //     vm.expectRevert(
-    //         abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, expectedTokensOut, tokensOut)
-    //     );
-
-    //     vm.prank(lp);
-    //     compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
-    //         parentPool,
-    //         exactBptIn,
-    //         tokensOut,
-    //         minAmountsOut,
-    //         bytes("")
-    //     );
-    // }
-
-    // function testRemoveLiquidityNestedPoolRepeatedTokens() public {
-    //     // Remove 10% of pool liquidity.
-    //     uint256 proportionToRemove = 10e16;
-
-    //     uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
-    //     // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
-    //     // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
-    //     uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
-
-    //     // DAI should be in the tokensOut array, but is not, so the transaction should revert.
-    //     // Order extracted from _currentSwapTokensOut().values() of `removeLiquidityProportionalNestedPool` after
-    //     // all child pools were called.
-    //     address[] memory expectedTokensOut = new address[](4);
-    //     expectedTokensOut[0] = address(dai);
-    //     expectedTokensOut[1] = address(wsteth);
-    //     expectedTokensOut[2] = address(weth);
-    //     expectedTokensOut[3] = address(usdc);
-
-    //     // Notice that tokensOut has a repeated token, so the transaction should be reverted.
-    //     address[] memory tokensOut = new address[](4);
-    //     tokensOut[0] = address(dai);
-    //     tokensOut[1] = address(weth);
-    //     tokensOut[2] = address(dai);
-    //     tokensOut[3] = address(usdc);
-
-    //     uint256[] memory minAmountsOut = new uint256[](4);
-    //     minAmountsOut[0] = 1;
-    //     minAmountsOut[1] = 1;
-    //     minAmountsOut[2] = 1;
-    //     minAmountsOut[3] = 1;
-
-    //     vm.expectRevert(
-    //         abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, expectedTokensOut, tokensOut)
-    //     );
-
-    //     vm.prank(lp);
-    //     compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
-    //         parentPool,
-    //         exactBptIn,
-    //         tokensOut,
-    //         minAmountsOut,
-    //         bytes("")
-    //     );
-    // }
+        vm.prank(lp);
+        compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+            parentPool,
+            exactBptIn,
+            5,
+            nestedPoolRemoveOperations
+        );
+    }
 
     struct NestedPoolTestLocals {
         uint256 daiIdx;
