@@ -10,7 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IRouterMain } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterMain.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -94,14 +94,14 @@ contract Permit2Test is BaseVaultTest {
 
         bytes[] memory multicallData = new bytes[](2);
         multicallData[0] = abi.encodeCall(
-            IRouter.addLiquidityUnbalanced,
+            IRouterMain.addLiquidityUnbalanced,
             (pool, amountsIn, bptAmountRoundDown, false, bytes(""))
         );
 
         uint256[] memory minAmountsOut = [uint256(defaultAmountRoundDown), uint256(defaultAmountRoundDown)]
             .toMemoryArray();
         multicallData[1] = abi.encodeCall(
-            IRouter.removeLiquidityProportional,
+            IRouterMain.removeLiquidityProportional,
             (pool, bptAmountRoundDown, minAmountsOut, false, bytes(""))
         );
 
@@ -129,7 +129,7 @@ contract Permit2Test is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         multicallData[0] = abi.encodeCall(
-            IRouter.addLiquidityUnbalanced,
+            IRouterMain.addLiquidityUnbalanced,
             (pool, amountsIn, bptAmountRoundDown, false, bytes(""))
         );
 
@@ -162,7 +162,7 @@ contract Permit2Test is BaseVaultTest {
 
         bytes[] memory multicallData = new bytes[](1);
         multicallData[0] = abi.encodeCall(
-            IRouter.addLiquidityUnbalanced,
+            IRouterMain.addLiquidityUnbalanced,
             (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
@@ -217,13 +217,13 @@ contract Permit2Test is BaseVaultTest {
         bptAmountOut = bptAmountRoundDown;
 
         multicallData[0] = abi.encodeCall(
-            IRouter.addLiquidityUnbalanced,
+            IRouterMain.addLiquidityUnbalanced,
             (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
         uint256[] memory amountsOut = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
         multicallData[1] = abi.encodeCall(
-            IRouter.removeLiquidityCustom,
+            IRouterMain.removeLiquidityCustom,
             (pool, bptAmountOut, amountsOut, false, bytes(""))
         );
 
@@ -250,11 +250,11 @@ contract Permit2Test is BaseVaultTest {
         bptAmountOut = bptAmountRoundDown;
 
         multicallData[0] = abi.encodeCall(
-            IRouter.addLiquidityUnbalanced,
+            IRouterMain.addLiquidityUnbalanced,
             (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
-        multicallData[1] = abi.encodeCall(IRouter.removeLiquidityRecovery, (pool, bptAmountOut));
+        multicallData[1] = abi.encodeCall(IRouterMain.removeLiquidityRecovery, (pool, bptAmountOut));
 
         vault.manualEnableRecoveryMode(pool);
 

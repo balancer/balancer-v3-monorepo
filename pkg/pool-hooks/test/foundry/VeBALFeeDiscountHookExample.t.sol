@@ -48,7 +48,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        trustedRouter = payable(router);
+        trustedRouter = payable(address(router));
 
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);

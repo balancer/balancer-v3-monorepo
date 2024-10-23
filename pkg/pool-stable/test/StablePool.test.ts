@@ -7,6 +7,7 @@ import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
+import { RouterExtension } from '@balancer-labs/v3-vault/typechain-types/contracts/RouterExtension';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/WETHTestToken';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -34,6 +35,7 @@ describe('StablePool', () => {
   let permit2: IPermit2;
   let vault: IVaultMock;
   let router: Router;
+  let routerExtension: RouterExtension;
   let alice: SignerWithAddress;
   let tokens: ERC20TokenList;
   let factory: StablePoolFactory;
@@ -49,7 +51,8 @@ describe('StablePool', () => {
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
+    routerExtension = await deploy('v3-vault/RouterExtension', { args: [vault, WETH, permit2] });
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, routerExtension] });
 
     factory = await deploy('StablePoolFactory', {
       args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],

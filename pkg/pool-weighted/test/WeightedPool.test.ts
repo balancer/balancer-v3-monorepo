@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
+import { RouterExtension } from '@balancer-labs/v3-vault/typechain-types/contracts/RouterExtension';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
@@ -37,6 +38,7 @@ describe('WeightedPool', function () {
   let factory: WeightedPoolFactory;
   let pool: WeightedPool;
   let router: Router;
+  let routerExtension: RouterExtension;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let tokenA: ERC20TestToken;
@@ -64,7 +66,8 @@ describe('WeightedPool', function () {
 
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
+    routerExtension = await deploy('v3-vault/RouterExtension', { args: [vault, WETH, permit2] });
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, routerExtension] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });

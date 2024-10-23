@@ -2,13 +2,14 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
-import { Router } from '../typechain-types/contracts/Router';
+import { IRouterMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import * as RouterDeployer from '@balancer-labs/v3-helpers/src/models/vault/RouterDeployer';
 import { PoolFactoryMock, PoolMock, RouterMock, Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -20,7 +21,7 @@ import { deployPermit2 } from './Permit2Deployer';
 describe('Queries', function () {
   let permit2: IPermit2;
   let vault: Vault;
-  let router: Router;
+  let router: IRouterMock;
   let factory: PoolFactoryMock;
   let pool: PoolMock;
   let DAI: ERC20TestToken;
@@ -44,7 +45,7 @@ describe('Queries', function () {
     const vaultAddress = await vault.getAddress();
     WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
+    router = await RouterDeployer.deployRouter(vaultAddress, WETH, permit2);
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
@@ -79,7 +80,6 @@ describe('Queries', function () {
     await router.connect(alice).initialize(pool, tokenAddresses, tokenAmounts, 0, false, '0x');
   });
 
-  // TODO: query a pool that has an actual invariant (introduced in #145).
   describe('swap', () => {
     const DAI_AMOUNT_OUT = fp(250);
 
@@ -261,7 +261,7 @@ describe('Queries', function () {
     let router: RouterMock;
 
     sharedBeforeEach('deploy mock router', async () => {
-      router = await deploy('RouterMock', { args: [vault, WETH, permit2] });
+      router = await RouterDeployer.deployRouterMock(await vault.getAddress(), WETH, permit2);
     });
 
     describe('swap', () => {

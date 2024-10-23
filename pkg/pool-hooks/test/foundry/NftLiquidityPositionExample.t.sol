@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IRouterMock } from "@balancer-labs/v3-interfaces/contracts/test/IRouterMock.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -56,7 +57,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
-        router = deployRouterMock(IVault(address(vault)), weth, permit2);
+        router = IRouterMock(address(deployRouterMock(IVault(address(vault)), weth, permit2)));
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
