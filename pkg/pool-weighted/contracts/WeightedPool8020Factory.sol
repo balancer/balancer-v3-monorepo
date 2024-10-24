@@ -46,7 +46,10 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
 
     /**
      * @notice Deploys a new `WeightedPool`.
-     * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs.
+     * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs. This assumes both tokens support
+     * the `IERC20Metadata` interface with `symbol` that returns a string. Otherwise, use the regular
+     * `WeightedPoolFactory`.
+     *
      * @param highWeightTokenConfig The token configuration of the high weight token
      * @param lowWeightTokenConfig The token configuration of the low weight token
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
