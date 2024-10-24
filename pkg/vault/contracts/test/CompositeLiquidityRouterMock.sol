@@ -16,8 +16,14 @@ import {
 
 import { CompositeLiquidityRouter } from "../CompositeLiquidityRouter.sol";
 
+string constant MOCK_CL_ROUTER_VERSION = "Mock CompositeLiquidityRouter v1";
+
 contract CompositeLiquidityRouterMock is CompositeLiquidityRouter {
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) CompositeLiquidityRouter(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2
+    ) CompositeLiquidityRouter(vault, weth, permit2, MOCK_CL_ROUTER_VERSION) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
