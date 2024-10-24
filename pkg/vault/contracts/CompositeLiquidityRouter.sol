@@ -35,7 +35,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) BatchRouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -136,7 +141,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolUnbalancedHook,
                     AddLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: pool,
                         maxAmountsIn: exactUnderlyingAmountsIn,
                         minBptAmountOut: 0,
@@ -162,7 +167,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
                     AddLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: pool,
                         maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
@@ -188,7 +193,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeCall(
                     CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
                     RemoveLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: pool,
                         minAmountsOut: new uint256[](2),
                         maxBptAmountIn: exactBptAmountIn,
@@ -422,7 +427,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
                         AddLiquidityHookParams({
                             pool: parentPool,
-                            sender: msg.sender,
+                            sender: address(this),
                             maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: 0,
                             kind: AddLiquidityKind.UNBALANCED,
@@ -622,7 +627,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeWithSelector(
                     CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook.selector,
                     RemoveLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: parentPool,
                         minAmountsOut: new uint256[](tokensOut.length),
                         maxBptAmountIn: exactBptAmountIn,
