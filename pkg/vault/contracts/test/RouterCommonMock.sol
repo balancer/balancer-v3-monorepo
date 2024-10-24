@@ -15,7 +15,11 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 contract RouterCommonMock is RouterCommon {
     event CurrentSenderMock(address sender);
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {}
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2
+    ) RouterCommon(vault, weth, permit2, "Mock RouterCommon v1") {}
 
     function call(address to, bytes calldata data) external saveSender(msg.sender) returns (bytes memory) {
         (bool success, bytes memory result) = to.call(data);
