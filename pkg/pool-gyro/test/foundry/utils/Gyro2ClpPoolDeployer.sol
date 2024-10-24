@@ -5,9 +5,9 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -16,6 +16,7 @@ import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/tes
 
 import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol";
 import { Gyro2CLPPool } from "../../../contracts/Gyro2CLPPool.sol";
+import { Gyro2CLPPoolMock } from "../../../contracts/test/Gyro2CLPPoolMock.sol";
 
 contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
     using CastingHelpers for address[];
@@ -30,6 +31,54 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         if (vm.exists("artifacts/@balancer-labs/v3-pool-gyro/")) {
             artifactsRootDir = "artifacts/@balancer-labs/v3-pool-gyro/";
         }
+    }
+
+    function deployGyro2ClpPoolMock(
+        address[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        string memory label,
+        IVaultMock vault,
+        address poolCreator
+    ) internal returns (address) {
+        Gyro2CLPPoolMock newPool;
+
+        Gyro2CLPPool.GyroParams params = Gyro2CLPPool.GyroParams({
+            name: "Gyro 2CLP Pool Mock",
+            symbol: "GRP-Mock",
+            sqrtAlpha: _sqrtAlpha,
+            sqrtBeta: _sqrtBeta
+        });
+
+        if (reusingArtifacts) {
+            newPool = Gyro2CLPPoolMock(
+                deployCode(_computeGyro2CLPPathTest(type(Gyro2CLPPoolMock).name), abi.encode(params, vault))
+            );
+        } else {
+            newPool = new Gyro2CLPPoolMock(params, vault);
+        }
+        vm.label(address(newPool), label);
+
+        LiquidityManagement memory liquidityManagement;
+        PoolRoleAccounts memory roleAccounts;
+
+        vault.registerPool(
+            address(newPool),
+            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
+            0,
+            0,
+            false,
+            roleAccounts,
+            address(0),
+            liquidityManagement
+        );
+
+        // Cannot set the pool creator directly on a standard Balancer gyro pool factory.
+        vault.manualSetPoolCreator(address(newPool), poolCreator);
+
+        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
+        feeController.manualSetPoolCreator(address(newPool), poolCreator);
+
+        return address(newPool);
     }
 
     function deployGyro2ClpPool(
@@ -58,7 +107,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         );
         vm.label(address(newPool), label);
 
-        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
+        // Cannot set the pool creator directly on a standard Balancer gyro pool factory.
         vault.manualSetPoolCreator(address(newPool), poolCreator);
 
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
@@ -80,5 +129,9 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
 
     function _computeGyro2CLPPath(string memory name) private view returns (string memory) {
         return string(abi.encodePacked(artifactsRootDir, "contracts/", name, ".sol/", name, ".json"));
+    }
+
+    function _computeGyro2CLPPathTest(string memory name) private view returns (string memory) {
+        return string(abi.encodePacked(artifactsRootDir, "contracts/test/", name, ".sol/", name, ".json"));
     }
 }
