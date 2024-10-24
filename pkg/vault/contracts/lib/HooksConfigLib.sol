@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
@@ -189,7 +189,9 @@ library HooksConfigLib {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
         }
 
-        if (swapFeePercentage > FixedPoint.ONE) {
+        // A 100% fee is not supported. In the ExactOut case, the Vault divides by the complement of the swap fee.
+        // The minimum precision constraint provides an additional buffer.
+        if (swapFeePercentage > MAX_FEE_PERCENTAGE) {
             revert IVaultErrors.PercentageAboveMax();
         }
 

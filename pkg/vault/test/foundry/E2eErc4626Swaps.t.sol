@@ -63,8 +63,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         );
 
         vm.prank(poolCreator);
-        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+        // Set pool creator fee close to 100%, so protocol + creator fees ~ the total charged fees.
+        feeController.setPoolCreatorSwapFeePercentage(pool, MAX_FEE_PERCENTAGE);
 
         minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
         maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
