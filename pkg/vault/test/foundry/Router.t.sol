@@ -23,6 +23,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { MOCK_ROUTER_VERSION } from "../../contracts/test/RouterMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -158,7 +159,7 @@ contract RouterTest is BaseVaultTest {
     function testQuerySwap() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, bytes(""));
+        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
     }
 
     function testDisableQueries() public {
@@ -180,7 +181,7 @@ contract RouterTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.QueriesDisabled.selector);
 
         _prankStaticCall();
-        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, bytes(""));
+        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
     }
 
     function testInitializeBelowMinimum() public {
@@ -664,6 +665,10 @@ contract RouterTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector, weth));
         router.getSingleInputArrayAndTokenIndex(pool, weth, daiAmountIn);
+    }
+
+    function testRouterVersion() public view {
+        assertEq(router.version(), MOCK_ROUTER_VERSION, "Router version mismatch");
     }
 
     function checkRemoveLiquidityPreConditions() internal view {

@@ -21,6 +21,9 @@ import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { IBatchRouter } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('BatchSwap', function () {
+  const BATCH_ROUTER_VERSION = 'BatchRouter v9';
+  const ROUTER_VERSION = 'Router v9';
+
   let permit2: IPermit2;
   let vault: Vault;
   let factory: PoolFactoryMock;
@@ -47,8 +50,8 @@ describe('BatchSwap', function () {
     vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2] });
-    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
+    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2, BATCH_ROUTER_VERSION] });
+    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
@@ -189,7 +192,7 @@ describe('BatchSwap', function () {
           tokensOut: string[];
           amountsOut: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
@@ -996,7 +999,7 @@ describe('BatchSwap', function () {
           tokensIn: string[];
           amountsIn: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
