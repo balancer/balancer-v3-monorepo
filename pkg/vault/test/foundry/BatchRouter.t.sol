@@ -6,10 +6,11 @@ import "forge-std/Test.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 
+import { MOCK_BATCH_ROUTER_VERSION } from "../../contracts/test/BatchRouterMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract BatchRouter is BaseVaultTest {
+contract BatchRouterTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
@@ -26,5 +27,9 @@ contract BatchRouter is BaseVaultTest {
 
         vm.expectRevert(RouterCommon.SwapDeadline.selector);
         batchRouter.swapExactOut(paths, block.timestamp - 1, false, bytes(""));
+    }
+
+    function testBatchRouterVersion() public view {
+        assertEq(batchRouter.version(), MOCK_BATCH_ROUTER_VERSION, "BatchRouter version mismatch");
     }
 }
