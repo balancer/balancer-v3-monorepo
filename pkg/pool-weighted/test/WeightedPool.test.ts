@@ -28,9 +28,18 @@ import { PoolConfigStructOutput } from '@balancer-labs/v3-solidity-utils/typecha
 import { TokenConfigStruct } from '../typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
 
 describe('WeightedPool', function () {
-  const POOL_SWAP_FEE = fp(0.01);
+  const FACTORY_VERSION = 'Weighted Factory v1';
+  const POOL_VERSION = 'Weighted Pool v1';
+  const ROUTER_VERSION = 'Router v9';
 
+  const POOL_SWAP_FEE = fp(0.01);
   const TOKEN_AMOUNT = fp(100);
+
+  const WEIGHTS = [fp(0.5), fp(0.5)];
+  const INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT];
+  const SWAP_AMOUNT = fp(20);
+
+  const SWAP_FEE = fp(0.01);
 
   let permit2: IPermit2;
   let vault: IVaultMock;
@@ -46,15 +55,6 @@ describe('WeightedPool', function () {
   let tokenAAddress: string;
   let tokenBAddress: string;
 
-  const FACTORY_VERSION = 'Weighted Factory v1';
-  const POOL_VERSION = 'Weighted Pool v1';
-
-  const WEIGHTS = [fp(0.5), fp(0.5)];
-  const INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT];
-  const SWAP_AMOUNT = fp(20);
-
-  const SWAP_FEE = fp(0.01);
-
   before('setup signers', async () => {
     [, alice, bob] = await ethers.getSigners();
   });
@@ -64,7 +64,7 @@ describe('WeightedPool', function () {
 
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
