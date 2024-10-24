@@ -28,7 +28,7 @@ contract E2eSwapRateProviderGyro2CLPTest is VaultContractsDeployer, E2eSwapRateP
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        return createGyro2ClpPool(tokens, rateProviders, label, vault, lp);
+        return deployGyro2ClpPool(tokens, rateProviders, label, vault, lp);
     }
 
     function calculateMinAndMaxSwapAmounts() internal virtual override {

@@ -145,14 +145,10 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         }
     }
 
-    function _sqrtParameters() internal view virtual returns (uint256[2] memory virtualParameters) {
-        virtualParameters[0] = _sqrtParameters(true);
-        virtualParameters[1] = _sqrtParameters(false);
-        return virtualParameters;
-    }
-
-    function _sqrtParameters(bool parameter0) internal view virtual returns (uint256) {
-        return parameter0 ? _sqrtAlpha : _sqrtBeta;
+    function _sqrtParameters() internal view virtual returns (uint256[2] memory sqrtParameters) {
+        sqrtParameters[0] = _sqrtAlpha;
+        sqrtParameters[1] = _sqrtBeta;
+        return sqrtParameters;
     }
 
     function _getVirtualParameters(

@@ -32,7 +32,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         }
     }
 
-    function createGyro2ClpPool(
+    function deployGyro2ClpPool(
         address[] memory tokens,
         IRateProvider[] memory rateProviders,
         string memory label,
