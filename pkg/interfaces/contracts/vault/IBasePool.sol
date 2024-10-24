@@ -25,6 +25,23 @@ interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRa
      * If the invariant computation involves no precision loss (e.g. simple sum of balances), the same result can be
      * returned for both rounding directions.
      *
+     * You can think of the invariant as a measure of the "value" of the pool, which is related to the total liquidity
+     * (i.e., the "BPT rate" is `invariant` / `totalSupply`). Two critical properties must hold:
+     *
+     * 1) The invariant should not change due to a swap. In practice, it can *increase* due to swap fees, which
+     * effectively add liquidity after the swap - but it should never decrease.
+     *
+     * 2) The invariant must be "linear"; i.e., increasing the balances proportionally must increase the invariant in
+     * the same proportion: inv(a * n, b * n, c * n) = inv(a, b, c) * n
+     *
+     * Property #1 is required to prevent "round trip" paths that drain value from the pool (and all LP shareholders).
+     * Intuitively, an accurate pricing algorithm ensures the user gets an equal value of token out given token in, so
+     * the total value should not change.
+     *
+     * Property #2 is essential for the "fungibility" of LP shares. If it did not hold, then different users depositing
+     * the same total value would get a different number of LP shares. In that case, LP shares would not be
+     * interchangeable, as they must be in a fair DEX.
+     *
      * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      * @param rounding Rounding direction to consider when computing the invariant
      * @return invariant The calculated invariant of the pool, represented as a uint256
