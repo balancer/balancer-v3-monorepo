@@ -42,7 +42,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
     ) internal returns (address) {
         Gyro2CLPPoolMock newPool;
 
-        Gyro2CLPPool.GyroParams params = Gyro2CLPPool.GyroParams({
+        Gyro2CLPPool.GyroParams memory params = Gyro2CLPPool.GyroParams({
             name: "Gyro 2CLP Pool Mock",
             symbol: "GRP-Mock",
             sqrtAlpha: _sqrtAlpha,
