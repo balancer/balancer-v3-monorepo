@@ -7,6 +7,23 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "../vault/IBasePool.sol";
 
 /**
+ * @notice Full state of any ongoing or scheduled amplification parameter update.
+ * @dev If there is an ongoing or scheduled update, `startTime` and/or `endTime` will be in the future.
+ * On initialization, startTime == endTime, and both startValue and endValue will reflect the initial amp setting.
+ *
+ * @return startValue The amplification parameter at the start of the update
+ * @return endValue The final value of the amplification parameter
+ * @return startTime The timestamp when the update begins
+ * @return endTime The timestamp when the update ends
+ */
+struct AmplificationState {
+    uint64 startValue;
+    uint64 endValue;
+    uint32 startTime;
+    uint32 endTime;
+}
+
+/**
  * @notice Stable Pool data that cannot change after deployment.
  * @param tokens Pool tokens, sorted in pool registration order
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
@@ -33,7 +50,12 @@ struct StablePoolImmutableData {
  * @param bptRate The current rate of a pool token (BPT) = invariant / totalSupply
  * @param amplificationParameter Controls the "flatness" of the invariant curve. higher values = lower slippage,
  * and assumes prices are near parity. lower values = closer to the constant product curve (e.g., more like a
- * weighted pool). This has higher slippage, and accommodates greater price volatility.
+ * weighted pool). This has higher slippage, and accommodates greater price volatility. Note that this is the raw
+ * amp value, not multiplied by `StableMath.AMP_PRECISION`
+ * @param startValue The amplification parameter at the start of an update
+ * @param endValue The final value of the amplification parameter
+ * @param startTime The timestamp when the update begins
+ * @param endTime The timestamp when the update ends
  * @param isAmpUpdating True if an amplification parameter update is in progress
  * @param isPoolInitialized If false, the pool has not been seeded with initial liquidity, so operations will revert
  * @param isPoolPaused If true, the pool is paused, and all non-recovery-mode state-changing operations will revert
@@ -46,6 +68,10 @@ struct StablePoolDynamicData {
     uint256 totalSupply;
     uint256 bptRate;
     uint256 amplificationParameter;
+    uint256 startValue;
+    uint256 endValue;
+    uint32 startTime;
+    uint32 endTime;
     bool isAmpUpdating;
     bool isPoolInitialized;
     bool isPoolPaused;
@@ -73,6 +99,17 @@ interface IStablePool is IBasePool {
      * @return precision The raw value is multiplied by this number for greater precision during updates
      */
     function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision);
+
+    /**
+     * @notice Get the full state of any ongoing or scheduled amplification parameter update.
+     * @dev Starting and ending values are returned in their full precision state.
+     * @return amplificationState Struct containing the update data
+     * @return precision The raw parameter value is multiplied by this number for greater precision during updates
+     */
+    function getAmplificationState()
+        external
+        view
+        returns (AmplificationState memory amplificationState, uint256 precision);
 
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
