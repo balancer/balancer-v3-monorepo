@@ -196,6 +196,8 @@ contract E2eSwapTest is BaseVaultTest {
     function testDoUndoExactInSwapAmount__Fuzz(uint256 exactAmountIn) public {
         DoUndoLocals memory testLocals;
 
+        testLocals.shouldTestSwapAmount = true;
+
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
@@ -255,6 +257,8 @@ contract E2eSwapTest is BaseVaultTest {
 
     function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactAmountOut) public {
         DoUndoLocals memory testLocals;
+
+        testLocals.shouldTestSwapAmount = true;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
