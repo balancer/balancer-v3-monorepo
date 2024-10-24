@@ -16,8 +16,14 @@ import {
 
 import { BatchRouter } from "../BatchRouter.sol";
 
+string constant MOCK_BATCH_ROUTER_VERSION = "Mock BatchRouter v1";
+
 contract BatchRouterMock is BatchRouter {
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouter(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2
+    ) BatchRouter(vault, weth, permit2, MOCK_BATCH_ROUTER_VERSION) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
