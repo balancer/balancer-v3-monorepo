@@ -539,31 +539,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
-    /**
-     * @notice Unwraps `wrappedAmountIn` tokens and updates the transient set `_currentSwapTokenOutAmounts`.
-     */
-    function _unwrapAndUpdateTokenOutAmounts(IERC4626 wrappedToken, uint256 wrappedAmountIn) private {
-        if (wrappedAmountIn == 0) {
-            return;
-        }
-
-        (, , uint256 underlyingAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: SwapKind.EXACT_IN,
-                direction: WrappingDirection.UNWRAP,
-                wrappedToken: wrappedToken,
-                amountGivenRaw: wrappedAmountIn,
-                limitRaw: uint256(0)
-            })
-        );
-
-        // The transient sets `_currentSwapTokensOut` and `_currentSwapTokenOutAmounts` must be updated, so
-        // `_settlePaths` function will be able to send the token out amounts to the sender.
-        address underlyingToken = wrappedToken.asset();
-        _currentSwapTokensOut().add(underlyingToken);
-        _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmountOut);
-    }
-
     function _getNestedPoolAddOperationByPool(
         address prevPool,
         address pool,
