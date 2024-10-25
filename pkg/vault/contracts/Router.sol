@@ -39,8 +39,9 @@ contract Router is IRouterMain, RouterCommon, ReentrancyGuardTransient, Proxy {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        IRouterExtension routerExtension
-    ) RouterCommon(vault, weth, permit2) {
+        IRouterExtension routerExtension,
+        string memory version
+    ) RouterCommon(vault, weth, permit2, version) {
         _routerExtension = routerExtension;
     }
 

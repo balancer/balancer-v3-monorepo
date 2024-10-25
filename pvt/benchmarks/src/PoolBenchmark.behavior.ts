@@ -19,7 +19,7 @@ import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
-import { BatchRouter, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
+import { BatchRouter, IRouter, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import {
   ERC20WithRateTestToken,
@@ -27,7 +27,7 @@ import {
   WETHTestToken,
 } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { BaseContract } from 'ethers';
-import { IERC20, IRouterMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { IERC20 } from '@balancer-labs/v3-interfaces/typechain-types';
 
 export class Benchmark {
   _testDirname: string;
@@ -52,6 +52,8 @@ export class Benchmark {
   }
 
   itBenchmarks = () => {
+    const BATCH_ROUTER_VERSION = 'BatchRouter v9';
+
     const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
     const MAX_PROTOCOL_YIELD_FEE = fp(0.2);
 
@@ -63,7 +65,7 @@ export class Benchmark {
 
     let permit2: IPermit2;
     let feeCollector: ProtocolFeeController;
-    let router: IRouterMock;
+    let router: IRouter;
     let batchRouter: BatchRouter;
     let alice: SignerWithAddress;
     let admin: SignerWithAddress;
@@ -90,7 +92,9 @@ export class Benchmark {
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       permit2 = await deployPermit2();
       router = await RouterDeployer.deployRouter(await this.vault.getAddress(), this.WETH, permit2);
-      batchRouter = await deploy('v3-vault/BatchRouter', { args: [this.vault, this.WETH, permit2] });
+      batchRouter = await deploy('v3-vault/BatchRouter', {
+        args: [this.vault, this.WETH, permit2, BATCH_ROUTER_VERSION],
+      });
       this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
       this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });
 

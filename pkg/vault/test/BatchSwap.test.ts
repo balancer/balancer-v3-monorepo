@@ -9,7 +9,7 @@ import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { BatchRouter, PoolFactoryMock, Vault } from '../typechain-types';
+import { BatchRouter, IRouter, PoolFactoryMock, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
@@ -18,10 +18,12 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from './Permit2Deployer';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
-import { IBatchRouter, IRouterMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { IBatchRouter } from '@balancer-labs/v3-interfaces/typechain-types';
 import * as RouterDeployer from '@balancer-labs/v3-helpers/src/models/vault/RouterDeployer';
 
 describe('BatchSwap', function () {
+  const BATCH_ROUTER_VERSION = 'BatchRouter v9';
+
   let permit2: IPermit2;
   let vault: Vault;
   let factory: PoolFactoryMock;
@@ -29,7 +31,7 @@ describe('BatchSwap', function () {
   let poolAB: PoolMock, poolAC: PoolMock, poolBC: PoolMock;
   let pools: PoolMock[];
   let tokens: ERC20TokenList;
-  let router: BatchRouter, basicRouter: IRouterMock;
+  let router: BatchRouter, basicRouter: IRouter;
 
   let lp: SignerWithAddress, sender: SignerWithAddress, zero: VoidSigner;
 
@@ -48,7 +50,7 @@ describe('BatchSwap', function () {
     vaultAddress = await vault.getAddress();
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2] });
+    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2, BATCH_ROUTER_VERSION] });
     basicRouter = await RouterDeployer.deployRouter(vaultAddress, WETH, permit2);
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });

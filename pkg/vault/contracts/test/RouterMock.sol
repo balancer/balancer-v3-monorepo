@@ -18,6 +18,8 @@ import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/
 import { Router } from "../Router.sol";
 import { RouterExtension } from "../RouterExtension.sol";
 
+string constant MOCK_ROUTER_VERSION = "Mock Router v1";
+
 contract RouterMock is Router {
     error MockErrorCode();
 
@@ -26,7 +28,7 @@ contract RouterMock is Router {
         IWETH weth,
         IPermit2 permit2,
         IRouterExtension routerExtension
-    ) Router(vault, weth, permit2, routerExtension) {}
+    ) Router(vault, weth, permit2, routerExtension, MOCK_ROUTER_VERSION) {}
 
     function manualReentrancyInitializeHook() external nonReentrant {
         IRouter.InitializeHookParams memory hookParams;

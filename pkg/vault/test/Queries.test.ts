@@ -10,7 +10,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as RouterDeployer from '@balancer-labs/v3-helpers/src/models/vault/RouterDeployer';
-import { PoolFactoryMock, PoolMock, RouterMock, Vault } from '@balancer-labs/v3-vault/typechain-types';
+import { IRouter, PoolFactoryMock, PoolMock, RouterMock, Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
@@ -19,19 +19,19 @@ import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { deployPermit2 } from './Permit2Deployer';
 
 describe('Queries', function () {
+  const DAI_AMOUNT_IN = fp(1000);
+  const USDC_AMOUNT_IN = fp(1000);
+  const BPT_AMOUNT = fp(2000);
+
   let permit2: IPermit2;
   let vault: Vault;
-  let router: IRouterMock;
+  let router: IRouter;
   let factory: PoolFactoryMock;
   let pool: PoolMock;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
   let WETH: WETHTestToken;
   let zero: VoidSigner;
-
-  const DAI_AMOUNT_IN = fp(1000);
-  const USDC_AMOUNT_IN = fp(1000);
-  const BPT_AMOUNT = fp(2000);
 
   let alice: SignerWithAddress;
 

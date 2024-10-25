@@ -37,7 +37,8 @@ import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { RouterExtension } from "../../../contracts/RouterExtension.sol";
 
 /**
- * @dev This contract contains functions for deploying mocks and contracts related to the "Vault". These functions should have support for reusing artifacts from the hardhat compilation.
+ * @notice This contract contains functions for deploying mocks and contracts related to the "Vault".
+ * @dev These functions should have support for reusing artifacts from the hardhat compilation.
  */
 contract VaultContractsDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";

@@ -67,7 +67,12 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         bytes userData;
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) RouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

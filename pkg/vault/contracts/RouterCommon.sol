@@ -16,16 +16,22 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
-import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
-/// @notice Contract for functions shared between the `Router` and `BatchRouter`.
-abstract contract RouterCommon is IRouterCommon, VaultGuard {
+/**
+ * @notice Abstract base contract for functions shared among all Routers.
+ * @dev Common functionality includes access to the sender (which would normally be obscured, since msg.sender in the
+ * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
+ * invocation functions (`permitBatchAndCall` and `multicall`).
+ */
+abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
     using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
     using Address for address payable;
     using StorageSlotExtension for *;
@@ -124,7 +130,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         }
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2, string memory version) VaultGuard(vault) Version(version) {
         _weth = weth;
         _permit2 = permit2;
     }

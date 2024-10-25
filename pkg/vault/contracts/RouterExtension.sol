@@ -18,7 +18,12 @@ import { Router } from "./Router.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 contract RouterExtension is RouterCommon, ReentrancyGuardTransient, IRouterExtension {
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) RouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
