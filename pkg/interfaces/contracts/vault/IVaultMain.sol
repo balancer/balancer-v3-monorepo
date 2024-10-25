@@ -128,6 +128,22 @@ interface IVaultMain {
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /*******************************************************************************
+                                 Balancer Pool Tokens
+    *******************************************************************************/
+
+    /**
+     * @notice Transfers pool token from owner to a recipient.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Address of the owner
+     * @param to Address of the recipient
+     * @param amount Amount of tokens to transfer
+     * @return success True if successful, false otherwise
+     */
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
+
+    /*******************************************************************************
                                   ERC4626 Buffers
     *******************************************************************************/
 

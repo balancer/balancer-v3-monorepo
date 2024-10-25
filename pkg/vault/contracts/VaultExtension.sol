@@ -626,12 +626,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function transfer(address owner, address to, uint256 amount) external onlyVaultDelegateCall returns (bool) {
-        _transfer(msg.sender, owner, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVaultExtension
     function transferFrom(
         address spender,
         address from,
