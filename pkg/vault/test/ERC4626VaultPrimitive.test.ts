@@ -23,7 +23,7 @@ import {
 } from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, bn, fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
-import {  IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
+import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { deployPermit2 } from './Permit2Deployer';
