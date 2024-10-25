@@ -75,34 +75,6 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         _setAmplificationParameter(swapPool, newAmplificationParameter);
     }
 
-    // Tests varying Amplification Parameter
-
-    //    function testRemoveLiquiditySingleTokenExactOutAmplificationParameter__Fuzz(
-    //        uint256 exactAmountOut,
-    //        uint256 swapFeePercentage,
-    //        uint256 newAmplificationParameter
-    //    ) public {
-    //        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
-    //        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-    //
-    //        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
-    //        assertLiquidityOperation(amountOut, swapFeePercentage, false);
-    //    }
-    //
-    //    function testRemoveLiquiditySingleTokenExactInAmplificationParameter__Fuzz(
-    //        uint256 exactBptAmountIn,
-    //        uint256 swapFeePercentage,
-    //        uint256 newAmplificationParameter
-    //    ) public {
-    //        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
-    //        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-    //
-    //        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
-    //        assertLiquidityOperation(amountOut, swapFeePercentage, false);
-    //    }
-
-    // Utils
-
     function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {
         uint256 updateInterval = 5000 days;
 
