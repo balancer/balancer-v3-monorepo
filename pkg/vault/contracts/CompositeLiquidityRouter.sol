@@ -48,7 +48,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     // solhint-disable var-name-mixedcase
     bytes32 private immutable _INDEX_BY_POOL_MAPPING_SLOT = _calculateBatchRouterStorageSlot("indexByPoolMapping");
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) BatchRouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
