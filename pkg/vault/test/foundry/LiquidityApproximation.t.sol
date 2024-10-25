@@ -133,6 +133,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
         return maxAmount;
     }
 
+    function getMaxUsdcOut() internal view virtual returns (uint256 maxUsdcOut) {
+        return maxAmount;
+    }
+
     function getMaxBptOut() internal view virtual returns (uint256 maxBptOut) {
         return maxAmount / 2 - 1;
     }
@@ -328,7 +332,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     ) public {
         fuzzPoolParams(params);
 
-        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
+        exactAmountOut = bound(exactAmountOut, minAmount, getMaxUsdcOut());
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
 
         setSwapFeePercentageInPools(swapFeePercentage);
@@ -352,7 +356,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     ) public {
         fuzzPoolParams(params);
 
-        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
+        exactAmountOut = bound(exactAmountOut, minAmount, getMaxUsdcOut());
 
         setSwapFeePercentageInPools(0);
 

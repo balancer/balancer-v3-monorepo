@@ -103,6 +103,10 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         return maxAmount.mulDown(25e16);
     }
 
+    function getMaxUsdcOut() internal view override returns (uint256) {
+        return maxAmount / 10;
+    }
+
     function getMaxBptOut() internal view override returns (uint256) {
         uint256 weightDai = WeightedPool(liquidityPool).getNormalizedWeights()[daiIdx];
         uint256 swapFeePercentage = vault.getStaticSwapFeePercentage(liquidityPool);
