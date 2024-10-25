@@ -67,95 +67,41 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         return address(newPool);
     }
 
-    // Tests varying Amplification Parameter
-
-    function testAddLiquidityUnbalancedAmplificationParameter__Fuzz(
-        uint256 daiAmountIn,
-        uint256 swapFeePercentage,
-        uint256 newAmplificationParameter
-    ) public {
-        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
-        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-
-        uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, true);
-    }
-
-    function testAddLiquiditySingleTokenExactOutAmplificationParameter__Fuzz(
-        uint256 exactBptAmountOut,
-        uint256 swapFeePercentage,
-        uint256 newAmplificationParameter
-    ) public {
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
-        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-
-        uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, true);
-    }
-
-    function testAddLiquidityProportionalAndRemoveExactInAmplificationParameter__Fuzz(
-        uint256 exactBptAmountOut,
-        uint256 swapFeePercentage,
-        uint256 newAmplificationParameter
-    ) public {
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
-        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-
-        uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
-    }
-
-    function testAddLiquidityProportionalAndRemoveExactOutAmplificationParameter__Fuzz(
-        uint256 exactBptAmountOut,
-        uint256 swapFeePercentage,
-        uint256 newAmplificationParameter
-    ) public {
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
-        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-
-        uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
-    }
-
-    function testRemoveLiquiditySingleTokenExactOutAmplificationParameter__Fuzz(
-        uint256 exactAmountOut,
-        uint256 swapFeePercentage,
-        uint256 newAmplificationParameter
-    ) public {
-        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
-        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-
-        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
-    }
-
-    function testRemoveLiquiditySingleTokenExactInAmplificationParameter__Fuzz(
-        uint256 exactBptAmountIn,
-        uint256 swapFeePercentage,
-        uint256 newAmplificationParameter
-    ) public {
-        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
-        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
-
-        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
-    }
-
-    // Utils
-
-    function _setAmplificationParameterAndSwapFee(
-        uint256 swapFeePercentage,
-        uint256 newAmplificationParameter
-    ) private returns (uint256) {
+    function fuzzPoolParams(uint256[10] memory params) internal override {
         // Vary amplification parameter from 1 to 5000.
-        newAmplificationParameter = bound(newAmplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        uint256 newAmplificationParameter = bound(params[0], StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         _setAmplificationParameter(liquidityPool, newAmplificationParameter);
         _setAmplificationParameter(swapPool, newAmplificationParameter);
-
-        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-        return swapFeePercentage;
     }
+
+    // Tests varying Amplification Parameter
+
+    //    function testRemoveLiquiditySingleTokenExactOutAmplificationParameter__Fuzz(
+    //        uint256 exactAmountOut,
+    //        uint256 swapFeePercentage,
+    //        uint256 newAmplificationParameter
+    //    ) public {
+    //        exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
+    //        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
+    //
+    //        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
+    //        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    //    }
+    //
+    //    function testRemoveLiquiditySingleTokenExactInAmplificationParameter__Fuzz(
+    //        uint256 exactBptAmountIn,
+    //        uint256 swapFeePercentage,
+    //        uint256 newAmplificationParameter
+    //    ) public {
+    //        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
+    //        swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
+    //
+    //        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
+    //        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    //    }
+
+    // Utils
 
     function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {
         uint256 updateInterval = 5000 days;
