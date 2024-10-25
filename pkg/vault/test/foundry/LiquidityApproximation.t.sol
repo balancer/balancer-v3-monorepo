@@ -89,6 +89,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    uint256 internal constant NUMBER_PARAMETERS = 10;
+
     function setUp() public virtual override {
         poolInitAmount = 1e9 * 1e18;
         defaultBalance = 1e10 * 1e18;
@@ -123,7 +125,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
      * @notice Fuzz specific pool parameters.
      * @dev Override this function to fuzz test parameters that are specific to a kind of pool.
      */
-    function fuzzPoolParams(uint256[10] memory params) internal virtual {
+    function fuzzPoolParams(uint256[NUMBER_PARAMETERS] memory params) internal virtual {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -147,7 +149,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquidityUnbalancedSpecific__Fuzz(
         uint256 daiAmountIn,
         uint256 swapFeePercentage,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
         daiAmountIn = bound(daiAmountIn, minAmount, getMaxDaiIn());
@@ -164,7 +166,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperationNoSwapFee();
     }
 
-    function testAddLiquidityUnbalancedNoSwapFeeSpecific__Fuzz(uint256 daiAmountIn, uint256[10] memory params) public {
+    function testAddLiquidityUnbalancedNoSwapFeeSpecific__Fuzz(
+        uint256 daiAmountIn,
+        uint256[NUMBER_PARAMETERS] memory params
+    ) public {
         fuzzPoolParams(params);
         daiAmountIn = bound(daiAmountIn, minAmount, getMaxDaiIn());
         setSwapFeePercentageInPools(0);
@@ -183,7 +188,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquiditySingleTokenExactOutSpecific__Fuzz(
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
@@ -202,7 +207,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testAddLiquiditySingleTokenExactOutNoSwapFeeSpecific__Fuzz(
         uint256 exactBptAmountOut,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
@@ -226,7 +231,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquidityProportionalAndRemoveExactInSpecific__Fuzz(
         uint256 exactBptAmount,
         uint256 swapFeePercentage,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmount = bound(exactBptAmount, minAmount, getMaxBptOut());
@@ -245,7 +250,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testAddLiquidityProportionalAndRemoveExactInNoSwapFeeSpecific__Fuzz(
         uint256 exactBptAmount,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmount = bound(exactBptAmount, minAmount, getMaxBptOut());
@@ -270,7 +275,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquidityProportionalAndRemoveExactOutSpecific__Fuzz(
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
@@ -293,7 +298,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testAddLiquidityProportionalAndRemoveExactOutNoSwapFeeSpecific__Fuzz(
         uint256 exactBptAmountOut,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
@@ -319,7 +324,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExactOutSpecific__Fuzz(
         uint256 exactAmountOut,
         uint256 swapFeePercentage,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
 
@@ -343,7 +348,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testRemoveLiquiditySingleTokenExactOutNoSwapFeeSpecific__Fuzz(
         uint256 exactAmountOut,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
 
@@ -366,7 +371,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExactInSpecific__Fuzz(
         uint256 exactBptAmountIn,
         uint256 swapFeePercentage,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
 
@@ -386,7 +391,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function testRemoveLiquiditySingleTokenExactInNoSwapFeeSpecific__Fuzz(
         uint256 exactBptAmountIn,
-        uint256[10] memory params
+        uint256[NUMBER_PARAMETERS] memory params
     ) public {
         fuzzPoolParams(params);
 
