@@ -18,14 +18,14 @@ export async function deployRouter(vault: AddressLike, WETH: WETHTestToken, perm
     args: [vault, WETH, permit2, routerExtension, 'Router V1'],
   });
 
-  return (await contract.deployedAt('v3-interfaces/IRouterMock', await router.getAddress())) as unknown as IRouterMock;
+  return (await contract.deployedAt('v3-interfaces/IRouter', await router.getAddress())) as unknown as IRouter;
 }
 
 export async function deployRouterMock(
   vault: AddressLike,
   WETH: WETHTestToken,
   permit2: IPermit2
-): Promise<RouterMock> {
+): Promise<IRouterMock> {
   const routerExtension: RouterExtension = await contract.deploy('v3-vault/RouterExtension', {
     args: [vault, WETH, permit2, 'Mock Router V1'],
   });
