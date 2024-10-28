@@ -70,6 +70,8 @@ const contractSettings: ContractSettings = {
   '@balancer-labs/v3-vault/contracts/Router.sol': {
     version: '0.8.26',
     runs: 9999,
+    // Disabled viaIR because delegatecall, in the fallback function, increases the gas costs by 700 gas with
+    // `viaIr=true`
     viaIR: false,
   },
   '@balancer-labs/v3-vault/contracts/VaultExplorer.sol': {
