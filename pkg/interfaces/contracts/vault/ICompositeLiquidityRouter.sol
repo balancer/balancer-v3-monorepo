@@ -91,7 +91,7 @@ interface ICompositeLiquidityRouter {
      * @param pool Address of the liquidity pool
      * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
      * wrapped tokens in the pool
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
@@ -107,7 +107,7 @@ interface ICompositeLiquidityRouter {
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
      * @return underlyingAmountsIn Expected amounts of tokens to add, sorted in token registration order of wrapped
      * tokens in the pool
@@ -124,7 +124,7 @@ interface ICompositeLiquidityRouter {
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
      * @return underlyingAmountsOut Expected amounts of tokens to receive, sorted in token registration order of
      * wrapped tokens in the pool
@@ -168,7 +168,7 @@ interface ICompositeLiquidityRouter {
      * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
      * child pools and all tokens that are not BPTs from the nested pool (parent pool).
      * @param exactAmountsIn Amount of each underlying token in, sorted according to tokensIn array
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
      * @return bptAmountOut Expected amount of parent pool tokens to receive
      */
@@ -210,7 +210,7 @@ interface ICompositeLiquidityRouter {
      * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
      * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
      * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
      * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
      */
