@@ -1095,6 +1095,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return true;
     }
 
+    /// @inheritdoc IVaultMain
+    function transferFrom(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
+        return true;
+    }
+
     /*******************************************************************************
                                   ERC4626 Buffers
     *******************************************************************************/
@@ -1501,15 +1513,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
         }
-    }
-
-    /*******************************************************************************
-                                    Authentication
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
     }
 
     /*******************************************************************************

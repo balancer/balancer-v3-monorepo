@@ -10,6 +10,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -625,18 +626,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return true;
     }
 
-    /// @inheritdoc IVaultExtension
-    function transferFrom(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external onlyVaultDelegateCall returns (bool) {
-        _spendAllowance(msg.sender, from, spender, amount);
-        _transfer(msg.sender, from, to, amount);
-        return true;
-    }
-
     /*******************************************************************************
                                    ERC4626 Buffers
     *******************************************************************************/
@@ -868,6 +857,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVaultDelegateCall returns (bool) {
         return _vaultStateBits.isQueryDisabled();
+    }
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function getAuthorizer() external view returns (IAuthorizer) {
+        return _authorizer;
     }
 
     /*******************************************************************************

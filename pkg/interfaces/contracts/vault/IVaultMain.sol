@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IAuthorizer } from "./IAuthorizer.sol";
 import "./VaultTypes.sol";
 
 /**
@@ -143,6 +142,19 @@ interface IVaultMain {
      */
     function transfer(address owner, address to, uint256 amount) external returns (bool);
 
+    /**
+     * @notice Transfers pool token from a sender to a recipient using an allowance.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param spender Address allowed to perform the transfer
+     * @param from Address of the sender
+     * @param to Address of the recipient
+     * @param amount Amount of tokens to transfer
+     * @return success True if successful, false otherwise
+     */
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+
     /*******************************************************************************
                                   ERC4626 Buffers
     *******************************************************************************/
@@ -160,19 +172,6 @@ interface IVaultMain {
     function erc4626BufferWrapOrUnwrap(
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
-
-    /*******************************************************************************
-                                Authentication
-    *******************************************************************************/
-
-    /**
-     * @notice Returns the Authorizer address.
-     * @dev The authorizer holds the permissions granted by governance. It is set on Vault deployment,
-     * and can be changed through a permissioned call.
-     *
-     * @return authorizer Address of the authorizer contract
-     */
-    function getAuthorizer() external view returns (IAuthorizer);
 
     /*******************************************************************************
                                      Miscellaneous
