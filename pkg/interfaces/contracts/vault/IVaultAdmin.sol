@@ -131,7 +131,7 @@ interface IVaultAdmin {
     /**
      * @notice Reverse a `pause` operation, and restore Vault pool operations to normal functionality.
      * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires. And as noted above,
+     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires. As noted above,
      * ERC4626 buffers and Vault operations on pools are independent. Unpausing the Vault does not reverse
      * `pauseVaultBuffers`. If buffers were also paused, they will remain in that state until explicitly unpaused.
      */
@@ -278,7 +278,9 @@ interface IVaultAdmin {
     /**
      * @notice Unpauses native vault buffers globally.
      * @dev When buffers are paused, it's not possible to add liquidity or wrap/unwrap tokens using the Vault's
-     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
+     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity. As noted above,
+     * ERC4626 buffers and Vault operations on pools are independent. Unpausing buffers does not reverse `pauseVault`.
+     * If the Vault was also paused, it will remain in that state until explicitly unpaused.
      *
      * This is a permissioned call.
      */
