@@ -105,7 +105,7 @@ library Gyro2CLPMath {
         bSquare = bSquare + bSq2 + bSq3;
     }
 
-    /** @dev Calculates quadratic root for a special case of quadratic
+    /** @dev Calculates the quadratic root for a special case of the quadratic formula
      *   assumes a > 0, b < 0, and c <= 0, which is the case for a L^2 + b L + c = 0
      *   where   a = 1 - sqrt(alpha/beta)
      *           b = -(y/sqrt(beta) + x*sqrt(alpha))
