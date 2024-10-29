@@ -65,7 +65,7 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         //   a = L / _sqrtBeta
         //   b = L * _sqrtAlpha
         //
-        // In computeBalance, we want to know what's the new balance of a token, given that invariant
+        // In computeBalance, we want to know the new balance of a token, given that the invariant
         // changed and the other token balance didn't change. To calculate that for "x", we use:
         //
         //            (L*Lratio)ˆ2 = (newX + (L*Lratio) / _sqrtBeta)(y + (L*Lratio) * _sqrtAlpha)
