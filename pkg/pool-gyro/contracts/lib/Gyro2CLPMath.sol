@@ -126,7 +126,7 @@ library Gyro2CLPMath {
         // The minus sign in the radicand cancels out in this special case.
         uint256 radicand = bSquare + addTerm;
         uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
-        // The minus sign in the numerator cancels out in this special case
+        // The minus sign in the numerator cancels out in this special case.
         uint256 numerator = mb + sqrResult;
         invariant = numerator.divDown(denominator);
     }
