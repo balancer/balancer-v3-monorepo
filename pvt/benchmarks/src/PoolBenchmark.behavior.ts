@@ -778,6 +778,15 @@ export class Benchmark {
       });
     });
 
+    describe('test donation', () => {
+      sharedBeforeEach(`deploy pool`, async () => {
+        await cleanPools();
+        await deployPool(PoolTag.Standard, sortAddresses([tokenAAddress, tokenBAddress]), false);
+      });
+
+      itTestsDonation(PoolTag.Standard);
+    });
+
     describe('test standard pool', () => {
       sharedBeforeEach('deploy and initialize pool', async () => {
         await cleanPools();
@@ -806,7 +815,7 @@ export class Benchmark {
     describe('test yield pool', async () => {
       sharedBeforeEach(`deploy pool`, async () => {
         await cleanPools();
-        await deployAndInitializePool(PoolTag.WithRate, sortAddresses([tokenAAddress, tokenBAddress]), false);
+        await deployAndInitializePool(PoolTag.WithRate, sortAddresses([tokenAAddress, tokenBAddress]), true);
         await this.tokenA.setRate(fp(1.1));
         await this.tokenB.setRate(fp(1.1));
       });
@@ -833,13 +842,11 @@ export class Benchmark {
       });
     });
 
-    describe('test donation', () => {
+    describe('test nested pool', async () => {
       sharedBeforeEach(`deploy pool`, async () => {
         await cleanPools();
-        await deployPool(PoolTag.Standard, sortAddresses([tokenAAddress, tokenBAddress]), false);
+        await deployAndInitializePool(PoolTag.WithRate, sortAddresses([tokenAAddress, tokenBAddress]), false);
       });
-
-      itTestsDonation(PoolTag.Standard);
     });
 
     describe('test ERC4626 pool', async () => {
@@ -849,7 +856,7 @@ export class Benchmark {
 
       sharedBeforeEach('Deploy and Initialize pool', async () => {
         await cleanPools();
-        await deployAndInitializePool(PoolTag.ERC4626, sortAddresses([wTokenAAddress, wTokenBAddress]), false);
+        await deployAndInitializePool(PoolTag.ERC4626, sortAddresses([wTokenAAddress, wTokenBAddress]), true);
 
         await this.wTokenA.mockRate(fp(1.1));
         await this.wTokenB.mockRate(fp(1.1));
