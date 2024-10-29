@@ -141,8 +141,10 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     }
 
     /**
-     * @notice
-     * @dev
+     * @notice Return the virtual balances of each token of the 2CLP pool.
+     * @dev The 2CLP invariant is defined as `L=(x+a)(y+b)`. "x" and "y" are the real balances, and "a" and "b" are
+     * offsets to concentrate the liquidity of the pool. The sum of real balance and offset is known as
+     * "virtual balance".
      */
     function _getVirtualBalances(
         uint256 balanceTokenInScaled18,
@@ -164,6 +166,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         virtualBalanceOut = tokenInIsToken0 ? virtualBalances[1] : virtualBalances[0];
     }
 
+    /// @notice Returns an array with virtual balances of both tokens of the pool, in registration order.
     function _calculateVirtualBalances(
         uint256 invariant,
         uint256 sqrtAlpha,
