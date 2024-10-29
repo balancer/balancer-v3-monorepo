@@ -171,21 +171,10 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         uint256 invariant,
         uint256 sqrtAlpha,
         uint256 sqrtBeta
-    ) internal view virtual returns (uint256[2] memory virtualParameters) {
-        virtualParameters[0] = _virtualParameters(true, sqrtBeta, invariant);
-        virtualParameters[1] = _virtualParameters(false, sqrtAlpha, invariant);
-        return virtualParameters;
-    }
-
-    function _virtualParameters(
-        bool parameter0,
-        uint256 sqrtParam,
-        uint256 invariant
-    ) internal view virtual returns (uint256) {
-        return
-            parameter0
-                ? (Gyro2CLPMath._calculateVirtualParameter0(invariant, sqrtParam))
-                : (Gyro2CLPMath._calculateVirtualParameter1(invariant, sqrtParam));
+    ) internal view virtual returns (uint256[2] memory virtualBalances) {
+        virtualBalances[0] = Gyro2CLPMath._calculateVirtualParameter0(invariant, sqrtBeta);
+        virtualBalances[1] = Gyro2CLPMath._calculateVirtualParameter1(invariant, sqrtAlpha);
+        return virtualBalances;
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
