@@ -19,7 +19,7 @@ library GyroPoolMath {
     uint256 private constant _SQRT_1E_NEG_15 = 31622776601;
     uint256 private constant _SQRT_1E_NEG_17 = 3162277660;
 
-    /** @dev Implements square root algorithm using Newton's method and a first-guess optimisation **/
+    /** @dev Implements a square root algorithm using Newton's method and a first-guess optimization. **/
     function sqrt(uint256 input, uint256 tolerance) internal pure returns (uint256) {
         if (input == 0) {
             return 0;
