@@ -10,11 +10,7 @@ import { FP_ZERO, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import {
-  PoolConfigStructOutput,
-  TokenConfigStruct,
-} from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
-import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
+import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
@@ -29,25 +25,36 @@ import {
 import { BaseContract } from 'ethers';
 import { IERC20 } from '@balancer-labs/v3-interfaces/typechain-types';
 
+export enum PoolType {
+  Standard = 'Standard',
+  ERC4626 = 'ERC4626',
+  Nested = 'Nested',
+}
+
+export type PoolInfo = {
+  tag: PoolType;
+  pool: BaseContract;
+  poolTokens: string[];
+};
+
 export class Benchmark {
   _testDirname: string;
   _poolType: string;
   vault!: IVault;
   tokenA!: ERC20WithRateTestToken;
   tokenB!: ERC20WithRateTestToken;
+  tokenC!: ERC20WithRateTestToken;
   wTokenA!: ERC4626TestToken;
   wTokenB!: ERC4626TestToken;
   WETH!: WETHTestToken;
   factory!: WeightedPoolFactory;
-  pool!: BaseContract;
-  tokenConfig!: TokenConfigStruct[];
 
   constructor(dirname: string, poolType: string) {
     this._testDirname = dirname;
     this._poolType = poolType;
   }
 
-  async deployPool(): Promise<BaseContract | null> {
+  async deployPool(tag: PoolType, poolTokens: string[], withRate: boolean): Promise<PoolInfo | null> {
     return null;
   }
 
@@ -70,15 +77,13 @@ export class Benchmark {
     let batchRouter: BatchRouter;
     let alice: SignerWithAddress;
     let admin: SignerWithAddress;
-    let initialBalances: bigint[];
 
     let tokenAAddress: string;
     let tokenBAddress: string;
+    let tokenCAddress: string;
     let wTokenAAddress: string;
     let wTokenBAddress: string;
     let wethAddress: string;
-
-    let poolTokens: string[];
 
     before('setup signers', async () => {
       [, alice, admin] = await ethers.getSigners();
@@ -96,11 +101,13 @@ export class Benchmark {
       batchRouter = await deploy('v3-vault/BatchRouter', {
         args: [this.vault, this.WETH, permit2, BATCH_ROUTER_VERSION],
       });
-      this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
-      this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });
+      this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token A', 'TKNA', 18] });
+      this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token B', 'TKNB', 18] });
+      this.tokenC = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
 
       tokenAAddress = await this.tokenA.getAddress();
       tokenBAddress = await this.tokenB.getAddress();
+      tokenCAddress = await this.tokenC.getAddress();
       wethAddress = await this.WETH.getAddress();
 
       this.wTokenA = await deploy('v3-solidity-utils/ERC4626TestToken', {
@@ -116,7 +123,6 @@ export class Benchmark {
     sharedBeforeEach('protocol fees configuration', async () => {
       const setSwapFeeAction = await actionId(feeCollector, 'setGlobalProtocolSwapFeePercentage');
       const setYieldFeeAction = await actionId(feeCollector, 'setGlobalProtocolYieldFeePercentage');
-
       const authorizerAddress = await this.vault.getAuthorizer();
       const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
 
@@ -130,9 +136,10 @@ export class Benchmark {
     sharedBeforeEach('token setup', async () => {
       await this.tokenA.mint(alice, TOKEN_AMOUNT * 20n);
       await this.tokenB.mint(alice, TOKEN_AMOUNT * 20n);
+      await this.tokenC.mint(alice, TOKEN_AMOUNT * 20n);
       await this.WETH.connect(alice).deposit({ value: TOKEN_AMOUNT });
 
-      for (const token of [this.tokenA, this.tokenB, this.WETH, this.wTokenA, this.wTokenB]) {
+      for (const token of [this.tokenA, this.tokenB, this.tokenC, this.WETH, this.wTokenA, this.wTokenB]) {
         await token.connect(alice).approve(permit2, MAX_UINT256);
         await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
         await permit2.connect(alice).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
@@ -148,48 +155,64 @@ export class Benchmark {
       }
     });
 
-    const itTestsInitialize = (useEth: boolean) => {
+    const itTestsInitialize = async (
+      useEth: boolean,
+      poolTag: PoolType,
+      poolTokens: string[],
+      withRate: boolean
+    ): Promise<void> => {
       const ethStatus = useEth ? 'with ETH' : 'without ETH';
 
-      sharedBeforeEach('deploy pool', async () => {
-        this.pool = (await this.deployPool())!;
+      let poolInfo: PoolInfo;
+      beforeEach(`deploy pool (${poolTag})`, async () => {
+        poolInfo = (await this.deployPool(poolTag, poolTokens, withRate))!;
       });
 
-      it(`measures initialization gas ${ethStatus}`, async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+      it(`measures initialization gas ${ethStatus} (${poolTag})`, async () => {
+        const initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
 
         // Measure gas on initialization.
         const value = useEth ? TOKEN_AMOUNT : 0;
         const tx = await router
           .connect(alice)
-          .initialize(this.pool, poolTokens, initialBalances, FP_ZERO, useEth, '0x', { value });
+          .initialize(poolInfo.pool, poolTokens, initialBalances, FP_ZERO, useEth, '0x', { value });
 
         const receipt = await tx.wait();
 
-        await saveSnap(this._testDirname, `[${this._poolType}] initialize ${ethStatus}`, receipt);
+        await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] initialize ${ethStatus}`, receipt);
       });
     };
 
-    const itTestsSwap = (gasTag: string, actionAfterFirstTx: () => Promise<void>) => {
-      it('pool and protocol fee preconditions', async () => {
-        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+    const itTestsSwap = (gasTag: string, poolInfo: PoolInfo, actionAfterFirstTx: () => Promise<void>) => {
+      it(`pool and protocol fee preconditions (${poolInfo.tag})`, async () => {
+        console.log('poolInfo.pool', poolInfo.pool);
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(poolInfo.pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
 
-        expect(await this.vault.getStaticSwapFeePercentage(this.pool)).to.eq(SWAP_FEE);
+        expect(await this.vault.getStaticSwapFeePercentage(poolInfo.pool)).to.eq(SWAP_FEE);
       });
 
-      it('measures gas (Router)', async () => {
+      it(`measures gas (Router) (${poolInfo.tag})`, async () => {
         // Warm up.
         let tx = await router
           .connect(alice)
-          .swapSingleTokenExactIn(this.pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
+          .swapSingleTokenExactIn(
+            poolInfo.pool,
+            poolInfo.poolTokens[0],
+            poolInfo.poolTokens[1],
+            SWAP_AMOUNT,
+            0,
+            MAX_UINT256,
+            false,
+            '0x'
+          );
 
         let receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag}] swap single token exact in with fees - cold slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] swap single token exact in with fees - cold slots`,
           receipt
         );
 
@@ -198,25 +221,34 @@ export class Benchmark {
         // Measure gas for the swap.
         tx = await router
           .connect(alice)
-          .swapSingleTokenExactIn(this.pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
+          .swapSingleTokenExactIn(
+            poolInfo.pool,
+            poolInfo.poolTokens[0],
+            poolInfo.poolTokens[1],
+            SWAP_AMOUNT,
+            0,
+            MAX_UINT256,
+            false,
+            '0x'
+          );
         receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag}] swap single token exact in with fees - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] swap single token exact in with fees - warm slots`,
           receipt
         );
       });
 
-      it('measures gas (BatchRouter)', async () => {
+      it(`measures gas (BatchRouter) (${poolInfo.tag})`, async () => {
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
-              tokenIn: poolTokens[0],
+              tokenIn: poolInfo.poolTokens[0],
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: poolTokens[1],
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.poolTokens[1],
                   isBuffer: false,
                 },
               ],
@@ -231,7 +263,7 @@ export class Benchmark {
         let receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag} - BatchRouter] swap exact in with one token and fees - cold slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag} - BatchRouter] swap exact in with one token and fees - cold slots`,
           receipt
         );
 
@@ -241,11 +273,11 @@ export class Benchmark {
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
-              tokenIn: poolTokens[0],
+              tokenIn: poolInfo.poolTokens[0],
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: poolTokens[1],
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.poolTokens[1],
                   isBuffer: false,
                 },
               ],
@@ -261,97 +293,108 @@ export class Benchmark {
         receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag} - BatchRouter] swap exact in with one token and fees - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag} - BatchRouter] swap exact in with one token and fees - warm slots`,
           receipt
         );
       });
     };
 
-    const itTestsDonation = () => {
-      sharedBeforeEach('deploy pool', async () => {
-        this.pool = (await this.deployPool())!;
+    const itTestsDonation = (poolTag: PoolType, poolTokens: string[], withRate: boolean) => {
+      let poolInfo: PoolInfo;
+      sharedBeforeEach(`deploy pool (${poolTag})`, async () => {
+        poolInfo = (await this.deployPool(poolTag, poolTokens, withRate))!;
       });
 
-      sharedBeforeEach('initialize pool', async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+      sharedBeforeEach(`initialize pool (${poolTag})`, async () => {
+        const initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+        await router.connect(alice).initialize(poolInfo.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
       });
 
-      it('pool preconditions', async () => {
-        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+      it(`pool preconditions (${poolTag})`, async () => {
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(poolInfo.pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
         expect(poolConfig.liquidityManagement.enableDonation).to.be.true;
       });
 
-      it('measures gas', async () => {
+      it(`measures gas (${poolTag})`, async () => {
         // Warm up.
-        const tx = await router.connect(alice).donate(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
+        const tx = await router.connect(alice).donate(poolInfo.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
         const receipt = await tx.wait();
-        await saveSnap(this._testDirname, `[${this._poolType}] donation`, receipt);
+        await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] donation`, receipt);
       });
     };
 
-    const itTestsRemoveLiquidity = (gasTag: string, actionAfterFirstTx: () => Promise<void>) => {
-      sharedBeforeEach('approve router to spend BPT', async () => {
-        const bpt: IERC20 = await TypesConverter.toIERC20(this.pool);
+    const itTestsRemoveLiquidity = (gasTag: string, poolInfo: PoolInfo, actionAfterFirstTx: () => Promise<void>) => {
+      sharedBeforeEach(`approve router to spend BPT (${poolInfo.tag})`, async () => {
+        const bpt: IERC20 = await TypesConverter.toIERC20(poolInfo.pool);
         await bpt.connect(alice).approve(router, MAX_UINT256);
         await bpt.connect(alice).approve(permit2, MAX_UINT256);
         await permit2.connect(alice).approve(bpt, batchRouter, MAX_UINT160, MAX_UINT48);
       });
 
-      it('pool and protocol fee preconditions', async () => {
-        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+      it(`pool and protocol fee preconditions (${poolInfo.tag})`, async () => {
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(poolInfo.pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
 
-        expect(await this.vault.getStaticSwapFeePercentage(this.pool)).to.eq(SWAP_FEE);
+        expect(await this.vault.getStaticSwapFeePercentage(poolInfo.pool)).to.eq(SWAP_FEE);
       });
 
-      it('measures gas (proportional)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+      it(`measures gas (proportional) (${poolInfo.tag})`, async () => {
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         const tx = await router
           .connect(alice)
-          .removeLiquidityProportional(this.pool, bptBalance / 2n, Array(poolTokens.length).fill(0n), false, '0x');
+          .removeLiquidityProportional(
+            poolInfo.pool,
+            bptBalance / 2n,
+            Array(poolInfo.poolTokens.length).fill(0n),
+            false,
+            '0x'
+          );
 
         const receipt = await tx.wait();
-        await saveSnap(this._testDirname, `[${this._poolType} - ${gasTag}] remove liquidity proportional`, receipt);
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] remove liquidity proportional`,
+          receipt
+        );
       });
 
-      it('measures gas (single token exact in)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+      it(`measures gas (single token exact in) (${poolInfo.tag})`, async () => {
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         await router
           .connect(alice)
-          .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[0], 1, false, '0x');
+          .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
 
         await actionAfterFirstTx();
 
         // Measure remove liquidity gas.
         const tx = await router
           .connect(alice)
-          .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[0], 1, false, '0x');
+          .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag}] remove liquidity single token exact in - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] remove liquidity single token exact in - warm slots`,
           receipt
         );
       });
 
-      it('measures gas (single token exact in - BatchRouter)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+      it(`measures gas (single token exact in - BatchRouter) (${poolInfo.tag})`, async () => {
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
-              tokenIn: this.pool,
+              tokenIn: poolInfo.pool,
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: poolTokens[0],
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.poolTokens[0],
                   isBuffer: false,
                 },
               ],
@@ -370,11 +413,11 @@ export class Benchmark {
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
-              tokenIn: this.pool,
+              tokenIn: poolInfo.pool,
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: poolTokens[0],
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.poolTokens[0],
                   isBuffer: false,
                 },
               ],
@@ -390,20 +433,20 @@ export class Benchmark {
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag} - BatchRouter] remove liquidity using swapExactIn - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag} - BatchRouter] remove liquidity using swapExactIn - warm slots`,
           receipt
         );
       });
 
-      it('measures gas (single token exact out)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+      it(`measures gas (single token exact out) (${poolInfo.tag})`, async () => {
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         await router
           .connect(alice)
           .removeLiquiditySingleTokenExactOut(
-            this.pool,
+            poolInfo.pool,
             bptBalance / 2n,
-            poolTokens[0],
+            poolInfo.poolTokens[0],
             TOKEN_AMOUNT / 1000n,
             false,
             '0x'
@@ -415,9 +458,9 @@ export class Benchmark {
         const tx = await router
           .connect(alice)
           .removeLiquiditySingleTokenExactOut(
-            this.pool,
+            poolInfo.pool,
             bptBalance / 2n,
-            poolTokens[0],
+            poolInfo.poolTokens[0],
             TOKEN_AMOUNT / 1000n,
             false,
             '0x'
@@ -425,22 +468,22 @@ export class Benchmark {
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag}] remove liquidity single token exact out - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] remove liquidity single token exact out - warm slots`,
           receipt
         );
       });
 
-      it('measures gas (single token exact out - BatchRouter)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+      it(`measures gas (single token exact out - BatchRouter) (${poolInfo.tag})`, async () => {
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
-              tokenIn: this.pool,
+              tokenIn: poolInfo.pool,
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: poolTokens[0],
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.poolTokens[0],
                   isBuffer: false,
                 },
               ],
@@ -459,11 +502,11 @@ export class Benchmark {
         tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
-              tokenIn: this.pool,
+              tokenIn: poolInfo.pool,
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: poolTokens[0],
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.poolTokens[0],
                   isBuffer: false,
                 },
               ],
@@ -479,62 +522,72 @@ export class Benchmark {
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag} - BatchRouter] remove liquidity using swapExactOut - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag} - BatchRouter] remove liquidity using swapExactOut - warm slots`,
           receipt
         );
       });
     };
 
-    const itTestsAddLiquidity = (gasTag: string, actionAfterFirstTx: () => Promise<void>) => {
-      it('pool and protocol fee preconditions', async () => {
-        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+    const itTestsAddLiquidity = (gasTag: string, poolInfo: PoolInfo, actionAfterFirstTx: () => Promise<void>) => {
+      it(`pool and protocol fee preconditions (${poolInfo.tag})`, async () => {
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(poolInfo.pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
 
-        expect(await this.vault.getStaticSwapFeePercentage(this.pool)).to.eq(SWAP_FEE);
+        expect(await this.vault.getStaticSwapFeePercentage(poolInfo.pool)).to.eq(SWAP_FEE);
       });
 
       it('measures gas (proportional)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         const tx = await router
           .connect(alice)
-          .addLiquidityProportional(this.pool, Array(poolTokens.length).fill(TOKEN_AMOUNT), bptBalance, false, '0x');
+          .addLiquidityProportional(
+            poolInfo.pool,
+            Array(poolInfo.poolTokens.length).fill(TOKEN_AMOUNT),
+            bptBalance,
+            false,
+            '0x'
+          );
 
         const receipt = await tx.wait();
-        await saveSnap(this._testDirname, `[${this._poolType} - ${gasTag}] add liquidity proportional`, receipt);
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] add liquidity proportional`,
+          receipt
+        );
       });
 
-      it('measures gas (unbalanced)', async () => {
-        const exactAmountsIn = Array(poolTokens.length)
+      it(`åmeasures gas (unbalanced) (${poolInfo.tag})`, async () => {
+        const exactAmountsIn = Array(poolInfo.poolTokens.length)
           .fill(TOKEN_AMOUNT)
           .map((amount, index) => BigInt(amount / BigInt(index + 1)));
 
         // Warm up.
-        await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
+        await router.connect(alice).addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
 
         await actionAfterFirstTx();
 
         // Measure add liquidity gas.
-        const tx = await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
+        const tx = await router.connect(alice).addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag}] add liquidity unbalanced - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] add liquidity unbalanced - warm slots`,
           receipt
         );
       });
 
-      it('measures gas (unbalanced - BatchRouter)', async () => {
+      it(`measures gas (unbalanced - BatchRouter) (${poolInfo.tag})`, async () => {
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
-              tokenIn: poolTokens[0],
+              tokenIn: poolInfo.poolTokens[0],
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: this.pool,
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.pool,
                   isBuffer: false,
                 },
               ],
@@ -553,11 +606,11 @@ export class Benchmark {
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
-              tokenIn: poolTokens[0],
+              tokenIn: poolInfo.poolTokens[0],
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: this.pool,
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.pool,
                   isBuffer: false,
                 },
               ],
@@ -573,46 +626,60 @@ export class Benchmark {
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag} - BatchRouter] add liquidity unbalanced using swapExactIn - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag} - BatchRouter] add liquidity unbalanced using swapExactIn - warm slots`,
           receipt
         );
       });
 
-      it('measures gas (single token exact out)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+      it(`measures gas (single token exact out) (${poolInfo.tag})`, async () => {
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
 
         // Warm up.
         await router
           .connect(alice)
-          .addLiquiditySingleTokenExactOut(this.pool, poolTokens[0], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
+          .addLiquiditySingleTokenExactOut(
+            poolInfo.pool,
+            poolInfo.poolTokens[0],
+            TOKEN_AMOUNT,
+            bptBalance / 1000n,
+            false,
+            '0x'
+          );
 
         await actionAfterFirstTx();
 
         // Measure add liquidity gas.
         const tx = await router
           .connect(alice)
-          .addLiquiditySingleTokenExactOut(this.pool, poolTokens[0], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
+          .addLiquiditySingleTokenExactOut(
+            poolInfo.pool,
+            poolInfo.poolTokens[0],
+            TOKEN_AMOUNT,
+            bptBalance / 1000n,
+            false,
+            '0x'
+          );
 
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag}] add liquidity single token exact out - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag}] add liquidity single token exact out - warm slots`,
           receipt
         );
       });
 
-      it('measures gas (single token exact out - BatchRouter)', async () => {
-        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+      it(`measures gas (single token exact out - BatchRouter) (${poolInfo.tag})`, async () => {
+        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
 
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
-              tokenIn: poolTokens[0],
+              tokenIn: poolInfo.poolTokens[0],
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: this.pool,
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.pool,
                   isBuffer: false,
                 },
               ],
@@ -631,11 +698,11 @@ export class Benchmark {
         tx = await batchRouter.connect(alice).swapExactOut(
           [
             {
-              tokenIn: poolTokens[0],
+              tokenIn: poolInfo.poolTokens[0],
               steps: [
                 {
-                  pool: this.pool,
-                  tokenOut: this.pool,
+                  pool: poolInfo.pool,
+                  tokenOut: poolInfo.pool,
                   isBuffer: false,
                 },
               ],
@@ -651,86 +718,102 @@ export class Benchmark {
         const receipt = await tx.wait();
         await saveSnap(
           this._testDirname,
-          `[${this._poolType} - ${gasTag} - BatchRouter] add liquidity using swapExactOur - warm slots`,
+          `[${this._poolType} - ${gasTag} - ${poolInfo.tag} - BatchRouter] add liquidity using swapExactOur - warm slots`,
           receipt
         );
       });
     };
 
-    const deployAndInitializePool = async () => {
-      this.pool = (await this.deployPool())!;
-
+    const setStaticSwapFeePercentage = async (pool: BaseContract, swapFee: bigint) => {
       const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
       const authorizerAddress = await this.vault.getAuthorizer();
       const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
       await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
-      await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
-
-      initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-      await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+      await this.vault.connect(admin).setStaticSwapFeePercentage(pool, swapFee);
     };
 
-    describe('test standard pool', () => {
+    const deployAndInitializePool = async (
+      tag: PoolType,
+      poolTokens: string[],
+      withRate: boolean
+    ): Promise<PoolInfo> => {
+      const poolInfo: PoolInfo = (await this.deployPool(tag, poolTokens, withRate))!;
+
+      await setStaticSwapFeePercentage(poolInfo.pool, SWAP_FEE);
+
+      const initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+      await router.connect(alice).initialize(poolInfo.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+
+      return poolInfo;
+    };
+
+    describe('test standard pool', async () => {
+      let poolInfo: PoolInfo;
       sharedBeforeEach('deploy and initialize pool', async () => {
-        poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
-        this.tokenConfig = buildTokenConfig(poolTokens, false);
-        await deployAndInitializePool();
+        poolInfo = await deployAndInitializePool(
+          PoolType.Standard,
+          sortAddresses([tokenAAddress, tokenBAddress]),
+          false
+        );
       });
 
       context('swap', () => {
-        itTestsSwap('Standard', async () => {
+        itTestsSwap('Standard', poolInfo, async () => {
           return;
         });
       });
 
       context('remove liquidity', () => {
-        itTestsRemoveLiquidity('Standard', async () => {
+        itTestsRemoveLiquidity('Standard', poolInfo, async () => {
           return;
         });
       });
 
       context('add liquidity', () => {
-        itTestsAddLiquidity('Standard', async () => {
+        itTestsAddLiquidity('Standard', poolInfo, async () => {
           return;
         });
       });
     });
 
     describe('initialization', () => {
-      sharedBeforeEach(async () => {
-        poolTokens = sortAddresses([tokenAAddress, wethAddress]);
-        this.tokenConfig = buildTokenConfig(poolTokens, false);
+      it('without ETH', async () => {
+        await itTestsInitialize(false, PoolType.Standard, sortAddresses([tokenAAddress, wethAddress]), false);
       });
 
-      itTestsInitialize(false);
-      itTestsInitialize(true);
+      it('with ETH', async () => {
+        await itTestsInitialize(true, PoolType.Standard, sortAddresses([tokenAAddress, wethAddress]), false);
+      });
     });
 
-    describe('test yield pool', () => {
+    describe('test yield pool', async () => {
+      let poolInfo: PoolInfo;
       sharedBeforeEach(async () => {
-        poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
-        this.tokenConfig = buildTokenConfig(poolTokens, true);
-        await deployAndInitializePool();
+        poolInfo = await deployAndInitializePool(
+          PoolType.Standard,
+          sortAddresses([tokenAAddress, tokenBAddress]),
+          false
+        );
         await this.tokenA.setRate(fp(1.1));
         await this.tokenB.setRate(fp(1.1));
       });
 
       context('swap', () => {
-        itTestsSwap('With rate', async () => {
+        itTestsSwap('With rate', poolInfo, async () => {
           await this.tokenA.setRate(fp(1.2));
           await this.tokenB.setRate(fp(1.2));
         });
       });
 
       context('remove liquidity', async () => {
-        itTestsRemoveLiquidity('With rate', async () => {
+        itTestsRemoveLiquidity('With rate', poolInfo, async () => {
           await this.tokenA.setRate(fp(1.2));
           await this.tokenB.setRate(fp(1.2));
         });
       });
 
       context('add liquidity', async () => {
-        itTestsAddLiquidity('With rate', async () => {
+        itTestsAddLiquidity('With rate', poolInfo, async () => {
           await this.tokenA.setRate(fp(1.2));
           await this.tokenB.setRate(fp(1.2));
         });
@@ -738,16 +821,22 @@ export class Benchmark {
     });
 
     describe('test donation', () => {
-      itTestsDonation();
+      it('standard pool', async () => {
+        await itTestsDonation(PoolType.Standard, sortAddresses([tokenAAddress, tokenBAddress]), false);
+      });
     });
 
-    describe('test ERC4626 pool', () => {
+    describe('test ERC4626 pool', async () => {
+      let poolInfo: PoolInfo;
+
       const amountToTrade = TOKEN_AMOUNT / 10n;
 
       sharedBeforeEach('Deploy and Initialize pool', async () => {
-        poolTokens = sortAddresses([wTokenAAddress, wTokenBAddress]);
-        this.tokenConfig = buildTokenConfig(poolTokens, true);
-        await deployAndInitializePool();
+        poolInfo = await deployAndInitializePool(
+          PoolType.ERC4626,
+          sortAddresses([wTokenAAddress, wTokenBAddress]),
+          true
+        );
         await this.wTokenA.mockRate(fp(1.1));
         await this.wTokenB.mockRate(fp(1.1));
       });
@@ -774,7 +863,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenBAddress,
                   isBuffer: false,
                 },
@@ -805,7 +894,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenAAddress,
                   isBuffer: false,
                 },
@@ -845,7 +934,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenBAddress,
                   isBuffer: false,
                 },
@@ -876,7 +965,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenAAddress,
                   isBuffer: false,
                 },
@@ -920,7 +1009,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenBAddress,
                   isBuffer: false,
                 },
@@ -951,7 +1040,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenAAddress,
                   isBuffer: false,
                 },
@@ -995,7 +1084,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenBAddress,
                   isBuffer: false,
                 },
@@ -1026,7 +1115,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
                 {
-                  pool: this.pool,
+                  pool: poolInfo.pool,
                   tokenOut: wTokenAAddress,
                   isBuffer: false,
                 },
