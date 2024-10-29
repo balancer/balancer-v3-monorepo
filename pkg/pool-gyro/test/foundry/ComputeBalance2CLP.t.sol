@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -23,7 +24,7 @@ contract ComputeBalance2CLPTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         _gyroPool = new Gyro2CLPPool(
-            Gyro2CLPPool.GyroParams({ name: "GyroPool", symbol: "GRP", sqrtAlpha: _sqrtAlpha, sqrtBeta: _sqrtBeta }),
+            IGyro2CLPPool.GyroParams({ name: "GyroPool", symbol: "GRP", sqrtAlpha: _sqrtAlpha, sqrtBeta: _sqrtBeta }),
             vault
         );
         vm.label(address(_gyroPool), "GyroPool");
