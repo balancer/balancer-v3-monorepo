@@ -121,7 +121,7 @@ library Gyro2CLPMath {
         uint256 mc
     ) internal pure returns (uint256 invariant) {
         uint256 denominator = a.mulUp(2 * FixedPoint.ONE);
-        // order multiplications for fixed point precision
+        // Order multiplications for fixed point precision.
         uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
         // The minus sign in the radicand cancels out in this special case, so we add
         uint256 radicand = bSquare + addTerm;
