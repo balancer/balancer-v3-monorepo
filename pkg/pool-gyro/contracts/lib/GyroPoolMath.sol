@@ -39,10 +39,10 @@ library GyroPoolMath {
         guess = (guess + ((input * FixedPoint.ONE) / guess)) / 2;
         guess = (guess + ((input * FixedPoint.ONE) / guess)) / 2;
 
-        // Check squaredGuess (guess * guess) is close enough from input. `guess` has less than 1 wei error, but the
-        // loss of precision in the 18 decimal representation causes an error in the squared number, which must be
-        // less than `(guess * tolerance) / FixedPoint.ONE`. Tolerance, in this case, is a very small number (< 10), so
-        // the tolerance will be very small too.
+        // Check that squaredGuess (guess * guess) is close enough from input. `guess` has less than 1 wei error, but
+        // the loss of precision in the 18 decimal representation causes an error in the squared number, which must be
+        // less than `(guess * tolerance) / FixedPoint.ONE`. Tolerance, in this case, is a very small number (< 10),
+        // so the tolerance will be very small too.
         uint256 guessSquared = guess.mulDown(guess);
         require(
             guessSquared <= input + guess.mulUp(tolerance) && guessSquared >= input - guess.mulUp(tolerance),
