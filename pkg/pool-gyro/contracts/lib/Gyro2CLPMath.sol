@@ -110,7 +110,7 @@ library Gyro2CLPMath {
      *   where   a = 1 - sqrt(alpha/beta)
      *           b = -(y/sqrt(beta) + x*sqrt(alpha))
      *           c = -x*y
-     *   The special case works nicely w/o negative numbers.
+     *   The special case works nicely without negative numbers.
      *   The args use the notation "mb" to represent -b, and "mc" to represent -c
      *   Note that this calculates an underestimate of the solution
      */
