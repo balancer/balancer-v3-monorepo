@@ -97,7 +97,7 @@ library Gyro2CLPMath {
             // `c` is a term in the numerator and should be rounded up if we want to increase the invariant.
             mc = _mulUpOrDown(balances[0], balances[1]);
         }
-        // For better fixed point precision, calculate in expanded form re-ordering multiplications.
+        // For better fixed point precision, calculate in expanded form, re-ordering multiplications.
         // `b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta`
         bSquare = _mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
         uint256 bSq2 = _divUpOrDown(2 * _mulUpOrDown(_mulUpOrDown(balances[0], balances[1]), sqrtAlpha), sqrtBeta);
