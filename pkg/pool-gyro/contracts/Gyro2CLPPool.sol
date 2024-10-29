@@ -37,7 +37,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
-        (uint256 sqrtAlpha, uint256 sqrtBeta) = getSqrtAlphaAndBeta();
+        (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
         return Gyro2CLPMath._calculateInvariant(balancesLiveScaled18, sqrtAlpha, sqrtBeta, rounding);
     }
@@ -68,7 +68,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         // For newY:                             newY = (squareNewInv/(x + a)) - b
         **********************************************************************************************/
 
-        (uint256 sqrtAlpha, uint256 sqrtBeta) = getSqrtAlphaAndBeta();
+        (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
         // `computeBalance` is used to calculate unbalanced adds and removes, when the BPT value is specified.
         // A bigger invariant in `computeAddLiquiditySingleTokenExactOut` means that more tokens are required to
@@ -104,7 +104,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
         // All the calculations in one function to avoid Error Stack Too Deep
-        (uint256 virtualParamIn, uint256 virtualParamOut) = getVirtualBalances(
+        (uint256 virtualParamIn, uint256 virtualParamOut) = _getVirtualBalances(
             balanceTokenInScaled18,
             balanceTokenOutScaled18,
             tokenInIsToken0,
@@ -135,11 +135,8 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         }
     }
 
-    /**
-     * @notice
-     * @dev
-     */
-    function getSqrtAlphaAndBeta() internal view virtual returns (uint256 sqrtAlpha, uint256 sqrtBeta) {
+    /// @notice Return the parameters that configure a 2CLP (sqrtAlpha and sqrtBeta).
+    function _getSqrtAlphaAndBeta() internal view virtual returns (uint256 sqrtAlpha, uint256 sqrtBeta) {
         return (_sqrtAlpha, _sqrtBeta);
     }
 
@@ -147,7 +144,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
      * @notice
      * @dev
      */
-    function getVirtualBalances(
+    function _getVirtualBalances(
         uint256 balanceTokenInScaled18,
         uint256 balanceTokenOutScaled18,
         bool tokenInIsToken0,
@@ -157,17 +154,17 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         balances[0] = tokenInIsToken0 ? balanceTokenInScaled18 : balanceTokenOutScaled18;
         balances[1] = tokenInIsToken0 ? balanceTokenOutScaled18 : balanceTokenInScaled18;
 
-        (uint256 sqrtAlpha, uint256 sqrtBeta) = getSqrtAlphaAndBeta();
+        (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
         uint256 currentInvariant = Gyro2CLPMath._calculateInvariant(balances, sqrtAlpha, sqrtBeta, rounding);
 
-        uint256[2] memory virtualBalances = _getVirtualBalances(currentInvariant, sqrtAlpha, sqrtBeta);
+        uint256[2] memory virtualBalances = _calculateVirtualBalances(currentInvariant, sqrtAlpha, sqrtBeta);
 
         virtualBalanceIn = tokenInIsToken0 ? virtualBalances[0] : virtualBalances[1];
         virtualBalanceOut = tokenInIsToken0 ? virtualBalances[1] : virtualBalances[0];
     }
 
-    function _getVirtualBalances(
+    function _calculateVirtualBalances(
         uint256 invariant,
         uint256 sqrtAlpha,
         uint256 sqrtBeta
