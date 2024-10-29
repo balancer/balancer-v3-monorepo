@@ -53,8 +53,8 @@ library Gyro2CLPMath {
 
     /**
      * @notice Prepares quadratic terms for input to _calculateQuadratic.
-     * @dev It works with a special case of quadratic that works nicely without negative numbers and assumes a > 0,
-     * b < 0, and c <= 0.
+     * @dev It uses a special case of the quadratic formula that works nicely without negative numbers, and
+     * assumes a > 0, b < 0, and c <= 0.
      *
      * @param balances Pool balances
      * @param sqrtAlpha Square root of Gyro's 2CLP alpha parameter
