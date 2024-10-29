@@ -85,7 +85,7 @@ library Gyro2CLPMath {
 
         {
             // `a` follows the opposite rounding than `b` and `c`, since the most significant term is in the
-            // denominator of Bhaskara's formula. To round invariant up, we need to round `a` down, which means that
+            // denominator of Bhaskara's formula. To round the invariant up, we need to round `a` down, which means that
             // the division `sqrtAlpha/sqrtBeta` needs to be rounded up. In other words, if the given rounding
             // direction is UP, 'a' will be rounded DOWN and vice versa.
             a = FixedPoint.ONE - _divUpOrDown(sqrtAlpha, sqrtBeta);
