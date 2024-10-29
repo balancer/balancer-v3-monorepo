@@ -8,10 +8,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import "./GyroPoolMath.sol";
 
-// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
-// should be fixed.
-// solhint-disable private-vars-leading-underscore
-
 /** @dev Math routines for the 2CLP. Parameters are price bounds [alpha, beta] and sqrt(alpha), sqrt(beta) are used as
  * parameters.
  */
@@ -24,7 +20,7 @@ library Gyro2CLPMath {
     // It is also used to collect protocol swap fees by comparing its value between two times.
     // We can always round in the same direction. It is also used to initialize the BPT amount and,
     // because there is a minimum BPT, we round the invariant down.
-    function _calculateInvariant(
+    function calculateInvariant(
         uint256[] memory balances,
         uint256 sqrtAlpha,
         uint256 sqrtBeta,
@@ -41,14 +37,14 @@ library Gyro2CLPMath {
         //                                          2 * a                               //
         //                                                                              //
         **********************************************************************************************/
-        (uint256 a, uint256 mb, uint256 bSquare, uint256 mc) = _calculateQuadraticTerms(
+        (uint256 a, uint256 mb, uint256 bSquare, uint256 mc) = calculateQuadraticTerms(
             balances,
             sqrtAlpha,
             sqrtBeta,
             rounding
         );
 
-        return _calculateQuadratic(a, mb, bSquare, mc);
+        return calculateQuadratic(a, mb, bSquare, mc);
     }
 
     /**
@@ -65,7 +61,7 @@ library Gyro2CLPMath {
      * @return bSquare Bhaskara's `b^2` term. The calculation is optimized to be more precise than just b*b
      * @return mc Bhaskara's `c` term, negative (stands for minus c)
      */
-    function _calculateQuadraticTerms(
+    function calculateQuadraticTerms(
         uint256[] memory balances,
         uint256 sqrtAlpha,
         uint256 sqrtBeta,
@@ -114,7 +110,7 @@ library Gyro2CLPMath {
      *   The args use the notation "mb" to represent -b, and "mc" to represent -c
      *   Note that this calculation underestimates the solution.
      */
-    function _calculateQuadratic(
+    function calculateQuadratic(
         uint256 a,
         uint256 mb,
         uint256 bSquare, // b^2 can be calculated separately with more precision
@@ -146,7 +142,7 @@ library Gyro2CLPMath {
      *   "out" assets.
      *   SOMEDAY: This could be made literally the same function in the pool math library.
      */
-    function _calcOutGivenIn(
+    function calcOutGivenIn(
         uint256 balanceIn,
         uint256 balanceOut,
         uint256 amountIn,
@@ -186,7 +182,7 @@ library Gyro2CLPMath {
 
     /** @dev Computes how many tokens must be sent to a pool in order to take `amountOut`, given current balances.
      * See also _calcOutGivenIn(). Adapted for negative values. */
-    function _calcInGivenOut(
+    function calcInGivenOut(
         uint256 balanceIn,
         uint256 balanceOut,
         uint256 amountOut,
@@ -224,13 +220,13 @@ library Gyro2CLPMath {
 
     /** @dev Calculate the virtual offset `a` for reserves `x`, as in (x+a)*(y+b)=L^2
      */
-    function _calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
+    function calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
         return invariant.divDown(_sqrtBeta);
     }
 
     /** @dev Calculate the virtual offset `b` for reserves `y`, as in (x+a)*(y+b)=L^2
      */
-    function _calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
+    function calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
         return invariant.mulDown(_sqrtAlpha);
     }
 
@@ -239,7 +235,7 @@ library Gyro2CLPMath {
      * The spot price is bounded by pool parameters due to virtual reserves. Aside from being instantaneously
      * manipulable within a transaction, it may also not be accurate if the true price is outside of these bounds.
      */
-    function _calcSpotPriceAinB(
+    function calcSpotPriceAinB(
         uint256 balanceA,
         uint256 virtualParameterA,
         uint256 balanceB,

@@ -45,7 +45,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
         (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
-        return Gyro2CLPMath._calculateInvariant(balancesLiveScaled18, sqrtAlpha, sqrtBeta, rounding);
+        return Gyro2CLPMath.calculateInvariant(balancesLiveScaled18, sqrtAlpha, sqrtBeta, rounding);
     }
 
     /// @inheritdoc IBasePool
@@ -80,7 +80,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         // A bigger invariant in `computeAddLiquiditySingleTokenExactOut` means that more tokens are required to
         // fulfill the trade, and a bigger invariant in `computeRemoveLiquiditySingleTokenExactIn` means that the
         // amount out is lower. So, the invariant should always be rounded up.
-        uint256 invariant = Gyro2CLPMath._calculateInvariant(
+        uint256 invariant = Gyro2CLPMath.calculateInvariant(
             balancesLiveScaled18,
             sqrtAlpha,
             sqrtBeta,
@@ -118,7 +118,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         );
 
         if (request.kind == SwapKind.EXACT_IN) {
-            uint256 amountOutScaled18 = Gyro2CLPMath._calcOutGivenIn(
+            uint256 amountOutScaled18 = Gyro2CLPMath.calcOutGivenIn(
                 balanceTokenInScaled18,
                 balanceTokenOutScaled18,
                 request.amountGivenScaled18,
@@ -128,7 +128,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
             return amountOutScaled18;
         } else {
-            uint256 amountInScaled18 = Gyro2CLPMath._calcInGivenOut(
+            uint256 amountInScaled18 = Gyro2CLPMath.calcInGivenOut(
                 balanceTokenInScaled18,
                 balanceTokenOutScaled18,
                 request.amountGivenScaled18,
@@ -164,7 +164,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
         (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
-        uint256 currentInvariant = Gyro2CLPMath._calculateInvariant(balances, sqrtAlpha, sqrtBeta, rounding);
+        uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(balances, sqrtAlpha, sqrtBeta, rounding);
 
         uint256[2] memory virtualBalances = _calculateVirtualBalances(currentInvariant, sqrtAlpha, sqrtBeta);
 
@@ -178,8 +178,8 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         uint256 sqrtAlpha,
         uint256 sqrtBeta
     ) internal view virtual returns (uint256[2] memory virtualBalances) {
-        virtualBalances[0] = Gyro2CLPMath._calculateVirtualParameter0(invariant, sqrtBeta);
-        virtualBalances[1] = Gyro2CLPMath._calculateVirtualParameter1(invariant, sqrtAlpha);
+        virtualBalances[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta);
+        virtualBalances[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha);
         return virtualBalances;
     }
 
