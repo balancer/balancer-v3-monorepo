@@ -8,10 +8,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import "./GyroPoolMath.sol";
 
-// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
-// should be fixed.
-// solhint-disable private-vars-leading-underscore
-
 /** @dev Math routines for the 2CLP. Parameters are price bounds [alpha, beta] and sqrt(alpha), sqrt(beta) are used as
  * parameters.
  */
@@ -22,9 +18,9 @@ library Gyro2CLPMath {
 
     // Invariant is used to calculate the virtual offsets used in swaps.
     // It is also used to collect protocol swap fees by comparing its value between two times.
-    // So we can round always to the same direction. It is also used to initiate the BPT amount
-    // and, because there is a minimum BPT, we round down the invariant.
-    function _calculateInvariant(
+    // We can always round in the same direction. It is also used to initialize the BPT amount and,
+    // because there is a minimum BPT, we round the invariant down.
+    function calculateInvariant(
         uint256[] memory balances,
         uint256 sqrtAlpha,
         uint256 sqrtBeta,
@@ -41,20 +37,20 @@ library Gyro2CLPMath {
         //                                          2 * a                               //
         //                                                                              //
         **********************************************************************************************/
-        (uint256 a, uint256 mb, uint256 bSquare, uint256 mc) = _calculateQuadraticTerms(
+        (uint256 a, uint256 mb, uint256 bSquare, uint256 mc) = calculateQuadraticTerms(
             balances,
             sqrtAlpha,
             sqrtBeta,
             rounding
         );
 
-        return _calculateQuadratic(a, mb, bSquare, mc);
+        return calculateQuadratic(a, mb, bSquare, mc);
     }
 
     /**
      * @notice Prepares quadratic terms for input to _calculateQuadratic.
-     * @dev It works with a special case of quadratic that works nicely without negative numbers and assumes a > 0,
-     * b < 0, and c <= 0.
+     * @dev It uses a special case of the quadratic formula that works nicely without negative numbers, and
+     * assumes a > 0, b < 0, and c <= 0.
      *
      * @param balances Pool balances
      * @param sqrtAlpha Square root of Gyro's 2CLP alpha parameter
@@ -65,7 +61,7 @@ library Gyro2CLPMath {
      * @return bSquare Bhaskara's `b^2` term. The calculation is optimized to be more precise than just b*b
      * @return mc Bhaskara's `c` term, negative (stands for minus c)
      */
-    function _calculateQuadraticTerms(
+    function calculateQuadraticTerms(
         uint256[] memory balances,
         uint256 sqrtAlpha,
         uint256 sqrtBeta,
@@ -85,7 +81,7 @@ library Gyro2CLPMath {
 
         {
             // `a` follows the opposite rounding than `b` and `c`, since the most significant term is in the
-            // denominator of Bhaskara's formula. To round invariant up, we need to round `a` down, which means that
+            // denominator of Bhaskara's formula. To round the invariant up, we need to round `a` down, which means that
             // the division `sqrtAlpha/sqrtBeta` needs to be rounded up. In other words, if the given rounding
             // direction is UP, 'a' will be rounded DOWN and vice versa.
             a = FixedPoint.ONE - _divUpOrDown(sqrtAlpha, sqrtBeta);
@@ -97,7 +93,7 @@ library Gyro2CLPMath {
             // `c` is a term in the numerator and should be rounded up if we want to increase the invariant.
             mc = _mulUpOrDown(balances[0], balances[1]);
         }
-        // For better fixed point precision, calculate in expanded form re-ordering multiplications.
+        // For better fixed point precision, calculate in expanded form, re-ordering multiplications.
         // `b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta`
         bSquare = _mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
         uint256 bSq2 = _divUpOrDown(2 * _mulUpOrDown(_mulUpOrDown(balances[0], balances[1]), sqrtAlpha), sqrtBeta);
@@ -105,28 +101,28 @@ library Gyro2CLPMath {
         bSquare = bSquare + bSq2 + bSq3;
     }
 
-    /** @dev Calculates quadratic root for a special case of quadratic
+    /** @dev Calculates the quadratic root for a special case of the quadratic formula
      *   assumes a > 0, b < 0, and c <= 0, which is the case for a L^2 + b L + c = 0
      *   where   a = 1 - sqrt(alpha/beta)
      *           b = -(y/sqrt(beta) + x*sqrt(alpha))
      *           c = -x*y
-     *   The special case works nicely w/o negative numbers.
+     *   The special case works nicely without negative numbers.
      *   The args use the notation "mb" to represent -b, and "mc" to represent -c
-     *   Note that this calculates an underestimate of the solution
+     *   Note that this calculation underestimates the solution.
      */
-    function _calculateQuadratic(
+    function calculateQuadratic(
         uint256 a,
         uint256 mb,
         uint256 bSquare, // b^2 can be calculated separately with more precision
         uint256 mc
     ) internal pure returns (uint256 invariant) {
         uint256 denominator = a.mulUp(2 * FixedPoint.ONE);
-        // order multiplications for fixed point precision
+        // Order multiplications for fixed point precision.
         uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
-        // The minus sign in the radicand cancels out in this special case, so we add
+        // The minus sign in the radicand cancels out in this special case.
         uint256 radicand = bSquare + addTerm;
         uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
-        // The minus sign in the numerator cancels out in this special case
+        // The minus sign in the numerator cancels out in this special case.
         uint256 numerator = mb + sqrResult;
         invariant = numerator.divDown(denominator);
     }
@@ -142,11 +138,11 @@ library Gyro2CLPMath {
      *   The virtualOffset argument depends on the computed invariant. We add a very small margin to ensure that
      *   potential small errors are not to the detriment of the pool.
      *
-     *   This is the same function as the respective function for the 3CLP, except for we allow two
-     *   different virtual offsets for the in- and out-asset, respectively, in that other function.
+     *   There is a corresponding function in the 3CLP, except that there we allow two different virtual "in" and
+     *   "out" assets.
      *   SOMEDAY: This could be made literally the same function in the pool math library.
      */
-    function _calcOutGivenIn(
+    function calcOutGivenIn(
         uint256 balanceIn,
         uint256 balanceOut,
         uint256 amountIn,
@@ -171,7 +167,7 @@ library Gyro2CLPMath {
 
         {
             // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
-            // very slightly larger than 3e-18.
+            // that is very slightly larger than 3e-18.
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + (virtualOffsetOut).mulDown(FixedPoint.ONE - 1);
 
@@ -186,7 +182,7 @@ library Gyro2CLPMath {
 
     /** @dev Computes how many tokens must be sent to a pool in order to take `amountOut`, given current balances.
      * See also _calcOutGivenIn(). Adapted for negative values. */
-    function _calcInGivenOut(
+    function calcInGivenOut(
         uint256 balanceIn,
         uint256 balanceOut,
         uint256 amountOut,
@@ -214,7 +210,7 @@ library Gyro2CLPMath {
 
         {
             // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
-            // very slightly larger than 3e-18.
+            // that is very slightly larger than 3e-18.
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + virtualOffsetOut.mulDown(FixedPoint.ONE - 1);
 
@@ -222,15 +218,15 @@ library Gyro2CLPMath {
         }
     }
 
-    /** @dev Calculate virtual offset a for reserves x, as in (x+a)*(y+b)=L^2
+    /** @dev Calculate the virtual offset `a` for reserves `x`, as in (x+a)*(y+b)=L^2
      */
-    function _calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
+    function calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
         return invariant.divDown(_sqrtBeta);
     }
 
-    /** @dev Calculate virtual offset b for reserves y, as in (x+a)*(y+b)=L^2
+    /** @dev Calculate the virtual offset `b` for reserves `y`, as in (x+a)*(y+b)=L^2
      */
-    function _calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
+    function calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
         return invariant.mulDown(_sqrtAlpha);
     }
 
@@ -239,7 +235,7 @@ library Gyro2CLPMath {
      * The spot price is bounded by pool parameters due to virtual reserves. Aside from being instantaneously
      * manipulable within a transaction, it may also not be accurate if the true price is outside of these bounds.
      */
-    function _calcSpotPriceAinB(
+    function calcSpotPriceAinB(
         uint256 balanceA,
         uint256 virtualParameterA,
         uint256 balanceB,
