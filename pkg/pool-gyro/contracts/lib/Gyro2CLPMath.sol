@@ -123,7 +123,7 @@ library Gyro2CLPMath {
         uint256 denominator = a.mulUp(2 * FixedPoint.ONE);
         // Order multiplications for fixed point precision.
         uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
-        // The minus sign in the radicand cancels out in this special case, so we add
+        // The minus sign in the radicand cancels out in this special case.
         uint256 radicand = bSquare + addTerm;
         uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
         // The minus sign in the numerator cancels out in this special case
