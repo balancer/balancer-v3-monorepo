@@ -112,7 +112,7 @@ library Gyro2CLPMath {
      *           c = -x*y
      *   The special case works nicely without negative numbers.
      *   The args use the notation "mb" to represent -b, and "mc" to represent -c
-     *   Note that this calculates an underestimate of the solution
+     *   Note that this calculation underestimates the solution.
      */
     function _calculateQuadratic(
         uint256 a,
