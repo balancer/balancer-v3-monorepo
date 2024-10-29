@@ -170,7 +170,7 @@ library Gyro2CLPMath {
 
         {
             // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
-            // very slightly larger than 3e-18.
+            // that is very slightly larger than 3e-18.
             uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
             uint256 virtOutUnder = balanceOut + (virtualOffsetOut).mulDown(FixedPoint.ONE - 1);
 
