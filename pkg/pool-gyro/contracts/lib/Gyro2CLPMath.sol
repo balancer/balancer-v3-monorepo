@@ -22,8 +22,8 @@ library Gyro2CLPMath {
 
     // Invariant is used to calculate the virtual offsets used in swaps.
     // It is also used to collect protocol swap fees by comparing its value between two times.
-    // So we can round always to the same direction. It is also used to initiate the BPT amount
-    // and, because there is a minimum BPT, we round down the invariant.
+    // We can always round in the same direction. It is also used to initialize the BPT amount and,
+    // because there is a minimum BPT, we round the invariant down.
     function _calculateInvariant(
         uint256[] memory balances,
         uint256 sqrtAlpha,
