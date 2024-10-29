@@ -12,11 +12,6 @@ import 'hardhat-contract-sizer';
 import { warnings } from '@balancer-labs/v3-common/hardhat-base-config';
 
 const config: HardhatUserConfig = {
-  networks: {
-    hardhat: {
-      allowUnlimitedContractSize: true,
-    },
-  },
   solidity: {
     compilers: hardhatBaseConfig.compilers,
   },
