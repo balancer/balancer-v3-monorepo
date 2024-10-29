@@ -227,7 +227,7 @@ library Gyro2CLPMath {
         return invariant.divDown(_sqrtBeta);
     }
 
-    /** @dev Calculate virtual offset b for reserves y, as in (x+a)*(y+b)=L^2
+    /** @dev Calculate the virtual offset `b` for reserves `y`, as in (x+a)*(y+b)=L^2
      */
     function _calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
         return invariant.mulDown(_sqrtAlpha);
