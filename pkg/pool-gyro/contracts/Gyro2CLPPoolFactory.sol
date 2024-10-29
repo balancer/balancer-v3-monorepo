@@ -20,6 +20,7 @@ import { Gyro2CLPPool } from "./Gyro2CLPPool.sol";
 contract Gyro2CLPPoolFactory is BasePoolFactory {
     // solhint-disable not-rely-on-time
 
+    /// @notice 2CLP pools support a maximum of 2 tokens.
     error SupportsOnlyTwoTokens();
 
     constructor(

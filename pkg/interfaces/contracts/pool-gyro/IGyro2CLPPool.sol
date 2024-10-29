@@ -8,8 +8,11 @@ import { IBasePool } from "../vault/IBasePool.sol";
 
 interface IGyro2CLPPool is IBasePool {
     /**
-     * @notice
-     * @dev
+     * @notice Gyro 2CLP pool configuration.
+     * @param name Pool name
+     * @param symbol Pool symbol
+     * @param sqrtAlpha Square root of alpha (the lowest price in the price interval of the 2CLP price curve)
+     * @param sqrtBeta Square root of beta (the highest price in the price interval of the 2CLP price curve)
      */
     struct GyroParams {
         string name;
@@ -18,7 +21,6 @@ interface IGyro2CLPPool is IBasePool {
         uint256 sqrtBeta;
     }
 
+    /// @notice The informed alpha is greater than beta.
     error SqrtParamsWrong();
-    error SupportsOnlyTwoTokens();
-    error NotImplemented();
 }
