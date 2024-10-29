@@ -26,7 +26,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";
 
     constructor() {
-        // if this external artifact path exists, it means we are running outside of this repo
+        // If this external artifact path exists, it means we are running outside of this repo.
         if (vm.exists("artifacts/@balancer-labs/v3-pool-gyro/")) {
             artifactsRootDir = "artifacts/@balancer-labs/v3-pool-gyro/";
         }
