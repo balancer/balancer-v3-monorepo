@@ -14,13 +14,13 @@ import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePool
 import { Gyro2CLPPool } from "./Gyro2CLPPool.sol";
 
 /**
- * @notice Gyro 2CLP Pool factory
- * @dev This is the most general factory, which allows two tokens.
+ * @notice Gyro 2CLP Pool factory.
+ * @dev This is the pool factory for 2-CLP Gyro pools, which supports two tokens only.
  */
 contract Gyro2CLPPoolFactory is BasePoolFactory {
     // solhint-disable not-rely-on-time
 
-    /// @notice 2CLP pools support a maximum of 2 tokens.
+    /// @notice 2CLP pools support 2 tokens only.
     error SupportsOnlyTwoTokens();
 
     constructor(
@@ -55,6 +55,10 @@ contract Gyro2CLPPoolFactory is BasePoolFactory {
     ) external returns (address pool) {
         if (tokens.length != 2) {
             revert SupportsOnlyTwoTokens();
+        }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            revert StandardPoolWithCreator();
         }
 
         pool = _create(
