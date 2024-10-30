@@ -20,8 +20,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
-import "./lib/GyroPoolMath.sol";
-import "./lib/GyroECLPMath.sol";
+import { GyroECLPMath } from "./lib/GyroECLPMath.sol";
 
 contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     using FixedPoint for uint256;

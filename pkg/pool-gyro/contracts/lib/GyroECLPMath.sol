@@ -10,8 +10,8 @@ import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "./SignedFixedPoint.sol";
-import "./GyroPoolMath.sol";
+import { SignedFixedPoint } from "./SignedFixedPoint.sol";
+import { GyroPoolMath } from "./GyroPoolMath.sol";
 
 /**
  * @notice ECLP math library. Pretty much a direct translation of the python version.
@@ -19,6 +19,11 @@ import "./GyroPoolMath.sol";
  * points in the untransformed circle, "prices" in the untransformed circle).
  */
 library GyroECLPMath {
+    using SignedFixedPoint for int256;
+    using FixedPoint for uint256;
+    using SafeCast for uint256;
+    using SafeCast for int256;
+
     error RotationVectorWrong();
     error RotationVectorNotNormalized();
     error AssetBoundsExceeded();
@@ -33,11 +38,6 @@ library GyroECLPMath {
     uint256 internal constant _ONEHALF = 0.5e18;
     int256 internal constant _ONE = 1e18; // 18 decimal places
     int256 internal constant _ONE_XP = 1e38; // 38 decimal places
-
-    using SignedFixedPoint for int256;
-    using FixedPoint for uint256;
-    using SafeCast for uint256;
-    using SafeCast for int256;
 
     // Anti-overflow limits: Params and DerivedParams (static, only needs to be checked on pool creation).
     int256 internal constant _ROTATION_VECTOR_NORM_ACCURACY = 1e3; // 1e-15 in normal precision
@@ -85,7 +85,7 @@ library GyroECLPMath {
     function validateDerivedParamsLimits(
         IGyroECLPPool.Params memory params,
         IGyroECLPPool.DerivedParams memory derived
-    ) external pure {
+    ) internal pure {
         int256 norm2;
         norm2 = scalarProdXp(derived.tauAlpha, derived.tauAlpha);
 
@@ -477,7 +477,7 @@ library GyroECLPMath {
         IGyroECLPPool.Params memory params,
         IGyroECLPPool.DerivedParams memory derived,
         int256 invariant
-    ) external pure returns (uint256 px) {
+    ) internal pure returns (uint256 px) {
         // Shift by virtual offsets to get v(t).
         // Ignore r rounding for spot price, precision will be lost in TWAP anyway.
         IGyroECLPPool.Vector2 memory r = IGyroECLPPool.Vector2(invariant, invariant);
@@ -533,7 +533,7 @@ library GyroECLPMath {
         IGyroECLPPool.Params memory params,
         IGyroECLPPool.DerivedParams memory derived,
         IGyroECLPPool.Vector2 memory invariant
-    ) external pure returns (uint256 amountOut) {
+    ) internal pure returns (uint256 amountOut) {
         function(int256, IGyroECLPPool.Params memory, IGyroECLPPool.DerivedParams memory, IGyroECLPPool.Vector2 memory)
             pure
             returns (int256) calcGiven;
@@ -564,7 +564,7 @@ library GyroECLPMath {
         IGyroECLPPool.Params memory params,
         IGyroECLPPool.DerivedParams memory derived,
         IGyroECLPPool.Vector2 memory invariant
-    ) external pure returns (uint256 amountIn) {
+    ) internal pure returns (uint256 amountIn) {
         function(int256, IGyroECLPPool.Params memory, IGyroECLPPool.DerivedParams memory, IGyroECLPPool.Vector2 memory)
             pure
             returns (int256) calcGiven;
