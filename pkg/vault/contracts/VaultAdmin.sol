@@ -444,6 +444,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
+        uint256 minIssuedShares,
         address sharesOwner
     )
         public
@@ -488,12 +489,18 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _mintMinimumBufferSupplyReserve(wrappedToken);
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
+        if (issuedShares < minIssuedShares) {
+            revert IssuedSharesBelowMin(issuedShares, minIssuedShares);
+        }
+
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
     }
 
     /// @inheritdoc IVaultAdmin
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingIn,
+        uint256 maxAmountWrappedIn,
         uint256 exactSharesToIssue,
         address sharesOwner
     )
@@ -520,6 +527,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         uint256 totalShares = _bufferTotalShares[wrappedToken];
         amountUnderlyingRaw = bufferBalances.getBalanceRaw().mulDivUp(exactSharesToIssue, totalShares);
         amountWrappedRaw = bufferBalances.getBalanceDerived().mulDivUp(exactSharesToIssue, totalShares);
+
+        if (amountUnderlyingRaw > maxAmountUnderlyingIn) {
+            revert AmountInAboveMax(IERC20(underlyingToken), amountUnderlyingRaw, maxAmountUnderlyingIn);
+        }
+
+        if (amountWrappedRaw > maxAmountWrappedIn) {
+            revert AmountInAboveMax(IERC20(wrappedToken), amountWrappedRaw, maxAmountWrappedIn);
+        }
 
         // Take debt for assets going into the buffer (wrapped and underlying).
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
@@ -566,12 +581,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @inheritdoc IVaultAdmin
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove
+        uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOut,
+        uint256 minAmountWrappedOut
     ) external onlyVaultDelegateCall returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeCall(VaultAdmin.removeLiquidityFromBufferHook, (wrappedToken, sharesToRemove, msg.sender))
+                    abi.encodeCall(
+                        VaultAdmin.removeLiquidityFromBufferHook,
+                        (wrappedToken, sharesToRemove, minAmountUnderlyingOut, minAmountWrappedOut, msg.sender)
+                    )
                 ),
                 (uint256, uint256)
             );
@@ -594,6 +614,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     function removeLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOut,
+        uint256 minAmountWrappedOut,
         address sharesOwner
     )
         external
@@ -618,6 +640,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // and can't change afterwards, so it is already validated at this point. There is no way to add liquidity
         // with an asset that differs from the one set during initialization.
         IERC20 underlyingToken = IERC20(_bufferAssets[wrappedToken]);
+
+        if (removedUnderlyingBalanceRaw < minAmountUnderlyingOut) {
+            revert AmountInAboveMax(IERC20(underlyingToken), removedUnderlyingBalanceRaw, minAmountUnderlyingOut);
+        }
+
+        if (removedWrappedBalanceRaw < minAmountWrappedOut) {
+            revert AmountInAboveMax(IERC20(wrappedToken), removedWrappedBalanceRaw, minAmountWrappedOut);
+        }
+
         _supplyCredit(underlyingToken, removedUnderlyingBalanceRaw);
         _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
