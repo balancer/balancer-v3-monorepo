@@ -14,8 +14,8 @@ import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePool
 import { GyroECLPPool } from "./GyroECLPPool.sol";
 
 /**
- * @notice Gyro ECLP Pool factory
- * @dev This is the most general factory, which allows two tokens.
+ * @notice Gyro E-CLP Pool factory.
+ * @dev This is the pool factory for Gyro E-CLP pools, which supports two tokens only.
  */
 contract GyroECLPPoolFactory is BasePoolFactory {
     // solhint-disable not-rely-on-time

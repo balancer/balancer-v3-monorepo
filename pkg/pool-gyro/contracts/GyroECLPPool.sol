@@ -22,6 +22,12 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 
 import { GyroECLPMath } from "./lib/GyroECLPMath.sol";
 
+/**
+ * @notice Standard Gyro E-CLP Pool, with fixed E-CLP parameters.
+ * @dev Gyroscope's E-CLPs are AMMs where trading takes place along part of an ellipse curve. A given E-CLP is
+ * parameterized by the pricing range [α,β], the inclination angle `phi` and stretching parameter `lambda`. For more
+ * information, please refer to https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/e-clps.
+ */
 contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     using FixedPoint for uint256;
     using SafeCast for *;
@@ -32,6 +38,11 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     int256 internal immutable _paramsC;
     int256 internal immutable _paramsS;
     int256 internal immutable _paramsLambda;
+
+    /**
+     * @dev Derived Parameters of the E-CLP pool, calculated off-chain based on the parameters above. 38 decimals
+     * precision.
+     */
     int256 internal immutable _tauAlphaX;
     int256 internal immutable _tauAlphaY;
     int256 internal immutable _tauBetaX;
@@ -41,6 +52,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     int256 internal immutable _w;
     int256 internal immutable _z;
     int256 internal immutable _dSq;
+
     bytes32 private constant _POOL_TYPE = "ECLP";
 
     constructor(GyroECLPPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
