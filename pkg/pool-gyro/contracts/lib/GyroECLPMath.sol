@@ -249,7 +249,7 @@ library GyroECLPMath {
         uint256[] memory balances,
         IGyroECLPPool.Params memory params,
         IGyroECLPPool.DerivedParams memory derived
-    ) public pure returns (int256, int256) {
+    ) internal pure returns (int256, int256) {
         (int256 x, int256 y) = (balances[0].toInt256(), balances[1].toInt256());
 
         if (x + y > _MAX_BALANCES) {
