@@ -5,22 +5,25 @@
 pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+
 import "./lib/GyroPoolMath.sol";
 import "./lib/GyroECLPMath.sol";
 
-contract GyroECLPPool is IBasePool, BalancerPoolToken {
+contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -41,24 +44,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
     int256 internal immutable _dSq;
     bytes32 private constant _POOL_TYPE = "ECLP";
 
-    struct GyroParams {
-        string name;
-        string symbol;
-        GyroECLPMath.Params eclpParams;
-        GyroECLPMath.DerivedParams derivedEclpParams;
-    }
-
-    error SqrtParamsWrong();
-    error SupportsOnlyTwoTokens();
-    error NotImplemented();
-    error AddressIsZeroAddress();
-
-    event ECLPParamsValidated(bool paramsValidated);
-    event ECLPDerivedParamsValidated(bool derivedParamsValidated);
-    event InvariantAterInitializeJoin(uint256 invariantAfterJoin);
-    event InvariantOldAndNew(uint256 oldInvariant, uint256 newInvariant);
-
-    constructor(GyroParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
+    constructor(GyroECLPPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         GyroECLPMath.validateParams(params.eclpParams);
         emit ECLPParamsValidated(true);
 
@@ -88,10 +74,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
 
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
-        (
-            GyroECLPMath.Params memory eclpParams,
-            GyroECLPMath.DerivedParams memory derivedECLPParams
-        ) = _reconstructECLPParams();
+        (Params memory eclpParams, DerivedParams memory derivedECLPParams) = _reconstructECLPParams();
 
         (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
             balancesLiveScaled18,
@@ -112,12 +95,9 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
-        (
-            GyroECLPMath.Params memory eclpParams,
-            GyroECLPMath.DerivedParams memory derivedECLPParams
-        ) = _reconstructECLPParams();
+        (Params memory eclpParams, DerivedParams memory derivedECLPParams) = _reconstructECLPParams();
 
-        GyroECLPMath.Vector2 memory invariant;
+        Vector2 memory invariant;
         {
             (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
                 balancesLiveScaled18,
@@ -126,7 +106,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
             );
 
             // invariant = overestimate in x-component, underestimate in y-component.
-            invariant = GyroECLPMath.Vector2(
+            invariant = Vector2(
                 (currentInvariant + 2 * invErr).toUint256().mulUp(invariantRatio).toInt256(),
                 currentInvariant.toUint256().mulUp(invariantRatio).toInt256()
             );
@@ -149,11 +129,8 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
     function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
         bool tokenInIsToken0 = request.indexIn == 0;
 
-        (
-            GyroECLPMath.Params memory eclpParams,
-            GyroECLPMath.DerivedParams memory derivedECLPParams
-        ) = _reconstructECLPParams();
-        GyroECLPMath.Vector2 memory invariant;
+        (Params memory eclpParams, DerivedParams memory derivedECLPParams) = _reconstructECLPParams();
+        Vector2 memory invariant;
         {
             (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
                 request.balancesScaled18,
@@ -162,7 +139,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
             );
             // invariant = overestimate in x-component, underestimate in y-component
             // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
-            invariant = GyroECLPMath.Vector2(currentInvariant + 2 * invErr, currentInvariant);
+            invariant = Vector2(currentInvariant + 2 * invErr, currentInvariant);
         }
 
         if (request.kind == SwapKind.EXACT_IN) {
@@ -192,11 +169,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
     }
 
     /** @dev reconstructs ECLP params structs from immutable arrays */
-    function _reconstructECLPParams()
-        private
-        view
-        returns (GyroECLPMath.Params memory params, GyroECLPMath.DerivedParams memory d)
-    {
+    function _reconstructECLPParams() private view returns (Params memory params, DerivedParams memory d) {
         (params.alpha, params.beta, params.c, params.s, params.lambda) = (
             _paramsAlpha,
             _paramsBeta,
@@ -208,11 +181,7 @@ contract GyroECLPPool is IBasePool, BalancerPoolToken {
         (d.u, d.v, d.w, d.z, d.dSq) = (_u, _v, _w, _z, _dSq);
     }
 
-    function getECLPParams()
-        external
-        view
-        returns (GyroECLPMath.Params memory params, GyroECLPMath.DerivedParams memory d)
-    {
+    function getECLPParams() external view returns (Params memory params, DerivedParams memory d) {
         return _reconstructECLPParams();
     }
 

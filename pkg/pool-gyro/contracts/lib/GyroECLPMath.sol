@@ -5,11 +5,13 @@
 pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import "./SignedFixedPoint.sol";
 import "./GyroPoolMath.sol";
-
-// solhint-disable private-vars-leading-underscore
 
 /**
  * @notice ECLP math library. Pretty much a direct translation of the python version.
@@ -18,11 +20,9 @@ import "./GyroPoolMath.sol";
  */
 library GyroECLPMath {
     error RotationVectorWrong();
-    error PriceBoundsWrong();
     error RotationVectorNotNormalized();
     error AssetBoundsExceeded();
     error DerivedTauNotNormalized();
-    error DerivedZetaWrong();
     error StretchingFactorWrong();
     error DerivedUvwzWrong();
     error InvariantDenominatorWrong();
@@ -30,9 +30,9 @@ library GyroECLPMath {
     error MaxInvariantExceeded();
     error DerivedDsqWrong();
 
-    uint256 internal constant ONEHALF = 0.5e18;
-    int256 internal constant ONE = 1e18; // 18 decimal places
-    int256 internal constant ONE_XP = 1e38; // 38 decimal places
+    uint256 internal constant _ONEHALF = 0.5e18;
+    int256 internal constant _ONE = 1e18; // 18 decimal places
+    int256 internal constant _ONE_XP = 1e38; // 38 decimal places
 
     using SignedFixedPoint for int256;
     using FixedPoint for uint256;
@@ -50,40 +50,6 @@ library GyroECLPMath {
     int256 internal constant _MAX_BALANCES = 1e34; // 1e16 in normal precision
     int256 internal constant _MAX_INVARIANT = 3e37; // 3e19 in normal precision
 
-    // Note that all t values (not tp or tpp) could consist of uint's, as could all Params. But it's complicated to
-    // convert all the time, so we make them all signed. We also store all intermediate values signed. An exception are
-    // the functions that are used by the contract because there the values are stored unsigned.
-    struct Params {
-        // Price bounds (lower and upper). 0 < alpha < beta.
-        int256 alpha;
-        int256 beta;
-        // Rotation vector:
-        // phi in (-90 degrees, 0] is the implicit rotation vector. It's stored as a point:
-        int256 c; // c = cos(-phi) >= 0. rounded to 18 decimals
-        int256 s; //  s = sin(-phi) >= 0. rounded to 18 decimals
-        // Invariant: c^2 + s^2 == 1, i.e., the point (c, s) is normalized.
-        // Due to rounding, this may not be 1. The term dSq in DerivedParams corrects for this in extra precision
-
-        // Stretching factor:
-        int256 lambda; // lambda >= 1 where lambda == 1 is the circle.
-    }
-
-    // terms in this struct are stored in extra precision (38 decimals) with final decimal rounded down
-    struct DerivedParams {
-        Vector2 tauAlpha;
-        Vector2 tauBeta;
-        int256 u; // from (A chi)_y = lambda * u + v
-        int256 v; // from (A chi)_y = lambda * u + v
-        int256 w; // from (A chi)_x = w / lambda + z
-        int256 z; // from (A chi)_x = w / lambda + z
-        int256 dSq; // error in c^2 + s^2 = dSq, used to correct errors in c, s, tau, u,v,w,z calculations
-    }
-
-    struct Vector2 {
-        int256 x;
-        int256 y;
-    }
-
     struct QParams {
         int256 a;
         int256 b;
@@ -91,19 +57,19 @@ library GyroECLPMath {
     }
 
     /// @dev Enforces limits and approximate normalization of the rotation vector.
-    function validateParams(Params memory params) internal pure {
-        if (0 > params.s || params.s > ONE) {
+    function validateParams(IGyroECLPPool.Params memory params) internal pure {
+        if (0 > params.s || params.s > _ONE) {
             revert RotationVectorWrong();
         }
 
-        if (0 > params.c || params.c > ONE) {
+        if (0 > params.c || params.c > _ONE) {
             revert RotationVectorWrong();
         }
 
-        Vector2 memory sc = Vector2(params.s, params.c);
+        IGyroECLPPool.Vector2 memory sc = IGyroECLPPool.Vector2(params.s, params.c);
         int256 scnorm2 = scalarProd(sc, sc); // squared norm
 
-        if (ONE - _ROTATION_VECTOR_NORM_ACCURACY > scnorm2 || scnorm2 > ONE + _ROTATION_VECTOR_NORM_ACCURACY) {
+        if (_ONE - _ROTATION_VECTOR_NORM_ACCURACY > scnorm2 || scnorm2 > _ONE + _ROTATION_VECTOR_NORM_ACCURACY) {
             revert RotationVectorNotNormalized();
         }
 
@@ -116,45 +82,55 @@ library GyroECLPMath {
      * @notice Enforces limits and approximate normalization of the derived values.
      * @dev Does NOT check for internal consistency of 'derived' with 'params'.
      */
-    function validateDerivedParamsLimits(Params memory params, DerivedParams memory derived) external pure {
+    function validateDerivedParamsLimits(
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory derived
+    ) external pure {
         int256 norm2;
         norm2 = scalarProdXp(derived.tauAlpha, derived.tauAlpha);
 
-        if (ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP > norm2 || norm2 > ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP) {
+        if (_ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP > norm2 || norm2 > _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP) {
             revert DerivedTauNotNormalized();
         }
 
         norm2 = scalarProdXp(derived.tauBeta, derived.tauBeta);
 
-        if (ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP > norm2 || norm2 > ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP) {
+        if (_ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP > norm2 || norm2 > _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP) {
             revert DerivedTauNotNormalized();
         }
 
-        if (derived.u > ONE_XP) revert DerivedUvwzWrong();
-        if (derived.v > ONE_XP) revert DerivedUvwzWrong();
-        if (derived.w > ONE_XP) revert DerivedUvwzWrong();
-        if (derived.z > ONE_XP) revert DerivedUvwzWrong();
+        if (derived.u > _ONE_XP) revert DerivedUvwzWrong();
+        if (derived.v > _ONE_XP) revert DerivedUvwzWrong();
+        if (derived.w > _ONE_XP) revert DerivedUvwzWrong();
+        if (derived.z > _ONE_XP) revert DerivedUvwzWrong();
 
         if (
-            ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP > derived.dSq || derived.dSq > ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP
+            _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP > derived.dSq ||
+            derived.dSq > _ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP
         ) {
             revert DerivedDsqWrong();
         }
 
         // NB No anti-overflow checks are required given the checks done above and in validateParams().
-        int256 mulDenominator = ONE_XP.divXpU(calcAChiAChiInXp(params, derived) - ONE_XP);
+        int256 mulDenominator = _ONE_XP.divXpU(calcAChiAChiInXp(params, derived) - _ONE_XP);
 
         if (mulDenominator > _MAX_INV_INVARIANT_DENOMINATOR_XP) {
             revert InvariantDenominatorWrong();
         }
     }
 
-    function scalarProd(Vector2 memory t1, Vector2 memory t2) internal pure returns (int256 ret) {
+    function scalarProd(
+        IGyroECLPPool.Vector2 memory t1,
+        IGyroECLPPool.Vector2 memory t2
+    ) internal pure returns (int256 ret) {
         ret = t1.x.mulDownMag(t2.x) + t1.y.mulDownMag(t2.y);
     }
 
     /// @dev Scalar product for extra-precision values
-    function scalarProdXp(Vector2 memory t1, Vector2 memory t2) internal pure returns (int256 ret) {
+    function scalarProdXp(
+        IGyroECLPPool.Vector2 memory t1,
+        IGyroECLPPool.Vector2 memory t2
+    ) internal pure returns (int256 ret) {
         ret = t1.x.mulXp(t2.x) + t1.y.mulXp(t2.y);
     }
 
@@ -165,7 +141,10 @@ library GyroECLPMath {
      * @notice Calculate A t where A is given in Section 2.2.
      * @dev This is reversing rotation and scaling of the ellipse (mapping back to circle) .
      */
-    function mulA(Params memory params, Vector2 memory tp) internal pure returns (Vector2 memory t) {
+    function mulA(
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.Vector2 memory tp
+    ) internal pure returns (IGyroECLPPool.Vector2 memory t) {
         // NB: This function is only used inside calculatePrice(). This is why we can make two simplifications:
         // 1. We don't correct for precision of s, c using d.dSq because that level of precision is not important in
         // this context;
@@ -185,9 +164,9 @@ library GyroECLPMath {
      * rounding direction is important.
      */
     function virtualOffset0(
-        Params memory p,
-        DerivedParams memory d,
-        Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 a) {
         // a = r lambda c tau(beta)_x + rs tau(beta)_y
         //       account for 1 factors of dSq (2 s,c factors)
@@ -205,9 +184,9 @@ library GyroECLPMath {
      * @dev Calculates b = r*(A^{-1}tau(alpha))_y rounding up in signed direction
      */
     function virtualOffset1(
-        Params memory p,
-        DerivedParams memory d,
-        Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 b) {
         // b = -r \lambda s tau(alpha)_x + rc tau(alpha)_y
         //       account for 1 factors of dSq (2 s,c factors)
@@ -226,9 +205,9 @@ library GyroECLPMath {
      * by lambda. Rounds down in signed direction
      */
     function maxBalances0(
-        Params memory p,
-        DerivedParams memory d,
-        Vector2 memory r // overestimate in x-component, underestimate in y-component
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.Vector2 memory r // overestimate in x-component, underestimate in y-component
     ) internal pure returns (int256 xp) {
         // x^+ = r lambda c (tau(beta)_x - tau(alpha)_x) + rs (tau(beta)_y - tau(alpha)_y)
         //      account for 1 factors of dSq (2 s,c factors)
@@ -247,9 +226,9 @@ library GyroECLPMath {
      * by lambda. Rounds down in signed direction
      */
     function maxBalances1(
-        Params memory p,
-        DerivedParams memory d,
-        Vector2 memory r // overestimate in x-component, underestimate in y-component
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.Vector2 memory r // overestimate in x-component, underestimate in y-component
     ) internal pure returns (int256 yp) {
         // y^+ = r lambda s (tau(beta)_x - tau(alpha)_x) + rc (tau(alpha)_y - tau(beta)_y)
         //      account for 1 factors of dSq (2 s,c factors)
@@ -268,8 +247,8 @@ library GyroECLPMath {
      */
     function calculateInvariantWithError(
         uint256[] memory balances,
-        Params memory params,
-        DerivedParams memory derived
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory derived
     ) public pure returns (int256, int256) {
         (int256 x, int256 y) = (balances[0].toInt256(), balances[1].toInt256());
 
@@ -292,11 +271,11 @@ library GyroECLPMath {
             err = err > 0 ? GyroPoolMath.sqrt(err.toUint256(), 5).toInt256() : int256(1e9);
         }
         // Calculate the error in the numerator, scale the error by 20 to be sure all possible terms accounted for
-        err = ((params.lambda.mulUpMagU(x + y) / ONE_XP) + err + 1) * 20;
+        err = ((params.lambda.mulUpMagU(x + y) / _ONE_XP) + err + 1) * 20;
 
         // A chi \cdot A chi > 1, so round it up to round denominator up.
         // Denominator uses extra precision, so we do * 1/denominator so we are sure the calculation doesn't overflow.
-        int256 mulDenominator = ONE_XP.divXpU(calcAChiAChiInXp(params, derived) - ONE_XP);
+        int256 mulDenominator = _ONE_XP.divXpU(calcAChiAChiInXp(params, derived) - _ONE_XP);
         // NOTE: Anti-overflow limits on mulDenominator are checked on contract creation.
 
         // As alternative, could do, but could overflow: invariant = (AtAChi.add(sqrt) - err).divXp(denominator);
@@ -315,7 +294,7 @@ library GyroECLPMath {
         err =
             err +
             ((invariant.mulUpXpToNpU(mulDenominator) * ((params.lambda * params.lambda) / 1e36)) * 40) /
-            ONE_XP +
+            _ONE_XP +
             1;
 
         if (invariant + err > _MAX_INVARIANT) {
@@ -329,8 +308,8 @@ library GyroECLPMath {
     function calcAtAChi(
         int256 x,
         int256 y,
-        Params memory p,
-        DerivedParams memory d
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d
     ) internal pure returns (int256 val) {
         // to save gas, pre-compute dSq^2 as it will be used 3 times
         int256 dSq2 = d.dSq.mulXpU(d.dSq);
@@ -355,7 +334,10 @@ library GyroECLPMath {
      * because it will be at most 38 + 16 digits (38 from decimals, 2*8 from lambda^2 if lambda=1e8). Since we will
      * only divide by this later, we will not need to worry about overflow in that operation if done in the right way.
      */
-    function calcAChiAChiInXp(Params memory p, DerivedParams memory d) internal pure returns (int256 val) {
+    function calcAChiAChiInXp(
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d
+    ) internal pure returns (int256 val) {
         // To save gas, pre-compute dSq^3 as it will be used 4 times.
         int256 dSq3 = d.dSq.mulXpU(d.dSq).mulXpU(d.dSq);
 
@@ -382,8 +364,8 @@ library GyroECLPMath {
     function calcMinAtxAChiySqPlusAtxSq(
         int256 x,
         int256 y,
-        Params memory p,
-        DerivedParams memory d
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d
     ) internal pure returns (int256 val) {
         ////////////////////////////////////////////////////////////////////////////////////
         // (At)_x^2 (A chi)_y^2 = (x^2 c^2 - xy2sc + y^2 s^2) (u^2 + 2uv/lambda + v^2/lambda^2)
@@ -417,8 +399,8 @@ library GyroECLPMath {
     function calc2AtxAtyAChixAChiy(
         int256 x,
         int256 y,
-        Params memory p,
-        DerivedParams memory d
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d
     ) internal pure returns (int256 val) {
         ////////////////////////////////////////////////////////////////////////////////////
         // = ((x^2 - y^2)sc + yx(c^2-s^2)) * 2 * (zu + (wu + zv)/lambda + wv/lambda^2)
@@ -439,8 +421,8 @@ library GyroECLPMath {
     function calcMinAtyAChixSqPlusAtySq(
         int256 x,
         int256 y,
-        Params memory p,
-        DerivedParams memory d
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d
     ) internal pure returns (int256 val) {
         ////////////////////////////////////////////////////////////////////////////////////
         // (At)_y^2 (A chi)_x^2 = (x^2 s^2 + xy2sc + y^2 c^2) * (z^2 + 2zw/lambda + w^2/lambda^2)
@@ -469,8 +451,8 @@ library GyroECLPMath {
     function calcInvariantSqrt(
         int256 x,
         int256 y,
-        Params memory p,
-        DerivedParams memory d
+        IGyroECLPPool.Params memory p,
+        IGyroECLPPool.DerivedParams memory d
     ) internal pure returns (int256 val, int256 err) {
         val = calcMinAtxAChiySqPlusAtxSq(x, y, p, d) + calc2AtxAtyAChixAChiy(x, y, p, d);
         val = val + calcMinAtyAChixSqPlusAtySq(x, y, p, d);
@@ -492,27 +474,33 @@ library GyroECLPMath {
      */
     function calcSpotPrice0in1(
         uint256[] memory balances,
-        Params memory params,
-        DerivedParams memory derived,
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory derived,
         int256 invariant
     ) external pure returns (uint256 px) {
         // Shift by virtual offsets to get v(t).
         // Ignore r rounding for spot price, precision will be lost in TWAP anyway.
-        Vector2 memory r = Vector2(invariant, invariant);
-        Vector2 memory ab = Vector2(virtualOffset0(params, derived, r), virtualOffset1(params, derived, r));
-        Vector2 memory vec = Vector2(balances[0].toInt256() - ab.x, balances[1].toInt256() - ab.y);
+        IGyroECLPPool.Vector2 memory r = IGyroECLPPool.Vector2(invariant, invariant);
+        IGyroECLPPool.Vector2 memory ab = IGyroECLPPool.Vector2(
+            virtualOffset0(params, derived, r),
+            virtualOffset1(params, derived, r)
+        );
+        IGyroECLPPool.Vector2 memory vec = IGyroECLPPool.Vector2(
+            balances[0].toInt256() - ab.x,
+            balances[1].toInt256() - ab.y
+        );
 
         // Transform to circle to get Av(t).
         vec = mulA(params, vec);
         // Compute prices on circle.
-        Vector2 memory pc = Vector2(vec.x.divDownMagU(vec.y), ONE);
+        IGyroECLPPool.Vector2 memory pc = IGyroECLPPool.Vector2(vec.x.divDownMagU(vec.y), _ONE);
 
         // Convert prices back to ellipse
         // NB: These operations check for overflow because the price pc[0] might be large when vex.y is small.
         // SOMEDAY I think this probably can't actually happen due to our bounds on the different values. In this case
         // we could do this unchecked as well.
-        int256 pgx = scalarProd(pc, mulA(params, Vector2(ONE, 0)));
-        px = pgx.divDownMag(scalarProd(pc, mulA(params, Vector2(0, ONE)))).toUint256();
+        int256 pgx = scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(_ONE, 0)));
+        px = pgx.divDownMag(scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(0, _ONE)))).toUint256();
     }
 
     /**
@@ -521,9 +509,9 @@ library GyroECLPMath {
      * (0 = X, 1 = Y)
      */
     function checkAssetBounds(
-        Params memory params,
-        DerivedParams memory derived,
-        Vector2 memory invariant,
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory derived,
+        IGyroECLPPool.Vector2 memory invariant,
         int256 newBal,
         uint8 assetIndex
     ) internal pure {
@@ -542,11 +530,13 @@ library GyroECLPMath {
         uint256[] memory balances,
         uint256 amountIn,
         bool tokenInIsToken0,
-        Params memory params,
-        DerivedParams memory derived,
-        Vector2 memory invariant
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory derived,
+        IGyroECLPPool.Vector2 memory invariant
     ) external pure returns (uint256 amountOut) {
-        function(int256, Params memory, DerivedParams memory, Vector2 memory) pure returns (int256) calcGiven;
+        function(int256, IGyroECLPPool.Params memory, IGyroECLPPool.DerivedParams memory, IGyroECLPPool.Vector2 memory)
+            pure
+            returns (int256) calcGiven;
         uint8 ixIn;
         uint8 ixOut;
         if (tokenInIsToken0) {
@@ -571,11 +561,13 @@ library GyroECLPMath {
         uint256[] memory balances,
         uint256 amountOut,
         bool tokenInIsToken0,
-        Params memory params,
-        DerivedParams memory derived,
-        Vector2 memory invariant
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory derived,
+        IGyroECLPPool.Vector2 memory invariant
     ) external pure returns (uint256 amountIn) {
-        function(int256, Params memory, DerivedParams memory, Vector2 memory) pure returns (int256) calcGiven;
+        function(int256, IGyroECLPPool.Params memory, IGyroECLPPool.DerivedParams memory, IGyroECLPPool.Vector2 memory)
+            pure
+            returns (int256) calcGiven;
         uint8 ixIn;
         uint8 ixOut;
         if (tokenInIsToken0) {
@@ -607,13 +599,13 @@ library GyroECLPMath {
         int256 x,
         int256 s,
         int256 c,
-        Vector2 memory r, // overestimate in x component, underestimate in y
-        Vector2 memory ab,
-        Vector2 memory tauBeta,
+        IGyroECLPPool.Vector2 memory r, // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory ab,
+        IGyroECLPPool.Vector2 memory tauBeta,
         int256 dSq
     ) internal pure returns (int256) {
         // x component will round up, y will round down, use extra precision.
-        Vector2 memory lamBar;
+        IGyroECLPPool.Vector2 memory lamBar;
         lamBar.x = SignedFixedPoint.ONE_XP - SignedFixedPoint.ONE_XP.divDownMagU(lambda).divDownMagU(lambda);
         // Note: The following cannot become negative even with errors because we require lambda >= 1 and divUpMag
         // returns the exact result if the quotient is representable in 18 decimals.
@@ -632,12 +624,12 @@ library GyroECLPMath {
 
         // x component will round up, y will round down, use extra precision.
         // Account for 1 factor of dSq (2 s,c factors).
-        Vector2 memory sTerm;
+        IGyroECLPPool.Vector2 memory sTerm;
         // We wil take sTerm = 1 - sTerm below, using multiple lines to avoid "stack too deep".
         sTerm.x = lamBar.y.mulDownMagU(s).mulDownMagU(s).divXpU(dSq);
         sTerm.y = lamBar.x.mulUpMagU(s);
         sTerm.y = sTerm.y.mulUpMagU(s).divXpU(dSq + 1) + 1; // account for rounding error in dSq, divXp
-        sTerm = Vector2(SignedFixedPoint.ONE_XP - sTerm.x, SignedFixedPoint.ONE_XP - sTerm.y);
+        sTerm = IGyroECLPPool.Vector2(SignedFixedPoint.ONE_XP - sTerm.x, SignedFixedPoint.ONE_XP - sTerm.y);
         // ^^ NB: The components of sTerm are non-negative: We only need to worry about sTerm.y. This is non-negative
         // because, because of bounds on lambda lamBar <= 1 - 1e-16, and division by dSq ensures we have enough
         // precision so that rounding errors are never magnitude 1e-16.
@@ -667,11 +659,11 @@ library GyroECLPMath {
      */
     function calcXpXpDivLambdaLambda(
         int256 x,
-        Vector2 memory r, // overestimate in x component, underestimate in y
+        IGyroECLPPool.Vector2 memory r, // overestimate in x component, underestimate in y
         int256 lambda,
         int256 s,
         int256 c,
-        Vector2 memory tauBeta,
+        IGyroECLPPool.Vector2 memory tauBeta,
         int256 dSq
     ) internal pure returns (int256) {
         //////////////////////////////////////////////////////////////////////////////////
@@ -681,7 +673,7 @@ library GyroECLPMath {
         //////////////////////////////////////////////////////////////////////////////////
         // to save gas, pre-compute dSq^2 as it will be used 3 times, and r.x^2 as it will be used 2-3 times
         // sqVars = (dSq^2, r.x^2)
-        Vector2 memory sqVars = Vector2(dSq.mulXpU(dSq), r.x.mulUpMagU(r.x));
+        IGyroECLPPool.Vector2 memory sqVars = IGyroECLPPool.Vector2(dSq.mulXpU(dSq), r.x.mulUpMagU(r.x));
 
         QParams memory q; // for working terms
         // q.a = r^2 s 2c tau(beta)_x tau(beta)_y
@@ -737,27 +729,33 @@ library GyroECLPMath {
      */
     function calcYGivenX(
         int256 x,
-        Params memory params,
-        DerivedParams memory d,
-        Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 y) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
         // Note that the error correction in the invariant should more than make up for uncaught rounding directions
         // (in 38 decimals) in virtual offsets.
-        Vector2 memory ab = Vector2(virtualOffset0(params, d, r), virtualOffset1(params, d, r));
+        IGyroECLPPool.Vector2 memory ab = IGyroECLPPool.Vector2(
+            virtualOffset0(params, d, r),
+            virtualOffset1(params, d, r)
+        );
         y = solveQuadraticSwap(params.lambda, x, params.s, params.c, r, ab, d.tauBeta, d.dSq);
     }
 
     function calcXGivenY(
         int256 y,
-        Params memory params,
-        DerivedParams memory d,
-        Vector2 memory r // overestimate in x component, underestimate in y
+        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 x) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
         // Note that the error correction in the invariant should more than make up for uncaught rounding directions
         // (in 38 decimals) in virtual offsets.
-        Vector2 memory ba = Vector2(virtualOffset1(params, d, r), virtualOffset0(params, d, r));
+        IGyroECLPPool.Vector2 memory ba = IGyroECLPPool.Vector2(
+            virtualOffset1(params, d, r),
+            virtualOffset0(params, d, r)
+        );
         // Change x->y, s->c, c->s, b->a, a->b, tauBeta.x -> -tauAlpha.x, tauBeta.y -> tauAlpha.y vs calcYGivenX.
         x = solveQuadraticSwap(
             params.lambda,
@@ -766,7 +764,7 @@ library GyroECLPMath {
             params.s,
             r,
             ba,
-            Vector2(-d.tauAlpha.x, d.tauAlpha.y),
+            IGyroECLPPool.Vector2(-d.tauAlpha.x, d.tauAlpha.y),
             d.dSq
         );
     }

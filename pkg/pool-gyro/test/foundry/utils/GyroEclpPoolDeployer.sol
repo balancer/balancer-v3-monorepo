@@ -4,21 +4,21 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 
 import { GyroECLPPoolFactory } from "../../../contracts/GyroECLPPoolFactory.sol";
 import { GyroECLPPool } from "../../../contracts/GyroECLPPool.sol";
-import { GyroECLPMath } from "../../../contracts/lib/GyroECLPMath.sol";
 
-contract GyroEclpPoolDeployer is Test {
+contract GyroEclpPoolDeployer is BaseContractsDeployer {
     using CastingHelpers for address[];
 
     // Extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet.
@@ -38,6 +38,15 @@ contract GyroEclpPoolDeployer is Test {
     int256 internal _z = -28859471639991253843240999485797747790;
     int256 internal _dSq = 99999999999999999886624093342106115200;
 
+    string private artifactsRootDir = "artifacts/";
+
+    constructor() {
+        // If this external artifact path exists, it means we are running outside of this repo.
+        if (vm.exists("artifacts/@balancer-labs/v3-pool-gyro/")) {
+            artifactsRootDir = "artifacts/@balancer-labs/v3-pool-gyro/";
+        }
+    }
+
     function createGyroEclpPool(
         address[] memory tokens,
         IRateProvider[] memory rateProviders,
@@ -45,14 +54,14 @@ contract GyroEclpPoolDeployer is Test {
         IVaultMock vault,
         address poolCreator
     ) internal returns (address) {
-        GyroECLPPoolFactory factory = new GyroECLPPoolFactory(IVault(address(vault)), 365 days);
+        GyroECLPPoolFactory factory = deployGyro2CLPPoolFactory(vault);
 
         PoolRoleAccounts memory roleAccounts;
         GyroECLPPool newPool;
 
         // Avoids Stack-too-deep.
         {
-            GyroECLPMath.Params memory params = GyroECLPMath.Params({
+            IGyroECLPPool.Params memory params = IGyroECLPPool.Params({
                 alpha: _paramsAlpha,
                 beta: _paramsBeta,
                 c: _paramsC,
@@ -60,9 +69,9 @@ contract GyroEclpPoolDeployer is Test {
                 lambda: _paramsLambda
             });
 
-            GyroECLPMath.DerivedParams memory derivedParams = GyroECLPMath.DerivedParams({
-                tauAlpha: GyroECLPMath.Vector2(_tauAlphaX, _tauAlphaY),
-                tauBeta: GyroECLPMath.Vector2(_tauBetaX, _tauBetaY),
+            IGyroECLPPool.DerivedParams memory derivedParams = IGyroECLPPool.DerivedParams({
+                tauAlpha: IGyroECLPPool.Vector2(_tauAlphaX, _tauAlphaY),
+                tauBeta: IGyroECLPPool.Vector2(_tauBetaX, _tauBetaY),
                 u: _u,
                 v: _v,
                 w: _w,
@@ -95,5 +104,20 @@ contract GyroEclpPoolDeployer is Test {
         feeController.manualSetPoolCreator(address(newPool), poolCreator);
 
         return address(newPool);
+    }
+
+    function deployGyro2CLPPoolFactory(IVault vault) internal returns (GyroECLPPoolFactory) {
+        if (reusingArtifacts) {
+            return
+                GyroECLPPoolFactory(
+                    deployCode(_computeGyroECLPPath(type(GyroECLPPoolFactory).name), abi.encode(vault, 365 days))
+                );
+        } else {
+            return new GyroECLPPoolFactory(vault, 365 days);
+        }
+    }
+
+    function _computeGyroECLPPath(string memory name) private view returns (string memory) {
+        return string(abi.encodePacked(artifactsRootDir, "contracts/", name, ".sol/", name, ".json"));
     }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -11,7 +12,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 
 import { GyroECLPPool } from "./GyroECLPPool.sol";
-import { GyroECLPMath } from "./lib/GyroECLPMath.sol";
 
 /**
  * @notice Gyro ECLP Pool factory
@@ -45,8 +45,8 @@ contract GyroECLPPoolFactory is BasePoolFactory {
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokens,
-        GyroECLPMath.Params memory eclpParams,
-        GyroECLPMath.DerivedParams memory derivedEclpParams,
+        IGyroECLPPool.Params memory eclpParams,
+        IGyroECLPPool.DerivedParams memory derivedEclpParams,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         address poolHooksContract,
@@ -58,7 +58,7 @@ contract GyroECLPPoolFactory is BasePoolFactory {
 
         pool = _create(
             abi.encode(
-                GyroECLPPool.GyroParams({
+                IGyroECLPPool.GyroECLPPoolParams({
                     name: name,
                     symbol: symbol,
                     eclpParams: eclpParams,
