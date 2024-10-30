@@ -20,6 +20,7 @@ import { GyroECLPPool } from "./GyroECLPPool.sol";
 contract GyroECLPPoolFactory is BasePoolFactory {
     // solhint-disable not-rely-on-time
 
+    /// @notice ECLP pools support 2 tokens only.
     error SupportsOnlyTwoTokens();
 
     constructor(
@@ -54,6 +55,10 @@ contract GyroECLPPoolFactory is BasePoolFactory {
     ) external returns (address pool) {
         if (tokens.length != 2) {
             revert SupportsOnlyTwoTokens();
+        }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            revert StandardPoolWithCreator();
         }
 
         pool = _create(

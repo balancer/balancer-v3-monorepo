@@ -54,7 +54,7 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
         IVaultMock vault,
         address poolCreator
     ) internal returns (address) {
-        GyroECLPPoolFactory factory = deployGyro2CLPPoolFactory(vault);
+        GyroECLPPoolFactory factory = deployGyroECLPPoolFactory(vault);
 
         PoolRoleAccounts memory roleAccounts;
         GyroECLPPool newPool;
@@ -106,7 +106,7 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
         return address(newPool);
     }
 
-    function deployGyro2CLPPoolFactory(IVault vault) internal returns (GyroECLPPoolFactory) {
+    function deployGyroECLPPoolFactory(IVault vault) internal returns (GyroECLPPoolFactory) {
         if (reusingArtifacts) {
             return
                 GyroECLPPoolFactory(
