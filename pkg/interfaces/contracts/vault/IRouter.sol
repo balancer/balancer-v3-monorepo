@@ -321,13 +321,16 @@ interface IRouter {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param minIssuedSharesRaw Minimum amount of shares to receive from the buffer, expressed in underlying token
+     * native decimals
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
      * (This is the BPT of the Vault's internal ERC4626 buffer.)
      */
     function initializeBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw
+        uint256 amountWrappedRaw,
+        uint256 minIssuedSharesRaw
     ) external returns (uint256 issuedShares);
 
     /**
@@ -336,6 +339,10 @@ interface IRouter {
      * code, avoiding rounding issues and minimum amount checks. It is possible to add unbalanced by interacting
      * with the wrapper contract directly.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param maxAmountUnderlyingInRaw Maximum amount of underlying tokens to add to the buffer. It is expressed in
+     * underlying token native decimals
+     * @param maxAmountWrappedInRaw Maximum amount of wrapped tokens to add to the buffer. It is expressed in wrapped
+     * token native decimals
      * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
      * in underlying token decimals
      * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
@@ -343,6 +350,8 @@ interface IRouter {
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue
     ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
 

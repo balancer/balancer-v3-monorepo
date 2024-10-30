@@ -679,7 +679,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function initializeBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw
+        uint256 amountWrappedRaw,
+        uint256 minIssuedShares
     ) external returns (uint256 issuedShares) {
         return
             abi.decode(
@@ -690,6 +691,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             wrappedToken,
                             amountUnderlyingRaw,
                             amountWrappedRaw,
+                            minIssuedShares,
                             msg.sender // sharesOwner
                         )
                     )
@@ -704,6 +706,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param minIssuedSharesRaw Minimum amount of shares to receive, in underlying token native decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
      * remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
@@ -713,9 +716,16 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
+        uint256 minIssuedSharesRaw,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = _vault.initializeBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
+        issuedShares = _vault.initializeBuffer(
+            wrappedToken,
+            amountUnderlyingRaw,
+            amountWrappedRaw,
+            minIssuedSharesRaw,
+            sharesOwner
+        );
         _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingRaw, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
     }
@@ -723,6 +733,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /// @inheritdoc IRouter
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue
     ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw) {
         return
@@ -732,6 +744,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         Router.addLiquidityToBufferHook,
                         (
                             wrappedToken,
+                            maxAmountUnderlyingInRaw,
+                            maxAmountWrappedInRaw,
                             exactSharesToIssue,
                             msg.sender // sharesOwner
                         )
@@ -747,6 +761,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
      * in underlying token decimals
+     * @param maxAmountUnderlyingInRaw Maximum amount of underlying tokens to add to the buffer. It is expressed in
+     * underlying token native decimals
+     * @param maxAmountWrappedInRaw Maximum amount of wrapped tokens to add to the buffer. It is expressed in wrapped
+     * token native decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
      * remove liquidity from the buffer
      * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
@@ -754,11 +772,15 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function addLiquidityToBufferHook(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw) {
         (amountUnderlyingRaw, amountWrappedRaw) = _vault.addLiquidityToBuffer(
             wrappedToken,
+            maxAmountUnderlyingInRaw,
+            maxAmountWrappedInRaw,
             exactSharesToIssue,
             sharesOwner
         );

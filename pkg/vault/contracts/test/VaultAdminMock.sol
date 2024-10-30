@@ -55,9 +55,10 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
         uint256 amountWrapped,
+        uint256 minIssuedShares,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
+        IVault(address(this)).initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, minIssuedShares, sharesOwner);
     }
 
     /// @dev Adds liquidity to buffer unbalanced, so it can unbalance the buffer.
@@ -92,18 +93,34 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
 
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).addLiquidityToBuffer(wrappedToken, exactSharesToIssue, sharesOwner);
+        IVault(address(this)).addLiquidityToBuffer(
+            wrappedToken,
+            maxAmountUnderlyingInRaw,
+            maxAmountWrappedInRaw,
+            exactSharesToIssue,
+            sharesOwner
+        );
     }
 
     function manualReentrancyRemoveLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOut,
+        uint256 minAmountWrappedOut,
         address sharesOwner
     ) external nonReentrant {
-        this.removeLiquidityFromBufferHook(wrappedToken, sharesToRemove, sharesOwner);
+        this.removeLiquidityFromBufferHook(
+            wrappedToken,
+            sharesToRemove,
+            minAmountUnderlyingOut,
+            minAmountWrappedOut,
+            sharesOwner
+        );
     }
 
     function manualReentrancyDisableRecoveryMode(address pool) external nonReentrant {

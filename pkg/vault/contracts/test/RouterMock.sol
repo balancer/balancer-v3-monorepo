@@ -49,7 +49,7 @@ contract RouterMock is Router {
     }
 
     function manualReentrancyAddLiquidityToBufferHook() external nonReentrant {
-        Router(payable(this)).addLiquidityToBufferHook(IERC4626(address(0)), 0, address(0));
+        Router(payable(this)).addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, 0, address(0));
     }
 
     function manualReentrancyQuerySwapHook() external nonReentrant {

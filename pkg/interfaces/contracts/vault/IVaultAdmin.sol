@@ -276,6 +276,8 @@ interface IVaultAdmin {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param minIssuedSharesRaw Minimum amount of shares to receive from the buffer, expressed in underlying token
+     * native decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
      * liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
@@ -285,6 +287,7 @@ interface IVaultAdmin {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
+        uint256 minIssuedSharesRaw,
         address sharesOwner
     ) external returns (uint256 issuedShares);
 
@@ -292,6 +295,10 @@ interface IVaultAdmin {
      * @notice Adds liquidity to an internal ERC4626 buffer in the Vault, proportionally.
      * @dev The buffer needs to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param maxAmountUnderlyingInRaw Maximum amount of underlying tokens to add to the buffer. It is expressed in
+     * underlying token native decimals
+     * @param maxAmountWrappedInRaw Maximum amount of wrapped tokens to add to the buffer. It is expressed in wrapped
+     * token native decimals
      * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
      * in underlying token decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
@@ -301,6 +308,8 @@ interface IVaultAdmin {
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue,
         address sharesOwner
     ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
@@ -318,13 +327,19 @@ interface IVaultAdmin {
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
-     * total shares. It is expressed in underlying token native decimals.
+     * total shares. It is expressed in underlying token native decimals
+     * @param minAmountUnderlyingOutRaw Minimum amount of underlying tokens to receive from the buffer. It is expressed
+     * in underlying token native decimals
+     * @param minAmountWrappedOutRaw Minimum amount of wrapped tokens to receive from the buffer. It is expressed in
+     * wrapped token native decimals
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove
+        uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOutRaw,
+        uint256 minAmountWrappedOutRaw
     ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /**
