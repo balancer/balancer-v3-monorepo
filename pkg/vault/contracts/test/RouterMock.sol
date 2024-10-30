@@ -80,8 +80,8 @@ contract RouterMock is Router {
     ) external returns (uint256 amountCalculated) {
         try
             _vault.quoteAndRevert(
-                abi.encodeWithSelector(
-                    RouterExtension.querySwapHook.selector,
+                abi.encodeCall(
+                    RouterExtension.querySwapHook,
                     SwapSingleTokenHookParams({
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,
