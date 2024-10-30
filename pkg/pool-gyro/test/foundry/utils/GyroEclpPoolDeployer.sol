@@ -61,7 +61,7 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
 
         // Avoids Stack-too-deep.
         {
-            IGyroECLPPool.Params memory params = IGyroECLPPool.Params({
+            IGyroECLPPool.EclpParams memory params = IGyroECLPPool.EclpParams({
                 alpha: _paramsAlpha,
                 beta: _paramsBeta,
                 c: _paramsC,
@@ -69,7 +69,7 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
                 lambda: _paramsLambda
             });
 
-            IGyroECLPPool.DerivedParams memory derivedParams = IGyroECLPPool.DerivedParams({
+            IGyroECLPPool.DerivedEclpParams memory derivedParams = IGyroECLPPool.DerivedEclpParams({
                 tauAlpha: IGyroECLPPool.Vector2(_tauAlphaX, _tauAlphaY),
                 tauBeta: IGyroECLPPool.Vector2(_tauBetaX, _tauBetaY),
                 u: _u,

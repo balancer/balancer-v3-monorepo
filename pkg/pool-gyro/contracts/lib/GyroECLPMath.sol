@@ -57,7 +57,7 @@ library GyroECLPMath {
     }
 
     /// @dev Enforces limits and approximate normalization of the rotation vector.
-    function validateParams(IGyroECLPPool.Params memory params) internal pure {
+    function validateParams(IGyroECLPPool.EclpParams memory params) internal pure {
         if (0 > params.s || params.s > _ONE) {
             revert RotationVectorWrong();
         }
@@ -83,8 +83,8 @@ library GyroECLPMath {
      * @dev Does NOT check for internal consistency of 'derived' with 'params'.
      */
     function validateDerivedParamsLimits(
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory derived
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory derived
     ) internal pure {
         int256 norm2;
         norm2 = scalarProdXp(derived.tauAlpha, derived.tauAlpha);
@@ -142,7 +142,7 @@ library GyroECLPMath {
      * @dev This is reversing rotation and scaling of the ellipse (mapping back to circle) .
      */
     function mulA(
-        IGyroECLPPool.Params memory params,
+        IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.Vector2 memory tp
     ) internal pure returns (IGyroECLPPool.Vector2 memory t) {
         // NB: This function is only used inside calculatePrice(). This is why we can make two simplifications:
@@ -164,8 +164,8 @@ library GyroECLPMath {
      * rounding direction is important.
      */
     function virtualOffset0(
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 a) {
         // a = r lambda c tau(beta)_x + rs tau(beta)_y
@@ -184,8 +184,8 @@ library GyroECLPMath {
      * @dev Calculates b = r*(A^{-1}tau(alpha))_y rounding up in signed direction
      */
     function virtualOffset1(
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 b) {
         // b = -r \lambda s tau(alpha)_x + rc tau(alpha)_y
@@ -205,8 +205,8 @@ library GyroECLPMath {
      * by lambda. Rounds down in signed direction
      */
     function maxBalances0(
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x-component, underestimate in y-component
     ) internal pure returns (int256 xp) {
         // x^+ = r lambda c (tau(beta)_x - tau(alpha)_x) + rs (tau(beta)_y - tau(alpha)_y)
@@ -226,8 +226,8 @@ library GyroECLPMath {
      * by lambda. Rounds down in signed direction
      */
     function maxBalances1(
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x-component, underestimate in y-component
     ) internal pure returns (int256 yp) {
         // y^+ = r lambda s (tau(beta)_x - tau(alpha)_x) + rc (tau(alpha)_y - tau(beta)_y)
@@ -247,8 +247,8 @@ library GyroECLPMath {
      */
     function calculateInvariantWithError(
         uint256[] memory balances,
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory derived
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory derived
     ) internal pure returns (int256, int256) {
         (int256 x, int256 y) = (balances[0].toInt256(), balances[1].toInt256());
 
@@ -308,8 +308,8 @@ library GyroECLPMath {
     function calcAtAChi(
         int256 x,
         int256 y,
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d
     ) internal pure returns (int256 val) {
         // to save gas, pre-compute dSq^2 as it will be used 3 times
         int256 dSq2 = d.dSq.mulXpU(d.dSq);
@@ -335,8 +335,8 @@ library GyroECLPMath {
      * only divide by this later, we will not need to worry about overflow in that operation if done in the right way.
      */
     function calcAChiAChiInXp(
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d
     ) internal pure returns (int256 val) {
         // To save gas, pre-compute dSq^3 as it will be used 4 times.
         int256 dSq3 = d.dSq.mulXpU(d.dSq).mulXpU(d.dSq);
@@ -364,8 +364,8 @@ library GyroECLPMath {
     function calcMinAtxAChiySqPlusAtxSq(
         int256 x,
         int256 y,
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d
     ) internal pure returns (int256 val) {
         ////////////////////////////////////////////////////////////////////////////////////
         // (At)_x^2 (A chi)_y^2 = (x^2 c^2 - xy2sc + y^2 s^2) (u^2 + 2uv/lambda + v^2/lambda^2)
@@ -399,8 +399,8 @@ library GyroECLPMath {
     function calc2AtxAtyAChixAChiy(
         int256 x,
         int256 y,
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d
     ) internal pure returns (int256 val) {
         ////////////////////////////////////////////////////////////////////////////////////
         // = ((x^2 - y^2)sc + yx(c^2-s^2)) * 2 * (zu + (wu + zv)/lambda + wv/lambda^2)
@@ -421,8 +421,8 @@ library GyroECLPMath {
     function calcMinAtyAChixSqPlusAtySq(
         int256 x,
         int256 y,
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d
     ) internal pure returns (int256 val) {
         ////////////////////////////////////////////////////////////////////////////////////
         // (At)_y^2 (A chi)_x^2 = (x^2 s^2 + xy2sc + y^2 c^2) * (z^2 + 2zw/lambda + w^2/lambda^2)
@@ -451,8 +451,8 @@ library GyroECLPMath {
     function calcInvariantSqrt(
         int256 x,
         int256 y,
-        IGyroECLPPool.Params memory p,
-        IGyroECLPPool.DerivedParams memory d
+        IGyroECLPPool.EclpParams memory p,
+        IGyroECLPPool.DerivedEclpParams memory d
     ) internal pure returns (int256 val, int256 err) {
         val = calcMinAtxAChiySqPlusAtxSq(x, y, p, d) + calc2AtxAtyAChixAChiy(x, y, p, d);
         val = val + calcMinAtyAChixSqPlusAtySq(x, y, p, d);
@@ -474,8 +474,8 @@ library GyroECLPMath {
      */
     function calcSpotPrice0in1(
         uint256[] memory balances,
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory derived,
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory derived,
         int256 invariant
     ) internal pure returns (uint256 px) {
         // Shift by virtual offsets to get v(t).
@@ -509,8 +509,8 @@ library GyroECLPMath {
      * (0 = X, 1 = Y)
      */
     function checkAssetBounds(
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory derived,
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory derived,
         IGyroECLPPool.Vector2 memory invariant,
         int256 newBal,
         uint8 assetIndex
@@ -530,13 +530,16 @@ library GyroECLPMath {
         uint256[] memory balances,
         uint256 amountIn,
         bool tokenInIsToken0,
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory derived,
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory derived,
         IGyroECLPPool.Vector2 memory invariant
     ) internal pure returns (uint256 amountOut) {
-        function(int256, IGyroECLPPool.Params memory, IGyroECLPPool.DerivedParams memory, IGyroECLPPool.Vector2 memory)
-            pure
-            returns (int256) calcGiven;
+        function(
+            int256,
+            IGyroECLPPool.EclpParams memory,
+            IGyroECLPPool.DerivedEclpParams memory,
+            IGyroECLPPool.Vector2 memory
+        ) pure returns (int256) calcGiven;
         uint8 ixIn;
         uint8 ixOut;
         if (tokenInIsToken0) {
@@ -561,13 +564,16 @@ library GyroECLPMath {
         uint256[] memory balances,
         uint256 amountOut,
         bool tokenInIsToken0,
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory derived,
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory derived,
         IGyroECLPPool.Vector2 memory invariant
     ) internal pure returns (uint256 amountIn) {
-        function(int256, IGyroECLPPool.Params memory, IGyroECLPPool.DerivedParams memory, IGyroECLPPool.Vector2 memory)
-            pure
-            returns (int256) calcGiven;
+        function(
+            int256,
+            IGyroECLPPool.EclpParams memory,
+            IGyroECLPPool.DerivedEclpParams memory,
+            IGyroECLPPool.Vector2 memory
+        ) pure returns (int256) calcGiven;
         uint8 ixIn;
         uint8 ixOut;
         if (tokenInIsToken0) {
@@ -729,8 +735,8 @@ library GyroECLPMath {
      */
     function calcYGivenX(
         int256 x,
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 y) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
@@ -745,8 +751,8 @@ library GyroECLPMath {
 
     function calcXGivenY(
         int256 y,
-        IGyroECLPPool.Params memory params,
-        IGyroECLPPool.DerivedParams memory d,
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
     ) internal pure returns (int256 x) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
