@@ -75,6 +75,7 @@ export class Benchmark {
     this._poolType = poolType;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo | null> {
     return null;
   }
@@ -391,6 +392,8 @@ export class Benchmark {
           false,
           '0x'
         );
+
+        receipts.push((await tx.wait())!);
 
         await saveSnap(
           this._testDirname,
