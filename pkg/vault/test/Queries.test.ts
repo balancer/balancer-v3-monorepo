@@ -18,6 +18,12 @@ import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { deployPermit2 } from './Permit2Deployer';
 
 describe('Queries', function () {
+  const ROUTER_VERSION = 'Router v9';
+
+  const DAI_AMOUNT_IN = fp(1000);
+  const USDC_AMOUNT_IN = fp(1000);
+  const BPT_AMOUNT = fp(2000);
+
   let permit2: IPermit2;
   let vault: Vault;
   let router: Router;
@@ -27,10 +33,6 @@ describe('Queries', function () {
   let USDC: ERC20TestToken;
   let WETH: WETHTestToken;
   let zero: VoidSigner;
-
-  const DAI_AMOUNT_IN = fp(1000);
-  const USDC_AMOUNT_IN = fp(1000);
-  const BPT_AMOUNT = fp(2000);
 
   let alice: SignerWithAddress;
 
@@ -44,7 +46,7 @@ describe('Queries', function () {
     const vaultAddress = await vault.getAddress();
     WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
+    router = await deploy('Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
