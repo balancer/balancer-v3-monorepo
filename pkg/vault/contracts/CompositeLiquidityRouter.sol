@@ -35,7 +35,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) BatchRouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -136,7 +141,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolUnbalancedHook,
                     AddLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: pool,
                         maxAmountsIn: exactUnderlyingAmountsIn,
                         minBptAmountOut: 0,
@@ -162,7 +167,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
                     AddLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: pool,
                         maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
@@ -188,7 +193,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 abi.encodeCall(
                     CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
                     RemoveLiquidityHookParams({
-                        sender: msg.sender,
+                        sender: address(this),
                         pool: pool,
                         minAmountsOut: new uint256[](2),
                         maxBptAmountIn: exactBptAmountIn,
@@ -389,18 +394,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
-                        AddLiquidityHookParams({
-                            pool: parentPool,
-                            sender: msg.sender,
-                            maxAmountsIn: exactAmountsIn,
-                            minBptAmountOut: minBptAmountOut,
-                            kind: AddLiquidityKind.UNBALANCED,
-                            wethIsEth: false,
-                            userData: userData
-                        }),
-                        tokensIn
+                    abi.encodeCall(
+                        CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook,
+                        (
+                            AddLiquidityHookParams({
+                                pool: parentPool,
+                                sender: msg.sender,
+                                maxAmountsIn: exactAmountsIn,
+                                minBptAmountOut: minBptAmountOut,
+                                kind: AddLiquidityKind.UNBALANCED,
+                                wethIsEth: false,
+                                userData: userData
+                            }),
+                            tokensIn
+                        )
                     )
                 ),
                 (uint256)
@@ -418,18 +425,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook.selector,
-                        AddLiquidityHookParams({
-                            pool: parentPool,
-                            sender: msg.sender,
-                            maxAmountsIn: exactAmountsIn,
-                            minBptAmountOut: 0,
-                            kind: AddLiquidityKind.UNBALANCED,
-                            wethIsEth: false,
-                            userData: userData
-                        }),
-                        tokensIn
+                    abi.encodeCall(
+                        CompositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook,
+                        (
+                            AddLiquidityHookParams({
+                                pool: parentPool,
+                                sender: address(this),
+                                maxAmountsIn: exactAmountsIn,
+                                minBptAmountOut: 0,
+                                kind: AddLiquidityKind.UNBALANCED,
+                                wethIsEth: false,
+                                userData: userData
+                            }),
+                            tokensIn
+                        )
                     )
                 ),
                 (uint256)
@@ -591,18 +600,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) external saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         (amountsOut) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook.selector,
-                    RemoveLiquidityHookParams({
-                        sender: msg.sender,
-                        pool: parentPool,
-                        minAmountsOut: minAmountsOut,
-                        maxBptAmountIn: exactBptAmountIn,
-                        kind: RemoveLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
-                        userData: userData
-                    }),
-                    tokensOut
+                abi.encodeCall(
+                    CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook,
+                    (
+                        RemoveLiquidityHookParams({
+                            sender: msg.sender,
+                            pool: parentPool,
+                            minAmountsOut: minAmountsOut,
+                            maxBptAmountIn: exactBptAmountIn,
+                            kind: RemoveLiquidityKind.PROPORTIONAL,
+                            wethIsEth: false,
+                            userData: userData
+                        }),
+                        tokensOut
+                    )
                 )
             ),
             (uint256[])
@@ -619,18 +630,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) external saveSender(sender) returns (uint256[] memory amountsOut) {
         (amountsOut) = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook.selector,
-                    RemoveLiquidityHookParams({
-                        sender: msg.sender,
-                        pool: parentPool,
-                        minAmountsOut: new uint256[](tokensOut.length),
-                        maxBptAmountIn: exactBptAmountIn,
-                        kind: RemoveLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
-                        userData: userData
-                    }),
-                    tokensOut
+                abi.encodeCall(
+                    CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook,
+                    (
+                        RemoveLiquidityHookParams({
+                            sender: address(this),
+                            pool: parentPool,
+                            minAmountsOut: new uint256[](tokensOut.length),
+                            maxBptAmountIn: exactBptAmountIn,
+                            kind: RemoveLiquidityKind.PROPORTIONAL,
+                            wethIsEth: false,
+                            userData: userData
+                        }),
+                        tokensOut
+                    )
                 )
             ),
             (uint256[])

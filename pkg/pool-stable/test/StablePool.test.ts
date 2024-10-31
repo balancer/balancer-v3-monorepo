@@ -26,6 +26,7 @@ import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/in
 describe('StablePool', () => {
   const FACTORY_VERSION = 'Stable Factory v1';
   const POOL_VERSION = 'Stable Pool v1';
+  const ROUTER_VERSION = 'Router v9';
 
   const MAX_STABLE_TOKENS = 5;
   const TOKEN_AMOUNT = fp(1000);
@@ -49,7 +50,7 @@ describe('StablePool', () => {
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
 
     factory = await deploy('StablePoolFactory', {
       args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],

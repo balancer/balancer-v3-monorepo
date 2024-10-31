@@ -23,6 +23,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { MOCK_ROUTER_VERSION } from "../../contracts/test/RouterMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -664,6 +665,10 @@ contract RouterTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector, weth));
         router.getSingleInputArrayAndTokenIndex(pool, weth, daiAmountIn);
+    }
+
+    function testRouterVersion() public view {
+        assertEq(router.version(), MOCK_ROUTER_VERSION, "Router version mismatch");
     }
 
     function checkRemoveLiquidityPreConditions() internal view {

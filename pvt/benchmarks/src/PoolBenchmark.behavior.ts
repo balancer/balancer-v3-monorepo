@@ -52,6 +52,9 @@ export class Benchmark {
   }
 
   itBenchmarks = () => {
+    const BATCH_ROUTER_VERSION = 'BatchRouter v9';
+    const ROUTER_VERSION = 'Router v9';
+
     const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
     const MAX_PROTOCOL_YIELD_FEE = fp(0.2);
 
@@ -89,8 +92,10 @@ export class Benchmark {
       )) as unknown as ProtocolFeeController;
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       permit2 = await deployPermit2();
-      router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, permit2] });
-      batchRouter = await deploy('v3-vault/BatchRouter', { args: [this.vault, this.WETH, permit2] });
+      router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, permit2, ROUTER_VERSION] });
+      batchRouter = await deploy('v3-vault/BatchRouter', {
+        args: [this.vault, this.WETH, permit2, BATCH_ROUTER_VERSION],
+      });
       this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
       this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });
 

@@ -67,7 +67,12 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         bytes userData;
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) RouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -86,8 +91,8 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     ) internal returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    MinimalRouter.addLiquidityHook.selector,
+                abi.encodeCall(
+                    MinimalRouter.addLiquidityHook,
                     ExtendedAddLiquidityHookParams({
                         sender: sender,
                         receiver: receiver,
@@ -178,8 +183,8 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     ) internal returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    MinimalRouter.removeLiquidityHook.selector,
+                abi.encodeCall(
+                    MinimalRouter.removeLiquidityHook,
                     ExtendedRemoveLiquidityHookParams({
                         sender: sender,
                         receiver: receiver,

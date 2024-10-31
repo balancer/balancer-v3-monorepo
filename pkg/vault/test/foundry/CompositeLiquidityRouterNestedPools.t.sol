@@ -1304,7 +1304,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(lp, address(0));
+        _prankStaticCall();
         uint256[] memory queryAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityProportionalNestedPool(
             parentPoolWithWrapper,
             exactBptIn,
