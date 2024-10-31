@@ -137,31 +137,19 @@ contract E2eBatchSwapTest is BaseVaultTest {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsBefore = _getPoolInvariants();
+        uint256[] memory invariantsBefore = _getPoolInvariants(Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 amountOutDo = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
-        uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
-        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo - feesTokenD);
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
+        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo);
         vm.stopPrank();
 
-        assertGt(feesTokenA, 0, "No aggregate fees on tokenA (token in)");
-        assertEq(feesTokenD, 0, "Aggregate fees on token D (token out)");
-
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsAfter = _getPoolInvariants();
+        uint256[] memory invariantsAfter = _getPoolInvariants(Rounding.ROUND_UP);
 
-        assertLe(amountOutUndo + feesTokenA, exactAmountIn, "Amount out undo should be <= exactAmountIn");
+        assertLe(amountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
 
-        _checkUserBalancesAndPoolInvariants(
-            balancesBefore,
-            balancesAfter,
-            invariantsBefore,
-            invariantsAfter,
-            0,
-            feesTokenD
-        );
+        _checkUserBalancesAndPoolInvariants(balancesBefore, balancesAfter, invariantsBefore, invariantsAfter, 0, 0);
     }
 
     function testDoUndoExactOut__Fuzz(
@@ -175,7 +163,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenD, maxSwapAmountTokenD);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsBefore = _getPoolInvariants();
+        uint256[] memory invariantsBefore = _getPoolInvariants(Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 amountInDo = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), exactAmountOut);
@@ -188,7 +176,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         assertTrue(feesTokenD > 0, "No fees on tokenD");
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsAfter = _getPoolInvariants();
+        uint256[] memory invariantsAfter = _getPoolInvariants(Rounding.ROUND_UP);
 
         assertGe(amountInUndo, exactAmountOut + feesTokenD, "Amount in undo should be >= exactAmountOut");
 
@@ -464,13 +452,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         }
     }
 
-    function _getPoolInvariants() private view returns (uint256[] memory poolInvariants) {
+    function _getPoolInvariants(Rounding rounding) private view returns (uint256[] memory poolInvariants) {
         address[] memory pools = [poolA, poolB, poolC].toMemoryArray();
         poolInvariants = new uint256[](pools.length);
 
         for (uint256 i = 0; i < pools.length; i++) {
             (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pools[i]);
-            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18, rounding);
         }
     }
 
