@@ -114,8 +114,9 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     constructor(
         IVault vault,
         IWETH weth,
-        IPermit2 permit2
-    ) MinimalRouter(vault, weth, permit2) ERC721("BalancerLiquidityProvider", "BAL_LP") {
+        IPermit2 permit2,
+        string memory version
+    ) MinimalRouter(vault, weth, permit2, version) ERC721("BalancerLiquidityProvider", "BAL_LP") {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -129,7 +130,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsIn) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
         // Do addLiquidity operation - BPT is minted to this contract.
         amountsIn = _addLiquidityProportional(
             pool,
@@ -158,7 +159,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         uint256 tokenId,
         uint256[] memory minAmountsOut,
         bool wethIsEth
-    ) external payable saveSender returns (uint256[] memory amountsOut) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         // Ensure the user owns the NFT.
         address nftOwner = ownerOf(tokenId);
 

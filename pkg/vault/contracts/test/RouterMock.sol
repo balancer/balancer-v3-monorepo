@@ -15,10 +15,14 @@ import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/
 
 import { Router } from "../Router.sol";
 
+string constant MOCK_ROUTER_VERSION = "Mock Router v1";
+
 contract RouterMock is Router {
     error MockErrorCode();
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2) {}
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2, MOCK_ROUTER_VERSION) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function manualReentrancyInitializeHook() external nonReentrant {
         IRouter.InitializeHookParams memory hookParams;
@@ -70,8 +74,8 @@ contract RouterMock is Router {
     ) external returns (uint256 amountCalculated) {
         try
             _vault.quoteAndRevert(
-                abi.encodeWithSelector(
-                    Router.querySwapHook.selector,
+                abi.encodeCall(
+                    Router.querySwapHook,
                     SwapSingleTokenHookParams({
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,
