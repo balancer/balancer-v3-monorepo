@@ -22,7 +22,7 @@ import {
   ERC4626TestToken,
   WETHTestToken,
 } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import { BaseContract, ContractTransactionReceipt } from 'ethers';
+import { BaseContract } from 'ethers';
 import { IERC20 } from '@balancer-labs/v3-interfaces/typechain-types';
 
 export enum PoolTag {
@@ -91,7 +91,6 @@ export class Benchmark {
 
     let tokenAAddress: string;
     let tokenBAddress: string;
-    let tokenCAddress: string;
     let wTokenAAddress: string;
     let wTokenBAddress: string;
     let wethAddress: string;
@@ -118,7 +117,6 @@ export class Benchmark {
 
       tokenAAddress = await this.tokenA.getAddress();
       tokenBAddress = await this.tokenB.getAddress();
-      tokenCAddress = await this.tokenC.getAddress();
       wethAddress = await this.WETH.getAddress();
 
       this.wTokenA = await deploy('v3-solidity-utils/ERC4626TestToken', {
