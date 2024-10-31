@@ -58,7 +58,13 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         uint256 minIssuedShares,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, minIssuedShares, sharesOwner);
+        IVault(address(this)).initializeBuffer(
+            wrappedToken,
+            amountUnderlying,
+            amountWrapped,
+            minIssuedShares,
+            sharesOwner
+        );
     }
 
     /// @dev Adds liquidity to buffer unbalanced, so it can unbalance the buffer.
