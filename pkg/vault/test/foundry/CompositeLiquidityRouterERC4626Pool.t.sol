@@ -650,7 +650,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     function testInvalidUnderlyingToken() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidUnderlyingToken.selector, waInvalid));
         vm.prank(lp);
-        router.initializeBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount);
+        bufferRouter.initializeBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount, 0);
     }
 
     function testCompositeLiquidityRouterVersion() public view {

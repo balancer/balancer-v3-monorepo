@@ -7,7 +7,7 @@ import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48, MAX_UINT128 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import {
@@ -67,6 +67,7 @@ export class Benchmark {
     let permit2: IPermit2;
     let feeCollector: ProtocolFeeController;
     let router: Router;
+    let bufferRouter: BufferRouter;
     let batchRouter: BatchRouter;
     let alice: SignerWithAddress;
     let admin: SignerWithAddress;
@@ -93,6 +94,9 @@ export class Benchmark {
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       permit2 = await deployPermit2();
       router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, permit2, ROUTER_VERSION] });
+      bufferRouter = await deploy('v3-vault/BufferRouter', {
+        args: [this.vault, this.WETH, permit2, ROUTER_VERSION],
+      });
       batchRouter = await deploy('v3-vault/BatchRouter', {
         args: [this.vault, this.WETH, permit2, BATCH_ROUTER_VERSION],
       });
@@ -135,6 +139,7 @@ export class Benchmark {
       for (const token of [this.tokenA, this.tokenB, this.WETH, this.wTokenA, this.wTokenB]) {
         await token.connect(alice).approve(permit2, MAX_UINT256);
         await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+        await permit2.connect(alice).approve(token, bufferRouter, MAX_UINT160, MAX_UINT48);
         await permit2.connect(alice).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
       }
 
@@ -753,12 +758,12 @@ export class Benchmark {
       });
 
       sharedBeforeEach('Initialize buffers', async () => {
-        await router
+        await bufferRouter
           .connect(alice)
-          .initializeBuffer(wTokenAAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
-        await router
+          .initializeBuffer(wTokenAAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
+        await bufferRouter
           .connect(alice)
-          .initializeBuffer(wTokenBAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
+          .initializeBuffer(wTokenBAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
       });
 
       it('measures gas (buffers without liquidity exact in - BatchRouter)', async () => {
@@ -905,8 +910,12 @@ export class Benchmark {
 
       it('measures gas (buffers with liquidity exact in - BatchRouter)', async () => {
         // Add liquidity to buffers.
-        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
-        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
+        await bufferRouter
+          .connect(alice)
+          .addLiquidityToBuffer(wTokenAAddress, MAX_UINT128, MAX_UINT128, 2n * TOKEN_AMOUNT);
+        await bufferRouter
+          .connect(alice)
+          .addLiquidityToBuffer(wTokenBAddress, MAX_UINT128, MAX_UINT128, 2n * TOKEN_AMOUNT);
 
         // Warm up.
         await batchRouter.connect(alice).swapExactIn(
@@ -980,8 +989,12 @@ export class Benchmark {
 
       it('measures gas (buffers with liquidity exact out - BatchRouter)', async () => {
         // Add liquidity to buffers.
-        await router.connect(alice).addLiquidityToBuffer(wTokenAAddress, 2n * TOKEN_AMOUNT);
-        await router.connect(alice).addLiquidityToBuffer(wTokenBAddress, 2n * TOKEN_AMOUNT);
+        await bufferRouter
+          .connect(alice)
+          .addLiquidityToBuffer(wTokenAAddress, MAX_UINT128, MAX_UINT128, 2n * TOKEN_AMOUNT);
+        await bufferRouter
+          .connect(alice)
+          .addLiquidityToBuffer(wTokenBAddress, MAX_UINT128, MAX_UINT128, 2n * TOKEN_AMOUNT);
 
         // Warm up.
         await batchRouter.connect(alice).swapExactOut(

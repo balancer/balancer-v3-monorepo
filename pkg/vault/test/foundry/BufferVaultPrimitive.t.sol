@@ -57,7 +57,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAsset(dai);
 
         vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+        bufferRouter.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, 0);
 
         // Change Asset to the wrong asset.
         waDAI.setAsset(usdc);
@@ -66,7 +66,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.WrongUnderlyingToken.selector, address(waDAI), address(usdc))
         );
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount);
+        bufferRouter.addLiquidityToBuffer(IERC4626(address(waDAI)), MAX_UINT128, MAX_UINT128, 2 * _wrapAmount);
     }
 
     function testChangeAssetOfWrappedTokenRemoveLiquidityFromBuffer() public {
@@ -74,7 +74,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAsset(dai);
 
         vm.prank(lp);
-        uint256 lpShares = router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+        uint256 lpShares = bufferRouter.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, 0);
 
         // Change Asset to the wrong asset.
         waDAI.setAsset(usdc);
@@ -82,7 +82,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Does not revert: remove liquidity doesn't check whether the asset matches the registered one in order to
         // avoid external calls. You can always exit the buffer, even if the wrapper is corrupt and updated its asset.
         vm.prank(lp);
-        vault.removeLiquidityFromBuffer(IERC4626(address(waDAI)), lpShares);
+        vault.removeLiquidityFromBuffer(IERC4626(address(waDAI)), lpShares, 0, 0);
     }
 
     function testChangeAssetOfWrappedTokenWrapUnwrap() public {
@@ -93,7 +93,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
 
         vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+        bufferRouter.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, 0);
 
         // Change Asset to the wrong asset.
         waDAI.setAsset(usdc);
@@ -123,7 +123,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     function testIsERC4626BufferInitialized() public {
         assertFalse(vault.isERC4626BufferInitialized(waDAI), "waDAI buffer is initialized");
         vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+        bufferRouter.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, 0);
 
         assertTrue(vault.isERC4626BufferInitialized(waDAI), "waDAI buffer is not initialized");
     }
@@ -135,7 +135,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            _wrapAmount / 10,
+            waDAI.previewDeposit(_wrapAmount / 10),
+            0
+        );
         vm.stopPrank();
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
@@ -156,10 +161,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             totalUnderlyingInBuffer / 3,
-            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3),
+            0
         );
         vm.stopPrank();
 
@@ -181,10 +187,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             (2 * totalUnderlyingInBuffer) / 3,
-            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3),
+            0
         );
         vm.stopPrank();
 
@@ -204,7 +211,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's enough to fulfill the deposit operation without interacting
         // with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.previewDeposit(2 * _wrapAmount));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            2 * _wrapAmount,
+            waDAI.previewDeposit(2 * _wrapAmount),
+            0
+        );
         vm.stopPrank();
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waDAI)));
@@ -221,7 +233,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testDepositMaliciousRouter() public {
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, waDAI.previewDeposit(_wrapAmount));
+        bufferRouter.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, waDAI.previewDeposit(_wrapAmount), 0);
         vm.stopPrank();
 
         // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
@@ -256,7 +268,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's not enough to fulfill the mint operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            _wrapAmount / 10,
+            waDAI.previewDeposit(_wrapAmount / 10),
+            0
+        );
         vm.stopPrank();
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _wrapExactOutPath(
@@ -287,10 +304,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             (totalUnderlyingInBuffer) / 3,
-            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3),
+            0
         );
         vm.stopPrank();
 
@@ -322,10 +340,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             (2 * totalUnderlyingInBuffer) / 3,
-            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3),
+            0
         );
         vm.stopPrank();
 
@@ -355,7 +374,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's enough to fulfill the mint operation without interacting
         // with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.previewDeposit(2 * _wrapAmount));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            2 * _wrapAmount,
+            waDAI.previewDeposit(2 * _wrapAmount),
+            0
+        );
         vm.stopPrank();
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _wrapExactOutPath(
@@ -382,7 +406,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testMintMaliciousRouter() public {
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, waDAI.previewDeposit(_wrapAmount));
+        bufferRouter.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, waDAI.previewDeposit(_wrapAmount), 0);
         vm.stopPrank();
 
         // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
@@ -415,7 +439,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's not enough to fulfill the redeem operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            _wrapAmount / 10,
+            waDAI.previewDeposit(_wrapAmount / 10),
+            0
+        );
         vm.stopPrank();
 
         uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
@@ -438,10 +467,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // to interact with the ERC4626 protocol.
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             (totalUnderlyingInBuffer) / 3,
-            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3),
+            0
         );
         vm.stopPrank();
 
@@ -465,10 +495,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // to interact with the ERC4626 protocol.
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             (2 * totalUnderlyingInBuffer) / 3,
-            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3),
+            0
         );
         vm.stopPrank();
 
@@ -491,7 +522,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's enough to fulfill the mint operation without interacting
         // with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.previewDeposit(2 * _wrapAmount));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            2 * _wrapAmount,
+            waDAI.previewDeposit(2 * _wrapAmount),
+            0
+        );
         vm.stopPrank();
 
         uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
@@ -517,7 +553,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation, so the Vault has
         // to interact with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            _wrapAmount / 10,
+            waDAI.previewDeposit(_wrapAmount / 10),
+            0
+        );
         vm.stopPrank();
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _unwrapExactOutPath(
@@ -541,10 +582,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // to interact with the ERC4626 protocol.
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             (totalUnderlyingInBuffer) / 3,
-            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3)
+            waDAI.previewDeposit((2 * totalUnderlyingInBuffer) / 3),
+            0
         );
         vm.stopPrank();
 
@@ -569,10 +611,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // to interact with the ERC4626 protocol.
         uint256 totalUnderlyingInBuffer = _wrapAmount / 2;
         vm.startPrank(lp);
-        router.initializeBuffer(
+        bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             (2 * totalUnderlyingInBuffer) / 3,
-            waDAI.previewDeposit(totalUnderlyingInBuffer / 3)
+            waDAI.previewDeposit(totalUnderlyingInBuffer / 3),
+            0
         );
         vm.stopPrank();
 
@@ -596,7 +639,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Initializes the buffer with an amount that's enough to fulfill the mint operation without interacting
         // with the ERC4626 protocol.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.previewDeposit(2 * _wrapAmount));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            2 * _wrapAmount,
+            waDAI.previewDeposit(2 * _wrapAmount),
+            0
+        );
         vm.stopPrank();
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _unwrapExactOutPath(
@@ -642,7 +690,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testDisableVaultBuffer() public {
         vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+        bufferRouter.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, 0);
 
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
@@ -656,10 +704,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount);
+        bufferRouter.addLiquidityToBuffer(IERC4626(address(waDAI)), MAX_UINT128, MAX_UINT128, 2 * _wrapAmount);
 
         // Remove liquidity is supposed to pass even with buffers paused, so revert is not expected.
-        vault.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
+        vault.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount, 0, 0);
 
         vm.stopPrank();
 
@@ -677,7 +725,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testAddLiquidityToBuffer() public {
         vm.startPrank(lp);
-        router.initializeBuffer(waDAI, 1e18, waDAI.previewDeposit(1e18));
+        bufferRouter.initializeBuffer(waDAI, 1e18, waDAI.previewDeposit(1e18), 0);
         vm.stopPrank();
 
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
@@ -692,7 +740,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 expectedWrappedAmountIn = beforeBalances.buffer.waDai.mulDivUp(lpSharesToAdd, totalShares);
 
         vm.prank(lp);
-        router.addLiquidityToBuffer(waDAI, lpSharesToAdd);
+        bufferRouter.addLiquidityToBuffer(waDAI, MAX_UINT128, MAX_UINT128, lpSharesToAdd);
 
         BufferAndLPBalances memory afterBalances = _measureBuffer();
 
@@ -751,7 +799,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     function testAddLiquidityToBufferWithRateChange() public {
         vm.prank(lp);
         {
-            uint256 firstAddLpShares = router.initializeBuffer(waDAI, _wrapAmount, _wrapAmount);
+            uint256 firstAddLpShares = bufferRouter.initializeBuffer(waDAI, _wrapAmount, _wrapAmount, 0);
             // After the first add liquidity operation, ending balances are (using 1000 for _wrapAmount for simplicity):
             // [1000 underlying, 1000 wrapped]; total supply is ~2000 (not counting the initialization).
 
@@ -780,7 +828,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             uint256 expectedSecondAddWrapped = bufferWrappedBalance.mulDivUp(secondAddShares, totalShares);
 
             vm.prank(lp);
-            (secondAddUnderlying, secondAddWrapped) = router.addLiquidityToBuffer(waDAI, secondAddShares);
+            (secondAddUnderlying, secondAddWrapped) = bufferRouter.addLiquidityToBuffer(
+                waDAI,
+                MAX_UINT128,
+                MAX_UINT128,
+                secondAddShares
+            );
             assertEq(secondAddUnderlying, expectedSecondAddUnderlying, "Wrong second underlying added");
             assertEq(secondAddWrapped, expectedSecondAddWrapped, "Wrong second wrapped added");
         }
@@ -793,7 +846,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Will get 1333.333/3333.333 = 40% of value:
         // [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000 = amount in.
         vm.prank(lp);
-        (uint256 removedUnderlying, uint256 removedWrapped) = vault.removeLiquidityFromBuffer(waDAI, secondAddShares);
+        (uint256 removedUnderlying, uint256 removedWrapped) = vault.removeLiquidityFromBuffer(
+            waDAI,
+            secondAddShares,
+            0,
+            0
+        );
 
         assertApproxEqAbs(removedUnderlying, expectedUnderlyingOut, 1e6, "Wrong underlying amount removed");
         assertApproxEqAbs(removedWrapped, expectedWrappedOut, 1e6, "Wrong wrapped amount removed");
@@ -844,7 +902,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.assume(firstDepositUnderlying + waDAI.previewRedeem(firstDepositWrapped) >= BUFFER_MINIMUM_TOTAL_SUPPLY);
 
         vm.prank(lp);
-        uint256 firstAddLpShares = router.initializeBuffer(waDAI, firstDepositUnderlying, firstDepositWrapped);
+        uint256 firstAddLpShares = bufferRouter.initializeBuffer(waDAI, firstDepositUnderlying, firstDepositWrapped, 0);
         assertEq(
             firstAddLpShares,
             firstDepositUnderlying + waDAI.previewRedeem(firstDepositWrapped) - BUFFER_MINIMUM_TOTAL_SUPPLY,
@@ -860,11 +918,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Make the second deposit, at the modified rate.
         vm.prank(lp);
-        router.addLiquidityToBuffer(waDAI, secondDepositShares);
+        bufferRouter.addLiquidityToBuffer(waDAI, MAX_UINT128, MAX_UINT128, secondDepositShares);
 
         // Burn the shares from the second deposit
         vm.prank(lp);
-        vault.removeLiquidityFromBuffer(waDAI, secondDepositShares);
+        vault.removeLiquidityFromBuffer(waDAI, secondDepositShares, 0, 0);
 
         // Compute the invariant after the add/remove. Should be >= `invariantBefore`.
         (bufferUnderlyingBalance, bufferWrappedBalance) = vault.getBufferBalance(waDAI);
@@ -878,7 +936,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = _wrapAmount.mulDown(2e18);
 
         vm.prank(lp);
-        uint256 lpShares = router.initializeBuffer(waDAI, underlyingAmountIn, wrappedAmountIn);
+        uint256 lpShares = bufferRouter.initializeBuffer(waDAI, underlyingAmountIn, wrappedAmountIn, 0);
 
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
 
@@ -886,7 +944,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         emit IVaultEvents.BufferSharesBurned(IERC4626(waDAI), lp, lpShares);
 
         vm.prank(lp);
-        (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(waDAI, lpShares);
+        (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(waDAI, lpShares, 0, 0);
 
         // The underlying and wrapped removed are not exactly the same as amountsIn, because part of the first deposit
         // is kept to not deplete the buffer and these shares (POOL_MINIMUM_TOTAL_SUPPLY) are "burned". The remove

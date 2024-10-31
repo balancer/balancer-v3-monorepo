@@ -879,8 +879,18 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
     function _setupBuffers() private {
         vm.startPrank(lp);
-        router.initializeBuffer(ybToken2, _token2BufferInitAmount, ybToken2.previewDeposit(_token2BufferInitAmount));
-        router.initializeBuffer(ybToken1, _token1BufferInitAmount, ybToken1.previewDeposit(_token1BufferInitAmount));
+        bufferRouter.initializeBuffer(
+            ybToken2,
+            _token2BufferInitAmount,
+            ybToken2.previewDeposit(_token2BufferInitAmount),
+            0
+        );
+        bufferRouter.initializeBuffer(
+            ybToken1,
+            _token1BufferInitAmount,
+            ybToken1.previewDeposit(_token1BufferInitAmount),
+            0
+        );
         vm.stopPrank();
     }
 
