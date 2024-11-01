@@ -29,7 +29,7 @@ export enum PoolTag {
   Standard = 'Standard',
   WithRate = 'WithRate',
   ERC4626 = 'ERC4626',
-  WithBPT = 'WithBPT',
+  WithNestedPool = 'WithNestedPool',
 }
 
 export type PoolInfo = {
@@ -46,22 +46,34 @@ export type TestsAddLiquidityHooks = {
   actionAfterFirstTx?: () => Promise<void>;
 };
 
+export type TestSettings = {
+  offNestedPoolTests: boolean;
+};
+
 export class Benchmark {
   _testDirname: string;
   _poolType: string;
+  _settings: TestSettings = { offNestedPoolTests: false };
+
   vault!: IVault;
   tokenA!: ERC20WithRateTestToken;
   tokenB!: ERC20WithRateTestToken;
   tokenC!: ERC20WithRateTestToken;
+  tokenD!: ERC20WithRateTestToken;
   wTokenA!: ERC4626TestToken;
   wTokenB!: ERC4626TestToken;
+  wTokenC!: ERC4626TestToken;
   WETH!: WETHTestToken;
   factory!: WeightedPoolFactory;
   poolsInfo: { [key: string]: PoolInfo } = {};
 
-  constructor(dirname: string, poolType: string) {
+  constructor(dirname: string, poolType: string, testSettings?: TestSettings) {
     this._testDirname = dirname;
     this._poolType = poolType;
+
+    if (testSettings) {
+      this._settings = testSettings;
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -91,8 +103,11 @@ export class Benchmark {
 
     let tokenAAddress: string;
     let tokenBAddress: string;
+    let tokenCAddress: string;
+    let tokenDAddress: string;
     let wTokenAAddress: string;
     let wTokenBAddress: string;
+    let wTokenCAddress: string;
     let wethAddress: string;
 
     before('setup signers', async () => {
@@ -114,9 +129,12 @@ export class Benchmark {
       this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token A', 'TKNA', 18] });
       this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token B', 'TKNB', 18] });
       this.tokenC = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
+      this.tokenD = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });
 
       tokenAAddress = await this.tokenA.getAddress();
       tokenBAddress = await this.tokenB.getAddress();
+      tokenCAddress = await this.tokenC.getAddress();
+      tokenDAddress = await this.tokenD.getAddress();
       wethAddress = await this.WETH.getAddress();
 
       this.wTokenA = await deploy('v3-solidity-utils/ERC4626TestToken', {
@@ -125,8 +143,12 @@ export class Benchmark {
       this.wTokenB = await deploy('v3-solidity-utils/ERC4626TestToken', {
         args: [tokenBAddress, 'wTokenB', 'wTokenB', 18],
       });
+      this.wTokenC = await deploy('v3-solidity-utils/ERC4626TestToken', {
+        args: [tokenCAddress, 'wTokenC', 'wTokenC', 18],
+      });
       wTokenAAddress = await this.wTokenA.getAddress();
       wTokenBAddress = await this.wTokenB.getAddress();
+      wTokenCAddress = await this.wTokenC.getAddress();
     });
 
     sharedBeforeEach('protocol fees configuration', async () => {
@@ -146,15 +168,25 @@ export class Benchmark {
       await this.tokenA.mint(alice, TOKEN_AMOUNT * 20n);
       await this.tokenB.mint(alice, TOKEN_AMOUNT * 20n);
       await this.tokenC.mint(alice, TOKEN_AMOUNT * 20n);
+      await this.tokenD.mint(alice, TOKEN_AMOUNT * 20n);
       await this.WETH.connect(alice).deposit({ value: TOKEN_AMOUNT });
 
-      for (const token of [this.tokenA, this.tokenB, this.tokenC, this.WETH, this.wTokenA, this.wTokenB]) {
+      for (const token of [
+        this.tokenA,
+        this.tokenB,
+        this.tokenC,
+        this.tokenD,
+        this.WETH,
+        this.wTokenA,
+        this.wTokenB,
+        this.wTokenC,
+      ]) {
         await token.connect(alice).approve(permit2, MAX_UINT256);
         await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
         await permit2.connect(alice).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
       }
 
-      for (const token of [this.wTokenA, this.wTokenB]) {
+      for (const token of [this.wTokenA, this.wTokenB, this.wTokenC]) {
         const underlying = (await deployedAt(
           'v3-solidity-utils/ERC20WithRateTestToken',
           await token.asset()
@@ -179,6 +211,8 @@ export class Benchmark {
       } else {
         throw new Error('Pool deployment failed');
       }
+
+      return this.poolsInfo[tag];
     };
 
     const itTestsInitialize = async (useEth: boolean, poolTag: PoolTag) => {
@@ -802,8 +836,7 @@ export class Benchmark {
       withRate: boolean,
       initialBalances?: bigint[]
     ) => {
-      await deployPool(tag, poolTokens, withRate);
-      const poolInfo: PoolInfo = this.poolsInfo[tag];
+      const poolInfo: PoolInfo = await deployPool(tag, poolTokens, withRate);
 
       await setStaticSwapFeePercentage(poolInfo.pool, SWAP_FEE);
 
@@ -811,6 +844,8 @@ export class Benchmark {
         initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
       }
       await router.connect(alice).initialize(poolInfo.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+
+      return poolInfo;
     };
 
     describe('initialization', () => {
@@ -1205,6 +1240,168 @@ export class Benchmark {
           [receipt!]
         );
       });
+    });
+
+    describe('test nested pool', async () => {
+      if (this._settings.offNestedPoolTests) {
+        return;
+      }
+
+      let poolTag: PoolTag;
+      let poolAInfo: PoolInfo;
+      let poolAAddress: string;
+      let poolBInfo: PoolInfo;
+      let poolBAddress: string;
+
+      sharedBeforeEach('Deploy and Initialize pool', async () => {
+        await cleanPools();
+        poolAInfo = await deployAndInitializePool(
+          PoolTag.ERC4626,
+          sortAddresses([wTokenAAddress, wTokenBAddress, wTokenCAddress]),
+          true
+        );
+        poolAAddress = await poolAInfo.pool.getAddress();
+
+        await this.wTokenA.mockRate(fp(1.1));
+        await this.wTokenB.mockRate(fp(1.1));
+        await this.wTokenC.mockRate(fp(1.1));
+
+        await (poolAInfo.pool as IERC20).connect(alice).approve(permit2, MAX_UINT256);
+        await permit2.connect(alice).approve(poolAAddress, router, MAX_UINT160, MAX_UINT48);
+        await permit2.connect(alice).approve(poolAAddress, batchRouter, MAX_UINT160, MAX_UINT48);
+
+        poolBInfo = await deployAndInitializePool(
+          PoolTag.WithNestedPool,
+          sortAddresses([poolAAddress, tokenDAddress]),
+          true
+        );
+        poolBAddress = await poolBInfo.pool.getAddress();
+
+        poolTag = PoolTag.WithNestedPool;
+      });
+
+      sharedBeforeEach('Initialize buffers', async () => {
+        await router
+          .connect(alice)
+          .initializeBuffer(wTokenAAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
+        await router
+          .connect(alice)
+          .initializeBuffer(wTokenBAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
+        await router
+          .connect(alice)
+          .initializeBuffer(wTokenCAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
+      });
+
+      it('measures gas (swap exact in)', async () => {
+        const path = [
+          {
+            tokenIn: tokenAAddress,
+            steps: [
+              {
+                pool: wTokenAAddress,
+                tokenOut: wTokenAAddress,
+                isBuffer: true,
+              },
+              {
+                pool: poolAAddress,
+                tokenOut: poolAAddress,
+                isBuffer: false,
+              },
+              {
+                pool: poolBAddress,
+                tokenOut: tokenDAddress,
+                isBuffer: false,
+              },
+            ],
+            exactAmountIn: TOKEN_AMOUNT,
+            minAmountOut: 0,
+          },
+        ];
+
+        const tx = await batchRouter.connect(alice).swapExactIn(path, MAX_UINT256, false, '0x');
+        const receipt = (await tx.wait())!;
+
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${poolTag} - BatchRouter] swap exact in - tokenA-tokenD`,
+          [receipt]
+        );
+      });
+
+      it('measures gas (swap exact in - reverse)', async () => {
+        const path = [
+          {
+            tokenIn: tokenDAddress,
+            steps: [
+              {
+                pool: poolBAddress,
+                tokenOut: poolAAddress,
+                isBuffer: false,
+              },
+              {
+                pool: poolAAddress,
+                tokenOut: wTokenAAddress,
+                isBuffer: false,
+              },
+              {
+                pool: wTokenAAddress,
+                tokenOut: tokenAAddress,
+                isBuffer: true,
+              },
+            ],
+            exactAmountIn: TOKEN_AMOUNT,
+            minAmountOut: 0,
+          },
+        ];
+
+        const tx = await batchRouter.connect(alice).swapExactIn(path, MAX_UINT256, false, '0x');
+        const receipt = (await tx.wait())!;
+
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${poolTag} - BatchRouter] swap exact in - reverse - tokenD-tokenA`,
+          [receipt]
+        );
+      });
+
+      /*
+
+      USDC -> USDT
+{
+  "paths": [
+    {
+      "tokenIn": "tokenA", // USDC
+      "steps": [
+        {
+          "pool": "wTokenA", // stataUSDC
+          "tokenOut": "wTokenA", // stataEthUSDC
+          "isBuffer": true 
+        },
+        {
+          "pool": "0x797c69b235cb047c9331d39c96f30f76dce6444d", // Pool A (stataUSDC-stataDAI)
+          "tokenOut": "0x797c69b235cb047c9331d39c96f30f76dce6444d", // BPT Pool A
+          "isBuffer": false
+        },
+        {
+          "pool": "0xec9821d4a8b0976353e85fa872cedeffbbf306f2", // Pool B (Pool A - stataUSDT)
+          "tokenOut": "0x978206fae13faf5a8d293fb614326b237684b750", // stataEthUSDT
+          "isBuffer": false
+        },
+        {
+          "pool": "0x978206fae13faf5a8d293fb614326b237684b750", // stataEthUSDT
+          "tokenOut": "0xaa8e23fb1079ea71e0a56f48a2aa51851d8433d0", // USDT
+          "isBuffer": true
+        }
+      ],
+      "exactAmountIn": "50000000",
+      "minAmountOut": "0"
+    }
+  ],
+  "deadline": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+  "wethIsEth": false,
+  "userData": "0x"
+}
+      */
     });
   };
 }

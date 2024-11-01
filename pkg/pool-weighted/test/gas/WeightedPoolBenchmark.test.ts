@@ -14,7 +14,9 @@ class WeightedPoolBenchmark extends Benchmark {
   WEIGHTS = [fp(0.5), fp(0.5)];
 
   constructor(dirname: string) {
-    super(dirname, 'WeightedPool');
+    super(dirname, 'WeightedPool', {
+      offNestedPoolTests: true,
+    });
   }
 
   override async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo> {
