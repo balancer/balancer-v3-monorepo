@@ -36,13 +36,14 @@ contract LiquidityApproximationGyroTest is LiquidityApproximationTest, Gyro2ClpP
 
         _setSqrtParams(sqrtAlpha, sqrtBeta);
 
-        absoluteRoundingDelta = 0;
-        defectRoundingDelta = 0;
-
         // SqrtParams can introduce some differences in the swap fees calculated by the pool during unbalanced
         // add/remove liquidity, so the error tolerance needs to be a bit higher than the default tolerance. The
         // farther sqrtAlpha and sqrtBeta are from 1e18, the bigger the error.
         excessRoundingDelta = 2e16; // 2%
+
+        // AddLiquidityUnbalanced without swap fees may have rounding issues when calculating Alice and Bob balances.
+        absoluteRoundingDelta = 1e9;
+        defectRoundingDelta = 2;
     }
 
     function _setSqrtParams(uint256 sqrtAlpha, uint256 sqrtBeta) private {
