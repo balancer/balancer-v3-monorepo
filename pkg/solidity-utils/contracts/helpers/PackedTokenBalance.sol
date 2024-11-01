@@ -36,7 +36,7 @@ library PackedTokenBalance {
         return toPackedBalance(newBalanceRaw, getBalanceDerived(balance));
     }
 
-    /// @dev Sets only the raw balance of balances and returns the new bytes32 balance
+    /// @dev Sets only the derived balance of balances and returns the new bytes32 balance
     function setBalanceDerived(bytes32 balance, uint256 newBalanceDerived) internal pure returns (bytes32) {
         return toPackedBalance(getBalanceRaw(balance), newBalanceDerived);
     }
