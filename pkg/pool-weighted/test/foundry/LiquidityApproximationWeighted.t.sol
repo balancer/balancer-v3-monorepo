@@ -161,7 +161,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
 
         // `amountOut` will go negative inside `BasePoolMath`.
         vm.expectRevert(stdError.arithmeticError);
-        removeExactInAllBptIn(exactBptAmount);
+        this.removeExactInAllBptInExternal(exactBptAmount);
     }
 
     function testAddLiquidityProportionalAndRemoveExactOutWeightsSmallAmounts__Fuzz(
@@ -177,45 +177,81 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         // TODO: use `expectPartialRevert` once forge is updated with `IVaultErrors.BptAmountInAboveMax.selector`:
         // `expectPartialRevert(IVaultErrors.BptAmountInAboveMax.selector)`
         vm.expectRevert();
+        this.removeExactOutAllUsdcAmountOutExternal(exactBptAmountOut);
+    }
+
+    function testRemoveLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
+        uint256 exactAmountOut,
+        uint256[NUMBER_PARAMETERS] memory params
+    ) public {
+        fuzzPoolParams(params);
+        exactAmountOut = bound(exactAmountOut, 1, 1e6);
+
+        setSwapFeePercentageInPools(0);
+
+        try this.removeExactOutArbitraryAmountOutExternal(exactAmountOut) {
+            assertLiquidityOperationNoSwapFee();
+        } catch (bytes memory result) {
+            // Can also legitimately fail due to arithmetic underflow when computing `taxableAmount` in `BasePoolMath`.abi
+            // live system will be protected by minimum amounts in any case.
+            assertEq(bytes4(result), bytes4(stdError.arithmeticError), "Unexpected error");
+        }
+    }
+
+    function testRemoveLiquiditySingleTokenExactInWeightsSmallAmounts__Fuzz(
+        uint256 exactBptAmountIn,
+        uint256 swapFeePercentage,
+        uint256[NUMBER_PARAMETERS] memory params
+    ) public {
+        fuzzPoolParams(params);
+
+        exactBptAmountIn = bound(exactBptAmountIn, 1, 1e6);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+
+        setSwapFeePercentageInPools(swapFeePercentage);
+
+        // For very small invariant ratios, `BasePoolMath` reverts when calculated amount out < 0 because of rounding.
+        // Perform an external call so that `expectRevert` catches the error.
+        vm.expectRevert(stdError.arithmeticError);
+        this.removeExactInArbitraryBptInExternal(exactBptAmountIn);
+    }
+
+    // Utils
+    /**
+     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
+     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
+     * transform an internal call into an external call to capture an error in any of the external calls.
+     */
+    function removeExactInAllBptInExternal(uint256 exactBptAmount) external {
+        removeExactInAllBptIn(exactBptAmount);
+    }
+
+    /**
+     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
+     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
+     * transform an internal call into an external call to capture an error in any of the external calls.
+     */
+    function removeExactOutAllUsdcAmountOutExternal(uint256 exactBptAmountOut) external {
         removeExactOutAllUsdcAmountOut(exactBptAmountOut);
     }
 
-    //    function testRemoveLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
-    //        uint256 exactAmountOut,
-    //        uint256 weightDai
-    //    ) public {
-    //        exactAmountOut = bound(exactAmountOut, 1, 1e6);
-    //        weightDai = bound(weightDai, 1e16, 99e16);
-    //
-    //        try this.removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai) {
-    //            // OK, test passed.
-    //        } catch (bytes memory result) {
-    //            // Can also legitimately fail due to arithmetic underflow when computing `taxableAmount` in `BasePoolMath`.abi
-    //            // live system will be protected by minimum amounts in any case.
-    //            assertEq(bytes4(result), bytes4(stdError.arithmeticError), "Unexpected error");
-    //        }
-    //    }
+    /**
+     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
+     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
+     * transform an internal call into an external call to capture an error in any of the external calls.
+     */
+    function removeExactOutArbitraryAmountOutExternal(uint256 exactAmountAmount) external {
+        removeExactOutArbitraryAmountOut(exactAmountAmount);
+    }
 
-    //    function testRemoveLiquiditySingleTokenExactInWeightsSmallAmounts__Fuzz(
-    //        uint256 exactBptAmountIn,
-    //        uint256 swapFeePercentage,
-    //        uint256 weightDai
-    //    ) public {
-    //        exactBptAmountIn = bound(exactBptAmountIn, 1, 1e6);
-    //        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-    //        weightDai = bound(weightDai, 1e16, 99e16);
-    //
-    //        // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
-    //        // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-    //        defectRoundingDelta = 0.0001e16; // 0.0001%
-    //
-    //        // For very small invariant ratios, `BasePoolMath` reverts when calculated amount out < 0 because of rounding.
-    //        // Perform an external call so that `expectRevert` catches the error.
-    //        vm.expectRevert(stdError.arithmeticError);
-    //        this.removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, swapFeePercentage, weightDai);
-    //    }
-
-    // Utils
+    /**
+     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
+     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
+     * transform an internal call into an external call to capture an error in any of the external calls.
+     */
+    function removeExactInArbitraryBptInExternal(uint256 exactBptAmountIn) external {
+        removeExactInArbitraryBptIn(exactBptAmountIn);
+    }
 
     function _setPoolBalancesWithDifferentWeights(
         uint256 weightDai
