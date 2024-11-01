@@ -360,16 +360,21 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 }
             }
 
-            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-            (, underlyingAmounts[i], wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: kind,
-                    direction: WrappingDirection.WRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: amountsIn[i],
-                    limitRaw: limits[i]
-                })
-            );
+            if (amountsIn[i] > 0) {
+                // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+                (, underlyingAmounts[i], wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: kind,
+                        direction: WrappingDirection.WRAP,
+                        wrappedToken: wrappedToken,
+                        amountGivenRaw: amountsIn[i],
+                        limitRaw: limits[i]
+                    })
+                );
+            } else {
+                underlyingAmounts[i] = 0;
+                wrappedAmounts[i] = 0;
+            }
 
             if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
                 // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
