@@ -102,7 +102,11 @@ interface IVaultAdmin {
 
     /**
      * @notice Indicates whether the Vault is paused.
-     * @dev If the Vault is paused, all non-Recovery Mode state-changing operations will revert.
+     * @dev If the Vault is paused, all non-Recovery Mode state-changing operations on pools will revert. Note that
+     * ERC4626 buffers and the Vault have separate and independent pausing mechanisms. Pausing the Vault does not
+     * also pause buffers (though we anticipate they would likely be paused and unpaused together). Call
+     * `areBuffersPaused` to check the pause state of the buffers.
+     *
      * @return paused True if the Vault is paused
      */
     function isVaultPaused() external view returns (bool);
@@ -116,15 +120,20 @@ interface IVaultAdmin {
     function getVaultPausedState() external view returns (bool, uint32, uint32);
 
     /**
-     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
+     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions on pools.
      * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
+     * Note that ERC4626 buffer operations have an independent pause mechanism, which is not affected by pausing
+     * the Vault. Custom routers could still wrap/unwrap using buffers while the Vault is paused, unless buffers
+     * are also paused (with `pauseVaultBuffers`).
      */
     function pauseVault() external;
 
     /**
-     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
+     * @notice Reverse a `pause` operation, and restore Vault pool operations to normal functionality.
      * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
+     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires. As noted above,
+     * ERC4626 buffers and Vault operations on pools are independent. Unpausing the Vault does not reverse
+     * `pauseVaultBuffers`. If buffers were also paused, they will remain in that state until explicitly unpaused.
      */
     function unpauseVault() external;
 
@@ -246,7 +255,9 @@ interface IVaultAdmin {
     /**
      * @notice Indicates whether the Vault buffers are paused.
      * @dev When buffers are paused, all buffer operations (i.e., calls on the Router with `isBuffer` true)
-     * will revert. Pausing buffers is reversible.
+     * will revert. Pausing buffers is reversible. Note that ERC4626 buffers and the Vault have separate and
+     * independent pausing mechanisms. Pausing the Vault does not also pause buffers (though we anticipate they
+     * would likely be paused and unpaused together). Call `isVaultPaused` to check the pause state of the Vault.
      *
      * @return buffersPaused True if the Vault buffers are paused
      */
@@ -258,14 +269,18 @@ interface IVaultAdmin {
      * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity. Currently it's not
      * possible to pause vault buffers individually.
      *
-     * This is a permissioned call, and is reversible (see `unpauseVaultBuffers`).
+     * This is a permissioned call, and is reversible (see `unpauseVaultBuffers`). Note that the Vault has a separate
+     * and independent pausing mechanism. It is possible to pause the Vault (i.e. pool operations), without affecting
+     * buffers, and vice versa.
      */
     function pauseVaultBuffers() external;
 
     /**
      * @notice Unpauses native vault buffers globally.
      * @dev When buffers are paused, it's not possible to add liquidity or wrap/unwrap tokens using the Vault's
-     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
+     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity. As noted above,
+     * ERC4626 buffers and Vault operations on pools are independent. Unpausing buffers does not reverse `pauseVault`.
+     * If the Vault was also paused, it will remain in that state until explicitly unpaused.
      *
      * This is a permissioned call.
      */
