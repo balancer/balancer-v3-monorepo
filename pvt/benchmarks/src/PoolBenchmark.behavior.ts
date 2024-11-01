@@ -1363,45 +1363,6 @@ export class Benchmark {
           [receipt]
         );
       });
-
-      /*
-
-      USDC -> USDT
-{
-  "paths": [
-    {
-      "tokenIn": "tokenA", // USDC
-      "steps": [
-        {
-          "pool": "wTokenA", // stataUSDC
-          "tokenOut": "wTokenA", // stataEthUSDC
-          "isBuffer": true 
-        },
-        {
-          "pool": "0x797c69b235cb047c9331d39c96f30f76dce6444d", // Pool A (stataUSDC-stataDAI)
-          "tokenOut": "0x797c69b235cb047c9331d39c96f30f76dce6444d", // BPT Pool A
-          "isBuffer": false
-        },
-        {
-          "pool": "0xec9821d4a8b0976353e85fa872cedeffbbf306f2", // Pool B (Pool A - stataUSDT)
-          "tokenOut": "0x978206fae13faf5a8d293fb614326b237684b750", // stataEthUSDT
-          "isBuffer": false
-        },
-        {
-          "pool": "0x978206fae13faf5a8d293fb614326b237684b750", // stataEthUSDT
-          "tokenOut": "0xaa8e23fb1079ea71e0a56f48a2aa51851d8433d0", // USDT
-          "isBuffer": true
-        }
-      ],
-      "exactAmountIn": "50000000",
-      "minAmountOut": "0"
-    }
-  ],
-  "deadline": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
-  "wethIsEth": false,
-  "userData": "0x"
-}
-      */
     });
   };
 }
