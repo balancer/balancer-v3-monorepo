@@ -11,6 +11,7 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IBufferRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
@@ -25,6 +26,8 @@ import { RouterCommon } from "./RouterCommon.sol";
  * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
  */
 contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
+    using Address for address;
+
     constructor(
         IVault vault,
         IWETH weth,
@@ -149,5 +152,46 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         );
         _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, false);
+    }
+
+    /**
+     * @notice Removes liquidity from an internal ERC4626 buffer in the Vault.
+     * @dev This function is just a delegate call to the real entrypoint in the `VaultAdmin` for convenience.
+     * Only proportional exits are supported, and the sender has to be the owner of the shares.
+     * This function unlocks the Vault just for this operation; it does not work with a Router as an entrypoint.
+     *
+     * Pre-conditions:
+     * - The buffer needs to be initialized.
+     * - sharesOwner is the original msg.sender, it needs to be checked in the Router. That's why
+     *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
+     * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
+     * total shares. It is expressed in underlying token native decimals
+     * @param minAmountUnderlyingOut Minimum amount of underlying tokens to receive from the buffer. It is expressed
+     * in underlying token native decimals
+     * @param minAmountWrappedOut Minimum amount of wrapped tokens to receive from the buffer. It is expressed in
+     * wrapped token native decimals
+     * @return removedUnderlyingBalance Amount of underlying tokens returned to the user
+     * @return removedWrappedBalance Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOut,
+        uint256 minAmountWrappedOut
+    ) external returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance) {
+        // In this case the real entrypoint is in the vault admin, because it must know the real sender and it can't
+        // be passed as an argument. Therefore, we use `delegateCall`.
+        return abi.decode(
+            address(_vault).functionDelegateCall(
+                abi.encodeCall(
+                    IVaultAdmin.removeLiquidityFromBuffer,
+                    (wrappedToken, sharesToRemove, minAmountUnderlyingOut, minAmountWrappedOut)
+                )
+            ),
+            (uint256, uint256)
+        );
     }
 }

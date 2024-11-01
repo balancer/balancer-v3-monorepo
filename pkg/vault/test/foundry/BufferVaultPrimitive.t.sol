@@ -31,8 +31,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Authorizes user "admin" to pause/unpause vault's buffer.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
-        // Authorizes router to call removeLiquidityFromBuffer (trusted router).
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
         initializeLp();
     }
