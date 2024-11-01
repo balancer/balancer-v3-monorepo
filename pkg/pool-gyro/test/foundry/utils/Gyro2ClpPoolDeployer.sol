@@ -5,9 +5,10 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
+import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -16,12 +17,14 @@ import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/tes
 
 import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol";
 import { Gyro2CLPPool } from "../../../contracts/Gyro2CLPPool.sol";
+import { Gyro2CLPPoolMock } from "../../../contracts/test/Gyro2CLPPoolMock.sol";
 
 contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
     using CastingHelpers for address[];
 
     uint256 private _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
     uint256 private _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
+    uint256 private DEFAULT_SWAP_FEE = 1e16; // 1% swap fee, but can be overriden by the tests
 
     string private artifactsRootDir = "artifacts/";
 
@@ -67,6 +70,50 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         return address(newPool);
     }
 
+    function createGyro2ClpPoolMock(
+        address[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        string memory label,
+        IVaultMock vault,
+        address poolCreator
+    ) internal returns (address) {
+        address newPool;
+
+        LiquidityManagement memory liquidityManagement;
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = poolCreator;
+
+        IGyro2CLPPool.GyroParams memory params = IGyro2CLPPool.GyroParams({
+            name: "Gyro 2CLP Pool Mock",
+            symbol: "GRP-Mock",
+            sqrtAlpha: _sqrtAlpha,
+            sqrtBeta: _sqrtBeta
+        });
+
+        if (reusingArtifacts) {
+            newPool = address(
+                deployCode(_computeGyro2CLPPathTest(type(Gyro2CLPPoolMock).name), abi.encode(params, vault))
+            );
+        } else {
+            newPool = address(new Gyro2CLPPoolMock(params, vault));
+        }
+
+        vm.label(newPool, label);
+
+        vault.registerPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
+            DEFAULT_SWAP_FEE,
+            0,
+            false,
+            roleAccounts,
+            address(0),
+            liquidityManagement
+        );
+
+        return newPool;
+    }
+
     function deployGyro2CLPPoolFactory(IVault vault) internal returns (Gyro2CLPPoolFactory) {
         if (reusingArtifacts) {
             return
@@ -80,5 +127,9 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
 
     function _computeGyro2CLPPath(string memory name) private view returns (string memory) {
         return string(abi.encodePacked(artifactsRootDir, "contracts/", name, ".sol/", name, ".json"));
+    }
+
+    function _computeGyro2CLPPathTest(string memory name) private view returns (string memory) {
+        return string(abi.encodePacked(artifactsRootDir, "contracts/test/", name, ".sol/", name, ".json"));
     }
 }
