@@ -141,7 +141,11 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
         emit Transfer(pool, from, address(0), amount);
 
         // We also emit the "transfer" event on the pool token to ensure full compliance with the ERC20 standard.
-        BalancerPoolToken(pool).emitTransfer(from, address(0), amount);
+        // If this function fails we keep going, as this is used in recovery mode.
+        // Well behaved pools will just emit an event here so they should never fail anyways.
+        try BalancerPoolToken(pool).emitTransfer(from, address(0), amount) {} catch {
+            // solhint-disable-previous-line no-empty-blocks
+        }
     }
 
     function _transfer(address pool, address from, address to, uint256 amount) internal {
@@ -184,7 +188,11 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
 
         emit Approval(pool, owner, spender, amount);
         // We also emit the "approve" event on the pool token to ensure full compliance with the ERC20 standard.
-        BalancerPoolToken(pool).emitApproval(owner, spender, amount);
+        // If this function fails we keep going, as this is used in recovery mode.
+        // Well behaved pools will just emit an event here so they should never fail anyways.
+        try BalancerPoolToken(pool).emitApproval(owner, spender, amount) {} catch {
+            // solhint-disable-previous-line no-empty-blocks
+        }
     }
 
     function _spendAllowance(address pool, address owner, address spender, uint256 amount) internal {
