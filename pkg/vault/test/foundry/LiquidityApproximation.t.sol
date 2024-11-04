@@ -89,7 +89,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    uint256 internal constant NUMBER_PARAMETERS = 10;
+    // Number of parameters specific to the pool type to be fuzzed. Raising this parameter will lower the amount of
+    // tested scenarios, so raise with caution.
+    uint256 internal constant NUMBER_PARAMETERS = 5;
 
     function setUp() public virtual override {
         poolInitAmount = 1e9 * 1e18;
