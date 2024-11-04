@@ -27,6 +27,8 @@ import {
 
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
+import {console} from "forge-std/console.sol";
+
 struct SwapStepLocals {
     bool isFirstStep;
     bool isLastStep;
@@ -243,6 +245,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                     } else {
                         // If this is an intermediate step, we don't expect the sender to have BPT to burn.
                         // Then, we flashloan tokens here (which should in practice just use existing credit).
+                        console.log("arrived here");
                         _vault.sendTo(IERC20(step.pool), address(this), stepExactAmountIn);
                     }
 

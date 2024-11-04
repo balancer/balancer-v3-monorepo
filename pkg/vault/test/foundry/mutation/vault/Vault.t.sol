@@ -71,10 +71,17 @@ contract VaultMutationTest is BaseVaultTest {
         vault.manualSettleReentrancy(dai);
     }
 
+    function testSendToWithUnlockedVault() public {
+        vault.forceUnlock();
+        vault.sendTo(IERC20(address(pool)), address(0), 1);
+    }
+
     function testSendToWithLockedVault() public {
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.sendTo(dai, address(0), 1);
     }
+
+
 
     function testSendToReentrancy() public {
         vault.forceUnlock();
