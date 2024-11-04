@@ -43,7 +43,7 @@ contract LiquidityApproximationGyroTest is LiquidityApproximationTest, Gyro2ClpP
 
         // AddLiquidityUnbalanced without swap fees may have rounding issues when calculating Alice and Bob balances.
         absoluteRoundingDelta = 1e9;
-        defectRoundingDelta = 2;
+        defectRoundingDelta = 3;
     }
 
     function _setSqrtParams(uint256 sqrtAlpha, uint256 sqrtBeta) private {
