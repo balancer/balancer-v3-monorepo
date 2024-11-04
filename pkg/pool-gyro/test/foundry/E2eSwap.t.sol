@@ -10,10 +10,17 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
+import { Gyro2CLPPoolMock } from "../../contracts/test/Gyro2CLPPoolMock.sol";
 import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
 
 contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
     using FixedPoint for uint256;
+
+    // A difference lower than the constant below causes issues to calculate the invariant of the 2-CLP pool.
+    uint256 private constant _MINIMUM_DIFF_ALPHA_BETA = 0.01e16;
+
+    uint256 private constant _MINIMUM_SQRT_ALPHA = 90e16;
+    uint256 private constant _MAXIMUM_SQRT_BETA = 110e16;
 
     function setUp() public override {
         E2eSwapTest.setUp();
@@ -22,7 +29,7 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
-        return createGyro2ClpPool(tokens, rateProviders, label, vault, lp);
+        return createGyro2ClpPoolMock(tokens, rateProviders, label, vault, lp);
     }
 
     function setUpVariables() internal override {
@@ -75,5 +82,15 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
         maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(50e16);
         maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
+    }
+
+    function fuzzPoolParams(uint256[NUMBER_PARAMETERS] memory params) internal override {
+        uint256 sqrtAlpha = params[0];
+        sqrtAlpha = bound(sqrtAlpha, _MINIMUM_SQRT_ALPHA, _MAXIMUM_SQRT_BETA - _MINIMUM_DIFF_ALPHA_BETA);
+
+        uint256 sqrtBeta = params[1];
+        sqrtBeta = bound(sqrtBeta, sqrtAlpha + _MINIMUM_DIFF_ALPHA_BETA, _MAXIMUM_SQRT_BETA);
+
+        Gyro2CLPPoolMock(pool).setSqrtParams(sqrtAlpha, sqrtBeta);
     }
 }
