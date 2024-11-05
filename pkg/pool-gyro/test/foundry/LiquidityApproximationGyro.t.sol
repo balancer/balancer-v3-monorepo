@@ -12,7 +12,7 @@ import { Gyro2CLPPoolMock } from "../../contracts/test/Gyro2CLPPoolMock.sol";
 import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
 
 contract LiquidityApproximationGyroTest is LiquidityApproximationTest, Gyro2ClpPoolDeployer {
-    // A difference lower than the constant below causes issues to calculate the invariant of the 2-CLP pool.
+    // A difference smaller than the constant below causes issues during calculation of the 2-CLP pool invariant.
     uint256 private constant _MINIMUM_DIFF_ALPHA_BETA = 0.01e16;
 
     uint256 private constant _MINIMUM_SQRT_ALPHA = 90e16;
