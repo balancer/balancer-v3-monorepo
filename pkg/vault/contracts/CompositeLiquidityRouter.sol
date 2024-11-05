@@ -476,7 +476,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Token is a BPT, so add liquidity to the child pool.
 
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                uint256[] memory childPoolAmountsIn = _getPoolAmountsIn(childPoolTokens);
+                uint256[] memory childPoolAmountsIn = _getPoolAmountsIn(childPoolTokens, params.wethIsEth);
 
                 // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent pool
                 // will be a logic insertion, not a token transfer.
@@ -505,11 +505,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // The ERC4626 token has a buffer initialized within the Vault. Additionally, since the sender did not
                 // specify an input amount for the wrapped token, the function will wrap the underlying asset and use
                 // the resulting wrapped tokens to add liquidity to the pool.
-                _wrapAndUpdateTokenInAmounts(IERC4626(childToken));
+                _wrapAndUpdateTokenInAmounts(IERC4626(childToken), params.wethIsEth);
             }
         }
 
-        uint256[] memory parentPoolAmountsIn = _getPoolAmountsIn(parentPoolTokens);
+        uint256[] memory parentPoolAmountsIn = _getPoolAmountsIn(parentPoolTokens, params.wethIsEth);
 
         // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
@@ -532,7 +532,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         // Settle the amounts in.
         if (isStaticCall == false) {
-            _settlePaths(params.sender, false);
+            _settlePaths(params.sender, params.wethIsEth);
         }
     }
 
@@ -541,7 +541,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @dev This function requires the transient set `_currentSwapTokenInAmounts` to be initialized first with all the
      * amount in values that the sender informed in the addLiquidity call.
      */
-    function _getPoolAmountsIn(IERC20[] memory poolTokens) private returns (uint256[] memory poolAmountsIn) {
+    function _getPoolAmountsIn(
+        IERC20[] memory poolTokens,
+        bool wethIsEth
+    ) private returns (uint256[] memory poolAmountsIn) {
         poolAmountsIn = new uint256[](poolTokens.length);
 
         for (uint256 j = 0; j < poolTokens.length; j++) {
@@ -553,7 +556,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // The token is an ERC4626 and has a buffer initialized within the Vault. Additionally, since the
                 // sender did not specify an input amount for the wrapped token, the function will wrap the underlying
                 // asset and use the resulting wrapped tokens to add liquidity to the pool.
-                uint256 wrappedAmount = _wrapAndUpdateTokenInAmounts(IERC4626(poolToken));
+                uint256 wrappedAmount = _wrapAndUpdateTokenInAmounts(IERC4626(poolToken), wethIsEth);
                 poolAmountsIn[j] = wrappedAmount;
             } else {
                 poolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(poolToken);
@@ -569,13 +572,27 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @notice Wraps the underlying tokens specified in the transient set `_currentSwapTokenInAmounts`, and updates
      * this set with the resulting amount of wrapped tokens from the operation.
      */
-    function _wrapAndUpdateTokenInAmounts(IERC4626 wrappedToken) private returns (uint256 wrappedAmountOut) {
+    function _wrapAndUpdateTokenInAmounts(
+        IERC4626 wrappedToken,
+        bool wethIsEth
+    ) private returns (uint256 wrappedAmountOut) {
         address underlyingToken = wrappedToken.asset();
 
         // Get the amountIn of underlying tokens informed by the sender.
         uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
         if (underlyingAmountIn == 0) {
             return 0;
+        }
+
+        if (wethIsEth && address(underlyingToken) == address(_weth)) {
+            if (address(this).balance < underlyingAmountIn) {
+                revert InsufficientEth();
+            }
+
+            _weth.deposit{ value: underlyingAmountIn }();
+            // Transfer WETH from the Router to the Vault.
+            _weth.transfer(address(_vault), underlyingAmountIn);
+            _vault.settle(_weth, underlyingAmountIn);
         }
 
         (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(

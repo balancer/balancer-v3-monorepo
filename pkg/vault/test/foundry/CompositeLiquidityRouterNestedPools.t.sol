@@ -393,7 +393,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         // Check LP Balances.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai - amountsIn[vars.daiIdx], "LP Dai Balance is wrong");
-        // LP Weth balance should not change, since ETH was used.
+        // LP Weth balance should not change, since ETH was used. Weth and Eth prices are the same.
+        assertEq(vars.lpAfter.eth, vars.lpBefore.eth - amountsIn[vars.wethIdx], "LP Eth Balance is wrong");
         assertEq(vars.lpAfter.weth, vars.lpBefore.weth, "LP Weth Balance is wrong");
         assertEq(vars.lpAfter.usdc, vars.lpBefore.usdc - amountsIn[vars.usdcIdx], "LP Usdc Balance is wrong");
         assertEq(
@@ -1659,6 +1660,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
     struct TokenBalances {
         uint256 dai;
+        uint256 eth;
         uint256 weth;
         uint256 wsteth;
         uint256 usdc;
@@ -1700,6 +1702,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
     function _getBalances(address entity) private view returns (TokenBalances memory balances) {
         balances.dai = dai.balanceOf(entity);
+        balances.eth = entity.balance;
         balances.weth = weth.balanceOf(entity);
         balances.wsteth = wsteth.balanceOf(entity);
         balances.usdc = usdc.balanceOf(entity);
