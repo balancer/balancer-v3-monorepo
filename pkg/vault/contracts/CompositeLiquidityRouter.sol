@@ -394,8 +394,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address[] memory tokensIn,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -408,7 +409,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                                 maxAmountsIn: exactAmountsIn,
                                 minBptAmountOut: minBptAmountOut,
                                 kind: AddLiquidityKind.UNBALANCED,
-                                wethIsEth: false,
+                                wethIsEth: wethIsEth,
                                 userData: userData
                             }),
                             tokensIn
@@ -601,8 +602,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
         uint256[] memory minAmountsOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256[] memory amountsOut) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         (amountsOut) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -614,7 +616,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: exactBptAmountIn,
                             kind: RemoveLiquidityKind.PROPORTIONAL,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         }),
                         tokensOut
