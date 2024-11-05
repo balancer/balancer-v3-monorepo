@@ -65,7 +65,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         maxSwapAmountTokenB = poolInitAmountTokenB / 10;
     }
 
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS] memory params) internal override {
+    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {
         uint256 weightTokenA = params[0];
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 

@@ -27,7 +27,7 @@ contract LiquidityApproximationGyroTest is LiquidityApproximationTest, Gyro2ClpP
         return createGyro2ClpPoolMock(tokens, rateProviders, label, vault, lp);
     }
 
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS] memory params) internal override {
+    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {
         uint256 sqrtAlpha = params[0];
         sqrtAlpha = bound(sqrtAlpha, _MINIMUM_SQRT_ALPHA, _MAXIMUM_SQRT_BETA - _MINIMUM_DIFF_ALPHA_BETA);
 

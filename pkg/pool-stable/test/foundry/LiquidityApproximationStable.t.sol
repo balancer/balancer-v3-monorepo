@@ -66,7 +66,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         return address(newPool);
     }
 
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS] memory params) internal override {
+    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {
         // Vary amplification parameter from 1 to 5000.
         uint256 newAmplificationParameter = bound(params[0], StableMath.MIN_AMP, StableMath.MAX_AMP);
 
