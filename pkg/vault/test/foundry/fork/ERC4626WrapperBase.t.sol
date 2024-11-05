@@ -9,7 +9,12 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-abstract contract ERC4626WrapperBaseTest is Test {
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
+
+abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
+    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
     // Variables to be defined by setUpForkTestVariables().
@@ -30,7 +35,7 @@ abstract contract ERC4626WrapperBaseTest is Test {
     // Tolerance of 1 wei difference between convert/preview and actual operation.
     uint256 internal constant TOLERANCE = 1;
 
-    function setUp() public virtual {
+    function setUp() public virtual override {
         setUpForkTestVariables();
         vm.label(address(wrapper), "wrapper");
 
@@ -41,7 +46,17 @@ abstract contract ERC4626WrapperBaseTest is Test {
 
         underlyingToWrappedFactor = 10 ** (wrapper.decimals() - IERC20Metadata(address(underlyingToken)).decimals());
 
-        _initializeUserWallet();
+        (user, ) = makeAddrAndKey("User");
+        vm.label(user, "User");
+        _initializeWallet(user);
+
+        userInitialUnderlying = underlyingToken.balanceOf(user);
+        userInitialShares = wrapper.balanceOf(user);
+
+        super.setUp();
+
+        _initializeWallet(lp);
+        _setupAllowance(lp);
     }
 
     /**
@@ -197,20 +212,90 @@ abstract contract ERC4626WrapperBaseTest is Test {
         );
     }
 
-    function _initializeUserWallet() private {
-        (user, ) = makeAddrAndKey("User");
-        vm.label(user, "User");
+    function testAddLiquidityToBuffer__Fork__Fuzz(
+        uint256 underlyingToInitialize,
+        uint256 wrappedToInitialize,
+        uint256 sharesToIssue
+    ) public {
+        underlyingToInitialize = bound(underlyingToInitialize, 1e6, underlyingToken.balanceOf(lp) / 10);
+        wrappedToInitialize = bound(wrappedToInitialize, 1e6, wrapper.balanceOf(lp) / 10);
+        sharesToIssue = bound(sharesToIssue, 1e6, underlyingToken.balanceOf(lp) / 2);
 
+        vm.prank(lp);
+        router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
+        // Since the buffer burns part of the shares, we measure the total shares in the vault instead of using the
+        // value returned by initializeBuffer;
+        uint256 totalShares = vault.getBufferTotalShares(wrapper);
+
+        vm.prank(lp);
+        (uint256 underlyingDeposited, uint256 wrappedDeposited) = router.addLiquidityToBuffer(wrapper, sharesToIssue);
+
+        // Measures if the underlying and wrapped deposited on addLiquidityToBuffer are worth the same number of shares
+        // than in initialized liquidity (or less).
+        assertGe(
+            underlyingDeposited,
+            (sharesToIssue * underlyingToInitialize) / totalShares,
+            "User spent less underlying tokens than it should"
+        );
+        assertGe(
+            wrappedDeposited,
+            (sharesToIssue * wrappedToInitialize) / totalShares,
+            "User spent less wrapped tokens than it should"
+        );
+    }
+
+    function testRemoveLiquidityFromBuffer__Fork__Fuzz(
+        uint256 underlyingToInitialize,
+        uint256 wrappedToInitialize,
+        uint256 sharesToRemove
+    ) public {
+        underlyingToInitialize = bound(underlyingToInitialize, 1e6, underlyingToken.balanceOf(lp) / 10);
+        wrappedToInitialize = bound(wrappedToInitialize, 1e6, wrapper.balanceOf(lp) / 10);
+
+        vm.prank(lp);
+        uint256 lpShares = router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
+        // Since the buffer burns part of the shares, we measure the total shares in the vault instead of using the
+        // value returned by initializeBuffer;
+        uint256 totalShares = vault.getBufferTotalShares(wrapper);
+
+        sharesToRemove = bound(sharesToRemove, 1e6, lpShares);
+
+        vm.prank(lp);
+        (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(wrapper, sharesToRemove);
+
+        // Measures if the underlying and wrapped received from `removeLiquidityFromBuffer` are worth the same number
+        // of shares than in initialized liquidity (or less).
+        assertLe(
+            underlyingRemoved,
+            (sharesToRemove * underlyingToInitialize) / totalShares,
+            "User received more underlying tokens than it should"
+        );
+        assertLe(
+            wrappedRemoved,
+            (sharesToRemove * wrappedToInitialize) / totalShares,
+            "User received more wrapped tokens than it should"
+        );
+    }
+
+    function _initializeWallet(address receiver) private {
         uint256 initialDeposit = amountToDonate / 2;
 
         vm.prank(underlyingDonor);
-        underlyingToken.safeTransfer(user, amountToDonate);
+        underlyingToken.safeTransfer(receiver, amountToDonate);
 
-        vm.startPrank(user);
+        vm.startPrank(receiver);
         underlyingToken.forceApprove(address(wrapper), initialDeposit);
-        userInitialShares = wrapper.deposit(initialDeposit, user);
+        wrapper.deposit(initialDeposit, receiver);
         vm.stopPrank();
+    }
 
-        userInitialUnderlying = underlyingToken.balanceOf(user);
+    function _setupAllowance(address sender) private {
+        vm.startPrank(sender);
+        underlyingToken.forceApprove(address(permit2), type(uint256).max);
+        wrapper.approve(address(permit2), type(uint256).max);
+
+        permit2.approve(address(underlyingToken), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(wrapper), address(router), type(uint160).max, type(uint48).max);
+        vm.stopPrank();
     }
 }
