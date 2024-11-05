@@ -258,7 +258,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         // value returned by initializeBuffer;
         uint256 totalShares = vault.getBufferTotalShares(wrapper);
 
-        sharesToRemove = bound(sharesToRemove, 1e6, lpShares);
+        sharesToRemove = bound(sharesToRemove, 0, lpShares);
 
         vm.prank(lp);
         (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(wrapper, sharesToRemove);
