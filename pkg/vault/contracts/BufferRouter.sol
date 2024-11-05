@@ -44,8 +44,8 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
     /// @inheritdoc IBufferRouter
     function initializeBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 exactAmountUnderlyingIn,
+        uint256 exactAmountWrappedIn,
         uint256 minIssuedShares
     ) external returns (uint256 issuedShares) {
         return
@@ -55,8 +55,8 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
                         BufferRouter.initializeBufferHook,
                         (
                             wrappedToken,
-                            amountUnderlying,
-                            amountWrapped,
+                            exactAmountUnderlyingIn,
+                            exactAmountWrappedIn,
                             minIssuedShares,
                             msg.sender // sharesOwner
                         )
@@ -70,8 +70,8 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
      * @notice Hook for initializing a vault buffer.
      * @dev Can only be called by the Vault. Buffers must be initialized before use.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param amountUnderlying Amount of underlying tokens that will be deposited into the buffer
-     * @param amountWrapped Amount of wrapped tokens that will be deposited into the buffer
+     * @param exactAmountUnderlyingIn Amount of underlying tokens that will be deposited into the buffer
+     * @param exactAmountWrappedIn Amount of wrapped tokens that will be deposited into the buffer
      * @param minIssuedShares Minimum amount of shares to receive, in underlying token native decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
      * remove liquidity from the buffer
@@ -80,20 +80,20 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function initializeBufferHook(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 exactAmountUnderlyingIn,
+        uint256 exactAmountWrappedIn,
         uint256 minIssuedShares,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
         issuedShares = _vault.initializeBuffer(
             wrappedToken,
-            amountUnderlying,
-            amountWrapped,
+            exactAmountUnderlyingIn,
+            exactAmountWrappedIn,
             minIssuedShares,
             sharesOwner
         );
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, false);
-        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, false);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), exactAmountUnderlyingIn, false);
+        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), exactAmountWrappedIn, false);
     }
 
     /// @inheritdoc IBufferRouter
@@ -102,7 +102,7 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 maxAmountUnderlyingIn,
         uint256 maxAmountWrappedIn,
         uint256 exactSharesToIssue
-    ) external returns (uint256 amountUnderlying, uint256 amountWrapped) {
+    ) external returns (uint256 amountUnderlyingIn, uint256 amountWrappedIn) {
         return
             abi.decode(
                 _vault.unlock(
@@ -125,16 +125,16 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
      * @notice Hook for adding liquidity to vault buffers. The Vault will enforce that the buffer is initialized.
      * @dev Can only be called by the Vault.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
-     * in underlying token decimals
      * @param maxAmountUnderlyingIn Maximum amount of underlying tokens to add to the buffer. It is expressed in
      * underlying token native decimals
      * @param maxAmountWrappedIn Maximum amount of wrapped tokens to add to the buffer. It is expressed in wrapped
      * token native decimals
+     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
+     * in underlying token decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
      * remove liquidity from the buffer
-     * @return amountUnderlying Amount of underlying tokens deposited into the buffer
-     * @return amountWrapped Amount of wrapped tokens deposited into the buffer
+     * @return amountUnderlyingIn Amount of underlying tokens deposited into the buffer
+     * @return amountWrappedIn Amount of wrapped tokens deposited into the buffer
      */
     function addLiquidityToBufferHook(
         IERC4626 wrappedToken,
@@ -142,29 +142,30 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 maxAmountWrappedIn,
         uint256 exactSharesToIssue,
         address sharesOwner
-    ) external nonReentrant onlyVault returns (uint256 amountUnderlying, uint256 amountWrapped) {
-        (amountUnderlying, amountWrapped) = _vault.addLiquidityToBuffer(
+    ) external nonReentrant onlyVault returns (uint256 amountUnderlyingIn, uint256 amountWrappedIn) {
+        (amountUnderlyingIn, amountWrappedIn) = _vault.addLiquidityToBuffer(
             wrappedToken,
             maxAmountUnderlyingIn,
             maxAmountWrappedIn,
             exactSharesToIssue,
             sharesOwner
         );
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlying, false);
-        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, false);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingIn, false);
+        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedIn, false);
     }
 
+    /// @inheritdoc IBufferRouter
     function queryInitializeBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped
+        uint256 exactAmountUnderlyingIn,
+        uint256 exactAmountWrappedIn
     ) external returns (uint256 issuedShares) {
         return
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
                         BufferRouter.queryInitializeBufferHook,
-                        (wrappedToken, amountUnderlying, amountWrapped)
+                        (wrappedToken, exactAmountUnderlyingIn, exactAmountWrappedIn)
                     )
                 ),
                 (uint256)
@@ -173,16 +174,23 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
 
     function queryInitializeBufferHook(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped
+        uint256 exactAmountUnderlyingIn,
+        uint256 exactAmountWrappedIn
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = _vault.initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, 0, address(this));
+        issuedShares = _vault.initializeBuffer(
+            wrappedToken,
+            exactAmountUnderlyingIn,
+            exactAmountWrappedIn,
+            0,
+            address(this)
+        );
     }
 
+    /// @inheritdoc IBufferRouter
     function queryAddLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 exactSharesToIssue
-    ) external returns (uint256 amountUnderlying, uint256 amountWrapped) {
+    ) external returns (uint256 amountUnderlyingIn, uint256 amountWrappedIn) {
         return
             abi.decode(
                 _vault.quote(
@@ -195,8 +203,8 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
     function queryAddLiquidityToBufferHook(
         IERC4626 wrappedToken,
         uint256 exactSharesToIssue
-    ) external nonReentrant onlyVault returns (uint256 amountUnderlying, uint256 amountWrapped) {
-        (amountUnderlying, amountWrapped) = _vault.addLiquidityToBuffer(
+    ) external nonReentrant onlyVault returns (uint256 amountUnderlyingIn, uint256 amountWrappedIn) {
+        (amountUnderlyingIn, amountWrappedIn) = _vault.addLiquidityToBuffer(
             wrappedToken,
             type(uint128).max,
             type(uint128).max,
@@ -205,14 +213,15 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         );
     }
 
+    /// @inheritdoc IBufferRouter
     function queryRemoveLiquidityFromBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove
-    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        uint256 exactSharesToRemove
+    ) external returns (uint256 removedUnderlyingBalanceOut, uint256 removedWrappedBalanceOut) {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeCall(BufferRouter.queryRemoveLiquidityFromBufferHook, (wrappedToken, sharesToRemove))
+                    abi.encodeCall(BufferRouter.queryRemoveLiquidityFromBufferHook, (wrappedToken, exactSharesToRemove))
                 ),
                 (uint256, uint256)
             );
@@ -220,8 +229,8 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
 
     function queryRemoveLiquidityFromBufferHook(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove
-    ) external returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance) {
-        return _vault.removeLiquidityFromBuffer(wrappedToken, sharesToRemove, 0, 0);
+        uint256 exactSharesToRemove
+    ) external nonReentrant onlyVault returns (uint256 removedUnderlyingBalanceOut, uint256 removedWrappedBalanceOut) {
+        return _vault.removeLiquidityFromBuffer(wrappedToken, exactSharesToRemove, 0, 0);
     }
 }
