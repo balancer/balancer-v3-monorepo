@@ -125,7 +125,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /**
      * @notice Fuzz specific pool parameters.
-     * @dev Override this function to fuzz test parameters that are specific to a kind of pool.
+     * @dev Override this function to fuzz test parameters that are specific to a custom pool type.
      */
     function fuzzPoolParams(uint256[NUMBER_PARAMETERS] memory params) internal virtual {
         // solhint-disable-previous-line no-empty-blocks
