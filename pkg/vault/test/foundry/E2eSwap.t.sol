@@ -54,7 +54,7 @@ contract E2eSwapTest is BaseVaultTest {
 
     // Number of parameters specific to the pool type to be fuzzed. Raising this parameter will lower the amount of
     // tested scenarios, so raise with caution.
-    uint256 internal constant NUMBER_PARAMETERS = 5;
+    uint256 internal constant POOL_SPECIFIC_PARAMS = 5;
 
     function setUp() public virtual override {
         // We will use min trade amount in this test.
@@ -193,7 +193,7 @@ contract E2eSwapTest is BaseVaultTest {
      * @notice Fuzz specific pool parameters.
      * @dev Override this function to fuzz test parameters that are specific to a kind of pool.
      */
-    function fuzzPoolParams(uint256[NUMBER_PARAMETERS] memory params) internal virtual {
+    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS] memory params) internal virtual {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -206,7 +206,7 @@ contract E2eSwapTest is BaseVaultTest {
 
     function testDoUndoExactInSwapAmountSpecific__Fuzz(
         uint256 exactAmountIn,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
@@ -239,7 +239,7 @@ contract E2eSwapTest is BaseVaultTest {
 
     function testDoUndoExactInFeesSpecific__Fuzz(
         uint256 poolSwapFeePercentage,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestFee = true;
@@ -266,7 +266,7 @@ contract E2eSwapTest is BaseVaultTest {
     function testDoUndoExactInDecimalsSpecific__Fuzz(
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
@@ -307,7 +307,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 poolSwapFeePercentage,
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
@@ -331,7 +331,7 @@ contract E2eSwapTest is BaseVaultTest {
 
     function testDoUndoExactOutSwapAmountSpecific__Fuzz(
         uint256 exactAmountOut,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
@@ -364,7 +364,7 @@ contract E2eSwapTest is BaseVaultTest {
 
     function testDoUndoExactOutFeesSpecific__Fuzz(
         uint256 poolSwapFeePercentage,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestFee = true;
@@ -391,7 +391,7 @@ contract E2eSwapTest is BaseVaultTest {
     function testDoUndoExactOutDecimalsSpecific__Fuzz(
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
@@ -432,7 +432,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 poolSwapFeePercentage,
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
@@ -520,7 +520,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 poolSwapFeePercentage,
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         decimalsTokenA = bound(newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
         decimalsTokenB = bound(newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
@@ -597,7 +597,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 newDecimalsTokenA;
         uint256 newDecimalsTokenB;
         uint256 poolSwapFeePercentage;
-        uint256[NUMBER_PARAMETERS] poolParams;
+        uint256[POOL_SPECIFIC_PARAMS] poolParams;
     }
 
     function testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) internal {

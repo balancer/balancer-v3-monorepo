@@ -73,7 +73,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         return address(weightedPool);
     }
 
-    function fuzzPoolParams(uint256[NUMBER_PARAMETERS] memory params) internal override {
+    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS] memory params) internal override {
         uint256 weightDai = params[0];
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -125,7 +125,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
 
     function testAddLiquidityUnbalancedSmallAmountsSpecific__Fuzz(
         uint256 daiAmountIn,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         fuzzPoolParams(params);
         daiAmountIn = bound(daiAmountIn, 1, 1e6);
@@ -140,7 +140,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
 
     function testAddLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmountOut,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmountOut = bound(exactBptAmountOut, 1, 1e6);
@@ -152,7 +152,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
 
     function testAddLiquidityProportionalAndRemoveExactInWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmount,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmount = bound(exactBptAmount, 0, 1e6);
@@ -166,7 +166,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
 
     function testAddLiquidityProportionalAndRemoveExactOutWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmountOut,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         fuzzPoolParams(params);
         exactBptAmountOut = bound(exactBptAmountOut, 1, 1e6);
@@ -182,7 +182,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
 
     function testRemoveLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
         uint256 exactAmountOut,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         fuzzPoolParams(params);
         exactAmountOut = bound(exactAmountOut, 1, 1e6);
@@ -201,7 +201,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
     function testRemoveLiquiditySingleTokenExactInWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmountIn,
         uint256 swapFeePercentage,
-        uint256[NUMBER_PARAMETERS] memory params
+        uint256[POOL_SPECIFIC_PARAMS] memory params
     ) public {
         fuzzPoolParams(params);
 
