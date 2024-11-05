@@ -154,44 +154,93 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrapped, false);
     }
 
-    /**
-     * @notice Removes liquidity from an internal ERC4626 buffer in the Vault.
-     * @dev This function is just a delegate call to the real entrypoint in the `VaultAdmin` for convenience.
-     * Only proportional exits are supported, and the sender has to be the owner of the shares.
-     * This function unlocks the Vault just for this operation; it does not work with a Router as an entrypoint.
-     *
-     * Pre-conditions:
-     * - The buffer needs to be initialized.
-     * - sharesOwner is the original msg.sender, it needs to be checked in the Router. That's why
-     *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
-     * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
-     *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
-     * total shares. It is expressed in underlying token native decimals
-     * @param minAmountUnderlyingOut Minimum amount of underlying tokens to receive from the buffer. It is expressed
-     * in underlying token native decimals
-     * @param minAmountWrappedOut Minimum amount of wrapped tokens to receive from the buffer. It is expressed in
-     * wrapped token native decimals
-     * @return removedUnderlyingBalance Amount of underlying tokens returned to the user
-     * @return removedWrappedBalance Amount of wrapped tokens returned to the user
-     */
-    function removeLiquidityFromBuffer(
+    function queryInitializeBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        uint256 minAmountUnderlyingOut,
-        uint256 minAmountWrappedOut
-    ) external returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance) {
-        // In this case the real entrypoint is in the vault admin, because it must know the real sender and it can't
-        // be passed as an argument. Therefore, we use `delegateCall`.
-        return abi.decode(
-            address(_vault).functionDelegateCall(
-                abi.encodeCall(
-                    IVaultAdmin.removeLiquidityFromBuffer,
-                    (wrappedToken, sharesToRemove, minAmountUnderlyingOut, minAmountWrappedOut)
-                )
-            ),
-            (uint256, uint256)
+        uint256 amountUnderlying,
+        uint256 amountWrapped
+    ) external returns (uint256 issuedShares) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        BufferRouter.queryInitializeBufferHook,
+                        (
+                            wrappedToken,
+                            amountUnderlying,
+                            amountWrapped
+                        )
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    function queryInitializeBufferHook(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped
+    ) external nonReentrant onlyVault returns (uint256 issuedShares) {
+        issuedShares = _vault.initializeBuffer(
+            wrappedToken,
+            amountUnderlying,
+            amountWrapped,
+            0,
+            address(this)
         );
+    }
+
+    function queryAddLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 exactSharesToIssue
+    ) external returns (uint256 amountUnderlying, uint256 amountWrapped) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        BufferRouter.queryAddLiquidityToBufferHook,
+                        (
+                            wrappedToken,
+                            exactSharesToIssue
+                        )
+                    )
+                ),
+                (uint256, uint256)
+            );
+    }
+
+    function queryAddLiquidityToBufferHook(
+        IERC4626 wrappedToken,
+        uint256 exactSharesToIssue
+    ) external nonReentrant onlyVault returns (uint256 amountUnderlying, uint256 amountWrapped) {
+        (amountUnderlying, amountWrapped) = _vault.addLiquidityToBuffer(
+            wrappedToken,
+            type(uint128).max,
+            type(uint128).max,
+            exactSharesToIssue,
+            address(this)
+        );
+    }
+
+    function queryRemoveLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        BufferRouter.queryRemoveLiquidityFromBufferHook,
+                        (wrappedToken, sharesToRemove)
+                    )
+                ),
+                (uint256, uint256)
+            );
+    }
+
+    function queryRemoveLiquidityFromBufferHook(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance) {
+        return _vault.removeLiquidityFromBuffer(wrappedToken, sharesToRemove, 0, 0);
     }
 }

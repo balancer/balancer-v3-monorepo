@@ -15,6 +15,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -629,6 +630,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         withInitializedBuffer(wrappedToken)
         returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
+        if (_isQueryContext()) {
+            // Increase `sharesOwner` balance to ensure the check below and the burn function succeeds.
+            _queryModeBufferSharesIncrease(wrappedToken, sharesOwner, sharesToRemove);
+        }
+
         if (sharesToRemove > _bufferLpShares[wrappedToken][sharesOwner]) {
             revert NotEnoughBufferShares();
         }
@@ -692,6 +698,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferLpShares[wrappedToken][from] -= amount;
 
         emit BufferSharesBurned(wrappedToken, from, amount);
+    }
+
+    function _queryModeBufferSharesIncrease(IERC4626 wrappedToken, address to, uint256 amount) internal {
+        // Enforce that this can only be called in a read-only, query context.
+        if (EVMCallModeHelpers.isStaticCall() == false) {
+            revert EVMCallModeHelpers.NotStaticCall();
+        }
+
+        // Increase `to` balance to ensure the burn function succeeds during query.
+        _bufferLpShares[wrappedToken][to] += amount;
     }
 
     /// @inheritdoc IVaultAdmin

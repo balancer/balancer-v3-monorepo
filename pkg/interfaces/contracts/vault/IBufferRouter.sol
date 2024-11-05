@@ -54,11 +54,4 @@ interface IBufferRouter {
         uint256 maxAmountWrappedIn,
         uint256 exactSharesToIssue
     ) external returns (uint256 amountUnderlying, uint256 amountWrapped);
-
-    function removeLiquidityFromBuffer(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        uint256 minAmountUnderlyingOut,
-        uint256 minAmountWrappedOut
-    ) external returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance);
 }
