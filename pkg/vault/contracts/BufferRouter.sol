@@ -164,11 +164,7 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
                 _vault.quote(
                     abi.encodeCall(
                         BufferRouter.queryInitializeBufferHook,
-                        (
-                            wrappedToken,
-                            amountUnderlying,
-                            amountWrapped
-                        )
+                        (wrappedToken, amountUnderlying, amountWrapped)
                     )
                 ),
                 (uint256)
@@ -180,13 +176,7 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 amountUnderlying,
         uint256 amountWrapped
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = _vault.initializeBuffer(
-            wrappedToken,
-            amountUnderlying,
-            amountWrapped,
-            0,
-            address(this)
-        );
+        issuedShares = _vault.initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, 0, address(this));
     }
 
     function queryAddLiquidityToBuffer(
@@ -196,13 +186,7 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeCall(
-                        BufferRouter.queryAddLiquidityToBufferHook,
-                        (
-                            wrappedToken,
-                            exactSharesToIssue
-                        )
-                    )
+                    abi.encodeCall(BufferRouter.queryAddLiquidityToBufferHook, (wrappedToken, exactSharesToIssue))
                 ),
                 (uint256, uint256)
             );
@@ -228,10 +212,7 @@ contract BufferRouter is IBufferRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeCall(
-                        BufferRouter.queryRemoveLiquidityFromBufferHook,
-                        (wrappedToken, sharesToRemove)
-                    )
+                    abi.encodeCall(BufferRouter.queryRemoveLiquidityFromBufferHook, (wrappedToken, sharesToRemove))
                 ),
                 (uint256, uint256)
             );
