@@ -948,6 +948,62 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.stopPrank();
     }
 
+    function testAdjustedSwapFeePrecision() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setProtocolSwapFeePercentage.selector),
+            admin
+        );
+
+        // Set valid value at the limit of precision.
+        vm.prank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, FEE_SCALING_FACTOR);
+
+        vm.prank(admin);
+        feeController.setProtocolSwapFeePercentage(pool, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
+
+        uint256 fullPrecisionAggregateFeePercentage = CUSTOM_PROTOCOL_SWAP_FEE_PCT +
+            CUSTOM_PROTOCOL_SWAP_FEE_PCT.complement().mulDown(FEE_SCALING_FACTOR);
+
+        // Full precision should not equal the nominal value
+        assertFalse(fullPrecisionAggregateFeePercentage == CUSTOM_PROTOCOL_SWAP_FEE_PCT, "Fee precision lost");
+
+        uint256 correctedFeePercentage = (fullPrecisionAggregateFeePercentage / FEE_SCALING_FACTOR) *
+            FEE_SCALING_FACTOR;
+        assertTrue(correctedFeePercentage == CUSTOM_PROTOCOL_SWAP_FEE_PCT, "Fee precision not adjusted");
+
+        // Retrieve it from the Vault - should be the same as we set.
+        PoolConfig memory config = vault.getPoolConfig(pool);
+        assertEq(config.aggregateSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
+    }
+
+    function testAdjustedYieldFeePrecision() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        // Set valid value at the limit of precision.
+        vm.prank(lp);
+        feeController.setPoolCreatorYieldFeePercentage(pool, FEE_SCALING_FACTOR);
+
+        vm.prank(admin);
+        feeController.setProtocolYieldFeePercentage(pool, CUSTOM_PROTOCOL_YIELD_FEE_PCT);
+
+        uint256 fullPrecisionAggregateFeePercentage = CUSTOM_PROTOCOL_YIELD_FEE_PCT +
+            CUSTOM_PROTOCOL_YIELD_FEE_PCT.complement().mulDown(FEE_SCALING_FACTOR);
+
+        // Full precision should not equal the nominal value
+        assertFalse(fullPrecisionAggregateFeePercentage == CUSTOM_PROTOCOL_YIELD_FEE_PCT, "Fee precision lost");
+
+        uint256 correctedFeePercentage = (fullPrecisionAggregateFeePercentage / FEE_SCALING_FACTOR) *
+            FEE_SCALING_FACTOR;
+        assertTrue(correctedFeePercentage == CUSTOM_PROTOCOL_YIELD_FEE_PCT, "Fee precision not adjusted");
+
+        // Retrieve it from the Vault - should be the same as we set.
+        PoolConfig memory config = vault.getPoolConfig(pool);
+        assertEq(config.aggregateYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE_PCT);
+    }
+
     function _registerPoolWithMaxProtocolFees() internal {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
