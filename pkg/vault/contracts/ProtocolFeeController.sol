@@ -180,7 +180,9 @@ contract ProtocolFeeController is
      * @notice Settle fee credits from the Vault.
      * @dev This must be called after calling `collectAggregateFees` in the Vault. Note that since charging protocol
      * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
-     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
+     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations. The Vault
+     * differentiates between swap and yield fees (since they can have different percentage values); the Controller
+     * combines swap and yield fees, then allocates the total between the protocol and pool creator.
      *
      * @param pool The address of the pool on which the swap fees were charged
      * @param swapFeeAmounts An array with the total swap fees collected, sorted in token registration order
@@ -231,8 +233,11 @@ contract ProtocolFeeController is
                 }
 
                 if (needToSplitFees) {
-                    uint256 totalVolume = feeAmounts[i].divUp(aggregateFeePercentage);
-                    uint256 protocolPortion = totalVolume.mulUp(protocolFeePercentage);
+                    // The Vault took a single "cut" for the aggregate total percentage (protocol + pool creator) for
+                    // this fee type (swap or yield). Now we need to "disaggregate" the total fee amount and divide
+                    // it between the protocol and pool creator, according to their individual percentages.
+                    uint256 totalAggregateFeeCollected = feeAmounts[i].divUp(aggregateFeePercentage);
+                    uint256 protocolPortion = totalAggregateFeeCollected.mulUp(protocolFeePercentage);
 
                     _protocolFeeAmounts[pool][token] += protocolPortion;
                     _poolCreatorFeeAmounts[pool][token] += feeAmounts[i] - protocolPortion;
@@ -343,7 +348,14 @@ contract ProtocolFeeController is
             protocolFeePercentage +
             protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
 
-        _ensureValidPrecision(aggregateFeePercentage);
+        // Protocol fee percentages are limited to 24-bit precision for performance reasons (i.e., to fit all the fees
+        // in a single slot), and because high precision is not needed. Generally we expect protocol fees set by
+        // governance to be simple integers.
+        //
+        // However, the pool creator fee is entirely controlled by the pool creator, and it is possible to craft a
+        // valid pool creator fee percentage that would cause the aggregate fee percentage to fail the precision check.
+        // This case should be rare, so we ensure this can't happen by truncating the final value.
+        aggregateFeePercentage = (aggregateFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
