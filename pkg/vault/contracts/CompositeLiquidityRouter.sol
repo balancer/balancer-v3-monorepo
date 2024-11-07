@@ -778,7 +778,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         if (isStaticCall == false) {
-            _settlePaths(params.sender, false);
+            _settlePaths(params.sender, params.wethIsEth);
         }
     }
 

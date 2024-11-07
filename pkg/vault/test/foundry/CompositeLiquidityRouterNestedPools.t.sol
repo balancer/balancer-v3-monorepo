@@ -1259,6 +1259,175 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
     }
 
+    function testRemoveLiquidityNestedPoolWithEth__Fuzz(uint256 proportionToRemove) public {
+        // Remove between 0.0001% and 50% of each pool liquidity.
+        proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
+
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+
+        // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
+        // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
+        // we can extract from the child pools.
+        uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
+
+        address[] memory tokensOut = new address[](4);
+        tokensOut[vars.daiIdx] = address(dai);
+        tokensOut[vars.wethIdx] = address(weth);
+        tokensOut[vars.wstethIdx] = address(wsteth);
+        tokensOut[vars.usdcIdx] = address(usdc);
+
+        uint256[] memory expectedAmountsOut = new uint256[](4);
+        // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
+        // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
+        // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
+        // totalSupply (so the burned POOL_MINIMUM_TOTAL_SUPPLY amount does not affect the BPT in circulation, and the
+        // amounts out are perfectly proportional to the parent pool balance).
+        expectedAmountsOut[vars.daiIdx] =
+            (poolInitAmount.mulDown(proportionToRemove) * 2) -
+            deadTokens -
+            MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.wstethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+
+        vm.prank(lp);
+        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+            parentPool,
+            exactBptIn,
+            tokensOut,
+            expectedAmountsOut,
+            true,
+            bytes("")
+        );
+
+        _fillNestedPoolTestLocalsAfter(vars);
+        uint256 burnedChildPoolABpts = vars.childPoolABefore.totalSupply - vars.childPoolAAfter.totalSupply;
+        uint256 burnedChildPoolBBpts = vars.childPoolBBefore.totalSupply - vars.childPoolBAfter.totalSupply;
+
+        // Check returned token amounts.
+        assertEq(amountsOut.length, 4, "amountsOut length is wrong");
+        assertApproxEqAbs(
+            expectedAmountsOut[vars.daiIdx],
+            amountsOut[vars.daiIdx],
+            MAX_ROUND_ERROR,
+            "DAI amount out is wrong"
+        );
+        assertApproxEqAbs(
+            expectedAmountsOut[vars.wethIdx],
+            amountsOut[vars.wethIdx],
+            MAX_ROUND_ERROR,
+            "WETH amount out is wrong"
+        );
+        assertApproxEqAbs(
+            expectedAmountsOut[vars.wstethIdx],
+            amountsOut[vars.wstethIdx],
+            MAX_ROUND_ERROR,
+            "WstETH amount out is wrong"
+        );
+        assertApproxEqAbs(
+            expectedAmountsOut[vars.usdcIdx],
+            amountsOut[vars.usdcIdx],
+            MAX_ROUND_ERROR,
+            "USDC amount out is wrong"
+        );
+
+        // Check LP Balances.
+        assertEq(vars.lpAfter.dai, vars.lpBefore.dai + amountsOut[vars.daiIdx], "LP Dai Balance is wrong");
+        assertEq(vars.lpAfter.wsteth, vars.lpBefore.wsteth + amountsOut[vars.wstethIdx], "LP Wsteth Balance is wrong");
+        assertEq(vars.lpAfter.usdc, vars.lpBefore.usdc + amountsOut[vars.usdcIdx], "LP Usdc Balance is wrong");
+        assertEq(vars.lpAfter.childPoolABpt, vars.lpBefore.childPoolABpt, "LP ChildPoolA BPT Balance is wrong");
+        assertEq(vars.lpAfter.childPoolBBpt, vars.lpBefore.childPoolBBpt, "LP ChildPoolB BPT Balance is wrong");
+        assertEq(
+            vars.lpAfter.parentPoolBpt,
+            vars.lpBefore.parentPoolBpt - exactBptIn,
+            "LP ParentPool BPT Balance is wrong"
+        );
+
+        // LP should get ETH instead of WETH.
+        assertEq(vars.lpAfter.weth, vars.lpBefore.weth, "LP Weth Balance is wrong");
+        assertEq(vars.lpAfter.eth, vars.lpBefore.eth + amountsOut[vars.wethIdx], "LP ETH Balance is wrong");
+
+        // Check Vault Balances.
+        assertEq(vars.vaultAfter.dai, vars.vaultBefore.dai - amountsOut[vars.daiIdx], "Vault Dai Balance is wrong");
+        assertEq(vars.vaultAfter.weth, vars.vaultBefore.weth - amountsOut[vars.wethIdx], "Vault Weth Balance is wrong");
+        assertEq(
+            vars.vaultAfter.wsteth,
+            vars.vaultBefore.wsteth - amountsOut[vars.wstethIdx],
+            "Vault Wsteth Balance is wrong"
+        );
+        assertEq(vars.vaultAfter.usdc, vars.vaultBefore.usdc - amountsOut[vars.usdcIdx], "Vault Usdc Balance is wrong");
+        // Since all Child Pool BPTs were allocated in the parent pool, vault was holding all of them. Since part of
+        // them was burned when liquidity was removed, we need to discount this amount from the Vault reserves.
+        assertEq(
+            vars.vaultAfter.childPoolABpt,
+            vars.vaultBefore.childPoolABpt - burnedChildPoolABpts,
+            "Vault ChildPoolA BPT Balance is wrong"
+        );
+        assertEq(
+            vars.vaultAfter.childPoolBBpt,
+            vars.vaultBefore.childPoolBBpt - burnedChildPoolBBpts,
+            "Vault ChildPoolB BPT Balance is wrong"
+        );
+        // Vault did not hold the parent pool BPTs.
+        assertEq(
+            vars.vaultAfter.parentPoolBpt,
+            vars.vaultBefore.parentPoolBpt,
+            "Vault ParentPool BPT Balance is wrong"
+        );
+
+        // Check ChildPoolA
+        assertEq(
+            vars.childPoolAAfter.weth,
+            vars.childPoolABefore.weth - amountsOut[vars.wethIdx],
+            "ChildPoolA Weth Balance is wrong"
+        );
+        assertEq(
+            vars.childPoolAAfter.usdc,
+            vars.childPoolABefore.usdc - amountsOut[vars.usdcIdx],
+            "ChildPoolA Usdc Balance is wrong"
+        );
+
+        // Check ChildPoolB.
+        // Since DAI amountOut comes from parentPool and childPoolB, we need to calculate the proportion that comes
+        // from childPoolB.
+        assertApproxEqAbs(
+            vars.childPoolBAfter.dai,
+            vars.childPoolBBefore.dai - (amountsOut[vars.daiIdx] - poolInitAmount.mulDown(proportionToRemove)),
+            MAX_ROUND_ERROR,
+            "ChildPoolB Dai Balance is wrong"
+        );
+        assertEq(
+            vars.childPoolBAfter.wsteth,
+            vars.childPoolBBefore.wsteth - amountsOut[vars.wstethIdx],
+            "ChildPoolB Wsteth Balance is wrong"
+        );
+
+        // Check ParentPool.
+        assertApproxEqAbs(
+            vars.parentPoolAfter.dai,
+            vars.parentPoolBefore.dai -
+                (amountsOut[vars.daiIdx] -
+                    (poolInitAmount - (POOL_MINIMUM_TOTAL_SUPPLY / 2)).mulDown(proportionToRemove)),
+            MAX_ROUND_ERROR,
+            "ParentPool Dai Balance is wrong"
+        );
+        assertEq(
+            vars.parentPoolAfter.childPoolABpt,
+            vars.parentPoolBefore.childPoolABpt - burnedChildPoolABpts,
+            "ParentPool ChildPoolA BPT Balance is wrong"
+        );
+        assertEq(
+            vars.parentPoolAfter.childPoolBBpt,
+            vars.parentPoolBefore.childPoolBBpt - burnedChildPoolBBpts,
+            "ParentPool ChildPoolB BPT Balance is wrong"
+        );
+    }
+
     function testRemoveLiquidityNestedERC4626Pool__Fuzz(uint256 proportionToRemove) public {
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
