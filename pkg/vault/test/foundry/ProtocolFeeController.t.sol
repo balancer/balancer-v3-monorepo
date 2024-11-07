@@ -973,7 +973,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         // Retrieve it from the Vault - should be the same as we set.
         PoolConfig memory config = vault.getPoolConfig(pool);
-        assertEq(config.aggregateSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
+        assertEq(
+            config.aggregateSwapFeePercentage,
+            CUSTOM_PROTOCOL_SWAP_FEE_PCT,
+            "Wrong aggregate swap fee percentage"
+        );
     }
 
     function testAdjustedYieldFeePrecision() public {
@@ -993,15 +997,19 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             CUSTOM_PROTOCOL_YIELD_FEE_PCT.complement().mulDown(FEE_SCALING_FACTOR);
 
         // Full precision should not equal the nominal value
-        assertFalse(fullPrecisionAggregateFeePercentage == CUSTOM_PROTOCOL_YIELD_FEE_PCT, "Fee precision lost");
+        assertNotEq(fullPrecisionAggregateFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE_PCT, "Fee precision lost");
 
         uint256 correctedFeePercentage = (fullPrecisionAggregateFeePercentage / FEE_SCALING_FACTOR) *
             FEE_SCALING_FACTOR;
-        assertTrue(correctedFeePercentage == CUSTOM_PROTOCOL_YIELD_FEE_PCT, "Fee precision not adjusted");
+        assertEq(correctedFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE_PCT, "Fee precision not adjusted");
 
         // Retrieve it from the Vault - should be the same as we set.
         PoolConfig memory config = vault.getPoolConfig(pool);
-        assertEq(config.aggregateYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE_PCT);
+        assertEq(
+            config.aggregateYieldFeePercentage,
+            CUSTOM_PROTOCOL_YIELD_FEE_PCT,
+            "Wrong aggregate yield fee percentage"
+        );
     }
 
     function _registerPoolWithMaxProtocolFees() internal {
