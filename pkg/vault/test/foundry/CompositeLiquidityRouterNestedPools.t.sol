@@ -44,7 +44,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             "parentPool"
         );
 
-        childPoolERC4626 = _createPool([address(waDAI), address(weth)].toMemoryArray(), "childPoolERC4626");
+        childPoolERC4626 = _createPool([address(waDAI), address(waWETH)].toMemoryArray(), "childPoolERC4626");
         parentPoolWithoutWrapper = _createPool(
             [address(childPoolERC4626), address(usdc)].toMemoryArray(),
             "parentPoolWithoutWrapper"
@@ -303,6 +303,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         assertEq(vars.vaultAfter.dai, vars.vaultBefore.dai + amountsIn[vars.daiIdx], "Vault Dai Balance is wrong");
         assertEq(vars.vaultAfter.waDAI, vars.vaultBefore.waDAI, "Vault waDai Balance is wrong");
         assertEq(vars.vaultAfter.weth, vars.vaultBefore.weth + amountsIn[vars.wethIdx], "Vault Weth Balance is wrong");
+        assertEq(vars.vaultAfter.waWETH, vars.vaultBefore.waWETH, "Vault waWETH Balance is wrong");
         assertEq(vars.vaultAfter.usdc, vars.vaultBefore.usdc + amountsIn[vars.usdcIdx], "Vault Usdc Balance is wrong");
         assertEq(vars.vaultAfter.waUSDC, vars.vaultBefore.waUSDC, "Vault waUsdc Balance is wrong");
         // Since all Child Pool BPTs were allocated in the parent pool, vault is holding all of the minted BPTs.
@@ -326,9 +327,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             "ChildPoolERC4626 waDAI Balance is wrong"
         );
         assertEq(
-            vars.childPoolERC4626After.weth,
-            vars.childPoolERC4626Before.weth + amountsIn[vars.wethIdx],
-            "ChildPoolERC4626 WETH Balance is wrong"
+            vars.childPoolERC4626After.waWETH,
+            vars.childPoolERC4626Before.waWETH + waWETH.previewDeposit(amountsIn[vars.wethIdx]),
+            "ChildPoolERC4626 waWETH Balance is wrong"
         );
 
         // Check ParentPoolWithoutWrapper balances.
@@ -435,9 +436,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             "ChildPoolERC4626 waDAI Balance is wrong"
         );
         assertEq(
-            vars.childPoolERC4626After.weth,
-            vars.childPoolERC4626Before.weth + amountsIn[vars.wethIdx],
-            "ChildPoolERC4626 WETH Balance is wrong"
+            vars.childPoolERC4626After.waWETH,
+            vars.childPoolERC4626Before.waWETH + waWETH.previewDeposit(amountsIn[vars.wethIdx]),
+            "ChildPoolERC4626 waWETH Balance is wrong"
         );
 
         // Check ParentPoolWithoutWrapper balances.
@@ -547,9 +548,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             "ChildPoolERC4626 waDAI Balance is wrong"
         );
         assertEq(
-            vars.childPoolERC4626After.weth,
-            vars.childPoolERC4626Before.weth + amountsIn[vars.wethIdx],
-            "ChildPoolERC4626 WETH Balance is wrong"
+            vars.childPoolERC4626After.waWETH,
+            vars.childPoolERC4626Before.waWETH + waWETH.previewDeposit(amountsIn[vars.wethIdx]),
+            "ChildPoolERC4626 waWETH Balance is wrong"
         );
 
         // Check ParentPoolWithoutWrapper balances.
@@ -608,7 +609,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
-        uint256 expectedBptOut = waDAI.previewDeposit(daiAmount) + waUSDC.previewDeposit(usdcAmount) + wethAmount;
+        uint256 expectedBptOut = waDAI.previewDeposit(daiAmount) +
+            waUSDC.previewDeposit(usdcAmount) +
+            waWETH.previewDeposit(wethAmount);
         assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
         assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
@@ -631,6 +634,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         assertEq(vars.vaultAfter.dai, vars.vaultBefore.dai + amountsIn[vars.daiIdx], "Vault Dai Balance is wrong");
         assertEq(vars.vaultAfter.waDAI, vars.vaultBefore.waDAI, "Vault waDai Balance is wrong");
         assertEq(vars.vaultAfter.weth, vars.vaultBefore.weth + amountsIn[vars.wethIdx], "Vault Weth Balance is wrong");
+        assertEq(vars.vaultAfter.waWETH, vars.vaultBefore.waWETH, "Vault waWeth Balance is wrong");
         assertEq(vars.vaultAfter.usdc, vars.vaultBefore.usdc + amountsIn[vars.usdcIdx], "Vault Usdc Balance is wrong");
         assertEq(vars.vaultAfter.waUSDC, vars.vaultBefore.waUSDC, "Vault waUSDC Balance is wrong");
 
@@ -655,9 +659,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             "ChildPoolERC4626 waDAI Balance is wrong"
         );
         assertEq(
-            vars.childPoolERC4626After.weth,
-            vars.childPoolERC4626Before.weth + amountsIn[vars.wethIdx],
-            "ChildPoolERC4626 WETH Balance is wrong"
+            vars.childPoolERC4626After.waWETH,
+            vars.childPoolERC4626Before.waWETH + waWETH.previewDeposit(amountsIn[vars.wethIdx]),
+            "ChildPoolERC4626 waWETH Balance is wrong"
         );
 
         // Check ParentPoolWithoutWrapper balances.
@@ -676,11 +680,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     function testAddLiquidityNestedERC4626InParentWithWrapped__Fuzz(
         uint256 waDaiAmount,
         uint256 waUsdcAmount,
-        uint256 wethAmount
+        uint256 waWethAmount
     ) public {
         waDaiAmount = bound(waDaiAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         waUsdcAmount = bound(waUsdcAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
-        wethAmount = bound(wethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
+        waWethAmount = bound(waWethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
 
         uint256 minBptOut = 0;
 
@@ -688,17 +692,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Override indexes, since wstEth is not used in this test.
         vars.waDaiIdx = 0;
         vars.waUsdcIdx = 1;
-        vars.wethIdx = 2;
+        vars.waWethIdx = 2;
 
         address[] memory tokensIn = new address[](3);
         tokensIn[vars.waDaiIdx] = address(waDAI);
         tokensIn[vars.waUsdcIdx] = address(waUSDC);
-        tokensIn[vars.wethIdx] = address(weth);
+        tokensIn[vars.waWethIdx] = address(waWETH);
 
         uint256[] memory amountsIn = new uint256[](3);
         amountsIn[vars.waDaiIdx] = waDaiAmount;
         amountsIn[vars.waUsdcIdx] = waUsdcAmount;
-        amountsIn[vars.wethIdx] = wethAmount;
+        amountsIn[vars.waWethIdx] = waWethAmount;
 
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
@@ -716,7 +720,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
-        uint256 expectedBptOut = waDaiAmount + waUsdcAmount + wethAmount;
+        uint256 expectedBptOut = waDaiAmount + waUsdcAmount + waWethAmount;
         assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
         assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
 
@@ -724,9 +728,10 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Since LP passed the wrapper address as a token in, his DAI and USDC balances are not touched.
         assertEq(vars.lpAfter.dai, vars.lpBefore.dai, "LP Dai Balance is wrong");
         assertEq(vars.lpAfter.usdc, vars.lpBefore.usdc, "LP USDC Balance is wrong");
+        assertEq(vars.lpAfter.weth, vars.lpBefore.weth, "LP WETH Balance is wrong");
         assertEq(vars.lpAfter.waDAI, vars.lpBefore.waDAI - amountsIn[vars.waDaiIdx], "LP waDAI Balance is wrong");
         assertEq(vars.lpAfter.waUSDC, vars.lpBefore.waUSDC - amountsIn[vars.waUsdcIdx], "LP waUSDC Balance is wrong");
-        assertEq(vars.lpAfter.weth, vars.lpBefore.weth - amountsIn[vars.wethIdx], "LP Weth Balance is wrong");
+        assertEq(vars.lpAfter.waWETH, vars.lpBefore.waWETH - amountsIn[vars.waWethIdx], "LP waWETH Balance is wrong");
         assertEq(
             vars.lpAfter.childPoolERC4626Bpt,
             vars.lpBefore.childPoolERC4626Bpt,
@@ -741,6 +746,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check Vault Balances.
         assertEq(vars.vaultAfter.dai, vars.vaultBefore.dai, "Vault Dai Balance is wrong");
         assertEq(vars.vaultAfter.usdc, vars.vaultBefore.usdc, "Vault USDC Balance is wrong");
+        assertEq(vars.vaultAfter.weth, vars.vaultBefore.weth, "Vault USDC Balance is wrong");
         assertEq(
             vars.vaultAfter.waDAI,
             vars.vaultBefore.waDAI + amountsIn[vars.waDaiIdx],
@@ -751,7 +757,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             vars.vaultBefore.waUSDC + amountsIn[vars.waUsdcIdx],
             "Vault waDAI Balance is wrong"
         );
-        assertEq(vars.vaultAfter.weth, vars.vaultBefore.weth + amountsIn[vars.wethIdx], "Vault Weth Balance is wrong");
+        assertEq(
+            vars.vaultAfter.waWETH,
+            vars.vaultBefore.waWETH + amountsIn[vars.waWethIdx],
+            "Vault waWETH Balance is wrong"
+        );
         // Since all Child Pool BPTs were allocated in the parent pool, vault is holding all of the minted BPTs.
         assertEq(
             vars.vaultAfter.childPoolERC4626Bpt,
@@ -773,9 +783,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             "ChildPoolERC4626 waDAI Balance is wrong"
         );
         assertEq(
-            vars.childPoolERC4626After.weth,
-            vars.childPoolERC4626Before.weth + amountsIn[vars.wethIdx],
-            "ChildPoolERC4626 WETH Balance is wrong"
+            vars.childPoolERC4626After.waWETH,
+            vars.childPoolERC4626Before.waWETH + amountsIn[vars.waWethIdx],
+            "ChildPoolERC4626 waWETH Balance is wrong"
         );
 
         // Check ParentPoolWithWrapper balances.
@@ -1282,7 +1292,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         expectedAmountsOut[vars.daiIdx] = waDAI.previewRedeem(
             poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR
         );
-        expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.wethIdx] = waWETH.previewRedeem(
+            poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR
+        );
         expectedAmountsOut[vars.usdcIdx] = waUSDC.previewRedeem(
             poolInitAmount.mulDown(proportionToRemove) - MAX_ROUND_ERROR
         );
@@ -1341,6 +1353,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         assertEq(vars.vaultAfter.dai, vars.vaultBefore.dai - amountsOut[vars.daiIdx], "Vault Dai Balance is wrong");
         assertEq(vars.vaultAfter.waDAI, vars.vaultBefore.waDAI, "Vault waDai Balance is wrong");
         assertEq(vars.vaultAfter.weth, vars.vaultBefore.weth - amountsOut[vars.wethIdx], "Vault Weth Balance is wrong");
+        assertEq(vars.vaultAfter.waWETH, vars.vaultBefore.waWETH, "Vault waWETH Balance is wrong");
         assertEq(vars.vaultAfter.usdc, vars.vaultBefore.usdc - amountsOut[vars.usdcIdx], "Vault Usdc Balance is wrong");
         assertEq(vars.vaultAfter.waUSDC, vars.vaultBefore.waUSDC, "Vault waUSDC Balance is wrong");
 
@@ -1361,8 +1374,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         // Check ChildPoolERC4626
         assertEq(
-            vars.childPoolERC4626After.weth,
-            vars.childPoolERC4626Before.weth - amountsOut[vars.wethIdx],
+            vars.childPoolERC4626After.waWETH,
+            vars.childPoolERC4626Before.waWETH - waWETH.previewWithdraw(amountsOut[vars.wethIdx]),
             "ChildPoolERC4626 Weth Balance is wrong"
         );
         assertApproxEqAbs(
@@ -1419,7 +1432,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         expectedAmountsOut[vars.daiIdx] = waDAI.previewRedeem(
             poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR
         );
-        expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.wethIdx] = waWETH.previewRedeem(
+            poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR
+        );
         expectedAmountsOut[vars.usdcIdx] = waUSDC.previewRedeem(
             poolInitAmount.mulDown(proportionToRemove) - MAX_ROUND_ERROR
         );
@@ -1639,6 +1654,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 wstethIdx;
         uint256 usdcIdx;
         uint256 waDaiIdx;
+        uint256 waWethIdx;
         uint256 waUsdcIdx;
         TokenBalances lpBefore;
         TokenBalances lpAfter;
@@ -1665,6 +1681,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 wsteth;
         uint256 usdc;
         uint256 waDAI;
+        uint256 waWETH;
         uint256 waUSDC;
         uint256 childPoolABpt;
         uint256 childPoolBBpt;
@@ -1707,6 +1724,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         balances.wsteth = wsteth.balanceOf(entity);
         balances.usdc = usdc.balanceOf(entity);
         balances.waDAI = waDAI.balanceOf(entity);
+        balances.waWETH = waWETH.balanceOf(entity);
         balances.waUSDC = waUSDC.balanceOf(entity);
         balances.childPoolABpt = IERC20(childPoolA).balanceOf(entity);
         balances.childPoolBBpt = IERC20(childPoolB).balanceOf(entity);
@@ -1730,6 +1748,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
                 balances.waDAI = poolBalances[i];
             } else if (currentToken == IERC20(address(waUSDC))) {
                 balances.waUSDC = poolBalances[i];
+            } else if (currentToken == IERC20(address(waWETH))) {
+                balances.waWETH = poolBalances[i];
             } else if (currentToken == usdc) {
                 balances.usdc = poolBalances[i];
             } else if (currentToken == IERC20(childPoolA)) {
