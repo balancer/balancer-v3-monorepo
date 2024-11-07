@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -53,18 +54,25 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 daiBalanceBefore = dai.balanceOf(alice);
         uint256 usdcBalanceBefore = usdc.balanceOf(alice);
 
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, amountToRemove);
 
         uint256 bptAfter = IERC20(pool).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT
+        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
 
         uint256 daiBalanceAfter = dai.balanceOf(alice);
         uint256 usdcBalanceAfter = usdc.balanceOf(alice);
 
-        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong");
-        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong");
+        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
     }
 
     function testRecoveryModeWithRoundtripFee() public {
@@ -99,18 +107,25 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 daiBalanceBefore = dai.balanceOf(alice);
         uint256 usdcBalanceBefore = usdc.balanceOf(alice);
 
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, amountToRemove);
 
         uint256 bptAfter = IERC20(pool).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT
+        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
 
         uint256 daiBalanceAfter = dai.balanceOf(alice);
         uint256 usdcBalanceAfter = usdc.balanceOf(alice);
 
         assertEq(daiBalanceAfter - daiBalanceBefore, amountOutAfterFee, "Ending DAI balance wrong");
         assertEq(usdcBalanceAfter - usdcBalanceBefore, amountOutAfterFee, "Ending USDC balance wrong");
+
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], amountOutAfterFee, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], amountOutAfterFee, "Ending balance[1] wrong (pool)");
     }
 
     function testRecoveryModeBalances() public {
