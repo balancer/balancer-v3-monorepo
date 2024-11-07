@@ -1050,7 +1050,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             // Aggregate fees are not charged in Recovery Mode, but we still calculate and return the raw total swap
-            // fee above so that it will be included in the `PoolBalanceChanged` event for off-chain reporting.
+            // fee above for off-chain reporting purposes.
             if (poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
                 uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
 
