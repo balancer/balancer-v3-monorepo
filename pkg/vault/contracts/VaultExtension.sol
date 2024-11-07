@@ -744,7 +744,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _isPoolInRecoveryMode(pool);
     }
 
-    // Needed to avoid stack-too-deep.apply
+    // Needed to avoid stack-too-deep.
     struct RecoveryLocals {
         bool chargeRoundtripFee;
         uint256[] swapFeeAmountsRaw;
@@ -792,7 +792,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Don't make the call to retrieve the fee unless we have to.
         if (locals.chargeRoundtripFee) {
-            locals.swapFeePercentage = _vault.getStaticSwapFeePercentage(pool);
+            locals.swapFeePercentage = _poolConfigBits[pool].getStaticSwapFeePercentage();
         }
 
         for (uint256 i = 0; i < locals.numTokens; ++i) {
