@@ -34,6 +34,10 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
+        // Avoid roundtrip fee.
+        vault.manualSetAddLiquidityCalledFlag(pool, false);
+        assertFalse(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
+
         uint256 initialSupply = IERC20(pool).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;
 
@@ -46,9 +50,21 @@ contract RecoveryModeTest is BaseVaultTest {
             new uint256[](2)
         );
 
+        uint256 daiBalanceBefore = dai.balanceOf(alice);
+        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, amountToRemove);
+
+        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        assertEq(bptAfter, amountToRemove); // this is half the BPT
+
+        uint256 daiBalanceAfter = dai.balanceOf(alice);
+        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
+
+        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong");
     }
 
     function testRecoveryModeWithRoundtripFee() public {
@@ -62,7 +78,8 @@ contract RecoveryModeTest is BaseVaultTest {
         vault.manualEnableRecoveryMode(pool);
         // Set the fee, and flag to trigger collection of it.
         vault.manualSetStaticSwapFeePercentage(pool, BASE_MAX_SWAP_FEE);
-        vault.manualSetAddLiquidityCalledFlag(pool, true);
+        // Will still be set from the add operation above.
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag not set");
 
         uint256 initialSupply = IERC20(pool).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;
@@ -79,9 +96,21 @@ contract RecoveryModeTest is BaseVaultTest {
             [feeAmount, feeAmount].toMemoryArray()
         );
 
+        uint256 daiBalanceBefore = dai.balanceOf(alice);
+        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, amountToRemove);
+
+        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        assertEq(bptAfter, amountToRemove); // this is half the BPT
+
+        uint256 daiBalanceAfter = dai.balanceOf(alice);
+        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
+
+        assertEq(daiBalanceAfter - daiBalanceBefore, amountOutAfterFee, "Ending DAI balance wrong");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, amountOutAfterFee, "Ending USDC balance wrong");
     }
 
     function testRecoveryModeBalances() public {
