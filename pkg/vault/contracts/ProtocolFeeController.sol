@@ -234,10 +234,12 @@ contract ProtocolFeeController is
 
                 if (needToSplitFees) {
                     // The Vault took a single "cut" for the aggregate total percentage (protocol + pool creator) for
-                    // this fee type (swap or yield). Now we need to "disaggregate" the total fee amount and divide
-                    // it between the protocol and pool creator, according to their individual percentages.
-                    uint256 totalAggregateFeeCollected = feeAmounts[i].divUp(aggregateFeePercentage);
-                    uint256 protocolPortion = totalAggregateFeeCollected.mulUp(protocolFeePercentage);
+                    // this fee type (swap or yield). The first step is to reconstruct this total fee amount. Then we
+                    // need to "disaggregate" this total, dividing it between the protocol and pool creator according
+                    // to their individual percentages. We do this by computing the protocol portion first, then
+                    // assigning the remainder to the pool creator.
+                    uint256 totalFeeAmountRaw = feeAmounts[i].divUp(aggregateFeePercentage);
+                    uint256 protocolPortion = totalFeeAmountRaw.mulUp(protocolFeePercentage);
 
                     _protocolFeeAmounts[pool][token] += protocolPortion;
                     _poolCreatorFeeAmounts[pool][token] += feeAmounts[i] - protocolPortion;
