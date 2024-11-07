@@ -744,6 +744,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _isPoolInRecoveryMode(pool);
     }
 
+    // Needed to avoid stack-too-deep.apply
+    struct RecoveryLocals {
+        bool chargeRoundtripFee;
+        uint256[] swapFeeAmountsRaw;
+        uint256 swapFeePercentage;
+        uint256 numTokens;
+    }
+
     /// @inheritdoc IVaultExtension
     function removeLiquidityRecovery(
         address pool,
@@ -760,21 +768,39 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
+        RecoveryLocals memory locals;
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
         IERC20[] memory tokens = _poolTokens[pool];
-        uint256 numTokens = tokens.length;
+        locals.numTokens = tokens.length;
 
-        uint256[] memory balancesRaw = new uint256[](numTokens);
+        uint256[] memory balancesRaw = new uint256[](locals.numTokens);
         bytes32 packedBalances;
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < locals.numTokens; ++i) {
             balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
         }
 
         amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        // Normally we expect recovery mode withdrawals to be stand-alone operations. If there is a previous add
+        // operation in this transaction, this might be an attack, so we apply the same guardrail used for regular
+        // proportional withdrawals. To keep things simple, all we do is reduce the `amountsOut`, leaving the "fee"
+        // tokens in the pool.
+        locals.swapFeeAmountsRaw = new uint256[](locals.numTokens);
+        locals.chargeRoundtripFee = _addLiquidityCalled().tGet(pool);
+
+        // Don't make the call to retrieve the fee unless we have to.
+        if (locals.chargeRoundtripFee) {
+            locals.swapFeePercentage = _vault.getStaticSwapFeePercentage(pool);
+        }
+
+        for (uint256 i = 0; i < locals.numTokens; ++i) {
+            if (locals.chargeRoundtripFee) {
+                locals.swapFeeAmountsRaw[i] = amountsOutRaw[i].mulUp(locals.swapFeePercentage);
+                amountsOutRaw[i] -= locals.swapFeeAmountsRaw[i];
+            }
+
             // Credit token[i] for amountOut.
             _supplyCredit(tokens[i], amountsOutRaw[i]);
 
@@ -788,7 +814,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // out of Recovery Mode.
         mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < locals.numTokens; ++i) {
             packedBalances = poolBalances[i];
             poolBalances[i] = packedBalances.setBalanceRaw(balancesRaw[i]);
         }
@@ -811,7 +837,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _totalSupply(pool),
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false),
-            new uint256[](numTokens)
+            locals.swapFeeAmountsRaw
         );
     }
 
