@@ -12,10 +12,12 @@ import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RecoveryModeTest is BaseVaultTest {
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     function setUp() public virtual override {
@@ -42,6 +44,39 @@ contract RecoveryModeTest is BaseVaultTest {
             initialSupply - amountToRemove, // totalSupply after the operation
             [-int256(defaultAmount) / 2, -int256(defaultAmount) / 2].toMemoryArray(),
             new uint256[](2)
+        );
+
+        // Do a recovery withdrawal.
+        vm.prank(alice);
+        router.removeLiquidityRecovery(pool, amountToRemove);
+    }
+
+    function testRecoveryModeWithRoundtripFee() public {
+        // Add initial liquidity.
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+
+        // Put pool in recovery mode.
+        vault.manualEnableRecoveryMode(pool);
+        // Set the fee, and flag to trigger collection of it.
+        vault.manualSetStaticSwapFeePercentage(pool, BASE_MAX_SWAP_FEE);
+        vault.manualSetAddLiquidityCalledFlag(pool, true);
+
+        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 amountToRemove = bptAmountOut / 2;
+        uint256 amountOutWithoutFee = defaultAmount / 2;
+        uint256 feeAmount = amountOutWithoutFee.mulDown(BASE_MAX_SWAP_FEE);
+        uint256 amountOutAfterFee = amountOutWithoutFee - feeAmount;
+
+        vm.expectEmit();
+        emit IVaultEvents.PoolBalanceChanged(
+            pool,
+            alice,
+            initialSupply - amountToRemove, // totalSupply after the operation
+            [-int256(amountOutAfterFee), -int256(amountOutAfterFee)].toMemoryArray(),
+            [feeAmount, feeAmount].toMemoryArray()
         );
 
         // Do a recovery withdrawal.
