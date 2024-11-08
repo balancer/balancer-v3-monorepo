@@ -4,21 +4,21 @@ pragma solidity ^0.8.24;
 
 library StableSurgeMedianMath {
     function calculateImbalance(uint256[] memory balances) internal pure returns (uint256) {
-        uint256[] memory sortedBalances = _sort(balances);
-        uint256 median = _findMedian(sortedBalances);
+        uint256[] memory sortedBalances = sort(balances);
+        uint256 median = findMedian(sortedBalances);
 
         uint256 totalBalance = 0;
         uint256 totalDiff = 0;
 
         for (uint i = 0; i < balances.length; i++) {
             totalBalance += balances[i];
-            totalDiff += _absSub(balances[i], median);
+            totalDiff += absSub(balances[i], median);
         }
 
         return (totalDiff * 1e18) / totalBalance;
     }
 
-    function _findMedian(uint256[] memory sortedBalances) internal pure returns (uint256) {
+    function findMedian(uint256[] memory sortedBalances) internal pure returns (uint256) {
         uint256 mid = sortedBalances.length / 2;
 
         if (sortedBalances.length % 2 == 0) {
@@ -31,7 +31,7 @@ library StableSurgeMedianMath {
     // First implementation had quickselect algorithm, but it was removed in the final version
     // because it seems to be overhead for small arrays (up to 8 elements)
     // Complexity of this insertion sort is O(n^2) but it is not a problem for small arrays
-    function _sort(uint256[] memory balances) internal pure returns (uint256[] memory sortedBalances) {
+    function sort(uint256[] memory balances) internal pure returns (uint256[] memory sortedBalances) {
         uint256 length = balances.length;
         sortedBalances = new uint256[](length);
 
@@ -52,7 +52,7 @@ library StableSurgeMedianMath {
         }
     }
 
-    function _absSub(uint256 a, uint256 b) internal pure returns (uint256) {
+    function absSub(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a - b : b - a;
     }
 }
