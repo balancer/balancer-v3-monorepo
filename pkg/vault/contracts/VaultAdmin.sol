@@ -268,7 +268,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
     /// @inheritdoc IVaultAdmin
     function collectAggregateFees(
-        address pool
+        address pool,
+        IERC20 feeToken
     )
         public
         onlyVaultDelegateCall
@@ -286,12 +287,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
 
-            (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
+            // If a feeToken is specified, all reported fees will be zero except for that token.
+            if (feeToken == IERC20(address(0)) || feeToken == token) {
+                (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
 
-            if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
-                // Supply credit for the total amount of fees.
-                _aggregateFeeAmounts[pool][token] = 0;
-                _supplyCredit(token, totalSwapFees[i] + totalYieldFees[i]);
+                if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
+                    // Supply credit for the total amount of fees.
+                    _aggregateFeeAmounts[pool][token] = 0;
+                    _supplyCredit(token, totalSwapFees[i] + totalYieldFees[i]);
+                }
             }
         }
     }

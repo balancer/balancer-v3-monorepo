@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
@@ -176,13 +177,21 @@ interface IVaultAdmin {
 
     /**
      * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
-     * @dev Fees are sent to the ProtocolFeeController address.
+     * @dev Fees are sent to the ProtocolFeeController address. Under normal conditions, when the permissionless
+     * collection function is called, the token argument will be the zero address, meaning collect fees on all tokens.
+     * If there is an issue with a particular token (e.g., it is bricked or blocked such that the transfer fails),
+     * the permissioned version can be called to transfer fees from unaffected tokens, so that all fees are not lost.
+     * It will still return the arrays, but all values will be zero except for the token being collected, so that no
+     * downstream code needs to change.
+     *
      * @param pool The pool on which all aggregate fees should be collected
+     * @param feeToken The token on which we're collecting the fees (or the zero address for all pool tokens)
      * @return swapFeeAmounts An array with the total swap fees collected, sorted in token registration order
      * @return yieldFeeAmounts An array with the total yield fees collected, sorted in token registration order
      */
     function collectAggregateFees(
-        address pool
+        address pool,
+        IERC20 feeToken
     ) external returns (uint256[] memory swapFeeAmounts, uint256[] memory yieldFeeAmounts);
 
     /**
