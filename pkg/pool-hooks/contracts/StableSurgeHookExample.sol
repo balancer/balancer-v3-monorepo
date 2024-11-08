@@ -19,6 +19,8 @@ import {
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
+
 /**
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a directional fee.
@@ -27,9 +29,6 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
     using FixedPoint for uint256;
 
     uint256 public constant MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
-
-    // Only pools from a specific factory (e.g., StablePoolFactory) are able to register and use this hook.
-    address private immutable _allowedFactory;
 
     // The default threshold, above which surging will occur.
     uint256 private immutable _defaultSurgeThresholdPercentage;
@@ -40,23 +39,17 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
     /**
      * @notice A new `StableSurgeHookExample` contract has been registered successfully.
      * @dev If the registration fails the call will revert, so there will be no event.
-     * @param hooksContract This contract
-     * @param factory The factory (must be the allowed factory, or the call will revert)
      * @param pool The pool on which the hook was registered
      */
-    event StableSurgeHookExampleRegistered(
-        address indexed hooksContract,
-        address indexed factory,
-        address indexed pool
-    );
+    event StableSurgeHookExampleRegistered(address indexed pool);
 
     /**
      * @notice The threshold percentage has been changed for a pool in a `StableSurgeHookExample` contract.
      * @dev Note, the initial threshold percentage is set on deployment and an event is emitted.
-     * @param hooksContract This contract
+     * @param pool The pool for which the threshold percentage has been changed
      * @param newSurgeThresholdPercentage The new threshold percentage
      */
-    event ThresholdSurgePercentageChanged(address indexed hooksContract, uint256 indexed newSurgeThresholdPercentage);
+    event ThresholdSurgePercentageChanged(address indexed pool, uint256 newSurgeThresholdPercentage);
 
     /// @notice The sender does not have permission to call a function.
     error SenderNotAllowed();
@@ -64,10 +57,9 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
     /// @notice The threshold must be a valid percentage value.
     error InvalidSurgeThresholdPercentage();
 
-    constructor(IVault vault, address allowedFactory, uint256 defaultSurgeThresholdPercentage) VaultGuard(vault) {
+    constructor(IVault vault, uint256 defaultSurgeThresholdPercentage) VaultGuard(vault) {
         _ensureValidPercentage(defaultSurgeThresholdPercentage);
 
-        _allowedFactory = allowedFactory;
         _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
     }
 
@@ -84,21 +76,28 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
         return _defaultSurgeThresholdPercentage;
     }
 
+    /**
+     * @notice Getter for the surge threshold percentage for a pool.
+     * @param pool The pool for which the surge threshold percentage is requested
+     * @return surgeThresholdPercentage The surge threshold percentage for the pool
+     */
+    function getSurgeThresholdPercentage(address pool) external view returns (uint256) {
+        return _surgeThresholdPercentage[pool];
+    }
+
     /// @inheritdoc IHooks
     function onRegister(
-        address factory,
+        address,
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
-        // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
-        // the pool was created by the allowed factory.
-        emit StableSurgeHookExampleRegistered(address(this), factory, pool);
+        emit StableSurgeHookExampleRegistered(pool);
 
         // Initially set the pool threshold to the default (can be changed by the pool swapFeeManager in the future).
         _setSurgeThresholdPercentage(pool, _defaultSurgeThresholdPercentage);
 
-        return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+        return true;
     }
 
     /// @inheritdoc IHooks
@@ -123,6 +122,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
                 params.amountGivenScaled18,
                 invariant
             );
+
             // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
             // amountOut. Round up to avoid losses during precision loss.
             uint256 swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(staticSwapFeePercentage);
@@ -136,6 +136,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
                 params.amountGivenScaled18,
                 invariant
             );
+
             // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
             // `amountCalculated * fee% / (100% - fee%)`. Add it to the calculated amountIn. Round up to avoid losses
             // during precision loss.
@@ -158,9 +159,18 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
         );
     }
 
-    struct SurgeFeeLocals {
-        uint256 numTokens;
-        uint256 balancedPercentage;
+    /**
+     * @notice Sets the hook threshold percentage.
+     * @dev This function must be permissioned. If the pool does not have a swap fee manager role set, the surge
+     * threshold will be effectively immutable, set to the default threshold for this hook contract.
+     */
+    function setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) external {
+        if (_vault.getPoolRoleAccounts(pool).swapFeeManager != msg.sender) {
+            revert SenderNotAllowed();
+        }
+        _ensureValidPercentage(newSurgeThresholdPercentage);
+
+        _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 
     /**
@@ -177,18 +187,10 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
         uint256 surgeThresholdPercentage,
         uint256 staticFeePercentage
     ) public pure returns (uint256) {
-        SurgeFeeLocals memory locals;
+        uint256 numTokens = params.balancesScaled18.length;
 
-        locals.numTokens = params.balancesScaled18.length;
-        locals.balancedPercentage = FixedPoint.ONE / locals.numTokens;
-
-        uint256[] memory newBalances = new uint256[](locals.numTokens);
-        uint256 oldTotalBalance;
-        uint256 newTotalBalance;
-
-        for (uint256 i = 0; i < locals.numTokens; ++i) {
-            oldTotalBalance += params.balancesScaled18[i];
-
+        uint256[] memory newBalances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
             newBalances[i] = params.balancesScaled18[i];
             if (i == params.indexIn) {
                 if (params.kind == SwapKind.EXACT_IN) {
@@ -205,39 +207,16 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
             }
         }
 
-        if (params.kind == SwapKind.EXACT_IN) {
-            newTotalBalance = oldTotalBalance + params.amountGivenScaled18 - amountCalculatedScaled18;
-        } else {
-            newTotalBalance = oldTotalBalance + amountCalculatedScaled18 - params.amountGivenScaled18;
-        }
-
-        (uint256 newTotalImbalance, uint256 swapTokenSum) = _computeTotalImbalance(
-            newBalances,
-            newTotalBalance,
-            locals.balancedPercentage,
-            params
-        );
+        uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(newBalances);
 
         // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
         if (newTotalImbalance == 0) {
             return staticFeePercentage;
         }
 
-        (uint256 oldTotalImbalance, ) = _computeTotalImbalance(
-            params.balancesScaled18,
-            oldTotalBalance,
-            locals.balancedPercentage,
-            params
-        );
+        uint256 oldTotalImbalance = StableSurgeMedianMath.calculateImbalance(params.balancesScaled18);
 
-        if (newTotalImbalance <= oldTotalImbalance) {
-            return staticFeePercentage;
-        }
-
-        // `newTotalImbalance` is non-zero and greater than the old total imbalance. Things have gotten worse,
-        // so surging is possible. Check against the threshold.
-        uint256 pctImbalance = swapTokenSum.divDown(newTotalImbalance);
-        if (pctImbalance <= surgeThresholdPercentage) {
+        if (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= surgeThresholdPercentage) {
             return staticFeePercentage;
         }
 
@@ -245,54 +224,15 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
         return
             staticFeePercentage +
             (MAX_SURGE_FEE_PERCENTAGE - staticFeePercentage).mulDown(
-                (pctImbalance - surgeThresholdPercentage).divDown(surgeThresholdPercentage.complement())
+                (newTotalImbalance - surgeThresholdPercentage).divDown(surgeThresholdPercentage.complement())
             );
-    }
-
-    function _computeTotalImbalance(
-        uint256[] memory balances,
-        uint256 totalBalance,
-        uint256 balancedPercentage,
-        PoolSwapParams calldata params
-    ) private pure returns (uint256 totalImbalance, uint256 swapTokenSum) {
-        for (uint256 i = 0; i < balances.length; ++i) {
-            uint256 tokenPercentage = balances[i].divDown(totalBalance);
-            uint256 tokenImbalance;
-
-            unchecked {
-                if (tokenPercentage > balancedPercentage) {
-                    tokenImbalance = tokenPercentage - balancedPercentage;
-                } else {
-                    tokenImbalance = balancedPercentage - tokenPercentage;
-                }
-            }
-
-            totalImbalance += tokenImbalance;
-            if (i == params.indexIn || i == params.indexOut) {
-                swapTokenSum += tokenImbalance;
-            }
-        }
-    }
-
-    /**
-     * @notice Sets the hook threshold percentage.
-     * @dev This function must be permissioned. If the pool does not have a swap fee manager role set, the surge
-     * threshold will be effectively immutable, set to the default threshold for this hook contract.
-     */
-    function setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) external {
-        if (_vault.getPoolRoleAccounts(pool).swapFeeManager != msg.sender) {
-            revert SenderNotAllowed();
-        }
-        _ensureValidPercentage(newSurgeThresholdPercentage);
-
-        _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 
     /// @dev Assumes the percentage value has been externally validated (e.g., with `_ensureValidPercentage`).
     function _setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) private {
         _surgeThresholdPercentage[pool] = newSurgeThresholdPercentage;
 
-        emit ThresholdSurgePercentageChanged(address(this), newSurgeThresholdPercentage);
+        emit ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
     }
 
     function _ensureValidPercentage(uint256 percentage) private pure {
