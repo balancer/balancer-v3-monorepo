@@ -82,7 +82,8 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         WeightedPool invertedPool = _createPool(tokenB, tokenA);
 
         assertNotEq(
-            address(pool), address(invertedPool),
+            address(pool),
+            address(invertedPool),
             "Pools with same tokens but different weights should be different"
         );
     }
