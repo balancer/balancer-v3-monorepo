@@ -36,7 +36,8 @@ import { VaultGuard } from "./VaultGuard.sol";
  *
  * There is a permissionless function (`collectAggregateFees`) that transfers these tokens from the Vault to this
  * contract, and distributes them between the protocol and pool creator, after which they can be withdrawn at any
- * time by governance and the pool creator, respectively.
+ * time by governance and the pool creator, respectively. There is also a permissioned `collectAggregateFeesPerToken`
+ * function that collects them one at a time, in case there is an issue with one or more of the pool tokens.
  *
  * Protocol fees can be zero in some cases (e.g., the token is registered as exempt), and pool creator fees are zero
  * if there is no creator role address defined. Protocol fees are capped at a maximum percentage (50%); pool creator
@@ -163,7 +164,12 @@ contract ProtocolFeeController is
 
     /// @inheritdoc IProtocolFeeController
     function collectAggregateFees(address pool) public {
-        _vault.unlock(abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, pool));
+        _vault.unlock(abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, (pool, IERC20(address(0)))));
+    }
+
+    /// @inheritdoc IProtocolFeeController
+    function collectAggregateFeesPerToken(address pool, IERC20 token) public authenticate {
+        _vault.unlock(abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, (pool, token)));
     }
 
     /**
@@ -171,8 +177,8 @@ contract ProtocolFeeController is
      * for each token. Then have the Vault transfer tokens to this contract, debiting each token for the amount
      * transferred so that the transaction settles when the hook returns.
      */
-    function collectAggregateFeesHook(address pool) external onlyVault {
-        (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees) = _vault.collectAggregateFees(pool);
+    function collectAggregateFeesHook(address pool, IERC20 token) external onlyVault {
+        (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees) = _vault.collectAggregateFees(pool, token);
         _receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 

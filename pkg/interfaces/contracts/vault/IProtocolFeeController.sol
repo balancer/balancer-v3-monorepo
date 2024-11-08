@@ -134,6 +134,21 @@ interface IProtocolFeeController {
     function collectAggregateFees(address pool) external;
 
     /**
+     * @notice Collects aggregate fees from the Vault for a given pool and token.
+     * @dev This is designed as a fail-safe to ensure fee collection if one or more of the pool token transfers fail
+     * for any reason (e.g., the token is bricked or halted). Since the regular collection attempts to transfer all
+     * tokens, the failure of one token would prevent fee collection for all. As this is expected to be a rare,
+     * emergency measure, the function is permissioned.
+     *
+     * It does not validate that the token is in the pool. If you call it with an unknown token, it will simply return
+     * all zero fee amounts.
+     *
+     * @param pool The pool with aggregate fees
+     * @param token The token to be collected
+     */
+    function collectAggregateFeesPerToken(address pool, IERC20 token) external;
+
+    /**
      * @notice Getter for the current global protocol swap fee.
      * @return protocolSwapFeePercentage The global protocol swap fee percentage
      */
