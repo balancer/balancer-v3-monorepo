@@ -969,12 +969,12 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     function _verifyPoolProtocolFeePercentages(address pool) internal view {
         (uint256 feePercentage, bool isOverride) = feeController.getPoolProtocolSwapFeeInfo(pool);
 
-        assertEq(feePercentage, MAX_PROTOCOL_SWAP_FEE_PCT);
-        assertFalse(isOverride);
+        assertEq(feePercentage, MAX_PROTOCOL_SWAP_FEE_PCT, "Wrong protocol swap fee percentage");
+        assertFalse(isOverride, "swap fee percentage override is true");
 
         (feePercentage, isOverride) = feeController.getPoolProtocolYieldFeeInfo(pool);
 
-        assertEq(feePercentage, MAX_PROTOCOL_YIELD_FEE_PCT);
-        assertFalse(isOverride);
+        assertEq(feePercentage, MAX_PROTOCOL_YIELD_FEE_PCT, "Wrong protocol yield fee percentage");
+        assertFalse(isOverride, "yield fee percentage override is true");
     }
 }

@@ -89,7 +89,7 @@ contract RecoveryModeTest is BaseVaultTest {
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
             bool areEqual = currentLiveBalances[i] == lastBalancesLiveScaled18[i];
 
-            shouldBeEqual ? assertTrue(areEqual) : assertFalse(areEqual);
+            shouldBeEqual ? assertTrue(areEqual, "areEqual is false") : assertFalse(areEqual, "areEqual is true");
         }
     }
 
