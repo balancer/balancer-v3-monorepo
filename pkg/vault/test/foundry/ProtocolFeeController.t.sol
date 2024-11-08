@@ -743,7 +743,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         swapAmounts[daiIdx] = PROTOCOL_SWAP_FEE_AMOUNT;
         yieldAmounts[usdcIdx] = PROTOCOL_YIELD_FEE_AMOUNT;
 
-        vm.expectCall(address(feeController), abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, pool));
+        vm.expectCall(
+            address(feeController),
+            abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, (pool, IERC20(address(0))))
+        );
         // Move them to the fee controller.
         feeController.collectAggregateFees(pool);
 
@@ -868,6 +871,64 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             expectedCreatorFeeUSDC,
             "Wrong ending balance of USDC (creator)"
         );
+    }
+
+    function testFeeCollectionPerTokenWithoutPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeController.collectAggregateFeesPerToken(pool, dai);
+    }
+
+    function testFeeCollectionPerToken() public {
+        _registerPoolWithMaxProtocolFees();
+        _verifyPoolProtocolFeePercentages(pool);
+
+        // Set a creator fee percentage (before there are any fees), so they will be disaggregated upon collection.
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE_PCT);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
+        vm.stopPrank();
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.collectAggregateFeesPerToken.selector),
+            admin
+        );
+
+        // Call with a token that isn't in the pool.
+        vm.prank(admin);
+        feeController.collectAggregateFeesPerToken(pool, veBAL);
+
+        uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+        // Since the token is invalid, there should be no fees collected.
+        assertEq(protocolFeeAmounts[daiIdx], 0, "DAI fees collected unexpectedly");
+        assertEq(protocolFeeAmounts[usdcIdx], 0, "USDC fees collected unexpectedly (veBAL)");
+
+        // Call with one of the pool tokens
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolSwapFeeCollected(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+
+        vm.prank(admin);
+        feeController.collectAggregateFeesPerToken(pool, dai);
+
+        protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+
+        // Since the token is valid, there should be fees collected - but only on DAI.
+        assertTrue(protocolFeeAmounts[daiIdx] > 0, "DAI fees not collected");
+        assertEq(protocolFeeAmounts[usdcIdx], 0, "USDC fees collected unexpectedly (DAI collection)");
+
+        // Call with the other pool token
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolYieldFeeCollected(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        vm.prank(admin);
+        feeController.collectAggregateFeesPerToken(pool, usdc);
+
+        protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+
+        // Since the token is valid, there should be fees collected - but only on DAI.
+        assertTrue(protocolFeeAmounts[usdcIdx] > 0, "USDC fees not collected");
     }
 
     function testProtocolFeeCollectionEvents() public {

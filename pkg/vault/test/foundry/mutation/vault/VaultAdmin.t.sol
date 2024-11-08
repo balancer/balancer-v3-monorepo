@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -169,25 +170,25 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testCollectAggregateFeesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.collectAggregateFees(pool);
+        vaultAdmin.collectAggregateFees(pool, IERC20(address(0)));
     }
 
     function testCollectAggregateFeesWhenNotUnlocked() public {
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
-        vault.collectAggregateFees(address(0));
+        vault.collectAggregateFees(address(0), IERC20(address(0)));
     }
 
     function testCollectAggregateFeesWhenNotProtocolFeeController() public {
         vault.forceUnlock();
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.collectAggregateFees(address(0));
+        vault.collectAggregateFees(address(0), IERC20(address(0)));
     }
 
     function testCollectAggregateFeesWithoutRegisteredPool() public {
         vault.forceUnlock();
         vm.prank(address(vault.getProtocolFeeController()));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
-        vault.collectAggregateFees(address(0));
+        vault.collectAggregateFees(address(0), IERC20(address(0)));
     }
 
     function testUpdateAggregateSwapFeesWhenNotVault() public {
