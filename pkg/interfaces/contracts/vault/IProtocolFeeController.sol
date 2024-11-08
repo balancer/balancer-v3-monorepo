@@ -186,10 +186,11 @@ interface IProtocolFeeController {
 
     /**
      * @notice Returns a calculated aggregate percentage from protocol and pool creator fee percentages.
-     * @dev Not tied to any particular pool; this just performs the low-level "additive fee" calculation.
-     * Note that pool creator fees are calculated based on creatorAndLpFees, and not in totalFees.
-     * Since aggregate fees are stored in the Vault with 24-bit precision, this will revert if greater
-     * precision would be required.
+     * @dev Not tied to any particular pool; this just performs the low-level "additive fee" calculation. Note that
+     * pool creator fees are calculated based on creatorAndLpFees, and not in totalFees. Since aggregate fees are
+     * stored in the Vault with 24-bit precision, this will truncate any values that require greater precision.
+     * It is expected that pool creators will negotiate with the DAO and agree on reasonable values for these fee
+     * components, but the truncation ensures it will not revert for any valid set of fee percentages.
      *
      * See example below:
      *
