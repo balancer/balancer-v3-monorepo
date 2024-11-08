@@ -16,6 +16,7 @@ contract StableSurgeMedianMathMock {
     function sort(uint256[] memory balances) public pure returns (uint256[] memory) {
         return StableSurgeMedianMath._sort(balances);
     }
+
     function absSub(uint256 a, uint256 b) public pure returns (uint256) {
         return StableSurgeMedianMath._absSub(a, b);
     }
