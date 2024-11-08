@@ -980,6 +980,40 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
     }
 
+    function testAdjustedSwapFeePrecision__Fuzz(
+        uint256 protocolSwapFeePercentage,
+        uint256 poolCreatorFeePercentage
+    ) public {
+        protocolSwapFeePercentage = bound(protocolSwapFeePercentage, FEE_SCALING_FACTOR, MAX_PROTOCOL_SWAP_FEE_PCT);
+        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, FEE_SCALING_FACTOR, FixedPoint.ONE);
+
+        // Ensure valid precision of each component.
+        protocolSwapFeePercentage = (protocolSwapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+        poolCreatorFeePercentage = (poolCreatorFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setProtocolSwapFeePercentage.selector),
+            admin
+        );
+
+        // Set valid value at the limit of precision.
+        vm.prank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, poolCreatorFeePercentage);
+
+        // Mainly checking that this doesn't revert.
+        vm.prank(admin);
+        feeController.setProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
+
+        uint256 expectedAggregatePercentage = feeController.computeAggregateFeePercentage(
+            protocolSwapFeePercentage,
+            poolCreatorFeePercentage
+        );
+
+        // Retrieve it from the Vault - should be the same as we set.
+        PoolConfig memory config = vault.getPoolConfig(pool);
+        assertEq(config.aggregateSwapFeePercentage, expectedAggregatePercentage, "Wrong aggregate swap fee percentage");
+    }
+
     function testAdjustedYieldFeePrecision() public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
@@ -1009,6 +1043,44 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             config.aggregateYieldFeePercentage,
             CUSTOM_PROTOCOL_YIELD_FEE_PCT,
             "Wrong aggregate yield fee percentage"
+        );
+    }
+
+    function testAdjustedYieldFeePrecision__Fuzz(
+        uint256 protocolYieldFeePercentage,
+        uint256 poolCreatorFeePercentage
+    ) public {
+        protocolYieldFeePercentage = bound(protocolYieldFeePercentage, FEE_SCALING_FACTOR, MAX_PROTOCOL_YIELD_FEE_PCT);
+        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, FEE_SCALING_FACTOR, FixedPoint.ONE);
+
+        // Ensure valid precision of each component.
+        protocolYieldFeePercentage = (protocolYieldFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+        poolCreatorFeePercentage = (poolCreatorFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        // Set valid value at the limit of precision.
+        vm.prank(lp);
+        feeController.setPoolCreatorYieldFeePercentage(pool, poolCreatorFeePercentage);
+
+        // Mainly checking that this doesn't revert.
+        vm.prank(admin);
+        feeController.setProtocolYieldFeePercentage(pool, protocolYieldFeePercentage);
+
+        uint256 expectedAggregatePercentage = feeController.computeAggregateFeePercentage(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
+        );
+
+        // Retrieve it from the Vault - should be the same as we set.
+        PoolConfig memory config = vault.getPoolConfig(pool);
+        assertEq(
+            config.aggregateYieldFeePercentage,
+            expectedAggregatePercentage,
+            "Wrong aggregate swap fee percentage"
         );
     }
 
