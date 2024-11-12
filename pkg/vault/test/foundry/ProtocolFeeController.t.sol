@@ -985,7 +985,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256 poolCreatorFeePercentage
     ) public {
         protocolSwapFeePercentage = bound(protocolSwapFeePercentage, FEE_SCALING_FACTOR, MAX_PROTOCOL_SWAP_FEE_PCT);
-        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, FEE_SCALING_FACTOR, FixedPoint.ONE);
+        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, FEE_SCALING_FACTOR, MAX_FEE_PERCENTAGE);
 
         // Ensure valid precision of each component.
         protocolSwapFeePercentage = (protocolSwapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
@@ -1051,7 +1051,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256 poolCreatorFeePercentage
     ) public {
         protocolYieldFeePercentage = bound(protocolYieldFeePercentage, FEE_SCALING_FACTOR, MAX_PROTOCOL_YIELD_FEE_PCT);
-        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, FEE_SCALING_FACTOR, FixedPoint.ONE);
+        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, FEE_SCALING_FACTOR, MAX_FEE_PERCENTAGE);
 
         // Ensure valid precision of each component.
         protocolYieldFeePercentage = (protocolYieldFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
