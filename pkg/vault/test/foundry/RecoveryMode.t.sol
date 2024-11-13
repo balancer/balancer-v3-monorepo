@@ -168,7 +168,7 @@ contract RecoveryModeTest is BaseVaultTest {
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
             bool areEqual = currentLiveBalances[i] == lastBalancesLiveScaled18[i];
 
-            shouldBeEqual ? assertTrue(areEqual) : assertFalse(areEqual);
+            shouldBeEqual ? assertTrue(areEqual, "areEqual is false") : assertFalse(areEqual, "areEqual is true");
         }
     }
 
@@ -233,7 +233,7 @@ contract RecoveryModeTest is BaseVaultTest {
         skip(bufferPeriodEndTime);
 
         // Confirm the Vault is permissionless
-        assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after the bufferPeriodEndTime");
+        assertGt(block.timestamp, bufferPeriodEndTime, "Time should be after the bufferPeriodEndTime");
 
         // Recovery Mode is permissioned even though the Vault's pause bit is set, because it's no longer pausable.
         assertFalse(vault.isVaultPaused(), "Vault should unpause itself after buffer expiration");
@@ -266,7 +266,7 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.warp(bufferPeriodEndTime + 1);
 
         // Confirm the Pool is permissionless.
-        assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
+        assertGt(block.timestamp, bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
 
         // Recovery Mode is permissioned even though the Pool's pause bit is set, because it's no longer pausable.
         assertFalse(vault.isPoolPaused(pool), "Pool should unpause itself after buffer expiration");
