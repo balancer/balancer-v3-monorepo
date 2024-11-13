@@ -32,7 +32,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     ERC4626TestToken internal waInvalid;
 
     uint256 internal partialWaDaiIdx;
-    uint256 internal partialUsdcIdx;
+    uint256 internal partialWethIdx;
     address internal partialErc4626Pool;
 
     function setUp() public virtual override {
@@ -41,8 +41,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         // Invalid wrapper, with a zero underlying asset.
         waInvalid = new ERC4626TestToken(IERC20(address(0)), "Invalid Wrapped", "waInvalid", 18);
 
-        // Calculate indexes of the pair waDAI/USDC.
-        (partialWaDaiIdx, partialUsdcIdx) = getSortedIndexes(address(waDAI), address(usdc));
+        // Calculate indexes of the pair waDAI/WETH.
+        (partialWaDaiIdx, partialWethIdx) = getSortedIndexes(address(waDAI), address(weth));
         partialErc4626Pool = _initializePartialERC4626Pool();
     }
 
@@ -54,9 +54,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(sender);
 
         assertEq(
-            balancesBefore.balances.userTokens[balancesBefore.usdcIdx],
-            balancesAfter.balances.userTokens[balancesBefore.usdcIdx],
-            "USDC balance should be the same"
+            balancesBefore.balances.userTokens[balancesBefore.wethIdx],
+            balancesAfter.balances.userTokens[balancesBefore.wethIdx],
+            "WETH balance should be the same"
         );
 
         assertEq(
@@ -66,14 +66,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         assertEq(
-            balancesBefore.waUSDCBuffer.wrapped,
-            balancesAfter.waUSDCBuffer.wrapped,
-            "waUSDC wrapped buffer balance should be the same"
+            balancesBefore.waWETHBuffer.wrapped,
+            balancesAfter.waWETHBuffer.wrapped,
+            "waWETH wrapped buffer balance should be the same"
         );
         assertEq(
-            balancesBefore.waUSDCBuffer.underlying,
-            balancesAfter.waUSDCBuffer.underlying,
-            "waUSDC underlying buffer balance should be the same"
+            balancesBefore.waWETHBuffer.underlying,
+            balancesAfter.waWETHBuffer.underlying,
+            "waWETH underlying buffer balance should be the same"
         );
 
         assertEq(
@@ -94,7 +94,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
         exactWrappedAmountsIn[waDaiIdx] = waDAI.previewDeposit(operationAmount);
-        exactWrappedAmountsIn[waUsdcIdx] = waUSDC.previewDeposit(operationAmount);
+        exactWrappedAmountsIn[waWethIdx] = waWETH.previewDeposit(operationAmount);
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
@@ -121,9 +121,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = exactUnderlyingAmountsIn[waDaiIdx];
-        vars.underlyingUsdcAmountDelta = exactUnderlyingAmountsIn[waUsdcIdx];
+        vars.underlyingWethAmountDelta = exactUnderlyingAmountsIn[waWethIdx];
         vars.wrappedDaiPoolDelta = exactWrappedAmountsIn[waDaiIdx];
-        vars.wrappedUsdcPoolDelta = exactWrappedAmountsIn[waUsdcIdx];
+        vars.wrappedWethPoolDelta = exactWrappedAmountsIn[waWethIdx];
         vars.isPartialERC4626Pool = false;
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
@@ -137,11 +137,11 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory exactUnderlyingAmountsIn = new uint256[](2);
         exactUnderlyingAmountsIn[waDaiIdx] = 0;
-        exactUnderlyingAmountsIn[waUsdcIdx] = operationAmount;
+        exactUnderlyingAmountsIn[waWethIdx] = operationAmount;
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
         exactWrappedAmountsIn[waDaiIdx] = 0;
-        exactWrappedAmountsIn[waUsdcIdx] = waUSDC.previewDeposit(operationAmount);
+        exactWrappedAmountsIn[waWethIdx] = waWETH.previewDeposit(operationAmount);
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
@@ -168,9 +168,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = exactUnderlyingAmountsIn[waDaiIdx];
-        vars.underlyingUsdcAmountDelta = exactUnderlyingAmountsIn[waUsdcIdx];
+        vars.underlyingWethAmountDelta = exactUnderlyingAmountsIn[waWethIdx];
         vars.wrappedDaiPoolDelta = exactWrappedAmountsIn[waDaiIdx];
-        vars.wrappedUsdcPoolDelta = exactWrappedAmountsIn[waUsdcIdx];
+        vars.wrappedWethPoolDelta = exactWrappedAmountsIn[waWethIdx];
         vars.isPartialERC4626Pool = false;
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
@@ -185,7 +185,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
         exactWrappedAmountsIn[partialWaDaiIdx] = waDAI.previewDeposit(operationAmount);
-        exactWrappedAmountsIn[partialUsdcIdx] = operationAmount;
+        exactWrappedAmountsIn[partialWethIdx] = operationAmount;
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
@@ -212,7 +212,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = exactUnderlyingAmountsIn[partialWaDaiIdx];
-        vars.underlyingUsdcAmountDelta = exactUnderlyingAmountsIn[partialUsdcIdx];
+        vars.underlyingWethAmountDelta = exactUnderlyingAmountsIn[partialWethIdx];
         vars.wrappedDaiPoolDelta = exactWrappedAmountsIn[partialWaDaiIdx];
         vars.isPartialERC4626Pool = true;
 
@@ -344,9 +344,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = actualUnderlyingAmountsIn[waDaiIdx];
-        vars.underlyingUsdcAmountDelta = actualUnderlyingAmountsIn[waUsdcIdx];
+        vars.underlyingWethAmountDelta = actualUnderlyingAmountsIn[waWethIdx];
         vars.wrappedDaiPoolDelta = expectedWrappedAmountsIn[waDaiIdx];
-        vars.wrappedUsdcPoolDelta = expectedWrappedAmountsIn[waUsdcIdx];
+        vars.wrappedWethPoolDelta = expectedWrappedAmountsIn[waWethIdx];
         vars.isPartialERC4626Pool = false;
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
@@ -357,9 +357,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             "DAI actualAmountsInUnderlying should match expected"
         );
         assertEq(
-            actualUnderlyingAmountsIn[waUsdcIdx],
-            waUSDC.previewMint(expectedWrappedAmountsIn[waUsdcIdx]),
-            "USDC actualAmountsInUnderlying should match expected"
+            actualUnderlyingAmountsIn[waWethIdx],
+            waWETH.previewMint(expectedWrappedAmountsIn[waWethIdx]),
+            "WETH actualAmountsInUnderlying should match expected"
         );
 
         assertEq(
@@ -387,7 +387,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory expectedUnderlyingAmountsIn = new uint256[](2);
         expectedUnderlyingAmountsIn[partialWaDaiIdx] = waDAI.previewMint(expectedWrappedAmountsIn[partialWaDaiIdx]);
-        expectedUnderlyingAmountsIn[partialUsdcIdx] = expectedWrappedAmountsIn[partialUsdcIdx];
+        expectedUnderlyingAmountsIn[partialWethIdx] = expectedWrappedAmountsIn[partialWethIdx];
         vm.revertTo(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
@@ -405,7 +405,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = actualUnderlyingAmountsIn[partialWaDaiIdx];
-        vars.underlyingUsdcAmountDelta = actualUnderlyingAmountsIn[partialUsdcIdx];
+        vars.underlyingWethAmountDelta = actualUnderlyingAmountsIn[partialWethIdx];
         vars.wrappedDaiPoolDelta = expectedWrappedAmountsIn[partialWaDaiIdx];
         vars.isPartialERC4626Pool = true;
 
@@ -417,9 +417,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             "DAI actualAmountsInUnderlying should match expected"
         );
         assertEq(
-            actualUnderlyingAmountsIn[partialUsdcIdx],
-            expectedWrappedAmountsIn[partialUsdcIdx],
-            "USDC actualAmountsInUnderlying should match expected"
+            actualUnderlyingAmountsIn[partialWethIdx],
+            expectedWrappedAmountsIn[partialWethIdx],
+            "WETH actualAmountsInUnderlying should match expected"
         );
 
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), exactBptAmountOut, "Alice: wrong BPT balance");
@@ -501,9 +501,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         assertEq(
-            queryUnderlyingAmountsIn[partialUsdcIdx],
-            actualUnderlyingAmountsIn[partialUsdcIdx],
-            "Query and actual USDC amounts in do not match"
+            queryUnderlyingAmountsIn[partialWethIdx],
+            actualUnderlyingAmountsIn[partialWethIdx],
+            "Query and actual WETH amounts in do not match"
         );
     }
 
@@ -523,7 +523,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 beforeBPTBalance = IERC20(address(erc4626Pool)).balanceOf(bob);
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[waUsdcIdx] = waUSDC.previewRedeem(expectedWrappedAmountsOut[waUsdcIdx]);
+        minAmountsOut[waWethIdx] = waWETH.previewRedeem(expectedWrappedAmountsOut[waWethIdx]);
         minAmountsOut[waDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[waDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
@@ -536,9 +536,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = actualUnderlyingAmountsOut[waDaiIdx];
-        vars.underlyingUsdcAmountDelta = actualUnderlyingAmountsOut[waUsdcIdx];
+        vars.underlyingWethAmountDelta = actualUnderlyingAmountsOut[waWethIdx];
         vars.wrappedDaiPoolDelta = expectedWrappedAmountsOut[waDaiIdx];
-        vars.wrappedUsdcPoolDelta = expectedWrappedAmountsOut[waUsdcIdx];
+        vars.wrappedWethPoolDelta = expectedWrappedAmountsOut[waWethIdx];
         vars.isPartialERC4626Pool = false;
 
         _checkBalancesAfterRemoveLiquidity(balancesBefore, balancesAfter, vars);
@@ -549,9 +549,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             "DAI actualUnderlyingAmountsOut should match expected"
         );
         assertEq(
-            actualUnderlyingAmountsOut[waUsdcIdx],
-            waUSDC.previewRedeem(expectedWrappedAmountsOut[waUsdcIdx]),
-            "USDC actualUnderlyingAmountsOut should match expected"
+            actualUnderlyingAmountsOut[waWethIdx],
+            waWETH.previewRedeem(expectedWrappedAmountsOut[waWethIdx]),
+            "WETH actualUnderlyingAmountsOut should match expected"
         );
 
         uint256 afterBPTBalance = IERC20(address(erc4626Pool)).balanceOf(bob);
@@ -574,7 +574,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 beforeBPTBalance = IERC20(address(partialErc4626Pool)).balanceOf(bob);
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[partialUsdcIdx] = expectedWrappedAmountsOut[partialUsdcIdx];
+        minAmountsOut[partialWethIdx] = expectedWrappedAmountsOut[partialWethIdx];
         minAmountsOut[partialWaDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
@@ -593,7 +593,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestLocals memory vars;
         vars.underlyingDaiAmountDelta = actualUnderlyingAmountsOut[partialWaDaiIdx];
-        vars.underlyingUsdcAmountDelta = actualUnderlyingAmountsOut[partialUsdcIdx];
+        vars.underlyingWethAmountDelta = actualUnderlyingAmountsOut[partialWethIdx];
         vars.wrappedDaiPoolDelta = expectedWrappedAmountsOut[partialWaDaiIdx];
         vars.isPartialERC4626Pool = true;
 
@@ -606,9 +606,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         assertEq(
-            actualUnderlyingAmountsOut[partialUsdcIdx],
-            expectedWrappedAmountsOut[partialUsdcIdx],
-            "USDC actualUnderlyingAmountsOut should match expected"
+            actualUnderlyingAmountsOut[partialWethIdx],
+            expectedWrappedAmountsOut[partialWethIdx],
+            "WETH actualUnderlyingAmountsOut should match expected"
         );
 
         uint256 afterBPTBalance = IERC20(address(partialErc4626Pool)).balanceOf(bob);
@@ -641,7 +641,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.revertTo(snapshot);
 
         uint256[] memory minUnderlyingAmountsOut = new uint256[](2);
-        minUnderlyingAmountsOut[waUsdcIdx] = waUSDC.previewRedeem(expectedWrappedAmountsOut[waUsdcIdx]);
+        minUnderlyingAmountsOut[waWethIdx] = waWETH.previewRedeem(expectedWrappedAmountsOut[waWethIdx]);
         minUnderlyingAmountsOut[waDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[waDaiIdx]);
 
         uint256 snapshotId = vm.snapshot();
@@ -683,7 +683,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.revertTo(snapshot);
 
         uint256[] memory minUnderlyingAmountsOut = new uint256[](2);
-        minUnderlyingAmountsOut[partialUsdcIdx] = expectedWrappedAmountsOut[partialUsdcIdx];
+        minUnderlyingAmountsOut[partialWethIdx] = expectedWrappedAmountsOut[partialWethIdx];
         minUnderlyingAmountsOut[partialWaDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         uint256 snapshotId = vm.snapshot();
@@ -714,9 +714,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         assertEq(
-            queryUnderlyingAmountsOut[partialUsdcIdx],
-            actualUnderlyingAmountsOut[partialUsdcIdx],
-            "Query and actual USDC amounts out do not match"
+            queryUnderlyingAmountsOut[partialWethIdx],
+            actualUnderlyingAmountsOut[partialWethIdx],
+            "Query and actual WETH amounts out do not match"
         );
     }
 
@@ -732,16 +732,16 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
     struct TestLocals {
         uint256 underlyingDaiAmountDelta;
-        uint256 underlyingUsdcAmountDelta;
+        uint256 underlyingWethAmountDelta;
         uint256 wrappedDaiPoolDelta;
-        uint256 wrappedUsdcPoolDelta;
+        uint256 wrappedWethPoolDelta;
         bool isPartialERC4626Pool;
     }
 
     /**
      * @notice Checks balances of vault, user, pool and buffers after adding liquidity to an ERC4626 pool.
      * @dev This function is prepared to handle checks for a full yield-bearing pool (all tokens are ERC4626) or a
-     * partial yield-bearing pool (waDAI is ERC4626, and USDC is a standard token).
+     * partial yield-bearing pool (waDAI is ERC4626, and WETH is a standard token).
      */
     function _checkBalancesAfterAddLiquidity(
         TestBalances memory balancesBefore,
@@ -750,15 +750,15 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     ) private view {
         address ybPool = vars.isPartialERC4626Pool ? partialErc4626Pool : erc4626Pool;
         uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
-        uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
+        uint256 ybWethIdx = vars.isPartialERC4626Pool ? partialWethIdx : waWethIdx;
 
         (, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(ybPool);
 
         // When adding liquidity, Alice transfers underlying tokens to the Vault.
         assertEq(
-            balancesAfter.balances.aliceTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.aliceTokens[balancesBefore.usdcIdx] - vars.underlyingUsdcAmountDelta,
-            "Alice: wrong USDC balance"
+            balancesAfter.balances.aliceTokens[balancesAfter.wethIdx],
+            balancesBefore.balances.aliceTokens[balancesBefore.wethIdx] - vars.underlyingWethAmountDelta,
+            "Alice: wrong WETH balance"
         );
         assertEq(
             balancesAfter.balances.aliceTokens[balancesAfter.daiIdx],
@@ -788,28 +788,28 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         if (vars.isPartialERC4626Pool == false) {
             // The underlying tokens are wrapped in the buffer, so the buffer gains underlying and loses wrapped tokens.
             assertEq(
-                balancesAfter.waUSDCBuffer.wrapped,
-                balancesBefore.waUSDCBuffer.wrapped - vars.wrappedUsdcPoolDelta,
-                "Vault: wrong waUSDC wrapped buffer balance"
+                balancesAfter.waWETHBuffer.wrapped,
+                balancesBefore.waWETHBuffer.wrapped - vars.wrappedWethPoolDelta,
+                "Vault: wrong waWETH wrapped buffer balance"
             );
             assertEq(
-                balancesAfter.waUSDCBuffer.underlying,
-                balancesBefore.waUSDCBuffer.underlying + vars.underlyingUsdcAmountDelta,
-                "Vault: wrong waUSDC underlying buffer balance"
+                balancesAfter.waWETHBuffer.underlying,
+                balancesBefore.waWETHBuffer.underlying + vars.underlyingWethAmountDelta,
+                "Vault: wrong waWETH underlying buffer balance"
             );
 
             // The pool gains the wrapped tokens from the buffer and mints BPT to the user.
             assertEq(
-                poolBalances[ybUsdcIdx],
-                waUSDC.previewDeposit(erc4626PoolInitialAmount) + vars.wrappedUsdcPoolDelta,
-                "ERC4626 Pool: wrong waUSDC balance"
+                poolBalances[ybWethIdx],
+                waWETH.previewDeposit(erc4626PoolInitialAmount) + vars.wrappedWethPoolDelta,
+                "ERC4626 Pool: wrong waWETH balance"
             );
         } else {
-            // If partially yield-bearing pool, the pool gains the underlying USDC directly.
+            // If partially yield-bearing pool, the pool gains the underlying WETH directly.
             assertEq(
-                poolBalances[ybUsdcIdx],
-                erc4626PoolInitialAmount + vars.underlyingUsdcAmountDelta,
-                "ERC4626 Pool: wrong USDC balance"
+                poolBalances[ybWethIdx],
+                erc4626PoolInitialAmount + vars.underlyingWethAmountDelta,
+                "ERC4626 Pool: wrong WETH balance"
             );
         }
     }
@@ -817,7 +817,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     /**
      * @notice Checks balances of vault, user, pool and buffers after removing liquidity to an ERC4626 pool.
      * @dev This function is prepared to handle checks for a full yield-bearing pool (all tokens are ERC4626) or a
-     * partial yield-bearing pool (waDAI is ERC4626, and USDC is a standard token).
+     * partial yield-bearing pool (waDAI is ERC4626, and WETH is a standard token).
      */
     function _checkBalancesAfterRemoveLiquidity(
         TestBalances memory balancesBefore,
@@ -826,7 +826,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     ) private view {
         address ybPool = vars.isPartialERC4626Pool ? partialErc4626Pool : erc4626Pool;
         uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
-        uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
+        uint256 ybWethIdx = vars.isPartialERC4626Pool ? partialWethIdx : waWethIdx;
 
         // The yield-bearing pool holds yield-bearing tokens, so in a remove liquidity event we remove yield-bearing
         // tokens from the pool and burn BPT.
@@ -853,38 +853,38 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             // The yield-bearing pool holds yield-bearing tokens, so in a remove liquidity event we remove
             // yield-bearing tokens from the pool and burn BPT.
             assertEq(
-                balances[ybUsdcIdx],
-                waUSDC.previewDeposit(erc4626PoolInitialAmount) - vars.wrappedUsdcPoolDelta,
-                "ERC4626 Pool: wrong waUSDC balance"
+                balances[ybWethIdx],
+                waWETH.previewDeposit(erc4626PoolInitialAmount) - vars.wrappedWethPoolDelta,
+                "ERC4626 Pool: wrong waWETH balance"
             );
 
             // The wrapped tokens removed from the pool are unwrapped in the buffer, so the user will receive
             // underlying tokens. The buffer loses underlying and gains the wrapped tokens.
             assertEq(
-                balancesAfter.waUSDCBuffer.wrapped,
-                balancesBefore.waUSDCBuffer.wrapped + vars.wrappedUsdcPoolDelta,
-                "Vault: wrong waUSDC wrapped buffer balance"
+                balancesAfter.waWETHBuffer.wrapped,
+                balancesBefore.waWETHBuffer.wrapped + vars.wrappedWethPoolDelta,
+                "Vault: wrong waWETH wrapped buffer balance"
             );
             assertEq(
-                balancesAfter.waUSDCBuffer.underlying,
-                balancesBefore.waUSDCBuffer.underlying - vars.underlyingUsdcAmountDelta,
-                "Vault: wrong waUSDC underlying buffer balance"
+                balancesAfter.waWETHBuffer.underlying,
+                balancesBefore.waWETHBuffer.underlying - vars.underlyingWethAmountDelta,
+                "Vault: wrong waWETH underlying buffer balance"
             );
         } else {
             // If pool is partially yield-bearing, no buffer is involved and the pool returns the underlying token
             // directly.
             assertEq(
-                balances[ybUsdcIdx],
-                erc4626PoolInitialAmount - vars.underlyingUsdcAmountDelta,
-                "ERC4626 Pool: wrong USDC balance"
+                balances[ybWethIdx],
+                erc4626PoolInitialAmount - vars.underlyingWethAmountDelta,
+                "ERC4626 Pool: wrong WETH balance"
             );
         }
 
         // When removing liquidity, Bob gets underlying tokens.
         assertEq(
-            balancesAfter.balances.bobTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] + vars.underlyingUsdcAmountDelta,
-            "Bob: wrong USDC balance"
+            balancesAfter.balances.bobTokens[balancesAfter.wethIdx],
+            balancesBefore.balances.bobTokens[balancesBefore.wethIdx] + vars.underlyingWethAmountDelta,
+            "Bob: wrong WETH balance"
         );
         assertEq(
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
@@ -896,9 +896,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     function _initializePartialERC4626Pool() private returns (address newPool) {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[partialWaDaiIdx].token = IERC20(waDAI);
-        tokenConfig[partialUsdcIdx].token = IERC20(usdc);
+        tokenConfig[partialWethIdx].token = IERC20(weth);
         tokenConfig[partialWaDaiIdx].tokenType = TokenType.WITH_RATE;
-        tokenConfig[partialUsdcIdx].tokenType = TokenType.STANDARD;
+        tokenConfig[partialWethIdx].tokenType = TokenType.STANDARD;
         tokenConfig[partialWaDaiIdx].rateProvider = IRateProvider(address(waDAI));
 
         newPool = address(deployPoolMock(IVault(address(vault)), "PARTIAL ERC4626 Pool", "PART-ERC4626P"));
@@ -916,11 +916,12 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         dai.approve(address(waDAI), erc4626PoolInitialAmount);
         uint256 waDaiShares = waDAI.deposit(erc4626PoolInitialAmount, bob);
 
-        usdc.mint(bob, erc4626PoolInitialAmount);
+        vm.deal(payable(bob), bob.balance + erc4626PoolInitialAmount);
+        weth.deposit{ value: erc4626PoolInitialAmount }();
 
         uint256[] memory initAmounts = new uint256[](2);
         initAmounts[partialWaDaiIdx] = waDaiShares;
-        initAmounts[partialUsdcIdx] = erc4626PoolInitialAmount;
+        initAmounts[partialWethIdx] = erc4626PoolInitialAmount;
 
         _initPool(newPool, initAmounts, 1);
 
@@ -940,16 +941,16 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
     struct TestBalances {
         BaseVaultTest.Balances balances;
-        BufferBalances waUSDCBuffer;
+        BufferBalances waWETHBuffer;
         BufferBalances waDAIBuffer;
         uint256 daiIdx;
-        uint256 usdcIdx;
+        uint256 wethIdx;
         uint256 waDaiIdx;
-        uint256 waUsdcIdx;
+        uint256 waWethIdx;
     }
 
     function _getTestBalances(address sender) private view returns (TestBalances memory testBalances) {
-        IERC20[] memory tokenArray = [address(dai), address(usdc), address(waDAI), address(waUSDC)]
+        IERC20[] memory tokenArray = [address(dai), address(weth), address(waDAI), address(waWETH)]
             .toMemoryArray()
             .asIERC20();
         testBalances.balances = getBalances(sender, tokenArray);
@@ -958,14 +959,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         testBalances.waDAIBuffer.underlying = waDAIBufferBalanceUnderlying;
         testBalances.waDAIBuffer.wrapped = waDAIBufferBalanceWrapped;
 
-        (uint256 waUSDCBufferBalanceUnderlying, uint256 waUSDCBufferBalanceWrapped) = vault.getBufferBalance(waUSDC);
-        testBalances.waUSDCBuffer.underlying = waUSDCBufferBalanceUnderlying;
-        testBalances.waUSDCBuffer.wrapped = waUSDCBufferBalanceWrapped;
+        (uint256 waWETHBufferBalanceUnderlying, uint256 waWETHBufferBalanceWrapped) = vault.getBufferBalance(waWETH);
+        testBalances.waWETHBuffer.underlying = waWETHBufferBalanceUnderlying;
+        testBalances.waWETHBuffer.wrapped = waWETHBufferBalanceWrapped;
 
         // The index of each token is defined by the order of tokenArray, defined in this function.
         testBalances.daiIdx = 0;
-        testBalances.usdcIdx = 1;
+        testBalances.wethIdx = 1;
         testBalances.waDaiIdx = 2;
-        testBalances.waUsdcIdx = 3;
+        testBalances.waWethIdx = 3;
     }
 }
