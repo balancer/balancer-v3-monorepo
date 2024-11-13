@@ -134,7 +134,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
     function testAddLiquidityUnbalancedZeroToERC4626Pool() public {
         uint256 operationAmount = bufferInitialAmount / 2;
-        uint256[] memory exactUnderlyingAmountsIn = [0, operationAmount].toMemoryArray();
+
+        uint256[] memory exactUnderlyingAmountsIn = new uint256[](2);
+        exactUnderlyingAmountsIn[waDaiIdx] = 0;
+        exactUnderlyingAmountsIn[waUsdcIdx] = operationAmount;
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
         exactWrappedAmountsIn[waDaiIdx] = 0;
