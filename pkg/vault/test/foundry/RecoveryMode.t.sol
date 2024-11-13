@@ -16,6 +16,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 
 contract RecoveryModeTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -153,6 +154,27 @@ contract RecoveryModeTest is BaseVaultTest {
         // Raw and live should be back in sync.
         assertRawAndLiveBalanceRelationship(true);
     }
+
+    function testRecoveryModeEmitTransferFail() public {
+        // We only want a partial match of the call, triggered when BPT is burnt.
+        vm.mockCallRevert(
+            pool,
+            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, alice, address(0)),
+            bytes("")
+        );
+        testRecoveryModeBalances();
+    }
+
+    function testRecoveryModeEmitApprovalFail() public {
+        // We only want a partial match of the call, triggered when BPT is burnt.
+        vm.mockCallRevert(
+            pool,
+            abi.encodeWithSelector(BalancerPoolToken.emitApproval.selector, alice, router),
+            bytes("")
+        );
+        testRecoveryModeBalances();
+    }
+
 
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal view {
         // Ensure raw and last live balances are in sync after the operation.
