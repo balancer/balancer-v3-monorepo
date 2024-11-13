@@ -1115,36 +1115,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert WrapAmountTooSmall(params.wrappedToken);
         }
 
-        bytes32 bufferBalances;
-
         if (params.direction == WrappingDirection.UNWRAP) {
+            bytes32 bufferBalances;
             (amountInRaw, amountOutRaw, bufferBalances) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Unwrap(
-                params.wrappedToken,
-                amountInRaw,
-                amountOutRaw,
-                bufferBalances.getBalanceRaw(),
-                bufferBalances.getBalanceDerived()
-            );
+            emit Unwrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         } else {
+            bytes32 bufferBalances;
             (amountInRaw, amountOutRaw, bufferBalances) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Wrap(
-                params.wrappedToken,
-                amountInRaw,
-                amountOutRaw,
-                bufferBalances.getBalanceRaw(),
-                bufferBalances.getBalanceDerived()
-            );
+            emit Wrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         }
 
         if (params.kind == SwapKind.EXACT_IN) {

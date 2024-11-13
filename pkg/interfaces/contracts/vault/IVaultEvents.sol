@@ -65,15 +65,13 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token address
      * @param depositedUnderlying Number of underlying tokens deposited
      * @param mintedShares Number of shares (wrapped tokens) minted
-     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the wrap operation
-     * @param bufferWrappedBalance The final wrapped amount in the buffer after the wrap operation
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
     event Wrap(
         IERC4626 indexed wrappedToken,
         uint256 depositedUnderlying,
         uint256 mintedShares,
-        uint256 bufferUnderlyingBalance,
-        uint256 bufferWrappedBalance
+        bytes32 bufferBalances
     );
 
     /**
@@ -81,15 +79,13 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token address
      * @param burnedShares Number of shares (wrapped tokens) burned
      * @param withdrawnUnderlying Number of underlying tokens withdrawn
-     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the unwrap operation
-     * @param bufferWrappedBalance The final wrapped amount in the buffer after the unwrap operation
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
     event Unwrap(
         IERC4626 indexed wrappedToken,
         uint256 burnedShares,
         uint256 withdrawnUnderlying,
-        uint256 bufferUnderlyingBalance,
-        uint256 bufferWrappedBalance
+        bytes32 bufferBalances
     );
 
     /**
