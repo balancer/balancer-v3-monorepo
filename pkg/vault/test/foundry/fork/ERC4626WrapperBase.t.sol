@@ -230,8 +230,8 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         vm.prank(lp);
         (uint256 underlyingDeposited, uint256 wrappedDeposited) = router.addLiquidityToBuffer(wrapper, sharesToIssue);
 
-        // Measures if the underlying and wrapped deposited on addLiquidityToBuffer are worth the same number of shares
-        // than in initialized liquidity (or less).
+        // Ensure the underlying and wrapped value returned from `removeLiquidityFromBuffer` is equal to or less than
+        // the amount received from initialization.
         assertGe(
             underlyingDeposited,
             (sharesToIssue * underlyingToInitialize) / totalShares,
