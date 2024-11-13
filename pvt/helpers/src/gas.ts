@@ -5,9 +5,9 @@ import path from 'path';
 
 const SNAPS_DIR = '.hardhat-snapshots';
 
-export async function saveSnap(basePath: string, snap: string, receipt: ContractTransactionReceipt | null) {
-  if (receipt === null) {
-    throw new Error('Save snap: null receipt');
+export async function saveSnap(basePath: string, snap: string, receipts: Array<ContractTransactionReceipt> | null) {
+  if (receipts === null) {
+    throw new Error('Save snap: null receipts');
   }
 
   if (process.env.COVERAGE) {
@@ -15,11 +15,13 @@ export async function saveSnap(basePath: string, snap: string, receipt: Contract
     return;
   }
 
-  const gasUsed = printGas(receipt.gasUsed);
+  const gasUsed = receipts.reduce((accumulator, receipt) => {
+    return accumulator + receipt.gasUsed;
+  }, 0n);
 
   try {
     const snapPath = path.resolve(basePath, SNAPS_DIR);
-    await fs.writeFile(path.join(snapPath, snap), gasUsed);
+    await fs.writeFile(path.join(snapPath, snap), printGas(gasUsed));
   } catch (error) {
     throw new Error(`Error writing to snap ${snap}: ${error}`);
   }

@@ -7,17 +7,19 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import { PoolRoleAccountsStruct } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
-
-import { Benchmark } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
+import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
+import { Benchmark, PoolTag, PoolInfo } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
 
 class WeightedPoolBenchmark extends Benchmark {
   WEIGHTS = [fp(0.5), fp(0.5)];
 
   constructor(dirname: string) {
-    super(dirname, 'WeightedPool');
+    super(dirname, 'WeightedPool', {
+      offNestedPoolTests: true,
+    });
   }
 
-  override async deployPool(): Promise<BaseContract> {
+  override async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo> {
     const factory = (await deploy('v3-pool-weighted/WeightedPoolFactory', {
       args: [await this.vault.getAddress(), MONTH * 12, '', ''],
     })) as unknown as WeightedPoolFactory;
@@ -33,7 +35,7 @@ class WeightedPoolBenchmark extends Benchmark {
     const tx = await factory.create(
       'WeightedPool',
       'Test',
-      this.tokenConfig,
+      buildTokenConfig(poolTokens, withRate),
       this.WEIGHTS,
       poolRoleAccounts,
       fp(0.1),
@@ -46,7 +48,10 @@ class WeightedPoolBenchmark extends Benchmark {
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
     const pool = (await deployedAt('v3-pool-weighted/WeightedPool', event.args.pool)) as unknown as BaseContract;
-    return pool;
+    return {
+      pool: pool,
+      poolTokens: poolTokens,
+    };
   }
 }
 
