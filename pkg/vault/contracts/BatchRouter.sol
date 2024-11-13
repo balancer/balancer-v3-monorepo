@@ -225,8 +225,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
 
-                    if (stepLocals.isFirstStep && params.sender != address(this)) {
-                        if (stepExactAmountIn > 0) {
+                    if (stepLocals.isFirstStep) {
+                        if (stepExactAmountIn > 0 && params.sender != address(this)) {
                             // If this is the first step, the sender must have the tokens. Therefore, we can transfer
                             // them to the Router, which acts as an intermediary. If the sender is the Router, we just
                             // skip this step (useful for queries).

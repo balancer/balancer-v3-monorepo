@@ -2,10 +2,12 @@
 import { BaseContract } from 'ethers';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
+import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 
-import { Benchmark } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
+import { Benchmark, PoolTag, PoolInfo } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
 import { PoolFactoryMock } from '@balancer-labs/v3-vault/typechain-types';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+
 import { LiquidityManagementStruct, PoolRoleAccountsStruct } from '../../typechain-types/contracts/Vault';
 
 class PoolMockBenchmark extends Benchmark {
@@ -13,7 +15,7 @@ class PoolMockBenchmark extends Benchmark {
     super(dirname, 'PoolMock');
   }
 
-  override async deployPool(): Promise<BaseContract> {
+  override async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo> {
     const factory = (await deploy('PoolFactoryMock', {
       args: [await this.vault.getAddress(), MONTH * 12],
     })) as unknown as PoolFactoryMock;
@@ -33,9 +35,18 @@ class PoolMockBenchmark extends Benchmark {
       enableDonation: true,
     };
 
-    await factory.registerPool(pool, this.tokenConfig, roleAccounts, ZERO_ADDRESS, liquidityManagement);
+    await factory.registerPool(
+      pool,
+      buildTokenConfig(poolTokens, withRate),
+      roleAccounts,
+      ZERO_ADDRESS,
+      liquidityManagement
+    );
 
-    return pool as unknown as BaseContract;
+    return {
+      pool: pool as unknown as BaseContract,
+      poolTokens: poolTokens,
+    };
   }
 }
 
