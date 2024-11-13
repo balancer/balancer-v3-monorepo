@@ -9,13 +9,16 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RecoveryModeTest is BaseVaultTest {
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     function setUp() public virtual override {
@@ -32,6 +35,10 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
+        // Avoid roundtrip fee.
+        vault.manualSetAddLiquidityCalledFlag(pool, false);
+        assertFalse(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
+
         uint256 initialSupply = IERC20(pool).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;
 
@@ -44,9 +51,81 @@ contract RecoveryModeTest is BaseVaultTest {
             new uint256[](2)
         );
 
+        uint256 daiBalanceBefore = dai.balanceOf(alice);
+        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
+
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, amountToRemove);
+
+        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        assertEq(bptAfter, amountToRemove); // this is half the BPT
+        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+
+        uint256 daiBalanceAfter = dai.balanceOf(alice);
+        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
+
+        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
+    }
+
+    function testRecoveryModeWithRoundtripFee() public {
+        // Add initial liquidity.
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+
+        // Put pool in recovery mode.
+        vault.manualEnableRecoveryMode(pool);
+        // Set the fee, and flag to trigger collection of it.
+        vault.manualSetStaticSwapFeePercentage(pool, BASE_MAX_SWAP_FEE);
+        // Will still be set from the add operation above.
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag not set");
+
+        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 amountToRemove = bptAmountOut / 2;
+        uint256 amountOutWithoutFee = defaultAmount / 2;
+        uint256 feeAmount = amountOutWithoutFee.mulDown(BASE_MAX_SWAP_FEE);
+        uint256 amountOutAfterFee = amountOutWithoutFee - feeAmount;
+
+        vm.expectEmit();
+        emit IVaultEvents.PoolBalanceChanged(
+            pool,
+            alice,
+            initialSupply - amountToRemove, // totalSupply after the operation
+            [-int256(amountOutAfterFee), -int256(amountOutAfterFee)].toMemoryArray(),
+            [feeAmount, feeAmount].toMemoryArray()
+        );
+
+        uint256 daiBalanceBefore = dai.balanceOf(alice);
+        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
+
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+
+        // Do a recovery withdrawal.
+        vm.prank(alice);
+        router.removeLiquidityRecovery(pool, amountToRemove);
+
+        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        assertEq(bptAfter, amountToRemove); // this is half the BPT
+        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+
+        uint256 daiBalanceAfter = dai.balanceOf(alice);
+        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
+
+        assertEq(daiBalanceAfter - daiBalanceBefore, amountOutAfterFee, "Ending DAI balance wrong");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, amountOutAfterFee, "Ending USDC balance wrong");
+
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], amountOutAfterFee, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], amountOutAfterFee, "Ending balance[1] wrong (pool)");
     }
 
     function testRecoveryModeBalances() public {

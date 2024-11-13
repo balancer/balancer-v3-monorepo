@@ -113,11 +113,11 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     // Change this value before calling `setUp` to test under real conditions.
     uint256 vaultMockMinTradeAmount = 0;
 
-    // VaultMock can override min wrap amount; tests shall use 0 by default to simplify fuzz tests.
-    // Min wrap amount is meant to be an extra protection against unknown rounding errors; the Vault should still work
-    // without it, so it can be zeroed out in general.
+    // VaultMock can override min wrap amount; tests shall use 1 by default to simplify fuzz tests but trigger minimum
+    // wrap amount errors. Min wrap amount is meant to be an extra protection against unknown rounding errors; the
+    // Vault should still work without it, so it can be zeroed out in general.
     // Change this value before calling `setUp` to test under real conditions.
-    uint256 vaultMockMinWrapAmount = 0;
+    uint256 vaultMockMinWrapAmount = 1;
 
     // Applies to Weighted Pools.
     uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%

@@ -93,17 +93,19 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
         (uint256 amountIn, uint256 amountOut) = abi.decode(
             vault.unlock(
-                abi.encodeWithSelector(
-                    BufferDoSProtectionTest.erc4626DoSHook.selector,
-                    BufferWrapOrUnwrapParams({
-                        kind: kind,
-                        direction: WrappingDirection.WRAP,
-                        wrappedToken: IERC4626(address(waDAI)),
-                        amountGivenRaw: amountGivenRaw,
-                        limitRaw: limitRaw
-                    }),
-                    lp,
-                    frontrunnerUnderlyingAmount
+                abi.encodeCall(
+                    BufferDoSProtectionTest.erc4626DoSHook,
+                    (
+                        BufferWrapOrUnwrapParams({
+                            kind: kind,
+                            direction: WrappingDirection.WRAP,
+                            wrappedToken: IERC4626(address(waDAI)),
+                            amountGivenRaw: amountGivenRaw,
+                            limitRaw: limitRaw
+                        }),
+                        lp,
+                        frontrunnerUnderlyingAmount
+                    )
                 )
             ),
             (uint256, uint256)
