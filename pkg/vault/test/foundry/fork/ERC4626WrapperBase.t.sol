@@ -217,21 +217,25 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         uint256 wrappedToInitialize,
         uint256 sharesToIssue
     ) public {
-        underlyingToInitialize = bound(underlyingToInitialize, 1e6, underlyingToken.balanceOf(lp) / 10);
-        wrappedToInitialize = bound(wrappedToInitialize, 1e6, wrapper.balanceOf(lp) / 10);
-        sharesToIssue = bound(sharesToIssue, 1e6, underlyingToken.balanceOf(lp) / 2);
+        underlyingToInitialize = bound(
+            underlyingToInitialize,
+            BUFFER_MINIMUM_TOTAL_SUPPLY,
+            underlyingToken.balanceOf(lp) / 10
+        );
+        wrappedToInitialize = bound(wrappedToInitialize, BUFFER_MINIMUM_TOTAL_SUPPLY, wrapper.balanceOf(lp) / 10);
+        sharesToIssue = bound(sharesToIssue, BUFFER_MINIMUM_TOTAL_SUPPLY, underlyingToken.balanceOf(lp) / 2);
 
         vm.prank(lp);
         router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
         // Since the buffer burns part of the shares, we measure the total shares in the vault instead of using the
-        // value returned by initializeBuffer.
+        // value returned by initializeBuffer;
         uint256 totalShares = vault.getBufferTotalShares(wrapper);
 
         vm.prank(lp);
         (uint256 underlyingDeposited, uint256 wrappedDeposited) = router.addLiquidityToBuffer(wrapper, sharesToIssue);
 
-        // Ensure the underlying and wrapped value returned from `removeLiquidityFromBuffer` is equal to or less than
-        // the amount received from initialization.
+        // Measures if the underlying and wrapped deposited on addLiquidityToBuffer are worth the same number of shares
+        // than in initialized liquidity (or less).
         assertGe(
             underlyingDeposited,
             (sharesToIssue * underlyingToInitialize) / totalShares,
@@ -249,13 +253,17 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         uint256 wrappedToInitialize,
         uint256 sharesToRemove
     ) public {
-        underlyingToInitialize = bound(underlyingToInitialize, 1e6, underlyingToken.balanceOf(lp) / 10);
-        wrappedToInitialize = bound(wrappedToInitialize, 1e6, wrapper.balanceOf(lp) / 10);
+        underlyingToInitialize = bound(
+            underlyingToInitialize,
+            BUFFER_MINIMUM_TOTAL_SUPPLY,
+            underlyingToken.balanceOf(lp) / 10
+        );
+        wrappedToInitialize = bound(wrappedToInitialize, BUFFER_MINIMUM_TOTAL_SUPPLY, wrapper.balanceOf(lp) / 10);
 
         vm.prank(lp);
         uint256 lpShares = router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
         // Since the buffer burns part of the shares, we measure the total shares in the vault instead of using the
-        // value returned by initializeBuffer.
+        // value returned by initializeBuffer;
         uint256 totalShares = vault.getBufferTotalShares(wrapper);
 
         sharesToRemove = bound(sharesToRemove, 0, lpShares);
@@ -263,8 +271,8 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         vm.prank(lp);
         (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(wrapper, sharesToRemove);
 
-        // Ensure the underlying and wrapped value returned from `removeLiquidityFromBuffer` is equal to or less than
-        // the amount received from initialization.
+        // Measures if the underlying and wrapped received from `removeLiquidityFromBuffer` are worth the same number
+        // of shares than in initialized liquidity (or less).
         assertLe(
             underlyingRemoved,
             (sharesToRemove * underlyingToInitialize) / totalShares,
