@@ -434,6 +434,44 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
+    function testAddLiquidityProportionalToPartialERC4626PoolAboveLimit() public {
+        // Make sure the operation is within the buffer liquidity.
+        uint256 operationAmount = bufferInitialAmount;
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[partialWaDaiIdx] = operationAmount;
+        maxAmountsIn[partialUsdcIdx] = 1;
+
+        uint256 exactBptAmountOut = operationAmount;
+
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsIn = router.queryAddLiquidityProportional(
+            partialErc4626Pool,
+            exactBptAmountOut,
+            address(this),
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountInAboveMax.selector,
+                usdc,
+                expectedWrappedAmountsIn[partialUsdcIdx],
+                maxAmountsIn[partialUsdcIdx]
+            )
+        );
+        vm.prank(alice);
+        compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
+            partialErc4626Pool,
+            maxAmountsIn,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+    }
+
     function testQueryAddLiquidityProportionalToERC4626Pool() public {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
@@ -620,6 +658,41 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             erc4626Pool,
             exactBptAmountIn,
             address(this),
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityProportionalFromPartialERC4626PoolBelowLimit() public {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+            partialErc4626Pool,
+            exactBptAmountIn,
+            address(this),
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[partialUsdcIdx] = 10 * expectedWrappedAmountsOut[partialUsdcIdx];
+        minAmountsOut[partialWaDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                usdc,
+                expectedWrappedAmountsOut[partialUsdcIdx],
+                minAmountsOut[partialUsdcIdx]
+            )
+        );
+        vm.prank(bob);
+        compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
+            partialErc4626Pool,
+            exactBptAmountIn,
+            minAmountsOut,
+            false,
             bytes("")
         );
     }
