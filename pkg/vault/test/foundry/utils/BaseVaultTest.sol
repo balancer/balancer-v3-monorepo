@@ -39,18 +39,25 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     struct Balances {
         uint256[] userTokens;
+        uint256 userEth;
         uint256 userBpt;
         uint256[] aliceTokens;
+        uint256 aliceEth;
         uint256 aliceBpt;
         uint256[] bobTokens;
+        uint256 bobEth;
         uint256 bobBpt;
         uint256[] hookTokens;
+        uint256 hookEth;
         uint256 hookBpt;
         uint256[] lpTokens;
+        uint256 lpEth;
         uint256 lpBpt;
         uint256[] vaultTokens;
+        uint256 vaultEth;
         uint256[] vaultReserves;
         uint256[] poolTokens;
+        uint256 poolEth;
         uint256 poolSupply;
         uint256 poolInvariant;
         uint256[] swapFeeAmounts;
@@ -278,24 +285,13 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         uint256 numTokens = tokens.length;
 
         balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, invariantRounding);
-        balances.userTokens = new uint256[](numTokens);
-        balances.aliceTokens = new uint256[](numTokens);
-        balances.bobTokens = new uint256[](numTokens);
-        balances.hookTokens = new uint256[](numTokens);
-        balances.lpTokens = new uint256[](numTokens);
-        balances.vaultTokens = new uint256[](numTokens);
-        balances.vaultReserves = new uint256[](numTokens);
+        balances.poolEth = pool.balance;
+
+        _fillBalances(balances, user, tokens);
+
         balances.swapFeeAmounts = new uint256[](numTokens);
         balances.yieldFeeAmounts = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            // Don't assume token ordering.
-            balances.userTokens[i] = tokens[i].balanceOf(user);
-            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
-            balances.bobTokens[i] = tokens[i].balanceOf(bob);
-            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
-            balances.lpTokens[i] = tokens[i].balanceOf(lp);
-            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
-            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
             balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(pool, tokens[i]);
             balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(pool, tokens[i]);
         }
@@ -309,24 +305,35 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
         balances.lpBpt = IERC20(pool).balanceOf(lp);
 
-        uint256 numTokens = tokensToTrack.length;
+        _fillBalances(balances, user, tokensToTrack);
+    }
+
+    function _fillBalances(Balances memory balances, address user, IERC20[] memory tokens) private view {
+        uint256 numTokens = tokens.length;
 
         balances.userTokens = new uint256[](numTokens);
+        balances.userEth = user.balance;
         balances.aliceTokens = new uint256[](numTokens);
+        balances.aliceEth = alice.balance;
         balances.bobTokens = new uint256[](numTokens);
+        balances.bobEth = bob.balance;
         balances.hookTokens = new uint256[](numTokens);
+        balances.hookEth = poolHooksContract.balance;
         balances.lpTokens = new uint256[](numTokens);
+        balances.lpEth = lp.balance;
         balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultEth = address(vault).balance;
         balances.vaultReserves = new uint256[](numTokens);
+
         for (uint256 i = 0; i < numTokens; ++i) {
             // Don't assume token ordering.
-            balances.userTokens[i] = tokensToTrack[i].balanceOf(user);
-            balances.aliceTokens[i] = tokensToTrack[i].balanceOf(alice);
-            balances.bobTokens[i] = tokensToTrack[i].balanceOf(bob);
-            balances.hookTokens[i] = tokensToTrack[i].balanceOf(poolHooksContract);
-            balances.lpTokens[i] = tokensToTrack[i].balanceOf(lp);
-            balances.vaultTokens[i] = tokensToTrack[i].balanceOf(address(vault));
-            balances.vaultReserves[i] = vault.getReservesOf(tokensToTrack[i]);
+            balances.userTokens[i] = tokens[i].balanceOf(user);
+            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
+            balances.bobTokens[i] = tokens[i].balanceOf(bob);
+            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokens[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
         }
     }
 

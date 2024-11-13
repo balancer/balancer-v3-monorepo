@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
@@ -32,6 +33,7 @@ import { BatchRouterCommon } from "./BatchRouterCommon.sol";
  * the operation with the Vault.
  */
 contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommon, ReentrancyGuardTransient {
+    using Address for address payable;
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -343,6 +345,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
                 if (isStaticCall == false) {
                     _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
+                    if (
+                        params.wethIsEth &&
+                        address(erc4626PoolTokens[i]) == address(_weth) &&
+                        kind == SwapKind.EXACT_OUT &&
+                        limits[i] > amountsIn[i]
+                    ) {
+                        // The router should never have more ETH on its balance than the ETH deposited by the sender in
+                        // the current transaction, so any extra ETH in the balance must be returned to the sender.
+                        payable(params.sender).sendValue(address(this).balance);
+                    }
                 }
 
                 continue;
@@ -379,7 +391,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
                 // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
                 // difference between limit and exact underlying amount needs to be returned to the sender.
-                _vault.sendTo(underlyingToken, params.sender, limits[i] - underlyingAmounts[i]);
+                _sendTokenOut(params.sender, underlyingToken, limits[i] - underlyingAmounts[i], params.wethIsEth);
             }
         }
     }
