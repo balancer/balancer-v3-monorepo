@@ -263,8 +263,8 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         vm.prank(lp);
         (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(wrapper, sharesToRemove);
 
-        // Measures if the underlying and wrapped received from `removeLiquidityFromBuffer` are worth the same number
-        // of shares than in initialized liquidity (or less).
+        // Ensure the underlying and wrapped value returned from `removeLiquidityFromBuffer` is equal to or less than
+        // the amount received from initialization.
         assertLe(
             underlyingRemoved,
             (sharesToRemove * underlyingToInitialize) / totalShares,
