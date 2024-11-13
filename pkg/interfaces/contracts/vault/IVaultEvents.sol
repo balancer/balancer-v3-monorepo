@@ -167,15 +167,13 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token that identifies the buffer
      * @param amountUnderlying The amount of the underlying token that was deposited
      * @param amountWrapped The amount of the wrapped token that was deposited
-     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the liquidity operation
-     * @param bufferWrappedBalance The final wrapped amount in the buffer after the liquidity operation
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
     event LiquidityAddedToBuffer(
         IERC4626 indexed wrappedToken,
         uint256 amountUnderlying,
         uint256 amountWrapped,
-        uint256 bufferUnderlyingBalance,
-        uint256 bufferWrappedBalance
+        bytes32 bufferBalances
     );
 
     /**
@@ -209,15 +207,13 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token that identifies the buffer
      * @param amountUnderlying The amount of the underlying token that was withdrawn
      * @param amountWrapped The amount of the wrapped token that was withdrawn
-     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the liquidity operation
-     * @param bufferWrappedBalance The final wrapped amount in the buffer after the liquidity operation
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
     event LiquidityRemovedFromBuffer(
         IERC4626 indexed wrappedToken,
         uint256 amountUnderlying,
         uint256 amountWrapped,
-        uint256 bufferUnderlyingBalance,
-        uint256 bufferWrappedBalance
+        bytes32 bufferBalances
     );
 
     /**

@@ -473,7 +473,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(wrappedToken, amountWrappedRaw);
 
         // Update buffer balances.
-        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
+        bytes32 bufferBalances = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
+        _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
         // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
@@ -488,13 +489,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _mintMinimumBufferSupplyReserve(wrappedToken);
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
-        emit LiquidityAddedToBuffer(
-            wrappedToken,
-            amountUnderlyingRaw,
-            amountWrappedRaw,
-            amountUnderlyingRaw,
-            amountWrappedRaw
-        );
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, bufferBalances);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -532,21 +527,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(wrappedToken, amountWrappedRaw);
 
         // Add the amountsIn to the current buffer balances.
-        uint256 bufferUnderlyingBalance = bufferBalances.getBalanceRaw() + amountUnderlyingRaw;
-        uint256 bufferWrappedBalance = bufferBalances.getBalanceDerived() + amountWrappedRaw;
-        bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingBalance, bufferWrappedBalance);
+        bufferBalances = PackedTokenBalance.toPackedBalance(
+            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
+            bufferBalances.getBalanceDerived() + amountWrappedRaw
+        );
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         // Mint new shares to the owner.
         _mintBufferShares(wrappedToken, sharesOwner, exactSharesToIssue);
 
-        emit LiquidityAddedToBuffer(
-            wrappedToken,
-            amountUnderlyingRaw,
-            amountWrappedRaw,
-            bufferUnderlyingBalance,
-            bufferWrappedBalance
-        );
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, bufferBalances);
     }
 
     function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
@@ -632,9 +622,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _supplyCredit(underlyingToken, removedUnderlyingBalanceRaw);
         _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
-        uint256 bufferUnderlyingAmount = bufferBalances.getBalanceRaw() - removedUnderlyingBalanceRaw;
-        uint256 bufferWrappedAmount = bufferBalances.getBalanceDerived() - removedWrappedBalanceRaw;
-        bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingAmount, bufferWrappedAmount);
+        bufferBalances = PackedTokenBalance.toPackedBalance(
+            bufferBalances.getBalanceRaw() - removedUnderlyingBalanceRaw,
+            bufferBalances.getBalanceDerived() - removedWrappedBalanceRaw
+        );
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
@@ -650,13 +641,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
         }
 
-        emit LiquidityRemovedFromBuffer(
-            wrappedToken,
-            removedUnderlyingBalanceRaw,
-            removedWrappedBalanceRaw,
-            bufferUnderlyingAmount,
-            bufferWrappedAmount
-        );
+        emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw, bufferBalances);
     }
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {
