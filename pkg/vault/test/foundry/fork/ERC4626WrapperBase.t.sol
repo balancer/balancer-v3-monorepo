@@ -255,7 +255,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         vm.prank(lp);
         uint256 lpShares = router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
         // Since the buffer burns part of the shares, we measure the total shares in the vault instead of using the
-        // value returned by initializeBuffer;
+        // value returned by initializeBuffer.
         uint256 totalShares = vault.getBufferTotalShares(wrapper);
 
         sharesToRemove = bound(sharesToRemove, 0, lpShares);
