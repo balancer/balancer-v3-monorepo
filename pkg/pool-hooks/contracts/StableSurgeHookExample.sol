@@ -236,7 +236,7 @@ contract StableSurgeHookExample is BaseHooks, VaultGuard {
     }
 
     function _ensureValidPercentage(uint256 percentage) private pure {
-        if (percentage > FixedPoint.ONE) {
+        if (percentage > MAX_SURGE_FEE_PERCENTAGE) {
             revert InvalidSurgeThresholdPercentage();
         }
     }
