@@ -54,14 +54,22 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, waDAI.previewDeposit(bufferInitialAmount));
+        emit IVaultEvents.LiquidityAddedToBuffer(
+            waDAI,
+            bufferInitialAmount,
+            waDAI.previewDeposit(bufferInitialAmount),
+            2 * bufferInitialAmount,
+            2 * waDAI.previewDeposit(bufferInitialAmount)
+        );
         router.addLiquidityToBuffer(waDAI, 2 * bufferInitialAmount);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waUSDC,
             bufferInitialAmount,
-            waUSDC.previewDeposit(bufferInitialAmount)
+            waUSDC.previewDeposit(bufferInitialAmount),
+            2 * bufferInitialAmount,
+            2 * waUSDC.previewDeposit(bufferInitialAmount)
         );
         router.addLiquidityToBuffer(waUSDC, 2 * bufferInitialAmount);
         vm.stopPrank();
@@ -78,7 +86,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waDAI,
             (underlyingBalance * bufferTestAmount) / bufferTotalShares,
-            (wrappedBalance * bufferTestAmount) / bufferTotalShares
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares,
+            underlyingBalance - ((underlyingBalance * bufferTestAmount) / bufferTotalShares),
+            wrappedBalance - ((wrappedBalance * bufferTestAmount) / bufferTotalShares)
         );
         vm.prank(lp);
         vault.removeLiquidityFromBuffer(waDAI, bufferTestAmount);
@@ -90,7 +100,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waUSDC,
             (underlyingBalance * bufferTestAmount) / bufferTotalShares,
-            (wrappedBalance * bufferTestAmount) / bufferTotalShares
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares,
+            underlyingBalance - ((underlyingBalance * bufferTestAmount) / bufferTotalShares),
+            wrappedBalance - ((wrappedBalance * bufferTestAmount) / bufferTotalShares)
         );
         vm.prank(lp);
         vault.removeLiquidityFromBuffer(waUSDC, bufferTestAmount);

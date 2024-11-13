@@ -175,7 +175,13 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vm.expectEmit();
         emit IVaultEvents.BufferSharesMinted(waDAI, bob, issuedShares);
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, underlyingAmount, wrappedAmount);
+        emit IVaultEvents.LiquidityAddedToBuffer(
+            waDAI,
+            underlyingAmount,
+            wrappedAmount,
+            underlyingAmount,
+            wrappedAmount
+        );
         issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
 
         assertEq(vault.getBufferAsset(waDAI), address(dai), "Wrong underlying asset");

@@ -488,7 +488,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _mintMinimumBufferSupplyReserve(wrappedToken);
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+        emit LiquidityAddedToBuffer(
+            wrappedToken,
+            amountUnderlyingRaw,
+            amountWrappedRaw,
+            amountUnderlyingRaw,
+            amountWrappedRaw
+        );
     }
 
     /// @inheritdoc IVaultAdmin
@@ -526,16 +532,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(wrappedToken, amountWrappedRaw);
 
         // Add the amountsIn to the current buffer balances.
-        bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
-            bufferBalances.getBalanceDerived() + amountWrappedRaw
-        );
+        uint256 bufferUnderlyingBalance = bufferBalances.getBalanceRaw() + amountUnderlyingRaw;
+        uint256 bufferWrappedBalance = bufferBalances.getBalanceDerived() + amountWrappedRaw;
+        bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingBalance, bufferWrappedBalance);
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         // Mint new shares to the owner.
         _mintBufferShares(wrappedToken, sharesOwner, exactSharesToIssue);
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+        emit LiquidityAddedToBuffer(
+            wrappedToken,
+            amountUnderlyingRaw,
+            amountWrappedRaw,
+            bufferUnderlyingBalance,
+            bufferWrappedBalance
+        );
     }
 
     function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
@@ -621,10 +632,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _supplyCredit(underlyingToken, removedUnderlyingBalanceRaw);
         _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
-        bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() - removedUnderlyingBalanceRaw,
-            bufferBalances.getBalanceDerived() - removedWrappedBalanceRaw
-        );
+        uint256 bufferUnderlyingAmount = bufferBalances.getBalanceRaw() - removedUnderlyingBalanceRaw;
+        uint256 bufferWrappedAmount = bufferBalances.getBalanceDerived() - removedWrappedBalanceRaw;
+        bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingAmount, bufferWrappedAmount);
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
@@ -640,7 +650,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
         }
 
-        emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
+        emit LiquidityRemovedFromBuffer(
+            wrappedToken,
+            removedUnderlyingBalanceRaw,
+            removedWrappedBalanceRaw,
+            bufferUnderlyingAmount,
+            bufferWrappedAmount
+        );
     }
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {

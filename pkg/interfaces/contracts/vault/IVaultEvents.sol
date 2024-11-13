@@ -81,8 +81,8 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token address
      * @param burnedShares Number of shares (wrapped tokens) burned
      * @param withdrawnUnderlying Number of underlying tokens withdrawn
-     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the wrap operation
-     * @param bufferWrappedBalance The final wrapped amount in the buffer after the wrap operation
+     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the unwrap operation
+     * @param bufferWrappedBalance The final wrapped amount in the buffer after the unwrap operation
      */
     event Unwrap(
         IERC4626 indexed wrappedToken,
@@ -171,8 +171,16 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token that identifies the buffer
      * @param amountUnderlying The amount of the underlying token that was deposited
      * @param amountWrapped The amount of the wrapped token that was deposited
+     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the liquidity operation
+     * @param bufferWrappedBalance The final wrapped amount in the buffer after the liquidity operation
      */
-    event LiquidityAddedToBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+    event LiquidityAddedToBuffer(
+        IERC4626 indexed wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        uint256 bufferUnderlyingBalance,
+        uint256 bufferWrappedBalance
+    );
 
     /**
      * @notice Buffer shares were minted for an ERC4626 buffer corresponding to a given wrapped token.
@@ -205,8 +213,16 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token that identifies the buffer
      * @param amountUnderlying The amount of the underlying token that was withdrawn
      * @param amountWrapped The amount of the wrapped token that was withdrawn
+     * @param bufferUnderlyingBalance The final underlying amount in the buffer after the liquidity operation
+     * @param bufferWrappedBalance The final wrapped amount in the buffer after the liquidity operation
      */
-    event LiquidityRemovedFromBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+    event LiquidityRemovedFromBuffer(
+        IERC4626 indexed wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        uint256 bufferUnderlyingBalance,
+        uint256 bufferWrappedBalance
+    );
 
     /**
      * @notice The Vault buffers pause status has changed.
