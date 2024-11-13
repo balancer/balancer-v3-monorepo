@@ -134,7 +134,7 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
 
         // Raw and live should be in sync.
         assertRawAndLiveBalanceRelationship(true);
@@ -142,9 +142,30 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
+        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 amountToRemove = bptAmountOut / 2;
+        uint256 daiBalanceBefore = dai.balanceOf(alice);
+        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
+
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, bptAmountOut / 2);
+
+        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        assertEq(bptAfter, amountToRemove); // this is half the BPT
+        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+
+        uint256 daiBalanceAfter = dai.balanceOf(alice);
+        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
+
+        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
 
         // Raw and live should be out of sync.
         assertRawAndLiveBalanceRelationship(false);
@@ -166,6 +187,10 @@ contract RecoveryModeTest is BaseVaultTest {
     }
 
     function testRecoveryModeEmitApprovalFail() public {
+        // Revoke infinite approval so that the event is emitted.
+        vm.prank(alice);
+        IERC20(pool).approve(address(router), type(uint256).max - 1);
+
         // We only want a partial match of the call, triggered when BPT is burnt.
         vm.mockCallRevert(
             pool,
@@ -174,7 +199,6 @@ contract RecoveryModeTest is BaseVaultTest {
         );
         testRecoveryModeBalances();
     }
-
 
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal view {
         // Ensure raw and last live balances are in sync after the operation.
