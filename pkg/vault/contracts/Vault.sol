@@ -1115,22 +1115,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert WrapAmountTooSmall(params.wrappedToken);
         }
 
+        uint256 bufferUnderlyingBalance;
+        uint256 bufferWrappedBalance;
+
         if (params.direction == WrappingDirection.UNWRAP) {
-            (amountInRaw, amountOutRaw) = _unwrapWithBuffer(
+            (amountInRaw, amountOutRaw, bufferUnderlyingBalance, bufferWrappedBalance) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
+            emit Unwrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferUnderlyingBalance, bufferWrappedBalance);
         } else {
-            (amountInRaw, amountOutRaw) = _wrapWithBuffer(
+            (amountInRaw, amountOutRaw, bufferUnderlyingBalance, bufferWrappedBalance) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Wrap(underlyingToken, params.wrappedToken, amountInRaw, amountOutRaw);
+            emit Wrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferUnderlyingBalance, bufferWrappedBalance);
         }
 
         if (params.kind == SwapKind.EXACT_IN) {
@@ -1158,7 +1161,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped) {
+    )
+        private
+        returns (
+            uint256 amountInUnderlying,
+            uint256 amountOutWrapped,
+            uint256 bufferUnderlyingBalance,
+            uint256 bufferWrappedBalance
+        )
+    {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding.
@@ -1171,25 +1182,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If it's a query, the Vault may not have enough underlying tokens to wrap. Since in a query we do not expect
         // the sender to pay for underlying tokens to wrap upfront, return the calculated amount without checking for
-        // the imbalance.
+        // the imbalance. Also, the operation will be reverted, so the balance of the buffers do not matter.
         if (_isQueryContext()) {
-            return (amountInUnderlying, amountOutWrapped);
+            return (amountInUnderlying, amountOutWrapped, 0, 0);
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
-            uint256 newDerivedBalance;
+            bufferUnderlyingBalance = bufferBalances.getBalanceRaw() + amountInUnderlying;
             unchecked {
                 // We have verified above that this is safe to do unchecked.
-                newDerivedBalance = bufferBalances.getBalanceDerived() - amountOutWrapped;
+                bufferWrappedBalance = bufferBalances.getBalanceDerived() - amountOutWrapped;
             }
-
-            bufferBalances = PackedTokenBalance.toPackedBalance(
-                bufferBalances.getBalanceRaw() + amountInUnderlying,
-                newDerivedBalance
-            );
+            bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingBalance, bufferWrappedBalance);
             _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the wrap without making an external call.
@@ -1252,10 +1259,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // underlying deposited by the buffer into the wrapper protocol). Conversely, the buffer wrapped balance
             // decreases by `amountOutWrapped` (the amount of wrapped tokens that the buffer returned to the caller)
             // and increases by `vaultWrappedDeltaHint` (the amount of wrapped tokens minted by the wrapper protocol).
-            bufferBalances = PackedTokenBalance.toPackedBalance(
-                bufferBalances.getBalanceRaw() + amountInUnderlying - vaultUnderlyingDeltaHint,
-                bufferBalances.getBalanceDerived() + vaultWrappedDeltaHint - amountOutWrapped
-            );
+            bufferUnderlyingBalance = bufferBalances.getBalanceRaw() + amountInUnderlying - vaultUnderlyingDeltaHint;
+            bufferWrappedBalance = bufferBalances.getBalanceDerived() + vaultWrappedDeltaHint - amountOutWrapped;
+            bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingBalance, bufferWrappedBalance);
             _bufferTokenBalances[wrappedToken] = bufferBalances;
         }
 
@@ -1275,7 +1281,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying) {
+    )
+        private
+        returns (
+            uint256 amountInWrapped,
+            uint256 amountOutUnderlying,
+            uint256 bufferUnderlyingBalance,
+            uint256 bufferWrappedBalance
+        )
+    {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding.
@@ -1288,24 +1302,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If it's a query, the Vault may not have enough wrapped tokens to unwrap. Since in a query we do not expect
         // the sender to pay for wrapped tokens to unwrap upfront, return the calculated amount without checking for
-        // the imbalance.
+        // the imbalance. Also, the operation will be reverted, so the balance of the buffers do not matter.
         if (_isQueryContext()) {
-            return (amountInWrapped, amountOutUnderlying);
+            return (amountInWrapped, amountOutUnderlying, 0, 0);
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
-            uint256 newRawBalance;
             unchecked {
                 // We have verified above that this is safe to do unchecked.
-                newRawBalance = bufferBalances.getBalanceRaw() - amountOutUnderlying;
+                bufferUnderlyingBalance = bufferBalances.getBalanceRaw() - amountOutUnderlying;
             }
-            bufferBalances = PackedTokenBalance.toPackedBalance(
-                newRawBalance,
-                bufferBalances.getBalanceDerived() + amountInWrapped
-            );
+            bufferWrappedBalance = bufferBalances.getBalanceDerived() + amountInWrapped;
+            bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingBalance, bufferWrappedBalance);
             _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the unwrap without making an external call.
@@ -1353,10 +1364,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Conversely, the buffer wrapped balance increases by `amountInWrapped` (the amount of wrapped tokens that
             // the caller sent to the buffer) and decreases by `vaultWrappedDeltaHint` (the amount of wrapped tokens
             // burned by the wrapper protocol).
-            bufferBalances = PackedTokenBalance.toPackedBalance(
-                bufferBalances.getBalanceRaw() + vaultUnderlyingDeltaHint - amountOutUnderlying,
-                bufferBalances.getBalanceDerived() + amountInWrapped - vaultWrappedDeltaHint
-            );
+            bufferUnderlyingBalance = bufferBalances.getBalanceRaw() + vaultUnderlyingDeltaHint - amountOutUnderlying;
+            bufferWrappedBalance = bufferBalances.getBalanceDerived() + amountInWrapped - vaultWrappedDeltaHint;
+            bufferBalances = PackedTokenBalance.toPackedBalance(bufferUnderlyingBalance, bufferWrappedBalance);
             _bufferTokenBalances[wrappedToken] = bufferBalances;
         }
 
