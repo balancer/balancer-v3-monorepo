@@ -348,7 +348,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     function testAddLiquidityNestedERC4626WithEth__Fuzz(
         uint256 daiAmount,
         uint256 usdcAmount,
-        uint256 wethAmount
+        uint256 wethAmount,
+        bool forceEthLeftover
     ) public {
         daiAmount = bound(daiAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         usdcAmount = bound(usdcAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
@@ -373,14 +374,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.wethIdx] = wethAmount;
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool{ value: wethAmount }(
-            parentPoolWithoutWrapper,
-            tokensIn,
-            amountsIn,
-            minBptOut,
-            true,
-            bytes("")
-        );
+        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool{
+            value: wethAmount + (forceEthLeftover ? 1e18 : 0)
+        }(parentPoolWithoutWrapper, tokensIn, amountsIn, minBptOut, true, bytes(""));
 
         _fillNestedPoolTestLocalsAfter(vars);
         uint256 mintedChildPoolERC4626Bpts = vars.childPoolERC4626After.totalSupply -

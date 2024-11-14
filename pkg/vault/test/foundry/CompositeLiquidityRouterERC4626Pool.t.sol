@@ -132,7 +132,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityUnbalancedToERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityUnbalancedToERC4626PoolWithEth__Fuzz(
+        uint256 rawOperationAmount,
+        bool forceEthLeftover
+    ) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
@@ -153,13 +156,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{ value: operationAmount }(
-            erc4626Pool,
-            exactUnderlyingAmountsIn,
-            1,
-            true,
-            bytes("")
-        );
+        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{
+            value: operationAmount + (forceEthLeftover ? 1e18 : 0)
+        }(erc4626Pool, exactUnderlyingAmountsIn, 1, true, bytes(""));
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
@@ -267,7 +266,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityUnbalancedToPartialERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityUnbalancedToPartialERC4626PoolWithEth__Fuzz(
+        uint256 rawOperationAmount,
+        bool forceEthLeftover
+    ) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
@@ -288,13 +290,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{ value: operationAmount }(
-            partialErc4626Pool,
-            exactUnderlyingAmountsIn,
-            0,
-            true,
-            bytes("")
-        );
+        uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{
+            value: operationAmount + (forceEthLeftover ? 1e18 : 0)
+        }(partialErc4626Pool, exactUnderlyingAmountsIn, 0, true, bytes(""));
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
@@ -458,7 +456,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
-    function testAddLiquidityProportionalToERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityProportionalToERC4626PoolWithEth__Fuzz(
+        uint256 rawOperationAmount,
+        bool forceEthLeftover
+    ) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
@@ -478,7 +479,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         vm.prank(alice);
         uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool{
-            value: operationAmount
+            value: operationAmount + (forceEthLeftover ? 1e18 : 0)
         }(erc4626Pool, maxAmountsIn, exactBptAmountOut, true, bytes(""));
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
@@ -567,7 +568,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), exactBptAmountOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityProportionalToPartialERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityProportionalToPartialERC4626PoolWithEth__Fuzz(
+        uint256 rawOperationAmount,
+        bool forceEthLeftover
+    ) public {
         // Make sure the operation is within the buffer liquidity.
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 10);
 
@@ -592,7 +596,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         vm.prank(alice);
         uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool{
-            value: operationAmount
+            value: operationAmount + (forceEthLeftover ? 1e18 : 0)
         }(partialErc4626Pool, maxAmountsIn, exactBptAmountOut, true, bytes(""));
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
