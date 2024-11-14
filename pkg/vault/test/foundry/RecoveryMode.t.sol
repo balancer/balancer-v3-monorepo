@@ -177,7 +177,7 @@ contract RecoveryModeTest is BaseVaultTest {
     }
 
     function testRecoveryModeEmitTransferFail() public {
-        // We only want a partial match of the call, triggered when BPT is burnt.
+        // We only want a partial match of the call, triggered when BPT are burned.
         vm.mockCallRevert(
             pool,
             abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, alice, address(0)),
@@ -191,7 +191,7 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(alice);
         IERC20(pool).approve(address(router), type(uint256).max - 1);
 
-        // We only want a partial match of the call, triggered when BPT is burnt.
+        // We only want a partial match of the call, triggered when BPT are burned.
         vm.mockCallRevert(
             pool,
             abi.encodeWithSelector(BalancerPoolToken.emitApproval.selector, alice, router),
