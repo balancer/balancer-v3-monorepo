@@ -13,10 +13,6 @@ import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-
 import { RouterCommon } from "./RouterCommon.sol";
 
 /**
@@ -24,7 +20,7 @@ import { RouterCommon } from "./RouterCommon.sol";
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
  */
-contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
+contract Router is IRouter, RouterCommon {
     using Address for address payable;
     using SafeCast for *;
 
