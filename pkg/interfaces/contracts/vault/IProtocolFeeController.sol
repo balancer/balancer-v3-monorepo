@@ -315,6 +315,21 @@ interface IProtocolFeeController {
     function withdrawProtocolFees(address pool, address recipient) external;
 
     /**
+     * @notice Withdraw collected protocol fees for a given pool. This is a permissioned function.
+     * @dev Sends swap and yield protocol fees for a given token to the recipient. Since collection is permissionless,
+     * it is possible for a pool creator to trigger fee collection, resulting in a protocol fee balance in this
+     * contract. If the token later became bricked or blocked, the protocol could use the per token fee collection to
+     * avoid it - but they would still not be able to withdraw using the regular `withdrawProtocolFees`, since it would
+     * also try to withdraw the pre-existing bad token balance. This variant of the protocol fee withdrawal allows
+     * withdrawing a single token, avoiding this edge case. 
+     *
+     * @param pool The pool on which fees were collected
+     * @param token The token to be sent to the recipient
+     * @param recipient Address to send the tokens
+     */
+    function withdrawProtocolFeesPerToken(address pool, IERC20 token, address recipient) external;
+
+    /**
      * @notice Withdraw collected pool creator fees for a given pool. This is a permissioned function.
      * @dev Sends swap and yield pool creator fees to the recipient.
      * @param pool The pool on which fees were collected

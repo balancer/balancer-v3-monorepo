@@ -493,13 +493,23 @@ contract ProtocolFeeController is
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolTokens[i];
 
-            uint256 amountToWithdraw = _protocolFeeAmounts[pool][token];
-            if (amountToWithdraw > 0) {
-                _protocolFeeAmounts[pool][token] = 0;
-                token.safeTransfer(recipient, amountToWithdraw);
+            _withdrawProtocolFeeToken(pool, token, recipient);
+        }
+    }
 
-                emit ProtocolFeesWithdrawn(pool, token, recipient, amountToWithdraw);
-            }
+    /// @inheritdoc IProtocolFeeController
+    function withdrawProtocolFeesPerToken(address pool, IERC20 token, address recipient) external authenticate {
+        _withdrawProtocolFeeToken(pool, token, recipient);
+    }
+
+    function _withdrawProtocolFeeToken(address pool, IERC20 token, address recipient) private {
+        uint256 amountToWithdraw = _protocolFeeAmounts[pool][token];
+
+        if (amountToWithdraw > 0) {
+            _protocolFeeAmounts[pool][token] = 0;
+            token.safeTransfer(recipient, amountToWithdraw);
+
+            emit ProtocolFeesWithdrawn(pool, token, recipient, amountToWithdraw);
         }
     }
 
