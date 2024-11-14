@@ -806,7 +806,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     // Trying to increase the coverage by splitting into two rate regimes, and limiting the range.
-    function testAddLiquidityToBufferWithIncreasedRate_Fuzz(
+    function testAddLiquidityToBufferWithIncreasedRate__Fuzz(
         uint128 firstDepositUnderlying,
         uint128 firstDepositWrapped,
         uint128 secondDepositShares,
@@ -820,7 +820,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
     }
 
-    function testAddLiquidityToBufferWithDecreasedRate_Fuzz(
+    function testAddLiquidityToBufferWithDecreasedRate__Fuzz(
         uint128 firstDepositUnderlying,
         uint128 firstDepositWrapped,
         uint128 secondDepositShares,

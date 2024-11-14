@@ -88,7 +88,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
-    function testAddLiquidityUnbalancedToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityUnbalancedToERC4626Pool__Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
@@ -132,7 +132,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityUnbalancedToERC4626PoolWithEth_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityUnbalancedToERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
@@ -224,7 +224,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityUnbalancedToPartialERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityUnbalancedToPartialERC4626Pool__Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
@@ -267,7 +267,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityUnbalancedToPartialERC4626PoolWithEth_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityUnbalancedToPartialERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
@@ -402,7 +402,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
     }
 
-    function testAddLiquidityProportionalToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityProportionalToERC4626Pool__Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
@@ -458,7 +458,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
-    function testAddLiquidityProportionalToERC4626PoolWithEth_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityProportionalToERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
@@ -511,7 +511,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
-    function testAddLiquidityProportionalToPartialERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityProportionalToPartialERC4626Pool__Fuzz(uint256 rawOperationAmount) public {
         // Make sure the operation is within the buffer liquidity.
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 10);
 
@@ -567,7 +567,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), exactBptAmountOut, "Alice: wrong BPT balance");
     }
 
-    function testAddLiquidityProportionalToPartialERC4626PoolWithEth_Fuzz(uint256 rawOperationAmount) public {
+    function testAddLiquidityProportionalToPartialERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
         // Make sure the operation is within the buffer liquidity.
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 10);
 
@@ -702,7 +702,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
     }
 
-    function testRemoveLiquidityProportionalFromERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    function testRemoveLiquidityProportionalFromERC4626Pool__Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256 snapshot = vm.snapshot();
@@ -753,7 +753,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
     }
 
-    function testRemoveLiquidityProportionalFromERC4626PoolWithEth_Fuzz(uint256 rawOperationAmount) public {
+    function testRemoveLiquidityProportionalFromERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256 snapshot = vm.snapshot();
@@ -805,7 +805,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
     }
 
-    function testRemoveLiquidityProportionalFromPartialERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    function testRemoveLiquidityProportionalFromPartialERC4626Pool__Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256 snapshot = vm.snapshot();
@@ -862,7 +862,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
     }
 
-    function testRemoveLiquidityProportionalFromPartialERC4626PoolWithEth_Fuzz(uint256 rawOperationAmount) public {
+    function testRemoveLiquidityProportionalFromPartialERC4626PoolWithEth__Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256 snapshot = vm.snapshot();

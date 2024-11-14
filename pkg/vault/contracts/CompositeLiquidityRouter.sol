@@ -345,16 +345,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
                 if (isStaticCall == false) {
                     _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
-                    if (
-                        params.wethIsEth &&
-                        address(erc4626PoolTokens[i]) == address(_weth) &&
-                        kind == SwapKind.EXACT_OUT &&
-                        limits[i] > amountsIn[i]
-                    ) {
-                        // The router should never have more ETH on its balance than the ETH deposited by the sender in
-                        // the current transaction, so any extra ETH in the balance must be returned to the sender.
-                        payable(params.sender).sendValue(address(this).balance);
-                    }
                 }
 
                 continue;
@@ -394,6 +384,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _sendTokenOut(params.sender, underlyingToken, limits[i] - underlyingAmounts[i], params.wethIsEth);
             }
         }
+
+        // If there's a leftover of eth, send it back to the sender. The router should not keep ETH.
+        _returnEth(params.sender);
     }
 
     /***************************************************************************

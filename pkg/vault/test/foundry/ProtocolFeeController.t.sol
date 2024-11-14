@@ -293,7 +293,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(poolConfigBits.aggregateSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE_PCT);
     }
 
-    function testProtocolSwapFeeLowResolution_Fuzz(uint256 extraFee) public {
+    function testProtocolSwapFeeLowResolution__Fuzz(uint256 extraFee) public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setProtocolSwapFeePercentage.selector),
             admin
@@ -338,7 +338,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.setProtocolSwapFeePercentage(pool, highPrecisionFee);
     }
 
-    function testProtocolYieldFeeLowResolution_Fuzz(uint256 extraFee) public {
+    function testProtocolYieldFeeLowResolution__Fuzz(uint256 extraFee) public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
             admin
