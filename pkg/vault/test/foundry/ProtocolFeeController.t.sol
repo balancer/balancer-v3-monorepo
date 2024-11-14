@@ -878,6 +878,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.collectAggregateFeesPerToken(pool, dai);
     }
 
+    function testFeeWithdrawalPerTokenWithoutPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeController.withdrawProtocolFeesPerToken(pool, dai, msg.sender);
+    }
+
     function testFeeCollectionPerToken() public {
         _registerPoolWithMaxProtocolFees();
         _verifyPoolProtocolFeePercentages(pool);
@@ -893,6 +898,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.collectAggregateFeesPerToken.selector),
+            admin
+        );
+
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFeesPerToken.selector),
             admin
         );
 
@@ -915,7 +925,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
 
         // Since the token is valid, there should be fees collected - but only on DAI.
-        assertTrue(protocolFeeAmounts[daiIdx] > 0, "DAI fees not collected");
+        assertGt(protocolFeeAmounts[daiIdx], 0, "DAI fees not collected");
         assertEq(protocolFeeAmounts[usdcIdx], 0, "USDC fees collected unexpectedly (DAI collection)");
 
         // Call with the other pool token
@@ -928,7 +938,16 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
 
         // Since the token is valid, there should be fees collected - but only on DAI.
-        assertTrue(protocolFeeAmounts[usdcIdx] > 0, "USDC fees not collected");
+        assertGt(protocolFeeAmounts[usdcIdx], 0, "USDC fees not collected");
+
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolFeesWithdrawn(pool, usdc, admin, protocolFeeAmounts[usdcIdx]);
+
+        vm.prank(admin);
+        feeController.withdrawProtocolFeesPerToken(pool, usdc, admin);
+
+        protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+        assertEq(protocolFeeAmounts[usdcIdx], 0, "USDC fees not withdrawn");
     }
 
     function testProtocolFeeCollectionEvents() public {
