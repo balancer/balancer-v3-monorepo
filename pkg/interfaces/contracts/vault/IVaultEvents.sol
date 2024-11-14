@@ -89,12 +89,12 @@ interface IVaultEvents {
     );
 
     /**
-     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
-     * @param pool The pool being registered
+     * @notice Liquidity has been added to a pool (including initialization).
+     * @param pool The pool with liquidity added
      * @param liquidityProvider The user performing the operation
-     * @param kind The type of add (e.g., single token, proportional)
+     * @param kind The add liquidity operation type (e.g., proportional, custom)
      * @param totalSupply The total supply of the pool after the operation
-     * @param amountsAddedRaw The amount each token that was added, sorted in the pool registration order
+     * @param amountsAddedRaw The amount of each token that was added, sorted in pool registration order
      * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
      */
     event LiquidityAdded(
@@ -107,10 +107,10 @@ interface IVaultEvents {
     );
 
     /**
-     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
-     * @param pool The pool being registered
+     * @notice Liquidity has been removed from a pool.
+     * @param pool The pool with liquidity removed
      * @param liquidityProvider The user performing the operation
-     * @param kind The type of remove (e.g., single token, proportional)
+     * @param kind The remove liquidity operation type (e.g., proportional, custom)
      * @param totalSupply The total supply of the pool after the operation
      * @param amountsRemovedRaw The amount of each token that was removed, sorted in pool registration order
      * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
