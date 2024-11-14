@@ -1038,33 +1038,38 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 index
     ) internal returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
         // If totalSwapFeeAmountScaled18 equals zero, no need to charge anything.
-        if (totalSwapFeeAmountScaled18 > 0 && poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
+        if (totalSwapFeeAmountScaled18 > 0) {
             // The total swap fee does not go into the pool; amountIn does, and the raw fee at this point does not
             // modify it. Given that all of the fee may belong to the pool creator (i.e. outside pool balances),
             // we round down to protect the invariant.
+
             totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
             );
 
-            uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
+            // Aggregate fees are not charged in Recovery Mode, but we still calculate and return the raw total swap
+            // fee above for off-chain reporting purposes.
+            if (poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
+                uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
 
-            // We have already calculated raw total fees rounding up.
-            // Total fees = LP fees + aggregate fees, so by rounding aggregate fees down we round the fee split in
-            // the LPs' favor, in turn increasing token balances and the pool invariant.
-            aggregateSwapFeeAmountRaw = totalSwapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
+                // We have already calculated raw total fees rounding up.
+                // Total fees = LP fees + aggregate fees, so by rounding aggregate fees down we round the fee split in
+                // the LPs' favor, in turn increasing token balances and the pool invariant.
+                aggregateSwapFeeAmountRaw = totalSwapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
 
-            // Ensure we can never charge more than the total swap fee.
-            if (aggregateSwapFeeAmountRaw > totalSwapFeeAmountRaw) {
-                revert ProtocolFeesExceedTotalCollected();
+                // Ensure we can never charge more than the total swap fee.
+                if (aggregateSwapFeeAmountRaw > totalSwapFeeAmountRaw) {
+                    revert ProtocolFeesExceedTotalCollected();
+                }
+
+                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // We have designated "Raw" the derived half for Swap fee storage.
+                bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
+                _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
+                    currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
+                );
             }
-
-            // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-            // We have designated "Raw" the derived half for Swap fee storage.
-            bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
-            _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
-                currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
-            );
         }
     }
 

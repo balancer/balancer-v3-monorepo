@@ -15,7 +15,7 @@ import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
-import { BatchRouter, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
+import { BatchRouter, BufferRouter, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import {
   ERC20WithRateTestToken,
@@ -1294,15 +1294,15 @@ export class Benchmark {
       });
 
       sharedBeforeEach('Initialize buffers', async () => {
-        await router
+        await bufferRouter
           .connect(alice)
-          .initializeBuffer(wTokenAAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
-        await router
+          .initializeBuffer(wTokenAAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
+        await bufferRouter
           .connect(alice)
-          .initializeBuffer(wTokenBAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
-        await router
+          .initializeBuffer(wTokenBAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
+        await bufferRouter
           .connect(alice)
-          .initializeBuffer(wTokenCAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT);
+          .initializeBuffer(wTokenCAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
       });
 
       it('measures gas (swap exact in)', async () => {
