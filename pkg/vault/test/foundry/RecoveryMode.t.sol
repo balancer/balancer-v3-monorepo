@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
@@ -15,8 +16,8 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RecoveryModeTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -44,11 +45,12 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 amountToRemove = bptAmountOut / 2;
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityRemoved(
             pool,
             alice,
+            RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [-int256(defaultAmount) / 2, -int256(defaultAmount) / 2].toMemoryArray(),
+            [defaultAmount / 2, defaultAmount / 2].toMemoryArray(),
             new uint256[](2)
         );
 
@@ -97,11 +99,12 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 amountOutAfterFee = amountOutWithoutFee - feeAmount;
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityRemoved(
             pool,
             alice,
+            RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [-int256(amountOutAfterFee), -int256(amountOutAfterFee)].toMemoryArray(),
+            [amountOutAfterFee, amountOutAfterFee].toMemoryArray(),
             [feeAmount, feeAmount].toMemoryArray()
         );
 
