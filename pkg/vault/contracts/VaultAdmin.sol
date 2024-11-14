@@ -641,7 +641,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
         }
 
-        emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw, bufferBalances);
+        emit LiquidityRemovedFromBuffer(
+            wrappedToken,
+            removedUnderlyingBalanceRaw,
+            removedWrappedBalanceRaw,
+            bufferBalances
+        );
     }
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {
