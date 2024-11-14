@@ -106,8 +106,9 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
         _;
         _isReturnEthLockedSlot().tstore(false);
 
-        _returnEth(_getSenderSlot().tload());
+        address sender = _getSenderSlot().tload();
         _discardSenderIfRequired(isExternalSender);
+        _returnEth(sender);
     }
 
     function _saveSender(address sender) internal returns (bool isExternalSender) {
