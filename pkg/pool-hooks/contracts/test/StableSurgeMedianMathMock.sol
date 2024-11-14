@@ -5,12 +5,12 @@ pragma solidity ^0.8.24;
 import { StableSurgeMedianMath } from "../utils/StableSurgeMedianMath.sol";
 
 contract StableSurgeMedianMathMock {
-    function calculateImbalance(uint256[] memory balances) public pure returns (uint) {
-        return StableSurgeMedianMath.calculateImbalance(balances);
+    function calculateImbalance(uint256[] memory balancesScaled18) public pure returns (uint) {
+        return StableSurgeMedianMath.calculateImbalance(balancesScaled18);
     }
 
-    function findMedian(uint256[] memory sortedBalances) public pure returns (uint256) {
-        return StableSurgeMedianMath.findMedian(sortedBalances);
+    function findMedian(uint256[] memory sortedBalancesScaled18) public pure returns (uint256) {
+        return StableSurgeMedianMath.findMedian(sortedBalancesScaled18);
     }
 
     function sort(uint256[] memory balances) public pure returns (uint256[] memory) {
