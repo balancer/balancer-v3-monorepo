@@ -321,7 +321,7 @@ interface IProtocolFeeController {
      * contract. If the token later became bricked or blocked, the protocol could use the per token fee collection to
      * avoid it - but they would still not be able to withdraw using the regular `withdrawProtocolFees`, since it would
      * also try to withdraw the pre-existing bad token balance. This variant of the protocol fee withdrawal allows
-     * withdrawing a single token, avoiding this edge case. 
+     * withdrawing a single token, avoiding this edge case.
      *
      * @param pool The pool on which fees were collected
      * @param token The token to be sent to the recipient
