@@ -36,9 +36,9 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
     }
 
     function testPrerequisites() public view {
-        assertTrue(swapFeePercentage > 0);
-        assertTrue(protocolSwapFeePercentage > 0);
-        assertTrue(poolCreatorFeePercentage > 0);
+        assertGt(swapFeePercentage, 0, "swapFeePercentage is zero");
+        assertGt(protocolSwapFeePercentage, 0, "protocolSwapFeePercentage is zero");
+        assertGt(poolCreatorFeePercentage, 0, "poolCreatorFeePercentage is zero");
 
         PoolConfig memory config = vault.getPoolConfig(pool);
 
