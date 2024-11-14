@@ -92,14 +92,35 @@ interface IVaultEvents {
      * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
      * @param pool The pool being registered
      * @param liquidityProvider The user performing the operation
+     * @param kind The type of add (e.g., single token, proportional)
      * @param totalSupply The total supply of the pool after the operation
-     * @param deltas The amount each token changed, sorted in the pool tokens' order
+     * @param amountsAddedRaw The amount each token that was added, sorted in the pool registration order
+     * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
      */
-    event PoolBalanceChanged(
+    event LiquidityAdded(
         address indexed pool,
         address indexed liquidityProvider,
+        AddLiquidityKind indexed kind,
         uint256 totalSupply,
-        int256[] deltas,
+        uint256[] amountsAddedRaw,
+        uint256[] swapFeeAmountsRaw
+    );
+
+    /**
+     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
+     * @param pool The pool being registered
+     * @param liquidityProvider The user performing the operation
+     * @param kind The type of remove (e.g., single token, proportional)
+     * @param totalSupply The total supply of the pool after the operation
+     * @param amountsRemovedRaw The amount of each token that was removed, sorted in pool registration order
+     * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
+     */
+    event LiquidityRemoved(
+        address indexed pool,
+        address indexed liquidityProvider,
+        RemoveLiquidityKind indexed kind,
+        uint256 totalSupply,
+        uint256[] amountsRemovedRaw,
         uint256[] swapFeeAmountsRaw
     );
 
