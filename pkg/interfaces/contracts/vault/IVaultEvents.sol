@@ -62,30 +62,30 @@ interface IVaultEvents {
 
     /**
      * @notice A wrap operation has occurred.
-     * @param underlyingToken The underlying token address
      * @param wrappedToken The wrapped token address
      * @param depositedUnderlying Number of underlying tokens deposited
      * @param mintedShares Number of shares (wrapped tokens) minted
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
     event Wrap(
-        IERC20 indexed underlyingToken,
         IERC4626 indexed wrappedToken,
         uint256 depositedUnderlying,
-        uint256 mintedShares
+        uint256 mintedShares,
+        bytes32 bufferBalances
     );
 
     /**
      * @notice An unwrap operation has occurred.
      * @param wrappedToken The wrapped token address
-     * @param underlyingToken The underlying token address
      * @param burnedShares Number of shares (wrapped tokens) burned
      * @param withdrawnUnderlying Number of underlying tokens withdrawn
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
     event Unwrap(
         IERC4626 indexed wrappedToken,
-        IERC20 indexed underlyingToken,
         uint256 burnedShares,
-        uint256 withdrawnUnderlying
+        uint256 withdrawnUnderlying,
+        bytes32 bufferBalances
     );
 
     /**
@@ -188,8 +188,14 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token that identifies the buffer
      * @param amountUnderlying The amount of the underlying token that was deposited
      * @param amountWrapped The amount of the wrapped token that was deposited
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
-    event LiquidityAddedToBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+    event LiquidityAddedToBuffer(
+        IERC4626 indexed wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        bytes32 bufferBalances
+    );
 
     /**
      * @notice Buffer shares were minted for an ERC4626 buffer corresponding to a given wrapped token.
@@ -222,8 +228,14 @@ interface IVaultEvents {
      * @param wrappedToken The wrapped token that identifies the buffer
      * @param amountUnderlying The amount of the underlying token that was withdrawn
      * @param amountWrapped The amount of the wrapped token that was withdrawn
+     * @param bufferBalances The final buffer balances, packed in 128-bit words (underlying, wrapped)
      */
-    event LiquidityRemovedFromBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+    event LiquidityRemovedFromBuffer(
+        IERC4626 indexed wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        bytes32 bufferBalances
+    );
 
     /**
      * @notice The Vault buffers pause status has changed.
