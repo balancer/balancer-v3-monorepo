@@ -110,10 +110,10 @@ library ScalingHelpers {
 
     function copyToArray(uint256[] memory from, uint256[] memory to) internal pure {
         uint256 length = from.length;
-        // InputHelpers.ensureInputLengthMatch(length, to.length);
+        InputHelpers.ensureInputLengthMatch(length, to.length);
 
-        assembly ("memory-safe") {
-            mcopy(add(to, 0x20), add(from, 0x20), mul(length, 0x20))
+        for (uint256 i = 0; i < length; ++i) {
+            to[i] = from[i];
         }
     }
 
