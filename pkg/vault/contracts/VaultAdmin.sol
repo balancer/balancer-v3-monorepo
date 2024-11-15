@@ -475,7 +475,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(wrappedToken, amountWrappedRaw);
 
         // Update buffer balances.
-        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
+        bytes32 bufferBalances = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
+        _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
         // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
@@ -494,7 +495,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             revert IssuedSharesBelowMin(issuedShares, minIssuedSharesRaw);
         }
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, bufferBalances);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -551,7 +552,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // Mint new shares to the owner.
         _mintBufferShares(wrappedToken, sharesOwner, exactSharesToIssue);
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, bufferBalances);
     }
 
     function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
@@ -681,7 +682,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
         }
 
-        emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
+        emit LiquidityRemovedFromBuffer(
+            wrappedToken,
+            removedUnderlyingBalanceRaw,
+            removedWrappedBalanceRaw,
+            bufferBalances
+        );
     }
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {

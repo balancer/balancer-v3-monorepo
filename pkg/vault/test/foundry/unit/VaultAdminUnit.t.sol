@@ -14,6 +14,7 @@ import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTy
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
@@ -175,7 +176,12 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vm.expectEmit();
         emit IVaultEvents.BufferSharesMinted(waDAI, bob, issuedShares);
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, underlyingAmount, wrappedAmount);
+        emit IVaultEvents.LiquidityAddedToBuffer(
+            waDAI,
+            underlyingAmount,
+            wrappedAmount,
+            PackedTokenBalance.toPackedBalance(underlyingAmount, wrappedAmount)
+        );
         issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, 0, bob);
 
         assertEq(vault.getBufferAsset(waDAI), address(dai), "Wrong underlying asset");

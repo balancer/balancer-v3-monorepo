@@ -1115,21 +1115,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (params.direction == WrappingDirection.UNWRAP) {
-            (amountInRaw, amountOutRaw) = _unwrapWithBuffer(
+            bytes32 bufferBalances;
+            (amountInRaw, amountOutRaw, bufferBalances) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
+            emit Unwrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         } else {
-            (amountInRaw, amountOutRaw) = _wrapWithBuffer(
+            bytes32 bufferBalances;
+            (amountInRaw, amountOutRaw, bufferBalances) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Wrap(underlyingToken, params.wrappedToken, amountInRaw, amountOutRaw);
+            emit Wrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         }
 
         if (params.kind == SwapKind.EXACT_IN) {
@@ -1157,7 +1159,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped) {
+    ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding.
@@ -1168,14 +1170,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven), amountGiven);
         }
 
+        bufferBalances = _bufferTokenBalances[wrappedToken];
+
         // If it's a query, the Vault may not have enough underlying tokens to wrap. Since in a query we do not expect
         // the sender to pay for underlying tokens to wrap upfront, return the calculated amount without checking for
         // the imbalance.
         if (_isQueryContext()) {
-            return (amountInUnderlying, amountOutWrapped);
+            return (amountInUnderlying, amountOutWrapped, bufferBalances);
         }
-
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
@@ -1274,7 +1276,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying) {
+    ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding.
@@ -1285,14 +1287,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven), amountGiven);
         }
 
+        bufferBalances = _bufferTokenBalances[wrappedToken];
+
         // If it's a query, the Vault may not have enough wrapped tokens to unwrap. Since in a query we do not expect
         // the sender to pay for wrapped tokens to unwrap upfront, return the calculated amount without checking for
         // the imbalance.
         if (_isQueryContext()) {
-            return (amountInWrapped, amountOutUnderlying);
+            return (amountInWrapped, amountOutUnderlying, bufferBalances);
         }
-
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.

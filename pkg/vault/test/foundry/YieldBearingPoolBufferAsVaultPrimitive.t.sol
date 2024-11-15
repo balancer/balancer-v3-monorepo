@@ -17,6 +17,7 @@ import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/tes
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
@@ -54,14 +55,20 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, waDAI.previewDeposit(bufferInitialAmount));
+        emit IVaultEvents.LiquidityAddedToBuffer(
+            waDAI,
+            bufferInitialAmount,
+            waDAI.previewDeposit(bufferInitialAmount),
+            PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * waDAI.previewDeposit(bufferInitialAmount))
+        );
         bufferRouter.addLiquidityToBuffer(waDAI, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waUSDC,
             bufferInitialAmount,
-            waUSDC.previewDeposit(bufferInitialAmount)
+            waUSDC.previewDeposit(bufferInitialAmount),
+            PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * waUSDC.previewDeposit(bufferInitialAmount))
         );
         bufferRouter.addLiquidityToBuffer(waUSDC, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
         vm.stopPrank();
@@ -78,7 +85,11 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waDAI,
             (underlyingBalance * bufferTestAmount) / bufferTotalShares,
-            (wrappedBalance * bufferTestAmount) / bufferTotalShares
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares,
+            PackedTokenBalance.toPackedBalance(
+                underlyingBalance - ((underlyingBalance * bufferTestAmount) / bufferTotalShares),
+                wrappedBalance - ((wrappedBalance * bufferTestAmount) / bufferTotalShares)
+            )
         );
         vm.prank(lp);
         vault.removeLiquidityFromBuffer(waDAI, bufferTestAmount, 0, 0);
@@ -90,7 +101,11 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waUSDC,
             (underlyingBalance * bufferTestAmount) / bufferTotalShares,
-            (wrappedBalance * bufferTestAmount) / bufferTotalShares
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares,
+            PackedTokenBalance.toPackedBalance(
+                underlyingBalance - ((underlyingBalance * bufferTestAmount) / bufferTotalShares),
+                wrappedBalance - ((wrappedBalance * bufferTestAmount) / bufferTotalShares)
+            )
         );
         vm.prank(lp);
         vault.removeLiquidityFromBuffer(waUSDC, bufferTestAmount, 0, 0);
