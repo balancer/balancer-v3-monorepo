@@ -188,6 +188,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256[] memory underlyingAmountsOut) {
+        IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(pool);
         underlyingAmountsOut = abi.decode(
             _vault.quote(
                 abi.encodeCall(
@@ -195,7 +196,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     RemoveLiquidityHookParams({
                         sender: address(this),
                         pool: pool,
-                        minAmountsOut: new uint256[](2),
+                        minAmountsOut: new uint256[](erc4626PoolTokens.length),
                         maxBptAmountIn: exactBptAmountIn,
                         kind: RemoveLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,
@@ -211,12 +212,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
+        uint256 poolTokensLength = erc4626PoolTokens.length;
+
+        // Revert if tokensIn length does not match with maxAmountsIn length.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length);
+
         (, uint256[] memory wrappedAmountsIn) = _wrapTokens(
             params,
             erc4626PoolTokens,
             params.maxAmountsIn,
             SwapKind.EXACT_IN,
-            new uint256[](erc4626PoolTokens.length)
+            new uint256[](poolTokensLength)
         );
 
         // Add wrapped amounts to the ERC4626 pool.
@@ -323,6 +329,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
+    /// @dev Assumes array lengths have been checked externally.
     function _wrapTokens(
         AddLiquidityHookParams calldata params,
         IERC20[] memory erc4626PoolTokens,
