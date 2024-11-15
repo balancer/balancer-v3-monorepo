@@ -1102,12 +1102,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function transferFrom(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool) {
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;
