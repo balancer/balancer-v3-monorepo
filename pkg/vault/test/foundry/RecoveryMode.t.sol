@@ -16,6 +16,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 
 contract RecoveryModeTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -133,7 +134,7 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
 
         // Raw and live should be in sync.
         assertRawAndLiveBalanceRelationship(true);
@@ -141,9 +142,30 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
+        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 amountToRemove = bptAmountOut / 2;
+        uint256 daiBalanceBefore = dai.balanceOf(alice);
+        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
+
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, bptAmountOut / 2);
+
+        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        assertEq(bptAfter, amountToRemove); // this is half the BPT
+        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+
+        uint256 daiBalanceAfter = dai.balanceOf(alice);
+        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
+
+        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
 
         // Raw and live should be out of sync.
         assertRawAndLiveBalanceRelationship(false);
@@ -152,6 +174,30 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Raw and live should be back in sync.
         assertRawAndLiveBalanceRelationship(true);
+    }
+
+    function testRecoveryModeEmitTransferFail() public {
+        // We only want a partial match of the call, triggered when BPT are burned.
+        vm.mockCallRevert(
+            pool,
+            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, alice, address(0)),
+            bytes("")
+        );
+        testRecoveryModeBalances();
+    }
+
+    function testRecoveryModeEmitApprovalFail() public {
+        // Revoke infinite approval so that the event is emitted.
+        vm.prank(alice);
+        IERC20(pool).approve(address(router), type(uint256).max - 1);
+
+        // We only want a partial match of the call, triggered when BPT are burned.
+        vm.mockCallRevert(
+            pool,
+            abi.encodeWithSelector(BalancerPoolToken.emitApproval.selector, alice, router),
+            bytes("")
+        );
+        testRecoveryModeBalances();
     }
 
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal view {
@@ -168,7 +214,7 @@ contract RecoveryModeTest is BaseVaultTest {
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
             bool areEqual = currentLiveBalances[i] == lastBalancesLiveScaled18[i];
 
-            shouldBeEqual ? assertTrue(areEqual) : assertFalse(areEqual);
+            shouldBeEqual ? assertTrue(areEqual, "areEqual is false") : assertFalse(areEqual, "areEqual is true");
         }
     }
 
@@ -233,7 +279,7 @@ contract RecoveryModeTest is BaseVaultTest {
         skip(bufferPeriodEndTime);
 
         // Confirm the Vault is permissionless
-        assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after the bufferPeriodEndTime");
+        assertGt(block.timestamp, bufferPeriodEndTime, "Time should be after the bufferPeriodEndTime");
 
         // Recovery Mode is permissioned even though the Vault's pause bit is set, because it's no longer pausable.
         assertFalse(vault.isVaultPaused(), "Vault should unpause itself after buffer expiration");
@@ -266,7 +312,7 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.warp(bufferPeriodEndTime + 1);
 
         // Confirm the Pool is permissionless.
-        assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
+        assertGt(block.timestamp, bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
 
         // Recovery Mode is permissioned even though the Pool's pause bit is set, because it's no longer pausable.
         assertFalse(vault.isPoolPaused(pool), "Pool should unpause itself after buffer expiration");
