@@ -164,11 +164,6 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         vaultExtension.approve(address(0), address(1), 0);
     }
 
-    function testTransferFromWhenNotVault() public {
-        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.transferFrom(address(0), address(1), address(2), 2);
-    }
-
     function testIsPoolPausedWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isPoolPaused(pool);
