@@ -19,6 +19,7 @@ contract AuxiliaryEventTest is BaseVaultTest {
     function testWithNonPoolCall() public {
         // Only registered pools can emit aux event
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, admin));
+
         vm.prank(admin);
         vault.emitAuxiliaryEvent("TestEvent", abi.encode(777));
     }
@@ -29,7 +30,6 @@ contract AuxiliaryEventTest is BaseVaultTest {
         vm.expectEmit();
         emit IVaultEvents.VaultAuxiliary(pool, "TestEvent", abi.encode(testValue));
 
-        vm.prank(admin);
         PoolMock(pool).mockEventFunction(testValue);
     }
 }
