@@ -312,8 +312,6 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         _amplificationState.endTime = currentTime;
 
         emit AmpUpdateStopped(currentValueUint64);
-        // Just an example of where this can be useful
-        _vault.emitAuxiliaryEvent("AmpUpdateStopped", abi.encode(currentValueUint64));
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
