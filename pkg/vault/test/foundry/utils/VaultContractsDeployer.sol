@@ -278,7 +278,9 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 BufferRouterMock(
-                    payable(deployCode(_computeVaultTestPath(type(RouterMock).name), abi.encode(vault, weth, permit2)))
+                    payable(
+                        deployCode(_computeVaultTestPath(type(BufferRouterMock).name), abi.encode(vault, weth, permit2))
+                    )
                 );
         } else {
             return new BufferRouterMock(vault, weth, permit2);
