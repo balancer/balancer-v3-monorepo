@@ -211,7 +211,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityRecoveryWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.removeLiquidityRecovery(pool, address(1), 0);
+        vaultExtension.removeLiquidityRecovery(pool, address(1), 0, new uint256[](2));
     }
 
     function testQuoteWhenNotVault() public {

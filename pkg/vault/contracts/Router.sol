@@ -463,10 +463,13 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /// @inheritdoc IRouter
     function removeLiquidityRecovery(
         address pool,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     ) external payable returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
-            _vault.unlock(abi.encodeCall(Router.removeLiquidityRecoveryHook, (pool, msg.sender, exactBptAmountIn))),
+            _vault.unlock(
+                abi.encodeCall(Router.removeLiquidityRecoveryHook, (pool, msg.sender, exactBptAmountIn, minAmountsOut))
+            ),
             (uint256[])
         );
     }
@@ -531,14 +534,16 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param pool Address of the liquidity pool
      * @param sender Account originating the remove liquidity operation
      * @param exactBptAmountIn BPT amount burned for the output tokens
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
      */
     function removeLiquidityRecoveryHook(
         address pool,
         address sender,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
-        amountsOut = _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
+        amountsOut = _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
 
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
 
@@ -1093,7 +1098,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address sender,
         uint256 exactBptAmountIn
     ) external onlyVault returns (uint256[] memory amountsOut) {
-        return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
+        uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
+        return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
     }
 
     /// @inheritdoc IRouter

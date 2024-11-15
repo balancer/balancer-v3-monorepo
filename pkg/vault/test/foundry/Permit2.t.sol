@@ -254,7 +254,10 @@ contract Permit2Test is BaseVaultTest {
             (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
-        multicallData[1] = abi.encodeCall(IRouter.removeLiquidityRecovery, (pool, bptAmountOut));
+        multicallData[1] = abi.encodeCall(
+            IRouter.removeLiquidityRecovery,
+            (pool, bptAmountOut, new uint256[](amountsIn.length))
+        );
 
         vault.manualEnableRecoveryMode(pool);
 
