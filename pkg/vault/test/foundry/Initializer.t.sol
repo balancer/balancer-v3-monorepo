@@ -6,14 +6,15 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { AddLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
@@ -127,11 +128,12 @@ contract InitializerTest is BaseVaultTest {
 
     function testInitializeEmitsPoolBalanceChangedEvent() public {
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityAdded(
             pool,
             bob,
+            AddLiquidityKind.UNBALANCED,
             defaultAmount * 3,
-            [defaultAmount, defaultAmount * 2].toMemoryArray().unsafeCastToInt256(true),
+            [defaultAmount, defaultAmount * 2].toMemoryArray(),
             new uint256[](2)
         );
 
