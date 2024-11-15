@@ -869,6 +869,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         permit2.approve(address(_token1Fork), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(ybToken2), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(ybToken1), address(batchRouter), type(uint160).max, type(uint48).max);
+        // Allow Permit2 to move DAI and USDC from LP to BufferRouter.
+        permit2.approve(address(_token2Fork), address(bufferRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(_token1Fork), address(bufferRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken2), address(bufferRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken1), address(bufferRouter), type(uint160).max, type(uint48).max);
         // Wrap part of LP balances.
         _token1Fork.forceApprove(address(ybToken1), 4 * _token1YieldBearingPoolInitAmount);
         ybToken1.deposit(4 * _token1YieldBearingPoolInitAmount, lp);
