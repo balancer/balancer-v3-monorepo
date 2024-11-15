@@ -12,12 +12,19 @@ import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { Router } from "../Router.sol";
 
 string constant MOCK_ROUTER_VERSION = "Mock Router v1";
 
 contract RouterMock is Router {
+    using TransientStorageHelpers for StorageSlotExtension.BooleanSlotType;
+    using StorageSlotExtension for *;
+
     error MockErrorCode();
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2, MOCK_ROUTER_VERSION) {
@@ -157,5 +164,9 @@ contract RouterMock is Router {
 
     function queryRevertNoReasonHook() external pure returns (uint256) {
         revert();
+    }
+
+    function clearMulticallLatch() public {
+        _getMulticallSlot().tstore(false);
     }
 }
