@@ -453,11 +453,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
         }
 
-        emit PoolBalanceChanged(
+        emit LiquidityAdded(
             pool,
             to,
+            AddLiquidityKind.UNBALANCED,
             _totalSupply(pool),
-            exactAmountsIn.unsafeCastToInt256(true),
+            exactAmountsIn,
             new uint256[](poolData.tokens.length)
         );
 
@@ -747,10 +748,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     // Needed to avoid stack-too-deep.
     struct RecoveryLocals {
         IERC20[] tokens;
-        bool chargeRoundtripFee;
-        uint256[] swapFeeAmountsRaw;
         uint256 swapFeePercentage;
         uint256 numTokens;
+        uint256[] swapFeeAmountsRaw;
+        uint256[] balancesRaw;
+        bool chargeRoundtripFee;
     }
 
     /// @inheritdoc IVaultExtension
@@ -776,14 +778,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         locals.tokens = _poolTokens[pool];
         locals.numTokens = locals.tokens.length;
 
-        uint256[] memory balancesRaw = new uint256[](locals.numTokens);
+        locals.balancesRaw = new uint256[](locals.numTokens);
         bytes32 packedBalances;
 
         for (uint256 i = 0; i < locals.numTokens; ++i) {
-            balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
+            locals.balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
         }
 
-        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
+        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(
+            locals.balancesRaw,
+            _totalSupply(pool),
+            exactBptAmountIn
+        );
 
         // Normally we expect recovery mode withdrawals to be stand-alone operations. If there is a previous add
         // operation in this transaction, this might be an attack, so we apply the same guardrail used for regular
@@ -812,7 +818,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).
-            balancesRaw[i] -= amountsOutRaw[i];
+            locals.balancesRaw[i] -= amountsOutRaw[i];
         }
 
         // Store the new pool balances - raw only, since we don't have rates in Recovery Mode.
@@ -822,7 +828,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         for (uint256 i = 0; i < locals.numTokens; ++i) {
             packedBalances = poolBalances[i];
-            poolBalances[i] = packedBalances.setBalanceRaw(balancesRaw[i]);
+            poolBalances[i] = packedBalances.setBalanceRaw(locals.balancesRaw[i]);
         }
 
         _spendAllowance(pool, from, msg.sender, exactBptAmountIn);
@@ -837,12 +843,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(pool, from, exactBptAmountIn);
 
-        emit PoolBalanceChanged(
+        emit LiquidityRemoved(
             pool,
             from,
+            RemoveLiquidityKind.PROPORTIONAL,
             _totalSupply(pool),
-            // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
-            amountsOutRaw.unsafeCastToInt256(false),
+            amountsOutRaw,
             locals.swapFeeAmountsRaw
         );
     }
