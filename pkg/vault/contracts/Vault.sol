@@ -1524,6 +1524,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function getAuthorizer() external view returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    /*******************************************************************************
                                      Default handlers
     *******************************************************************************/
 

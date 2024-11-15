@@ -892,15 +892,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                                    Authentication
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
-    }
-
-    /*******************************************************************************
                                      Default handlers
     *******************************************************************************/
 
