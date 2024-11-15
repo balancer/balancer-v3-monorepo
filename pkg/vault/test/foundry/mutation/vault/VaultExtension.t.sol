@@ -248,6 +248,6 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testEmitAuxiliaryEventWhenNotRegisteredPool() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(this)));
-        vaultExtension.emitAuxiliaryEvent("", bytes(""));
+        vault.emitAuxiliaryEvent("", bytes(""));
     }
 }
