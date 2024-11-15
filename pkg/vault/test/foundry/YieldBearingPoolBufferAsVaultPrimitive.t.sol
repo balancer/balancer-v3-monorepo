@@ -67,7 +67,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         emit IVaultEvents.LiquidityAddedToBuffer(
             waWETH,
             bufferInitialAmount,
-            waWETH.previewDeposit(bufferInitialAmount)
+            waWETH.previewDeposit(bufferInitialAmount),
             PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * waWETH.previewDeposit(bufferInitialAmount))
         );
         router.addLiquidityToBuffer(waWETH, 2 * bufferInitialAmount);
