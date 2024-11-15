@@ -38,8 +38,8 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
     address pool = address(0x1234);
     uint256 amountGivenRaw = 1 ether;
-    uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
-    uint256[] tokenRates = [uint256(1e18), 2e18];
+    uint256[] decimalScalingFactors = [1e18, 1e18];
+    uint256[] tokenRates = [1e18, 2e18];
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -124,9 +124,9 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInRecoveryMode(true);
 
         (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
+            .manualComputeAndChargeAggregateSwapFees(poolData, 2e18, pool, dai, 0);
 
-        assertEq(totalSwapFeeAmountRaw, 0, "Unexpected totalSwapFeeAmountRaw");
+        assertEq(totalSwapFeeAmountRaw, 2, "Unexpected totalSwapFeeAmountRaw");
         assertEq(aggregateSwapFeeAmountRaw, 0, "Unexpected aggregateSwapFeeAmountRaw");
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
@@ -290,5 +290,36 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         // Should fail with 0 (unlike testMinimumTradeAmount).
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
         vault.ensureValidSwapAmount(0);
+    }
+
+    function testWritePoolBalancesToStorage() public {
+        uint256 numTokens = 3;
+        PoolData memory poolData;
+        poolData.balancesRaw = new uint256[](numTokens);
+        poolData.balancesLiveScaled18 = new uint256[](numTokens);
+
+        poolData.balancesRaw[0] = 1;
+        poolData.balancesRaw[1] = 2;
+        poolData.balancesRaw[2] = 3;
+        poolData.balancesLiveScaled18[0] = 10;
+        poolData.balancesLiveScaled18[1] = 20;
+        poolData.balancesLiveScaled18[2] = 30;
+
+        vault.manualSetPoolTokens(pool, new IERC20[](numTokens)); // The length must match
+
+        vault.manualWritePoolBalancesToStorage(pool, poolData);
+
+        uint256[] memory rawBalances = vault.getRawBalances(pool);
+        uint256[] memory liveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(rawBalances.length, numTokens, "Wrong raw balance length");
+        assertEq(liveBalances.length, numTokens, "Wrong live balance length");
+
+        assertEq(rawBalances[0], 1, "Wrong rawBalances[0]");
+        assertEq(rawBalances[1], 2, "Wrong rawBalances[1]");
+        assertEq(rawBalances[2], 3, "Wrong rawBalances[2]");
+        assertEq(liveBalances[0], 10, "Wrong liveBalances[0]");
+        assertEq(liveBalances[1], 20, "Wrong liveBalances[1]");
+        assertEq(liveBalances[2], 30, "Wrong liveBalances[2]");
     }
 }

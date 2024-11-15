@@ -12,8 +12,8 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     ReentrancyGuardTransient
@@ -45,7 +45,12 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     using SafeERC20 for IERC20;
     using SafeCast for *;
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) BatchRouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -220,8 +225,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
 
-                    if (stepLocals.isFirstStep && params.sender != address(this)) {
-                        if (stepExactAmountIn > 0) {
+                    if (stepLocals.isFirstStep) {
+                        if (stepExactAmountIn > 0 && params.sender != address(this)) {
                             // If this is the first step, the sender must have the tokens. Therefore, we can transfer
                             // them to the Router, which acts as an intermediary. If the sender is the Router, we just
                             // skip this step (useful for queries).
