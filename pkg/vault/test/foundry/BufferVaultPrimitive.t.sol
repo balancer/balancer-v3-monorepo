@@ -404,7 +404,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // After a wrap operation, even if the erc4626 token didn't take all the assets it was supposed to deposit,
         // the allowance should be 0 to avoid a malicious wrapper from draining the underlying balance of the Vault.
-        assertTrue(dai.allowance(address(vault), address(waDAI)) == 0, "Wrong allowance");
+        assertEq(dai.allowance(address(vault), address(waDAI)), 0, "Wrong allowance");
     }
 
     /********************************************************************************

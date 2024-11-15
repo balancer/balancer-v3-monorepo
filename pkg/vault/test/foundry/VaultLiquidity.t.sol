@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -444,6 +445,74 @@ contract VaultLiquidityTest is BaseVaultTest {
         );
 
         assertEq(balancesAfter.userBpt, 0, "Roundtrip - User BPT balance after");
+    }
+
+    function testSwapFeesInEventRemoveLiquidityInRecovery() public {
+        setSwapFeePercentage(swapFeePercentage);
+        vault.manualEnableRecoveryMode(pool);
+
+        uint256 totalSupplyBefore = IERC20(pool).totalSupply();
+        uint256 bptAmountIn = defaultAmount;
+
+        uint256 snapshotId = vm.snapshot();
+
+        vm.prank(lp);
+        uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
+            pool,
+            bptAmountIn,
+            dai,
+            defaultAmount / 10,
+            false,
+            bytes("")
+        );
+
+        vm.revertTo(snapshotId);
+
+        uint256 swapFeeAmountDai = 5e18;
+        int256[] memory deltas = new int256[](2);
+        deltas[daiIdx] = -int256(amountOut);
+
+        // Exact values for swap fees are tested elsewhere; we only want to prove they are not 0 here.
+        uint256[] memory swapFeeAmounts = new uint256[](2);
+        swapFeeAmounts[daiIdx] = swapFeeAmountDai;
+
+        // Fee should be non-zero, even in RecoveryMode
+        vm.expectEmit();
+        emit IVaultEvents.PoolBalanceChanged(pool, lp, totalSupplyBefore - bptAmountIn, deltas, swapFeeAmounts);
+        vm.prank(lp);
+        router.removeLiquiditySingleTokenExactIn(pool, bptAmountIn, dai, defaultAmount / 10, false, bytes(""));
+    }
+
+    function testSwapFeesInEventAddLiquidityInRecovery() public {
+        setSwapFeePercentage(swapFeePercentage);
+        vault.manualEnableRecoveryMode(pool);
+
+        uint256 totalSupplyBefore = IERC20(pool).totalSupply();
+        uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
+
+        uint256 snapshotId = vm.snapshot();
+
+        vm.prank(alice);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        int256[] memory deltas = new int256[](2);
+        deltas[daiIdx] = int256(amountsIn[daiIdx]);
+        deltas[usdcIdx] = int256(amountsIn[usdcIdx]);
+
+        // Exact values for swap fees are tested elsewhere; we only want to prove they are not 0 here.
+        // The add is proportional except for rounding errors so the swap fees here are negligible (but not 0).
+        uint256[] memory swapFeeAmounts = new uint256[](2);
+        swapFeeAmounts[daiIdx] = 10;
+        swapFeeAmounts[usdcIdx] = 10;
+
+        // Fee should be non-zero, even in RecoveryMode
+        vm.expectEmit();
+        emit IVaultEvents.PoolBalanceChanged(pool, alice, totalSupplyBefore + bptAmountOut, deltas, swapFeeAmounts);
+
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
     }
 
     // Utils

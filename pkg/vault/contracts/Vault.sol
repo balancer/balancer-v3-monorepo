@@ -1039,33 +1039,38 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 index
     ) internal returns (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) {
         // If totalSwapFeeAmountScaled18 equals zero, no need to charge anything.
-        if (totalSwapFeeAmountScaled18 > 0 && poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
+        if (totalSwapFeeAmountScaled18 > 0) {
             // The total swap fee does not go into the pool; amountIn does, and the raw fee at this point does not
             // modify it. Given that all of the fee may belong to the pool creator (i.e. outside pool balances),
             // we round down to protect the invariant.
+
             totalSwapFeeAmountRaw = totalSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[index],
                 poolData.tokenRates[index]
             );
 
-            uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
+            // Aggregate fees are not charged in Recovery Mode, but we still calculate and return the raw total swap
+            // fee above for off-chain reporting purposes.
+            if (poolData.poolConfigBits.isPoolInRecoveryMode() == false) {
+                uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
 
-            // We have already calculated raw total fees rounding up.
-            // Total fees = LP fees + aggregate fees, so by rounding aggregate fees down we round the fee split in
-            // the LPs' favor, in turn increasing token balances and the pool invariant.
-            aggregateSwapFeeAmountRaw = totalSwapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
+                // We have already calculated raw total fees rounding up.
+                // Total fees = LP fees + aggregate fees, so by rounding aggregate fees down we round the fee split in
+                // the LPs' favor, in turn increasing token balances and the pool invariant.
+                aggregateSwapFeeAmountRaw = totalSwapFeeAmountRaw.mulDown(aggregateSwapFeePercentage);
 
-            // Ensure we can never charge more than the total swap fee.
-            if (aggregateSwapFeeAmountRaw > totalSwapFeeAmountRaw) {
-                revert ProtocolFeesExceedTotalCollected();
+                // Ensure we can never charge more than the total swap fee.
+                if (aggregateSwapFeeAmountRaw > totalSwapFeeAmountRaw) {
+                    revert ProtocolFeesExceedTotalCollected();
+                }
+
+                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // We have designated "Raw" the derived half for Swap fee storage.
+                bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
+                _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
+                    currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
+                );
             }
-
-            // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-            // We have designated "Raw" the derived half for Swap fee storage.
-            bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
-            _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
-                currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
-            );
         }
     }
 
@@ -1111,21 +1116,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (params.direction == WrappingDirection.UNWRAP) {
-            (amountInRaw, amountOutRaw) = _unwrapWithBuffer(
+            bytes32 bufferBalances;
+            (amountInRaw, amountOutRaw, bufferBalances) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
+            emit Unwrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         } else {
-            (amountInRaw, amountOutRaw) = _wrapWithBuffer(
+            bytes32 bufferBalances;
+            (amountInRaw, amountOutRaw, bufferBalances) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
                 params.amountGivenRaw
             );
-            emit Wrap(underlyingToken, params.wrappedToken, amountInRaw, amountOutRaw);
+            emit Wrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         }
 
         if (params.kind == SwapKind.EXACT_IN) {
@@ -1153,7 +1160,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped) {
+    ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding.
@@ -1164,14 +1171,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven), amountGiven);
         }
 
+        bufferBalances = _bufferTokenBalances[wrappedToken];
+
         // If it's a query, the Vault may not have enough underlying tokens to wrap. Since in a query we do not expect
         // the sender to pay for underlying tokens to wrap upfront, return the calculated amount without checking for
         // the imbalance.
         if (_isQueryContext()) {
-            return (amountInUnderlying, amountOutWrapped);
+            return (amountInUnderlying, amountOutWrapped, bufferBalances);
         }
-
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
@@ -1270,7 +1277,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying) {
+    ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding.
@@ -1281,14 +1288,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven), amountGiven);
         }
 
+        bufferBalances = _bufferTokenBalances[wrappedToken];
+
         // If it's a query, the Vault may not have enough wrapped tokens to unwrap. Since in a query we do not expect
         // the sender to pay for wrapped tokens to unwrap upfront, return the calculated amount without checking for
         // the imbalance.
         if (_isQueryContext()) {
-            return (amountInWrapped, amountOutUnderlying);
+            return (amountInWrapped, amountOutUnderlying, bufferBalances);
         }
-
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
