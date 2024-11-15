@@ -4,17 +4,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
+
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract VaultSwapWithRatesTest is BaseVaultTest {
-    using CastingHelpers for address[];
-    using ArrayHelpers for *;
-    using FixedPoint for *;
-
-    // Track the indices for the local dai/wsteth pool.
-    uint256 internal daiIdx;
-    uint256 internal wstethIdx;
-
+contract AuxiliaryEventTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
