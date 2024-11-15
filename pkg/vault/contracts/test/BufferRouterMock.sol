@@ -10,12 +10,16 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BufferRouter } from "../BufferRouter.sol";
 
-string constant MOCK_ROUTER_VERSION = "Mock Router v1";
+string constant MOCK_BUFFER_ROUTER_VERSION = "Mock Router v1";
 
 contract BufferRouterMock is BufferRouter {
     error MockErrorCode();
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BufferRouter(vault, weth, permit2, MOCK_ROUTER_VERSION) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2
+    ) BufferRouter(vault, weth, permit2, MOCK_BUFFER_ROUTER_VERSION) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
