@@ -38,8 +38,8 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
     address pool = address(0x1234);
     uint256 amountGivenRaw = 1 ether;
-    uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
-    uint256[] tokenRates = [uint256(1e18), 2e18];
+    uint256[] decimalScalingFactors = [1e18, 1e18];
+    uint256[] tokenRates = [1e18, 2e18];
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -124,9 +124,9 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInRecoveryMode(true);
 
         (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
+            .manualComputeAndChargeAggregateSwapFees(poolData, 2e18, pool, dai, 0);
 
-        assertEq(totalSwapFeeAmountRaw, 0, "Unexpected totalSwapFeeAmountRaw");
+        assertEq(totalSwapFeeAmountRaw, 2, "Unexpected totalSwapFeeAmountRaw");
         assertEq(aggregateSwapFeeAmountRaw, 0, "Unexpected aggregateSwapFeeAmountRaw");
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
