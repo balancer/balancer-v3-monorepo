@@ -200,9 +200,6 @@ contract Permit2Test is BaseVaultTest {
 
         assertEq(IERC20(pool).allowance(alice, address(router)), defaultAmount, "Router allowance not granted");
 
-        // This would really be a separate transaction, so clear the latch. (Forge tests execute in a single transaction.)
-        router.clearMulticallLatch();
-
         // Alice's call still works (error caught).
         vm.prank(alice);
         router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);

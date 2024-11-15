@@ -15,10 +15,10 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
     TransientStorageHelpers
@@ -33,8 +33,6 @@ import { VaultGuard } from "./VaultGuard.sol";
  * invocation functions (`permitBatchAndCall` and `multicall`).
  */
 abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTransient, Version {
-    using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
-    using TransientStorageHelpers for StorageSlotExtension.BooleanSlotType;
     using Address for address payable;
     using StorageSlotExtension for *;
     using SafeERC20 for IWETH;
@@ -50,10 +48,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _IS_RETURN_ETH_LOCKED_SLOT =
         TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "isReturnEthLocked");
-
-    // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _MULTICALL_SLOT =
-        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "multicall");
 
     /// @notice Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -108,6 +102,11 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
      */
     modifier saveSenderAndManageEth() {
         bool isExternalSender = _saveSender(msg.sender);
+
+        // Revert if a function with this modifier is called recursively (e.g., multicall).
+        if (_isReturnEthLockedSlot().tload()) {
+            revert ReentrancyGuardReentrantCall();
+        }
 
         // Lock the return of ETH during execution
         _isReturnEthLockedSlot().tstore(true);
@@ -216,13 +215,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
     function multicall(
         bytes[] calldata data
     ) public payable virtual saveSenderAndManageEth returns (bytes[] memory results) {
-        // Prevent recursive multicall invocation.
-        if (_getMulticallSlot().tload()) {
-            revert ReentrancyGuardReentrantCall();
-        } else {
-            _getMulticallSlot().tstore(true);
-        }
-
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
@@ -362,10 +354,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
 
     function _getSenderSlot() internal view returns (StorageSlotExtension.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
-    }
-
-    function _getMulticallSlot() internal view returns (StorageSlotExtension.BooleanSlotType) {
-        return _MULTICALL_SLOT.asBoolean();
     }
 
     function _isReturnEthLockedSlot() internal view returns (StorageSlotExtension.BooleanSlotType) {
