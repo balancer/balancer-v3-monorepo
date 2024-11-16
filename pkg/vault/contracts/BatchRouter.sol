@@ -240,15 +240,15 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                                 address(stepTokenIn)
                             );
                         }
+
+                        // BPT is burned instantly, so we don't need to send it back later.
+                        if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
+                            _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
+                        }
                     } else {
                         // If this is an intermediate step, we don't expect the sender to have BPT to burn.
                         // Then, we flashloan tokens here (which should in practice just use existing credit).
                         _vault.sendTo(IERC20(step.pool), address(this), stepExactAmountIn);
-                    }
-
-                    // BPT is burned instantly, so we don't need to send it back later.
-                    if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
-                        _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
                     }
 
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
