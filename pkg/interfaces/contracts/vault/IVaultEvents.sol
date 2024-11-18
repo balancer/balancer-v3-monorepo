@@ -248,9 +248,9 @@ interface IVaultEvents {
 
     /**
      * @notice Pools can use this event to emit event data from the Vault.
-     * @param from Pool address
+     * @param pool Pool address
      * @param eventKey Event key
      * @param eventData Encoded event data
      */
-    event VaultAuxiliary(address from, string eventKey, bytes eventData);
+    event VaultAuxiliary(address pool, string eventKey, bytes eventData);
 }
