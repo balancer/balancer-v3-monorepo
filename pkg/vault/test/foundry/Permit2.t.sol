@@ -13,6 +13,7 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -267,5 +268,21 @@ contract Permit2Test is BaseVaultTest {
             bytes(""),
             multicallData
         );
+    }
+
+    function testPermitBatchAndCallMismatch() public {
+        IRouterCommon.PermitApproval[] memory permitBatch = new IRouterCommon.PermitApproval[](2);
+        IAllowanceTransfer.PermitBatch memory permit2Batch;
+        bytes[] memory permitSignatures = new bytes[](1);
+        bytes[] memory multicallData = new bytes[](1);
+
+        multicallData[0] = abi.encodeCall(
+            IRouter.addLiquidityUnbalanced,
+            (pool, new uint256[](2), bptAmountOut, false, bytes(""))
+        );
+
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
+        vm.prank(alice);
+        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);
     }
 }
