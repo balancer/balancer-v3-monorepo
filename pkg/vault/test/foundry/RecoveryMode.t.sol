@@ -100,7 +100,7 @@ contract RecoveryModeTest is BaseVaultTest {
         router.removeLiquidityRecovery(pool, amountToRemove, expectedAmountsOut);
     }
 
-    function testRecoveryModeEmitsPoolBalanceChangedEquvent() public {
+    function testRecoveryModeEmitsPoolBalanceChangedEvent() public {
         // Add initial liquidity.
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
