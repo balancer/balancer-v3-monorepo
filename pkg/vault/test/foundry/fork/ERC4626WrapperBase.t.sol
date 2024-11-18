@@ -57,6 +57,8 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
 
         _initializeWallet(lp);
         _setupAllowance(lp);
+        _initializeWallet(alice);
+        _setupAllowance(alice);
     }
 
     /**
@@ -283,6 +285,44 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
             (sharesToRemove * wrappedToInitialize) / totalShares,
             "User received more wrapped tokens than it should"
         );
+    }
+
+    function testAddAndRemoveLiquidityFromBuffer__Fork__Fuzz(
+        uint256 underlyingToInitialize,
+        uint256 wrappedToInitialize,
+        uint256 sharesToIssueAndRemove
+    ) public {
+        uint256 initToAddFactor = 1000;
+        underlyingToInitialize = bound(
+            underlyingToInitialize,
+            BUFFER_MINIMUM_TOTAL_SUPPLY,
+            underlyingToken.balanceOf(lp) / initToAddFactor
+        );
+        wrappedToInitialize = bound(
+            wrappedToInitialize,
+            BUFFER_MINIMUM_TOTAL_SUPPLY,
+            wrapper.balanceOf(lp) / initToAddFactor
+        );
+
+        vm.prank(lp);
+        uint256 initShares = router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
+
+        sharesToIssueAndRemove = bound(sharesToIssueAndRemove, 0, initShares * initToAddFactor);
+
+        vm.prank(alice);
+        (uint256 underlyingDeposited, uint256 wrappedDeposited) = router.addLiquidityToBuffer(
+            wrapper,
+            sharesToIssueAndRemove
+        );
+
+        vm.prank(alice);
+        (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(
+            wrapper,
+            sharesToIssueAndRemove
+        );
+
+        assertLe(underlyingRemoved, underlyingDeposited, "User received more than they added");
+        assertLe(wrappedRemoved, wrappedDeposited, "User received more than they added");
     }
 
     function _initializeWallet(address receiver) private {
