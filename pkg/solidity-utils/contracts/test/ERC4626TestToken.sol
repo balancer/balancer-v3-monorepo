@@ -76,11 +76,12 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         uint256 underlyingDelta;
         uint256 wrappedDelta;
 
+        // If the rate stays the same there is nothing to do.
         // If rate is lower than current rate, inflates the total supply. Else, inflates the underlying amount.
         uint256 currentRate = ERC4626TestToken(address(this)).getRate();
         if (currentRate == newRate) {
             return;
-        } else if (newRate < ERC4626TestToken(address(this)).getRate()) {
+        } else if (newRate < currentRate) {
             uint256 newTotalWrappedAmount = totalUnderlyingAmount.divDown(newRate);
             wrappedDelta = newTotalWrappedAmount - totalWrappedAmount;
         } else {
