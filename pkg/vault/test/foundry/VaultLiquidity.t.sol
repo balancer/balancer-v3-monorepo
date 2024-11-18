@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -469,8 +470,8 @@ contract VaultLiquidityTest is BaseVaultTest {
         vm.revertTo(snapshotId);
 
         uint256 swapFeeAmountDai = 5e18;
-        int256[] memory deltas = new int256[](2);
-        deltas[daiIdx] = -int256(amountOut);
+        uint256[] memory deltas = new uint256[](2);
+        deltas[daiIdx] = amountOut;
 
         // Exact values for swap fees are tested elsewhere; we only want to prove they are not 0 here.
         uint256[] memory swapFeeAmounts = new uint256[](2);
@@ -478,7 +479,14 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         // Fee should be non-zero, even in RecoveryMode
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(pool, lp, totalSupplyBefore - bptAmountIn, deltas, swapFeeAmounts);
+        emit IVaultEvents.LiquidityRemoved(
+            pool,
+            lp,
+            RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+            totalSupplyBefore - bptAmountIn,
+            deltas,
+            swapFeeAmounts
+        );
         vm.prank(lp);
         router.removeLiquiditySingleTokenExactIn(pool, bptAmountIn, dai, defaultAmount / 10, false, bytes(""));
     }
@@ -497,9 +505,9 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         vm.revertTo(snapshotId);
 
-        int256[] memory deltas = new int256[](2);
-        deltas[daiIdx] = int256(amountsIn[daiIdx]);
-        deltas[usdcIdx] = int256(amountsIn[usdcIdx]);
+        uint256[] memory deltas = new uint256[](2);
+        deltas[daiIdx] = amountsIn[daiIdx];
+        deltas[usdcIdx] = amountsIn[usdcIdx];
 
         // Exact values for swap fees are tested elsewhere; we only want to prove they are not 0 here.
         // The add is proportional except for rounding errors so the swap fees here are negligible (but not 0).
@@ -509,7 +517,14 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         // Fee should be non-zero, even in RecoveryMode
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(pool, alice, totalSupplyBefore + bptAmountOut, deltas, swapFeeAmounts);
+        emit IVaultEvents.LiquidityAdded(
+            pool,
+            alice,
+            AddLiquidityKind.UNBALANCED,
+            totalSupplyBefore + bptAmountOut,
+            deltas,
+            swapFeeAmounts
+        );
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
