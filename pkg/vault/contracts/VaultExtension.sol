@@ -942,4 +942,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function _implementation() internal view override returns (address) {
         return address(_vaultAdmin);
     }
+
+    /// @inheritdoc IVaultExtension
+    function emitAuxiliaryEvent(
+        string calldata eventKey,
+        bytes calldata eventData
+    ) external onlyVaultDelegateCall withRegisteredPool(msg.sender) {
+        emit VaultAuxiliary(msg.sender, eventKey, eventData);
+    }
 }
