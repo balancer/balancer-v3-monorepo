@@ -15,6 +15,7 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
@@ -152,6 +153,8 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
     ) external payable virtual saveSender(msg.sender) returns (bytes[] memory results) {
+        InputHelpers.ensureInputLengthMatch(permitBatch.length, permitSignatures.length);
+
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
         // and grant allowances to Vault for BPT tokens.
         for (uint256 i = 0; i < permitBatch.length; ++i) {
