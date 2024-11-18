@@ -293,7 +293,7 @@ interface IVaultAdmin {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param minIssuedSharesRaw Minimum amount of shares to receive from the buffer, expressed in underlying token
+     * @param minIssuedShares Minimum amount of shares to receive from the buffer, expressed in underlying token
      * native decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
      * liquidity from the buffer
@@ -304,7 +304,7 @@ interface IVaultAdmin {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
-        uint256 minIssuedSharesRaw,
+        uint256 minIssuedShares,
         address sharesOwner
     ) external returns (uint256 issuedShares);
 

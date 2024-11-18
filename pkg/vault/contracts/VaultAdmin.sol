@@ -445,7 +445,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
-        uint256 minIssuedSharesRaw,
+        uint256 minIssuedShares,
         address sharesOwner
     )
         public
@@ -491,8 +491,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _mintMinimumBufferSupplyReserve(wrappedToken);
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
-        if (issuedShares < minIssuedSharesRaw) {
-            revert IssuedSharesBelowMin(issuedShares, minIssuedSharesRaw);
+        if (issuedShares < minIssuedShares) {
+            revert IssuedSharesBelowMin(issuedShares, minIssuedShares);
         }
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, bufferBalances);
@@ -706,6 +706,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         emit BufferSharesBurned(wrappedToken, from, amount);
     }
 
+    /// @dev For query mode usage only, inside `removeLiquidityFromBuffer`.
     function _queryModeBufferSharesIncrease(IERC4626 wrappedToken, address to, uint256 amount) internal {
         // Enforce that this can only be called in a read-only, query context.
         if (EVMCallModeHelpers.isStaticCall() == false) {
