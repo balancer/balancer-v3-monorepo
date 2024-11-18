@@ -14,15 +14,15 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
-import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
