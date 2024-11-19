@@ -438,10 +438,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         // Make sure the operation is within the buffer liquidity.
         uint256 operationAmount = bufferInitialAmount;
 
-        uint256[] memory maxAmountsIn = new uint256[](2);
-        maxAmountsIn[partialWaDaiIdx] = operationAmount;
-        maxAmountsIn[partialUsdcIdx] = 1;
-
         uint256 exactBptAmountOut = operationAmount;
 
         uint256 snapshot = vm.snapshot();
@@ -453,6 +449,11 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
         vm.revertTo(snapshot);
+
+        // Place the limit for max amounts in right below the expected value.
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[partialWaDaiIdx] = operationAmount;
+        maxAmountsIn[partialUsdcIdx] = expectedWrappedAmountsIn[partialUsdcIdx] - 1;
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -675,8 +676,9 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
         vm.revertTo(snapshot);
 
+        // Place the limit for min amounts out right above the expected value.
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[partialUsdcIdx] = 10 * expectedWrappedAmountsOut[partialUsdcIdx];
+        minAmountsOut[partialUsdcIdx] = expectedWrappedAmountsOut[partialUsdcIdx] + 1;
         minAmountsOut[partialWaDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         vm.expectRevert(
