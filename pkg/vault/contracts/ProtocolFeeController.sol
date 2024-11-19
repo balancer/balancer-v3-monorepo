@@ -493,6 +493,8 @@ contract ProtocolFeeController is
 
     /// @inheritdoc IProtocolFeeController
     function withdrawProtocolFeesForToken(address pool, address recipient, IERC20 token) external authenticate {
+        // Revert if the pool is not registered or if the token does not belong to the pool.
+        _vault.getPoolTokenCountAndIndexOfToken(pool, token);
         _withdrawProtocolFees(pool, recipient, token);
     }
 

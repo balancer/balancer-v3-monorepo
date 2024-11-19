@@ -976,14 +976,47 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(usdc.balanceOf(admin), adminBalanceUSDCBefore, "Wrong ending balance of USDC (protocol)");
     }
 
-    function testWithdrawProtocolFeePermissioned() public {
+    function testWithdrawProtocolFeesPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         feeController.withdrawProtocolFees(pool, alice);
     }
 
-    function testWithdrawProtocolFeeForTokenPermissioned() public {
+    function testWithdrawProtocolFeesPoolNotRegistered() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
+            admin
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0xbeef)));
+        vm.prank(admin);
+        feeController.withdrawProtocolFees(address(0xbeef), alice);
+    }
+
+    function testWithdrawProtocolFeesForTokenPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         feeController.withdrawProtocolFeesForToken(pool, alice, IERC20(dai));
+    }
+
+    function testWithdrawProtocolFeesForTokenPoolNotRegistered() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFeesForToken.selector),
+            admin
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0xbeef)));
+        vm.prank(admin);
+        feeController.withdrawProtocolFeesForToken(address(0xbeef), alice, IERC20(dai));
+    }
+
+    function testWithdrawProtocolFeesForTokenInvalidToken() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFeesForToken.selector),
+            admin
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector, IERC20(weth)));
+        vm.prank(admin);
+        feeController.withdrawProtocolFeesForToken(pool, alice, IERC20(weth));
     }
 
     function testSetMaliciousGlobalFeePercentages() public {
