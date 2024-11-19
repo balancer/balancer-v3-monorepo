@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
@@ -15,6 +16,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RecoveryModeTest is BaseVaultTest {
@@ -43,11 +45,12 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 amountToRemove = bptAmountOut / 2;
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityRemoved(
             pool,
             alice,
+            RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [-int256(defaultAmount) / 2, -int256(defaultAmount) / 2].toMemoryArray(),
+            [defaultAmount / 2, defaultAmount / 2].toMemoryArray(),
             new uint256[](2)
         );
 
@@ -96,11 +99,12 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 amountOutAfterFee = amountOutWithoutFee - feeAmount;
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityRemoved(
             pool,
             alice,
+            RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [-int256(amountOutAfterFee), -int256(amountOutAfterFee)].toMemoryArray(),
+            [amountOutAfterFee, amountOutAfterFee].toMemoryArray(),
             [feeAmount, feeAmount].toMemoryArray()
         );
 
@@ -133,7 +137,7 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
 
         // Raw and live should be in sync.
         assertRawAndLiveBalanceRelationship(true);
@@ -141,9 +145,30 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
+        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 amountToRemove = bptAmountOut / 2;
+        uint256 daiBalanceBefore = dai.balanceOf(alice);
+        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
+
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+
         // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, bptAmountOut / 2);
+
+        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        assertEq(bptAfter, amountToRemove); // this is half the BPT
+        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+
+        uint256 daiBalanceAfter = dai.balanceOf(alice);
+        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
+
+        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
 
         // Raw and live should be out of sync.
         assertRawAndLiveBalanceRelationship(false);
@@ -152,6 +177,30 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Raw and live should be back in sync.
         assertRawAndLiveBalanceRelationship(true);
+    }
+
+    function testRecoveryModeEmitTransferFail() public {
+        // We only want a partial match of the call, triggered when BPT are burned.
+        vm.mockCallRevert(
+            pool,
+            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, alice, address(0)),
+            bytes("")
+        );
+        testRecoveryModeBalances();
+    }
+
+    function testRecoveryModeEmitApprovalFail() public {
+        // Revoke infinite approval so that the event is emitted.
+        vm.prank(alice);
+        IERC20(pool).approve(address(router), type(uint256).max - 1);
+
+        // We only want a partial match of the call, triggered when BPT are burned.
+        vm.mockCallRevert(
+            pool,
+            abi.encodeWithSelector(BalancerPoolToken.emitApproval.selector, alice, router),
+            bytes("")
+        );
+        testRecoveryModeBalances();
     }
 
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal view {

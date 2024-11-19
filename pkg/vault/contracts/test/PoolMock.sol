@@ -81,6 +81,10 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         return (maxBptAmountIn, minAmountsOut, new uint256[](minAmountsOut.length), userData);
     }
 
+    function mockEventFunction(uint256 testValue) external {
+        _vault.emitAuxiliaryEvent("TestEvent", abi.encode(testValue));
+    }
+
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
         (scalingFactors, ) = _vault.getPoolTokenRates(address(this));

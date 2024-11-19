@@ -240,4 +240,14 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isQueryDisabled();
     }
+
+    function testEmitAuxiliaryEventWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.emitAuxiliaryEvent("", bytes(""));
+    }
+
+    function testEmitAuxiliaryEventWhenNotRegisteredPool() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(this)));
+        vault.emitAuxiliaryEvent("", bytes(""));
+    }
 }

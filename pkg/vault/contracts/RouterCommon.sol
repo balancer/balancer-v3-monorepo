@@ -14,6 +14,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import {
     TransientStorageHelpers
@@ -171,6 +172,8 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature
     ) private nonReentrant {
+        InputHelpers.ensureInputLengthMatch(permitBatch.length, permitSignatures.length);
+
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
         // and grant allowances to Vault for BPT tokens.
         for (uint256 i = 0; i < permitBatch.length; ++i) {

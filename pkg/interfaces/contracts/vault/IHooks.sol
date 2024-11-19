@@ -98,7 +98,7 @@ interface IHooks {
      *
      * @param router The address (usually a router contract) that initiated an add liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the Vault (pool config, tokens, etc.)
-     * @param kind The type of add liquidity operation (e.g., proportional, custom)
+     * @param kind The add liquidity operation type (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param balancesScaled18 Current pool balances, sorted in token registration order
@@ -123,7 +123,7 @@ interface IHooks {
      *
      * @param router The address (usually a router contract) that initiated an add liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the Vault (pool config, tokens, etc.)
-     * @param kind The type of add liquidity operation (e.g., proportional, custom)
+     * @param kind The add liquidity operation type (e.g., proportional, custom)
      * @param amountsInScaled18 Actual amounts of tokens added, sorted in token registration order
      * @param amountsInRaw Actual amounts of tokens added, sorted in token registration order
      * @param bptAmountOut Amount of pool tokens minted
