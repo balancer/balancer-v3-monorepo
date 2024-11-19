@@ -929,6 +929,63 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawPoolCreatorFees(pool);
     }
 
+    function testProtocolFeeCollectionForToken() public {
+        _registerPoolWithMaxProtocolFees();
+        _verifyPoolProtocolFeePercentages(pool);
+
+        uint256 expectedProtocolFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT;
+        uint256 expectedProtocolFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT;
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        // Move them to the fee controller.
+        feeController.collectAggregateFees(pool);
+
+        uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+
+        // Governance can withdraw.
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFeesForToken.selector),
+            admin
+        );
+
+        uint256 adminBalanceDAIBefore = IERC20(dai).balanceOf(admin);
+        uint256 adminBalanceUSDCBefore = IERC20(usdc).balanceOf(admin);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolFeesWithdrawn(pool, IERC20(dai), admin, protocolFeeAmounts[daiIdx]);
+
+        vm.prank(admin);
+        feeController.withdrawProtocolFeesForToken(pool, admin, IERC20(dai));
+
+        // Dai should be collected, USDC should not.
+        protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+        assertEq(protocolFeeAmounts[daiIdx], 0, "Non-zero protocol fee amounts after withdrawal [dai]");
+        assertEq(
+            protocolFeeAmounts[usdcIdx],
+            expectedProtocolFeeUSDC,
+            "Non-zero protocol fee amounts after withdrawal [usdc]"
+        );
+
+        assertEq(
+            dai.balanceOf(admin) - adminBalanceDAIBefore,
+            expectedProtocolFeeDAI,
+            "Wrong ending balance of DAI (protocol)"
+        );
+        assertEq(usdc.balanceOf(admin), adminBalanceUSDCBefore, "Wrong ending balance of USDC (protocol)");
+    }
+
+    function testWithdrawProtocolFeePermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeController.withdrawProtocolFees(pool, alice);
+    }
+
+    function testWithdrawProtocolFeeForTokenPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeController.withdrawProtocolFeesForToken(pool, alice, IERC20(dai));
+    }
+
     function testSetMaliciousGlobalFeePercentages() public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
