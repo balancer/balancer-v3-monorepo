@@ -15,6 +15,9 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
@@ -30,7 +33,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
  * invocation functions (`permitBatchAndCall` and `multicall`).
  */
-abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
+abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTransient, Version {
     using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
     using Address for address payable;
     using StorageSlotExtension for *;
@@ -152,7 +155,19 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external payable virtual saveSender(msg.sender) returns (bytes[] memory results) {
+    ) external payable virtual returns (bytes[] memory results) {
+        _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
+
+        // Execute all the required operations once permissions have been granted.
+        return multicall(multicallData);
+    }
+
+    function _permitBatch(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature
+    ) internal nonReentrant {
         InputHelpers.ensureInputLengthMatch(permitBatch.length, permitSignatures.length);
 
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
@@ -193,9 +208,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
             // Use Permit2 for tokens that are swapped and added into the Vault.
             _permit2.permit(msg.sender, permit2Batch, permit2Signature);
         }
-
-        // Execute all the required operations once permissions have been granted.
-        return multicall(multicallData);
     }
 
     /// @inheritdoc IRouterCommon
