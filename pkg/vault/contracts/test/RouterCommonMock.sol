@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -70,5 +71,14 @@ contract RouterCommonMock is RouterCommon {
 
     function assertETHBalance() public payable {
         require(address(msg.sender).balance > 0, "Balance must be more then 0");
+    }
+
+    function manualPermitBatchReentrancy(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature
+    ) public nonReentrant {
+        _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
     }
 }

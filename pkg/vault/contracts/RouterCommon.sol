@@ -167,7 +167,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         bytes[] calldata permitSignatures,
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature
-    ) private nonReentrant {
+    ) internal nonReentrant {
         InputHelpers.ensureInputLengthMatch(permitBatch.length, permitSignatures.length);
 
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
