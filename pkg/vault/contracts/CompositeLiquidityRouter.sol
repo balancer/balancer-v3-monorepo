@@ -14,9 +14,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
@@ -31,7 +28,7 @@ import { BatchRouterCommon } from "./BatchRouterCommon.sol";
  * These execute the steps needed to add to and remove liquidity from these special types of pools, and settle
  * the operation with the Vault.
  */
-contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommon, ReentrancyGuardTransient {
+contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 

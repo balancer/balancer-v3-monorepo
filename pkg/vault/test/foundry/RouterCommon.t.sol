@@ -6,10 +6,15 @@ import "forge-std/Test.sol";
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { ReentrancyAttack } from "@balancer-labs/v3-solidity-utils/contracts/test/ReentrancyAttack.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -182,6 +187,26 @@ contract RouterCommonTest is BaseVaultTest {
         uint256 balanceAfter = alice.balance;
 
         assertEq(balanceAfter, balanceBefore, "Value wasn't returned");
+    }
+
+    function testNestedMulticall() public {
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(RouterCommonMock.manualMulticallVoid.selector);
+
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        // Multicall a function that calls multicall again.
+        vm.prank(alice);
+        routerMock.multicall(calls);
+    }
+
+    function testPermitBatchReentrancy() public {
+        IRouterCommon.PermitApproval[] memory permitBatch;
+        bytes[] memory permitSignatures;
+        IAllowanceTransfer.PermitBatch memory permit2Batch;
+        bytes memory permit2Signature;
+
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        routerMock.manualPermitBatchReentrancy(permitBatch, permitSignatures, permit2Batch, permit2Signature);
     }
 
     struct EthStateTest {
