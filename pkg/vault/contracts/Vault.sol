@@ -745,11 +745,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _mint(address(params.pool), params.to, bptAmountOut);
 
         // 8) Off-chain events.
-        emit PoolBalanceChanged(
+        emit LiquidityAdded(
             params.pool,
             params.to,
+            params.kind,
             _totalSupply(params.pool),
-            amountsInRaw.unsafeCastToInt256(true),
+            amountsInRaw,
             swapFeeAmounts
         );
     }
@@ -1011,12 +1012,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _burn(address(params.pool), params.from, bptAmountIn);
 
         // 8) Off-chain events
-        emit PoolBalanceChanged(
+        emit LiquidityRemoved(
             params.pool,
             params.from,
+            params.kind,
             _totalSupply(params.pool),
-            // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
-            amountsOutRaw.unsafeCastToInt256(false),
+            amountsOutRaw,
             swapFeeAmounts
         );
     }
@@ -1088,6 +1089,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 index = _findTokenIndex(poolTokens, token);
 
         return (poolTokens.length, index);
+    }
+
+    /*******************************************************************************
+                                 Balancer Pool Tokens
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultMain
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
+        return true;
     }
 
     /*******************************************************************************

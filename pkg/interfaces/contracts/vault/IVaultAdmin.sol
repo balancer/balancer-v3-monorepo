@@ -225,7 +225,9 @@ interface IVaultAdmin {
     /**
      * @notice Enable recovery mode for a pool.
      * @dev This is a permissioned function. It enables a safe proportional withdrawal, with no external calls.
-     * Since there are no external calls, live balances cannot be updated while in Recovery Mode.
+     * Since there are no external calls, ensuring that entering Recovery Mode cannot fail, we cannot compute and so
+     * must forfeit any yield fees between the last operation and enabling Recovery Mode. For the same reason, live
+     * balances cannot be updated while in Recovery Mode, as doing so might cause withdrawals to fail.
      *
      * @param pool The address of the pool
      */

@@ -226,11 +226,13 @@ interface IRouter {
      * @notice Removes liquidity proportionally, burning an exact pool token amount. Only available in Recovery Mode.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
     function removeLiquidityRecovery(
         address pool,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     ) external payable returns (uint256[] memory amountsOut);
 
     /***************************************************************************
