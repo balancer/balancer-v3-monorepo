@@ -40,7 +40,7 @@ contract RouterMock is Router {
     }
 
     function manualReentrancyRemoveLiquidityRecoveryHook() external nonReentrant {
-        Router(payable(this)).removeLiquidityRecoveryHook(address(0), address(0), 0);
+        Router(payable(this)).removeLiquidityRecoveryHook(address(0), address(0), 0, new uint256[](2));
     }
 
     function manualReentrancySwapSingleTokenHook() external nonReentrant {

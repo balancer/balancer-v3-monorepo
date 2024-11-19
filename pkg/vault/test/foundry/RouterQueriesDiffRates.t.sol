@@ -537,7 +537,11 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         vm.revertTo(snapshotId);
 
         vm.prank(lp);
-        uint256[] memory actualAmountsOut = router.removeLiquidityRecovery(pool, exactBptAmountIn);
+        uint256[] memory actualAmountsOut = router.removeLiquidityRecovery(
+            pool,
+            exactBptAmountIn,
+            new uint256[](expectedAmountsOut.length)
+        );
 
         assertEq(queryAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Query and Actual amounts out are wrong");
         assertEq(expectedAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Expected amount out is wrong");

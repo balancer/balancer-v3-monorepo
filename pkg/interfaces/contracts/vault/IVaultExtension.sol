@@ -386,12 +386,14 @@ interface IVaultExtension {
      * @param pool Address of the pool
      * @param from Address of user to burn pool tokens from
      * @param exactBptAmountIn Input pool token amount
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @return amountsOut Actual calculated amounts of output tokens, sorted in token registration order
      */
     function removeLiquidityRecovery(
         address pool,
         address from,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     ) external returns (uint256[] memory amountsOut);
 
     /*******************************************************************************

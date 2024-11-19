@@ -729,6 +729,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     // Needed to avoid stack-too-deep.
     struct RecoveryLocals {
+        IERC20[] tokens;
         uint256 swapFeePercentage;
         uint256 numTokens;
         uint256[] swapFeeAmountsRaw;
@@ -740,7 +741,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function removeLiquidityRecovery(
         address pool,
         address from,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     )
         external
         onlyVaultDelegateCall
@@ -755,8 +757,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         RecoveryLocals memory locals;
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
-        IERC20[] memory tokens = _poolTokens[pool];
-        locals.numTokens = tokens.length;
+        locals.tokens = _poolTokens[pool];
+        locals.numTokens = locals.tokens.length;
 
         locals.balancesRaw = new uint256[](locals.numTokens);
         bytes32 packedBalances;
@@ -789,8 +791,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 amountsOutRaw[i] -= locals.swapFeeAmountsRaw[i];
             }
 
+            if (amountsOutRaw[i] < minAmountsOut[i]) {
+                revert AmountOutBelowMin(locals.tokens[i], amountsOutRaw[i], minAmountsOut[i]);
+            }
+
             // Credit token[i] for amountOut.
-            _supplyCredit(tokens[i], amountsOutRaw[i]);
+            _supplyCredit(locals.tokens[i], amountsOutRaw[i]);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).
