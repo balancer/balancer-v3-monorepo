@@ -14,16 +14,16 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
-import {
-    TransientStorageHelpers
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -34,7 +34,6 @@ import { VaultGuard } from "./VaultGuard.sol";
  * invocation functions (`permitBatchAndCall` and `multicall`).
  */
 abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTransient, Version {
-    using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
     using Address for address payable;
     using StorageSlotExtension for *;
     using SafeERC20 for IWETH;
@@ -104,6 +103,11 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
      */
     modifier saveSenderAndManageEth() {
         bool isExternalSender = _saveSender(msg.sender);
+
+        // Revert if a function with this modifier is called recursively (e.g., multicall).
+        if (_isReturnEthLockedSlot().tload()) {
+            revert ReentrancyGuardReentrantCall();
+        }
 
         // Lock the return of ETH during execution
         _isReturnEthLockedSlot().tstore(true);

@@ -73,6 +73,10 @@ contract RouterCommonMock is RouterCommon {
         require(address(msg.sender).balance > 0, "Balance must be more then 0");
     }
 
+    function manualMulticallVoid() external {
+        this.multicall(new bytes[](0));
+    }
+
     function manualPermitBatchReentrancy(
         PermitApproval[] calldata permitBatch,
         bytes[] calldata permitSignatures,

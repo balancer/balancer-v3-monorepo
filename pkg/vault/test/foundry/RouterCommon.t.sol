@@ -189,6 +189,16 @@ contract RouterCommonTest is BaseVaultTest {
         assertEq(balanceAfter, balanceBefore, "Value wasn't returned");
     }
 
+    function testNestedMulticall() public {
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(RouterCommonMock.manualMulticallVoid.selector);
+
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        // Multicall a function that calls multicall again.
+        vm.prank(alice);
+        routerMock.multicall(calls);
+    }
+
     function testPermitBatchReentrancy() public {
         IRouterCommon.PermitApproval[] memory permitBatch;
         bytes[] memory permitSignatures;
