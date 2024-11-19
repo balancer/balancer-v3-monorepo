@@ -1092,6 +1092,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                 Balancer Pool Tokens
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function transfer(address owner, address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
+        return true;
+    }
+
+    /// @inheritdoc IVaultMain
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool) {
+        _spendAllowance(msg.sender, from, spender, amount);
+        _transfer(msg.sender, from, to, amount);
+        return true;
+    }
+
+    /*******************************************************************************
                                   ERC4626 Buffers
     *******************************************************************************/
 
