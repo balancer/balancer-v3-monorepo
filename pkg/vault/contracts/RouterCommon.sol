@@ -160,13 +160,13 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
     ) external payable virtual returns (bytes[] memory results) {
-        _permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, permit2Signature);
+        _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
 
         // Execute all the required operations once permissions have been granted.
         return multicall(multicallData);
     }
 
-    function _permitBatchAndCall(
+    function _permitBatch(
         PermitApproval[] calldata permitBatch,
         bytes[] calldata permitSignatures,
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
