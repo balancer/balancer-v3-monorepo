@@ -100,7 +100,7 @@ contract RouterMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityRecoveryHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.removeLiquidityRecoveryHook(pool, msg.sender, amountsIn[0]);
+        router.removeLiquidityRecoveryHook(pool, msg.sender, amountsIn[0], new uint256[](2));
     }
 
     function testRemoveLiquidityRecoveryHookReentrancy() public {

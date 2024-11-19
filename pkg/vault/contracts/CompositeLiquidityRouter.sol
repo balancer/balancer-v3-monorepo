@@ -14,9 +14,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
@@ -31,7 +28,7 @@ import { BatchRouterCommon } from "./BatchRouterCommon.sol";
  * These execute the steps needed to add to and remove liquidity from these special types of pools, and settle
  * the operation with the Vault.
  */
-contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommon, ReentrancyGuardTransient {
+contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -297,6 +294,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
             // initialized. Thus, the Router treats it as a non-ERC4626 token.
             if (address(underlyingToken) == address(0)) {
+                if (wrappedAmountsOut[i] < params.minAmountsOut[i]) {
+                    revert IVaultErrors.AmountOutBelowMin(
+                        erc4626PoolTokens[i],
+                        wrappedAmountsOut[i],
+                        params.minAmountsOut[i]
+                    );
+                }
+
                 underlyingAmountsOut[i] = wrappedAmountsOut[i];
                 if (isStaticCall == false) {
                     _sendTokenOut(params.sender, erc4626PoolTokens[i], underlyingAmountsOut[i], params.wethIsEth);
@@ -345,6 +350,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
             // initialized. Thus, the Router treats it as a non-ERC4626 token.
             if (address(underlyingToken) == address(0)) {
+                if (amountsIn[i] > params.maxAmountsIn[i]) {
+                    revert IVaultErrors.AmountInAboveMax(erc4626PoolTokens[i], amountsIn[i], params.maxAmountsIn[i]);
+                }
+
                 underlyingAmounts[i] = amountsIn[i];
                 wrappedAmounts[i] = amountsIn[i];
 
