@@ -30,20 +30,13 @@ import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
 contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
     using FixedPoint for uint256;
 
-    uint256 public constant MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
-
-    // The default threshold, above which surging will occur.
-    uint256 private immutable _defaultSurgeThresholdPercentage;
-
-    // Store the current threshold for each pool.
-    mapping(address pool => uint256 threshold) private _surgeThresholdPercentage;
-
     /**
      * @notice A new `StableSurgeHookExample` contract has been registered successfully.
      * @dev If the registration fails the call will revert, so there will be no event.
      * @param pool The pool on which the hook was registered
+     * @param factory The factory that registered the pool
      */
-    event StableSurgeHookExampleRegistered(address indexed pool);
+    event StableSurgeHookExampleRegistered(address indexed pool, address indexed factory);
 
     /**
      * @notice The threshold percentage has been changed for a pool in a `StableSurgeHookExample` contract.
@@ -62,17 +55,30 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
     /// @notice The threshold must be a valid percentage value.
     error InvalidSurgeThresholdPercentage();
 
+    uint256 public constant MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
+
+    // The default threshold, above which surging will occur.
+    uint256 private immutable _defaultSurgeThresholdPercentage;
+
+    // Only pools from a specific factory (e.g., StablePoolFactory) are able to register and use this hook.
+    address private immutable _allowedFactory;
+
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
 
+    // Store the current threshold for each pool.
+    mapping(address pool => uint256 threshold) private _surgeThresholdPercentage;
+
     constructor(
         IVault vault,
-        uint256 defaultSurgeThresholdPercentage,
-        IAuthorizer newAuthorizer
+        address allowedFactory,
+        IAuthorizer newAuthorizer,
+        uint256 defaultSurgeThresholdPercentage
     ) Authentication(bytes32(uint256(uint160(address(vault))))) VaultGuard(vault) {
         _ensureValidPercentage(defaultSurgeThresholdPercentage);
 
         _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
+        _allowedFactory = allowedFactory;
 
         _setAuthorizer(newAuthorizer);
     }
@@ -111,15 +117,21 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
 
     /// @inheritdoc IHooks
     function onRegister(
-        address,
+        address factory,
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
-        emit StableSurgeHookExampleRegistered(pool);
+        bool isAllowedFactory = factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+
+        if (!isAllowedFactory) {
+            return false;
+        }
 
         // Initially set the pool threshold to the default (can be changed by the pool swapFeeManager in the future).
         _setSurgeThresholdPercentage(pool, _defaultSurgeThresholdPercentage);
+
+        emit StableSurgeHookExampleRegistered(pool, factory);
 
         return true;
     }
