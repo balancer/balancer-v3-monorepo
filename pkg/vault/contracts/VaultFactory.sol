@@ -84,7 +84,7 @@ contract VaultFactory is Authentication {
             revert InvalidBytecode("VaultExtension");
         }
 
-        address vaultAddress = getDeploymentAddress(salt);
+        address vaultAddress = getDeploymentAddress(msg.sender, salt);
         if (targetAddress != vaultAddress) {
             revert VaultAddressMismatch();
         }
@@ -120,6 +120,7 @@ contract VaultFactory is Authentication {
             )
         );
 
+        salt = keccak256(abi.encodePacked(msg.sender, salt));
         address deployedAddress = CREATE3.deploy(
             salt,
             abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, feeController)),
@@ -134,8 +135,9 @@ contract VaultFactory is Authentication {
         emit VaultCreated(vaultAddress);
     }
 
-    /// @notice Gets deployment address for a given salt.
-    function getDeploymentAddress(bytes32 salt) public view returns (address) {
+    /// @notice Gets deployment address for a given caller and salt.
+    function getDeploymentAddress(address caller, bytes32 salt) public view returns (address) {
+        salt = keccak256(abi.encodePacked(caller, salt));
         return CREATE3.getDeployed(salt);
     }
 
