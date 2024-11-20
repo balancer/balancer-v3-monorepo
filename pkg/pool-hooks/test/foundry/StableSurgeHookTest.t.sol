@@ -24,32 +24,41 @@ import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedia
 contract StableSurgeHookTest is BaseVaultTest {
     using FixedPoint for uint256;
 
-    uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 0.3e18;
+    uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 30e16; // 30%
+    uint256 constant DEFAULT_MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
 
     StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
     StableSurgeHook stableSurgeHook;
 
     function setUp() public override {
         super.setUp();
-        stableSurgeHook = new StableSurgeHook(vault, DEFAULT_SURGE_THRESHOLD_PERCENTAGE, IAuthorizer(address(0))); //TODO: add authorizer
+        stableSurgeHook = new StableSurgeHook(
+            vault,
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE
+        );
     }
 
     function testOnRegister() public {
-        LiquidityManagement memory emptyLiquidityManagement;
-
         assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
 
         vm.expectEmit();
         emit StableSurgeHook.StableSurgeHookExampleRegistered(pool);
 
-        vm.prank(address(vault));
-        stableSurgeHook.onRegister(msg.sender, pool, new TokenConfig[](0), emptyLiquidityManagement);
+        _registerPool();
 
         assertEq(
             stableSurgeHook.getSurgeThresholdPercentage(pool),
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
             "Surge threshold percentage should be DEFAULT_SURGE_THRESHOLD_PERCENTAGE"
         );
+    }
+
+    function _registerPool() private {
+        LiquidityManagement memory emptyLiquidityManagement;
+
+        vm.prank(address(vault));
+        stableSurgeHook.onRegister(msg.sender, pool, new TokenConfig[](0), emptyLiquidityManagement);
     }
 
     function testGetHookFlags() public view {
@@ -117,7 +126,7 @@ contract StableSurgeHookTest is BaseVaultTest {
             abi.encode(poolRoleAccounts)
         );
 
-        vm.expectRevert(StableSurgeHook.InvalidSurgeThresholdPercentage.selector);
+        vm.expectRevert(StableSurgeHook.InvalidPercentage.selector);
         stableSurgeHook.setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 
@@ -126,7 +135,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
     }
 
-    function testGetSurgeFeePercentage() public view {
+    function testGetSurgeFeePercentage() public {
         uint256 numTokens = 8;
         uint256[] memory balances = new uint256[](numTokens);
 
@@ -155,11 +164,9 @@ contract StableSurgeHookTest is BaseVaultTest {
         uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
         uint256 staticFeePercentage = 1e16;
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
+        _registerPool();
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(params, pool, staticFeePercentage);
 
         uint256[] memory newBalances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -170,14 +177,14 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(newBalances);
         uint expectedFee = staticFeePercentage +
-            (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - staticFeePercentage).mulDown(
+            (DEFAULT_MAX_SURGE_FEE_PERCENTAGE - staticFeePercentage).mulDown(
                 (newTotalImbalance - surgeThresholdPercentage).divDown(surgeThresholdPercentage.complement())
             );
 
         assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
     }
 
-    function testGetSurgeFeePercentageWhenNewTotalImbalanceIsZero() public view {
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceIsZero() public {
         uint256 numTokens = 8;
         uint256[] memory balances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -197,19 +204,16 @@ contract StableSurgeHookTest is BaseVaultTest {
             router: address(0),
             userData: bytes("")
         });
-        uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
         uint256 staticFeePercentage = 1e16;
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
+        _registerPool();
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(params, pool, staticFeePercentage);
 
         assertEq(surgeFeePercentage, staticFeePercentage, "Surge fee percentage should be staticFeePercentage");
     }
 
-    function testGetSurgeFeePercentageWhenNewTotalImbalanceLesOrEqOld() public view {
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceLesOrEqOld() public {
         uint256 numTokens = 8;
         uint256[] memory balances = new uint256[](numTokens);
         balances[0] = 1e18;
@@ -234,19 +238,16 @@ contract StableSurgeHookTest is BaseVaultTest {
             router: address(0),
             userData: bytes("")
         });
-        uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
         uint256 staticFeePercentage = 1e16;
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
+        _registerPool();
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(params, pool, staticFeePercentage);
 
         assertEq(surgeFeePercentage, staticFeePercentage, "Surge fee percentage should be staticFeePercentage");
     }
 
-    function testGetSurgeFeePercentageWhenNewTotalImbalanceLessOrEqThreshold() public view {
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceLessOrEqThreshold() public {
         uint256 numTokens = 8;
         uint256[] memory balances = new uint256[](numTokens);
         balances[0] = 1e18;
@@ -271,14 +272,11 @@ contract StableSurgeHookTest is BaseVaultTest {
             router: address(0),
             userData: bytes("")
         });
-        uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
         uint256 staticFeePercentage = 1e16;
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
+        _registerPool();
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(params, pool, staticFeePercentage);
 
         assertEq(surgeFeePercentage, staticFeePercentage, "Surge fee percentage should be staticFeePercentage");
     }
