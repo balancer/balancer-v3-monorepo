@@ -259,6 +259,11 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
     function testFeeConstants() public pure {
         assertLt(FixedPoint.ONE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+        assertEq(
+            (MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
+            MAX_FEE_PERCENTAGE,
+            "Max fee percentage requires too much precision"
+        );
     }
 
     function testMinimumTradeAmountWithZero() public view {

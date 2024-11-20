@@ -419,5 +419,5 @@ struct BufferWrapOrUnwrapParams {
 uint256 constant FEE_BITLENGTH = 24;
 uint256 constant FEE_SCALING_FACTOR = 1e11;
 // Used to ensure the safety of fee-related math (e.g., pools or hooks don't set it greater than 100%).
-// This is the highest value that meets the precision requirements and is < 100%.
-uint256 constant MAX_FEE_PERCENTAGE = (1e18 / FEE_SCALING_FACTOR - 1) * FEE_SCALING_FACTOR;
+// This value should work for practical purposes and is well within the max precision requirements.
+uint256 constant MAX_FEE_PERCENTAGE = 99.9999e16; // 99.9999%

@@ -18,6 +18,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eBatchSwapTest is BaseVaultTest {
@@ -58,7 +59,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
 
-        IProtocolFeeController feeController = vault.getProtocolFeeController();
+        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
         authorizer.grantRole(
@@ -82,10 +83,10 @@ contract E2eBatchSwapTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.startPrank(poolCreator);
-        // Set pool creator fee as close as possible to 100%, so protocol + creator fees ~ the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(poolA, MAX_FEE_PERCENTAGE);
-        feeController.setPoolCreatorSwapFeePercentage(poolB, MAX_FEE_PERCENTAGE);
-        feeController.setPoolCreatorSwapFeePercentage(poolC, MAX_FEE_PERCENTAGE);
+        // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolA, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolB, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolC, FixedPoint.ONE);
         vm.stopPrank();
 
         tokensToTrack = [address(tokenA), address(tokenB), address(tokenC), address(tokenD)].toMemoryArray().asIERC20();
