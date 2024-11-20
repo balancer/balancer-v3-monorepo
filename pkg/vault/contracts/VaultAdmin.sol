@@ -15,6 +15,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -444,6 +445,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
+        uint256 minIssuedShares,
         address sharesOwner
     )
         public
@@ -473,7 +475,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(wrappedToken, amountWrappedRaw);
 
         // Update buffer balances.
-        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
+        bytes32 bufferBalances = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
+        _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
         // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
@@ -488,12 +491,18 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _mintMinimumBufferSupplyReserve(wrappedToken);
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+        if (issuedShares < minIssuedShares) {
+            revert IssuedSharesBelowMin(issuedShares, minIssuedShares);
+        }
+
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, bufferBalances);
     }
 
     /// @inheritdoc IVaultAdmin
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue,
         address sharesOwner
     )
@@ -521,6 +530,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         amountUnderlyingRaw = bufferBalances.getBalanceRaw().mulDivUp(exactSharesToIssue, totalShares);
         amountWrappedRaw = bufferBalances.getBalanceDerived().mulDivUp(exactSharesToIssue, totalShares);
 
+        if (amountUnderlyingRaw > maxAmountUnderlyingInRaw) {
+            revert AmountInAboveMax(IERC20(underlyingToken), amountUnderlyingRaw, maxAmountUnderlyingInRaw);
+        }
+
+        if (amountWrappedRaw > maxAmountWrappedInRaw) {
+            revert AmountInAboveMax(IERC20(wrappedToken), amountWrappedRaw, maxAmountWrappedInRaw);
+        }
+
         // Take debt for assets going into the buffer (wrapped and underlying).
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
         _takeDebt(wrappedToken, amountWrappedRaw);
@@ -535,7 +552,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // Mint new shares to the owner.
         _mintBufferShares(wrappedToken, sharesOwner, exactSharesToIssue);
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, bufferBalances);
     }
 
     function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
@@ -566,12 +583,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @inheritdoc IVaultAdmin
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove
+        uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOutRaw,
+        uint256 minAmountWrappedOutRaw
     ) external onlyVaultDelegateCall returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeCall(VaultAdmin.removeLiquidityFromBufferHook, (wrappedToken, sharesToRemove, msg.sender))
+                    abi.encodeCall(
+                        VaultAdmin.removeLiquidityFromBufferHook,
+                        (wrappedToken, sharesToRemove, minAmountUnderlyingOutRaw, minAmountWrappedOutRaw, msg.sender)
+                    )
                 ),
                 (uint256, uint256)
             );
@@ -587,6 +609,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
      * total shares
+     * @param minAmountUnderlyingOutRaw Minimum amount of underlying tokens to receive from the buffer. It is expressed
+     * in underlying token native decimals
+     * @param minAmountWrappedOutRaw Minimum amount of wrapped tokens to receive from the buffer. It is expressed in
+     * wrapped token native decimals
      * @param sharesOwner Owner of the shares (`msg.sender` for `removeLiquidityFromBuffer` entrypoint)
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
@@ -594,6 +620,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     function removeLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOutRaw,
+        uint256 minAmountWrappedOutRaw,
         address sharesOwner
     )
         external
@@ -603,6 +631,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         withInitializedBuffer(wrappedToken)
         returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
+        if (_isQueryContext()) {
+            // Increase `sharesOwner` balance to ensure the check below and the burn function succeeds.
+            _queryModeBufferSharesIncrease(wrappedToken, sharesOwner, sharesToRemove);
+        }
+
         if (sharesToRemove > _bufferLpShares[wrappedToken][sharesOwner]) {
             revert NotEnoughBufferShares();
         }
@@ -618,6 +651,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // and can't change afterwards, so it is already validated at this point. There is no way to add liquidity
         // with an asset that differs from the one set during initialization.
         IERC20 underlyingToken = IERC20(_bufferAssets[wrappedToken]);
+
+        if (removedUnderlyingBalanceRaw < minAmountUnderlyingOutRaw) {
+            revert AmountInAboveMax(IERC20(underlyingToken), removedUnderlyingBalanceRaw, minAmountUnderlyingOutRaw);
+        }
+
+        if (removedWrappedBalanceRaw < minAmountWrappedOutRaw) {
+            revert AmountInAboveMax(IERC20(wrappedToken), removedWrappedBalanceRaw, minAmountWrappedOutRaw);
+        }
+
         _supplyCredit(underlyingToken, removedUnderlyingBalanceRaw);
         _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
@@ -640,7 +682,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
         }
 
-        emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
+        emit LiquidityRemovedFromBuffer(
+            wrappedToken,
+            removedUnderlyingBalanceRaw,
+            removedWrappedBalanceRaw,
+            bufferBalances
+        );
     }
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {
@@ -657,6 +704,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferLpShares[wrappedToken][from] -= amount;
 
         emit BufferSharesBurned(wrappedToken, from, amount);
+    }
+
+    /// @dev For query mode usage only, inside `removeLiquidityFromBuffer`.
+    function _queryModeBufferSharesIncrease(IERC4626 wrappedToken, address to, uint256 amount) internal {
+        // Enforce that this can only be called in a read-only, query context.
+        if (EVMCallModeHelpers.isStaticCall() == false) {
+            revert EVMCallModeHelpers.NotStaticCall();
+        }
+
+        // Increase `to` balance to ensure the burn function succeeds during query.
+        _bufferLpShares[wrappedToken][to] += amount;
     }
 
     /// @inheritdoc IVaultAdmin

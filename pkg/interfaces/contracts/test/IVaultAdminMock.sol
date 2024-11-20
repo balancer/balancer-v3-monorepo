@@ -21,6 +21,7 @@ interface IVaultAdminMock {
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
         uint256 amountWrapped,
+        uint256 minIssuedShares,
         address sharesOwner
     ) external;
 
@@ -33,6 +34,8 @@ interface IVaultAdminMock {
 
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue,
         address sharesOwner
     ) external;
@@ -40,6 +43,8 @@ interface IVaultAdminMock {
     function manualReentrancyRemoveLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOut,
+        uint256 minAmountWrappedOut,
         address sharesOwner
     ) external;
 
