@@ -180,7 +180,9 @@ contract ProtocolFeeController is
      * @notice Settle fee credits from the Vault.
      * @dev This must be called after calling `collectAggregateFees` in the Vault. Note that since charging protocol
      * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
-     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
+     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations. The Vault
+     * differentiates between swap and yield fees (since they can have different percentage values); the Controller
+     * combines swap and yield fees, then allocates the total between the protocol and pool creator.
      *
      * @param pool The address of the pool on which the swap fees were charged
      * @param swapFeeAmounts An array with the total swap fees collected, sorted in token registration order
@@ -231,8 +233,13 @@ contract ProtocolFeeController is
                 }
 
                 if (needToSplitFees) {
-                    uint256 totalVolume = feeAmounts[i].divUp(aggregateFeePercentage);
-                    uint256 protocolPortion = totalVolume.mulUp(protocolFeePercentage);
+                    // The Vault took a single "cut" for the aggregate total percentage (protocol + pool creator) for
+                    // this fee type (swap or yield). The first step is to reconstruct this total fee amount. Then we
+                    // need to "disaggregate" this total, dividing it between the protocol and pool creator according
+                    // to their individual percentages. We do this by computing the protocol portion first, then
+                    // assigning the remainder to the pool creator.
+                    uint256 totalFeeAmountRaw = feeAmounts[i].divUp(aggregateFeePercentage);
+                    uint256 protocolPortion = totalFeeAmountRaw.mulUp(protocolFeePercentage);
 
                     _protocolFeeAmounts[pool][token] += protocolPortion;
                     _poolCreatorFeeAmounts[pool][token] += feeAmounts[i] - protocolPortion;
@@ -343,7 +350,14 @@ contract ProtocolFeeController is
             protocolFeePercentage +
             protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
 
-        _ensureValidPrecision(aggregateFeePercentage);
+        // Protocol fee percentages are limited to 24-bit precision for performance reasons (i.e., to fit all the fees
+        // in a single slot), and because high precision is not needed. Generally we expect protocol fees set by
+        // governance to be simple integers.
+        //
+        // However, the pool creator fee is entirely controlled by the pool creator, and it is possible to craft a
+        // valid pool creator fee percentage that would cause the aggregate fee percentage to fail the precision check.
+        // This case should be rare, so we ensure this can't happen by truncating the final value.
+        aggregateFeePercentage = (aggregateFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
@@ -473,13 +487,24 @@ contract ProtocolFeeController is
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolTokens[i];
 
-            uint256 amountToWithdraw = _protocolFeeAmounts[pool][token];
-            if (amountToWithdraw > 0) {
-                _protocolFeeAmounts[pool][token] = 0;
-                token.safeTransfer(recipient, amountToWithdraw);
+            _withdrawProtocolFees(pool, recipient, token);
+        }
+    }
 
-                emit ProtocolFeesWithdrawn(pool, token, recipient, amountToWithdraw);
-            }
+    /// @inheritdoc IProtocolFeeController
+    function withdrawProtocolFeesForToken(address pool, address recipient, IERC20 token) external authenticate {
+        // Revert if the pool is not registered or if the token does not belong to the pool.
+        _vault.getPoolTokenCountAndIndexOfToken(pool, token);
+        _withdrawProtocolFees(pool, recipient, token);
+    }
+
+    function _withdrawProtocolFees(address pool, address recipient, IERC20 token) internal {
+        uint256 amountToWithdraw = _protocolFeeAmounts[pool][token];
+        if (amountToWithdraw > 0) {
+            _protocolFeeAmounts[pool][token] = 0;
+            token.safeTransfer(recipient, amountToWithdraw);
+
+            emit ProtocolFeesWithdrawn(pool, token, recipient, amountToWithdraw);
         }
     }
 
