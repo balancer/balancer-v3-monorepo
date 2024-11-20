@@ -205,6 +205,13 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         }
 
         // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
+        //
+        // As you can see from the formula, if it’s unbalanced exactly at the threshold, the last term is 0,
+        // and the fee is just: static + 0 = static fee.
+        // As the unbalanced proportion term approaches 1, the fee surge approaches: static + max - static ~= max fee.
+        // This formula linearly increases the fee from 0 at the threshold up to the maximum fee.
+        // At 35%, the fee would be 1% + (0.95 - 0.01) * ((0.35 - 0.3)/(0.95-0.3)) = 1% + 0.94 * 0.0769 ~ 8.2%.
+        // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
         return
             staticFeePercentage +
             (MAX_SURGE_FEE_PERCENTAGE - staticFeePercentage).mulDown(
