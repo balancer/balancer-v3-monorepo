@@ -618,14 +618,14 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        // Set 100% pool creator fees
+        // Set max pool creator fees
         vm.startPrank(lp);
         feeController.setPoolCreatorSwapFeePercentage(
             pool,
             ProtocolFeeController(address(feeController)).MAX_CREATOR_FEE_PERCENTAGE()
         );
 
-        // Check initial conditions: aggregate swap fee percentage should be 100%.
+        // Aggregate swap fee percentage should be smaller than the max allowed.
         (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = IPoolInfo(pool)
             .getAggregateFeePercentages();
         assertLe(aggregateSwapFeePercentage, MAX_FEE_PERCENTAGE, "Aggregate swap fee exceeds max (~100%)");
@@ -649,14 +649,14 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        // Set 100% pool creator fees
+        // Set max pool creator fees
         vm.startPrank(lp);
         feeController.setPoolCreatorYieldFeePercentage(
             pool,
             ProtocolFeeController(address(feeController)).MAX_CREATOR_FEE_PERCENTAGE()
         );
 
-        // Check initial conditions: aggregate swap fee percentage should be 100%.
+        // Aggregate yield fee percentage should be smaller than the max allowed.
         (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = IPoolInfo(pool)
             .getAggregateFeePercentages();
         assertLe(aggregateYieldFeePercentage, MAX_FEE_PERCENTAGE, "Aggregate yield fee exceeds max (~100%)");
