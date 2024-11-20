@@ -31,11 +31,7 @@ contract StableSurgeHookTest is BaseVaultTest {
 
     function setUp() public override {
         super.setUp();
-        stableSurgeHook = new StableSurgeHook(
-            vault,
-            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
-            IAuthorizer(address(0))
-        ); //TODO: add authorizer
+        stableSurgeHook = new StableSurgeHook(vault, DEFAULT_SURGE_THRESHOLD_PERCENTAGE, IAuthorizer(address(0))); //TODO: add authorizer
     }
 
     function testOnRegister() public {
@@ -69,11 +65,7 @@ contract StableSurgeHookTest is BaseVaultTest {
             shouldCallBeforeRemoveLiquidity: false,
             shouldCallAfterRemoveLiquidity: false
         });
-        assertEq(
-            abi.encode(stableSurgeHook.getHookFlags()),
-            abi.encode(hookFlags),
-            "Hook flags should be correct"
-        );
+        assertEq(abi.encode(stableSurgeHook.getHookFlags()), abi.encode(hookFlags), "Hook flags should be correct");
     }
 
     function testGetDefaultSurgeThresholdPercentage() public view {
