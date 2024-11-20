@@ -228,13 +228,18 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         sharesToIssue = bound(sharesToIssue, BUFFER_MINIMUM_TOTAL_SUPPLY, underlyingToken.balanceOf(lp) / 2);
 
         vm.prank(lp);
-        router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
+        bufferRouter.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize, 0);
         // Since the buffer burns part of the shares, we measure the total shares in the vault instead of using the
         // value returned by initializeBuffer;
         uint256 totalShares = vault.getBufferTotalShares(wrapper);
 
         vm.prank(lp);
-        (uint256 underlyingDeposited, uint256 wrappedDeposited) = router.addLiquidityToBuffer(wrapper, sharesToIssue);
+        (uint256 underlyingDeposited, uint256 wrappedDeposited) = bufferRouter.addLiquidityToBuffer(
+            wrapper,
+            MAX_UINT128,
+            MAX_UINT128,
+            sharesToIssue
+        );
 
         // Measures if the underlying and wrapped deposited on addLiquidityToBuffer are worth the same number of shares
         // than in initialized liquidity (or less).
@@ -263,7 +268,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         wrappedToInitialize = bound(wrappedToInitialize, BUFFER_MINIMUM_TOTAL_SUPPLY, wrapper.balanceOf(lp) / 10);
 
         vm.prank(lp);
-        uint256 lpShares = router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
+        uint256 lpShares = bufferRouter.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize, 0);
         // Since the buffer burns part of the shares, we measure the total shares in the vault instead of using the
         // value returned by initializeBuffer;
         uint256 totalShares = vault.getBufferTotalShares(wrapper);
@@ -271,7 +276,12 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         sharesToRemove = bound(sharesToRemove, 0, lpShares);
 
         vm.prank(lp);
-        (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(wrapper, sharesToRemove);
+        (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(
+            wrapper,
+            sharesToRemove,
+            0,
+            0
+        );
 
         // Measures if the underlying and wrapped received from `removeLiquidityFromBuffer` are worth the same number
         // of shares than in initialized liquidity (or less).
@@ -305,20 +315,24 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         );
 
         vm.prank(lp);
-        uint256 initShares = router.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize);
+        uint256 initShares = bufferRouter.initializeBuffer(wrapper, underlyingToInitialize, wrappedToInitialize, 0);
 
         sharesToIssueAndRemove = bound(sharesToIssueAndRemove, 0, initShares * initToAddFactor);
 
         vm.prank(alice);
-        (uint256 underlyingDeposited, uint256 wrappedDeposited) = router.addLiquidityToBuffer(
+        (uint256 underlyingDeposited, uint256 wrappedDeposited) = bufferRouter.addLiquidityToBuffer(
             wrapper,
+            MAX_UINT128,
+            MAX_UINT128,
             sharesToIssueAndRemove
         );
 
         vm.prank(alice);
         (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(
             wrapper,
-            sharesToIssueAndRemove
+            sharesToIssueAndRemove,
+            0,
+            0
         );
 
         assertLe(underlyingRemoved, underlyingDeposited, "User received more than they added");
@@ -342,8 +356,8 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         underlyingToken.forceApprove(address(permit2), type(uint256).max);
         wrapper.approve(address(permit2), type(uint256).max);
 
-        permit2.approve(address(underlyingToken), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(wrapper), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(underlyingToken), address(bufferRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(wrapper), address(bufferRouter), type(uint160).max, type(uint48).max);
         vm.stopPrank();
     }
 }

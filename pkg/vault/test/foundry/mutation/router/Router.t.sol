@@ -131,14 +131,24 @@ contract RouterMutationTest is BaseVaultTest {
         router.manualReentrancySwapSingleTokenHook();
     }
 
+    function testInitializeBufferHookWhenNotVault() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        bufferRouter.initializeBufferHook(IERC4626(address(0)), 0, 0, 0, address(0));
+    }
+
+    function testInitializeBufferHookReentrancy() public {
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        bufferRouter.manualReentrancyInitializeBufferHook();
+    }
+
     function testAddLiquidityToBufferHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, address(0));
+        bufferRouter.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, 0, address(0));
     }
 
     function testAddLiquidityToBufferHookReentrancy() public {
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        router.manualReentrancyAddLiquidityToBufferHook();
+        bufferRouter.manualReentrancyAddLiquidityToBufferHook();
     }
 
     function testQuerySwapHookWhenNotVault() public {

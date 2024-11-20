@@ -859,10 +859,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _isUnlocked().tstore(true);
     }
 
-    function _isQueryContext() internal view returns (bool) {
-        return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
-    }
-
     /// @inheritdoc IVaultExtension
     function quote(bytes calldata data) external query onlyVaultDelegateCall returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
