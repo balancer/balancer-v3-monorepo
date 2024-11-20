@@ -125,7 +125,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         vault.manualEnableRecoveryMode(pool);
 
         vm.prank(lp);
-        router.removeLiquidityRecovery(pool, bptAmountIn);
+        router.removeLiquidityRecovery(pool, bptAmountIn, new uint256[](2));
     }
 
     /// @dev Unbalanced remove (single token exact in); new invariant is smaller than allowed.

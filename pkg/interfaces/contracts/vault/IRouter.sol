@@ -226,11 +226,13 @@ interface IRouter {
      * @notice Removes liquidity proportionally, burning an exact pool token amount. Only available in Recovery Mode.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
     function removeLiquidityRecovery(
         address pool,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     ) external payable returns (uint256[] memory amountsOut);
 
     /***************************************************************************
@@ -309,43 +311,6 @@ interface IRouter {
         bytes calldata userData
     ) external payable returns (uint256 amountIn);
 
-    /*******************************************************************************
-                                  ERC4626 Buffers
-    *******************************************************************************/
-
-    /**
-     * @notice Adds liquidity for the first time to an internal ERC4626 buffer in the Vault.
-     * @dev Calling this method binds the wrapped token to its underlying asset internally; the asset in the wrapper
-     * cannot change afterwards, or every other operation on that wrapper (add / remove / wrap / unwrap) will fail.
-     *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
-     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
-     * (This is the BPT of the Vault's internal ERC4626 buffer.)
-     */
-    function initializeBuffer(
-        IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw
-    ) external returns (uint256 issuedShares);
-
-    /**
-     * @notice Adds liquidity proportionally to an internal ERC4626 buffer in the Vault.
-     * @dev Requires the buffer to be initialized beforehand. Restricting adds to proportional simplifies the Vault
-     * code, avoiding rounding issues and minimum amount checks. It is possible to add unbalanced by interacting
-     * with the wrapper contract directly.
-     * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
-     * in underlying token decimals
-     * @return amountUnderlyingRaw Amount of underlying tokens deposited into the buffer
-     * @return amountWrappedRaw Amount of wrapped tokens deposited into the buffer
-     */
-    function addLiquidityToBuffer(
-        IERC4626 wrappedToken,
-        uint256 exactSharesToIssue
-    ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
-
     /***************************************************************************
                                       Queries
     ***************************************************************************/
@@ -354,7 +319,7 @@ interface IRouter {
      * @notice Queries an `addLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
@@ -369,7 +334,7 @@ interface IRouter {
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
@@ -385,7 +350,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountIn Expected amount of tokens to add
      */
@@ -402,7 +367,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum amount of pool tokens to receive
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      * @return bptAmountOut Expected amount of pool tokens to receive
@@ -420,7 +385,7 @@ interface IRouter {
      * @notice Queries a `removeLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
@@ -436,7 +401,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param tokenOut Token used to remove liquidity
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountOut Expected amount of tokens to receive
      */
@@ -453,7 +418,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Expected exact amount of tokens to receive
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      */
@@ -470,7 +435,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Expected minimum amounts of tokens to receive, sorted in token registration order
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
@@ -501,7 +466,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountIn Exact amounts of input tokens to send
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
@@ -520,7 +485,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountOut Exact amounts of input tokens to receive
-     * @param sender The address passed to the operation as the sender. It influences results (e.g., with user-dependent hooks)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data sent with the query request
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */

@@ -409,7 +409,11 @@ contract RouterTest is BaseVaultTest {
         // Do a recovery withdrawal.
         uint256 bptAmountIn = bptAmountOut / 2;
         vm.prank(alice);
-        uint256[] memory amountsOut = router.removeLiquidityRecovery(pool, bptAmountIn);
+        uint256[] memory amountsOut = router.removeLiquidityRecovery(
+            pool,
+            bptAmountIn,
+            new uint256[](amountsIn.length)
+        );
         assertEq(amountsOut.length, 2, "Incorrect amounts out length");
         assertEq(amountsOut[daiIdx], defaultAmount / 2, "Incorrect DAI amount out");
         assertEq(amountsOut[usdcIdx], defaultAmount / 2, "Incorrect USDC amount out");
@@ -456,7 +460,11 @@ contract RouterTest is BaseVaultTest {
         );
 
         vm.prank(alice);
-        uint256[] memory amountsOut = router.removeLiquidityRecovery(pool, bptAmountIn);
+        uint256[] memory amountsOut = router.removeLiquidityRecovery(
+            pool,
+            bptAmountIn,
+            new uint256[](amountsIn.length)
+        );
         assertEq(amountsOut.length, 2, "Incorrect amounts out length");
         assertEq(amountsOut[daiIdx], expectedAmountsOutRaw[daiIdx], "Incorrect DAI amount out");
         assertEq(amountsOut[usdcIdx], expectedAmountsOutRaw[usdcIdx], "Incorrect USDC amount out");

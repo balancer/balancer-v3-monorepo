@@ -102,7 +102,11 @@ interface IVaultAdmin {
 
     /**
      * @notice Indicates whether the Vault is paused.
-     * @dev If the Vault is paused, all non-Recovery Mode state-changing operations will revert.
+     * @dev If the Vault is paused, all non-Recovery Mode state-changing operations on pools will revert. Note that
+     * ERC4626 buffers and the Vault have separate and independent pausing mechanisms. Pausing the Vault does not
+     * also pause buffers (though we anticipate they would likely be paused and unpaused together). Call
+     * `areBuffersPaused` to check the pause state of the buffers.
+     *
      * @return paused True if the Vault is paused
      */
     function isVaultPaused() external view returns (bool);
@@ -116,15 +120,20 @@ interface IVaultAdmin {
     function getVaultPausedState() external view returns (bool, uint32, uint32);
 
     /**
-     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
+     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions on pools.
      * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
+     * Note that ERC4626 buffer operations have an independent pause mechanism, which is not affected by pausing
+     * the Vault. Custom routers could still wrap/unwrap using buffers while the Vault is paused, unless buffers
+     * are also paused (with `pauseVaultBuffers`).
      */
     function pauseVault() external;
 
     /**
-     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
+     * @notice Reverse a `pause` operation, and restore Vault pool operations to normal functionality.
      * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
+     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires. As noted above,
+     * ERC4626 buffers and Vault operations on pools are independent. Unpausing the Vault does not reverse
+     * `pauseVaultBuffers`. If buffers were also paused, they will remain in that state until explicitly unpaused.
      */
     function unpauseVault() external;
 
@@ -216,7 +225,9 @@ interface IVaultAdmin {
     /**
      * @notice Enable recovery mode for a pool.
      * @dev This is a permissioned function. It enables a safe proportional withdrawal, with no external calls.
-     * Since there are no external calls, live balances cannot be updated while in Recovery Mode.
+     * Since there are no external calls, ensuring that entering Recovery Mode cannot fail, we cannot compute and so
+     * must forfeit any yield fees between the last operation and enabling Recovery Mode. For the same reason, live
+     * balances cannot be updated while in Recovery Mode, as doing so might cause withdrawals to fail.
      *
      * @param pool The address of the pool
      */
@@ -246,7 +257,9 @@ interface IVaultAdmin {
     /**
      * @notice Indicates whether the Vault buffers are paused.
      * @dev When buffers are paused, all buffer operations (i.e., calls on the Router with `isBuffer` true)
-     * will revert. Pausing buffers is reversible.
+     * will revert. Pausing buffers is reversible. Note that ERC4626 buffers and the Vault have separate and
+     * independent pausing mechanisms. Pausing the Vault does not also pause buffers (though we anticipate they
+     * would likely be paused and unpaused together). Call `isVaultPaused` to check the pause state of the Vault.
      *
      * @return buffersPaused True if the Vault buffers are paused
      */
@@ -258,14 +271,18 @@ interface IVaultAdmin {
      * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity. Currently it's not
      * possible to pause vault buffers individually.
      *
-     * This is a permissioned call, and is reversible (see `unpauseVaultBuffers`).
+     * This is a permissioned call, and is reversible (see `unpauseVaultBuffers`). Note that the Vault has a separate
+     * and independent pausing mechanism. It is possible to pause the Vault (i.e. pool operations), without affecting
+     * buffers, and vice versa.
      */
     function pauseVaultBuffers() external;
 
     /**
      * @notice Unpauses native vault buffers globally.
      * @dev When buffers are paused, it's not possible to add liquidity or wrap/unwrap tokens using the Vault's
-     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
+     * `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity. As noted above,
+     * ERC4626 buffers and Vault operations on pools are independent. Unpausing buffers does not reverse `pauseVault`.
+     * If the Vault was also paused, it will remain in that state until explicitly unpaused.
      *
      * This is a permissioned call.
      */
@@ -276,6 +293,8 @@ interface IVaultAdmin {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param minIssuedShares Minimum amount of shares to receive from the buffer, expressed in underlying token
+     * native decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
      * liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
@@ -285,6 +304,7 @@ interface IVaultAdmin {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
+        uint256 minIssuedShares,
         address sharesOwner
     ) external returns (uint256 issuedShares);
 
@@ -292,6 +312,10 @@ interface IVaultAdmin {
      * @notice Adds liquidity to an internal ERC4626 buffer in the Vault, proportionally.
      * @dev The buffer needs to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param maxAmountUnderlyingInRaw Maximum amount of underlying tokens to add to the buffer. It is expressed in
+     * underlying token native decimals
+     * @param maxAmountWrappedInRaw Maximum amount of wrapped tokens to add to the buffer. It is expressed in wrapped
+     * token native decimals
      * @param exactSharesToIssue The value in underlying tokens that `sharesOwner` wants to add to the buffer,
      * in underlying token decimals
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
@@ -301,6 +325,8 @@ interface IVaultAdmin {
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
+        uint256 maxAmountUnderlyingInRaw,
+        uint256 maxAmountWrappedInRaw,
         uint256 exactSharesToIssue,
         address sharesOwner
     ) external returns (uint256 amountUnderlyingRaw, uint256 amountWrappedRaw);
@@ -318,13 +344,19 @@ interface IVaultAdmin {
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
-     * total shares. It is expressed in underlying token native decimals.
+     * total shares. It is expressed in underlying token native decimals
+     * @param minAmountUnderlyingOutRaw Minimum amount of underlying tokens to receive from the buffer. It is expressed
+     * in underlying token native decimals
+     * @param minAmountWrappedOutRaw Minimum amount of wrapped tokens to receive from the buffer. It is expressed in
+     * wrapped token native decimals
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove
+        uint256 sharesToRemove,
+        uint256 minAmountUnderlyingOutRaw,
+        uint256 minAmountWrappedOutRaw
     ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /**
