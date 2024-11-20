@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
@@ -15,15 +16,88 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RecoveryModeTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
+    uint256 private daiIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, ) = getSortedIndexes(address(dai), address(usdc));
+    }
+
+    function testRecoveryModeAmountsOutBelowMin() public {
+        // Add initial liquidity.
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+
+        // Put pool in recovery mode.
+        vault.manualEnableRecoveryMode(pool);
+
+        // Avoid roundtrip fee.
+        vault.manualSetAddLiquidityCalledFlag(pool, false);
+        assertFalse(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
+
+        uint256 amountToRemove = bptAmountOut / 2;
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
+        vm.revertTo(snapshotId);
+
+        expectedAmountsOut[daiIdx] += 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                IERC20(dai),
+                expectedAmountsOut[daiIdx] - 1,
+                expectedAmountsOut[daiIdx]
+            )
+        );
+        vm.prank(alice);
+        router.removeLiquidityRecovery(pool, amountToRemove, expectedAmountsOut);
+    }
+
+    function testRecoveryModeAmountsOutBelowMinWithRoundtripFee() public {
+        setSwapFeePercentage(swapFeePercentage);
+        // Add initial liquidity.
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+
+        // Put pool in recovery mode.
+        vault.manualEnableRecoveryMode(pool);
+        // Check that we are paying roundrip fees
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
+
+        uint256 amountToRemove = bptAmountOut / 2;
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
+        vm.revertTo(snapshotId);
+
+        expectedAmountsOut[daiIdx] += 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                IERC20(dai),
+                expectedAmountsOut[daiIdx] - 1,
+                expectedAmountsOut[daiIdx]
+            )
+        );
+        vm.prank(alice);
+        router.removeLiquidityRecovery(pool, amountToRemove, expectedAmountsOut);
     }
 
     function testRecoveryModeEmitsPoolBalanceChangedEvent() public {
@@ -44,11 +118,12 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 amountToRemove = bptAmountOut / 2;
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityRemoved(
             pool,
             alice,
+            RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [-int256(defaultAmount) / 2, -int256(defaultAmount) / 2].toMemoryArray(),
+            [defaultAmount / 2, defaultAmount / 2].toMemoryArray(),
             new uint256[](2)
         );
 
@@ -59,7 +134,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Do a recovery withdrawal.
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, amountToRemove);
+        router.removeLiquidityRecovery(pool, amountToRemove, new uint256[](amountsIn.length));
 
         uint256 bptAfter = IERC20(pool).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT
@@ -97,11 +172,12 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 amountOutAfterFee = amountOutWithoutFee - feeAmount;
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityRemoved(
             pool,
             alice,
+            RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [-int256(amountOutAfterFee), -int256(amountOutAfterFee)].toMemoryArray(),
+            [amountOutAfterFee, amountOutAfterFee].toMemoryArray(),
             [feeAmount, feeAmount].toMemoryArray()
         );
 
@@ -112,7 +188,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Do a recovery withdrawal.
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, amountToRemove);
+        router.removeLiquidityRecovery(pool, amountToRemove, new uint256[](amountsIn.length));
 
         uint256 bptAfter = IERC20(pool).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT
@@ -151,7 +227,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Do a recovery withdrawal.
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, bptAmountOut / 2);
+        router.removeLiquidityRecovery(pool, bptAmountOut / 2, new uint256[](amountsIn.length));
 
         uint256 bptAfter = IERC20(pool).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT

@@ -306,12 +306,21 @@ interface IProtocolFeeController {
     function setPoolCreatorYieldFeePercentage(address pool, uint256 poolCreatorYieldFeePercentage) external;
 
     /**
-     * @notice Withdraw collected protocol fees for a given pool. This is a permissioned function.
+     * @notice Withdraw collected protocol fees for a given pool (all tokens). This is a permissioned function.
      * @dev Sends swap and yield protocol fees to the recipient.
      * @param pool The pool on which fees were collected
      * @param recipient Address to send the tokens
      */
     function withdrawProtocolFees(address pool, address recipient) external;
+
+    /**
+     * @notice Withdraw collected protocol fees for a given pool and a given token. This is a permissioned function.
+     * @dev Sends swap and yield protocol fees to the recipient.
+     * @param pool The pool on which fees were collected
+     * @param recipient Address to send the tokens
+     * @param token Token to withdraw
+     */
+    function withdrawProtocolFeesForToken(address pool, address recipient, IERC20 token) external;
 
     /**
      * @notice Withdraw collected pool creator fees for a given pool. This is a permissioned function.
