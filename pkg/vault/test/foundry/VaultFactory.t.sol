@@ -18,6 +18,9 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     // Should match the "PRODUCTION" limits in BaseVaultTest.
     uint256 private constant _MIN_TRADE_AMOUNT = 1e6;
     uint256 private constant _MIN_WRAP_AMOUNT = 1e4;
+    address private constant HARDCODED_VAULT_ADDRESS = address(0xBA13337Ed048E40647c53021285673004395b86A);
+    bytes32 private constant HARDCODED_SALT =
+        bytes32(0x10000000000000000000000000029ad1e81e6f7493a9416de66b25b261324a0d);
 
     address deployer;
     BasicAuthorizerMock authorizer;
@@ -40,14 +43,25 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     }
 
     function testCreateVaultHardcodedSalt() public {
-        address vaultAddress = address(0xBA13337Ed048E40647c53021285673004395b86A);
-        bytes32 salt = bytes32(0x10000000000000000000000000029ad1e81e6f7493a9416de66b25b261324a0d);
-
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
         vm.prank(deployer);
         factory.create(
-            salt,
-            vaultAddress,
+            HARDCODED_SALT,
+            HARDCODED_VAULT_ADDRESS,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
+    }
+
+    function testCreateVaultHardcodedSaltWrongDeployer() public {
+        address wrongDeployer = makeAddr("wrongDeployer");
+        authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), wrongDeployer);
+        vm.prank(wrongDeployer);
+        vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
+        factory.create(
+            HARDCODED_SALT,
+            HARDCODED_VAULT_ADDRESS,
             type(Vault).creationCode,
             type(VaultAdmin).creationCode,
             type(VaultExtension).creationCode
