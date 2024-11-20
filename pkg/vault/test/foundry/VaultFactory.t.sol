@@ -26,6 +26,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     function setUp() public virtual {
         deployer = makeAddr("deployer");
         authorizer = deployBasicAuthorizerMock();
+        vm.prank(deployer);
         factory = deployVaultFactory(
             authorizer,
             90 days,
@@ -38,11 +39,26 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         );
     }
 
+    function testCreateVaultHardcodedSalt() public {
+        address vaultAddress = address(0xBA13337Ed048E40647c53021285673004395b86A);
+        bytes32 salt = bytes32(0x10000000000000000000000000029ad1e81e6f7493a9416de66b25b261324a0d);
+
+        authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
+        vm.prank(deployer);
+        factory.create(
+            salt,
+            vaultAddress,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
+    }
+
     /// forge-config: default.fuzz.runs = 100
     function testCreateVault__Fuzz(bytes32 salt) public {
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
-        address vaultAddress = factory.getDeploymentAddress(salt);
+        address vaultAddress = factory.getDeploymentAddress(deployer, salt);
         vm.prank(deployer);
         factory.create(
             salt,
@@ -80,7 +96,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         bytes32 salt = bytes32(uint256(123));
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
-        address vaultAddress = factory.getDeploymentAddress(salt);
+        address vaultAddress = factory.getDeploymentAddress(deployer, salt);
         vm.prank(deployer);
         vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
         factory.create(
@@ -96,7 +112,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         bytes32 salt = bytes32(uint256(123));
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
-        address vaultAddress = factory.getDeploymentAddress(salt);
+        address vaultAddress = factory.getDeploymentAddress(deployer, salt);
         vm.startPrank(deployer);
         factory.create(
             salt,
@@ -119,7 +135,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         bytes32 salt = bytes32(uint256(123));
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
-        address vaultAddress = factory.getDeploymentAddress(salt);
+        address vaultAddress = factory.getDeploymentAddress(deployer, salt);
         vm.prank(deployer);
         vm.expectRevert(abi.encodeWithSelector(VaultFactory.InvalidBytecode.selector, "Vault"));
         factory.create(
@@ -135,7 +151,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         bytes32 salt = bytes32(uint256(123));
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
-        address vaultAddress = factory.getDeploymentAddress(salt);
+        address vaultAddress = factory.getDeploymentAddress(deployer, salt);
         vm.prank(deployer);
         vm.expectRevert(abi.encodeWithSelector(VaultFactory.InvalidBytecode.selector, "VaultAdmin"));
         factory.create(salt, vaultAddress, type(Vault).creationCode, new bytes(0), type(VaultExtension).creationCode);
@@ -145,7 +161,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         bytes32 salt = bytes32(uint256(123));
         authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
 
-        address vaultAddress = factory.getDeploymentAddress(salt);
+        address vaultAddress = factory.getDeploymentAddress(deployer, salt);
         vm.prank(deployer);
         vm.expectRevert(abi.encodeWithSelector(VaultFactory.InvalidBytecode.selector, "VaultExtension"));
         factory.create(salt, vaultAddress, type(Vault).creationCode, type(VaultAdmin).creationCode, new bytes(0));
