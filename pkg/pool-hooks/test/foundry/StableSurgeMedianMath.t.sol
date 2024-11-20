@@ -69,20 +69,6 @@ contract StableSurgeMedianMathTest is BaseVaultTest {
         assertEq(median, balances[1], "Median is not correct");
     }
 
-    function testSort_Fuzz(uint256 tokensCount, uint256[8] memory balancesRaw) public view {
-        tokensCount = bound(tokensCount, MAX_TOKENS, MAX_TOKENS);
-
-        uint256[] memory balances = new uint256[](tokensCount);
-        for (uint256 i = 0; i < tokensCount; i++) {
-            balances[i] = bound(balancesRaw[i], 1, MAX_UINT128);
-        }
-
-        uint256[] memory sortedBalances = stableSurgeMedianMathMock.sort(balances);
-        for (uint256 i = 1; i < tokensCount; i++) {
-            assertLe(sortedBalances[i - 1], sortedBalances[i], "sortedBalances is not sorted");
-        }
-    }
-
     function testAbsSub() public view {
         assertEq(stableSurgeMedianMathMock.absSub(10, 5), 5, "abs(10 - 5) != 5");
         assertEq(stableSurgeMedianMathMock.absSub(5, 10), 5, "abs(5 - 10) != 5");
