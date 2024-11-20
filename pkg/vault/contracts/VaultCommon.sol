@@ -19,6 +19,7 @@ import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -410,5 +411,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
         return _poolConfigBits[pool].isPoolInRecoveryMode();
+    }
+
+    function _isQueryContext() internal view returns (bool) {
+        return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
     }
 }

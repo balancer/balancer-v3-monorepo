@@ -116,12 +116,12 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     function testRemoveLiquidityFromBufferNotEnoughShares() public {
         vm.startPrank(bob);
-        uint256 shares = router.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT);
+        uint256 shares = bufferRouter.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT, 0);
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
         vm.expectRevert(IVaultErrors.NotEnoughBufferShares.selector);
         // The call should revert since bob is trying to withdraw more shares than he has.
-        vault.removeLiquidityFromBuffer(waDAI, shares + 1);
+        vault.removeLiquidityFromBuffer(waDAI, shares + 1, 0, 0);
         vm.stopPrank();
     }
 
@@ -131,10 +131,10 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     function testInitializeBufferTwice() public {
         vault.forceUnlock();
-        vault.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT, bob);
+        vault.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT, 0, bob);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferAlreadyInitialized.selector, waDAI));
-        vault.initializeBuffer(waDAI, 1, 1, bob);
+        vault.initializeBuffer(waDAI, 1, 1, 0, bob);
     }
 
     function testInitializeBufferAddressZero() public {
@@ -142,7 +142,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         waDAI.setAsset(IERC20(address(0)));
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidUnderlyingToken.selector, waDAI));
-        vault.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT, bob);
+        vault.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT, 0, bob);
     }
 
     function testInitializeBufferBelowMinimumShares() public {
@@ -152,7 +152,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
         vault.forceUnlock();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, bufferInvariantDelta));
-        vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
+        vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, 0, bob);
     }
 
     function testInitializeBuffer() public {
@@ -164,12 +164,12 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
         // Get issued shares to match the event. The actual shares amount will be validated below.
         uint256 preInitSnap = vm.snapshot();
-        uint256 issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
+        uint256 issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, 0, bob);
         vm.revertTo(preInitSnap);
 
         // Try to initialize below minimum
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, 0));
-        vault.initializeBuffer(waDAI, 0, 0, bob);
+        vault.initializeBuffer(waDAI, 0, 0, 0, bob);
 
         vm.expectEmit();
         emit IVaultEvents.BufferSharesMinted(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
@@ -182,7 +182,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
             wrappedAmount,
             PackedTokenBalance.toPackedBalance(underlyingAmount, wrappedAmount)
         );
-        issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
+        issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, 0, bob);
 
         assertEq(vault.getBufferAsset(waDAI), address(dai), "Wrong underlying asset");
 

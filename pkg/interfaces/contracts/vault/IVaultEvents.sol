@@ -89,17 +89,38 @@ interface IVaultEvents {
     );
 
     /**
-     * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
-     * @param pool The pool being registered
+     * @notice Liquidity has been added to a pool (including initialization).
+     * @param pool The pool with liquidity added
      * @param liquidityProvider The user performing the operation
+     * @param kind The add liquidity operation type (e.g., proportional, custom)
      * @param totalSupply The total supply of the pool after the operation
-     * @param deltas The amount each token changed, sorted in the pool tokens' order
+     * @param amountsAddedRaw The amount of each token that was added, sorted in pool registration order
+     * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
      */
-    event PoolBalanceChanged(
+    event LiquidityAdded(
         address indexed pool,
         address indexed liquidityProvider,
+        AddLiquidityKind indexed kind,
         uint256 totalSupply,
-        int256[] deltas,
+        uint256[] amountsAddedRaw,
+        uint256[] swapFeeAmountsRaw
+    );
+
+    /**
+     * @notice Liquidity has been removed from a pool.
+     * @param pool The pool with liquidity removed
+     * @param liquidityProvider The user performing the operation
+     * @param kind The remove liquidity operation type (e.g., proportional, custom)
+     * @param totalSupply The total supply of the pool after the operation
+     * @param amountsRemovedRaw The amount of each token that was removed, sorted in pool registration order
+     * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
+     */
+    event LiquidityRemoved(
+        address indexed pool,
+        address indexed liquidityProvider,
+        RemoveLiquidityKind indexed kind,
+        uint256 totalSupply,
+        uint256[] amountsRemovedRaw,
         uint256[] swapFeeAmountsRaw
     );
 
@@ -224,4 +245,12 @@ interface IVaultEvents {
      * @param paused True if the Vault buffers were paused
      */
     event VaultBuffersPausedStateChanged(bool paused);
+
+    /**
+     * @notice Pools can use this event to emit event data from the Vault.
+     * @param pool Pool address
+     * @param eventKey Event key
+     * @param eventData Encoded event data
+     */
+    event VaultAuxiliary(address pool, string eventKey, bytes eventData);
 }

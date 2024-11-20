@@ -135,6 +135,9 @@ struct PoolRoleAccounts {
 //   decimals, so the Vault only supports tokens that implement `IERC20Metadata.decimals`, and return a value less than
 //   or equal to 18.
 //
+//  * Token decimals are checked and stored only once, on registration. Valid tokens store their decimals as immutable
+//    variables or constants. Malicious tokens that don't respect this basic property would not work anywhere in DeFi.
+//
 // These types of tokens are supported but discouraged, as they don't tend to play well with AMMs generally.
 //
 // * Very low-decimal tokens (e.g., GUSD). The Vault has been extensively tested with 6-decimal tokens (e.g., USDC),
