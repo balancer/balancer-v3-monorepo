@@ -1012,9 +1012,6 @@ describe('BatchSwap', function () {
           setUp();
         });
 
-        // The first step of first path is an 'add liquidity' operation, which is settled instantly.
-        // Therefore, the transfer event will not have the total amount out as argument.
-        // There are rounding issues in the output transfer, so we skip it.
         itTestsBatchSwap(false, false);
       });
     });
