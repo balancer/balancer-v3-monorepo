@@ -103,6 +103,27 @@ contract BasePoolFactoryTest is BaseVaultTest {
         testFactory.manualRegisterPoolWithFactory(newPool);
 
         assertTrue(testFactory.isPoolFromFactory(newPool), "Pool is not registered with factory");
+        assertEq(testFactory.getPools(0, 1)[0], newPool, "Pools list does not contain the new pool");
+    }
+
+    function testRegisterMultiplePools() public {
+        uint256 count = 30;
+        address[] memory pools = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            pools[i] = address(deployPoolMock(IVault(address(vault)), "Test Pool", "TEST"));
+        }
+
+        for (uint256 i = 0; i < count; i++) {
+            assertFalse(testFactory.isPoolFromFactory(pools[i]), "Pool is already registered with factory");
+            testFactory.manualRegisterPoolWithFactory(pools[i]);
+            assertTrue(testFactory.isPoolFromFactory(pools[i]), "Pool is not registered with factory");
+        }
+
+        address[] memory registeredPools = testFactory.getPools(0, 100000);
+        assertEq(registeredPools.length, count, "Pools list has wrong length");
+        for (uint256 i = 0; i < count; i++) {
+            assertEq(registeredPools[i], pools[i], "Pools list does not contain the new pool");
+        }
     }
 
     function testRegisterPoolWithVault() public {

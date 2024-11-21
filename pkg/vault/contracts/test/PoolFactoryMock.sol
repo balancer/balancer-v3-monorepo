@@ -179,6 +179,10 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
         return _isPoolFromFactory[pool];
     }
 
+    function getPools(uint256, uint256) external pure returns (address[] memory) {
+        revert("Not implemented");
+    }
+
     /// @inheritdoc IBasePoolFactory
     function isDisabled() public view returns (bool) {
         return _disabled;
