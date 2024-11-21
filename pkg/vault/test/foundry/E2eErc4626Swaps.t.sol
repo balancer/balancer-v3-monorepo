@@ -19,6 +19,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 
 contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
@@ -54,7 +55,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         dai.mint(bob, 1000 * erc4626PoolInitialAmount);
         usdc.mint(bob, 1000 * erc4626PoolInitialAmount);
 
-        IProtocolFeeController feeController = vault.getProtocolFeeController();
+        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
         authorizer.grantRole(
@@ -63,8 +64,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         );
 
         vm.prank(poolCreator);
-        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+        // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
+        feeController.manualSetPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
 
         minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
         maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
