@@ -1137,6 +1137,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
                 "ERC4626 Pool: wrong WETH balance"
             );
         }
+
+        assertEq(address(compositeLiquidityRouter).balance, 0, "Router has eth balance");
     }
 
     /**
@@ -1231,6 +1233,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
                 "Bob: wrong WETH balance"
             );
         }
+
+        assertEq(address(compositeLiquidityRouter).balance, 0, "Router has eth balance");
     }
 
     function _initializePartialERC4626Pool() private returns (address newPool) {

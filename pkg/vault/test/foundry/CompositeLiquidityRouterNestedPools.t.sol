@@ -448,6 +448,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             vars.parentPoolWithoutWrapperBefore.usdc + amountsIn[vars.usdcIdx],
             "ParentPoolWithoutWrapper USDC Balance is wrong"
         );
+
+        assertEq(address(compositeLiquidityRouter).balance, 0, "Router has eth balance");
     }
 
     function testAddLiquidityNestedERC4626WithWrapped__Fuzz(
@@ -1422,6 +1424,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             vars.parentPoolBefore.childPoolBBpt - burnedChildPoolBBpts,
             "ParentPool ChildPoolB BPT Balance is wrong"
         );
+
+        assertEq(address(compositeLiquidityRouter).balance, 0, "Router has eth balance");
     }
 
     function testRemoveLiquidityNestedERC4626Pool__Fuzz(uint256 proportionToRemove) public {
@@ -1705,6 +1709,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             vars.parentPoolWithWrapperBefore.childPoolERC4626Bpt - burnedChildPoolERC4626Bpts,
             "ParentPool ChildPoolERC4626 BPT Balance is wrong"
         );
+
+        assertEq(address(compositeLiquidityRouter).balance, 0, "Router has eth balance");
     }
 
     function testQueryRemoveLiquidityNestedERC4626Pool__Fuzz(uint256 proportionToRemove) public {
