@@ -6,8 +6,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { FEE_SCALING_FACTOR, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -83,10 +83,13 @@ contract ProtocolFeeController is
     }
 
     // Maximum protocol swap fee percentage. FixedPoint.ONE corresponds to a 100% fee.
-    uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+    uint256 public constant MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Maximum protocol yield fee percentage.
-    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 50e16; // 50%
+    uint256 public constant MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 50e16; // 50%
+
+    // Maximum pool creator (swap, yield) fee percentage.
+    uint256 public constant MAX_CREATOR_FEE_PERCENTAGE = 99.999e16; // 99.999%
 
     // Global protocol swap fee.
     uint256 private _globalProtocolSwapFeePercentage;
@@ -123,7 +126,7 @@ contract ProtocolFeeController is
 
     // Validate the swap fee percentage against the maximum.
     modifier withValidSwapFee(uint256 newSwapFeePercentage) {
-        if (newSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+        if (newSwapFeePercentage > MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
         _ensureValidPrecision(newSwapFeePercentage);
@@ -132,7 +135,7 @@ contract ProtocolFeeController is
 
     // Validate the yield fee percentage against the maximum.
     modifier withValidYieldFee(uint256 newYieldFeePercentage) {
-        if (newYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
+        if (newYieldFeePercentage > MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
         _ensureValidPrecision(newYieldFeePercentage);
@@ -140,7 +143,7 @@ contract ProtocolFeeController is
     }
 
     modifier withValidPoolCreatorFee(uint256 newPoolCreatorFeePercentage) {
-        if (newPoolCreatorFeePercentage > FixedPoint.ONE) {
+        if (newPoolCreatorFeePercentage > MAX_CREATOR_FEE_PERCENTAGE) {
             revert PoolCreatorFeePercentageTooHigh();
         }
         _;
