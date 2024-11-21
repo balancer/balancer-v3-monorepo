@@ -15,10 +15,14 @@ import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/
 
 import { Router } from "../Router.sol";
 
+string constant MOCK_ROUTER_VERSION = "Mock Router v1";
+
 contract RouterMock is Router {
     error MockErrorCode();
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2) {}
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2, MOCK_ROUTER_VERSION) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function manualReentrancyInitializeHook() external nonReentrant {
         IRouter.InitializeHookParams memory hookParams;
@@ -36,16 +40,12 @@ contract RouterMock is Router {
     }
 
     function manualReentrancyRemoveLiquidityRecoveryHook() external nonReentrant {
-        Router(payable(this)).removeLiquidityRecoveryHook(address(0), address(0), 0);
+        Router(payable(this)).removeLiquidityRecoveryHook(address(0), address(0), 0, new uint256[](2));
     }
 
     function manualReentrancySwapSingleTokenHook() external nonReentrant {
         IRouter.SwapSingleTokenHookParams memory params;
         Router(payable(this)).swapSingleTokenHook(params);
-    }
-
-    function manualReentrancyAddLiquidityToBufferHook() external nonReentrant {
-        Router(payable(this)).addLiquidityToBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
     function manualReentrancyQuerySwapHook() external nonReentrant {
@@ -70,8 +70,8 @@ contract RouterMock is Router {
     ) external returns (uint256 amountCalculated) {
         try
             _vault.quoteAndRevert(
-                abi.encodeWithSelector(
-                    Router.querySwapHook.selector,
+                abi.encodeCall(
+                    Router.querySwapHook,
                     SwapSingleTokenHookParams({
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,

@@ -22,6 +22,7 @@ import {
     TransientStorageHelpers,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import { VaultStateLib, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigLib, PoolConfigBits } from "../lib/PoolConfigLib.sol";
@@ -29,6 +30,7 @@ import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { InputHelpersMock } from "./InputHelpersMock.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { VaultExtension } from "../VaultExtension.sol";
+import { PoolConfigConst } from "../lib/PoolConfigConst.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
 import { Vault } from "../Vault.sol";
 
@@ -48,6 +50,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using PoolDataLib for PoolData;
     using TransientStorageHelpers for *;
     using StorageSlotExtension for *;
+    using WordCodec for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -172,7 +175,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
         poolConfigBits = poolConfigBits.setPoolPaused(config.isPoolPaused);
         poolConfigBits = poolConfigBits.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
-        poolConfigBits = poolConfigBits.setAggregateSwapFeePercentage(config.aggregateSwapFeePercentage);
+        poolConfigBits = _manualSetAggregateSwapFeePercentage(poolConfigBits, config.aggregateSwapFeePercentage);
         poolConfigBits = poolConfigBits.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
         poolConfigBits = poolConfigBits.setTokenDecimalDiffs(config.tokenDecimalDiffs);
         poolConfigBits = poolConfigBits.setPauseWindowEndTime(config.pauseWindowEndTime);
@@ -232,6 +235,10 @@ contract VaultMock is IVaultMainMock, Vault {
         for (uint256 i = 0; i < tokens.length; ++i) {
             _poolTokenInfo[pool][tokens[i]] = tokenInfo[i];
         }
+    }
+
+    function manualSetPoolTokens(address pool, IERC20[] memory tokens) public {
+        _poolTokens[pool] = tokens;
     }
 
     function manualSetPoolTokensAndBalances(
@@ -380,6 +387,10 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 aggregateYieldFeePercentage
     ) external pure returns (uint256) {
         return PoolDataLib._computeYieldFeesDue(poolData, lastLiveBalance, tokenIndex, aggregateYieldFeePercentage);
+    }
+
+    function manualWritePoolBalancesToStorage(address pool, PoolData memory poolData) external {
+        _writePoolBalancesToStorage(pool, poolData);
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
@@ -710,5 +721,28 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function ensureValidSwapAmount(uint256 tradeAmount) external view {
         _ensureValidSwapAmount(tradeAmount);
+    }
+
+    function manualUpdateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external {
+        _poolConfigBits[pool] = _manualSetAggregateSwapFeePercentage(
+            _poolConfigBits[pool],
+            newAggregateSwapFeePercentage
+        );
+    }
+
+    function _manualSetAggregateSwapFeePercentage(
+        PoolConfigBits config,
+        uint256 value
+    ) internal pure returns (PoolConfigBits) {
+        value /= FEE_SCALING_FACTOR;
+
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertUint(
+                    value,
+                    PoolConfigConst.AGGREGATE_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+            );
     }
 }

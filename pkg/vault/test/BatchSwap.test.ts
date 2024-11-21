@@ -21,6 +21,9 @@ import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { IBatchRouter } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('BatchSwap', function () {
+  const BATCH_ROUTER_VERSION = 'BatchRouter v9';
+  const ROUTER_VERSION = 'Router v9';
+
   let permit2: IPermit2;
   let vault: Vault;
   let factory: PoolFactoryMock;
@@ -47,8 +50,8 @@ describe('BatchSwap', function () {
     vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2] });
-    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
+    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2, BATCH_ROUTER_VERSION] });
+    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
@@ -164,7 +167,7 @@ describe('BatchSwap', function () {
       tokensOut: string[];
       amountsOut: bigint[];
     }>;
-    let tokenIn: ERC20TestToken | PoolMock;
+    let tokensIn: (ERC20TestToken | PoolMock)[];
     let tokensOut: (ERC20TestToken | PoolMock)[];
     const pathExactAmountIn = fp(1);
     const pathMinAmountOut = fp(1);
@@ -189,7 +192,7 @@ describe('BatchSwap', function () {
           tokensOut: string[];
           amountsOut: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
@@ -199,7 +202,7 @@ describe('BatchSwap', function () {
 
       if (singleTransferIn) {
         it('performs single transfer for token in', async () => {
-          await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
+          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
         });
       }
 
@@ -244,7 +247,7 @@ describe('BatchSwap', function () {
     }
 
     afterEach('clean up expected results and inputs', () => {
-      tokenIn = undefined;
+      tokensIn = undefined;
       tokensOut = undefined;
       totalAmountIn = undefined;
       totalAmountOut = undefined;
@@ -257,7 +260,7 @@ describe('BatchSwap', function () {
     context('pure swaps with no nesting', () => {
       context('single path', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -269,14 +272,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -301,7 +304,7 @@ describe('BatchSwap', function () {
 
       context('single path, first - intermediate - final steps', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -313,14 +316,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -348,7 +351,7 @@ describe('BatchSwap', function () {
 
       context('multi path, SISO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -360,14 +363,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -398,7 +401,7 @@ describe('BatchSwap', function () {
 
       context('multi path, MISO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
           const secondPathTokenIn = tokens.get(1);
 
@@ -411,7 +414,7 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -pathExactAmountIn],
                 [await secondPathTokenIn.symbol()]: ['equal', -pathExactAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
@@ -419,7 +422,7 @@ describe('BatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', pathMinAmountOut],
+                [await tokensIn[0].symbol()]: ['equal', pathMinAmountOut],
                 [await secondPathTokenIn.symbol()]: ['equal', pathMinAmountOut],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
@@ -451,7 +454,7 @@ describe('BatchSwap', function () {
 
       context('multi path, SIMO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), tokens.get(1)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -463,7 +466,7 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', pathMinAmountOut],
               },
@@ -471,7 +474,7 @@ describe('BatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', -pathMinAmountOut],
               },
@@ -503,7 +506,7 @@ describe('BatchSwap', function () {
 
       context('multi path, MIMO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), poolC];
           const secondPathTokenIn = poolA;
 
@@ -516,7 +519,7 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -pathExactAmountIn],
                 [await secondPathTokenIn.symbol()]: ['equal', -pathExactAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', pathMinAmountOut],
@@ -525,7 +528,7 @@ describe('BatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', pathExactAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', pathExactAmountIn],
                 [await secondPathTokenIn.symbol()]: ['equal', pathExactAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', -pathMinAmountOut],
@@ -561,7 +564,7 @@ describe('BatchSwap', function () {
 
       context('multi path, circular inputs/outputs', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), tokens.get(0)];
 
           totalAmountIn = 0n; // 2 paths
@@ -573,14 +576,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', 0],
+                [await tokensIn[0].symbol()]: ['equal', 0],
                 [await tokensOut[0].symbol()]: ['equal', 0],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', 0],
+                [await tokensIn[0].symbol()]: ['equal', 0],
                 [await tokensOut[1].symbol()]: ['equal', 0],
               },
             },
@@ -613,7 +616,7 @@ describe('BatchSwap', function () {
     context('joinswaps (add liquidity step)', () => {
       context('single path - initial add liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [poolB];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -625,14 +628,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -658,7 +661,7 @@ describe('BatchSwap', function () {
 
       context('single path - intermediate add liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [poolC];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -670,14 +673,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -704,7 +707,7 @@ describe('BatchSwap', function () {
 
       context('multi path - initial and final add liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [poolB];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -716,14 +719,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -762,7 +765,7 @@ describe('BatchSwap', function () {
     context('exitswaps (remove liquidity step)', () => {
       context('single path - initial remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = poolA;
+          tokensIn = poolA;
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -774,14 +777,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn.symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn.symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -807,7 +810,7 @@ describe('BatchSwap', function () {
 
       context('single path - intermediate remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -819,14 +822,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -853,7 +856,7 @@ describe('BatchSwap', function () {
 
       context('single path - final remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(1)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -865,14 +868,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -901,7 +904,7 @@ describe('BatchSwap', function () {
 
       context('multi path - final remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(1)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -913,14 +916,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -954,6 +957,61 @@ describe('BatchSwap', function () {
         // The first step of first path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
         // There are rounding issues in the output transfer, so we skip it.
+        itTestsBatchSwap(false, false);
+      });
+
+      context('multi path - mid remove liquidity step', () => {
+        beforeEach(async () => {
+          tokensIn = [poolA, poolB];
+          tokensOut = [poolC, tokens.get(1)];
+
+          totalAmountIn = pathExactAmountIn;
+          totalAmountOut = pathMinAmountOut;
+          pathAmountsOut = [totalAmountOut, totalAmountOut];
+          amountsOut = [totalAmountOut, totalAmountOut];
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
+                [await tokensIn[1].symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[1].symbol()]: ['very-near', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
+                [await tokensIn[1].symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[1].symbol()]: ['very-near', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: poolA,
+              steps: [{ pool: poolAC, tokenOut: poolC, isBuffer: false }],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+            },
+            {
+              tokenIn: poolB,
+              steps: [
+                { pool: poolAB, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+            },
+          ];
+
+          setUp();
+        });
+
         itTestsBatchSwap(false, false);
       });
     });
@@ -996,7 +1054,7 @@ describe('BatchSwap', function () {
           tokensIn: string[];
           amountsIn: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {

@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { FixedPoint } from "../math/FixedPoint.sol";
@@ -14,6 +13,9 @@ import { InputHelpers } from "./InputHelpers.sol";
  * 18 decimals. When comparing DAI (18 decimals) and USDC (6 decimals), 1 USDC and 1 DAI would both be
  * represented as 1e18. This allows us to not consider differences in token decimals in the internal Pool
  * math, simplifying it greatly.
+ *
+ * The Vault does not support tokens with more than 18 decimals (see `_MAX_TOKEN_DECIMALS` in `VaultStorage`),
+ * or tokens that do not implement `IERC20Metadata.decimals`.
  *
  * These helpers can also be used to scale amounts by other 18-decimal floating point values, such as rates.
  */
@@ -198,23 +200,6 @@ library ScalingHelpers {
         }
 
         return amountsScaled18;
-    }
-
-    /**
-     * @notice Convert the token `decimals` into a scaling factor.
-     * @dev Called during registration, this reads the `decimals` from the token contract and constructs a conversion
-     * factor to be used when scaling up to full precision and back down to native decimals.
-     *
-     * As noted below, the Vault does not support tokens with more than 18 decimals, or tokens that do not implement
-     * `IERC20Metadata`.
-     */
-    function computeScalingFactor(IERC20 token) internal view returns (uint256) {
-        // Tokens that don't implement the `decimals` method are not supported.
-        uint256 tokenDecimals = IERC20Metadata(address(token)).decimals();
-
-        // Tokens with more than 18 decimals are not supported.
-        uint256 decimalsDifference = 18 - tokenDecimals;
-        return FixedPoint.ONE * 10 ** decimalsDifference;
     }
 
     /**

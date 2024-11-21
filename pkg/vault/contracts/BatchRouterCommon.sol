@@ -19,7 +19,7 @@ import {
 import { RouterCommon } from "./RouterCommon.sol";
 
 /// @notice Transient storage for Batch and Composite Liquidity Router operations.
-contract BatchRouterCommon is RouterCommon {
+abstract contract BatchRouterCommon is RouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -40,7 +40,12 @@ contract BatchRouterCommon is RouterCommon {
     // solhint-enable var-name-mixedcase
     // solhint-disable no-inline-assembly
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) RouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -86,7 +91,7 @@ contract BatchRouterCommon is RouterCommon {
                                     Settlement
     *******************************************************************************/
 
-    /// @notice Settles batch and composite liquidity operations, after debts and credits are computed.
+    /// @notice Settles batch and composite liquidity operations, after credits and debits are computed.
     function _settlePaths(address sender, bool wethIsEth) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,

@@ -6,7 +6,6 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigConst } from "./PoolConfigConst.sol";
 
@@ -166,6 +165,8 @@ library PoolConfigLib {
     }
 
     function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
+        // A 100% fee is not supported. In the ExactOut case, the Vault divides by the complement of the swap fee.
+        // The max fee percentage is slightly below 100%.
         if (value > MAX_FEE_PERCENTAGE) {
             revert IVaultErrors.PercentageAboveMax();
         }

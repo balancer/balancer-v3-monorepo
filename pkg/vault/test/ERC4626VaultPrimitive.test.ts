@@ -10,6 +10,7 @@ import {
   PoolMock,
   PoolFactoryMock,
   Router,
+  BufferRouter,
 } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { currentTimestamp, MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -31,6 +32,9 @@ import { buildTokenConfig } from './poolSetup';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 describe('ERC4626VaultPrimitive', function () {
+  const BATCH_ROUTER_VERSION = 'BatchRouter v9';
+  const ROUTER_VERSION = 'Router v9';
+
   const TOKEN_AMOUNT = fp(1000);
   const SWAP_AMOUNT = fp(100);
   const MIN_BPT = bn(1e6);
@@ -42,6 +46,7 @@ describe('ERC4626VaultPrimitive', function () {
   let permit2: IPermit2;
   let vault: IVaultMock;
   let router: Router;
+  let bufferRouter: BufferRouter;
   let batchRouter: BatchRouter;
   let factory: PoolFactoryMock;
   let pool: PoolMock;
@@ -66,8 +71,13 @@ describe('ERC4626VaultPrimitive', function () {
 
     permit2 = await deployPermit2();
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
-    batchRouter = await deploy('v3-vault/BatchRouter', { args: [vault, await WETH.getAddress(), permit2] });
-    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2] });
+    batchRouter = await deploy('v3-vault/BatchRouter', {
+      args: [vault, await WETH.getAddress(), permit2, BATCH_ROUTER_VERSION],
+    });
+    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2, ROUTER_VERSION] });
+    bufferRouter = await deploy('v3-vault/BufferRouter', {
+      args: [vault, await WETH.getAddress(), permit2, ROUTER_VERSION],
+    });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'DAI', 18] });
     wDAI = await deploy('v3-solidity-utils/ERC4626TestToken', {
@@ -137,6 +147,7 @@ describe('ERC4626VaultPrimitive', function () {
     for (const token of [wDAI, wUSDC, DAI, USDC]) {
       await token.connect(signer).approve(permit2, MAX_UINT256);
       await permit2.connect(signer).approve(token, router, MAX_UINT160, MAX_UINT48);
+      await permit2.connect(signer).approve(token, bufferRouter, MAX_UINT160, MAX_UINT48);
       await permit2.connect(signer).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
     }
   }
@@ -260,8 +271,8 @@ describe('ERC4626VaultPrimitive', function () {
 
       await DAI.mint(lp, bufferInitAmount);
       await USDC.mint(lp, bufferInitAmount);
-      await router.connect(lp).initializeBuffer(wDAI, bufferInitAmount, 0);
-      await router.connect(lp).initializeBuffer(wUSDC, bufferInitAmount, 0);
+      await bufferRouter.connect(lp).initializeBuffer(wDAI, bufferInitAmount, 0, 0);
+      await bufferRouter.connect(lp).initializeBuffer(wUSDC, bufferInitAmount, 0, 0);
     });
 
     it('should not require tokens in advance to querySwapExactIn using buffer', async () => {
@@ -282,7 +293,7 @@ describe('ERC4626VaultPrimitive', function () {
         },
       ];
 
-      const queryOutput = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
       expect(queryOutput.pathAmountsOut).to.have.length(1, 'Wrong query pathAmountsOut length');
       expect(queryOutput.amountsOut).to.have.length(1, 'Wrong query amountsOut length');
       expect(queryOutput.tokensOut).to.have.length(1, 'Wrong query tokensOut length');
@@ -339,7 +350,7 @@ describe('ERC4626VaultPrimitive', function () {
         },
       ];
 
-      const queryOutput = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
       expect(queryOutput.pathAmountsIn).to.have.length(1, 'Wrong query pathAmountsIn length');
       expect(queryOutput.amountsIn).to.have.length(1, 'Wrong query amountsIn length');
       expect(queryOutput.tokensIn).to.have.length(1, 'Wrong query tokensIn length');

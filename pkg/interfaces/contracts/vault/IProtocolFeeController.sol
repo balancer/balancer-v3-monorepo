@@ -179,10 +179,11 @@ interface IProtocolFeeController {
 
     /**
      * @notice Returns a calculated aggregate percentage from protocol and pool creator fee percentages.
-     * @dev Not tied to any particular pool; this just performs the low-level "additive fee" calculation.
-     * Note that pool creator fees are calculated based on creatorAndLpFees, and not in totalFees.
-     * Since aggregate fees are stored in the Vault with 24-bit precision, this will revert if greater
-     * precision would be required.
+     * @dev Not tied to any particular pool; this just performs the low-level "additive fee" calculation. Note that
+     * pool creator fees are calculated based on creatorAndLpFees, and not in totalFees. Since aggregate fees are
+     * stored in the Vault with 24-bit precision, this will truncate any values that require greater precision.
+     * It is expected that pool creators will negotiate with the DAO and agree on reasonable values for these fee
+     * components, but the truncation ensures it will not revert for any valid set of fee percentages.
      *
      * See example below:
      *
@@ -291,12 +292,21 @@ interface IProtocolFeeController {
     function setPoolCreatorYieldFeePercentage(address pool, uint256 poolCreatorYieldFeePercentage) external;
 
     /**
-     * @notice Withdraw collected protocol fees for a given pool. This is a permissioned function.
+     * @notice Withdraw collected protocol fees for a given pool (all tokens). This is a permissioned function.
      * @dev Sends swap and yield protocol fees to the recipient.
      * @param pool The pool on which fees were collected
      * @param recipient Address to send the tokens
      */
     function withdrawProtocolFees(address pool, address recipient) external;
+
+    /**
+     * @notice Withdraw collected protocol fees for a given pool and a given token. This is a permissioned function.
+     * @dev Sends swap and yield protocol fees to the recipient.
+     * @param pool The pool on which fees were collected
+     * @param recipient Address to send the tokens
+     * @param token Token to withdraw
+     */
+    function withdrawProtocolFeesForToken(address pool, address recipient, IERC20 token) external;
 
     /**
      * @notice Withdraw collected pool creator fees for a given pool. This is a permissioned function.

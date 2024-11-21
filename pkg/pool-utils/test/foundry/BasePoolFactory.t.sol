@@ -152,11 +152,11 @@ contract BasePoolFactoryTest is BaseVaultTest {
 
         vm.prank(bob);
         address bobAddress = testFactory.getDeploymentAddress(salt);
-        assertTrue(bobAddress != predictedAddress, "Different sender generates the same address");
+        assertNotEq(bobAddress, predictedAddress, "Different sender generates the same address");
 
         vm.chainId(10000);
         address chainAddress = testFactory.getDeploymentAddress(salt);
-        assertTrue(chainAddress != predictedAddress, "Different chain generates the same address");
+        assertNotEq(chainAddress, predictedAddress, "Different chain generates the same address");
     }
 
     function testGetDefaultPoolHooksContract() public view {

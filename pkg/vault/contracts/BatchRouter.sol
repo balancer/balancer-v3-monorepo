@@ -12,12 +12,9 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
@@ -38,14 +35,19 @@ struct SwapStepLocals {
  * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
-contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransient {
+contract BatchRouter is IBatchRouter, BatchRouterCommon {
     using CastingHelpers for *;
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
     using SafeERC20 for IERC20;
     using SafeCast for *;
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) BatchRouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -62,7 +64,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     )
         external
         payable
-        saveSender
+        saveSender(msg.sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         return
@@ -92,7 +94,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     )
         external
         payable
-        saveSender
+        saveSender(msg.sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         return
@@ -220,8 +222,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
 
-                    if (stepLocals.isFirstStep && params.sender != address(this)) {
-                        if (stepExactAmountIn > 0) {
+                    if (stepLocals.isFirstStep) {
+                        if (stepExactAmountIn > 0 && params.sender != address(this)) {
                             // If this is the first step, the sender must have the tokens. Therefore, we can transfer
                             // them to the Router, which acts as an intermediary. If the sender is the Router, we just
                             // skip this step (useful for queries).
@@ -235,15 +237,15 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                                 address(stepTokenIn)
                             );
                         }
+
+                        // BPT is burned instantly, so we don't need to send it back later.
+                        if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
+                            _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
+                        }
                     } else {
                         // If this is an intermediate step, we don't expect the sender to have BPT to burn.
                         // Then, we flashloan tokens here (which should in practice just use existing credit).
                         _vault.sendTo(IERC20(step.pool), address(this), stepExactAmountIn);
-                    }
-
-                    // BPT is burned instantly, so we don't need to send it back later.
-                    if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
-                        _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
                     }
 
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
@@ -601,10 +603,11 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     /// @inheritdoc IBatchRouter
     function querySwapExactIn(
         SwapPathExactAmountIn[] memory paths,
+        address sender,
         bytes calldata userData
     )
         external
-        saveSender
+        saveSender(sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         for (uint256 i = 0; i < paths.length; ++i) {
@@ -632,10 +635,11 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
     /// @inheritdoc IBatchRouter
     function querySwapExactOut(
         SwapPathExactAmountOut[] memory paths,
+        address sender,
         bytes calldata userData
     )
         external
-        saveSender
+        saveSender(sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         for (uint256 i = 0; i < paths.length; ++i) {

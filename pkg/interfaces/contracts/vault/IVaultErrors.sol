@@ -64,6 +64,9 @@ interface IVaultErrors {
     /// @notice The data in a TokenConfig struct is inconsistent or unsupported.
     error InvalidTokenConfiguration();
 
+    /// @notice Tokens with more than 18 decimals are not supported.
+    error InvalidTokenDecimals();
+
     /**
      * @notice The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
@@ -396,6 +399,9 @@ interface IVaultErrors {
 
     /// @dev A wrap/unwrap operation consumed more or returned less wrapped tokens than it should.
     error NotEnoughWrapped(IERC4626 wrappedToken, uint256 expectedWrappedAmount, uint256 actualWrappedAmount);
+
+    /// @dev Issues shared during initialization are below the requested amount.
+    error IssuedSharesBelowMin(uint256 issuedShares, uint256 minIssuedShares);
 
     /*******************************************************************************
                                     Miscellaneous

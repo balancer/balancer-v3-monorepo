@@ -315,7 +315,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256[] memory queryPathAmountsOut,
             address[] memory queryTokensOut,
             uint256[] memory queryAmountsOut
-        ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        ) = batchRouter.querySwapExactIn(paths, address(this), bytes(""));
         vm.revertTo(snapshotId);
 
         // Measure tokens before actual swap
@@ -436,7 +436,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256[] memory queryPathAmountsIn,
             address[] memory queryTokensIn,
             uint256[] memory queryAmountsIn
-        ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        ) = batchRouter.querySwapExactOut(paths, address(this), bytes(""));
         vm.revertTo(snapshotId);
 
         // Measure tokens before actual swap
@@ -869,6 +869,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         permit2.approve(address(_token1Fork), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(ybToken2), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(ybToken1), address(batchRouter), type(uint160).max, type(uint48).max);
+        // Allow Permit2 to move DAI and USDC from LP to BufferRouter.
+        permit2.approve(address(_token2Fork), address(bufferRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(_token1Fork), address(bufferRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken2), address(bufferRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken1), address(bufferRouter), type(uint160).max, type(uint48).max);
         // Wrap part of LP balances.
         _token1Fork.forceApprove(address(ybToken1), 4 * _token1YieldBearingPoolInitAmount);
         ybToken1.deposit(4 * _token1YieldBearingPoolInitAmount, lp);
@@ -879,8 +884,18 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
     function _setupBuffers() private {
         vm.startPrank(lp);
-        router.initializeBuffer(ybToken2, _token2BufferInitAmount, ybToken2.previewDeposit(_token2BufferInitAmount));
-        router.initializeBuffer(ybToken1, _token1BufferInitAmount, ybToken1.previewDeposit(_token1BufferInitAmount));
+        bufferRouter.initializeBuffer(
+            ybToken2,
+            _token2BufferInitAmount,
+            ybToken2.previewDeposit(_token2BufferInitAmount),
+            0
+        );
+        bufferRouter.initializeBuffer(
+            ybToken1,
+            _token1BufferInitAmount,
+            ybToken1.previewDeposit(_token1BufferInitAmount),
+            0
+        );
         vm.stopPrank();
     }
 

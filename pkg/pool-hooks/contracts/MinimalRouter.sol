@@ -11,13 +11,9 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-
 import { RouterCommon } from "@balancer-labs/v3-vault/contracts/RouterCommon.sol";
 
-abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
+abstract contract MinimalRouter is RouterCommon {
     using Address for address payable;
     using SafeCast for *;
 
@@ -67,7 +63,12 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         bytes userData;
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory version
+    ) RouterCommon(vault, weth, permit2, version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -83,11 +84,11 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) internal saveSender returns (uint256[] memory amountsIn) {
+    ) internal returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    MinimalRouter.addLiquidityHook.selector,
+                abi.encodeCall(
+                    MinimalRouter.addLiquidityHook,
                     ExtendedAddLiquidityHookParams({
                         sender: sender,
                         receiver: receiver,
@@ -175,11 +176,11 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) internal saveSender returns (uint256[] memory amountsOut) {
+    ) internal returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    MinimalRouter.removeLiquidityHook.selector,
+                abi.encodeCall(
+                    MinimalRouter.removeLiquidityHook,
                     ExtendedRemoveLiquidityHookParams({
                         sender: sender,
                         receiver: receiver,

@@ -14,17 +14,26 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
-import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
-/// @notice Contract for functions shared between the `Router` and `BatchRouter`.
-abstract contract RouterCommon is IRouterCommon, VaultGuard {
-    using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
+/**
+ * @notice Abstract base contract for functions shared among all Routers.
+ * @dev Common functionality includes access to the sender (which would normally be obscured, since msg.sender in the
+ * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
+ * invocation functions (`permitBatchAndCall` and `multicall`).
+ */
+abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTransient, Version {
     using Address for address payable;
     using StorageSlotExtension for *;
     using SafeERC20 for IWETH;
@@ -82,8 +91,8 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the Router.
      *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
-    modifier saveSender() {
-        bool isExternalSender = _saveSender();
+    modifier saveSender(address sender) {
+        bool isExternalSender = _saveSender(sender);
         _;
         _discardSenderIfRequired(isExternalSender);
     }
@@ -93,23 +102,29 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
      * @dev This also encompasses the `saveSender` functionality.
      */
     modifier saveSenderAndManageEth() {
-        bool isExternalSender = _saveSender();
+        bool isExternalSender = _saveSender(msg.sender);
+
+        // Revert if a function with this modifier is called recursively (e.g., multicall).
+        if (_isReturnEthLockedSlot().tload()) {
+            revert ReentrancyGuardReentrantCall();
+        }
 
         // Lock the return of ETH during execution
         _isReturnEthLockedSlot().tstore(true);
         _;
         _isReturnEthLockedSlot().tstore(false);
 
-        _returnEth(_getSenderSlot().tload());
+        address sender = _getSenderSlot().tload();
         _discardSenderIfRequired(isExternalSender);
+        _returnEth(sender);
     }
 
-    function _saveSender() internal returns (bool isExternalSender) {
-        address sender = _getSenderSlot().tload();
+    function _saveSender(address sender) internal returns (bool isExternalSender) {
+        address savedSender = _getSenderSlot().tload();
 
         // NOTE: Only the most external sender will be saved by the Router.
-        if (sender == address(0)) {
-            _getSenderSlot().tstore(msg.sender);
+        if (savedSender == address(0)) {
+            _getSenderSlot().tstore(sender);
             isExternalSender = true;
         }
     }
@@ -122,7 +137,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         }
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2, string memory version) VaultGuard(vault) Version(version) {
         _weth = weth;
         _permit2 = permit2;
     }
@@ -144,7 +159,21 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external payable virtual saveSender returns (bytes[] memory results) {
+    ) external payable virtual returns (bytes[] memory results) {
+        _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
+
+        // Execute all the required operations once permissions have been granted.
+        return multicall(multicallData);
+    }
+
+    function _permitBatch(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature
+    ) internal nonReentrant {
+        InputHelpers.ensureInputLengthMatch(permitBatch.length, permitSignatures.length);
+
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
         // and grant allowances to Vault for BPT tokens.
         for (uint256 i = 0; i < permitBatch.length; ++i) {
@@ -183,9 +212,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             // Use Permit2 for tokens that are swapped and added into the Vault.
             _permit2.permit(msg.sender, permit2Batch, permit2Signature);
         }
-
-        // Execute all the required operations once permissions have been granted.
-        return multicall(multicallData);
     }
 
     /// @inheritdoc IRouterCommon

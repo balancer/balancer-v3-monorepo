@@ -232,7 +232,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 revert InvalidTokenType();
             }
 
-            tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
+            // Store the token decimal conversion factor as a delta from the maximum supported value.
+            uint8 tokenDecimals = IERC20Metadata(address(token)).decimals();
+
+            if (tokenDecimals > _MAX_TOKEN_DECIMALS) {
+                revert InvalidTokenDecimals();
+            } else {
+                unchecked {
+                    tokenDecimalDiffs[i] = _MAX_TOKEN_DECIMALS - tokenDecimals;
+                }
+            }
 
             // Store token and seed the next iteration.
             _poolTokens[pool].push(token);
@@ -444,11 +453,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert BptAmountOutBelowMin(bptAmountOut, minBptAmountOut);
         }
 
-        emit PoolBalanceChanged(
+        emit LiquidityAdded(
             pool,
             to,
+            AddLiquidityKind.UNBALANCED,
             _totalSupply(pool),
-            exactAmountsIn.unsafeCastToInt256(true),
+            exactAmountsIn,
             new uint256[](poolData.tokens.length)
         );
 
@@ -616,24 +626,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return true;
     }
 
-    /// @inheritdoc IVaultExtension
-    function transfer(address owner, address to, uint256 amount) external onlyVaultDelegateCall returns (bool) {
-        _transfer(msg.sender, owner, to, amount);
-        return true;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function transferFrom(
-        address spender,
-        address from,
-        address to,
-        uint256 amount
-    ) external onlyVaultDelegateCall returns (bool) {
-        _spendAllowance(msg.sender, from, spender, amount);
-        _transfer(msg.sender, from, to, amount);
-        return true;
-    }
-
     /*******************************************************************************
                                    ERC4626 Buffers
     *******************************************************************************/
@@ -735,11 +727,22 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _isPoolInRecoveryMode(pool);
     }
 
+    // Needed to avoid stack-too-deep.
+    struct RecoveryLocals {
+        IERC20[] tokens;
+        uint256 swapFeePercentage;
+        uint256 numTokens;
+        uint256[] swapFeeAmountsRaw;
+        uint256[] balancesRaw;
+        bool chargeRoundtripFee;
+    }
+
     /// @inheritdoc IVaultExtension
     function removeLiquidityRecovery(
         address pool,
         address from,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     )
         external
         onlyVaultDelegateCall
@@ -751,27 +754,53 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
+        RecoveryLocals memory locals;
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
-        IERC20[] memory tokens = _poolTokens[pool];
-        uint256 numTokens = tokens.length;
+        locals.tokens = _poolTokens[pool];
+        locals.numTokens = locals.tokens.length;
 
-        uint256[] memory balancesRaw = new uint256[](numTokens);
+        locals.balancesRaw = new uint256[](locals.numTokens);
         bytes32 packedBalances;
 
-        for (uint256 i = 0; i < numTokens; ++i) {
-            balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
+        for (uint256 i = 0; i < locals.numTokens; ++i) {
+            locals.balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
         }
 
-        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
+        amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(
+            locals.balancesRaw,
+            _totalSupply(pool),
+            exactBptAmountIn
+        );
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        // Normally we expect recovery mode withdrawals to be stand-alone operations. If there is a previous add
+        // operation in this transaction, this might be an attack, so we apply the same guardrail used for regular
+        // proportional withdrawals. To keep things simple, all we do is reduce the `amountsOut`, leaving the "fee"
+        // tokens in the pool.
+        locals.swapFeeAmountsRaw = new uint256[](locals.numTokens);
+        locals.chargeRoundtripFee = _addLiquidityCalled().tGet(pool);
+
+        // Don't make the call to retrieve the fee unless we have to.
+        if (locals.chargeRoundtripFee) {
+            locals.swapFeePercentage = _poolConfigBits[pool].getStaticSwapFeePercentage();
+        }
+
+        for (uint256 i = 0; i < locals.numTokens; ++i) {
+            if (locals.chargeRoundtripFee) {
+                locals.swapFeeAmountsRaw[i] = amountsOutRaw[i].mulUp(locals.swapFeePercentage);
+                amountsOutRaw[i] -= locals.swapFeeAmountsRaw[i];
+            }
+
+            if (amountsOutRaw[i] < minAmountsOut[i]) {
+                revert AmountOutBelowMin(locals.tokens[i], amountsOutRaw[i], minAmountsOut[i]);
+            }
+
             // Credit token[i] for amountOut.
-            _supplyCredit(tokens[i], amountsOutRaw[i]);
+            _supplyCredit(locals.tokens[i], amountsOutRaw[i]);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).
-            balancesRaw[i] -= amountsOutRaw[i];
+            locals.balancesRaw[i] -= amountsOutRaw[i];
         }
 
         // Store the new pool balances - raw only, since we don't have rates in Recovery Mode.
@@ -779,9 +808,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // out of Recovery Mode.
         mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < locals.numTokens; ++i) {
             packedBalances = poolBalances[i];
-            poolBalances[i] = packedBalances.setBalanceRaw(balancesRaw[i]);
+            poolBalances[i] = packedBalances.setBalanceRaw(locals.balancesRaw[i]);
         }
 
         _spendAllowance(pool, from, msg.sender, exactBptAmountIn);
@@ -796,13 +825,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(pool, from, exactBptAmountIn);
 
-        emit PoolBalanceChanged(
+        emit LiquidityRemoved(
             pool,
             from,
+            RemoveLiquidityKind.PROPORTIONAL,
             _totalSupply(pool),
-            // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
-            amountsOutRaw.unsafeCastToInt256(false),
-            new uint256[](numTokens)
+            amountsOutRaw,
+            locals.swapFeeAmountsRaw
         );
     }
 
@@ -828,10 +857,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Unlock so that `onlyWhenUnlocked` does not revert.
         _isUnlocked().tstore(true);
-    }
-
-    function _isQueryContext() internal view returns (bool) {
-        return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
     }
 
     /// @inheritdoc IVaultExtension
@@ -900,5 +925,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
      */
     function _implementation() internal view override returns (address) {
         return address(_vaultAdmin);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function emitAuxiliaryEvent(
+        string calldata eventKey,
+        bytes calldata eventData
+    ) external onlyVaultDelegateCall withRegisteredPool(msg.sender) {
+        emit VaultAuxiliary(msg.sender, eventKey, eventData);
     }
 }

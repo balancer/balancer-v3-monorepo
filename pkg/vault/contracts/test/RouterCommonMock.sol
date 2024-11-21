@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -15,9 +16,13 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 contract RouterCommonMock is RouterCommon {
     event CurrentSenderMock(address sender);
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {}
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2
+    ) RouterCommon(vault, weth, permit2, "Mock RouterCommon v1") {}
 
-    function call(address to, bytes calldata data) external saveSender returns (bytes memory) {
+    function call(address to, bytes calldata data) external saveSender(msg.sender) returns (bytes memory) {
         (bool success, bytes memory result) = to.call(data);
         require(success, "PoolCommonMock: call failed");
         return result;
@@ -66,5 +71,18 @@ contract RouterCommonMock is RouterCommon {
 
     function assertETHBalance() public payable {
         require(address(msg.sender).balance > 0, "Balance must be more then 0");
+    }
+
+    function manualMulticallVoid() external {
+        this.multicall(new bytes[](0));
+    }
+
+    function manualPermitBatchReentrancy(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature
+    ) public nonReentrant {
+        _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
     }
 }

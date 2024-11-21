@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { InputHelpers } from "../../contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "../../contracts/helpers/ScalingHelpers.sol";
 
 contract ScalingHelpersTest is Test {
@@ -70,5 +71,12 @@ contract ScalingHelpersTest is Test {
         assertEq(memoryPreArrayBefore, memoryPreArrayAfter, "Memory before array was modified");
         assertEq(fromLengthBefore, from.length, "From length was modified");
         assertEq(toLengthBefore, to.length, "To length was modified");
+    }
+
+    function testCopyToArrayLengthMismatch() public {
+        uint256[] memory from = new uint256[](4);
+        uint256[] memory to = new uint256[](3);
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
+        ScalingHelpers.copyToArray(from, to);
     }
 }
