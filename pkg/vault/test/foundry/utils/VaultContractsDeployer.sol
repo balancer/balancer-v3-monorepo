@@ -34,6 +34,7 @@ import { PoolMockFlexibleInvariantRatio } from "../../../contracts/test/PoolMock
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { RouterCommonMock } from "../../../contracts/test/RouterCommonMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
+import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
 
 /**
  * @notice This contract contains functions for deploying mocks and contracts related to the "Vault".
@@ -186,7 +187,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
             vaultMockBytecode = type(VaultMock).creationCode;
             vaultAdmin = new VaultAdminMock(IVault(payable(vault)), 90 days, 30 days, minTradeAmount, minWrapAmount);
             vaultExtension = new VaultExtensionMock(IVault(payable(vault)), vaultAdmin);
-            protocolFeeController = new ProtocolFeeControllerMock(IVault(payable(vault)));
+            protocolFeeController = new ProtocolFeeControllerMock(IVaultMock(address(vault)));
         }
 
         _create3(abi.encode(vaultExtension, authorizer, protocolFeeController), vaultMockBytecode, salt);
@@ -270,6 +271,19 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                 );
         } else {
             return new RouterMock(vault, weth, permit2);
+        }
+    }
+
+    function deployBufferRouterMock(IVault vault, IWETH weth, IPermit2 permit2) internal returns (BufferRouterMock) {
+        if (reusingArtifacts) {
+            return
+                BufferRouterMock(
+                    payable(
+                        deployCode(_computeVaultTestPath(type(BufferRouterMock).name), abi.encode(vault, weth, permit2))
+                    )
+                );
+        } else {
+            return new BufferRouterMock(vault, weth, permit2);
         }
     }
 

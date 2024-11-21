@@ -135,6 +135,9 @@ struct PoolRoleAccounts {
 //   decimals, so the Vault only supports tokens that implement `IERC20Metadata.decimals`, and return a value less than
 //   or equal to 18.
 //
+//  * Token decimals are checked and stored only once, on registration. Valid tokens store their decimals as immutable
+//    variables or constants. Malicious tokens that don't respect this basic property would not work anywhere in DeFi.
+//
 // These types of tokens are supported but discouraged, as they don't tend to play well with AMMs generally.
 //
 // * Very low-decimal tokens (e.g., GUSD). The Vault has been extensively tested with 6-decimal tokens (e.g., USDC),
@@ -414,5 +417,7 @@ struct BufferWrapOrUnwrapParams {
 // between 0% and 100% (step 0.00001%). Protocol and pool creator fees are set in the `ProtocolFeeController`, and
 // ensure both constituent and aggregate fees do not exceed this precision.
 uint256 constant FEE_BITLENGTH = 24;
-uint256 constant MAX_FEE_PERCENTAGE = 1e18; // 100%
 uint256 constant FEE_SCALING_FACTOR = 1e11;
+// Used to ensure the safety of fee-related math (e.g., pools or hooks don't set it greater than 100%).
+// This value should work for practical purposes and is well within the max precision requirements.
+uint256 constant MAX_FEE_PERCENTAGE = 99.9999e16; // 99.9999%

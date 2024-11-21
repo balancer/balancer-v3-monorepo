@@ -163,9 +163,14 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         uint256 waWETHLPShares = waWETH.previewDeposit(bufferInitialAmount);
 
         vm.startPrank(lp);
+<<<<<<< HEAD
         router.initializeBuffer(waDAI, bufferInitialAmount, waDAILPShares);
         router.initializeBuffer(waUSDC, bufferInitialAmount, waUSDCLPShares);
         router.initializeBuffer(waWETH, bufferInitialAmount, waWETHLPShares);
+=======
+        bufferRouter.initializeBuffer(waDAI, bufferInitialAmount, waDAILPShares, 0);
+        bufferRouter.initializeBuffer(waUSDC, bufferInitialAmount, waUSDCLPShares, 0);
+>>>>>>> main
         vm.stopPrank();
     }
 }

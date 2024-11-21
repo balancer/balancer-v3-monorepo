@@ -65,6 +65,7 @@ describe('StablePoolAmplification', () => {
       ],
     });
 
+    await vault.manualRegisterPoolWithSwapFee(pool, await tokens.addresses, fp(0.01));
     await grantPermission();
   }
 
