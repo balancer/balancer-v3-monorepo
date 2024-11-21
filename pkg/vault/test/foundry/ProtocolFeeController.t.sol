@@ -135,6 +135,22 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.setGlobalProtocolYieldFeePercentage(0);
     }
 
+    function testSetPoolCreatorSwapFeePercentageAboveMAx() public {
+        uint256 maxCreatorFeePct = ProtocolFeeController(address(feeController)).MAX_CREATOR_FEE_PERCENTAGE();
+
+        vm.expectRevert(IProtocolFeeController.PoolCreatorFeePercentageTooHigh.selector);
+        vm.prank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, maxCreatorFeePct + 1);
+    }
+
+    function testSetPoolCreatorYieldFeePercentageAboveMAx() public {
+        uint256 maxCreatorFeePct = ProtocolFeeController(address(feeController)).MAX_CREATOR_FEE_PERCENTAGE();
+
+        vm.expectRevert(IProtocolFeeController.PoolCreatorFeePercentageTooHigh.selector);
+        vm.prank(lp);
+        feeController.setPoolCreatorYieldFeePercentage(pool, maxCreatorFeePct + 1);
+    }
+
     function testSetGlobalProtocolSwapFeePercentageTooHigh() public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
@@ -1215,7 +1231,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
     }
 
-    function testConstants() public {
+    function testConstants() public view {
         uint256 maxCreatorFeePercentage = ProtocolFeeController(address(feeController)).MAX_CREATOR_FEE_PERCENTAGE();
 
         // Creator fee percentage is pretty close to max fee percentage.
