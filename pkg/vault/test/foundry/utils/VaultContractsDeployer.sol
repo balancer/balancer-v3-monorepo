@@ -187,7 +187,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
             vaultMockBytecode = type(VaultMock).creationCode;
             vaultAdmin = new VaultAdminMock(IVault(payable(vault)), 90 days, 30 days, minTradeAmount, minWrapAmount);
             vaultExtension = new VaultExtensionMock(IVault(payable(vault)), vaultAdmin);
-            protocolFeeController = new ProtocolFeeControllerMock(IVault(payable(vault)));
+            protocolFeeController = new ProtocolFeeControllerMock(IVaultMock(address(vault)));
         }
 
         _create3(abi.encode(vaultExtension, authorizer, protocolFeeController), vaultMockBytecode, salt);

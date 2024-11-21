@@ -13,6 +13,7 @@ import {
     SwapKind,
     PoolRoleAccounts
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExplorer.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
@@ -30,6 +31,9 @@ contract StableSurgeHookTest is BaseVaultTest {
     StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
     StableSurgeHook stableSurgeHook;
 
+    // Set the authorizer and the pool factory to msg.sender, and then mock them
+    IBasePoolFactory poolFactory = IBasePoolFactory(address(msg.sender));
+
     function setUp() public override {
         super.setUp();
         stableSurgeHook = new StableSurgeHook(
@@ -43,7 +47,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
 
         vm.expectEmit();
-        emit StableSurgeHook.StableSurgeHookExampleRegistered(pool);
+        emit StableSurgeHook.StableSurgeHookExampleRegistered(pool, address(poolFactory));
 
         _registerPool();
 
@@ -112,6 +116,22 @@ contract StableSurgeHookTest is BaseVaultTest {
         );
     }
 
+    function testChangeSurgeThresholdPercentageAuthorizer() public {
+        uint256 newSurgeThresholdPercentage = 0.5e18;
+
+        authorizer.grantRole(vault.getActionId(StableSurgeHook.setSurgeThresholdPercentage.selector), address(this));
+
+        vm.expectEmit();
+        emit StableSurgeHook.ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
+        stableSurgeHook.setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
+
+        assertEq(
+            stableSurgeHook.getSurgeThresholdPercentage(pool),
+            newSurgeThresholdPercentage,
+            "Surge threshold percentage should be newSurgeThresholdPercentage"
+        );
+    }
+
     function testChangeSurgeThresholdPercentageRevertIfValueIsGreaterThanOne() public {
         uint256 newSurgeThresholdPercentage = 1.1e18;
 
@@ -120,6 +140,7 @@ contract StableSurgeHookTest is BaseVaultTest {
             swapFeeManager: address(this),
             poolCreator: address(this)
         });
+
         vm.mockCall(
             address(vault),
             abi.encodeWithSelector(IVaultExplorer.getPoolRoleAccounts.selector, pool),
@@ -130,8 +151,9 @@ contract StableSurgeHookTest is BaseVaultTest {
         stableSurgeHook.setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 
-    function testChangeSurgeThresholdPercentageRevertIfSenderIsNotFeeManager() public {
+    function testChangeSurgeThresholdPercentageRevertIfSenderIsNotFeeManagerAndNotAuthorizer() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
     }
 

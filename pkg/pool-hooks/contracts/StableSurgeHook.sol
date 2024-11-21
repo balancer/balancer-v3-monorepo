@@ -53,8 +53,9 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
      * @notice A new `StableSurgeHookExample` contract has been registered successfully.
      * @dev If the registration fails the call will revert, so there will be no event.
      * @param pool The pool on which the hook was registered
+     * @param factory The factory that registered the pool
      */
-    event StableSurgeHookExampleRegistered(address indexed pool);
+    event StableSurgeHookExampleRegistered(address indexed pool, address indexed factory);
 
     /**
      * @notice The threshold percentage has been changed for a pool in a `StableSurgeHookExample` contract.
@@ -84,6 +85,9 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         _ensureValidSender(pool);
         _;
     }
+
+    // Store the current threshold for each pool.
+    mapping(address pool => uint256 threshold) private _surgeThresholdPercentage;
 
     constructor(
         IVault vault,
@@ -154,7 +158,11 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
-        emit StableSurgeHookExampleRegistered(pool);
+        bool isAllowedFactory = factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+
+        if (!isAllowedFactory) {
+            return false;
+        }
 
         // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
         // in the future).
@@ -256,6 +264,13 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         }
 
         // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
+        //
+        // As you can see from the formula, if it’s unbalanced exactly at the threshold, the last term is 0,
+        // and the fee is just: static + 0 = static fee.
+        // As the unbalanced proportion term approaches 1, the fee surge approaches: static + max - static ~= max fee.
+        // This formula linearly increases the fee from 0 at the threshold up to the maximum fee.
+        // At 35%, the fee would be 1% + (0.95 - 0.01) * ((0.35 - 0.3)/(0.95-0.3)) = 1% + 0.94 * 0.0769 ~ 8.2%.
+        // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
         return
             staticFeePercentage +
             (surgeFeeData.maxSurgeFeePercentage - staticFeePercentage).mulDown(
