@@ -50,15 +50,15 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
     mapping(address pool => SurgeFeeData data) private _surgeFeePoolData;
 
     /**
-     * @notice A new `StableSurgeHookExample` contract has been registered successfully.
+     * @notice A new `StableSurgeHook` contract has been registered successfully.
      * @dev If the registration fails the call will revert, so there will be no event.
      * @param pool The pool on which the hook was registered
      * @param factory The factory that registered the pool
      */
-    event StableSurgeHookExampleRegistered(address indexed pool, address indexed factory);
+    event StableSurgeHookRegistered(address indexed pool, address indexed factory);
 
     /**
-     * @notice The threshold percentage has been changed for a pool in a `StableSurgeHookExample` contract.
+     * @notice The threshold percentage has been changed for a pool in a `StableSurgeHook` contract.
      * @dev Note, the initial threshold percentage is set on deployment, and an event is emitted.
      * @param pool The pool for which the threshold percentage has been changed
      * @param newSurgeThresholdPercentage The new threshold percentage
@@ -66,7 +66,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
     event ThresholdSurgePercentageChanged(address indexed pool, uint256 newSurgeThresholdPercentage);
 
     /**
-     * @notice The maximum surge fee percentage has been changed for a pool in a `StableSurgeHookExample` contract.
+     * @notice The maximum surge fee percentage has been changed for a pool in a `StableSurgeHook` contract.
      * @dev Note, the initial max surge fee percentage is set on deployment, and an event is emitted.
      * @param pool The pool for which the max surge fee percentage has been changed
      * @param newMaxSurgeFeePercentage The new max surge fee percentage
@@ -158,9 +158,9 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
-        bool isAllowedFactory = factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+        bool isAllowedFactory = factory == _allowedPoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
 
-        if (!isAllowedFactory) {
+        if (isAllowedFactory == false) {
             return false;
         }
 
@@ -171,8 +171,9 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         // Initially set the pool threshold to the default (can be changed by the pool swapFeeManager in the future).
         _setSurgeThresholdPercentage(pool, _defaultSurgeThresholdPercentage);
 
-        // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
-        return factory == _allowedPoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
+        emit StableSurgeHookRegistered(pool, factory);
+
+        return true;
     }
 
     /// @inheritdoc IHooks

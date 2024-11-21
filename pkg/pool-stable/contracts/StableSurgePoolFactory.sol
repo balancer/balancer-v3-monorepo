@@ -46,6 +46,15 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
     }
 
     /**
+     * @notice Getter for the internally deployed stable surge hook contract.
+     * @dev This hook will be registered to every pool created by this factory.
+     * @return address stableSurgeHook Address of the deployed StableSurgeHook
+     */
+    function getStableSurgeHook() external view returns (address) {
+        return _stableSurgeHook;
+    }
+
+    /**
      * @notice Deploys a new `StablePool`.
      * @param name The name of the pool
      * @param symbol The symbol of the pool
