@@ -70,7 +70,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         );
     }
 
-    function testOnRegisterWithIncorectFactory() public {
+    function testOnRegisterWithIncorrectFactory() public {
         LiquidityManagement memory emptyLiquidityManagement;
 
         assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
