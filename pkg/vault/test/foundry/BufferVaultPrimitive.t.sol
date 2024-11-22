@@ -1017,21 +1017,32 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         vm.stopPrank();
 
+        (, uint256 waWethIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaWethBuffer();
+
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waWETH)));
 
-        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaWethBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
-        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
 
         vm.prank(lp);
-        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn{ value: _wrapAmount }(
+        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn{ value: _wrapAmount + 1 ether }(
             paths,
             MAX_UINT256,
             true,
             bytes("")
         );
 
-        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], bufferBalanceBefore, true);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
+
+        // We won't check buffer balances; just balances from the sender and check no router leftovers
+        assertEq(balancesAfter.lpEth, balancesBefore.lpEth - _wrapAmount, "Incorrect LP ETH");
+        uint256 expectedAmountOut = waWETH.previewDeposit(_wrapAmount);
+        assertEq(pathAmountsOut[0], expectedAmountOut, "AmountOut (wrapped minted) is wrong");
+        assertEq(
+            balancesAfter.lpTokens[waWethIdx],
+            balancesBefore.lpTokens[waWethIdx] + expectedAmountOut,
+            "LP balance of wrapped token is wrong"
+        );
+        assertEq(address(batchRouter).balance, 0, "Router has leftover ETH");
     }
 
     struct BufferTokenBalances {
