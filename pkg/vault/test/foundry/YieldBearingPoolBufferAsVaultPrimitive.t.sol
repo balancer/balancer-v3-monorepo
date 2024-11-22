@@ -70,11 +70,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             waWETH.previewDeposit(bufferInitialAmount),
             PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * waWETH.previewDeposit(bufferInitialAmount))
         );
-<<<<<<< HEAD
-        router.addLiquidityToBuffer(waWETH, 2 * bufferInitialAmount);
-=======
-        bufferRouter.addLiquidityToBuffer(waUSDC, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
->>>>>>> main
+        bufferRouter.addLiquidityToBuffer(waWETH, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
         vm.stopPrank();
     }
 
@@ -112,11 +108,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             )
         );
         vm.prank(lp);
-<<<<<<< HEAD
-        vault.removeLiquidityFromBuffer(waWETH, bufferTestAmount);
-=======
-        vault.removeLiquidityFromBuffer(waUSDC, bufferTestAmount, 0, 0);
->>>>>>> main
+        vault.removeLiquidityFromBuffer(waWETH, bufferTestAmount, 0, 0);
     }
 
     function testYieldBearingPoolSwapWithinBufferRangeExactIn() public {
