@@ -25,6 +25,8 @@ import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedia
 contract StableSurgeHookTest is BaseVaultTest {
     using FixedPoint for uint256;
 
+    uint256 constant MIN_TOKENS = 2;
+    uint256 constant MAX_TOKENS = 8;
     uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 0.3e18;
 
     StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
@@ -177,22 +179,26 @@ contract StableSurgeHookTest is BaseVaultTest {
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
     }
 
-    function testGetSurgeFeePercentage() public view {
-        uint256 numTokens = 8;
-        uint256[] memory balances = new uint256[](numTokens);
+    function testGetSurgeFeePercentage_Fuzz(
+        uint256 length,
+        uint256 tokenIn,
+        uint256 tokenOut,
+        uint256 amountGivenScaled18,
+        uint256[8] memory rawBalances
+    ) public view {
+        length = bound(length, MIN_TOKENS, MAX_TOKENS);
+        uint256[] memory balances = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            balances[i] = bound(rawBalances[i], 1, MAX_UINT128);
+        }
 
-        uint256 amountGivenScaled18 = 1e18;
-        uint256 tokenIn = 0;
-        uint256 tokenOut = 7;
+        tokenIn = bound(tokenIn, 0, length - 1);
+        tokenOut = bound(tokenOut, 0, length - 1);
+        if (tokenIn == tokenOut) {
+            tokenOut = (tokenOut + 1) % length;
+        }
 
-        balances[0] = 1e18;
-        balances[1] = 1e18;
-        balances[2] = 1e18;
-        balances[3] = 10000e18;
-        balances[4] = 2e18;
-        balances[5] = 3e18;
-        balances[6] = 1e18;
-        balances[7] = 1e18;
+        amountGivenScaled18 = bound(amountGivenScaled18, 1, balances[tokenOut]);
 
         PoolSwapParams memory params = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
@@ -212,18 +218,28 @@ contract StableSurgeHookTest is BaseVaultTest {
             staticFeePercentage
         );
 
-        uint256[] memory newBalances = new uint256[](numTokens);
-        for (uint256 i = 0; i < numTokens; ++i) {
+        uint256[] memory newBalances = new uint256[](length);
+        for (uint256 i = 0; i < length; ++i) {
             newBalances[i] = balances[i];
         }
         newBalances[tokenIn] += amountGivenScaled18;
         newBalances[tokenOut] -= amountGivenScaled18;
 
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(newBalances);
-        uint expectedFee = staticFeePercentage +
-            (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - staticFeePercentage).mulDown(
-                (newTotalImbalance - surgeThresholdPercentage).divDown(surgeThresholdPercentage.complement())
-            );
+        uint256 oldTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(balances);
+
+        uint256 expectedFee = staticFeePercentage;
+        if (
+            newTotalImbalance != 0 &&
+            newTotalImbalance > oldTotalImbalance &&
+            newTotalImbalance > surgeThresholdPercentage
+        ) {
+            expectedFee =
+                staticFeePercentage +
+                (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - staticFeePercentage).mulDown(
+                    (newTotalImbalance - surgeThresholdPercentage).divDown(surgeThresholdPercentage.complement())
+                );
+        }
 
         assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
     }
