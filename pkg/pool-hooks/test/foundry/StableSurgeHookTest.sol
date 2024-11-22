@@ -28,6 +28,7 @@ contract StableSurgeHookTest is BaseVaultTest {
     uint256 constant MIN_TOKENS = 2;
     uint256 constant MAX_TOKENS = 8;
     uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 0.3e18;
+    uint256 constant STATIC_FEE_PERCENTAGE = 1e16;
 
     StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
     StableSurgeHook stableSurgeHook;
@@ -186,6 +187,133 @@ contract StableSurgeHookTest is BaseVaultTest {
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
     ) public view {
+        uint256[] memory balances;
+        (length, tokenIn, tokenOut, amountGivenScaled18, balances) = _boundValues(
+            length,
+            tokenIn,
+            tokenOut,
+            amountGivenScaled18,
+            rawBalances
+        );
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
+            _buildSwapParams(length, tokenIn, tokenOut, amountGivenScaled18, balances),
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            STATIC_FEE_PERCENTAGE
+        );
+
+        uint256[] memory newBalances = new uint256[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            newBalances[i] = balances[i];
+        }
+        newBalances[tokenIn] += amountGivenScaled18;
+        newBalances[tokenOut] -= amountGivenScaled18;
+
+        uint256 expectedFee = _calculateFee(
+            stableSurgeMedianMathMock.calculateImbalance(newBalances),
+            stableSurgeMedianMathMock.calculateImbalance(balances)
+        );
+
+        assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
+    }
+
+    function testOnComputeDynamicSwapFeePercentage_Fuzz(
+        uint256 length,
+        uint256 tokenIn,
+        uint256 tokenOut,
+        uint256 amountGivenScaled18,
+        uint256[8] memory rawBalances
+    ) public view {
+        uint256[] memory balances;
+        (length, tokenIn, tokenOut, amountGivenScaled18, balances) = _boundValues(
+            length,
+            tokenIn,
+            tokenOut,
+            amountGivenScaled18,
+            rawBalances
+        );
+
+        (bool success, uint256 surgeFeePercentage) = stableSurgeHook.onComputeDynamicSwapFeePercentage(
+            _buildSwapParams(length, tokenIn, tokenOut, amountGivenScaled18, balances),
+            address(0),
+            STATIC_FEE_PERCENTAGE
+        );
+
+        assertTrue(success, "onComputeDynamicSwapFeePercentage should return true");
+
+        uint256[] memory newBalances = new uint256[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            newBalances[i] = balances[i];
+        }
+        newBalances[tokenIn] += amountGivenScaled18;
+        newBalances[tokenOut] -= amountGivenScaled18;
+
+        uint256 expectedFee = _calculateFee(
+            stableSurgeMedianMathMock.calculateImbalance(newBalances),
+            stableSurgeMedianMathMock.calculateImbalance(balances)
+        );
+
+        assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
+    }
+
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceIsZero() public view {
+        uint256 numTokens = 8;
+        uint256[] memory balances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            balances[i] = 1e18;
+        }
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
+            _buildSwapParams(MAX_TOKENS, 0, MAX_TOKENS - 1, 1e18, balances),
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            STATIC_FEE_PERCENTAGE
+        );
+
+        assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
+    }
+
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceLesOrEqOld() public view {
+        uint256 numTokens = 8;
+        uint256[] memory balances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            balances[i] = 1e18;
+        }
+        balances[3] = 10000e18;
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
+            _buildSwapParams(MAX_TOKENS, 0, MAX_TOKENS - 1, 0, balances),
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            STATIC_FEE_PERCENTAGE
+        );
+
+        assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
+    }
+
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceLessOrEqThreshold() public view {
+        uint256 numTokens = 8;
+        uint256[] memory balances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            balances[i] = 1e18;
+        }
+        balances[4] = 2e18;
+        balances[5] = 2e18;
+
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
+            _buildSwapParams(MAX_TOKENS, 0, MAX_TOKENS - 1, 1, balances),
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            STATIC_FEE_PERCENTAGE
+        );
+
+        assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
+    }
+
+    function _boundValues(
+        uint256 length,
+        uint256 tokenIn,
+        uint256 tokenOut,
+        uint256 amountGivenScaled18,
+        uint256[8] memory rawBalances
+    ) internal view returns (uint256, uint256, uint256, uint256, uint256[] memory) {
         length = bound(length, MIN_TOKENS, MAX_TOKENS);
         uint256[] memory balances = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
@@ -200,153 +328,44 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         amountGivenScaled18 = bound(amountGivenScaled18, 1, balances[tokenOut]);
 
-        PoolSwapParams memory params = PoolSwapParams({
-            kind: SwapKind.EXACT_IN,
-            indexIn: tokenIn,
-            indexOut: tokenOut,
-            amountGivenScaled18: amountGivenScaled18,
-            balancesScaled18: balances,
-            router: address(0),
-            userData: bytes("")
-        });
-        uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
-        uint256 staticFeePercentage = 1e16;
+        return (length, tokenIn, tokenOut, amountGivenScaled18, balances);
+    }
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
+    function _buildSwapParams(
+        uint256 length,
+        uint256 tokenIn,
+        uint256 tokenOut,
+        uint256 amountGivenScaled18,
+        uint256[] memory balances
+    ) internal view returns (PoolSwapParams memory) {
+        return
+            PoolSwapParams({
+                kind: SwapKind.EXACT_IN,
+                indexIn: tokenIn,
+                indexOut: tokenOut,
+                amountGivenScaled18: amountGivenScaled18,
+                balancesScaled18: balances,
+                router: address(0),
+                userData: bytes("")
+            });
+    }
 
-        uint256[] memory newBalances = new uint256[](length);
-        for (uint256 i = 0; i < length; ++i) {
-            newBalances[i] = balances[i];
-        }
-        newBalances[tokenIn] += amountGivenScaled18;
-        newBalances[tokenOut] -= amountGivenScaled18;
-
-        uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(newBalances);
-        uint256 oldTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(balances);
-
-        uint256 expectedFee = staticFeePercentage;
+    function _calculateFee(uint256 newTotalImbalance, uint256 oldTotalImbalance) internal view returns (uint256) {
+        uint256 expectedFee = STATIC_FEE_PERCENTAGE;
         if (
             newTotalImbalance != 0 &&
             newTotalImbalance > oldTotalImbalance &&
-            newTotalImbalance > surgeThresholdPercentage
+            newTotalImbalance > DEFAULT_SURGE_THRESHOLD_PERCENTAGE
         ) {
             expectedFee =
-                staticFeePercentage +
-                (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - staticFeePercentage).mulDown(
-                    (newTotalImbalance - surgeThresholdPercentage).divDown(surgeThresholdPercentage.complement())
+                STATIC_FEE_PERCENTAGE +
+                (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - STATIC_FEE_PERCENTAGE).mulDown(
+                    (newTotalImbalance - DEFAULT_SURGE_THRESHOLD_PERCENTAGE).divDown(
+                        DEFAULT_SURGE_THRESHOLD_PERCENTAGE.complement()
+                    )
                 );
         }
 
-        assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
-    }
-
-    function testGetSurgeFeePercentageWhenNewTotalImbalanceIsZero() public view {
-        uint256 numTokens = 8;
-        uint256[] memory balances = new uint256[](numTokens);
-        for (uint256 i = 0; i < numTokens; ++i) {
-            balances[i] = 1e18;
-        }
-
-        uint256 amountGivenScaled18 = 1e18;
-        uint256 tokenIn = 0;
-        uint256 tokenOut = 7;
-
-        PoolSwapParams memory params = PoolSwapParams({
-            kind: SwapKind.EXACT_IN,
-            indexIn: tokenIn,
-            indexOut: tokenOut,
-            amountGivenScaled18: amountGivenScaled18,
-            balancesScaled18: balances,
-            router: address(0),
-            userData: bytes("")
-        });
-        uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
-        uint256 staticFeePercentage = 1e16;
-
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
-
-        assertEq(surgeFeePercentage, staticFeePercentage, "Surge fee percentage should be staticFeePercentage");
-    }
-
-    function testGetSurgeFeePercentageWhenNewTotalImbalanceLesOrEqOld() public view {
-        uint256 numTokens = 8;
-        uint256[] memory balances = new uint256[](numTokens);
-        balances[0] = 1e18;
-        balances[1] = 1e18;
-        balances[2] = 1e18;
-        balances[3] = 10000e18;
-        balances[4] = 2e18;
-        balances[5] = 3e18;
-        balances[6] = 1e18;
-        balances[7] = 1e18;
-
-        uint256 amountGivenScaled18 = 0;
-        uint256 tokenIn = 0;
-        uint256 tokenOut = 7;
-
-        PoolSwapParams memory params = PoolSwapParams({
-            kind: SwapKind.EXACT_IN,
-            indexIn: tokenIn,
-            indexOut: tokenOut,
-            amountGivenScaled18: amountGivenScaled18,
-            balancesScaled18: balances,
-            router: address(0),
-            userData: bytes("")
-        });
-        uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
-        uint256 staticFeePercentage = 1e16;
-
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
-
-        assertEq(surgeFeePercentage, staticFeePercentage, "Surge fee percentage should be staticFeePercentage");
-    }
-
-    function testGetSurgeFeePercentageWhenNewTotalImbalanceLessOrEqThreshold() public view {
-        uint256 numTokens = 8;
-        uint256[] memory balances = new uint256[](numTokens);
-        balances[0] = 1e18;
-        balances[1] = 1e18;
-        balances[2] = 1e18;
-        balances[3] = 1e18;
-        balances[4] = 2e18;
-        balances[5] = 3e18;
-        balances[6] = 1e18;
-        balances[7] = 1e18;
-
-        uint256 amountGivenScaled18 = 0;
-        uint256 tokenIn = 0;
-        uint256 tokenOut = 7;
-
-        PoolSwapParams memory params = PoolSwapParams({
-            kind: SwapKind.EXACT_IN,
-            indexIn: tokenIn,
-            indexOut: tokenOut,
-            amountGivenScaled18: amountGivenScaled18,
-            balancesScaled18: balances,
-            router: address(0),
-            userData: bytes("")
-        });
-        uint256 surgeThresholdPercentage = DEFAULT_SURGE_THRESHOLD_PERCENTAGE;
-        uint256 staticFeePercentage = 1e16;
-
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            params,
-            surgeThresholdPercentage,
-            staticFeePercentage
-        );
-
-        assertEq(surgeFeePercentage, staticFeePercentage, "Surge fee percentage should be staticFeePercentage");
+        return expectedFee;
     }
 }
