@@ -892,6 +892,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _vaultStateBits.isQueryDisabled();
     }
 
+    /// @inheritdoc IVaultExtension
+    function isQueryDisabledPermanently() external view onlyVaultDelegateCall returns (bool) {
+        return _queriesDisabledPermanently;
+    }
+
     /*******************************************************************************
                                      Default handlers
     *******************************************************************************/

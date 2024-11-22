@@ -247,8 +247,27 @@ interface IVaultAdmin {
                                     Queries
     *******************************************************************************/
 
-    /// @notice Disables queries functionality on the Vault. Can only be called by governance.
+    /**
+     * @notice Disables queries functionality on the Vault. Can only be called by governance.
+     * @dev The query functions rely on a specific EVM feature to detect static calls. Query operations are exempt from
+     * settlement constraints, so it's critical that no state changes can occur. We retain the ability to disable
+     * queries in the unlikely event that EVM changes violate its assumptions (perhaps on an L2).
+     * This function can be acted upon as an emergency measure in ambiguous contexts where it's not 100% clear whether
+     * disabling queries is completely necessary; queries can still be re-enabled after this call.
+     */
     function disableQuery() external;
+
+    /**
+     * @notice Disables queries functionality permanently on the Vault. Can only be called by governance.
+     * @dev Shall only be used when there is no doubt that queries pose a fundamental threat to the system.
+     */
+    function disableQueryPermanently() external;
+
+    /**
+     * @notice Enables queries functionality on the Vault. Can only be called by governance.
+     * @dev Only works if queries are not permanently disabled.
+     */
+    function enableQuery() external;
 
     /*******************************************************************************
                                   ERC4626 Buffers
