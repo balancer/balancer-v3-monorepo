@@ -655,14 +655,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         // Place the limit for max amounts in right below the expected value.
         uint256[] memory maxAmountsIn = new uint256[](2);
         maxAmountsIn[partialWaDaiIdx] = operationAmount;
-        maxAmountsIn[partialUsdcIdx] = expectedWrappedAmountsIn[partialUsdcIdx] - 1;
+        maxAmountsIn[partialWethIdx] = expectedWrappedAmountsIn[partialWethIdx] - 1;
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.AmountInAboveMax.selector,
-                usdc,
-                expectedWrappedAmountsIn[partialUsdcIdx],
-                maxAmountsIn[partialUsdcIdx]
+                weth,
+                expectedWrappedAmountsIn[partialWethIdx],
+                maxAmountsIn[partialWethIdx]
             )
         );
         vm.prank(alice);
@@ -990,15 +990,15 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         // Place the limit for min amounts out right above the expected value.
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[partialUsdcIdx] = expectedWrappedAmountsOut[partialUsdcIdx] + 1;
+        minAmountsOut[partialWethIdx] = expectedWrappedAmountsOut[partialWethIdx] + 1;
         minAmountsOut[partialWaDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.AmountOutBelowMin.selector,
-                usdc,
-                expectedWrappedAmountsOut[partialUsdcIdx],
-                minAmountsOut[partialUsdcIdx]
+                weth,
+                expectedWrappedAmountsOut[partialWethIdx],
+                minAmountsOut[partialWethIdx]
             )
         );
         vm.prank(bob);
