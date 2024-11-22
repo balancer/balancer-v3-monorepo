@@ -1001,6 +1001,39 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertApproxEqAbs(lpShares, bufferInvariantDelta + 1, 1, "Removed assets are wrong");
     }
 
+    /********************************************************************************
+                                        Native eth
+    ********************************************************************************/
+
+    function testNativeEthSwapExactIn() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the Vault has
+        // to interact with the ERC4626 protocol.
+        vm.startPrank(lp);
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waWETH)),
+            2 * _wrapAmount,
+            waWETH.previewDeposit(2 * _wrapAmount),
+            0
+        );
+        vm.stopPrank();
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waWETH)));
+
+        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaWethBuffer();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+        BufferBalance memory bufferBalanceBefore = _getBufferBalance();
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn{ value: _wrapAmount }(
+            paths,
+            MAX_UINT256,
+            true,
+            bytes("")
+        );
+
+        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], bufferBalanceBefore, true);
+    }
+
     struct BufferTokenBalances {
         uint256 waDai;
         uint256 dai;
@@ -1265,6 +1298,17 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         tokens = new IERC20[](2);
         tokens[daiIdx] = dai;
         tokens[waDaiIdx] = IERC20(address(waDAI));
+    }
+
+    function _getTokenArrayAndIndexesOfWaWethBuffer()
+        private
+        view
+        returns (uint256 wethIdx, uint256 waWethIdx, IERC20[] memory tokens)
+    {
+        (wethIdx, waWethIdx) = getSortedIndexes(address(weth), address(waWETH));
+        tokens = new IERC20[](2);
+        tokens[wethIdx] = weth;
+        tokens[waWethIdx] = IERC20(address(waWETH));
     }
 
     /// @notice Hook used to create a vault approval using a malicious erc4626 and drain the Vault.
