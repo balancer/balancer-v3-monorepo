@@ -237,6 +237,10 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         _amplificationState.endTime = endTimeUint32;
 
         emit AmpUpdateStarted(currentValueUint64, endValueUint64, startTimeUint32, endTimeUint32);
+        _vault.emitAuxiliaryEvent(
+            "AmpUpdateStarted",
+            abi.encode(currentValueUint64, endValueUint64, startTimeUint32, endTimeUint32)
+        );
     }
 
     /// @inheritdoc IStablePool
@@ -248,6 +252,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         }
 
         _stopAmplification(currentValue);
+        _vault.emitAuxiliaryEvent("AmpUpdateStopped", abi.encode(currentValue));
     }
 
     /// @inheritdoc IStablePool
