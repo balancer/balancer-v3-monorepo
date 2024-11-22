@@ -88,7 +88,9 @@ contract BufferRouter is IBufferRouter, RouterCommon {
             minIssuedShares,
             sharesOwner
         );
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), exactAmountUnderlyingIn, false);
+
+        address asset = _vault.getERC4626BufferAsset(wrappedToken);
+        _takeTokenIn(sharesOwner, IERC20(asset), exactAmountUnderlyingIn, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), exactAmountWrappedIn, false);
     }
 
@@ -146,7 +148,9 @@ contract BufferRouter is IBufferRouter, RouterCommon {
             exactSharesToIssue,
             sharesOwner
         );
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingIn, false);
+
+        address asset = _vault.getERC4626BufferAsset(wrappedToken);
+        _takeTokenIn(sharesOwner, IERC20(asset), amountUnderlyingIn, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedIn, false);
     }
 
