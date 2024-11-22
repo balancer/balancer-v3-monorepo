@@ -314,6 +314,9 @@ interface IVaultExtension {
      */
     function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized);
 
+    /// @notice Gets registered asset for a given buffer. Returns `address(0)` if not initialized.
+    function getERC4626BufferAsset(IERC4626 wrappedToken) external view returns (address asset);
+
     /*******************************************************************************
                                           Fees
     *******************************************************************************/
@@ -434,15 +437,16 @@ interface IVaultExtension {
     function quoteAndRevert(bytes calldata data) external;
 
     /**
-     * @notice Checks if the queries enabled on the Vault.
-     * @dev This is a one-way switch. Once queries are disabled, they can never be re-enabled.
-     * The query functions rely on a specific EVM feature to detect static calls. Query operations are exempt from
-     * settlement constraints, so it's critical that no state changes can occur. We retain the ability to disable
-     * queries in the unlikely event that EVM changes violate its assumptions (perhaps on an L2).
-     *
-     * @return queryDisabled If true, then queries are disabled
+     * @notice Returns true if queries are disabled on the Vault.
+     * @dev If true, queries might either be disabled temporarily or permanently.
      */
     function isQueryDisabled() external view returns (bool);
+
+    /**
+     * @notice Returns true if queries are disabled permanently; false if they are enabled.
+     * @dev This is a one-way switch. Once queries are disabled permanently, they can never be re-enabled.
+     */
+    function isQueryDisabledPermanently() external view returns (bool);
 
     /**
      * @notice Pools can use this event to emit event data from the Vault.

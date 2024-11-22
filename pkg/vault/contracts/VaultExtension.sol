@@ -635,6 +635,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _bufferAssets[wrappedToken] != address(0);
     }
 
+    /// @inheritdoc IVaultExtension
+    function getERC4626BufferAsset(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (address asset) {
+        return _bufferAssets[wrappedToken];
+    }
+
     /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
@@ -890,6 +895,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVaultDelegateCall returns (bool) {
         return _vaultStateBits.isQueryDisabled();
+    }
+
+    /// @inheritdoc IVaultExtension
+    function isQueryDisabledPermanently() external view onlyVaultDelegateCall returns (bool) {
+        return _queriesDisabledPermanently;
     }
 
     /*******************************************************************************
