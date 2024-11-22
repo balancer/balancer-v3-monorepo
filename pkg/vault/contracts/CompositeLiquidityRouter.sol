@@ -585,7 +585,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * this set with the resulting amount of wrapped tokens from the operation.
      */
     function _wrapAndUpdateTokenInAmounts(IERC4626 wrappedToken) private returns (uint256 wrappedAmountOut) {
-        address underlyingToken = wrappedToken.asset();
+        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
 
         // Get the amountIn of underlying tokens informed by the sender.
         uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
@@ -788,7 +788,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         // The transient sets `_currentSwapTokensOut` and `_currentSwapTokenOutAmounts` must be updated, so
         // `_settlePaths` function will be able to send the token out amounts to the sender.
-        address underlyingToken = wrappedToken.asset();
+        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
         _currentSwapTokensOut().add(underlyingToken);
         _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmountOut);
     }

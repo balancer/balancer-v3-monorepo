@@ -314,6 +314,9 @@ interface IVaultExtension {
      */
     function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized);
 
+    /// @notice Gets registered asset for a given buffer. Returns `address(0)` if not initialized.
+    function getERC4626BufferAsset(IERC4626 wrappedToken) external view returns (address asset);
+
     /*******************************************************************************
                                           Fees
     *******************************************************************************/

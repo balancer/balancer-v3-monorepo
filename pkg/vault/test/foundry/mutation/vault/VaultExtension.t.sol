@@ -240,4 +240,14 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(this)));
         vault.emitAuxiliaryEvent("", bytes(""));
     }
+
+    function testIsERC4626BufferInitializedWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.isERC4626BufferInitialized(IERC4626(address(1)));
+    }
+
+    function testGetERC4626BufferAssetWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getERC4626BufferAsset(IERC4626(address(1)));
+    }
 }
