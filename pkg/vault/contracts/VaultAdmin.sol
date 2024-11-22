@@ -406,11 +406,34 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external onlyVaultDelegateCall authenticate {
+        _disableQuery();
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function disableQueryPermanently() external onlyVaultDelegateCall authenticate {
+        _queriesDisabledPermanently = true;
+        _disableQuery();
+    }
+
+    function _disableQuery() internal {
         VaultStateBits vaultState = _vaultStateBits;
         vaultState = vaultState.setQueryDisabled(true);
         _vaultStateBits = vaultState;
 
         emit VaultQueriesDisabled();
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function enableQuery() external onlyVaultDelegateCall authenticate {
+        if (_queriesDisabledPermanently) {
+            revert QueriesDisabledPermanently();
+        }
+
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setQueryDisabled(false);
+        _vaultStateBits = vaultState;
+
+        emit VaultQueriesEnabled();
     }
 
     /*******************************************************************************

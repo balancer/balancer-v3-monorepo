@@ -274,4 +274,82 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidOwner.selector));
         vault.manualBurnBufferShares(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
     }
+
+    function testDisableQuery() public {
+        bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQuery.selector);
+        authorizer.grantRole(disableQueryRole, admin);
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultQueriesDisabled();
+
+        vm.prank(admin);
+        vault.disableQuery();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+
+        // Calling twice is fine
+        vm.prank(admin);
+        vault.disableQuery();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+    }
+
+    function testDisableQueryPermanently() public {
+        bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQueryPermanently.selector);
+        authorizer.grantRole(disableQueryRole, admin);
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultQueriesDisabled();
+
+        vm.prank(admin);
+        vault.disableQueryPermanently();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertTrue(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+
+        // Calling twice is fine
+        vm.prank(admin);
+        vault.disableQueryPermanently();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertTrue(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+    }
+
+    function testEnableQuery() public {
+        testDisableQuery();
+
+        bytes32 enableQueryRole = vault.getActionId(IVaultAdmin.enableQuery.selector);
+        authorizer.grantRole(enableQueryRole, admin);
+
+        vm.prank(admin);
+        vault.enableQuery();
+
+        assertFalse(vault.isQueryDisabled(), "Query disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+
+        // Calling twice is fine
+        vm.prank(admin);
+        vault.enableQuery();
+
+        assertFalse(vault.isQueryDisabled(), "Query disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+    }
+
+    function testEnableQueryIfDisabledPermanently() public {
+        testDisableQueryPermanently();
+
+        bytes32 enableQueryRole = vault.getActionId(IVaultAdmin.enableQuery.selector);
+        authorizer.grantRole(enableQueryRole, admin);
+
+        vm.expectRevert(IVaultErrors.QueriesDisabledPermanently.selector);
+        vm.prank(admin);
+        vault.enableQuery();
+    }
+
+    function testDisableQueryPermanentlyWhenDisabled() public {
+        testDisableQuery();
+        testDisableQueryPermanently();
+    }
 }
