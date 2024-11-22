@@ -17,7 +17,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
 
@@ -27,7 +27,7 @@ import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
+contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -93,7 +93,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
         uint256 defaultSurgeThresholdPercentage
-    ) Authentication(bytes32(uint256(uint160(address(vault))))) VaultGuard(vault) {
+    ) SingletonAuthentication(vault) VaultGuard(vault) {
         _ensureValidPercentage(defaultSurgeThresholdPercentage);
         _ensureValidPercentage(defaultMaxSurgeFeePercentage);
 
@@ -301,15 +301,5 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         if (percentage > FixedPoint.ONE) {
             revert InvalidPercentage();
         }
-    }
-
-    /// @dev Access control is delegated to the Authorizer.
-    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
-        return _vault.getAuthorizer().canPerform(actionId, user, address(this));
-    }
-
-    /// @dev Access control is delegated to the Authorizer. `where` refers to the target contract.
-    function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
-        return _vault.getAuthorizer().canPerform(actionId, user, where);
     }
 }
