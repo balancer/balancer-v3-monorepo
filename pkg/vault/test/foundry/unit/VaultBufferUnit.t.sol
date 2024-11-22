@@ -38,7 +38,10 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testGetERC4626BufferAsset() public view {
-        assertEq(vault.getERC4626BufferAsset(IERC4626(address(wDaiInitialized))), IERC4626(address(wDaiInitialized)).asset());
+        assertEq(
+            vault.getERC4626BufferAsset(IERC4626(address(wDaiInitialized))),
+            IERC4626(address(wDaiInitialized)).asset()
+        );
         assertEq(vault.getERC4626BufferAsset(IERC4626(address(wUSDCNotInitialized))), address(0));
     }
 
