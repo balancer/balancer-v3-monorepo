@@ -111,7 +111,7 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
     }
 
     /// forge-config: default.fuzz.runs = 10
-    function testPoolCrossChainProtection_Fuzz(uint16 chainId) public {
+    function testPoolCrossChainProtection__Fuzz(uint16 chainId) public {
         // Eliminate the test chain.
         vm.assume(chainId != 31337);
 

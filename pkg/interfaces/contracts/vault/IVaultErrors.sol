@@ -272,6 +272,9 @@ interface IVaultErrors {
     /// @notice A user tried to execute a query operation when they were disabled.
     error QueriesDisabled();
 
+    /// @notice An admin tried to re-enable queries, but they were disabled permanently.
+    error QueriesDisabledPermanently();
+
     /*******************************************************************************
                                 Recovery Mode
     *******************************************************************************/
