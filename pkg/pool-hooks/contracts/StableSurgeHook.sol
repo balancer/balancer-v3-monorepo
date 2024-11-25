@@ -177,7 +177,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         PoolSwapParams calldata params,
         uint256 surgeThresholdPercentage,
         uint256 staticFeePercentage
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 numTokens = params.balancesScaled18.length;
 
         uint256[] memory newBalances = new uint256[](numTokens);
