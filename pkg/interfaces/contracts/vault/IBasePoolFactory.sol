@@ -46,9 +46,9 @@ interface IBasePoolFactory is IAuthentication {
      *
      * @param start The index of the first pool to return
      * @param count The maximum number of pools to return
-     * @return result The list of pools deployed by this factory, starting at `start` and returning up to `count` pools
+     * @return pools The list of pools deployed by this factory, starting at `start` and returning up to `count` pools
      */
-    function getPoolsInRange(uint256 start, uint256 count) external view returns (address[] memory result);
+    function getPoolsInRange(uint256 start, uint256 count) external view returns (address[] memory pools);
 
     /**
      * @notice Return the complete list of pools deployed by this factory.
