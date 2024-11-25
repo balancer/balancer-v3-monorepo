@@ -130,8 +130,11 @@ interface IVaultEvents {
      */
     event VaultPausedStateChanged(bool paused);
 
-    /// @notice `disableQuery` has been called on the Vault, permanently disabling query functionality.
+    /// @notice `disableQuery` has been called on the Vault, disabling query functionality.
     event VaultQueriesDisabled();
+
+    /// @notice `enableQuery` has been called on the Vault, enabling query functionality.
+    event VaultQueriesEnabled();
 
     /**
      * @notice A Pool's pause status has changed.

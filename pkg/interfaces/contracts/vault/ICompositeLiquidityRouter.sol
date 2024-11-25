@@ -147,6 +147,7 @@ interface ICompositeLiquidityRouter {
      * child pools and all tokens that are not BPTs from the nested pool (parent pool).
      * @param exactAmountsIn Amount of each underlying token in, sorted according to tokensIn array
      * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
      * @return bptAmountOut Expected amount of parent pool tokens to receive
      */
@@ -155,8 +156,9 @@ interface ICompositeLiquidityRouter {
         address[] memory tokensIn,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external returns (uint256 bptAmountOut);
+    ) external payable returns (uint256 bptAmountOut);
 
     /**
      * @notice Queries an `addLiquidityUnbalancedNestedPool` operation without actually executing it.
@@ -188,6 +190,7 @@ interface ICompositeLiquidityRouter {
      * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
      * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
      * @param minAmountsOut Minimum amounts of each outgoing underlying token, sorted according to tokensIn array
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
      * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
      */
@@ -196,8 +199,9 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
         uint256[] memory minAmountsOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external payable returns (uint256[] memory amountsOut);
 
     /**
      * @notice Queries an `removeLiquidityProportionalNestedPool` operation without actually executing it.
