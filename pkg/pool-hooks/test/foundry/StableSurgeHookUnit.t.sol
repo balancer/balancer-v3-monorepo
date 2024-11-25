@@ -22,7 +22,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { StableSurgeHook } from "../../contracts/StableSurgeHook.sol";
 import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
 
-contract StableSurgeHookTest is BaseVaultTest {
+contract StableSurgeHookUnitTest is BaseVaultTest {
     using FixedPoint for uint256;
 
     uint256 constant MIN_TOKENS = 2;
@@ -36,6 +36,8 @@ contract StableSurgeHookTest is BaseVaultTest {
     // Set the authorizer and the pool factory to msg.sender, and then mock them
     IBasePoolFactory poolFactory = IBasePoolFactory(address(msg.sender));
 
+    LiquidityManagement defaultLiquidityManagement;
+
     function setUp() public override {
         super.setUp();
         stableSurgeHook = new StableSurgeHook(
@@ -47,8 +49,6 @@ contract StableSurgeHookTest is BaseVaultTest {
     }
 
     function testOnRegister() public {
-        LiquidityManagement memory emptyLiquidityManagement;
-
         assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
 
         vm.expectEmit();
@@ -61,7 +61,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         );
         vm.prank(address(vault));
         assertEq(
-            stableSurgeHook.onRegister(address(poolFactory), pool, new TokenConfig[](0), emptyLiquidityManagement),
+            stableSurgeHook.onRegister(address(poolFactory), pool, new TokenConfig[](0), defaultLiquidityManagement),
             true,
             "onRegister should return true"
         );
@@ -74,13 +74,11 @@ contract StableSurgeHookTest is BaseVaultTest {
     }
 
     function testOnRegisterWithIncorrectFactory() public {
-        LiquidityManagement memory emptyLiquidityManagement;
-
         assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
 
         vm.prank(address(vault));
         assertEq(
-            stableSurgeHook.onRegister(address(0), pool, new TokenConfig[](0), emptyLiquidityManagement),
+            stableSurgeHook.onRegister(address(0), pool, new TokenConfig[](0), defaultLiquidityManagement),
             false,
             "onRegister should return false"
         );
@@ -186,7 +184,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         uint256 tokenOut,
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
-    ) public view {
+    ) public {
         uint256[] memory balances;
         (length, tokenIn, tokenOut, amountGivenScaled18, balances) = _boundValues(
             length,
@@ -223,7 +221,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         uint256 tokenOut,
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
-    ) public view {
+    ) public {
         uint256[] memory balances;
         (length, tokenIn, tokenOut, amountGivenScaled18, balances) = _boundValues(
             length,
@@ -233,9 +231,19 @@ contract StableSurgeHookTest is BaseVaultTest {
             rawBalances
         );
 
+        vm.mockCall(
+            address(poolFactory),
+            abi.encodeWithSelector(IBasePoolFactory.isPoolFromFactory.selector, pool),
+            abi.encode(true)
+        );
+
+        vm.prank(address(vault));
+        stableSurgeHook.onRegister(address(poolFactory), pool, new TokenConfig[](0), defaultLiquidityManagement);
+
+        vm.prank(address(vault));
         (bool success, uint256 surgeFeePercentage) = stableSurgeHook.onComputeDynamicSwapFeePercentage(
             _buildSwapParams(length, tokenIn, tokenOut, amountGivenScaled18, balances),
-            address(0),
+            pool,
             STATIC_FEE_PERCENTAGE
         );
 
@@ -351,21 +359,23 @@ contract StableSurgeHookTest is BaseVaultTest {
     }
 
     function _calculateFee(uint256 newTotalImbalance, uint256 oldTotalImbalance) internal view returns (uint256) {
-        uint256 expectedFee = STATIC_FEE_PERCENTAGE;
+        console.log("newTotalImbalance: ", newTotalImbalance);
+        console.log("oldTotalImbalance: ", oldTotalImbalance);
+        console.log("DEFAULT_SURGE_THRESHOLD_PERCENTAGE: ", DEFAULT_SURGE_THRESHOLD_PERCENTAGE);
+        console.log("STATIC_FEE_PERCENTAGE: ", STATIC_FEE_PERCENTAGE);
         if (
-            newTotalImbalance != 0 &&
-            newTotalImbalance > oldTotalImbalance &&
-            newTotalImbalance > DEFAULT_SURGE_THRESHOLD_PERCENTAGE
+            newTotalImbalance == 0 ||
+            (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= DEFAULT_SURGE_THRESHOLD_PERCENTAGE)
         ) {
-            expectedFee =
-                STATIC_FEE_PERCENTAGE +
-                (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - STATIC_FEE_PERCENTAGE).mulDown(
-                    (newTotalImbalance - DEFAULT_SURGE_THRESHOLD_PERCENTAGE).divDown(
-                        DEFAULT_SURGE_THRESHOLD_PERCENTAGE.complement()
-                    )
-                );
+            return STATIC_FEE_PERCENTAGE;
         }
 
-        return expectedFee;
+        return
+            STATIC_FEE_PERCENTAGE +
+            (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - STATIC_FEE_PERCENTAGE).mulDown(
+                (newTotalImbalance - DEFAULT_SURGE_THRESHOLD_PERCENTAGE).divDown(
+                    DEFAULT_SURGE_THRESHOLD_PERCENTAGE.complement()
+                )
+            );
     }
 }

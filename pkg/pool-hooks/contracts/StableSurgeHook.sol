@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
@@ -177,7 +178,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         PoolSwapParams calldata params,
         uint256 surgeThresholdPercentage,
         uint256 staticFeePercentage
-    ) public pure returns (uint256) {
+    ) public view returns (uint256) {
         uint256 numTokens = params.balancesScaled18.length;
 
         uint256[] memory newBalances = new uint256[](numTokens);
@@ -199,6 +200,12 @@ contract StableSurgeHook is BaseHooks, VaultGuard, Authentication {
         }
 
         uint256 oldTotalImbalance = StableSurgeMedianMath.calculateImbalance(params.balancesScaled18);
+        console.log("newTotalImbalance: %s", newTotalImbalance);
+        console.log("oldTotalImbalance: %s", oldTotalImbalance);
+        console.log("surgeThresholdPercentage: %s", surgeThresholdPercentage);
+        console.log("newTotalImbalance <= oldTotalImbalance: %s", newTotalImbalance <= oldTotalImbalance);
+        console.log("newTotalImbalance <= surgeThresholdPercentage: %s", surgeThresholdPercentage);
+        console.log("surgeThresholdPercentage: %s", surgeThresholdPercentage);
 
         if (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= surgeThresholdPercentage) {
             return staticFeePercentage;
