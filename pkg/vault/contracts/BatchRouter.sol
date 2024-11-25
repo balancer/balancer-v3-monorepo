@@ -166,7 +166,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
 
             if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
-                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
+                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
             } else {
                 // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
                 // in a set with unique addresses that can be iterated later on.
@@ -441,7 +441,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                 if (step.isBuffer) {
                     if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
                         // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
-                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, params.wethIsEth);
                     }
 
                     (, uint256 amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(

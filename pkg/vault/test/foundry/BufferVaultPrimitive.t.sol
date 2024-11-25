@@ -1001,6 +1001,94 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertApproxEqAbs(lpShares, bufferInvariantDelta + 1, 1, "Removed assets are wrong");
     }
 
+    /********************************************************************************
+                                        Native eth
+    ********************************************************************************/
+
+    function testNativeEthSwapExactIn() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the Vault has
+        // to interact with the ERC4626 protocol.
+        vm.startPrank(lp);
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waWETH)),
+            2 * _wrapAmount,
+            waWETH.previewDeposit(2 * _wrapAmount),
+            0
+        );
+        vm.stopPrank();
+
+        (, uint256 waWethIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaWethBuffer();
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _wrapExactInPath(_wrapAmount, 0, IERC20(address(waWETH)));
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn{ value: _wrapAmount + 1 ether }(
+            paths,
+            MAX_UINT256,
+            true,
+            bytes("")
+        );
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
+
+        // We won't check buffer balances; just balances from the sender and check no router leftovers
+        assertEq(balancesAfter.lpEth, balancesBefore.lpEth - _wrapAmount, "Incorrect LP ETH");
+        uint256 expectedAmountOut = waWETH.previewDeposit(_wrapAmount);
+        assertEq(pathAmountsOut[0], expectedAmountOut, "AmountOut (wrapped minted) is wrong");
+        assertEq(
+            balancesAfter.lpTokens[waWethIdx],
+            balancesBefore.lpTokens[waWethIdx] + expectedAmountOut,
+            "LP balance of wrapped token is wrong"
+        );
+        assertEq(address(batchRouter).balance, 0, "Router has leftover ETH");
+    }
+
+    function testNativeEthSwapExactOut() public {
+        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation, so the Vault has
+        // to interact with the ERC4626 protocol.
+        vm.startPrank(lp);
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waWETH)),
+            2 * _wrapAmount,
+            waWETH.previewDeposit(2 * _wrapAmount),
+            0
+        );
+        vm.stopPrank();
+
+        (, uint256 waWethIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaWethBuffer();
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _wrapExactOutPath(
+            2 * _wrapAmount,
+            waWETH.previewDeposit(_wrapAmount),
+            IERC20(address(waWETH))
+        );
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
+
+        vm.prank(lp);
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut{ value: _wrapAmount * 2 + 1 ether }(
+            paths,
+            MAX_UINT256,
+            true,
+            bytes("")
+        );
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
+
+        // We won't check buffer balances; just balances from the sender and check no router leftovers
+        assertEq(balancesAfter.lpEth, balancesBefore.lpEth - _wrapAmount, "Incorrect LP ETH");
+        uint256 expectedAmountOut = _wrapAmount;
+        assertEq(pathAmountsIn[0], expectedAmountOut, "AmountOut (wrapped minted) is wrong");
+        assertEq(
+            balancesAfter.lpTokens[waWethIdx],
+            balancesBefore.lpTokens[waWethIdx] + expectedAmountOut,
+            "LP balance of wrapped token is wrong"
+        );
+        assertEq(address(batchRouter).balance, 0, "Router has leftover ETH");
+    }
+
     struct BufferTokenBalances {
         uint256 waDai;
         uint256 dai;
@@ -1265,6 +1353,17 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         tokens = new IERC20[](2);
         tokens[daiIdx] = dai;
         tokens[waDaiIdx] = IERC20(address(waDAI));
+    }
+
+    function _getTokenArrayAndIndexesOfWaWethBuffer()
+        private
+        view
+        returns (uint256 wethIdx, uint256 waWethIdx, IERC20[] memory tokens)
+    {
+        (wethIdx, waWethIdx) = getSortedIndexes(address(weth), address(waWETH));
+        tokens = new IERC20[](2);
+        tokens[wethIdx] = weth;
+        tokens[waWethIdx] = IERC20(address(waWETH));
     }
 
     /// @notice Hook used to create a vault approval using a malicious erc4626 and drain the Vault.
