@@ -359,10 +359,6 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
     }
 
     function _calculateFee(uint256 newTotalImbalance, uint256 oldTotalImbalance) internal view returns (uint256) {
-        console.log("newTotalImbalance: ", newTotalImbalance);
-        console.log("oldTotalImbalance: ", oldTotalImbalance);
-        console.log("DEFAULT_SURGE_THRESHOLD_PERCENTAGE: ", DEFAULT_SURGE_THRESHOLD_PERCENTAGE);
-        console.log("STATIC_FEE_PERCENTAGE: ", STATIC_FEE_PERCENTAGE);
         if (
             newTotalImbalance == 0 ||
             (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= DEFAULT_SURGE_THRESHOLD_PERCENTAGE)
