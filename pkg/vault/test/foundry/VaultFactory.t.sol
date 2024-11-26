@@ -18,6 +18,9 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     // Should match the "PRODUCTION" limits in BaseVaultTest.
     uint256 private constant _MIN_TRADE_AMOUNT = 1e6;
     uint256 private constant _MIN_WRAP_AMOUNT = 1e4;
+    bytes32 private constant HARDCODED_SALT =
+        bytes32(0xae0bdc4eeac5e950b67c6819b118761caaf619464ad74a6048c67c03598dc543);
+    address private constant HARDCODED_VAULT_ADDRESS = address(0xbA133381ef63946fF77A7D009DFcdBdE5c77b92F);
 
     address deployer;
     BasicAuthorizerMock authorizer;
@@ -26,6 +29,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     function setUp() public virtual {
         deployer = makeAddr("deployer");
         authorizer = deployBasicAuthorizerMock();
+        vm.prank(deployer);
         factory = deployVaultFactory(
             authorizer,
             90 days,
@@ -35,6 +39,44 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
             keccak256(type(Vault).creationCode),
             keccak256(type(VaultAdmin).creationCode),
             keccak256(type(VaultExtension).creationCode)
+        );
+    }
+
+    function testCreateVaultHardcodedSalt() public {
+        authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
+        vm.prank(deployer);
+        factory.create(
+            HARDCODED_SALT,
+            HARDCODED_VAULT_ADDRESS,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
+        );
+    }
+
+    function testCreateVaultHardcodedSaltWrongDeployer() public {
+        address wrongDeployer = makeAddr("wrongDeployer");
+        vm.prank(wrongDeployer);
+        VaultFactory wrongFactory = deployVaultFactory(
+            authorizer,
+            90 days,
+            30 days,
+            _MIN_TRADE_AMOUNT,
+            _MIN_WRAP_AMOUNT,
+            keccak256(type(Vault).creationCode),
+            keccak256(type(VaultAdmin).creationCode),
+            keccak256(type(VaultExtension).creationCode)
+        );
+
+        authorizer.grantRole(wrongFactory.getActionId(VaultFactory.create.selector), wrongDeployer);
+        vm.prank(wrongDeployer);
+        vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
+        wrongFactory.create(
+            HARDCODED_SALT,
+            HARDCODED_VAULT_ADDRESS,
+            type(Vault).creationCode,
+            type(VaultAdmin).creationCode,
+            type(VaultExtension).creationCode
         );
     }
 
