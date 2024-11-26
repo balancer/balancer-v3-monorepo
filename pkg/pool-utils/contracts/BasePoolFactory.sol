@@ -80,10 +80,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
         pools = new address[](count);
         for (uint256 i = 0; i < count; i++) {
-            // We know the index is valid at this point.
-            unchecked {
-                pools[i] = _pools[start + i];
-            }
+            pools[i] = _pools[start + i];
         }
     }
 
