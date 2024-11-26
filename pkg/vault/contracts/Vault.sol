@@ -882,7 +882,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
 
-            // Charge roundtrip fee.
+            // Charge roundtrip fee if liquidity was added to this pool in the same transaction; this is not really a
+            // valid use case, and may be an attack. Use caution when removing liquidity through a Safe or other
+            // multisig / non-EOA address. Use "sign and execute," ideally through a private node (or at least not
+            // allowing public execution) to avoid front-running, and always set strict limits so that it will revert
+            // if any unexpected fees are charged. (It is also possible to check whether the flag has been set before
+            // withdrawing, by calling `getAddLiquidityCalledFlag`.)
             if (_addLiquidityCalled().tGet(params.pool)) {
                 uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
                 for (uint256 i = 0; i < locals.numTokens; ++i) {
@@ -1508,7 +1513,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     // Minimum token value in or out (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors. This is called in the swap context, so zero is not a valid amount.
+    // exploitation of rounding errors. This is called in the swap context, so zero is not a valid amount. Note that
+    // since this is applied to the scaled amount, the corresponding minimum raw amount will vary according to token
+    // decimals. The math functions are called with scaled amounts, and the magnitude of the minimum values is based
+    // on the maximum error, so this is fine. Trying to adjust for decimals would add complexity and significant gas
+    // to the critical path, so we don't do it. (Note that very low-decimal tokens don't work well in AMMs generally;
+    // this is another reason to avoid them.)
     function _ensureValidSwapAmount(uint256 tradeAmount) internal view {
         if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
