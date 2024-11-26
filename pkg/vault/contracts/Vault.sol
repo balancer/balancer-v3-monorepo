@@ -886,7 +886,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // valid use case, and may be an attack. Use caution when removing liquidity through a Safe or other
             // multisig / non-EOA address. Use "sign and execute," ideally through a private node (or at least not
             // allowing public execution) to avoid front-running, and always set strict limits so that it will revert
-            // if any unexpected fees are charged.
+            // if any unexpected fees are charged. (It is also possible to check whether the flag has been set before
+            // withdrawing, by calling `getAddLiquidityCalledFlag`.)
             if (_addLiquidityCalled().tGet(params.pool)) {
                 uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
                 for (uint256 i = 0; i < locals.numTokens; ++i) {
