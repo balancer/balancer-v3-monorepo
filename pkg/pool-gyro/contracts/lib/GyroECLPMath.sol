@@ -496,7 +496,7 @@ library GyroECLPMath {
         IGyroECLPPool.Vector2 memory pc = IGyroECLPPool.Vector2(vec.x.divDownMagU(vec.y), _ONE);
 
         // Convert prices back to ellipse
-        // NB: These operations check for overflow because the price pc[0] might be large when vex.y is small.
+        // NB: These operations check for overflow because the price pc[0] might be large when vec.y is small.
         // SOMEDAY I think this probably can't actually happen due to our bounds on the different values. In this case
         // we could do this unchecked as well.
         int256 pgx = scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(_ONE, 0)));
@@ -596,7 +596,7 @@ library GyroECLPMath {
     }
 
     /**
-     * @dev Variables are named for calculating y given x. To calculate x given y, change x->y, s->c, c->s, a_>b, b->a,
+     * @dev Variables are named for calculating y given x. To calculate x given y, change x->y, s->c, c->s, a->b, b->a,
      * tauBeta.x -> -tauAlpha.x, tauBeta.y -> tauAlpha.y. Also, calculates an overestimate of calculated reserve
      * post-swap.
      */
@@ -637,7 +637,7 @@ library GyroECLPMath {
         sTerm.y = sTerm.y.mulUpMagU(s).divXpU(dSq + 1) + 1; // account for rounding error in dSq, divXp
         sTerm = IGyroECLPPool.Vector2(SignedFixedPoint.ONE_XP - sTerm.x, SignedFixedPoint.ONE_XP - sTerm.y);
         // ^^ NB: The components of sTerm are non-negative: We only need to worry about sTerm.y. This is non-negative
-        // because, because of bounds on lambda lamBar <= 1 - 1e-16, and division by dSq ensures we have enough
+        // because, because of bounds on lambda lamBar <= 1 - 1e-16 and division by dSq ensures we have enough
         // precision so that rounding errors are never magnitude 1e-16.
 
         // Now compute the argument of the square root.

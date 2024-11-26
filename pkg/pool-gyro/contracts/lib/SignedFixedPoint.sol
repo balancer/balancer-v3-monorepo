@@ -76,7 +76,7 @@ library SignedFixedPoint {
     }
 
     /**
-     * @dev this implements mulDownMag without checking for over/under-flows, which saves significantly on gas if these
+     * @dev this implements mulUpMag without checking for over/under-flows, which saves significantly on gas if these
      * aren't needed
      */
     function mulUpMagU(int256 a, int256 b) internal pure returns (int256) {
@@ -106,7 +106,7 @@ library SignedFixedPoint {
     }
 
     /**
-     * @dev this implements mulDownMag without checking for over/under-flows, which saves significantly on gas if these
+     * @dev this implements divDownMag without checking for over/under-flows, which saves significantly on gas if these
      * aren't needed
      */
     function divDownMagU(int256 a, int256 b) internal pure returns (int256) {
@@ -136,7 +136,7 @@ library SignedFixedPoint {
     }
 
     /**
-     * @dev this implements mulDownMag without checking for over/under-flows, which saves significantly on gas if these
+     * @dev this implements divUpMag without checking for over/under-flows, which saves significantly on gas if these
      * aren't needed
      */
     function divUpMagU(int256 a, int256 b) internal pure returns (int256) {
