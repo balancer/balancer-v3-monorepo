@@ -882,7 +882,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
 
-            // Charge roundtrip fee.
+            // Charge roundtrip fee if liquidity was added to this pool in the same transaction; this is not really a
+            // valid use case, and may be an attack. Use caution when removing liquidity through a Safe or other
+            // multisig / non-EOA address. Use "sign and execute," ideally through a private node (or at least not
+            // allowing public execution) to avoid front-running, and always set strict limits so that it will revert
+            // if any unexpected fees are charged.
             if (_addLiquidityCalled().tGet(params.pool)) {
                 uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
                 for (uint256 i = 0; i < locals.numTokens; ++i) {
