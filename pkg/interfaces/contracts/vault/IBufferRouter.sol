@@ -83,7 +83,7 @@ interface IBufferRouter {
     /**
      * @notice Queries an `removeLiquidityFromBuffer` operation without actually executing it.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param exactSharesToRemove The amount of shares that would be burnt, in underlying token decimals
+     * @param exactSharesToRemove The amount of shares that would be burned, in underlying token decimals
      * @return removedUnderlyingBalanceOut Amount of underlying tokens that would be removed from the buffer
      * @return removedWrappedBalanceOut Amount of wrapped tokens that would be removed from the buffer
      */
