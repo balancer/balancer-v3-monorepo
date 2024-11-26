@@ -133,7 +133,7 @@ library Gyro2CLPMath {
      *   virtualParamIn = virtual reserve offset for input token
      *   virtualParamOut = virtual reserve offset for output token
      *   Offsets are L/sqrt(beta) and L*sqrt(alpha) depending on what the `in' and `out' tokens are respectively
-     *   Note signs are changed compared to Prop. 4 in Section 2.2.4 Trade (Swap) Exeuction to account for dy < 0
+     *   Note signs are changed compared to Prop. 4 in Section 2.2.4 Trade (Swap) Execution to account for dy < 0
      *
      *   The virtualOffset argument depends on the computed invariant. We add a very small margin to ensure that
      *   potential small errors are not to the detriment of the pool.
