@@ -75,6 +75,7 @@ interface IVaultExtension {
      * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
      * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
      * than a simple swap for every pool type.
+     *
      * @param pool Address of the pool to check
      * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
      */
@@ -277,31 +278,6 @@ interface IVaultExtension {
      */
     function approve(address owner, address spender, uint256 amount) external returns (bool);
 
-    /**
-     * @notice Transfers pool token from owner to a recipient.
-     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
-     * the pool contract, so msg.sender is used as the token address.
-     *
-     * @param owner Address of the owner
-     * @param to Address of the recipient
-     * @param amount Amount of tokens to transfer
-     * @return success True if successful, false otherwise
-     */
-    function transfer(address owner, address to, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Transfers pool token from a sender to a recipient using an allowance.
-     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
-     * the pool contract, so msg.sender is used as the token address.
-     *
-     * @param spender Address allowed to perform the transfer
-     * @param from Address of the sender
-     * @param to Address of the recipient
-     * @param amount Amount of tokens to transfer
-     * @return success True if successful, false otherwise
-     */
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
-
     /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
@@ -338,6 +314,9 @@ interface IVaultExtension {
      * @return isBufferInitialized True if the ERC4626 buffer is initialized
      */
     function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized);
+
+    /// @notice Gets registered asset for a given buffer. Returns `address(0)` if not initialized.
+    function getERC4626BufferAsset(IERC4626 wrappedToken) external view returns (address asset);
 
     /*******************************************************************************
                                           Fees
@@ -411,12 +390,14 @@ interface IVaultExtension {
      * @param pool Address of the pool
      * @param from Address of user to burn pool tokens from
      * @param exactBptAmountIn Input pool token amount
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @return amountsOut Actual calculated amounts of output tokens, sorted in token registration order
      */
     function removeLiquidityRecovery(
         address pool,
         address from,
-        uint256 exactBptAmountIn
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
     ) external returns (uint256[] memory amountsOut);
 
     /*******************************************************************************
@@ -457,13 +438,21 @@ interface IVaultExtension {
     function quoteAndRevert(bytes calldata data) external;
 
     /**
-     * @notice Checks if the queries enabled on the Vault.
-     * @dev This is a one-way switch. Once queries are disabled, they can never be re-enabled.
-     * The query functions rely on a specific EVM feature to detect static calls. Query operations are exempt from
-     * settlement constraints, so it's critical that no state changes can occur. We retain the ability to disable
-     * queries in the unlikely event that EVM changes violate its assumptions (perhaps on an L2).
-     *
-     * @return queryDisabled If true, then queries are disabled
+     * @notice Returns true if queries are disabled on the Vault.
+     * @dev If true, queries might either be disabled temporarily or permanently.
      */
     function isQueryDisabled() external view returns (bool);
+
+    /**
+     * @notice Returns true if queries are disabled permanently; false if they are enabled.
+     * @dev This is a one-way switch. Once queries are disabled permanently, they can never be re-enabled.
+     */
+    function isQueryDisabledPermanently() external view returns (bool);
+
+    /**
+     * @notice Pools can use this event to emit event data from the Vault.
+     * @param eventKey Event key
+     * @param eventData Encoded event data
+     */
+    function emitAuxiliaryEvent(string calldata eventKey, bytes calldata eventData) external;
 }

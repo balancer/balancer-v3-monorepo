@@ -81,8 +81,9 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         WeightedPool pool = _createPool(tokenA, tokenB);
         WeightedPool invertedPool = _createPool(tokenB, tokenA);
 
-        assertFalse(
-            address(pool) == address(invertedPool),
+        assertNotEq(
+            address(pool),
+            address(invertedPool),
             "Pools with same tokens but different weights should be different"
         );
     }
@@ -110,7 +111,7 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
     }
 
     /// forge-config: default.fuzz.runs = 10
-    function testPoolCrossChainProtection_Fuzz(uint16 chainId) public {
+    function testPoolCrossChainProtection__Fuzz(uint16 chainId) public {
         // Eliminate the test chain.
         vm.assume(chainId != 31337);
 
@@ -123,6 +124,6 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         WeightedPool poolL2 = _createPool(tokenA, tokenB);
 
         // Same salt parameters, should still be different because of the chainId.
-        assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");
+        assertNotEq(address(poolL2), address(poolMainnet), "L2 and mainnet pool addresses are equal");
     }
 }

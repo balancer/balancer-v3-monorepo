@@ -62,8 +62,8 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
         bytes32 salt
     ) external returns (address pool) {
         PoolRoleAccounts memory roleAccounts;
-        // It's not necessary to set the pauseManager, as the owner can already effectively pause the pool
-        // by disabling swaps.
+        // It's not necessary to set the pauseManager, as the owner can already effectively pause the pool by disabling
+        // swaps. There is also no poolCreator, as the owner is already using this to earn revenue directly.
         roleAccounts.swapFeeManager = owner;
 
         pool = _create(

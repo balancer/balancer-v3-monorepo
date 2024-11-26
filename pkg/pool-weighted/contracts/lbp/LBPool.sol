@@ -39,7 +39,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         bool swapEnabled;
     }
 
-    // LBPs are constrained to two tokens.auto
+    // LBPs are constrained to two tokens.
     uint256 private constant _NUM_TOKENS = 2;
 
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true

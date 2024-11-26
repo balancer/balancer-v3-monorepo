@@ -4,14 +4,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -20,8 +20,8 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 import { VaultContractsDeployer } from "../../../test/foundry/utils/VaultContractsDeployer.sol";
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 
 contract VaultUnitTest is BaseTest, VaultContractsDeployer {
     using ArrayHelpers for *;
@@ -38,8 +38,8 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
     address pool = address(0x1234);
     uint256 amountGivenRaw = 1 ether;
-    uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
-    uint256[] tokenRates = [uint256(1e18), 2e18];
+    uint256[] decimalScalingFactors = [1e18, 1e18];
+    uint256[] tokenRates = [1e18, 2e18];
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -124,9 +124,9 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         poolData.poolConfigBits = poolData.poolConfigBits.setPoolInRecoveryMode(true);
 
         (uint256 totalSwapFeeAmountRaw, uint256 aggregateSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
+            .manualComputeAndChargeAggregateSwapFees(poolData, 2e18, pool, dai, 0);
 
-        assertEq(totalSwapFeeAmountRaw, 0, "Unexpected totalSwapFeeAmountRaw");
+        assertEq(totalSwapFeeAmountRaw, 2, "Unexpected totalSwapFeeAmountRaw");
         assertEq(aggregateSwapFeeAmountRaw, 0, "Unexpected aggregateSwapFeeAmountRaw");
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
@@ -258,7 +258,12 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
     }
 
     function testFeeConstants() public pure {
-        assertLt(MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+        assertLt(FixedPoint.ONE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+        assertEq(
+            (MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
+            MAX_FEE_PERCENTAGE,
+            "Max fee percentage requires too much precision"
+        );
     }
 
     function testMinimumTradeAmountWithZero() public view {

@@ -288,4 +288,6 @@ interface IVaultMainMock {
     function ensureValidTradeAmount(uint256 tradeAmount) external view;
 
     function ensureValidSwapAmount(uint256 tradeAmount) external view;
+
+    function manualUpdateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
 }

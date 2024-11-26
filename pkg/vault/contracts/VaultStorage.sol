@@ -120,6 +120,9 @@ contract VaultStorage {
      */
     mapping(IERC20 token => uint256 vaultBalance) internal _reservesOf;
 
+    /// @dev Flag that makes re-enabling queries impossible.
+    bool internal _queriesDisabledPermanently;
+
     /***************************************************************************
                                 Contract References
     ***************************************************************************/

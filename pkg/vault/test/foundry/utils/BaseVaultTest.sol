@@ -26,6 +26,7 @@ import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeL
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
+import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
@@ -39,18 +40,25 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     struct Balances {
         uint256[] userTokens;
+        uint256 userEth;
         uint256 userBpt;
         uint256[] aliceTokens;
+        uint256 aliceEth;
         uint256 aliceBpt;
         uint256[] bobTokens;
+        uint256 bobEth;
         uint256 bobBpt;
         uint256[] hookTokens;
+        uint256 hookEth;
         uint256 hookBpt;
         uint256[] lpTokens;
+        uint256 lpEth;
         uint256 lpBpt;
         uint256[] vaultTokens;
+        uint256 vaultEth;
         uint256[] vaultReserves;
         uint256[] poolTokens;
+        uint256 poolEth;
         uint256 poolSupply;
         uint256 poolInvariant;
         uint256[] swapFeeAmounts;
@@ -74,6 +82,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IVaultAdmin internal vaultAdmin;
     RouterMock internal router;
     BatchRouterMock internal batchRouter;
+    BufferRouterMock internal bufferRouter;
     PoolFactoryMock internal factoryMock;
     RateProviderMock internal rateProvider;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
@@ -146,6 +155,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(batchRouter), "batch router");
         compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
+        bufferRouter = deployBufferRouterMock(IVault(address(vault)), weth, permit2);
+        vm.label(address(bufferRouter), "buffer router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
 
@@ -168,6 +179,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(tokens[i]), address(bufferRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
         }
@@ -175,6 +187,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
             erc4626Tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(erc4626Tokens[i]), address(bufferRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(erc4626Tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
             permit2.approve(
                 address(erc4626Tokens[i]),
@@ -194,11 +207,13 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             vm.startPrank(users[i]);
 
             bpt.approve(address(router), type(uint256).max);
+            bpt.approve(address(bufferRouter), type(uint256).max);
             bpt.approve(address(batchRouter), type(uint256).max);
             bpt.approve(address(compositeLiquidityRouter), type(uint256).max);
 
             IERC20(bpt).approve(address(permit2), type(uint256).max);
             permit2.approve(address(bpt), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(bpt), address(bufferRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(batchRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
@@ -278,24 +293,13 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         uint256 numTokens = tokens.length;
 
         balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, invariantRounding);
-        balances.userTokens = new uint256[](numTokens);
-        balances.aliceTokens = new uint256[](numTokens);
-        balances.bobTokens = new uint256[](numTokens);
-        balances.hookTokens = new uint256[](numTokens);
-        balances.lpTokens = new uint256[](numTokens);
-        balances.vaultTokens = new uint256[](numTokens);
-        balances.vaultReserves = new uint256[](numTokens);
+        balances.poolEth = pool.balance;
+
+        _fillBalances(balances, user, tokens);
+
         balances.swapFeeAmounts = new uint256[](numTokens);
         balances.yieldFeeAmounts = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            // Don't assume token ordering.
-            balances.userTokens[i] = tokens[i].balanceOf(user);
-            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
-            balances.bobTokens[i] = tokens[i].balanceOf(bob);
-            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
-            balances.lpTokens[i] = tokens[i].balanceOf(lp);
-            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
-            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
             balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(pool, tokens[i]);
             balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(pool, tokens[i]);
         }
@@ -309,24 +313,35 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
         balances.lpBpt = IERC20(pool).balanceOf(lp);
 
-        uint256 numTokens = tokensToTrack.length;
+        _fillBalances(balances, user, tokensToTrack);
+    }
+
+    function _fillBalances(Balances memory balances, address user, IERC20[] memory tokens) private view {
+        uint256 numTokens = tokens.length;
 
         balances.userTokens = new uint256[](numTokens);
+        balances.userEth = user.balance;
         balances.aliceTokens = new uint256[](numTokens);
+        balances.aliceEth = alice.balance;
         balances.bobTokens = new uint256[](numTokens);
+        balances.bobEth = bob.balance;
         balances.hookTokens = new uint256[](numTokens);
+        balances.hookEth = poolHooksContract.balance;
         balances.lpTokens = new uint256[](numTokens);
+        balances.lpEth = lp.balance;
         balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultEth = address(vault).balance;
         balances.vaultReserves = new uint256[](numTokens);
+
         for (uint256 i = 0; i < numTokens; ++i) {
             // Don't assume token ordering.
-            balances.userTokens[i] = tokensToTrack[i].balanceOf(user);
-            balances.aliceTokens[i] = tokensToTrack[i].balanceOf(alice);
-            balances.bobTokens[i] = tokensToTrack[i].balanceOf(bob);
-            balances.hookTokens[i] = tokensToTrack[i].balanceOf(poolHooksContract);
-            balances.lpTokens[i] = tokensToTrack[i].balanceOf(lp);
-            balances.vaultTokens[i] = tokensToTrack[i].balanceOf(address(vault));
-            balances.vaultReserves[i] = vault.getReservesOf(tokensToTrack[i]);
+            balances.userTokens[i] = tokens[i].balanceOf(user);
+            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
+            balances.bobTokens[i] = tokens[i].balanceOf(bob);
+            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokens[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
         }
     }
 
