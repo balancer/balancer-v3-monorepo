@@ -32,6 +32,8 @@ import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREA
  */
 abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
     mapping(address pool => bool isFromFactory) private _isPoolFromFactory;
+    address[] private _pools;
+
     bool private _disabled;
 
     // Store the creationCode of the contract to be deployed by create3.
@@ -51,6 +53,24 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     /// @inheritdoc IBasePoolFactory
     function isPoolFromFactory(address pool) external view returns (bool) {
         return _isPoolFromFactory[pool];
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function getPools(uint256 start, uint256 count) external view returns (address[] memory result) {
+        uint256 length = _pools.length;
+        require(start < length, "BasePoolFactory: start out of bounds");
+
+        uint256 end = start + count;
+        if (end > length) {
+            count = length - start;
+        }
+
+        result = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = _pools[start + i];
+        }
+
+        return result;
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -82,6 +102,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         _ensureEnabled();
 
         _isPoolFromFactory[pool] = true;
+        _pools.push(pool);
 
         emit PoolCreated(pool);
     }

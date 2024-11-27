@@ -7,17 +7,18 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { Rounding, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eBatchSwapTest is BaseVaultTest {
@@ -58,7 +59,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
 
-        IProtocolFeeController feeController = vault.getProtocolFeeController();
+        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
         authorizer.grantRole(
@@ -82,10 +83,10 @@ contract E2eBatchSwapTest is BaseVaultTest {
         vm.stopPrank();
 
         vm.startPrank(poolCreator);
-        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(poolA, FixedPoint.ONE);
-        feeController.setPoolCreatorSwapFeePercentage(poolB, FixedPoint.ONE);
-        feeController.setPoolCreatorSwapFeePercentage(poolC, FixedPoint.ONE);
+        // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolA, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolB, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolC, FixedPoint.ONE);
         vm.stopPrank();
 
         tokensToTrack = [address(tokenA), address(tokenB), address(tokenC), address(tokenD)].toMemoryArray().asIERC20();
@@ -137,31 +138,19 @@ contract E2eBatchSwapTest is BaseVaultTest {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsBefore = _getPoolInvariants();
+        uint256[] memory invariantsBefore = _getPoolInvariants(Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 amountOutDo = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
-        uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
-        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo - feesTokenD);
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
+        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo);
         vm.stopPrank();
 
-        assertGt(feesTokenA, 0, "No aggregate fees on tokenA (token in)");
-        assertEq(feesTokenD, 0, "Aggregate fees on token D (token out)");
-
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsAfter = _getPoolInvariants();
+        uint256[] memory invariantsAfter = _getPoolInvariants(Rounding.ROUND_UP);
 
-        assertLe(amountOutUndo + feesTokenA, exactAmountIn, "Amount out undo should be <= exactAmountIn");
+        assertLe(amountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
 
-        _checkUserBalancesAndPoolInvariants(
-            balancesBefore,
-            balancesAfter,
-            invariantsBefore,
-            invariantsAfter,
-            0,
-            feesTokenD
-        );
+        _checkUserBalancesAndPoolInvariants(balancesBefore, balancesAfter, invariantsBefore, invariantsAfter, 0, 0);
     }
 
     function testDoUndoExactOut__Fuzz(
@@ -175,7 +164,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenD, maxSwapAmountTokenD);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsBefore = _getPoolInvariants();
+        uint256[] memory invariantsBefore = _getPoolInvariants(Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 amountInDo = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), exactAmountOut);
@@ -184,11 +173,11 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
         vm.stopPrank();
 
-        assertTrue(feesTokenA > 0, "No fees on tokenA");
-        assertTrue(feesTokenD > 0, "No fees on tokenD");
+        assertGt(feesTokenA, 0, "No fees on tokenA");
+        assertGt(feesTokenD, 0, "No fees on tokenD");
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
-        uint256[] memory invariantsAfter = _getPoolInvariants();
+        uint256[] memory invariantsAfter = _getPoolInvariants(Rounding.ROUND_UP);
 
         assertGe(amountInUndo, exactAmountOut + feesTokenD, "Amount in undo should be >= exactAmountOut");
 
@@ -464,13 +453,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         }
     }
 
-    function _getPoolInvariants() private view returns (uint256[] memory poolInvariants) {
+    function _getPoolInvariants(Rounding rounding) private view returns (uint256[] memory poolInvariants) {
         address[] memory pools = [poolA, poolB, poolC].toMemoryArray();
         poolInvariants = new uint256[](pools.length);
 
         for (uint256 i = 0; i < pools.length; i++) {
             (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pools[i]);
-            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18, rounding);
         }
     }
 

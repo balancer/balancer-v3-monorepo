@@ -10,6 +10,7 @@ import {
   PoolMock,
   PoolFactoryMock,
   Router,
+  BufferRouter,
 } from '@balancer-labs/v3-vault/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { currentTimestamp, MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -45,6 +46,7 @@ describe('ERC4626VaultPrimitive', function () {
   let permit2: IPermit2;
   let vault: IVaultMock;
   let router: Router;
+  let bufferRouter: BufferRouter;
   let batchRouter: BatchRouter;
   let factory: PoolFactoryMock;
   let pool: PoolMock;
@@ -73,6 +75,9 @@ describe('ERC4626VaultPrimitive', function () {
       args: [vault, await WETH.getAddress(), permit2, BATCH_ROUTER_VERSION],
     });
     router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2, ROUTER_VERSION] });
+    bufferRouter = await deploy('v3-vault/BufferRouter', {
+      args: [vault, await WETH.getAddress(), permit2, ROUTER_VERSION],
+    });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'DAI', 18] });
     wDAI = await deploy('v3-solidity-utils/ERC4626TestToken', {
@@ -142,6 +147,7 @@ describe('ERC4626VaultPrimitive', function () {
     for (const token of [wDAI, wUSDC, DAI, USDC]) {
       await token.connect(signer).approve(permit2, MAX_UINT256);
       await permit2.connect(signer).approve(token, router, MAX_UINT160, MAX_UINT48);
+      await permit2.connect(signer).approve(token, bufferRouter, MAX_UINT160, MAX_UINT48);
       await permit2.connect(signer).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
     }
   }
@@ -265,8 +271,8 @@ describe('ERC4626VaultPrimitive', function () {
 
       await DAI.mint(lp, bufferInitAmount);
       await USDC.mint(lp, bufferInitAmount);
-      await router.connect(lp).initializeBuffer(wDAI, bufferInitAmount, 0);
-      await router.connect(lp).initializeBuffer(wUSDC, bufferInitAmount, 0);
+      await bufferRouter.connect(lp).initializeBuffer(wDAI, bufferInitAmount, 0, 0);
+      await bufferRouter.connect(lp).initializeBuffer(wUSDC, bufferInitAmount, 0, 0);
     });
 
     it('should not require tokens in advance to querySwapExactIn using buffer', async () => {

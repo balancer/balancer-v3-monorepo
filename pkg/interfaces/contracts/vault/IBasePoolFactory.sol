@@ -30,6 +30,14 @@ interface IBasePoolFactory is IAuthentication {
     function isPoolFromFactory(address pool) external view returns (bool);
 
     /**
+     * @notice Return a subset of the list of pools deployed by this factory
+     * @param start The index of the first pool to return
+     * @param count The number of pools to return
+     * @return result The list of pools deployed by this factory, starting at `start` and returning `count` pools
+     */
+    function getPools(uint256 start, uint256 count) external view returns (address[] memory result);
+
+    /**
      * @notice Return the address where a new pool will be deployed, based on the factory address and salt.
      * @param salt The salt used to deploy the pool
      * @return deploymentAddress The predicted address of the pool, given the salt

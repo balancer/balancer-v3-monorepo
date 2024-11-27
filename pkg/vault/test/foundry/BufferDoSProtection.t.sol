@@ -80,7 +80,12 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
         // Initializes the buffer with an amount that's not enough to fulfill the mint operation.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            _wrapAmount / 10,
+            waDAI.previewDeposit(_wrapAmount / 10),
+            0 // minIssuedShares
+        );
         vm.stopPrank();
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
@@ -88,17 +93,19 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
         (uint256 amountIn, uint256 amountOut) = abi.decode(
             vault.unlock(
-                abi.encodeWithSelector(
-                    BufferDoSProtectionTest.erc4626DoSHook.selector,
-                    BufferWrapOrUnwrapParams({
-                        kind: kind,
-                        direction: WrappingDirection.WRAP,
-                        wrappedToken: IERC4626(address(waDAI)),
-                        amountGivenRaw: amountGivenRaw,
-                        limitRaw: limitRaw
-                    }),
-                    lp,
-                    frontrunnerUnderlyingAmount
+                abi.encodeCall(
+                    BufferDoSProtectionTest.erc4626DoSHook,
+                    (
+                        BufferWrapOrUnwrapParams({
+                            kind: kind,
+                            direction: WrappingDirection.WRAP,
+                            wrappedToken: IERC4626(address(waDAI)),
+                            amountGivenRaw: amountGivenRaw,
+                            limitRaw: limitRaw
+                        }),
+                        lp,
+                        frontrunnerUnderlyingAmount
+                    )
                 )
             ),
             (uint256, uint256)
@@ -121,7 +128,12 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
         // Initializes the buffer with an amount that's not enough to fulfill the redeem operation.
         vm.startPrank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.previewDeposit(_wrapAmount / 10));
+        bufferRouter.initializeBuffer(
+            IERC4626(address(waDAI)),
+            _wrapAmount / 10,
+            waDAI.previewDeposit(_wrapAmount / 10),
+            0 // minIssuedShares
+        );
         vm.stopPrank();
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();

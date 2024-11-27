@@ -131,7 +131,7 @@ contract YieldFeesTest is BaseVaultTest {
         for (uint256 i = 0; i < 2; ++i) {
             liveBalanceDeltas[i] = newLiveBalances[i] - originalLiveBalances[i];
             // Balances should have increased, but delta can be 0 if creator fee is 100%.
-            assertTrue(liveBalanceDeltas[i] >= 0, "Live balance delta is 0");
+            assertGe(liveBalanceDeltas[i], 0, "Live balance delta is 0");
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt.
@@ -139,7 +139,7 @@ contract YieldFeesTest is BaseVaultTest {
 
         // There should be fees on non-exempt wsteth.
         uint256 actualProtocolFee = vault.manualGetAggregateYieldFeeAmount(pool, wsteth);
-        assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
+        assertGt(actualProtocolFee, 0, "wstETH did not collect any protocol fees");
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in.
@@ -232,9 +232,9 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function testYieldFeesOnSwap() public {
-        // Protocol yield fee 20%, and pool creator yield fees 100%.
+        // Protocol yield fee 20%, and pool creator yield fees near 100%.
         uint256 protocolYieldFeePercentage = 20e16;
-        uint256 poolCreatorFeePercentage = 100e16;
+        uint256 poolCreatorFeePercentage = 99e16;
 
         uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
             protocolYieldFeePercentage,
