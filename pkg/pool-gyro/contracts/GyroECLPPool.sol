@@ -177,7 +177,6 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
                 invariant
             );
 
-            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             return amountInScaled18;
         }
     }
