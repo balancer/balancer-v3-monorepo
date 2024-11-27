@@ -76,7 +76,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
-        // Check that we are paying roundrip fees
+        // Check that we are paying round-trip fees
         assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
 
         uint256 amountToRemove = bptAmountOut / 2;
