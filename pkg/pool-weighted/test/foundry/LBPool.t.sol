@@ -196,6 +196,9 @@ contract LBPoolTest is BasePoolTest {
             minAmountsOut[i] = less(tokenAmounts[i], 1e4);
         }
 
+        // Prevent roundtrip fee
+        vault.manualSetAddLiquidityCalledFlag(pool, false);
+
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             pool,
             bptAmountIn,
