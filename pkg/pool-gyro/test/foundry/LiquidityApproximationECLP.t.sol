@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
@@ -13,6 +14,8 @@ import { GyroEclpPoolDeployer } from "./utils/GyroEclpPoolDeployer.sol";
 contract LiquidityApproximationECLPTest is LiquidityApproximationTest, GyroEclpPoolDeployer {
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
+
+        minSwapFeePercentage = IBasePool(swapPool).getMinimumSwapFeePercentage();
 
         // The invariant of ECLP pools are smaller.
         maxAmount = 1e6 * 1e18;

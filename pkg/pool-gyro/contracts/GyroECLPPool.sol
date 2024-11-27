@@ -99,7 +99,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
         if (rounding == Rounding.ROUND_DOWN) {
             return currentInvariant.toUint256();
         } else {
-            return (currentInvariant + 20 * invErr).toUint256();
+            return (currentInvariant + invErr).toUint256();
         }
     }
 
@@ -200,12 +200,14 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
 
     /// @inheritdoc ISwapFeePercentageBounds
     function getMinimumSwapFeePercentage() external pure returns (uint256) {
-        return 0;
+        // Liquidity Approximation tests shows that add/remove liquidity combinations are more profitable than a swap
+        // if the swap fee percentage is 0%, which is not desirable. So, a minimum percentage must be enforced.
+        return 1e12; // 0.000001%
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
     function getMaximumSwapFeePercentage() external pure returns (uint256) {
-        return 1e18;
+        return 1e18; // 100%
     }
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds

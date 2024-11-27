@@ -21,6 +21,8 @@ import { GyroECLPPool } from "../../../contracts/GyroECLPPool.sol";
 contract GyroEclpPoolDeployer is BaseContractsDeployer {
     using CastingHelpers for address[];
 
+    uint256 internal MIN_SWAP_FEE_PERCENTAGE = 1e12;
+
     // Extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet.
     int256 internal _paramsAlpha = 998502246630054917;
     int256 internal _paramsBeta = 1000200040008001600;
@@ -89,7 +91,7 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
                     params,
                     derivedParams,
                     roleAccounts,
-                    0,
+                    MIN_SWAP_FEE_PERCENTAGE,
                     address(0),
                     bytes32("")
                 )
