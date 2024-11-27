@@ -6,8 +6,9 @@ import "forge-std/Test.sol";
 
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -16,12 +17,15 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
-import { StableSurgePoolFactory } from "../../contracts/StableSurgePoolFactory.sol";
 import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
+import { StableSurgePoolFactory } from "../../contracts/StableSurgePoolFactory.sol";
 
 contract StableSurgePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
+
+    string private constant FACTORY_VERSION = "Factory v1";
+    string private constant POOL_VERSION = "Pool v1";
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -36,10 +40,33 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StablePoolContractsDeploye
     function setUp() public override {
         super.setUp();
 
-        stablePoolFactory = deployStableSurgePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        stablePoolFactory = deployStableSurgePoolFactory(
+            IVault(address(vault)),
+            365 days,
+            FACTORY_VERSION,
+            POOL_VERSION
+        );
         vm.label(address(stablePoolFactory), "stable pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+    }
+
+    function testFactoryHasHook() public {
+        address surgeHook = stablePoolFactory.getStableSurgeHook();
+        assertNotEq(surgeHook, address(0), "No surge hook deployed");
+
+        address stablePool = _deployAndInitializeStablePool(false);
+        HooksConfig memory config = vault.getHooksConfig(stablePool);
+
+        assertEq(config.hooksContract, surgeHook, "Hook contract mismatch");
+    }
+
+    function testVersions() public {
+        address stablePool = _deployAndInitializeStablePool(false);
+
+        assertEq(IVersion(stablePoolFactory).version(), FACTORY_VERSION, "Wrong factory version");
+        assertEq(stablePoolFactory.getPoolVersion(), POOL_VERSION, "Wrong pool version in factory");
+        assertEq(IVersion(stablePool).version(), POOL_VERSION, "Wrong pool version in pool");
     }
 
     function testFactoryPausedState() public view {
