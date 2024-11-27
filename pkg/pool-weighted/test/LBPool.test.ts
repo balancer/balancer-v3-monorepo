@@ -46,6 +46,7 @@ describe('LBPool', function () {
 
   const FACTORY_VERSION = 'LBPool Factory v1';
   const POOL_VERSION = 'LBPool v1';
+  const ROUTER_VERSION = 'Router v11';
 
   const WEIGHTS = [fp(0.5), fp(0.5)];
   const INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT];
@@ -62,7 +63,7 @@ describe('LBPool', function () {
 
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });

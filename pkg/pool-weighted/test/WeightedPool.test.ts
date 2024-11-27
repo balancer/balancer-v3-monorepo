@@ -30,7 +30,7 @@ import { TokenConfigStruct } from '../typechain-types/@balancer-labs/v3-interfac
 describe('WeightedPool', function () {
   const FACTORY_VERSION = 'Weighted Factory v1';
   const POOL_VERSION = 'Weighted Pool v1';
-  const ROUTER_VERSION = 'Router v9';
+  const ROUTER_VERSION = 'Router v11';
 
   const POOL_SWAP_FEE = fp(0.01);
   const TOKEN_AMOUNT = fp(100);
