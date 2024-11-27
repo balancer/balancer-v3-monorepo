@@ -4,14 +4,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -20,8 +20,8 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 import { VaultContractsDeployer } from "../../../test/foundry/utils/VaultContractsDeployer.sol";
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 
 contract VaultUnitTest is BaseTest, VaultContractsDeployer {
     using ArrayHelpers for *;
@@ -258,7 +258,12 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
     }
 
     function testFeeConstants() public pure {
-        assertLt(MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+        assertLt(FixedPoint.ONE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+        assertEq(
+            (MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
+            MAX_FEE_PERCENTAGE,
+            "Max fee percentage requires too much precision"
+        );
     }
 
     function testMinimumTradeAmountWithZero() public view {

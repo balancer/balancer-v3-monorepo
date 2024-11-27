@@ -836,11 +836,12 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         _mockMintCallback(params.addLiquidityParams.to, params.expectedBPTAmountOut);
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityAdded(
             params.addLiquidityParams.pool,
             params.addLiquidityParams.to,
+            params.addLiquidityParams.kind,
             IERC20(params.addLiquidityParams.pool).totalSupply() + params.expectedBPTAmountOut,
-            expectedAmountsInRaw.unsafeCastToInt256(true),
+            expectedAmountsInRaw,
             params.expectedSwapFeeAmountsRaw
         );
 
@@ -912,11 +913,12 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         vault.approve(params.removeLiquidityParams.from, address(this), params.expectedBPTAmountIn);
 
         vm.expectEmit();
-        emit IVaultEvents.PoolBalanceChanged(
+        emit IVaultEvents.LiquidityRemoved(
             params.removeLiquidityParams.pool,
             params.removeLiquidityParams.from,
+            params.removeLiquidityParams.kind,
             IERC20(params.removeLiquidityParams.pool).totalSupply() - params.expectedBPTAmountIn,
-            expectedAmountsOutRaw.unsafeCastToInt256(false),
+            expectedAmountsOutRaw,
             params.expectedSwapFeeAmountsRaw
         );
 

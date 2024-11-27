@@ -272,6 +272,9 @@ interface IVaultErrors {
     /// @notice A user tried to execute a query operation when they were disabled.
     error QueriesDisabled();
 
+    /// @notice An admin tried to re-enable queries, but they were disabled permanently.
+    error QueriesDisabledPermanently();
+
     /*******************************************************************************
                                 Recovery Mode
     *******************************************************************************/
@@ -399,6 +402,9 @@ interface IVaultErrors {
 
     /// @dev A wrap/unwrap operation consumed more or returned less wrapped tokens than it should.
     error NotEnoughWrapped(IERC4626 wrappedToken, uint256 expectedWrappedAmount, uint256 actualWrappedAmount);
+
+    /// @dev Shares issued during initialization are below the requested amount.
+    error IssuedSharesBelowMin(uint256 issuedShares, uint256 minIssuedShares);
 
     /*******************************************************************************
                                     Miscellaneous

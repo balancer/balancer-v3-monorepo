@@ -32,6 +32,19 @@ contract VaultBufferUnitTest is BaseVaultTest {
         _initializeBuffer();
     }
 
+    function testIsERC4626BufferInitialized() public view {
+        assertTrue(vault.isERC4626BufferInitialized(IERC4626(address(wDaiInitialized))));
+        assertFalse(vault.isERC4626BufferInitialized(IERC4626(address(wUSDCNotInitialized))));
+    }
+
+    function testGetERC4626BufferAsset() public view {
+        assertEq(
+            vault.getERC4626BufferAsset(IERC4626(address(wDaiInitialized))),
+            IERC4626(address(wDaiInitialized)).asset()
+        );
+        assertEq(vault.getERC4626BufferAsset(IERC4626(address(wUSDCNotInitialized))), address(0));
+    }
+
     function testUnderlyingImbalanceBalanceZero() public view {
         int256 imbalance = vault.internalGetBufferUnderlyingImbalance(IERC4626(address(wUSDCNotInitialized)));
         assertEq(imbalance, int256(0), "Wrong underlying imbalance");
@@ -453,9 +466,11 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
         wDaiInitialized.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(wDaiInitialized), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(wDaiInitialized), address(bufferRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(wDaiInitialized), address(batchRouter), type(uint160).max, type(uint48).max);
         wUSDCNotInitialized.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(wUSDCNotInitialized), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(wUSDCNotInitialized), address(bufferRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(wUSDCNotInitialized), address(batchRouter), type(uint160).max, type(uint48).max);
         vm.stopPrank();
 
@@ -481,7 +496,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function _initializeBuffer() private {
         vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount);
+        bufferRouter.initializeBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount, 0);
     }
 
     function _simulateWrapOperation(uint256 underlyingToDeposit, uint256 wrappedToMint) private {

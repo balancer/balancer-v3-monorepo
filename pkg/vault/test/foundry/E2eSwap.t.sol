@@ -17,6 +17,7 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eSwapTest is BaseVaultTest {
@@ -80,7 +81,7 @@ contract E2eSwapTest is BaseVaultTest {
         // liquidity operations. (No need to deal with BPTs, pranking LPs, guardrails, etc).
         _donateToVault();
 
-        IProtocolFeeController feeController = vault.getProtocolFeeController();
+        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
         authorizer.grantRole(
@@ -89,8 +90,8 @@ contract E2eSwapTest is BaseVaultTest {
         );
 
         vm.prank(poolCreator);
-        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+        // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
+        feeController.manualSetPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
 
         minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
         maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();

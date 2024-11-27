@@ -26,7 +26,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     uint256 internal erc4626PoolInitialBPTAmount = erc4626PoolInitialAmount * 2;
 
     uint256 internal waDaiIdx;
-    uint256 internal waUsdcIdx;
+    uint256 internal waWethIdx;
     address internal erc4626Pool;
 
     // Rounding issues are introduced when dealing with tokens with rates different than 1:1. For example, to scale the
@@ -58,11 +58,11 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     function initPool() internal virtual override {
         vm.startPrank(bob);
         uint256 waDaiBobShares = waDAI.previewDeposit(erc4626PoolInitialAmount);
-        uint256 waUsdcBobShares = waUSDC.previewDeposit(erc4626PoolInitialAmount);
+        uint256 waWethBobShares = waWETH.previewDeposit(erc4626PoolInitialAmount);
 
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[waDaiIdx] = waDaiBobShares;
-        amountsIn[waUsdcIdx] = waUsdcBobShares;
+        amountsIn[waWethIdx] = waWethBobShares;
 
         // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
         _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
@@ -71,15 +71,15 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     }
 
     function getTokenConfig() internal virtual returns (TokenConfig[] memory) {
-        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+        (waDaiIdx, waWethIdx) = getSortedIndexes(address(waDAI), address(waWETH));
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[waDaiIdx].token = IERC20(waDAI);
-        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
+        tokenConfig[waWethIdx].token = IERC20(waWETH);
         tokenConfig[0].tokenType = TokenType.WITH_RATE;
         tokenConfig[1].tokenType = TokenType.WITH_RATE;
         tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
-        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
+        tokenConfig[waWethIdx].rateProvider = IRateProvider(address(waWETH));
         return tokenConfig;
     }
 
@@ -96,16 +96,16 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
         // The yield-bearing pool should have `erc4626PoolInitialAmount` of both tokens.
         assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
+        assertEq(address(tokens[waWethIdx]), address(waWETH), "Wrong yield-bearing pool token (waWETH)");
         assertEq(
             balancesRaw[waDaiIdx],
             waDAI.previewDeposit(erc4626PoolInitialAmount),
             "Wrong yield-bearing pool balance waDAI"
         );
         assertEq(
-            balancesRaw[waUsdcIdx],
-            waUSDC.previewDeposit(erc4626PoolInitialAmount),
-            "Wrong yield-bearing pool balance waUSDC"
+            balancesRaw[waWethIdx],
+            waWETH.previewDeposit(erc4626PoolInitialAmount),
+            "Wrong yield-bearing pool balance waWETH"
         );
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
@@ -122,17 +122,17 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
             "Wrong issued shares of waDAI buffer"
         );
 
-        uint256 waUSDCInvariantDelta = bufferInitialAmount +
-            waUSDC.previewRedeem(waUSDC.previewDeposit(bufferInitialAmount));
+        uint256 waWETHInvariantDelta = bufferInitialAmount +
+            waWETH.previewRedeem(waWETH.previewDeposit(bufferInitialAmount));
         assertEq(
-            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            waUSDCInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            "Wrong share of waUSDC buffer belonging to LP"
+            vault.getBufferOwnerShares(IERC4626(waWETH), lp),
+            waWETHInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
+            "Wrong share of waWETH buffer belonging to LP"
         );
         assertEq(
-            vault.getBufferTotalShares(IERC4626(waUSDC)),
-            waUSDCInvariantDelta,
-            "Wrong issued shares of waUSDC buffer"
+            vault.getBufferTotalShares(IERC4626(waWETH)),
+            waWETHInvariantDelta,
+            "Wrong issued shares of waWETH buffer"
         );
 
         uint256 baseBalance;
@@ -147,12 +147,12 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
             "Wrong waDAI buffer balance for wrapped token"
         );
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
-        assertEq(baseBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for base token");
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waWETH));
+        assertEq(baseBalance, bufferInitialAmount, "Wrong waWETH buffer balance for base token");
         assertEq(
             wrappedBalance,
-            waUSDC.previewDeposit(bufferInitialAmount),
-            "Wrong waUSDC buffer balance for wrapped token"
+            waWETH.previewDeposit(bufferInitialAmount),
+            "Wrong waWETH buffer balance for wrapped token"
         );
     }
 
@@ -160,10 +160,12 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         // Create and fund buffer pools.
         uint256 waDAILPShares = waDAI.previewDeposit(bufferInitialAmount);
         uint256 waUSDCLPShares = waUSDC.previewDeposit(bufferInitialAmount);
+        uint256 waWETHLPShares = waWETH.previewDeposit(bufferInitialAmount);
 
         vm.startPrank(lp);
-        router.initializeBuffer(waDAI, bufferInitialAmount, waDAILPShares);
-        router.initializeBuffer(waUSDC, bufferInitialAmount, waUSDCLPShares);
+        bufferRouter.initializeBuffer(waDAI, bufferInitialAmount, waDAILPShares, 0);
+        bufferRouter.initializeBuffer(waUSDC, bufferInitialAmount, waUSDCLPShares, 0);
+        bufferRouter.initializeBuffer(waWETH, bufferInitialAmount, waWETHLPShares, 0);
         vm.stopPrank();
     }
 }
