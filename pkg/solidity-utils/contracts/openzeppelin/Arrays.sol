@@ -132,7 +132,7 @@ library Arrays {
      * @dev Performs a quick sort of a segment of memory. The segment sorted starts at `begin` (inclusive), and stops
      * at end (exclusive). Sorting follows the `comp` comparator.
      *
-     * Invariant: `begin <= end`. This is the case when initially called by {sort} and is preserved in subcalls.
+     * Invariant: `begin <= end`. This is the case when initially called by {sort} and is preserved in sub-calls.
      *
      * IMPORTANT: Memory locations between `begin` and `end` are not validated/zeroed. This function should
      * be used only if the limits are within a memory array.
