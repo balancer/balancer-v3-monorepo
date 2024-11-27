@@ -24,7 +24,10 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
+     * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
+     * the "parent" pool, and also make sure limits are set properly.
+     *
      * @param pool Address of the liquidity pool
      * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
      * wrapped tokens in the pool
@@ -43,7 +46,10 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Add proportional amounts of underlying tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
+     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
+     * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
+     * the "parent" pool, and also make sure limits are set properly.
+     *
      * @param pool Address of the liquidity pool
      * @param maxUnderlyingAmountsIn Maximum amounts of underlying tokens in, sorted in token registration order of
      * wrapped tokens in the pool
