@@ -159,19 +159,9 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         vaultExtension.allowance(address(dai), address(1), address(2));
     }
 
-    function testTransferWhenNotVault() public {
-        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.transfer(address(0), address(1), 1);
-    }
-
     function testApproveWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.approve(address(0), address(1), 0);
-    }
-
-    function testTransferFromWhenNotVault() public {
-        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.transferFrom(address(0), address(1), address(2), 2);
     }
 
     function testIsPoolPausedWhenNotVault() public {
@@ -211,7 +201,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityRecoveryWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.removeLiquidityRecovery(pool, address(1), 0);
+        vaultExtension.removeLiquidityRecovery(pool, address(1), 0, new uint256[](2));
     }
 
     function testQuoteWhenNotVault() public {
@@ -239,5 +229,25 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     function testIsQueryDisabledWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isQueryDisabled();
+    }
+
+    function testEmitAuxiliaryEventWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.emitAuxiliaryEvent("", bytes(""));
+    }
+
+    function testEmitAuxiliaryEventWhenNotRegisteredPool() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(this)));
+        vault.emitAuxiliaryEvent("", bytes(""));
+    }
+
+    function testIsERC4626BufferInitializedWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.isERC4626BufferInitialized(IERC4626(address(1)));
+    }
+
+    function testGetERC4626BufferAssetWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getERC4626BufferAsset(IERC4626(address(1)));
     }
 }

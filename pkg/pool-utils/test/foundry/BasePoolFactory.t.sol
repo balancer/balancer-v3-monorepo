@@ -103,6 +103,38 @@ contract BasePoolFactoryTest is BaseVaultTest {
         testFactory.manualRegisterPoolWithFactory(newPool);
 
         assertTrue(testFactory.isPoolFromFactory(newPool), "Pool is not registered with factory");
+        assertEq(testFactory.getPools(0, 1)[0], newPool, "Pools list does not contain the new pool");
+    }
+
+    function testRegisterMultiplePools() public {
+        uint256 count = 30;
+        address[] memory pools = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            pools[i] = address(deployPoolMock(IVault(address(vault)), "Test Pool", "TEST"));
+        }
+
+        for (uint256 i = 0; i < count; i++) {
+            assertFalse(testFactory.isPoolFromFactory(pools[i]), "Pool is already registered with factory");
+            testFactory.manualRegisterPoolWithFactory(pools[i]);
+            assertTrue(testFactory.isPoolFromFactory(pools[i]), "Pool is not registered with factory");
+        }
+
+        _compareArrays(testFactory.getPools(0, count), pools);
+        _compareArrays(testFactory.getPools(0, 100000), pools);
+        for (uint256 i = 0; i < count; i++) {
+            assertEq(testFactory.getPools(i, 1)[0], pools[i], "Pools list does not contain the new pool");
+        }
+
+        address[] memory firstHalf = testFactory.getPools(0, count / 2);
+        address[] memory secondHalf = testFactory.getPools(count / 2, count);
+
+        for (uint256 i = 0; i < count; i++) {
+            if (i < count / 2) {
+                assertEq(firstHalf[i], pools[i], "First half does not contain the new pool");
+            } else {
+                assertEq(secondHalf[i - count / 2], pools[i], "Second half does not contain the new pool");
+            }
+        }
     }
 
     function testRegisterPoolWithVault() public {
@@ -170,5 +202,12 @@ contract BasePoolFactoryTest is BaseVaultTest {
         assertFalse(liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is true");
         assertFalse(liquidityManagement.enableAddLiquidityCustom, "enableAddLiquidityCustom is true");
         assertFalse(liquidityManagement.enableRemoveLiquidityCustom, "enableRemoveLiquidityCustom is true");
+    }
+
+    function _compareArrays(address[] memory a, address[] memory b) internal pure {
+        assertEq(a.length, b.length, "Arrays have different lengths");
+        for (uint256 i = 0; i < a.length; i++) {
+            assertEq(a[i], b[i], "Arrays have different elements");
+        }
     }
 }
