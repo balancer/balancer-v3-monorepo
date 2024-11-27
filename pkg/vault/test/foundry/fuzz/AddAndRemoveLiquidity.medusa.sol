@@ -20,7 +20,8 @@ import "../utils/BaseMedusaTest.sol";
 contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     using FixedPoint for uint256;
 
-    uint256 private constant _MAX_BALANCE = 2 ** (128) - 1; // from PackedTokenBalance.sol
+    // PackedTokenBalance.sol defines a max of 128 bits to store the balance of the pool.
+    uint256 private constant _MAX_BALANCE = type(uint128).max;
     uint256 private constant _MINIMUM_TRADE_AMOUNT = 1e6;
     uint256 private constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
 
