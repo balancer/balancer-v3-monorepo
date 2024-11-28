@@ -43,7 +43,11 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     }
 
     function createPool() internal override returns (address) {
-        factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
+        factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
 
         TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
@@ -63,8 +67,8 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         address stablePool = address(
             StablePool(
                 StablePoolFactory(address(factory)).create(
-                    "ERC20 Pool",
-                    "ERC20POOL",
+                    name,
+                    symbol,
                     tokenConfigs,
                     DEFAULT_AMP_FACTOR,
                     roleAccounts,
@@ -80,10 +84,10 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         // poolArgs is used to check pool deployment address with create2.
         poolArgs = abi.encode(
             StablePool.NewPoolParams({
-                name: "ERC20 Pool",
-                symbol: "ERC20POOL",
+                name: name,
+                symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: "Pool v1"
+                version: poolVersion
             }),
             vault
         );

@@ -244,8 +244,11 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        poolArgs = abi.encode(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        poolArgs = abi.encode(IVault(address(vault)), name, symbol);
+        address newPool = factoryMock.createPool(name, symbol);
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
