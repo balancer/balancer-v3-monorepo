@@ -255,5 +255,5 @@ interface IVaultEvents {
      * @param eventKey Event key
      * @param eventData Encoded event data
      */
-    event VaultAuxiliary(address pool, string eventKey, bytes eventData);
+    event VaultAuxiliary(address indexed pool, string indexed eventKey, bytes eventData);
 }
