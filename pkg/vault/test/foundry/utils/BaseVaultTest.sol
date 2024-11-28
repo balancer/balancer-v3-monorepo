@@ -92,6 +92,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IProtocolFeeController internal feeController;
     // Pool for tests.
     address internal pool;
+    // Arguments used to build pool. Used to check deployment address.
+    bytes internal poolArgs;
     // Pool Hooks.
     address internal poolHooksContract;
 
@@ -242,6 +244,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
+        poolArgs = abi.encode(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
         vm.label(newPool, label);
 

@@ -79,8 +79,26 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getDeploymentAddress(bytes32 salt) public view returns (address) {
-        return CREATE3.getDeployed(_computeFinalSalt(salt));
+    function getDeploymentAddress(
+        bytes memory constructorArgs,
+        bytes32 salt
+    ) public view returns (address deployAddress) {
+        bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
+        bytes32 creationCodeHash = keccak256(creationCode);
+        bytes32 finalSalt = _computeFinalSalt(salt);
+
+        address contractAddress = address(this);
+
+        assembly {
+            let ptr := mload(0x40)
+
+            mstore(add(ptr, 0x40), creationCodeHash)
+            mstore(add(ptr, 0x20), finalSalt)
+            mstore(ptr, contractAddress)
+            let start := add(ptr, 0x0b)
+            mstore8(start, 0xff)
+            deployAddress := keccak256(start, 85)
+        }
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -117,7 +135,20 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
-        pool = CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
+        bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
+        bytes32 finalSalt = _computeFinalSalt(salt);
+        assembly {
+            pool := create2(0, add(creationCode, 32), mload(creationCode), finalSalt)
+        }
+
+        if (pool == address(0)) {
+            // Bubble up inner revert reason
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+        }
 
         _registerPoolWithFactory(pool);
     }

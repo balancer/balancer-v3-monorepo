@@ -76,6 +76,18 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
                 )
             )
         );
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            StablePool.NewPoolParams({
+                name: "ERC20 Pool",
+                symbol: "ERC20POOL",
+                amplificationParameter: DEFAULT_AMP_FACTOR,
+                version: "Pool v1"
+            }),
+            vault
+        );
+
         return stablePool;
     }
 

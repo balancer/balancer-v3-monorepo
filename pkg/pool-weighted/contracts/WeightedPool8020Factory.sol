@@ -115,8 +115,30 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
      * @param lowWeightToken The token with 20% weight in the pool.
      */
     function getPool(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address pool) {
+        uint256[] memory weights = new uint256[](2);
+
+        // Tokens must be sorted.
+        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
+
+        weights[highWeightTokenIdx] = _EIGHTY;
+        weights[lowWeightTokenIdx] = _TWENTY;
+
+        string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
+        string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
+
+        bytes memory poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
+                symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
+                numTokens: 2,
+                normalizedWeights: weights,
+                version: _poolVersion
+            }),
+            getVault()
+        );
+
         bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
-        pool = getDeploymentAddress(salt);
+        pool = getDeploymentAddress(poolArgs, salt);
     }
 
     function _calculateSalt(IERC20 highWeightToken, IERC20 lowWeightToken) internal view returns (bytes32 salt) {
