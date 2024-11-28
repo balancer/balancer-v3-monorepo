@@ -189,8 +189,26 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getDeploymentAddress(bytes32 salt) public view returns (address) {
-        return CREATE3.getDeployed(_computeFinalSalt(salt));
+    function getDeploymentAddress(
+        bytes memory constructorArgs,
+        bytes32 salt
+    ) public view returns (address deployAddress) {
+        bytes memory creationCode = abi.encodePacked(type(PoolMock).creationCode, constructorArgs);
+        bytes32 creationCodeHash = keccak256(creationCode);
+        bytes32 finalSalt = _computeFinalSalt(salt);
+
+        address contractAddress = address(this);
+
+        assembly {
+            let ptr := mload(0x40)
+
+            mstore(add(ptr, 0x40), creationCodeHash)
+            mstore(add(ptr, 0x20), finalSalt)
+            mstore(ptr, contractAddress)
+            let start := add(ptr, 0x0b)
+            mstore8(start, 0xff)
+            deployAddress := keccak256(start, 85)
+        }
     }
 
     /// @inheritdoc IBasePoolFactory
