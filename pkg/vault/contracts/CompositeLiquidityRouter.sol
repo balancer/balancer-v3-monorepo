@@ -567,7 +567,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     /**
-     * @notice Creates an array of amounts in to insert in a pool, givben an array of tokens.
+     * @notice Creates an array of amounts in to insert in a pool, given an array of tokens.
      * @dev This function requires the transient set `_currentSwapTokenInAmounts` to be initialized first with all the
      * amount in values that the sender informed in the addLiquidity call.
      */

@@ -75,6 +75,7 @@ interface IVaultExtension {
      * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
      * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
      * than a simple swap for every pool type.
+     *
      * @param pool Address of the pool to check
      * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
      */

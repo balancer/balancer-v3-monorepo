@@ -17,6 +17,8 @@ interface IBufferRouter {
      * @notice Adds liquidity for the first time to an internal ERC4626 buffer in the Vault.
      * @dev Calling this method binds the wrapped token to its underlying asset internally; the asset in the wrapper
      * cannot change afterwards, or every other operation on that wrapper (add / remove / wrap / unwrap) will fail.
+     * To avoid unexpected behavior, always initialize buffers before creating or initializing any pools that contain
+     * the wrapped tokens to be used with them.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param exactAmountUnderlyingIn Amount of underlying tokens that will be deposited into the buffer
@@ -83,7 +85,7 @@ interface IBufferRouter {
     /**
      * @notice Queries an `removeLiquidityFromBuffer` operation without actually executing it.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param exactSharesToRemove The amount of shares that would be burnt, in underlying token decimals
+     * @param exactSharesToRemove The amount of shares that would be burned, in underlying token decimals
      * @return removedUnderlyingBalanceOut Amount of underlying tokens that would be removed from the buffer
      * @return removedWrappedBalanceOut Amount of wrapped tokens that would be removed from the buffer
      */

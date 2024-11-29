@@ -403,7 +403,7 @@ interface IVaultErrors {
     /// @dev A wrap/unwrap operation consumed more or returned less wrapped tokens than it should.
     error NotEnoughWrapped(IERC4626 wrappedToken, uint256 expectedWrappedAmount, uint256 actualWrappedAmount);
 
-    /// @dev Issues shared during initialization are below the requested amount.
+    /// @dev Shares issued during initialization are below the requested amount.
     error IssuedSharesBelowMin(uint256 issuedShares, uint256 minIssuedShares);
 
     /*******************************************************************************
