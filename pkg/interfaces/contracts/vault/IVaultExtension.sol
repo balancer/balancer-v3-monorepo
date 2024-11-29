@@ -454,5 +454,5 @@ interface IVaultExtension {
      * @param eventKey Event key
      * @param eventData Encoded event data
      */
-    function emitAuxiliaryEvent(string calldata eventKey, bytes calldata eventData) external;
+    function emitAuxiliaryEvent(bytes32 eventKey, bytes calldata eventData) external;
 }
