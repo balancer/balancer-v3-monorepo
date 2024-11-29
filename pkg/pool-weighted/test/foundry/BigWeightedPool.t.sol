@@ -41,7 +41,11 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     }
 
     function createPool() internal override returns (address) {
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         PoolRoleAccounts memory roleAccounts;
 
         uint256 numTokens = vault.getMaximumPoolTokens();
@@ -61,8 +65,8 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
 
         WeightedPool newPool = WeightedPool(
             WeightedPoolFactory(address(factory)).create(
-                "ERC20 Pool",
-                "ERC20POOL",
+                name,
+                symbol,
                 vault.buildTokenConfig(bigPoolTokens),
                 weights,
                 roleAccounts,
@@ -74,6 +78,18 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             )
         );
         vm.label(address(newPool), "Big weighted pool");
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: bigPoolTokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault
+        );
 
         // Get the sorted list of tokens.
         bigPoolTokens = vault.getPoolTokens(address(newPool));

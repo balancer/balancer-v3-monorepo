@@ -55,6 +55,10 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     }
 
     function createPool() internal override returns (address) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
@@ -63,7 +67,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         PoolRoleAccounts memory roleAccounts;
@@ -72,8 +76,8 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
 
         WeightedPool newPool = WeightedPool(
             WeightedPoolFactory(address(factory)).create(
-                "ERC20 Pool",
-                "ERC20POOL",
+                name,
+                symbol,
                 vault.buildTokenConfig(sortedTokens),
                 weights,
                 roleAccounts,
@@ -84,6 +88,19 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
                 ZERO_BYTES32
             )
         );
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: sortedTokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault
+        );
+
         return address(newPool);
     }
 
