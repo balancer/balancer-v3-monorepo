@@ -8,7 +8,7 @@ library StableSurgeMedianMath {
     using Arrays for uint256[];
 
     function calculateImbalance(uint256[] memory balances) internal pure returns (uint256) {
-        uint256 median = findMedian(balances.sort());
+        uint256 median = findMedian(balances);
 
         uint256 totalBalance = 0;
         uint256 totalDiff = 0;
@@ -21,7 +21,8 @@ library StableSurgeMedianMath {
         return (totalDiff * 1e18) / totalBalance;
     }
 
-    function findMedian(uint256[] memory sortedBalances) internal pure returns (uint256) {
+    function findMedian(uint256[] memory balances) internal pure returns (uint256) {
+        uint256[] memory sortedBalances = balances.sort();
         uint256 mid = sortedBalances.length / 2;
 
         if (sortedBalances.length % 2 == 0) {
