@@ -7,7 +7,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
-import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { SingletonAuthentication } from "../SingletonAuthentication.sol";
 import { PoolMock } from "./PoolMock.sol";

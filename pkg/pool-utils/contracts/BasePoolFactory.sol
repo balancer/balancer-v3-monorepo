@@ -12,7 +12,6 @@ import {
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
-import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 /**
  * @notice Base contract for Pool factories.
@@ -36,7 +35,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     bool private _disabled;
 
-    // Store the creationCode of the contract to be deployed by create3.
+    // Store the creationCode of the contract to be deployed by create2.
     bytes private _creationCode;
 
     /// @notice A pool creator was specified for a pool from a Balancer core pool type.

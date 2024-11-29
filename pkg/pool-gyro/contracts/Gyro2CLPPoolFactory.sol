@@ -40,7 +40,7 @@ contract Gyro2CLPPoolFactory is BasePoolFactory {
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
-     * @param salt The salt value that will be passed to create3 deployment
+     * @param salt The salt value that will be passed to create2 deployment
      */
     function create(
         string memory name,
