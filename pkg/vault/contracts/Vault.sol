@@ -1017,7 +1017,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Burning will be reverted if it results in a total supply less than the _POOL_MINIMUM_TOTAL_SUPPLY.
         _burn(address(params.pool), params.from, bptAmountIn);
 
-        // 8) Off-chain events
+        // 8) Off-chain events.
         emit LiquidityRemoved(
             params.pool,
             params.from,

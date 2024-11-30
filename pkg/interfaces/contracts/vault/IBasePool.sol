@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
 import { IUnbalancedLiquidityInvariantRatioBounds } from "./IUnbalancedLiquidityInvariantRatioBounds.sol";
+import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
 import { PoolSwapParams, Rounding, SwapKind } from "./VaultTypes.sol";
 
 /**
@@ -52,8 +52,8 @@ interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRa
     ) external view returns (uint256 invariant);
 
     /**
-     * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
-     * balances. Similar to V2's `_getTokenBalanceGivenInvariantAndAllOtherBalances` in StableMath.
+     * @notice Computes a new token balance, given the invariant growth ratio and all other balances.
+     * @dev Similar to V2's `_getTokenBalanceGivenInvariantAndAllOtherBalances` in StableMath.
      * The pool must round up for the Vault to round in the protocol's favor when calling this function.
      *
      * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates

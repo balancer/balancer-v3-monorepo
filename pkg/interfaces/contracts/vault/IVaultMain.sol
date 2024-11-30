@@ -125,7 +125,10 @@ interface IVaultMain {
      * @return tokenCount Number of tokens in the pool
      * @return index Index corresponding to the given token in the pool's token list
      */
-    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
+    function getPoolTokenCountAndIndexOfToken(
+        address pool,
+        IERC20 token
+    ) external view returns (uint256 tokenCount, uint256 index);
 
     /*******************************************************************************
                                  Balancer Pool Tokens
@@ -154,7 +157,7 @@ interface IVaultMain {
      * @param amount Amount of tokens to transfer
      * @return success True if successful, false otherwise
      */
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool success);
 
     /*******************************************************************************
                                   ERC4626 Buffers
@@ -185,7 +188,7 @@ interface IVaultMain {
      *
      * @return authorizer Address of the authorizer contract
      */
-    function getAuthorizer() external view returns (IAuthorizer);
+    function getAuthorizer() external view returns (IAuthorizer authorizer);
 
     /*******************************************************************************
                                      Miscellaneous
@@ -198,5 +201,5 @@ interface IVaultMain {
      *
      * @return vaultExtension Address of the VaultExtension
      */
-    function getVaultExtension() external view returns (address);
+    function getVaultExtension() external view returns (address vaultExtension);
 }

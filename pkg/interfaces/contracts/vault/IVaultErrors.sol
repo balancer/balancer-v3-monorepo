@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Errors are declared inside an interface (namespace) to improve DX with Typechain.
 interface IVaultErrors {
@@ -259,10 +259,7 @@ interface IVaultErrors {
      */
     error FeePrecisionTooHigh();
 
-    /**
-     * @notice A given percentage is above the maximum (usually FixedPoint.ONE, or 1e18 wei).
-     * @dev Providing the value might be helpful for debugging.
-     */
+    /// @notice A given percentage is above the maximum (usually a value close to FixedPoint.ONE, or 1e18 wei).
     error PercentageAboveMax();
 
     /*******************************************************************************

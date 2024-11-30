@@ -19,9 +19,9 @@ interface IPoolInfo {
 
     /**
      * @notice Gets the raw data for the pool: tokens, token info, raw balances, and last live balances.
-     * @return tokens Pool tokens, sorted in pool registration order
-     * @return tokenInfo Token info structs (type, rate provider, yield flag), sorted in pool registration order
-     * @return balancesRaw Current native decimal balances of the pool tokens, sorted in pool registration order
+     * @return tokens Pool tokens, sorted in token registration order
+     * @return tokenInfo Token info structs (type, rate provider, yield flag), sorted in token registration order
+     * @return balancesRaw Current native decimal balances of the pool tokens, sorted in token registration order
      * @return lastBalancesLiveScaled18 Last saved live balances, sorted in token registration order
      */
     function getTokenInfo()

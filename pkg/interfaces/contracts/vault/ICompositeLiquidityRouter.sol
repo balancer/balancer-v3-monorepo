@@ -9,6 +9,7 @@ pragma solidity ^0.8.24;
  * ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both. If the ERC4626 buffers
  * in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through the wrapped token interface,
  * saving gas.
+ *
  * For instance, adding only DAI to the pool above (and assuming an aDAI buffer with enough liquidity), would pull in
  * the DAI from the user, swap it for waDAI in the internal Vault buffer, and deposit the waDAI into the ERC4626 pool:
  * 1) without having to do any expensive ERC4626 wrapping operations; and
