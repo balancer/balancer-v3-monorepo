@@ -18,8 +18,8 @@ import {
     AddLiquidityParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { MinimalRouter } from "./MinimalRouter.sol";
 
