@@ -8,10 +8,10 @@ import { IBasePool } from "../vault/IBasePool.sol";
 
 /**
  * @notice Weighted Pool data that cannot change after deployment.
- * @param tokens Pool tokens, sorted in pool registration order
+ * @param tokens Pool tokens, sorted in token registration order
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
  * calculations. FP(1) for 18-decimal tokens
- * @param
+ * @param normalizedWeights The token weights, sorted in token registration order
  */
 struct WeightedPoolImmutableData {
     IERC20[] tokens;
@@ -47,9 +47,9 @@ struct WeightedPoolDynamicData {
 interface IWeightedPool is IBasePool {
     /**
      * @notice Get the normalized weights.
-     * @return The normalized weights, sorted in token registration order
+     * @return normalizedWeights The normalized weights, sorted in token registration order
      */
-    function getNormalizedWeights() external view returns (uint256[] memory);
+    function getNormalizedWeights() external view returns (uint256[] memory normalizedWeights);
 
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
