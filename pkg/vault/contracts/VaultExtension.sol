@@ -627,20 +627,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                                   ERC4626 Buffers
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (bool) {
-        return _bufferAssets[wrappedToken] != address(0);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getERC4626BufferAsset(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (address asset) {
-        return _bufferAssets[wrappedToken];
-    }
-
-    /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
 
@@ -661,6 +647,20 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pauseWindowEndTime + _vaultBufferPeriodDuration,
             _poolRoleAccounts[pool].pauseManager
         );
+    }
+
+    /*******************************************************************************
+                                   ERC4626 Buffers
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (bool) {
+        return _bufferAssets[wrappedToken] != address(0);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getERC4626BufferAsset(IERC4626 wrappedToken) external view onlyVaultDelegateCall returns (address asset) {
+        return _bufferAssets[wrappedToken];
     }
 
     /*******************************************************************************
@@ -903,6 +903,26 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns the VaultAdmin contract, to which fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultAdmin);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function emitAuxiliaryEvent(
+        string calldata eventKey,
+        bytes calldata eventData
+    ) external onlyVaultDelegateCall withRegisteredPool(msg.sender) {
+        emit VaultAuxiliary(msg.sender, eventKey, eventData);
+    }
+
+    /*******************************************************************************
                                      Default handlers
     *******************************************************************************/
 
@@ -923,25 +943,5 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         _fallback();
-    }
-
-    /*******************************************************************************
-                                     Miscellaneous
-    *******************************************************************************/
-
-    /**
-     * @inheritdoc Proxy
-     * @dev Returns the VaultAdmin contract, to which fallback requests are forwarded.
-     */
-    function _implementation() internal view override returns (address) {
-        return address(_vaultAdmin);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function emitAuxiliaryEvent(
-        string calldata eventKey,
-        bytes calldata eventData
-    ) external onlyVaultDelegateCall withRegisteredPool(msg.sender) {
-        emit VaultAuxiliary(msg.sender, eventKey, eventData);
     }
 }

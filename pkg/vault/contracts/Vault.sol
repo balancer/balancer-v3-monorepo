@@ -1535,6 +1535,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function getVaultExtension() external view returns (address) {
+        return _implementation();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns the VaultExtension contract, to which fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultExtension);
+    }
+
+    /*******************************************************************************
                                      Default handlers
     *******************************************************************************/
 
@@ -1555,22 +1572,5 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         _fallback();
-    }
-
-    /*******************************************************************************
-                                     Miscellaneous
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getVaultExtension() external view returns (address) {
-        return _implementation();
-    }
-
-    /**
-     * @inheritdoc Proxy
-     * @dev Returns the VaultExtension contract, to which fallback requests are forwarded.
-     */
-    function _implementation() internal view override returns (address) {
-        return address(_vaultExtension);
     }
 }

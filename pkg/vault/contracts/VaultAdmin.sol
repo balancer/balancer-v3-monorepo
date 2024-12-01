@@ -253,7 +253,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     }
 
     /*******************************************************************************
-                                        Fees
+                                         Fees
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
