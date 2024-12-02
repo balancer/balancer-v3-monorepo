@@ -137,7 +137,12 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         }
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2, string memory version) VaultGuard(vault) Version(version) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory routerVersion
+    ) VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
         _permit2 = permit2;
     }
