@@ -39,16 +39,13 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         IVaultMock vault,
         address poolCreator
     ) internal returns (address newPool, bytes memory poolArgs) {
-        string memory name = "Gyro 2CLP Pool";
-        string memory symbol = "GRP";
-
         Gyro2CLPPoolFactory factory = deployGyro2CLPPoolFactory(vault);
 
         PoolRoleAccounts memory roleAccounts;
 
         newPool = factory.create(
-            name,
-            symbol,
+            "Gyro 2CLP Pool",
+            "GRP",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
             _sqrtAlpha,
             _sqrtBeta,
@@ -66,7 +63,12 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         feeController.manualSetPoolCreator(newPool, poolCreator);
 
         poolArgs = abi.encode(
-            IGyro2CLPPool.GyroParams({ name: name, symbol: symbol, sqrtAlpha: _sqrtAlpha, sqrtBeta: _sqrtBeta }),
+            IGyro2CLPPool.GyroParams({
+                name: "Gyro 2CLP Pool",
+                symbol: "GRP",
+                sqrtAlpha: _sqrtAlpha,
+                sqrtBeta: _sqrtBeta
+            }),
             vault
         );
     }
