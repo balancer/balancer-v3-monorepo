@@ -44,10 +44,6 @@ contract E2eSwapRateProviderWeightedTest is
         address[] memory tokens,
         string memory label
     ) internal override returns (address newPool, bytes memory poolArgs) {
-        string memory name = "50/50 Weighted Pool";
-        string memory symbol = "50_50WP";
-        string memory poolVersion = "Pool v1";
-
         rateProviderTokenA = deployRateProviderMock();
         rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
@@ -62,7 +58,7 @@ contract E2eSwapRateProviderWeightedTest is
             IVault(address(vault)),
             365 days,
             "Factory v1",
-            poolVersion
+            "Pool v1"
         );
         PoolRoleAccounts memory roleAccounts;
 
@@ -70,8 +66,8 @@ contract E2eSwapRateProviderWeightedTest is
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         newPool = factory.create(
-            name,
-            symbol,
+            "50/50 Weighted Pool",
+            "50_50WP",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
@@ -92,11 +88,11 @@ contract E2eSwapRateProviderWeightedTest is
 
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
-                name: name,
-                symbol: symbol,
+                name: "50/50 Weighted Pool",
+                symbol: "50_50WP",
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: poolVersion
+                version: "Pool v1"
             }),
             vault
         );
