@@ -19,7 +19,7 @@ type SolcConfig = {
 };
 
 // The coverage report doesn't work well with via-ir flags, so we disable it
-const viaIR = !(process.env.COVERAGE === 'true' ? true : false);
+const viaIR = true;//!(process.env.COVERAGE === 'true' ? true : false);
 const optimizerSteps =
   'dhfoDgvulfnTUtnIf [ xa[r]EscLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LSsTFOtfDnca[r]Iulc ] jmul[jul] VcTOcul jmul : fDnTOcmu';
 

@@ -16,6 +16,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      blockGasLimit: 30e6,
     },
   },
   solidity: {
