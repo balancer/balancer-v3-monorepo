@@ -56,21 +56,32 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getPools(uint256 start, uint256 count) external view returns (address[] memory result) {
-        uint256 length = _pools.length;
-        require(start < length, "BasePoolFactory: start out of bounds");
+    function getPoolCount() external view returns (uint256) {
+        return _pools.length;
+    }
 
+    /// @inheritdoc IBasePoolFactory
+    function getPools() external view returns (address[] memory) {
+        return _pools;
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function getPoolsInRange(uint256 start, uint256 count) external view returns (address[] memory pools) {
+        uint256 length = _pools.length;
+        if (start >= length) {
+            revert IndexOutOfBounds();
+        }
+
+        // If `count` requests more pools than we have available, stop at the end of the array.
         uint256 end = start + count;
         if (end > length) {
             count = length - start;
         }
 
-        result = new address[](count);
+        pools = new address[](count);
         for (uint256 i = 0; i < count; i++) {
-            result[i] = _pools[start + i];
+            pools[i] = _pools[start + i];
         }
-
-        return result;
     }
 
     /// @inheritdoc IBasePoolFactory

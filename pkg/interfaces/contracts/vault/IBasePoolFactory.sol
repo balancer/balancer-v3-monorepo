@@ -22,6 +22,9 @@ interface IBasePoolFactory is IAuthentication {
     /// @notice Attempted pool creation after the factory was disabled.
     error Disabled();
 
+    /// @notice A pool index is beyond the current bounds of the array.
+    error IndexOutOfBounds();
+
     /**
      * @notice Check whether a pool was deployed by this factory.
      * @param pool The pool to check
@@ -30,12 +33,28 @@ interface IBasePoolFactory is IAuthentication {
     function isPoolFromFactory(address pool) external view returns (bool success);
 
     /**
-     * @notice Return a subset of the list of pools deployed by this factory.
-     * @param start The index of the first pool to return
-     * @param count The number of pools to return
-     * @return result The list of pools deployed by this factory, starting at `start` and returning `count` pools
+     * @notice Return the total number of pools deployed by this factory.
+     * @dev This can then be used to "paginate" calls to `getPools` to control gas costs.
+     * @return poolCount The number of pools deployed by this factory
      */
-    function getPools(uint256 start, uint256 count) external view returns (address[] memory result);
+    function getPoolCount() external view returns (uint256 poolCount);
+
+    /**
+     * @notice Return a subset of the list of pools deployed by this factory.
+     * @dev `start` must be a valid index, but if `count` exceeds the total length, it will not revert, but simply
+     * stop at the end and return fewer results than requested.
+     *
+     * @param start The index of the first pool to return
+     * @param count The maximum number of pools to return
+     * @return pools The list of pools deployed by this factory, starting at `start` and returning up to `count` pools
+     */
+    function getPoolsInRange(uint256 start, uint256 count) external view returns (address[] memory pools);
+
+    /**
+     * @notice Return the complete list of pools deployed by this factory.
+     * @return pools The list of pools deployed by this factory
+     */
+    function getPools() external view returns (address[] memory pools);
 
     /**
      * @notice Return the address where a new pool will be deployed, based on the factory address and salt.
