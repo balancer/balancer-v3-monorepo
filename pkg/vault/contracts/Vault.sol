@@ -1240,6 +1240,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vaultUnderlyingDeltaHint = (amountInUnderlying.toInt256() + bufferUnderlyingImbalance).toUint256();
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
                 vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
+                amountOutWrapped -= 1;
             } else {
                 // EXACT_OUT requires the exact amount of wrapped tokens to be minted, so we call mint.
                 // The amount of wrapped tokens to mint is the amount necessary to fulfill the trade
@@ -1262,6 +1263,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
 
                 vaultUnderlyingDeltaHint = wrappedToken.mint(vaultWrappedDeltaHint, address(this));
+
+                amountInUnderlying += 1;
             }
 
             // Remove approval, in case deposit/mint consumed less tokens than we approved.
@@ -1355,6 +1358,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 int256 bufferWrappedImbalance = bufferBalances.getBufferWrappedImbalance(wrappedToken);
                 vaultWrappedDeltaHint = (amountInWrapped.toInt256() + bufferWrappedImbalance).toUint256();
                 vaultUnderlyingDeltaHint = wrappedToken.redeem(vaultWrappedDeltaHint, address(this), address(this));
+                amountOutUnderlying -= 1;
             } else {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so we call withdraw.
                 // The amount of underlying tokens to withdraw is the amount necessary to fulfill the trade
@@ -1367,6 +1371,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 int256 bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wrappedToken);
                 vaultUnderlyingDeltaHint = (amountOutUnderlying.toInt256() - bufferUnderlyingImbalance).toUint256();
                 vaultWrappedDeltaHint = wrappedToken.withdraw(vaultUnderlyingDeltaHint, address(this), address(this));
+                amountInWrapped += 1;
             }
 
             // Check if the Vault's underlying balance increased by `vaultUnderlyingDeltaHint` and the Vault's
