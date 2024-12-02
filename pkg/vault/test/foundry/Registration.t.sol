@@ -41,6 +41,7 @@ contract RegistrationTest is BaseVaultTest {
     // Do not register the pool in the base test.
     function createPool() internal pure override returns (address newPool, bytes memory poolArgs) {
         newPool = address(0);
+        poolArgs = bytes("");
     }
 
     function initPool() internal override {}

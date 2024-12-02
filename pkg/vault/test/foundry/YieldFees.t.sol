@@ -67,7 +67,7 @@ contract YieldFeesTest is BaseVaultTest {
         );
 
         vm.label(newPool, "pool");
-        poolArguments = abi.encode(vault, name, symbol);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {

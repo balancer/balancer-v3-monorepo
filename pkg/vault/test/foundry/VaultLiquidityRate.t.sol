@@ -61,7 +61,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         tokens[wstethIdx] = wsteth;
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens, rateProviders), poolHooksContract, lp);
-        poolArguments = abi.encode(vault, name, symbol);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testLastLiveBalanceInitialization() public {
