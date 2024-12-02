@@ -1017,7 +1017,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Burning will be reverted if it results in a total supply less than the _POOL_MINIMUM_TOTAL_SUPPLY.
         _burn(address(params.pool), params.from, bptAmountIn);
 
-        // 8) Off-chain events
+        // 8) Off-chain events.
         emit LiquidityRemoved(
             params.pool,
             params.from,
@@ -1535,6 +1535,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function getVaultExtension() external view returns (address) {
+        return _implementation();
+    }
+
+    /**
+     * @inheritdoc Proxy
+     * @dev Returns the VaultExtension contract, to which fallback requests are forwarded.
+     */
+    function _implementation() internal view override returns (address) {
+        return address(_vaultExtension);
+    }
+
+    /*******************************************************************************
                                      Default handlers
     *******************************************************************************/
 
@@ -1555,22 +1572,5 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         _fallback();
-    }
-
-    /*******************************************************************************
-                                     Miscellaneous
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getVaultExtension() external view returns (address) {
-        return _implementation();
-    }
-
-    /**
-     * @inheritdoc Proxy
-     * @dev Returns the VaultExtension contract, to which fallback requests are forwarded.
-     */
-    function _implementation() internal view override returns (address) {
-        return address(_vaultExtension);
     }
 }
