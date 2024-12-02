@@ -916,7 +916,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function emitAuxiliaryEvent(
-        string calldata eventKey,
+        bytes32 eventKey,
         bytes calldata eventData
     ) external onlyVaultDelegateCall withRegisteredPool(msg.sender) {
         emit VaultAuxiliary(msg.sender, eventKey, eventData);
