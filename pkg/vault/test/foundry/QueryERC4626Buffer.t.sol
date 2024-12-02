@@ -119,7 +119,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         // and finally post-swap the waWETH through the WETH buffer to calculate the WETH amount out.
         // The only token transfers are DAI in (given) and WETH out (calculated).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waWETH, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
 
         // For ExactIn, the steps are computed in order (Wrap -> Swap -> Unwrap).
@@ -155,7 +155,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and WETH out (given).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waWETH, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
 
         // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).

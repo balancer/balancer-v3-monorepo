@@ -27,7 +27,6 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
     uint256 internal waDaiIdx;
     uint256 internal waWethIdx;
-    address internal erc4626Pool;
 
     // Rounding issues are introduced when dealing with tokens with rates different than 1:1. For example, to scale the
     // tokens of an yield-bearing pool, the amount of tokens is multiplied by the rate of the token, which is
@@ -38,8 +37,6 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        erc4626Pool = pool;
 
         _initializeBuffers();
     }
@@ -87,16 +84,16 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     }
 
     function testERC4626BufferPreconditions() public view {
-        // Bob should own all erc4626Pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
+        // Bob should own all pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
         // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur.
         assertApproxEqAbs(
-            IERC20(erc4626Pool).balanceOf(bob),
+            IERC20(pool).balanceOf(bob),
             erc4626PoolInitialAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
             errorTolerance,
             "Wrong yield-bearing pool BPT amount"
         );
 
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(pool);
         // The yield-bearing pool should have `erc4626PoolInitialAmount` of both tokens.
         assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
         assertEq(address(tokens[waWethIdx]), address(waWETH), "Wrong yield-bearing pool token (waWETH)");

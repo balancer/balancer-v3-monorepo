@@ -42,7 +42,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
         string memory poolVersion = "Pool v1";
@@ -64,25 +64,21 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        address stablePool = address(
-            StablePool(
-                StablePoolFactory(address(factory)).create(
-                    name,
-                    symbol,
-                    tokenConfigs,
-                    DEFAULT_AMP_FACTOR,
-                    roleAccounts,
-                    BASE_MIN_SWAP_FEE,
-                    poolHooksContract,
-                    false, // Do not enable donations
-                    false, // Do not disable unbalanced add/remove liquidity
-                    ZERO_BYTES32
-                )
-            )
+        newPool = StablePoolFactory(address(factory)).create(
+            name,
+            symbol,
+            tokenConfigs,
+            DEFAULT_AMP_FACTOR,
+            roleAccounts,
+            BASE_MIN_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
 
         // poolArgs is used to check pool deployment address with create2.
-        poolArguments = abi.encode(
+        poolArgs = abi.encode(
             StablePool.NewPoolParams({
                 name: name,
                 symbol: symbol,
@@ -91,8 +87,6 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
             }),
             vault
         );
-
-        return stablePool;
     }
 
     function initPool() internal override {
