@@ -22,7 +22,7 @@ import "./lib/Gyro2CLPMath.sol";
  * @notice Standard 2CLP Gyro Pool, with fixed Alpha and Beta parameters.
  * @dev Gyroscope's 2-CLPs are AMMs that concentrate liquidity within a pricing range. A given 2-CLP is parameterized
  * by the pricing range [α,β] and the two assets in the pool. For more information, please refer to
- * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps .
+ * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps
  */
 contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     using FixedPoint for uint256;

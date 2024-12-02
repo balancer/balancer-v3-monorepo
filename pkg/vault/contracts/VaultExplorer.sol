@@ -96,16 +96,6 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /// @inheritdoc IVaultExplorer
-    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
-        return _vault.getPoolConfig(pool);
-    }
-
-    /// @inheritdoc IVaultExplorer
-    function getHooksConfig(address pool) external view returns (HooksConfig memory) {
-        return _vault.getHooksConfig(pool);
-    }
-
-    /// @inheritdoc IVaultExplorer
     function getPoolTokens(address pool) external view returns (IERC20[] memory) {
         return _vault.getPoolTokens(pool);
     }
@@ -147,12 +137,22 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /// @inheritdoc IVaultExplorer
+    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
+        return _vault.getPoolConfig(pool);
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function getHooksConfig(address pool) external view returns (HooksConfig memory) {
+        return _vault.getHooksConfig(pool);
+    }
+
+    /// @inheritdoc IVaultExplorer
     function getBptRate(address pool) external view returns (uint256) {
         return _vault.getBptRate(pool);
     }
 
     /*******************************************************************************
-                                    Pool Tokens
+                                 Balancer Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer
