@@ -27,8 +27,8 @@ contract BufferRouter is IBufferRouter, RouterCommon {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) RouterCommon(vault, weth, permit2, version) {
+        string memory routerVersion
+    ) RouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
