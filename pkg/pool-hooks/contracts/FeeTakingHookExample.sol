@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.24;
 
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -263,6 +263,7 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
     /**
      * @notice Sets the hook swap fee percentage, charged on every swap operation.
      * @dev This function must be permissioned.
+     * @param hookFeePercentage The new hook fee percentage
      */
     function setHookSwapFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         hookSwapFeePercentage = hookFeePercentage;
@@ -273,6 +274,7 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
     /**
      * @notice Sets the hook add liquidity fee percentage, charged on every add liquidity operation.
      * @dev This function must be permissioned.
+     * @param hookFeePercentage The new hook fee percentage
      */
     function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         addLiquidityHookFeePercentage = hookFeePercentage;
@@ -283,6 +285,7 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
     /**
      * @notice Sets the hook remove liquidity fee percentage, charged on every remove liquidity operation.
      * @dev This function must be permissioned.
+     * @param hookFeePercentage The new hook fee percentage
      */
     function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         removeLiquidityHookFeePercentage = hookFeePercentage;
@@ -290,7 +293,10 @@ contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
         emit HookRemoveLiquidityFeePercentageChanged(address(this), hookFeePercentage);
     }
 
-    /// @notice Withdraws the accumulated fees and sends them to the owner.
+    /**
+     * @notice Withdraws the accumulated fees and sends them to the owner.
+     * @param feeToken The token with accumulated fees
+     */
     function withdrawFees(IERC20 feeToken) external {
         uint256 feeAmount = feeToken.balanceOf(address(this));
 
