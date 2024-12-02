@@ -54,7 +54,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
         string memory poolVersion = "Pool v1";
@@ -74,23 +74,21 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        WeightedPool newPool = WeightedPool(
-            WeightedPoolFactory(address(factory)).create(
-                name,
-                symbol,
-                vault.buildTokenConfig(sortedTokens),
-                weights,
-                roleAccounts,
-                DEFAULT_SWAP_FEE,
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = WeightedPoolFactory(address(factory)).create(
+            name,
+            symbol,
+            vault.buildTokenConfig(sortedTokens),
+            weights,
+            roleAccounts,
+            DEFAULT_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
 
         // poolArgs is used to check pool deployment address with create2.
-        poolArguments = abi.encode(
+        poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: name,
                 symbol: symbol,
@@ -100,8 +98,6 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             }),
             vault
         );
-
-        return address(newPool);
     }
 
     function initPool() internal override {

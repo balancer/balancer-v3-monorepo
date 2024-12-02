@@ -40,7 +40,7 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
         string memory poolVersion = "Pool v1";
@@ -63,24 +63,22 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        WeightedPool newPool = WeightedPool(
-            WeightedPoolFactory(address(factory)).create(
-                name,
-                symbol,
-                vault.buildTokenConfig(bigPoolTokens),
-                weights,
-                roleAccounts,
-                DEFAULT_SWAP_FEE,
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = WeightedPoolFactory(address(factory)).create(
+            name,
+            symbol,
+            vault.buildTokenConfig(bigPoolTokens),
+            weights,
+            roleAccounts,
+            DEFAULT_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
-        vm.label(address(newPool), "Big weighted pool");
+        vm.label(newPool, "Big weighted pool");
 
         // poolArgs is used to check pool deployment address with create2.
-        poolArguments = abi.encode(
+        poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
                 name: name,
                 symbol: symbol,
@@ -99,8 +97,6 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         }
 
         _approveForPool(IERC20(address(newPool)));
-
-        return address(newPool);
     }
 
     function _approveForSender() internal {

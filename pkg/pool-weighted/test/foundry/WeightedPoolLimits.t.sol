@@ -69,24 +69,33 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         BaseVaultTest.setUp();
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "Weight Limit Pool";
+        string memory symbol = "WEIGHTY";
+        string memory poolVersion = "Version 1";
+
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
 
-        weightedPool = deployWeightedPoolMock(
-            WeightedPool.NewPoolParams({
-                name: "Weight Limit Pool",
-                symbol: "WEIGHTY",
-                numTokens: 2,
-                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: "Version 1"
-            }),
-            vault
+        newPool = address(
+            deployWeightedPoolMock(
+                WeightedPool.NewPoolParams({
+                    name: name,
+                    symbol: symbol,
+                    numTokens: 2,
+                    normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                    version: poolVersion
+                }),
+                vault
+            )
         );
-        vm.label(address(weightedPool), label);
+        vm.label(newPool, label);
 
         vault.registerPool(
-            address(weightedPool),
+            newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_SWAP_FEE,
             0,
@@ -96,7 +105,17 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
             liquidityManagement
         );
 
-        return address(weightedPool);
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: 2,
+                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {
