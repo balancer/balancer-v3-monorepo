@@ -18,6 +18,10 @@ contract VaultFactory is Authentication {
     bytes32 public immutable vaultAdminCreationCodeHash;
     bytes32 public immutable vaultExtensionCreationCodeHash;
 
+    ProtocolFeeController public protocolFeeController;
+    VaultExtension public vaultExtension;
+    VaultAdmin public vaultAdmin;
+
     IAuthorizer private immutable _authorizer;
     uint32 private immutable _pauseWindowDuration;
     uint32 private immutable _bufferPeriodDuration;
@@ -44,8 +48,8 @@ contract VaultFactory is Authentication {
         uint256 minTradeAmount,
         uint256 minWrapAmount,
         bytes32 vaultCreationCodeHash_,
-        bytes32 vaultAdminCreationCodeHash_,
-        bytes32 vaultExtensionCreationCodeHash_
+        bytes32 vaultExtensionCreationCodeHash_,
+        bytes32 vaultAdminCreationCodeHash_
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
 
@@ -73,9 +77,9 @@ contract VaultFactory is Authentication {
         bytes32 salt,
         address targetAddress,
         bytes calldata vaultCreationCode,
-        bytes calldata vaultAdminCreationCode,
-        bytes calldata vaultExtensionCreationCode
-    ) external authenticate {
+        bytes calldata vaultExtensionCreationCode,
+        bytes calldata vaultAdminCreationCode
+    ) external {
         if (vaultCreationCodeHash != keccak256(vaultCreationCode)) {
             revert InvalidBytecode("Vault");
         } else if (vaultAdminCreationCodeHash != keccak256(vaultAdminCreationCode)) {
@@ -89,9 +93,9 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
+        protocolFeeController = new ProtocolFeeController(IVault(vaultAddress));
 
-        VaultAdmin vaultAdmin = VaultAdmin(
+        vaultAdmin = VaultAdmin(
             payable(
                 Create2.deploy(
                     0,
@@ -110,7 +114,7 @@ contract VaultFactory is Authentication {
             )
         );
 
-        VaultExtension vaultExtension = VaultExtension(
+        vaultExtension = VaultExtension(
             payable(
                 Create2.deploy(
                     0,
@@ -122,7 +126,7 @@ contract VaultFactory is Authentication {
 
         address deployedAddress = CREATE3.deploy(
             salt,
-            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, feeController)),
+            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, protocolFeeController)),
             0
         );
 
