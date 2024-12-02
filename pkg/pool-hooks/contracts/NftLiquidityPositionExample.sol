@@ -115,8 +115,8 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) MinimalRouter(vault, weth, permit2, version) ERC721("BalancerLiquidityProvider", "BAL_LP") {
+        string memory hookVersion
+    ) MinimalRouter(vault, weth, permit2, hookVersion) ERC721("BalancerLiquidityProvider", "BAL_LP") {
         // solhint-disable-previous-line no-empty-blocks
     }
 
