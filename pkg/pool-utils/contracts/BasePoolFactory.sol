@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -97,18 +99,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         bytes32 creationCodeHash = keccak256(creationCode);
         bytes32 finalSalt = _computeFinalSalt(salt);
 
-        address contractAddress = address(this);
-
-        assembly {
-            let ptr := mload(0x40)
-
-            mstore(add(ptr, 0x40), creationCodeHash)
-            mstore(add(ptr, 0x20), finalSalt)
-            mstore(ptr, contractAddress)
-            let start := add(ptr, 0x0b)
-            mstore8(start, 0xff)
-            deployAddress := keccak256(start, 85)
-        }
+        address contractAddress = Create2.computeAddress(finalSalt, creationCodeHash);
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -147,18 +138,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
         bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
         bytes32 finalSalt = _computeFinalSalt(salt);
-        assembly {
-            pool := create2(0, add(creationCode, 32), mload(creationCode), finalSalt)
-        }
-
-        if (pool == address(0)) {
-            // Bubble up inner revert reason
-            // solhint-disable-next-line no-inline-assembly
-            assembly {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
-        }
+        pool = Create2.deploy(0, finalSalt, creationCode);
 
         _registerPoolWithFactory(pool);
     }
