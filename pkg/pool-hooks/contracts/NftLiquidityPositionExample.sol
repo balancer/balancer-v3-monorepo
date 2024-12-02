@@ -7,8 +7,8 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     TokenConfig,
     LiquidityManagement,
@@ -18,8 +18,8 @@ import {
     AddLiquidityParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { MinimalRouter } from "./MinimalRouter.sol";
 
