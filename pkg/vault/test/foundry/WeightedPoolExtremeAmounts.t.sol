@@ -10,14 +10,11 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
-import {
-    WeightedPoolContractsDeployer
-} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
 
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-contract WeightedPoolExtremeAmountsTest is WeightedPoolContractsDeployer, BaseExtremeAmountsTest {
+contract WeightedPoolExtremeAmountsTest is BaseExtremeAmountsTest {
     using ArrayHelpers for *;
     using CastingHelpers for *;
 
@@ -29,7 +26,7 @@ contract WeightedPoolExtremeAmountsTest is WeightedPoolContractsDeployer, BaseEx
         address[] memory tokens,
         string memory label
     ) internal override returns (address newPool, bytes memory poolArgs) {
-        WeightedPoolFactory factory = deployWeightedPoolFactory(
+        WeightedPoolFactory factory = new WeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",

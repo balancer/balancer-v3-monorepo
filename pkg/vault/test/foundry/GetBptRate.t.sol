@@ -15,14 +15,11 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
-import {
-    WeightedPoolContractsDeployer
-} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract GetBptRateTest is WeightedPoolContractsDeployer, BaseVaultTest {
+contract GetBptRateTest is BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -49,7 +46,7 @@ contract GetBptRateTest is WeightedPoolContractsDeployer, BaseVaultTest {
     ) internal virtual override returns (address newPool, bytes memory poolArgs) {
         PoolRoleAccounts memory roleAccounts;
 
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1");
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1");
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         RateProviderMock rateProviderDai = deployRateProviderMock();

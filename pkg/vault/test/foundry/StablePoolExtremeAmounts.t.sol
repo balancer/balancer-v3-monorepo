@@ -7,15 +7,12 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
-import {
-    StablePoolContractsDeployer
-} from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 
-contract StablePoolExtremeAmountsTest is StablePoolContractsDeployer, BaseExtremeAmountsTest {
+contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
     using CastingHelpers for *;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
@@ -32,12 +29,7 @@ contract StablePoolExtremeAmountsTest is StablePoolContractsDeployer, BaseExtrem
         string memory symbol = "STABLE";
         string memory poolVersion = "Pool v1";
 
-        StablePoolFactory factory = deployStablePoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
+        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
 
         PoolRoleAccounts memory roleAccounts;
 
