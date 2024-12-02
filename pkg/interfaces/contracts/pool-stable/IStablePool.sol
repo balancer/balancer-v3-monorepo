@@ -10,6 +10,7 @@ import { IBasePool } from "../vault/IBasePool.sol";
  * @notice Full state of any ongoing or scheduled amplification parameter update.
  * @dev If there is an ongoing or scheduled update, `startTime` and/or `endTime` will be in the future.
  * On initialization, startTime == endTime, and both startValue and endValue will reflect the initial amp setting.
+ * Balancer timestamps are 32 bits.
  *
  * @return startValue The amplification parameter at the start of the update
  * @return endValue The final value of the amplification parameter
@@ -25,7 +26,7 @@ struct AmplificationState {
 
 /**
  * @notice Stable Pool data that cannot change after deployment.
- * @param tokens Pool tokens, sorted in pool registration order
+ * @param tokens Pool tokens, sorted in token registration order
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
  * calculations. FP(1) for 18-decimal tokens
  * @param amplificationParameterPrecision Scaling factor used to increase the precision of calculations involving the
@@ -81,11 +82,13 @@ struct StablePoolDynamicData {
 /// @notice Full Stable Pool interface.
 interface IStablePool is IBasePool {
     /**
-     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
-     * `endTime` is reached, when it will equal `rawEndValue`.
-     *
+     * @notice Begins changing the amplification parameter to `rawEndValue` over time.
+     * @dev The value will change linearly until `endTime` is reached, when it will equal `rawEndValue`.
      * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
      * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
+     *
+     * @param rawEndValue The desired ending value of the amplification parameter
+     * @param endTime The timestamp when the amplification parameter update is complete
      */
     function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external;
 

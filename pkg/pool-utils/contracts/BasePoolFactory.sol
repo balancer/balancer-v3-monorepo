@@ -10,8 +10,8 @@ import {
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 /**
@@ -162,6 +162,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     /**
      * @notice Convenience function for constructing a LiquidityManagement object.
      * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
+     * @return liquidityManagement Liquidity management flags, all initialized to false
      */
     function getDefaultLiquidityManagement() public pure returns (LiquidityManagement memory liquidityManagement) {
         // solhint-disable-previous-line no-empty-blocks

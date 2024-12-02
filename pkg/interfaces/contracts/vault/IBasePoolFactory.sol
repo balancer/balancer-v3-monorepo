@@ -30,7 +30,7 @@ interface IBasePoolFactory is IAuthentication {
      * @param pool The pool to check
      * @return success True if `pool` was created by this factory
      */
-    function isPoolFromFactory(address pool) external view returns (bool);
+    function isPoolFromFactory(address pool) external view returns (bool success);
 
     /**
      * @notice Return the total number of pools deployed by this factory.
@@ -61,13 +61,13 @@ interface IBasePoolFactory is IAuthentication {
      * @param salt The salt used to deploy the pool
      * @return deploymentAddress The predicted address of the pool, given the salt
      */
-    function getDeploymentAddress(bytes32 salt) external view returns (address);
+    function getDeploymentAddress(bytes32 salt) external view returns (address deploymentAddress);
 
     /**
      * @notice Check whether this factory has been disabled by governance.
      * @return success True if this factory was disabled
      */
-    function isDisabled() external view returns (bool);
+    function isDisabled() external view returns (bool success);
 
     /**
      * @notice Disable the factory, preventing the creation of more pools.
