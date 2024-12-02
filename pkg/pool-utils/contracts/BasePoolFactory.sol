@@ -91,15 +91,12 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getDeploymentAddress(
-        bytes memory constructorArgs,
-        bytes32 salt
-    ) public view returns (address deployAddress) {
+    function getDeploymentAddress(bytes memory constructorArgs, bytes32 salt) public view returns (address) {
         bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
         bytes32 creationCodeHash = keccak256(creationCode);
         bytes32 finalSalt = _computeFinalSalt(salt);
 
-        address contractAddress = Create2.computeAddress(finalSalt, creationCodeHash);
+        return Create2.computeAddress(finalSalt, creationCodeHash);
     }
 
     /// @inheritdoc IBasePoolFactory
