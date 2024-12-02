@@ -38,6 +38,8 @@ contract VaultFactory is Authentication {
     event VaultCreated(address vault);
 
     error ProtocolFeeControllerNotDeployed();
+    
+    error VaultAdminNotDeployed();
 
     error WrongProtocolFeeControllerSetup(address protocolFeeControllerVault, address targetVaultAddress);
 
@@ -76,15 +78,12 @@ contract VaultFactory is Authentication {
 
     function createStage1(
         address vaultAddress,
-        bytes calldata vaultAdminCreationCode,
-        bytes calldata vaultExtensionCreationCode
+        bytes calldata vaultAdminCreationCode
     ) external {
         protocolFeeController = new ProtocolFeeController(IVault(vaultAddress));
 
         if (vaultAdminCreationCodeHash != keccak256(vaultAdminCreationCode)) {
             revert InvalidBytecode("VaultAdmin");
-        } else if (vaultExtensionCreationCodeHash != keccak256(vaultExtensionCreationCode)) {
-            revert InvalidBytecode("VaultExtension");
         }
 
         vaultAdmin = VaultAdmin(
@@ -106,6 +105,20 @@ contract VaultFactory is Authentication {
             )
         );
 
+
+    }
+
+    function createStage2(bytes calldata vaultExtensionCreationCode) external {
+        if (vaultExtensionCreationCodeHash != keccak256(vaultExtensionCreationCode)) {
+            revert InvalidBytecode("VaultExtension");
+        }
+
+        if (address(vaultAdmin) == address(0)) {
+            revert VaultAdminNotDeployed();
+        }
+
+        address vaultAddress = address(vaultAdmin.vault());
+
         vaultExtension = VaultExtension(
             payable(
                 Create2.deploy(
@@ -126,7 +139,7 @@ contract VaultFactory is Authentication {
      * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
      * Vault to the target address.
      */
-    function createStage2(bytes32 salt, address targetAddress, bytes calldata vaultCreationCode) external {
+    function createStage3(bytes32 salt, address targetAddress, bytes calldata vaultCreationCode) external {
         if (address(protocolFeeController) == address(0)) {
             revert ProtocolFeeControllerNotDeployed();
         }
