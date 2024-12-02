@@ -201,16 +201,16 @@ contract BasePoolFactoryTest is BaseVaultTest {
 
         bytes memory poolArgs = abi.encode(vault, name, symbol);
 
-        address predictedAddress = testFactory.getDeploymentAddress(poolArguments, salt);
+        address predictedAddress = testFactory.getDeploymentAddress(poolArgs, salt);
         address newPool = testFactory.manualCreate(name, symbol, salt);
         assertEq(newPool, predictedAddress, "predictedAddress is wrong");
 
         vm.prank(bob);
-        address bobAddress = testFactory.getDeploymentAddress(poolArguments, salt);
+        address bobAddress = testFactory.getDeploymentAddress(poolArgs, salt);
         assertNotEq(bobAddress, predictedAddress, "Different sender generates the same address");
 
         vm.chainId(10000);
-        address chainAddress = testFactory.getDeploymentAddress(poolArguments, salt);
+        address chainAddress = testFactory.getDeploymentAddress(poolArgs, salt);
         assertNotEq(chainAddress, predictedAddress, "Different chain generates the same address");
     }
 
