@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
@@ -28,8 +27,8 @@ contract BufferRouter is IBufferRouter, RouterCommon {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) RouterCommon(vault, weth, permit2, version) {
+        string memory routerVersion
+    ) RouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
