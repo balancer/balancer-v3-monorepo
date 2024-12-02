@@ -156,7 +156,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     }
 
     /// @notice Increment the sender's nonce to revoke any currently granted (but not yet executed) `permit`.
-    function revokePermit() external {
+    function incrementNonce() external {
         _useNonce(msg.sender);
     }
 
