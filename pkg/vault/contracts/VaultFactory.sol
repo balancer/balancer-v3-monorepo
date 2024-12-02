@@ -4,18 +4,18 @@ pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
-import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
-import { VaultAdmin } from "./VaultAdmin.sol";
-import { VaultExtension } from "./VaultExtension.sol";
 import { ProtocolFeeController } from "./ProtocolFeeController.sol";
+import { VaultExtension } from "./VaultExtension.sol";
+import { VaultAdmin } from "./VaultAdmin.sol";
 
 /// @notice One-off factory to deploy the Vault at a specific address.
 contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {

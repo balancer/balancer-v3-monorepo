@@ -144,7 +144,7 @@ library PoolDataLib {
 
             packedBalance = poolTokenBalances[i];
 
-            // Note the order dependency. This requires up-to-date tokenRate for the token at index `i` in `poolData`
+            // Note the order dependency. This requires up-to-date tokenRate for the token at index `i` in `poolData`.
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
         }
     }
