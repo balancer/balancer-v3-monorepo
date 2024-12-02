@@ -51,9 +51,9 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = getTokenConfig();
 
         newPool = address(new PoolMock(IVault(address(vault)), name, symbol));
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
-
         vm.label(newPool, name);
+
+        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
 
         poolArgs = abi.encode(vault, name, symbol);
     }
@@ -68,7 +68,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         amountsIn[waWethIdx] = waWethBobShares;
 
         // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
-        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
+        _initPool(pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
 
         vm.stopPrank();
     }

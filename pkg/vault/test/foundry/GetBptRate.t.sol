@@ -47,13 +47,9 @@ contract GetBptRateTest is WeightedPoolContractsDeployer, BaseVaultTest {
         address[] memory tokens,
         string memory label
     ) internal virtual override returns (address newPool, bytes memory poolArgs) {
-        string memory name = "ERC20 Pool";
-        string memory symbol = "ERC20POOL";
-        string memory poolVersion = "Weighted Pool v1";
-
         PoolRoleAccounts memory roleAccounts;
 
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1");
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         RateProviderMock rateProviderDai = deployRateProviderMock();
@@ -67,8 +63,8 @@ contract GetBptRateTest is WeightedPoolContractsDeployer, BaseVaultTest {
         rateProviders[1] = IRateProvider(rateProviderUsdc);
 
         newPool = factory.create(
-            name,
-            symbol,
+            "ERC20 Pool",
+            "ERC20POOL",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
             weights,
             roleAccounts,
@@ -82,11 +78,11 @@ contract GetBptRateTest is WeightedPoolContractsDeployer, BaseVaultTest {
 
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
-                name: name,
-                symbol: symbol,
+                name: "ERC20 Pool",
+                symbol: "ERC20POOL",
                 numTokens: tokens.length,
                 normalizedWeights: weights,
-                version: poolVersion
+                version: "Weighted Pool v1"
             }),
             vault
         );

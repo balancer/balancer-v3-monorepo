@@ -29,24 +29,19 @@ contract WeightedPoolExtremeAmountsTest is WeightedPoolContractsDeployer, BaseEx
         address[] memory tokens,
         string memory label
     ) internal override returns (address newPool, bytes memory poolArgs) {
-        string memory name = "50/50 Weighted Pool";
-        string memory symbol = "50_50WP";
-        string memory poolVersion = "Weighted Pool v1";
-        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
-
         WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",
-            poolVersion
+            "Weighted Pool v1"
         );
         PoolRoleAccounts memory roleAccounts;
 
         newPool = factory.create(
-            name,
-            symbol,
+            "50/50 Weighted Pool",
+            "50_50WP",
             vault.buildTokenConfig(tokens.asIERC20()),
-            weights,
+            [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
             0.001e16,
             address(0),
@@ -58,11 +53,11 @@ contract WeightedPoolExtremeAmountsTest is WeightedPoolContractsDeployer, BaseEx
 
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
-                name: name,
-                symbol: symbol,
+                name: "50/50 Weighted Pool",
+                symbol: "50_50WP",
                 numTokens: tokens.length,
-                normalizedWeights: weights,
-                version: poolVersion
+                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                version: "Weighted Pool v1"
             }),
             vault
         );
