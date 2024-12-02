@@ -28,49 +28,52 @@ interface IVaultAdmin {
     /**
      * @notice Returns the Vault's pause window end time.
      * @dev This value is immutable, and represents the timestamp after which the Vault can no longer be paused
-     * by governance.
+     * by governance. Balancer timestamps are 32 bits.
      *
      * @return pauseWindowEndTime The timestamp when the Vault's pause window ends
      */
-    function getPauseWindowEndTime() external view returns (uint32);
+    function getPauseWindowEndTime() external view returns (uint32 pauseWindowEndTime);
 
     /**
      * @notice Returns the Vault's buffer period duration.
      * @dev This value is immutable. It represents the period during which, if paused, the Vault will remain paused.
-     * This ensures there is time available to address whatever issue caused the Vault to be paused.
+     * This ensures there is time available to address whatever issue caused the Vault to be paused. Balancer
+     * timestamps are 32 bits.
      *
      * @return bufferPeriodDuration The length of the buffer period in seconds
      */
-    function getBufferPeriodDuration() external view returns (uint32);
+    function getBufferPeriodDuration() external view returns (uint32 bufferPeriodDuration);
 
     /**
      * @notice Returns the Vault's buffer period end time.
-     * @dev This value is immutable. If already paused, the Vault can be unpaused until this timestamp.
+     * @dev This value is immutable. If already paused, the Vault can be unpaused until this timestamp. Balancer
+     * timestamps are 32 bits.
+     *
      * @return bufferPeriodEndTime The timestamp after which the Vault remains permanently unpaused
      */
-    function getBufferPeriodEndTime() external view returns (uint32);
+    function getBufferPeriodEndTime() external view returns (uint32 bufferPeriodEndTime);
 
     /**
      * @notice Get the minimum number of tokens in a pool.
      * @dev We expect the vast majority of pools to be 2-token.
      * @return minTokens The minimum token count of a pool
      */
-    function getMinimumPoolTokens() external pure returns (uint256);
+    function getMinimumPoolTokens() external pure returns (uint256 minTokens);
 
     /**
      * @notice Get the maximum number of tokens in a pool.
      * @return maxTokens The maximum token count of a pool
      */
-    function getMaximumPoolTokens() external pure returns (uint256);
+    function getMaximumPoolTokens() external pure returns (uint256 maxTokens);
 
     /**
      * @notice Get the minimum total supply of pool tokens (BPT) for an initialized pool.
      * @dev This prevents pools from being completely drained. When the pool is initialized, this minimum amount of BPT
      * is minted to the zero address. This is an 18-decimal floating point number; BPT are always 18 decimals.
      *
-     * @return minimumTotalSupply The minimum total supply a pool can have after initialization
+     * @return poolMinimumTotalSupply The minimum total supply a pool can have after initialization
      */
-    function getPoolMinimumTotalSupply() external pure returns (uint256);
+    function getPoolMinimumTotalSupply() external pure returns (uint256 poolMinimumTotalSupply);
 
     /**
      * @notice Get the minimum total supply of an ERC4626 wrapped token buffer in the Vault.
@@ -78,23 +81,23 @@ interface IVaultAdmin {
      * of shares is added to the shares resulting from the initial deposit. Buffer total supply accounting is internal
      * to the Vault, as buffers are not tokenized.
      *
-     * @return minimumTotalSupply The minimum total supply a buffer can have after initialization
+     * @return bufferMinimumTotalSupply The minimum total supply a buffer can have after initialization
      */
-    function getBufferMinimumTotalSupply() external pure returns (uint256);
+    function getBufferMinimumTotalSupply() external pure returns (uint256 bufferMinimumTotalSupply);
 
     /**
      * @notice Get the minimum trade amount in a pool operation.
      * @dev This limit is applied to the 18-decimal "upscaled" amount in any operation (swap, add/remove liquidity).
      * @return minimumTradeAmount The minimum trade amount as an 18-decimal floating point number
      */
-    function getMinimumTradeAmount() external view returns (uint256);
+    function getMinimumTradeAmount() external view returns (uint256 minimumTradeAmount);
 
     /**
      * @notice Get the minimum wrap amount in a buffer operation.
      * @dev This limit is applied to the wrap operation amount, in native underlying token decimals.
      * @return minimumWrapAmount The minimum wrap amount in native underlying token decimals
      */
-    function getMinimumWrapAmount() external view returns (uint256);
+    function getMinimumWrapAmount() external view returns (uint256 minimumWrapAmount);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -107,17 +110,21 @@ interface IVaultAdmin {
      * also pause buffers (though we anticipate they would likely be paused and unpaused together). Call
      * `areBuffersPaused` to check the pause state of the buffers.
      *
-     * @return paused True if the Vault is paused
+     * @return vaultPaused True if the Vault is paused
      */
-    function isVaultPaused() external view returns (bool);
+    function isVaultPaused() external view returns (bool vaultPaused);
 
     /**
      * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
-     * @return paused True if the Vault is paused
+     * @dev Balancer timestamps are 32 bits.
+     * @return vaultPaused True if the Vault is paused
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
-    function getVaultPausedState() external view returns (bool, uint32, uint32);
+    function getVaultPausedState()
+        external
+        view
+        returns (bool vaultPaused, uint32 vaultPauseWindowEndTime, uint32 vaultBufferPeriodEndTime);
 
     /**
      * @notice Pause the Vault: an emergency action which disables all operational state-changing functions on pools.
@@ -193,7 +200,7 @@ interface IVaultAdmin {
      * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
      * Emits an `AggregateSwapFeePercentageChanged` event.
      *
-     * @param pool The pool whose fee will be updated
+     * @param pool The pool whose swap fee percentage will be updated
      * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
      */
     function updateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
@@ -206,7 +213,7 @@ interface IVaultAdmin {
      * that the final value does not lose precision when stored in 24 bits (see `FEE_BITLENGTH` in VaultTypes.sol).
      * Emits an `AggregateYieldFeePercentageChanged` event.
      *
-     * @param pool The pool whose fee will be updated
+     * @param pool The pool whose yield fee percentage will be updated
      * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage
      */
     function updateAggregateYieldFeePercentage(address pool, uint256 newAggregateYieldFeePercentage) external;
@@ -248,7 +255,7 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
-     * @notice Disables queries functionality on the Vault. Can only be called by governance.
+     * @notice Disables query functionality on the Vault. Can only be called by governance.
      * @dev The query functions rely on a specific EVM feature to detect static calls. Query operations are exempt from
      * settlement constraints, so it's critical that no state changes can occur. We retain the ability to disable
      * queries in the unlikely event that EVM changes violate its assumptions (perhaps on an L2).
@@ -258,13 +265,13 @@ interface IVaultAdmin {
     function disableQuery() external;
 
     /**
-     * @notice Disables queries functionality permanently on the Vault. Can only be called by governance.
+     * @notice Disables query functionality permanently on the Vault. Can only be called by governance.
      * @dev Shall only be used when there is no doubt that queries pose a fundamental threat to the system.
      */
     function disableQueryPermanently() external;
 
     /**
-     * @notice Enables queries functionality on the Vault. Can only be called by governance.
+     * @notice Enables query functionality on the Vault. Can only be called by governance.
      * @dev Only works if queries are not permanently disabled.
      */
     function enableQuery() external;
@@ -282,7 +289,7 @@ interface IVaultAdmin {
      *
      * @return buffersPaused True if the Vault buffers are paused
      */
-    function areBuffersPaused() external view returns (bool);
+    function areBuffersPaused() external view returns (bool buffersPaused);
 
     /**
      * @notice Pauses native vault buffers globally.
