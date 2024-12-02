@@ -9,13 +9,16 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { VaultAdmin } from "./VaultAdmin.sol";
 import { VaultExtension } from "./VaultExtension.sol";
 import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 
 /// @notice One-off factory to deploy the Vault at a specific address.
-contract VaultFactory is Ownable2Step {
+contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     bytes32 public immutable vaultCreationCodeHash;
     bytes32 public immutable vaultAdminCreationCodeHash;
     bytes32 public immutable vaultExtensionCreationCodeHash;
@@ -23,6 +26,7 @@ contract VaultFactory is Ownable2Step {
     ProtocolFeeController public protocolFeeController;
     VaultExtension public vaultExtension;
     VaultAdmin public vaultAdmin;
+    bool public deploymentComplete;
 
     IAuthorizer private immutable _authorizer;
     uint32 private immutable _pauseWindowDuration;
@@ -78,7 +82,11 @@ contract VaultFactory is Ownable2Step {
         bytes calldata vaultCreationCode,
         bytes calldata vaultExtensionCreationCode,
         bytes calldata vaultAdminCreationCode
-    ) external onlyOwner {
+    ) external onlyOwner nonReentrant {
+        if (deploymentComplete) {
+            return;
+        }
+
         if (vaultCreationCodeHash != keccak256(vaultCreationCode)) {
             revert InvalidBytecode("Vault");
         } else if (vaultAdminCreationCodeHash != keccak256(vaultAdminCreationCode)) {
@@ -135,6 +143,8 @@ contract VaultFactory is Ownable2Step {
         }
 
         emit VaultCreated(vaultAddress);
+
+        deploymentComplete = true;
     }
 
     /// @notice Gets deployment address for a given salt.
