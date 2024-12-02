@@ -20,7 +20,6 @@ import "../utils/BaseMedusaTest.sol";
 contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     using FixedPoint for uint256;
 
-    uint256 private constant _MAX_BALANCE = 2 ** (128) - 1; // from PackedTokenBalance.sol
     uint256 private constant _MINIMUM_TRADE_AMOUNT = 1e6;
     uint256 private constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
 
@@ -324,7 +323,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountIn) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        boundedAmountIn = bound(tokenAmountIn, 0, _MAX_BALANCE - balancesRaw[tokenIndex]);
+        boundedAmountIn = bound(tokenAmountIn, 0, MAX_BALANCE - balancesRaw[tokenIndex]);
     }
 
     function boundTokenAmountOut(
@@ -337,7 +336,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
 
     function boundBptMint(uint256 bptAmount) internal view returns (uint256 boundedAmt) {
         uint256 totalSupply = BalancerPoolToken(address(pool)).totalSupply();
-        boundedAmt = bound(bptAmount, 0, _MAX_BALANCE - totalSupply);
+        boundedAmt = bound(bptAmount, 0, MAX_BALANCE - totalSupply);
     }
 
     function boundBptBurn(uint256 bptAmt) internal view returns (uint256 boundedAmt) {

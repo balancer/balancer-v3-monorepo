@@ -59,6 +59,10 @@ contract BaseMedusaTest is Test {
     IBasePool internal pool;
     uint256 internal poolCreationNonce;
 
+    uint256 internal constant MAX_UINT128 = type(uint128).max;
+    uint256 internal constant MAX_UINT256 = type(uint256).max;
+    uint256 internal constant MAX_BALANCE = MAX_UINT128;
+
     uint256 internal constant DEFAULT_USER_BALANCE = 1e18 * 1e18;
     uint256 internal constant DEFAULT_INITIAL_POOL_BALANCE = 1e6 * 1e18;
 
