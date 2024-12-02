@@ -4,22 +4,59 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+
+import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract ActionIdsTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using CastingHelpers for *;
 
     function setUp() public override {
         BaseVaultTest.setUp();
     }
 
     function testActionIds() public {
-        address pool1 = factoryMock.createPool("a", "a");
-        address pool2 = factoryMock.createPool("b", "b");
+        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        PoolRoleAccounts memory roleAccounts;
+
+        StablePool pool1 = StablePool(
+            factory.create(
+                "Stable Pool 1",
+                "STABLE 1",
+                vault.buildTokenConfig([address(usdc), address(dai)].toMemoryArray().asIERC20()),
+                200,
+                roleAccounts,
+                1e12, // Set min swap fee
+                address(0),
+                false, // Do not enable donations
+                false, // Do not disable unbalanced add/remove liquidity
+                bytes32("salt1")
+            )
+        );
+        StablePool pool2 = StablePool(
+            factory.create(
+                "Stable Pool 2",
+                "STABLE 2",
+                vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20()),
+                200,
+                roleAccounts,
+                1e12, // Set min swap fee
+                address(0),
+                false, // Do not enable donations
+                false, // Do not disable unbalanced add/remove liquidity
+                bytes32("salt2")
+            )
+        );
+
         bytes4 selector = bytes4(keccak256(bytes("transfer(address,uint256)")));
 
         assertEq(
