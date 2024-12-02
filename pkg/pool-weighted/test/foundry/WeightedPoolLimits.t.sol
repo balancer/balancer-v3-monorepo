@@ -80,18 +80,15 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
 
-        newPool = address(
-            deployWeightedPoolMock(
-                WeightedPool.NewPoolParams({
-                    name: name,
-                    symbol: symbol,
-                    numTokens: 2,
-                    normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                    version: poolVersion
-                }),
-                vault
-            )
-        );
+        WeightedPool.NewPoolParams memory params = WeightedPool.NewPoolParams({
+            name: name,
+            symbol: symbol,
+            numTokens: 2,
+            normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+            version: poolVersion
+        });
+
+        newPool = address(deployWeightedPoolMock(params, vault));
         vm.label(newPool, label);
 
         vault.registerPool(
@@ -106,16 +103,9 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         );
 
         // poolArgs is used to check pool deployment address with create2.
-        poolArgs = abi.encode(
-            WeightedPool.NewPoolParams({
-                name: name,
-                symbol: symbol,
-                numTokens: 2,
-                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: poolVersion
-            }),
-            vault
-        );
+        poolArgs = abi.encode(params, vault);
+
+        weightedPool = WeightedPoolMock(newPool);
     }
 
     function initPool() internal override {
