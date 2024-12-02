@@ -32,10 +32,6 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
         address[] memory tokens,
         string memory label
     ) internal override returns (address newPool, bytes memory poolArgs) {
-        string memory name = "Stable Pool";
-        string memory symbol = "STABLE";
-        string memory poolVersion = "Pool v1";
-
         rateProviderTokenA = deployRateProviderMock();
         rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
@@ -46,20 +42,15 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        StablePoolFactory factory = deployStablePoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
+        StablePoolFactory factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         newPool = factory.create(
-            name,
-            symbol,
+            "Stable Pool",
+            "STABLE",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
@@ -79,10 +70,10 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
 
         poolArgs = abi.encode(
             StablePool.NewPoolParams({
-                name: name,
-                symbol: symbol,
+                name: "Stable Pool",
+                symbol: "STABLE",
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: "Pool v1"
             }),
             vault
         );
