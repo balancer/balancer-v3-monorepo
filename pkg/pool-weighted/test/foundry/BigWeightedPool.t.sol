@@ -80,7 +80,7 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         vm.label(address(newPool), "Big weighted pool");
 
         // poolArgs is used to check pool deployment address with create2.
-        poolArgs = abi.encode(
+        poolArguments = abi.encode(
             WeightedPool.NewPoolParams({
                 name: name,
                 symbol: symbol,

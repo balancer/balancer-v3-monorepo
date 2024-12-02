@@ -100,14 +100,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
     }
 
-    function createPool() internal virtual override returns (address) {
+    function createPool() internal virtual override returns (address poolAddress, bytes memory poolArgs) {
         address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
 
-        liquidityPool = _createPool(tokens, "liquidityPool");
-        swapPool = _createPool(tokens, "swapPool");
+        (liquidityPool, ) = _createPool(tokens, "liquidityPool");
+        (swapPool, ) = _createPool(tokens, "swapPool");
 
-        // NOTE: stores address in `pool` (unused in this test).
-        return address(0);
+        // NOTE: return is empty, because this test does not use the `pool` variable.
     }
 
     function initPool() internal override {

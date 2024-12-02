@@ -37,19 +37,19 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     function setUp() public override {
         BaseERC4626BufferTest.setUp();
 
-        childPoolA = _createPool([address(usdc), address(weth)].toMemoryArray(), "childPoolA");
-        childPoolB = _createPool([address(wsteth), address(dai)].toMemoryArray(), "childPoolB");
-        parentPool = _createPool(
+        (childPoolA, ) = _createPool([address(usdc), address(weth)].toMemoryArray(), "childPoolA");
+        (childPoolB, ) = _createPool([address(wsteth), address(dai)].toMemoryArray(), "childPoolB");
+        (parentPool, ) = _createPool(
             [address(childPoolA), address(childPoolB), address(dai)].toMemoryArray(),
             "parentPool"
         );
 
-        childPoolERC4626 = _createPool([address(waDAI), address(waWETH)].toMemoryArray(), "childPoolERC4626");
-        parentPoolWithoutWrapper = _createPool(
+        (childPoolERC4626, ) = _createPool([address(waDAI), address(waWETH)].toMemoryArray(), "childPoolERC4626");
+        (parentPoolWithoutWrapper, ) = _createPool(
             [address(childPoolERC4626), address(usdc)].toMemoryArray(),
             "parentPoolWithoutWrapper"
         );
-        parentPoolWithWrapper = _createPool(
+        (parentPoolWithWrapper, ) = _createPool(
             [address(childPoolERC4626), address(waUSDC)].toMemoryArray(),
             "parentPoolWithWrapper"
         );

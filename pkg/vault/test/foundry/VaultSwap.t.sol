@@ -38,7 +38,8 @@ contract VaultSwapTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
 
-        noInitPool = PoolMock(createPool());
+        (address poolMock, ) = createPool();
+        noInitPool = PoolMock(poolMock);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }

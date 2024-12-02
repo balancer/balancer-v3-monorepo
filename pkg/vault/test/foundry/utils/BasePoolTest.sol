@@ -53,7 +53,7 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testPoolAddress() public view {
-        address calculatedPoolAddress = factory.getDeploymentAddress(poolArgs, ZERO_BYTES32);
+        address calculatedPoolAddress = factory.getDeploymentAddress(poolArguments, ZERO_BYTES32);
         assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
     }
 

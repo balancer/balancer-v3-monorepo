@@ -44,15 +44,18 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         _initializeBuffers();
     }
 
-    function createPool() internal virtual override returns (address) {
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC4626 Pool";
+        string memory symbol = "ERC4626P";
+
         TokenConfig[] memory tokenConfig = getTokenConfig();
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC4626 Pool", "ERC4626P");
+        newPool = address(new PoolMock(IVault(address(vault)), name, symbol));
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
-        vm.label(address(newPool), "erc4626 pool");
-        erc4626Pool = address(newPool);
-        return erc4626Pool;
+        vm.label(newPool, name);
+
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function initPool() internal virtual override {

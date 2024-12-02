@@ -41,16 +41,22 @@ contract DynamicFeePoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
     }
 
-    function createPool() internal virtual override returns (address) {
+    function createPool() internal virtual override returns (address, bytes memory) {
         address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
 
-        noFeeReferencePool = _createPool(tokens, "noFeeReferencePool");
+        (noFeeReferencePool, ) = _createPool(tokens, "noFeeReferencePool");
 
         return _createPool(tokens, "swapPool");
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
-        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
         vm.label(address(newPool), label);
         PoolRoleAccounts memory roleAccounts;
 
@@ -70,7 +76,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             liquidityManagement
         );
 
-        return address(newPool);
+        poolArguments = abi.encode(vault, name, symbol);
     }
 
     function initPool() internal override {

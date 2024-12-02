@@ -15,11 +15,14 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
+import {
+    WeightedPoolContractsDeployer
+} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract GetBptRateTest is BaseVaultTest {
+contract GetBptRateTest is WeightedPoolContractsDeployer, BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -40,10 +43,17 @@ contract GetBptRateTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Weighted Pool v1";
+
         PoolRoleAccounts memory roleAccounts;
 
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1"); //TODO: hardhat
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         RateProviderMock rateProviderDai = deployRateProviderMock();
@@ -56,22 +66,30 @@ contract GetBptRateTest is BaseVaultTest {
         rateProviders[0] = IRateProvider(rateProviderDai);
         rateProviders[1] = IRateProvider(rateProviderUsdc);
 
-        WeightedPool newPool = WeightedPool(
-            factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
-                weights,
-                roleAccounts,
-                swapFeePercentage,
-                address(0), // No hook contract
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = factory.create(
+            name,
+            symbol,
+            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
+            weights,
+            roleAccounts,
+            swapFeePercentage,
+            address(0), // No hook contract
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
-        vm.label(address(newPool), label);
-        return address(newPool);
+        vm.label(newPool, label);
+
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: tokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {

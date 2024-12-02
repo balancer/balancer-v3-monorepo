@@ -82,7 +82,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         );
 
         // poolArgs is used to check pool deployment address with create2.
-        poolArgs = abi.encode(
+        poolArguments = abi.encode(
             StablePool.NewPoolParams({
                 name: name,
                 symbol: symbol,
