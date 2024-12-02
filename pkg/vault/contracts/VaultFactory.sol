@@ -2,9 +2,11 @@
 
 pragma solidity ^0.8.24;
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
@@ -13,7 +15,7 @@ import { VaultExtension } from "./VaultExtension.sol";
 import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 
 /// @notice One-off factory to deploy the Vault at a specific address.
-contract VaultFactory is Authentication {
+contract VaultFactory is Ownable2Step {
     bytes32 public immutable vaultCreationCodeHash;
     bytes32 public immutable vaultAdminCreationCodeHash;
     bytes32 public immutable vaultExtensionCreationCodeHash;
@@ -27,7 +29,6 @@ contract VaultFactory is Authentication {
     uint32 private immutable _bufferPeriodDuration;
     uint256 private immutable _minTradeAmount;
     uint256 private immutable _minWrapAmount;
-    address private immutable _deployer;
 
     /**
      * @notice Emitted when the Vault is deployed.
@@ -50,9 +51,7 @@ contract VaultFactory is Authentication {
         bytes32 vaultCreationCodeHash_,
         bytes32 vaultExtensionCreationCodeHash_,
         bytes32 vaultAdminCreationCodeHash_
-    ) Authentication(bytes32(uint256(uint160(address(this))))) {
-        _deployer = msg.sender;
-
+    ) Ownable(msg.sender) {
         vaultCreationCodeHash = vaultCreationCodeHash_;
         vaultAdminCreationCodeHash = vaultAdminCreationCodeHash_;
         vaultExtensionCreationCodeHash = vaultExtensionCreationCodeHash_;
@@ -79,7 +78,7 @@ contract VaultFactory is Authentication {
         bytes calldata vaultCreationCode,
         bytes calldata vaultExtensionCreationCode,
         bytes calldata vaultAdminCreationCode
-    ) external {
+    ) external onlyOwner {
         if (vaultCreationCodeHash != keccak256(vaultCreationCode)) {
             revert InvalidBytecode("Vault");
         } else if (vaultAdminCreationCodeHash != keccak256(vaultAdminCreationCode)) {
@@ -141,9 +140,5 @@ contract VaultFactory is Authentication {
     /// @notice Gets deployment address for a given salt.
     function getDeploymentAddress(bytes32 salt) public view returns (address) {
         return CREATE3.getDeployed(salt);
-    }
-
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 }
