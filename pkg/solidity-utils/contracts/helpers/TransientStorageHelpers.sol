@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
 import { StorageSlotExtension } from "../openzeppelin/StorageSlotExtension.sol";
+import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
 
 type TokenDeltaMappingSlotType is bytes32;
 type AddressToUintMappingSlot is bytes32;
