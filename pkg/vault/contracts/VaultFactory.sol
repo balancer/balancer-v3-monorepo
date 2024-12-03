@@ -27,7 +27,7 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     mapping(address vaultAddress => ProtocolFeeController) public protocolFeeController;
     mapping(address vaultAddress => VaultExtension) public vaultExtension;
     mapping(address vaultAddress => VaultAdmin) public vaultAdmin;
-    mapping(address vaultAddress => bool deployed)  public isDeployed;
+    mapping(address vaultAddress => bool deployed) public isDeployed;
 
     IAuthorizer private immutable _authorizer;
     uint32 private immutable _pauseWindowDuration;
@@ -45,13 +45,13 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     error VaultAddressMismatch();
 
     /**
-     * @notice The bytecode for the given contract does not match the expected bytecode. 
+     * @notice The bytecode for the given contract does not match the expected bytecode.
      * @param contractName The name of the mismatched contract
      */
     error InvalidBytecode(string contractName);
 
     /**
-     * @notice The Vault has already been deployed at this target address. 
+     * @notice The Vault has already been deployed at this target address.
      * @param vault Vault address under contention.
      */
     error VaultAlreadyDeployed(address vault);
