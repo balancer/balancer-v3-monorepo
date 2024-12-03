@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IHooks } from "./IHooks.sol";
-import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
 
 /// @dev Events are declared inside an interface (namespace) to improve DX with Typechain.
@@ -94,8 +94,8 @@ interface IVaultEvents {
      * @param liquidityProvider The user performing the operation
      * @param kind The add liquidity operation type (e.g., proportional, custom)
      * @param totalSupply The total supply of the pool after the operation
-     * @param amountsAddedRaw The amount of each token that was added, sorted in pool registration order
-     * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
+     * @param amountsAddedRaw The amount of each token that was added, sorted in token registration order
+     * @param swapFeeAmountsRaw The total swap fees charged, sorted in token registration order
      */
     event LiquidityAdded(
         address indexed pool,
@@ -112,8 +112,8 @@ interface IVaultEvents {
      * @param liquidityProvider The user performing the operation
      * @param kind The remove liquidity operation type (e.g., proportional, custom)
      * @param totalSupply The total supply of the pool after the operation
-     * @param amountsRemovedRaw The amount of each token that was removed, sorted in pool registration order
-     * @param swapFeeAmountsRaw The total swap fees charged, sorted in pool registration order
+     * @param amountsRemovedRaw The amount of each token that was removed, sorted in token registration order
+     * @param swapFeeAmountsRaw The total swap fees charged, sorted in token registration order
      */
     event LiquidityRemoved(
         address indexed pool,
@@ -227,7 +227,6 @@ interface IVaultEvents {
     /**
      * @notice Liquidity was removed from an ERC4626 buffer.
      * @dev The underlying token can be derived from the wrapped token, so it's not included here.
-     *
      * @param wrappedToken The wrapped token that identifies the buffer
      * @param amountUnderlying The amount of the underlying token that was withdrawn
      * @param amountWrapped The amount of the wrapped token that was withdrawn
@@ -255,5 +254,5 @@ interface IVaultEvents {
      * @param eventKey Event key
      * @param eventData Encoded event data
      */
-    event VaultAuxiliary(address pool, string eventKey, bytes eventData);
+    event VaultAuxiliary(address indexed pool, bytes32 indexed eventKey, bytes eventData);
 }

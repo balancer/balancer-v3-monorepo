@@ -53,9 +53,9 @@ library EnumerableMap {
     }
 
     struct IERC20ToBytes32Map {
-        // Number of entries in the map
+        // Number of entries in the map.
         uint256 _length;
-        // Storage of map keys and values
+        // Storage of map keys and values.
         mapping(uint256 indexValue => IERC20ToBytes32MapEntry mapEntry) entries;
         // Position of the entry defined by a key in the `entries` array, plus 1
         // because index 0 means a key is not in the map.
@@ -69,24 +69,21 @@ library EnumerableMap {
     error KeyNotFound();
 
     /**
-     * @dev Adds a key-value pair to a map, or updates the value for an existing
-     * key. O(1).
-     *
-     * Returns true if the key was added to the map, that is if it was not
-     * already present.
+     * @dev Adds a key-value pair to a map, or updates the value for an existing key. O(1).
+     * Returns true if the key was added to the map; i.e., if it was not already present.
      */
     function set(IERC20ToBytes32Map storage map, IERC20 key, bytes32 value) internal returns (bool) {
-        // We read and store the key's index to prevent multiple reads from the same storage slot
+        // We read and store the key's index to prevent multiple reads from the same storage slot.
         uint256 keyIndex = map.indexes[key];
         unchecked {
-            // Equivalent to !contains(map, key)
+            // Equivalent to !contains(map, key).
             if (keyIndex == 0) {
                 uint256 previousLength = map._length;
                 map.entries[previousLength] = IERC20ToBytes32MapEntry({ key: key, value: value });
                 map._length = previousLength + 1;
 
                 // The entry is stored at previousLength, but we add 1 to all indexes
-                // and use 0 as a sentinel value
+                // and use 0 as a sentinel value.
                 map.indexes[key] = previousLength + 1;
                 return true;
             } else {
@@ -109,14 +106,13 @@ library EnumerableMap {
 
     /**
      * @dev Removes a key-value pair from a map. O(1).
-     *
-     * Returns true if the key was removed from the map, that is if it was present.
+     * Returns true if the key was removed from the map; i.e., if it was present.
      */
     function remove(IERC20ToBytes32Map storage map, IERC20 key) internal returns (bool) {
         // We read and store the key's index to prevent multiple reads from the same storage slot
         uint256 keyIndex = map.indexes[key];
 
-        // Equivalent to contains(map, key)
+        // Equivalent to contains(map, key).
         if (keyIndex != 0) {
             // To delete a key-value pair from the entries pseudo-array in O(1), we swap the entry to delete with the
             // one at the highest index, and then remove this last entry (sometimes called as 'swap and pop').
@@ -130,21 +126,21 @@ library EnumerableMap {
                 lastIndex = map._length - 1;
             }
 
-            // The swap is only necessary if we're not removing the last element
+            // The swap is only necessary if we're not removing the last element.
             if (toDeleteIndex != lastIndex) {
                 IERC20ToBytes32MapEntry storage lastEntry = map.entries[lastIndex];
 
-                // Move the last entry to the index where the entry to delete is
+                // Move the last entry to the index of the entry to delete.
                 map.entries[toDeleteIndex] = lastEntry;
-                // Update the index for the moved entry
+                // Update the index for the moved entry.
                 map.indexes[lastEntry.key] = keyIndex; // All indexes are 1-based
             }
 
-            // Delete the slot where the moved entry was stored
+            // Delete the slot where the moved entry was stored.
             delete map.entries[lastIndex];
             map._length = lastIndex;
 
-            // Delete the index for the deleted slot
+            // Delete the index for the deleted slot.
             delete map.indexes[key];
 
             return true;
@@ -261,9 +257,9 @@ library EnumerableMap {
     }
 
     struct IERC20ToUint256Map {
-        // Number of entries in the map
+        // Number of entries in the map.
         uint256 size;
-        // Storage of map keys and values
+        // Storage of map keys and values.
         mapping(uint256 indexValue => IERC20ToUint256MapEntry mapEntry) entries;
         // Position of the entry defined by a key in the `entries` array, plus 1
         // because index 0 means a key is not in the map.
@@ -271,14 +267,11 @@ library EnumerableMap {
     }
 
     /**
-     * @dev Adds a key-value pair to a map, or updates the value for an existing
-     * key. O(1).
-     *
-     * Returns true if the key was added to the map, that is if it was not
-     * already present.
+     * @dev Adds a key-value pair to a map, or updates the value for an existing key. O(1).
+     * Returns true if the key was added to the map; (i.e., if it was not already present).
      */
     function set(IERC20ToUint256Map storage map, IERC20 key, uint256 value) internal returns (bool) {
-        // We read and store the key's index to prevent multiple reads from the same storage slot
+        // We read and store the key's index to prevent multiple reads from the same storage slot.
         uint256 keyIndex = map.indexes[key];
 
         unchecked {
@@ -289,7 +282,7 @@ library EnumerableMap {
                 map.size = previousLength + 1;
 
                 // The entry is stored at previousLength, but we add 1 to all indexes
-                // and use 0 as a sentinel value
+                // and use 0 as a sentinel value.
                 map.indexes[key] = previousLength + 1;
                 return true;
             } else {
@@ -313,10 +306,10 @@ library EnumerableMap {
     /**
      * @dev Removes a key-value pair from a map. O(1).
      *
-     * Returns true if the key was removed from the map, that is if it was present.
+     * Returns true if the key was removed from the map; i.e., if it was present.
      */
     function remove(IERC20ToUint256Map storage map, IERC20 key) internal returns (bool) {
-        // We read and store the key's index to prevent multiple reads from the same storage slot
+        // We read and store the key's index to prevent multiple reads from the same storage slot.
         uint256 keyIndex = map.indexes[key];
 
         // Equivalent to contains(map, key)
@@ -332,21 +325,21 @@ library EnumerableMap {
                 lastIndex = map.size - 1;
             }
 
-            // The swap is only necessary if we're not removing the last element
+            // The swap is only necessary if we're not removing the last element.
             if (toDeleteIndex != lastIndex) {
                 IERC20ToUint256MapEntry storage lastEntry = map.entries[lastIndex];
 
-                // Move the last entry to the index where the entry to delete is
+                // Move the last entry to the index of the entry to delete.
                 map.entries[toDeleteIndex] = lastEntry;
-                // Update the index for the moved entry
+                // Update the index for the moved entry.
                 map.indexes[lastEntry.key] = keyIndex; // = toDeleteIndex + 1; all indices are 1-based
             }
 
-            // Delete the slot where the moved entry was stored
+            // Delete the slot where the moved entry was stored.
             delete map.entries[lastIndex];
             map.size = lastIndex;
 
-            // Delete the index for the deleted slot
+            // Delete the index for the deleted slot.
             delete map.indexes[key];
 
             return true;

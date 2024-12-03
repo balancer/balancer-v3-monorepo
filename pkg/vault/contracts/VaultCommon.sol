@@ -2,31 +2,31 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import {
-    TransientStorageHelpers
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
+import { VaultStorage } from "./VaultStorage.sol";
 
 /**
  * @notice Functions and modifiers shared between the main Vault and its extension contracts.
@@ -155,10 +155,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                                      Pool Pausing
     *******************************************************************************/
 
-    /**
-     * @dev Reverts if the pool is paused.
-     * @param pool The pool
-     */
+    /// @dev Reverts if the pool is paused.
     function _ensurePoolNotPaused(address pool) internal view {
         if (_isPoolPaused(pool)) {
             revert PoolPaused(pool);
@@ -278,7 +275,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
-            // Since we assume all newBalances are properly ordered
+            // We assume all newBalances are properly ordered.
             poolBalances[i] = PackedTokenBalance.toPackedBalance(
                 poolData.balancesRaw[i],
                 poolData.balancesLiveScaled18[i]
@@ -385,19 +382,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                                     Recovery Mode
     *******************************************************************************/
 
-    /**
-     * @dev Place on functions that may only be called when the associated pool is in recovery mode.
-     * @param pool The pool
-     */
+    /// @dev Place on functions that may only be called when the associated pool is in recovery mode.
     modifier onlyInRecoveryMode(address pool) {
         _ensurePoolInRecoveryMode(pool);
         _;
     }
 
-    /**
-     * @dev Reverts if the pool is not in recovery mode.
-     * @param pool The pool
-     */
+    /// @dev Reverts if the pool is not in recovery mode.
     function _ensurePoolInRecoveryMode(address pool) internal view {
         if (!_isPoolInRecoveryMode(pool)) {
             revert PoolNotInRecoveryMode(pool);
@@ -407,7 +398,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     /**
      * @notice Checks whether a pool is in recovery mode.
      * @param pool Address of the pool to check
-     * @return True if the pool is initialized, false otherwise
+     * @return inRecoveryMode True if the pool is in recovery mode, false otherwise
      */
     function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
         return _poolConfigBits[pool].isPoolInRecoveryMode();

@@ -5,8 +5,8 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExplorer.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExplorer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     TokenInfo,
@@ -77,6 +77,11 @@ contract VaultExplorer is IVaultExplorer {
         return _vault.getReservesOf(token);
     }
 
+    /// @inheritdoc IVaultExplorer
+    function getAddLiquidityCalledFlag(address pool) external view returns (bool) {
+        return _vault.getAddLiquidityCalledFlag(pool);
+    }
+
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
@@ -93,16 +98,6 @@ contract VaultExplorer is IVaultExplorer {
     /// @inheritdoc IVaultExplorer
     function isPoolInitialized(address pool) external view returns (bool) {
         return _vault.isPoolInitialized(pool);
-    }
-
-    /// @inheritdoc IVaultExplorer
-    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
-        return _vault.getPoolConfig(pool);
-    }
-
-    /// @inheritdoc IVaultExplorer
-    function getHooksConfig(address pool) external view returns (HooksConfig memory) {
-        return _vault.getHooksConfig(pool);
     }
 
     /// @inheritdoc IVaultExplorer
@@ -147,12 +142,22 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /// @inheritdoc IVaultExplorer
+    function getPoolConfig(address pool) external view returns (PoolConfig memory) {
+        return _vault.getPoolConfig(pool);
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function getHooksConfig(address pool) external view returns (HooksConfig memory) {
+        return _vault.getHooksConfig(pool);
+    }
+
+    /// @inheritdoc IVaultExplorer
     function getBptRate(address pool) external view returns (uint256) {
         return _vault.getBptRate(pool);
     }
 
     /*******************************************************************************
-                                    Pool Tokens
+                                 Balancer Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer
@@ -232,6 +237,11 @@ contract VaultExplorer is IVaultExplorer {
     /// @inheritdoc IVaultExplorer
     function isQueryDisabled() external view returns (bool) {
         return _vault.isQueryDisabled();
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function isQueryDisabledPermanently() external view returns (bool) {
+        return _vault.isQueryDisabledPermanently();
     }
 
     /***************************************************************************
