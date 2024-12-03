@@ -50,7 +50,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
         feeController.setGlobalProtocolSwapFeePercentage(50e16); // 50%
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         rateProviders.push(deployRateProviderMock());
         rateProviders.push(deployRateProviderMock());
@@ -62,13 +62,17 @@ contract WeightedPoolSwaps is BaseVaultTest {
         dai.mint(alice, initialFunds);
 
         PoolRoleAccounts memory poolRoleAccounts;
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         weightedPoolWithRate = WeightedPool(
             factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
+                name,
+                symbol,
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
-                [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                weights,
                 poolRoleAccounts,
                 swapFee,
                 address(0),
@@ -78,22 +82,30 @@ contract WeightedPoolSwaps is BaseVaultTest {
             )
         );
 
-        weightedPool = WeightedPool(
+        newPool =
             factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
+                name,
+                symbol,
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20()),
-                [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                weights,
                 poolRoleAccounts,
                 swapFee,
                 address(0),
                 false,
                 false,
                 bytes32(uint256(1))
-            )
-        );
+            );
 
-        return address(weightedPool);
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: 2,
+                normalizedWeights: weights,
+                version: "Pool Version 1"
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {
