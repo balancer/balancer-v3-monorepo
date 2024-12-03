@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -204,18 +206,7 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
         bytes32 creationCodeHash = keccak256(creationCode);
         bytes32 finalSalt = _computeFinalSalt(salt);
 
-        address contractAddress = address(this);
-
-        assembly {
-            let ptr := mload(0x40)
-
-            mstore(add(ptr, 0x40), creationCodeHash)
-            mstore(add(ptr, 0x20), finalSalt)
-            mstore(ptr, contractAddress)
-            let start := add(ptr, 0x0b)
-            mstore8(start, 0xff)
-            deployAddress := keccak256(start, 85)
-        }
+        return Create2.computeAddress(finalSalt, creationCodeHash, address(this));
     }
 
     /// @inheritdoc IBasePoolFactory
