@@ -23,8 +23,14 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
     RateProviderMock internal rateProviderTokenA;
     RateProviderMock internal rateProviderTokenB;
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
-        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = factoryMock.createPool(name, symbol);
         vm.label(newPool, label);
 
         rateProviderTokenA = deployRateProviderMock();
@@ -44,7 +50,7 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
             lp
         );
 
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function getRate(IERC20 token) internal view override returns (uint256) {

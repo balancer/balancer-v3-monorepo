@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -12,7 +14,6 @@ import {
 
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
-import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 /**
  * @notice Base contract for Pool factories.
@@ -36,7 +37,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     bool private _disabled;
 
-    // Store the creationCode of the contract to be deployed by create3.
+    // Store the creationCode of the contract to be deployed by create2.
     bytes private _creationCode;
 
     /// @notice A pool creator was specified for a pool from a Balancer core pool type.
@@ -90,8 +91,12 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getDeploymentAddress(bytes32 salt) public view returns (address) {
-        return CREATE3.getDeployed(_computeFinalSalt(salt));
+    function getDeploymentAddress(bytes memory constructorArgs, bytes32 salt) public view returns (address) {
+        bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
+        bytes32 creationCodeHash = keccak256(creationCode);
+        bytes32 finalSalt = _computeFinalSalt(salt);
+
+        return Create2.computeAddress(finalSalt, creationCodeHash);
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -128,7 +133,9 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
-        pool = CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
+        bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
+        bytes32 finalSalt = _computeFinalSalt(salt);
+        pool = Create2.deploy(0, finalSalt, creationCode);
 
         _registerPoolWithFactory(pool);
     }

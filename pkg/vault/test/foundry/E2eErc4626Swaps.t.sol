@@ -41,8 +41,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
     function setUp() public virtual override {
         super.setUp();
-        // Set the pool so we can measure the invariant with BaseVaultTest's getBalances().
-        pool = erc4626Pool;
+
         poolCreator = lp;
 
         maxSwapAmount = erc4626PoolInitialAmount.mulDown(25e16); // 25% of pool liquidity
@@ -397,11 +396,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // The only token transfers are DAI in (given) and WETH out (calculated).
         if (tokenIn == dai) {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waWETH, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waDAI, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
@@ -427,11 +426,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // The only token transfers are DAI in (calculated) and WETH out (given).
         if (tokenIn == dai) {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waWETH, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waDAI, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 

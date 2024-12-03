@@ -27,7 +27,6 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
     uint256 internal waDaiIdx;
     uint256 internal waWethIdx;
-    address internal erc4626Pool;
 
     // Rounding issues are introduced when dealing with tokens with rates different than 1:1. For example, to scale the
     // tokens of an yield-bearing pool, the amount of tokens is multiplied by the rate of the token, which is
@@ -39,20 +38,21 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        erc4626Pool = pool;
-
         _initializeBuffers();
     }
 
-    function createPool() internal virtual override returns (address) {
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC4626 Pool";
+        string memory symbol = "ERC4626P";
+
         TokenConfig[] memory tokenConfig = getTokenConfig();
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC4626 Pool", "ERC4626P");
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
+        newPool = address(new PoolMock(IVault(address(vault)), name, symbol));
+        vm.label(newPool, name);
 
-        vm.label(address(newPool), "erc4626 pool");
-        erc4626Pool = address(newPool);
-        return erc4626Pool;
+        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
+
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function initPool() internal virtual override {
@@ -65,7 +65,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         amountsIn[waWethIdx] = waWethBobShares;
 
         // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
-        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
+        _initPool(pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
 
         vm.stopPrank();
     }
@@ -84,16 +84,16 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     }
 
     function testERC4626BufferPreconditions() public view {
-        // Bob should own all erc4626Pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
+        // Bob should own all pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
         // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur.
         assertApproxEqAbs(
-            IERC20(erc4626Pool).balanceOf(bob),
+            IERC20(pool).balanceOf(bob),
             erc4626PoolInitialAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
             errorTolerance,
             "Wrong yield-bearing pool BPT amount"
         );
 
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(pool);
         // The yield-bearing pool should have `erc4626PoolInitialAmount` of both tokens.
         assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
         assertEq(address(tokens[waWethIdx]), address(waWETH), "Wrong yield-bearing pool token (waWETH)");

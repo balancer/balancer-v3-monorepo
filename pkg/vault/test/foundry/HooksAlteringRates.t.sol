@@ -37,7 +37,10 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function createPool() internal virtual override returns (address) {
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         // Rate providers will by sorted along with tokens by `buildTokenConfig`.
         rateProvider = deployRateProviderMock();
@@ -48,12 +51,12 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             rateProviders
         );
 
-        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), "pool");
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
+        vm.label(newPool, "pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
+        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
 
-        return address(newPool);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testOnBeforeSwapHookAltersRate() public {
