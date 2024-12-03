@@ -124,6 +124,13 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
                 (currentInvariant + 2 * invErr).toUint256().mulUp(invariantRatio).toInt256(),
                 currentInvariant.toUint256().mulUp(invariantRatio).toInt256()
             );
+
+            // Edge case check. Should never happen except for insane tokens.
+            // If this is hit, actually adding the tokens would lead to a revert or (if it
+            // went through) a deadlock downstream, so we catch it here.
+            if (invariant.y > GyroECLPMath._MAX_INVARIANT) {
+                revert GyroECLPMath.MaxInvariantExceeded();
+            }
         }
 
         if (tokenInIndex == 0) {
