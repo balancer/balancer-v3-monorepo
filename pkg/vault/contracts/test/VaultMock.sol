@@ -747,7 +747,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function previewDeposit(IERC4626 wrapper, uint256 amountInUnderlying) external returns (uint256 amountOutWrapped) {
-        if (amountInUnderlying == 0) {
+        if (amountInUnderlying == 0 || wrapper.previewDeposit(amountInUnderlying - 1) == 0) {
             return 0;
         }
 
@@ -773,7 +773,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function previewRedeem(IERC4626 wrapper, uint256 amountInWrapped) external returns (uint256 amountOutUnderlying) {
-        if (amountInWrapped == 0) {
+        if (amountInWrapped == 0 || wrapper.previewRedeem(amountInWrapped - 1) == 0) {
             return 0;
         }
 
