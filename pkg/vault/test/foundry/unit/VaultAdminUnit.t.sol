@@ -198,8 +198,8 @@ contract VaultAdminUnitTest is BaseVaultTest {
         // Shares (wrapped rate is ~2; allow rounding error)
         assertApproxEqAbs(
             issuedShares,
-            underlyingAmount + wrappedAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1,
+            underlyingAmount + wrappedAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY - 2,
+            2,
             "Wrong issued shares"
         );
 

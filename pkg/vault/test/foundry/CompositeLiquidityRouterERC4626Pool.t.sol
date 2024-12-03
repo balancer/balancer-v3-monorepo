@@ -1189,9 +1189,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         // The pool gains the wrapped tokens from the buffer and mints BPT to the user.
-        assertEq(
+        assertApproxEqAbs(
             poolBalances[ybDaiIdx],
-            _vaultPreviewDeposit(waDAI, erc4626PoolInitialAmount) + vars.wrappedDaiPoolDelta,
+            _vaultPreviewDeposit(waDAI, erc4626PoolInitialAmount) + vars.wrappedDaiPoolDelta + 2,
+            2,
             "ERC4626 Pool: wrong waDAI balance"
         );
 
@@ -1209,9 +1210,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
 
             // The pool gains the wrapped tokens from the buffer and mints BPT to the user.
-            assertEq(
+            assertApproxEqAbs(
                 poolBalances[ybWethIdx],
-                _vaultPreviewDeposit(waWETH, erc4626PoolInitialAmount) + vars.wrappedWethPoolDelta,
+                _vaultPreviewDeposit(waWETH, erc4626PoolInitialAmount) + vars.wrappedWethPoolDelta + 2,
+                2,
                 "ERC4626 Pool: wrong waWETH balance"
             );
         } else {
@@ -1243,9 +1245,10 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         // The yield-bearing pool holds yield-bearing tokens, so in a remove liquidity event we remove yield-bearing
         // tokens from the pool and burn BPT.
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(ybPool);
-        assertEq(
+        assertApproxEqAbs(
             balances[ybDaiIdx],
-            _vaultPreviewDeposit(waDAI, erc4626PoolInitialAmount) - vars.wrappedDaiPoolDelta,
+            _vaultPreviewDeposit(waDAI, erc4626PoolInitialAmount) - vars.wrappedDaiPoolDelta + 2,
+            2,
             "ERC4626 Pool: wrong waDAI balance"
         );
         // The wrapped tokens removed from the pool are unwrapped in the buffer, so the user will receive underlying

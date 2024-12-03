@@ -747,6 +747,10 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function previewDeposit(IERC4626 wrapper, uint256 amountInUnderlying) external returns (uint256 amountOutWrapped) {
+        if (amountInUnderlying == 0) {
+            return 0;
+        }
+
         (, amountOutWrapped, ) = _wrapWithBuffer(
             SwapKind.EXACT_IN,
             IERC20(wrapper.asset()),
@@ -756,6 +760,10 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function previewMint(IERC4626 wrapper, uint256 amountOutWrapped) external returns (uint256 amountInUnderlying) {
+        if (amountOutWrapped == 0) {
+            return 0;
+        }
+
         (amountInUnderlying, , ) = _wrapWithBuffer(
             SwapKind.EXACT_OUT,
             IERC20(wrapper.asset()),
@@ -765,6 +773,10 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function previewRedeem(IERC4626 wrapper, uint256 amountInWrapped) external returns (uint256 amountOutUnderlying) {
+        if (amountInWrapped == 0) {
+            return 0;
+        }
+
         (, amountOutUnderlying, ) = _unwrapWithBuffer(
             SwapKind.EXACT_IN,
             IERC20(wrapper.asset()),
@@ -774,6 +786,10 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function previewWithdraw(IERC4626 wrapper, uint256 amountOutUnderlying) external returns (uint256 amountInWrapped) {
+        if (amountOutUnderlying == 0) {
+            return 0;
+        }
+
         (amountInWrapped, , ) = _unwrapWithBuffer(
             SwapKind.EXACT_OUT,
             IERC20(wrapper.asset()),

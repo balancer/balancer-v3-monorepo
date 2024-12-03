@@ -1188,7 +1188,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding.
-            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1) - 1);
+            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1));
+            amountOutWrapped = amountOutWrapped > 1 ? amountOutWrapped - 1 : amountOutWrapped;
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
             // wrapped amount out and calculates the underlying amount in with the correct rounding.
@@ -1305,7 +1306,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding.
-            (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1) - 1);
+            (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1));
+            amountOutUnderlying = amountOutUnderlying > 1 ? amountOutUnderlying - 1 : amountOutUnderlying;
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
             // receives an underlying amount out and calculates the wrapped amount in with the correct rounding.

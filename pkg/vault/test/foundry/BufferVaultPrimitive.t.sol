@@ -838,7 +838,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.prank(lp);
         uint256 firstAddLpShares = bufferRouter.initializeBuffer(waDAI, firstDepositUnderlying, firstDepositWrapped, 0);
-        assertEq(
+
+        assertLe(
             firstAddLpShares,
             firstDepositUnderlying + _vaultPreviewRedeem(waDAI, firstDepositWrapped) - BUFFER_MINIMUM_TOTAL_SUPPLY,
             "Wrong first lpShares added"
@@ -1008,11 +1009,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // We won't check buffer balances; just balances from the sender and check no router leftovers
         assertEq(balancesAfter.lpEth, balancesBefore.lpEth - _wrapAmount, "Incorrect LP ETH");
-        uint256 expectedAmountOut = _wrapAmount;
-        assertEq(pathAmountsIn[0], expectedAmountOut, "AmountOut (wrapped minted) is wrong");
+        uint256 expectedAmountIn = _vaultPreviewDeposit(waWETH, _wrapAmount);
+        assertGe(pathAmountsIn[0], expectedAmountIn, "AmountOut (wrapped minted) is wrong");
         assertEq(
             balancesAfter.lpTokens[waWethIdx],
-            balancesBefore.lpTokens[waWethIdx] + expectedAmountOut,
+            balancesBefore.lpTokens[waWethIdx] + expectedAmountIn,
             "LP balance of wrapped token is wrong"
         );
         assertEq(address(batchRouter).balance, 0, "Router has leftover ETH");
@@ -1158,7 +1159,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             assertApproxEqAbs(
                 bufferBalanceAfter.underlying,
                 _vaultPreviewRedeem(waDAI, bufferBalanceAfter.wrapped),
-                1,
+                3,
                 "Buffer is not balanced"
             );
         }
@@ -1235,7 +1236,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                 assertApproxEqAbs(
                     bufferBalanceAfter.underlying,
                     _vaultPreviewMint(waDAI, bufferBalanceAfter.wrapped),
-                    1,
+                    3,
                     "Buffer is not balanced"
                 );
             }

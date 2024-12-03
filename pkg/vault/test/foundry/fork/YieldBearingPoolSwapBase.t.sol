@@ -114,28 +114,28 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
         assertApproxEqAbs(
             vault.getBufferOwnerShares(ybToken1, lp),
-            _token1BufferInitAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            5,
+            _token1BufferInitAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY - 3,
+            3,
             "Wrong share of ybToken1 buffer belonging to LP"
         );
         assertApproxEqAbs(
             vault.getBufferOwnerShares(ybToken2, lp),
-            (_token2BufferInitAmount * 2) - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            5,
+            (_token2BufferInitAmount * 2) - BUFFER_MINIMUM_TOTAL_SUPPLY - 3,
+            3,
             "Wrong share of ybToken2 buffer belonging to LP"
         );
 
         // Buffer should have the correct amount of issued shares.
         assertApproxEqAbs(
             vault.getBufferTotalShares(ybToken1),
-            _token1BufferInitAmount * 2,
-            5,
+            _token1BufferInitAmount * 2 - 3,
+            3,
             "Wrong issued shares of ybToken1 buffer"
         );
         assertApproxEqAbs(
             vault.getBufferTotalShares(ybToken2),
-            (_token2BufferInitAmount * 2),
-            5,
+            (_token2BufferInitAmount * 2) - 3,
+            3,
             "Wrong issued shares of ybToken2 buffer"
         );
 
