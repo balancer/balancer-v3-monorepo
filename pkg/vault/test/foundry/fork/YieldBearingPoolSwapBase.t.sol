@@ -91,14 +91,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
     function setUpForkTestVariables() internal virtual;
 
-    function testSwapPreconditions__Fork() public view {
+    function testSwapPreconditions__Fork() public {
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(yieldBearingPool));
         // The yield-bearing pool should have `initAmount` of both tokens.
         assertEq(address(tokens[_ybToken1Idx]), address(ybToken1), "Wrong yield-bearing pool token (ybToken1)");
         assertEq(address(tokens[_ybToken2Idx]), address(ybToken2), "Wrong yield-bearing pool token (ybToken2)");
 
-        uint256 yieldBearingPoolAmountToken1 = ybToken1.previewDeposit(_token1YieldBearingPoolInitAmount);
-        uint256 yieldBearingPoolAmountToken2 = ybToken2.previewDeposit(_token2YieldBearingPoolInitAmount);
+        uint256 yieldBearingPoolAmountToken1 = _vaultPreviewDeposit(ybToken1, _token1YieldBearingPoolInitAmount);
+        uint256 yieldBearingPoolAmountToken2 = _vaultPreviewDeposit(ybToken2, _token2YieldBearingPoolInitAmount);
 
         assertEq(
             balancesRaw[_ybToken1Idx],
@@ -115,13 +115,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertApproxEqAbs(
             vault.getBufferOwnerShares(ybToken1, lp),
             _token1BufferInitAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1,
+            5,
             "Wrong share of ybToken1 buffer belonging to LP"
         );
         assertApproxEqAbs(
             vault.getBufferOwnerShares(ybToken2, lp),
             (_token2BufferInitAmount * 2) - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1,
+            5,
             "Wrong share of ybToken2 buffer belonging to LP"
         );
 
@@ -129,13 +129,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertApproxEqAbs(
             vault.getBufferTotalShares(ybToken1),
             _token1BufferInitAmount * 2,
-            1,
+            5,
             "Wrong issued shares of ybToken1 buffer"
         );
         assertApproxEqAbs(
             vault.getBufferTotalShares(ybToken2),
             (_token2BufferInitAmount * 2),
-            1,
+            5,
             "Wrong issued shares of ybToken2 buffer"
         );
 
@@ -147,7 +147,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertEq(underlyingBalance, _token1BufferInitAmount, "Wrong ybToken1 buffer balance for underlying token");
         assertEq(
             wrappedBalance,
-            ybToken1.previewDeposit(_token1BufferInitAmount),
+            _vaultPreviewDeposit(ybToken1, _token1BufferInitAmount),
             "Wrong ybToken1 buffer balance for wrapped token"
         );
 
@@ -155,7 +155,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertEq(underlyingBalance, _token2BufferInitAmount, "Wrong ybToken2 buffer balance for underlying token");
         assertEq(
             wrappedBalance,
-            ybToken2.previewDeposit(_token2BufferInitAmount),
+            _vaultPreviewDeposit(ybToken2, _token2BufferInitAmount),
             "Wrong ybToken2 buffer balance for wrapped token"
         );
     }
@@ -391,7 +391,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // Query and actual operation can return different results, depending on the difference of decimals. The error
         // is amplified by the rate of the token out.
-        uint256 absTolerance = vars.ybTokenOut.previewMint(decimalError);
+        uint256 absTolerance = _vaultPreviewMint(vars.ybTokenOut, decimalError);
         // If previewRedeem return 0, absTolerance may be smaller than the error introduced by the difference of
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
@@ -513,7 +513,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // Query and actual operation can return different results, depending on the difference of decimals. The error
         // is amplified by the rate of the token in.
-        uint256 absTolerance = vars.ybTokenIn.previewMint(decimalError);
+        uint256 absTolerance = _vaultPreviewMint(vars.ybTokenIn, decimalError);
         // If previewMint return 0, absTolerance may be smaller than the error introduced by the difference of
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
@@ -811,7 +811,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         } else {
             tokenIn = IERC20(address(wToken));
             tokenOut = IERC20(wToken.asset());
-            exactAmountIn = wToken.previewDeposit(amountToUnbalance);
+            exactAmountIn = _vaultPreviewDeposit(wToken, amountToUnbalance);
         }
 
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
@@ -883,19 +883,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function _setupBuffers() private {
+        uint256 token1BufferInitAmountWrapped = _vaultPreviewDeposit(ybToken1, _token1BufferInitAmount);
+        uint256 token2BufferInitAmountWrapped = _vaultPreviewDeposit(ybToken2, _token2BufferInitAmount);
+
         vm.startPrank(lp);
-        bufferRouter.initializeBuffer(
-            ybToken2,
-            _token2BufferInitAmount,
-            ybToken2.previewDeposit(_token2BufferInitAmount),
-            0
-        );
-        bufferRouter.initializeBuffer(
-            ybToken1,
-            _token1BufferInitAmount,
-            ybToken1.previewDeposit(_token1BufferInitAmount),
-            0
-        );
+        bufferRouter.initializeBuffer(ybToken2, _token2BufferInitAmount, token2BufferInitAmountWrapped, 0);
+        bufferRouter.initializeBuffer(ybToken1, _token1BufferInitAmount, token1BufferInitAmountWrapped, 0);
         vm.stopPrank();
     }
 
@@ -915,10 +908,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         vm.label(address(newPool), "yield-bearing pool");
         yieldBearingPool = address(newPool);
 
-        vm.startPrank(lp);
         uint256[] memory tokenAmounts = new uint256[](2);
-        tokenAmounts[_ybToken1Idx] = ybToken1.previewDeposit(_token1YieldBearingPoolInitAmount);
-        tokenAmounts[_ybToken2Idx] = ybToken2.previewDeposit(_token2YieldBearingPoolInitAmount);
+        tokenAmounts[_ybToken1Idx] = _vaultPreviewDeposit(ybToken1, _token1YieldBearingPoolInitAmount);
+        tokenAmounts[_ybToken2Idx] = _vaultPreviewDeposit(ybToken2, _token2YieldBearingPoolInitAmount);
+        vm.startPrank(lp);
         _initPool(address(yieldBearingPool), tokenAmounts, 0);
         vm.stopPrank();
     }
@@ -927,8 +920,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountInUnderlying,
         bool withBufferLiquidity
-    ) private view returns (uint256 amountOutWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
-        amountOutWrapped = wToken.previewDeposit(amountInUnderlying);
+    ) private returns (uint256 amountOutWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+        amountOutWrapped = _vaultPreviewDeposit(wToken, amountInUnderlying);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
 
@@ -941,7 +934,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wToken);
 
             uint256 vaultUnderlyingDeltaHint = uint256(int256(amountInUnderlying) + bufferUnderlyingImbalance);
-            uint256 vaultWrappedDeltaHint = wToken.previewDeposit(vaultUnderlyingDeltaHint);
+            uint256 vaultWrappedDeltaHint = _vaultPreviewDeposit(wToken, vaultUnderlyingDeltaHint);
             bufferWrappedImbalance = int256(vaultWrappedDeltaHint) - int256(amountOutWrapped);
         }
     }
@@ -950,12 +943,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountInWrapped,
         bool withBufferLiquidity
-    )
-        private
-        view
-        returns (uint256 amountOutUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance)
-    {
-        amountOutUnderlying = wToken.previewRedeem(amountInWrapped);
+    ) private returns (uint256 amountOutUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+        amountOutUnderlying = _vaultPreviewRedeem(wToken, amountInWrapped);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
 
@@ -968,7 +957,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             bufferWrappedImbalance = bufferBalances.getBufferWrappedImbalance(wToken);
 
             uint256 vaultWrappedDeltaHint = uint256(int256(amountInWrapped) + bufferWrappedImbalance);
-            uint256 vaultUnderlyingDeltaHint = wToken.previewRedeem(vaultWrappedDeltaHint);
+            uint256 vaultUnderlyingDeltaHint = _vaultPreviewRedeem(wToken, vaultWrappedDeltaHint);
             bufferUnderlyingImbalance = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
         }
     }
@@ -977,12 +966,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountOutWrapped,
         bool withBufferLiquidity
-    )
-        private
-        view
-        returns (uint256 amountInUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance)
-    {
-        amountInUnderlying = wToken.previewMint(amountOutWrapped);
+    ) private returns (uint256 amountInUnderlying, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+        amountInUnderlying = _vaultPreviewMint(wToken, amountOutWrapped);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
 
@@ -994,7 +979,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // should consider it in our result preview. The logic below reproduces Vault's rebalance logic.
             int256 bufferImbalance = bufferBalances.getBufferWrappedImbalance(wToken);
             uint256 vaultWrappedDeltaHint = uint256(int256(amountOutWrapped) - bufferImbalance);
-            uint256 vaultUnderlyingDeltaHint = wToken.previewMint(vaultWrappedDeltaHint);
+            uint256 vaultUnderlyingDeltaHint = _vaultPreviewMint(wToken, vaultWrappedDeltaHint);
 
             if (bufferImbalance != 0) {
                 bufferUnderlyingImbalance = int256(vaultUnderlyingDeltaHint) - int256(amountInUnderlying);
@@ -1007,8 +992,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 amountOutUnderlying,
         bool withBufferLiquidity
-    ) private view returns (uint256 amountInWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
-        amountInWrapped = wToken.previewWithdraw(amountOutUnderlying);
+    ) private returns (uint256 amountInWrapped, int256 bufferUnderlyingImbalance, int256 bufferWrappedImbalance) {
+        amountInWrapped = _vaultPreviewWithdraw(wToken, amountOutUnderlying);
         bufferUnderlyingImbalance = 0;
         bufferWrappedImbalance = 0;
 
@@ -1020,7 +1005,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // should consider it in our result preview. The logic below reproduces Vault's rebalance logic.
             int256 bufferImbalance = bufferBalances.getBufferUnderlyingImbalance(wToken);
             uint256 vaultUnderlyingDeltaHint = uint256(int256(amountOutUnderlying) - bufferImbalance);
-            uint256 vaultWrappedDeltaHint = wToken.previewWithdraw(vaultUnderlyingDeltaHint);
+            uint256 vaultWrappedDeltaHint = _vaultPreviewWithdraw(wToken, vaultUnderlyingDeltaHint);
 
             if (bufferImbalance != 0) {
                 bufferWrappedImbalance = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);

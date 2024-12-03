@@ -66,13 +66,14 @@ contract VaultBufferUnitTest is BaseVaultTest {
         (uint256 underlyingBalance, uint256 wrappedBalance) = vault.getBufferBalance(
             IERC4626(address(wDaiInitialized))
         );
-        assertEq(underlyingBalance, _wrapAmount / 2, "Wrong buffer underlying balance");
+        // The buffer takes some extra wei to compensate rounding.
+        assertApproxEqAbs(underlyingBalance, _wrapAmount / 2 + 1, 1, "Wrong buffer underlying balance");
         assertEq(wrappedBalance, (3 * _wrapAmount) / 2, "Wrong wrapped underlying balance");
 
         int256 imbalance = vault.internalGetBufferUnderlyingImbalance(IERC4626(address(wDaiInitialized)));
         // The wrapped rate is 1. Buffer imbalance = `(underlyingBalance - wrappedBalance) / 2`, and it has more wrapped
         // than underlying, so the imbalance is negative.
-        assertEq(imbalance, -int256(_wrapAmount / 2), "Wrong underlying imbalance");
+        assertApproxEqAbs(imbalance, -int256(_wrapAmount / 2), 1, "Wrong underlying imbalance");
     }
 
     function testUnderlyingImbalanceOfUnderlyingBalance() public {
@@ -102,13 +103,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // `1/4 _wrapAmount`.
         uint256 bufferUnderlyingBalance = (3 * _wrapAmount) / 2;
         uint256 bufferWrappedBalance = _wrapAmount / 2;
-        uint256 bufferWrappedBalanceAsUnderlying = wDaiInitialized.previewMint(bufferWrappedBalance);
+        uint256 bufferWrappedBalanceAsUnderlying = _vaultPreviewMint(wDaiInitialized, bufferWrappedBalance);
         uint256 exactUnderlyingImbalance = (bufferUnderlyingBalance - bufferWrappedBalanceAsUnderlying) / 2;
         assertEq(imbalance, int256(exactUnderlyingImbalance), "Underlying imbalance different than exact calculation");
         assertApproxEqAbs(
             imbalance,
             int256(_wrapAmount / 4),
-            1,
+            2,
             "Underlying imbalance different than theoretical value"
         );
     }
@@ -135,12 +136,14 @@ contract VaultBufferUnitTest is BaseVaultTest {
             IERC4626(address(wDaiInitialized))
         );
         assertEq(underlyingBalance, (3 * _wrapAmount) / 2, "Wrong buffer underlying balance");
-        assertEq(wrappedBalance, _wrapAmount / 2, "Wrong wrapped underlying balance");
+
+        // The buffer takes some extra wei to compensate rounding.
+        assertApproxEqAbs(wrappedBalance, _wrapAmount / 2 + 1, 1, "Wrong wrapped underlying balance");
 
         int256 imbalance = vault.internalGetBufferWrappedImbalance(IERC4626(address(wDaiInitialized)));
         // The wrapped rate is 1. Buffer imbalance = `(wrappedBalance - underlyingBalance) / 2`, and it has more
         // underlying than wrapped, so the imbalance is negative.
-        assertEq(imbalance, -int256(_wrapAmount / 2), "Wrong wrapped imbalance");
+        assertApproxEqAbs(imbalance, -int256(_wrapAmount / 2), 1, "Wrong wrapped imbalance");
     }
 
     function testWrappedImbalanceOfWrappedBalance() public {
@@ -170,7 +173,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // imbalance = (3/2 _wrapAmount - (1/2 _wrapAmount / rate)) / 2 = `5/8 _wrapAmount`.
         uint256 bufferWrappedBalance = (3 * _wrapAmount) / 2;
         uint256 bufferUnderlyingBalance = _wrapAmount / 2;
-        uint256 bufferUnderlyingBalanceAsWrapped = wDaiInitialized.previewWithdraw(bufferUnderlyingBalance);
+        uint256 bufferUnderlyingBalanceAsWrapped = _vaultPreviewWithdraw(wDaiInitialized, bufferUnderlyingBalance);
         uint256 exactWrappedImbalance = (bufferWrappedBalance - bufferUnderlyingBalanceAsWrapped) / 2;
         assertEq(imbalance, int256(exactWrappedImbalance), "Wrapped imbalance different than exact calculation");
         assertApproxEqAbs(

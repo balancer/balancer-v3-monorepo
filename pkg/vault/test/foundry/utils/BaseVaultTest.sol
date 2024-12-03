@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -347,6 +348,38 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+
+    function _vaultPreviewDeposit(
+        IERC4626 wrapper,
+        uint256 amountInUnderlying
+    ) internal returns (uint256 amountOutWrapped) {
+        _prankStaticCall();
+        return vault.previewDeposit(wrapper, amountInUnderlying);
+    }
+
+    function _vaultPreviewMint(
+        IERC4626 wrapper,
+        uint256 amountOutWrapped
+    ) internal returns (uint256 amountInUnderlying) {
+        _prankStaticCall();
+        return vault.previewMint(wrapper, amountOutWrapped);
+    }
+
+    function _vaultPreviewRedeem(
+        IERC4626 wrapper,
+        uint256 amountInWrapped
+    ) internal returns (uint256 amountOutUnderlying) {
+        _prankStaticCall();
+        return vault.previewRedeem(wrapper, amountInWrapped);
+    }
+
+    function _vaultPreviewWithdraw(
+        IERC4626 wrapper,
+        uint256 amountOutUnderlying
+    ) internal returns (uint256 amountInWrapped) {
+        _prankStaticCall();
+        return vault.previewWithdraw(wrapper, amountOutUnderlying);
     }
 
     function _prankStaticCall() internal {

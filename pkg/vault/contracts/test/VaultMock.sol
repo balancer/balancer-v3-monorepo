@@ -745,4 +745,40 @@ contract VaultMock is IVaultMainMock, Vault {
                 )
             );
     }
+
+    function previewDeposit(IERC4626 wrapper, uint256 amountInUnderlying) external returns (uint256 amountOutWrapped) {
+        (, amountOutWrapped, ) = _wrapWithBuffer(
+            SwapKind.EXACT_IN,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountInUnderlying
+        );
+    }
+
+    function previewMint(IERC4626 wrapper, uint256 amountOutWrapped) external returns (uint256 amountInUnderlying) {
+        (amountInUnderlying, , ) = _wrapWithBuffer(
+            SwapKind.EXACT_OUT,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountOutWrapped
+        );
+    }
+
+    function previewRedeem(IERC4626 wrapper, uint256 amountInWrapped) external returns (uint256 amountOutUnderlying) {
+        (, amountOutUnderlying, ) = _unwrapWithBuffer(
+            SwapKind.EXACT_IN,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountInWrapped
+        );
+    }
+
+    function previewWithdraw(IERC4626 wrapper, uint256 amountOutUnderlying) external returns (uint256 amountInWrapped) {
+        (amountInWrapped, , ) = _unwrapWithBuffer(
+            SwapKind.EXACT_OUT,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountOutUnderlying
+        );
+    }
 }
