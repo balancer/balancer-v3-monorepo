@@ -13,10 +13,8 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
-
 
 contract ActionIdsTest is BaseVaultTest {
     using ArrayHelpers for *;
