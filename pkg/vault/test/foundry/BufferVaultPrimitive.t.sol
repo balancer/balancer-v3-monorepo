@@ -738,7 +738,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
             assertEq(
                 firstAddLpShares,
-                _wrapAmount + _vaultPreviewRedeem(waDAI, _wrapAmount) - BUFFER_MINIMUM_TOTAL_SUPPLY,
+                _wrapAmount + waDAI.previewRedeem(_wrapAmount) - BUFFER_MINIMUM_TOTAL_SUPPLY,
                 "Wrong first lpShares added"
             );
         }
@@ -841,7 +841,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         assertLe(
             firstAddLpShares,
-            firstDepositUnderlying + _vaultPreviewRedeem(waDAI, firstDepositWrapped) - BUFFER_MINIMUM_TOTAL_SUPPLY,
+            firstDepositUnderlying + waDAI.previewRedeem(firstDepositWrapped) - BUFFER_MINIMUM_TOTAL_SUPPLY,
             "Wrong first lpShares added"
         );
 
@@ -886,7 +886,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // is kept to not deplete the buffer and these shares (POOL_MINIMUM_TOTAL_SUPPLY) are "burned". The remove
         // liquidity operation is proportional to buffer balances, so the amount of burned shares must be discounted
         // proportionally from underlying and wrapped.
-        uint256 bufferInvariant = underlyingAmountIn + _vaultPreviewRedeem(waDAI, wrappedAmountIn);
+        uint256 bufferInvariant = underlyingAmountIn + waDAI.previewRedeem(wrappedAmountIn);
         assertEq(
             underlyingRemoved,
             underlyingAmountIn - BUFFER_MINIMUM_TOTAL_SUPPLY.mulUp(underlyingAmountIn).divUp(bufferInvariant),
@@ -935,7 +935,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertEq(vault.getBufferOwnerShares(IERC4626(address(waDAI)), lp), 0, "LP Buffer shares is wrong");
         // If math has rounding issues, the rounding occurs in favor of the Vault
         // (invariantDelta <= lpShares <= invariantDelta + 2).
-        uint256 bufferInvariantDelta = underlyingRemoved + _vaultPreviewRedeem(waDAI, wrappedRemoved);
+        uint256 bufferInvariantDelta = underlyingRemoved + waDAI.previewRedeem(wrappedRemoved);
         assertApproxEqAbs(lpShares, bufferInvariantDelta + 1, 1, "Removed assets are wrong");
     }
 
