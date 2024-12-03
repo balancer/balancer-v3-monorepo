@@ -72,23 +72,22 @@ contract YieldFeesTest is BaseVaultTest {
 
         PoolRoleAccounts memory poolRoleAccounts;
 
-        newPool =
-            factory.create(
-                name,
-                symbol,
-                vault.buildTokenConfig(
-                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                    rateProviders,
-                    yieldFeeFlags
-                ),
-                weights,
-                poolRoleAccounts,
-                swapFee,
-                address(0),
-                false,
-                false,
-                bytes32(0)
-            );
+        newPool = factory.create(
+            name,
+            symbol,
+            vault.buildTokenConfig(
+                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                rateProviders,
+                yieldFeeFlags
+            ),
+            weights,
+            poolRoleAccounts,
+            swapFee,
+            address(0),
+            false,
+            false,
+            bytes32(0)
+        );
 
         vm.label(newPool, "weightedPoolWithRate");
 

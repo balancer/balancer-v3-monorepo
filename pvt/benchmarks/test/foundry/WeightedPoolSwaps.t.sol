@@ -82,19 +82,18 @@ contract WeightedPoolSwaps is BaseVaultTest {
             )
         );
 
-        newPool =
-            factory.create(
-                name,
-                symbol,
-                vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20()),
-                weights,
-                poolRoleAccounts,
-                swapFee,
-                address(0),
-                false,
-                false,
-                bytes32(uint256(1))
-            );
+        newPool = factory.create(
+            name,
+            symbol,
+            vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20()),
+            weights,
+            poolRoleAccounts,
+            swapFee,
+            address(0),
+            false,
+            false,
+            bytes32(uint256(1))
+        );
 
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
