@@ -77,6 +77,11 @@ contract VaultExplorer is IVaultExplorer {
         return _vault.getReservesOf(token);
     }
 
+    /// @inheritdoc IVaultExplorer
+    function getAddLiquidityCalledFlag(address pool) external view returns (bool) {
+        return _vault.getAddLiquidityCalledFlag(pool);
+    }
+
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
@@ -232,6 +237,11 @@ contract VaultExplorer is IVaultExplorer {
     /// @inheritdoc IVaultExplorer
     function isQueryDisabled() external view returns (bool) {
         return _vault.isQueryDisabled();
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function isQueryDisabledPermanently() external view returns (bool) {
+        return _vault.isQueryDisabledPermanently();
     }
 
     /***************************************************************************

@@ -452,14 +452,15 @@ interface IVaultExtension {
 
     /**
      * @notice Returns true if queries are disabled on the Vault.
-     * @return queryDisabled True if queries are disabled (either temporarily or permanently)
+     * @dev If true, queries might either be disabled temporarily or permanently.
+     * @return queryDisabled True if query functionality is reversibly disabled
      */
     function isQueryDisabled() external view returns (bool queryDisabled);
 
     /**
      * @notice Returns true if queries are disabled permanently; false if they are enabled.
      * @dev This is a one-way switch. Once queries are disabled permanently, they can never be re-enabled.
-     * @return queryDisabledPermanently True if queries are permanently disabled
+     * @return queryDisabledPermanently True if query functionality is permanently disabled
      */
     function isQueryDisabledPermanently() external view returns (bool queryDisabledPermanently);
 
