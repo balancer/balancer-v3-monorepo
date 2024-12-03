@@ -56,6 +56,19 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
             type(VaultAdmin).creationCode
         );
 
+        assertTrue(factory.isDeployed(vaultAddress), "Deployment flag not set for the vault address");
+        assertNotEq(
+            address(factory.protocolFeeController(vaultAddress)),
+            address(0),
+            "Protocol fee controller not set for vault address"
+        );
+        assertNotEq(
+            address(factory.vaultExtension(vaultAddress)),
+            address(0),
+            "Vault extension not set for vault address"
+        );
+        assertNotEq(address(factory.vaultAdmin(vaultAddress)), address(0), "Vault admin not set for vault address");
+
         // We cannot compare the deployed bytecode of the created vault against a second deployment of the Vault
         // because the actionIdDisambiguator of the authentication contract is stored in immutable storage.
         // Therefore such comparison would fail, so we just call a few getters instead.
@@ -97,8 +110,8 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
 
     function testCreateTwice() public {
         bytes32 salt = bytes32(uint256(123));
-
         address vaultAddress = factory.getDeploymentAddress(salt);
+
         vm.startPrank(deployer);
         factory.create(
             salt,
@@ -107,10 +120,24 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
             type(VaultExtension).creationCode,
             type(VaultAdmin).creationCode
         );
-        // Nothing happens.
+
+        // Can't deploy to the same address twice.
+        vm.expectRevert(abi.encodeWithSelector(VaultFactory.VaultAlreadyDeployed.selector, vaultAddress));
         factory.create(
             salt,
             vaultAddress,
+            type(Vault).creationCode,
+            type(VaultExtension).creationCode,
+            type(VaultAdmin).creationCode
+        );
+
+        // Can deploy to a different address using a different salt.
+        bytes32 salt2 = bytes32(uint256(321));
+        address vaultAddress2 = factory.getDeploymentAddress(salt2);
+
+        factory.create(
+            salt2,
+            vaultAddress2,
             type(Vault).creationCode,
             type(VaultExtension).creationCode,
             type(VaultAdmin).creationCode

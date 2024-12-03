@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -23,10 +24,10 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     bytes32 public immutable vaultAdminCreationCodeHash;
     bytes32 public immutable vaultExtensionCreationCodeHash;
 
-    ProtocolFeeController public protocolFeeController;
-    VaultExtension public vaultExtension;
-    VaultAdmin public vaultAdmin;
-    bool public deploymentComplete;
+    mapping(address vaultAddress => ProtocolFeeController) public protocolFeeController;
+    mapping(address vaultAddress => VaultExtension) public vaultExtension;
+    mapping(address vaultAddress => VaultAdmin) public vaultAdmin;
+    mapping(address vaultAddress => bool deployed)  public isDeployed;
 
     IAuthorizer private immutable _authorizer;
     uint32 private immutable _pauseWindowDuration;
@@ -43,8 +44,17 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     /// @notice The given salt does not match the generated address when attempting to create the Vault.
     error VaultAddressMismatch();
 
-    /// @notice The bytecode for the given contract does not match the expected bytecode.
+    /**
+     * @notice The bytecode for the given contract does not match the expected bytecode. 
+     * @param contractName The name of the mismatched contract
+     */
     error InvalidBytecode(string contractName);
+
+    /**
+     * @notice The Vault has already been deployed at this target address. 
+     * @param vault Vault address under contention.
+     */
+    error VaultAlreadyDeployed(address vault);
 
     constructor(
         IAuthorizer authorizer,
@@ -69,12 +79,14 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
 
     /**
      * @notice Deploys the Vault.
-     * @dev The Vault can only be deployed once. Therefore, this function is permissioned to ensure that it is
-     * deployed to the right address.
+     * @dev The Vault can only be deployed once per salt. This function is permissioned.
      *
-     * @param salt Salt used to create the Vault. See `getDeploymentAddress`.
+     * @param salt Salt used to create the Vault. See `getDeploymentAddress`
      * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
-     * Vault to the target address.
+     * Vault to the target address
+     * @param vaultCreationCode Creation code for the Vault
+     * @param vaultExtensionCreationCode Creation code for the VaultExtension
+     * @param vaultAdminCreationCode Creation code for the VaultAdmin
      */
     function create(
         bytes32 salt,
@@ -83,8 +95,8 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
         bytes calldata vaultExtensionCreationCode,
         bytes calldata vaultAdminCreationCode
     ) external onlyOwner nonReentrant {
-        if (deploymentComplete) {
-            return;
+        if (isDeployed[targetAddress]) {
+            revert VaultAlreadyDeployed(targetAddress);
         }
 
         if (vaultCreationCodeHash != keccak256(vaultCreationCode)) {
@@ -100,13 +112,14 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
             revert VaultAddressMismatch();
         }
 
-        protocolFeeController = new ProtocolFeeController(IVault(vaultAddress));
+        ProtocolFeeController protocolFeeController_ = new ProtocolFeeController(IVault(vaultAddress));
+        protocolFeeController[vaultAddress] = protocolFeeController_;
 
-        vaultAdmin = VaultAdmin(
+        VaultAdmin vaultAdmin_ = VaultAdmin(
             payable(
                 Create2.deploy(
-                    0,
-                    bytes32(0x00),
+                    0, // ETH value.
+                    salt,
                     abi.encodePacked(
                         vaultAdminCreationCode,
                         abi.encode(
@@ -120,20 +133,22 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
                 )
             )
         );
+        vaultAdmin[vaultAddress] = vaultAdmin_;
 
-        vaultExtension = VaultExtension(
+        VaultExtension vaultExtension_ = VaultExtension(
             payable(
                 Create2.deploy(
-                    0,
-                    bytes32(uint256(0x01)),
-                    abi.encodePacked(vaultExtensionCreationCode, abi.encode(vaultAddress, vaultAdmin))
+                    0, // ETH value.
+                    salt,
+                    abi.encodePacked(vaultExtensionCreationCode, abi.encode(vaultAddress, vaultAdmin_))
                 )
             )
         );
+        vaultExtension[vaultAddress] = vaultExtension_;
 
         address deployedAddress = CREATE3.deploy(
             salt,
-            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, protocolFeeController)),
+            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension_, _authorizer, protocolFeeController_)),
             0
         );
 
@@ -144,7 +159,7 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
 
         emit VaultCreated(vaultAddress);
 
-        deploymentComplete = true;
+        isDeployed[vaultAddress] = true;
     }
 
     /// @notice Gets deployment address for a given salt.
