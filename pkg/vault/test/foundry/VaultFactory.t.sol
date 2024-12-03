@@ -58,16 +58,16 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
 
         assertTrue(factory.isDeployed(vaultAddress), "Deployment flag not set for the vault address");
         assertNotEq(
-            address(factory.protocolFeeController(vaultAddress)),
+            address(factory.deployedProtocolFeeControllers(vaultAddress)),
             address(0),
             "Protocol fee controller not set for vault address"
         );
         assertNotEq(
-            address(factory.vaultExtension(vaultAddress)),
+            address(factory.deployedVaultExtensions(vaultAddress)),
             address(0),
             "Vault extension not set for vault address"
         );
-        assertNotEq(address(factory.vaultAdmin(vaultAddress)), address(0), "Vault admin not set for vault address");
+        assertNotEq(address(factory.deployedVaultAdmins(vaultAddress)), address(0), "Vault admin not set for vault address");
 
         // We cannot compare the deployed bytecode of the created vault against a second deployment of the Vault
         // because the actionIdDisambiguator of the authentication contract is stored in immutable storage.

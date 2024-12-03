@@ -24,9 +24,9 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     bytes32 public immutable vaultAdminCreationCodeHash;
     bytes32 public immutable vaultExtensionCreationCodeHash;
 
-    mapping(address vaultAddress => ProtocolFeeController) public protocolFeeController;
-    mapping(address vaultAddress => VaultExtension) public vaultExtension;
-    mapping(address vaultAddress => VaultAdmin) public vaultAdmin;
+    mapping(address vaultAddress => ProtocolFeeController) public deployedProtocolFeeControllers;
+    mapping(address vaultAddress => VaultExtension) public deployedVaultExtensions;
+    mapping(address vaultAddress => VaultAdmin) public deployedVaultAdmins;
     mapping(address vaultAddress => bool deployed) public isDeployed;
 
     IAuthorizer private immutable _authorizer;
@@ -52,7 +52,7 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
 
     /**
      * @notice The Vault has already been deployed at this target address.
-     * @param vault Vault address under contention.
+     * @param vault Vault address already consumed by a previous deployment
      */
     error VaultAlreadyDeployed(address vault);
 
@@ -112,13 +112,13 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
             revert VaultAddressMismatch();
         }
 
-        ProtocolFeeController protocolFeeController_ = new ProtocolFeeController(IVault(vaultAddress));
-        protocolFeeController[vaultAddress] = protocolFeeController_;
+        ProtocolFeeController protocolFeeController = new ProtocolFeeController(IVault(vaultAddress));
+        deployedProtocolFeeControllers[vaultAddress] = protocolFeeController;
 
-        VaultAdmin vaultAdmin_ = VaultAdmin(
+        VaultAdmin vaultAdmin = VaultAdmin(
             payable(
                 Create2.deploy(
-                    0, // ETH value.
+                    0, // ETH value
                     salt,
                     abi.encodePacked(
                         vaultAdminCreationCode,
@@ -133,22 +133,22 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
                 )
             )
         );
-        vaultAdmin[vaultAddress] = vaultAdmin_;
+        deployedVaultAdmins[vaultAddress] = vaultAdmin;
 
-        VaultExtension vaultExtension_ = VaultExtension(
+        VaultExtension vaultExtension = VaultExtension(
             payable(
                 Create2.deploy(
-                    0, // ETH value.
+                    0, // ETH value
                     salt,
-                    abi.encodePacked(vaultExtensionCreationCode, abi.encode(vaultAddress, vaultAdmin_))
+                    abi.encodePacked(vaultExtensionCreationCode, abi.encode(vaultAddress, vaultAdmin))
                 )
             )
         );
-        vaultExtension[vaultAddress] = vaultExtension_;
+        deployedVaultExtensions[vaultAddress] = vaultExtension;
 
         address deployedAddress = CREATE3.deploy(
             salt,
-            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension_, _authorizer, protocolFeeController_)),
+            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, protocolFeeController)),
             0
         );
 
