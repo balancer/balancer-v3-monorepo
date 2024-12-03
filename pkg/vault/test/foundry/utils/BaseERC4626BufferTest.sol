@@ -56,10 +56,10 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     }
 
     function initPool() internal virtual override {
-        vm.startPrank(bob);
         uint256 waDaiBobShares = _vaultPreviewDeposit(waDAI, erc4626PoolInitialAmount);
         uint256 waWethBobShares = _vaultPreviewDeposit(waWETH, erc4626PoolInitialAmount);
 
+        vm.startPrank(bob);
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[waDaiIdx] = waDaiBobShares;
         amountsIn[waWethIdx] = waWethBobShares;

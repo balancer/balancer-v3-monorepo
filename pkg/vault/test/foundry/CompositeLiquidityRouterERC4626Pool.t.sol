@@ -94,9 +94,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        _prankStaticCall();
         exactWrappedAmountsIn[waDaiIdx] = _vaultPreviewDeposit(waDAI, operationAmount);
-        _prankStaticCall();
         exactWrappedAmountsIn[waWethIdx] = _vaultPreviewDeposit(waWETH, operationAmount);
 
         uint256 snapshot = vm.snapshot();
@@ -143,9 +141,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        _prankStaticCall();
         exactWrappedAmountsIn[waDaiIdx] = _vaultPreviewDeposit(waDAI, operationAmount);
-        _prankStaticCall();
         exactWrappedAmountsIn[waWethIdx] = _vaultPreviewDeposit(waWETH, operationAmount);
 
         uint256 snapshot = vm.snapshot();
@@ -190,7 +186,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
         exactWrappedAmountsIn[waDaiIdx] = 0;
-        _prankStaticCall();
         exactWrappedAmountsIn[waWethIdx] = _vaultPreviewDeposit(waWETH, operationAmount);
 
         uint256 snapshot = vm.snapshot();
@@ -234,7 +229,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        _prankStaticCall();
         exactWrappedAmountsIn[partialWaDaiIdx] = _vaultPreviewDeposit(waDAI, operationAmount);
         exactWrappedAmountsIn[partialWethIdx] = operationAmount;
 
@@ -281,7 +275,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        _prankStaticCall();
         exactWrappedAmountsIn[partialWaDaiIdx] = _vaultPreviewDeposit(waDAI, operationAmount);
         exactWrappedAmountsIn[partialWethIdx] = operationAmount;
 
@@ -446,13 +439,11 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsIn[waDaiIdx],
             _vaultPreviewMint(waDAI, expectedWrappedAmountsIn[waDaiIdx]),
             "DAI actualAmountsInUnderlying should match expected"
         );
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsIn[waWethIdx],
             _vaultPreviewMint(waWETH, expectedWrappedAmountsIn[waWethIdx]),
@@ -504,13 +495,11 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsIn[waDaiIdx],
             _vaultPreviewMint(waDAI, expectedWrappedAmountsIn[waDaiIdx]),
             "DAI actualAmountsInUnderlying should match expected"
         );
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsIn[waWethIdx],
             _vaultPreviewMint(waWETH, expectedWrappedAmountsIn[waWethIdx]),
@@ -541,7 +530,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         uint256[] memory expectedUnderlyingAmountsIn = new uint256[](2);
-        _prankStaticCall();
         expectedUnderlyingAmountsIn[partialWaDaiIdx] = _vaultPreviewMint(
             waDAI,
             expectedWrappedAmountsIn[partialWaDaiIdx]
@@ -570,7 +558,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsIn[partialWaDaiIdx],
             _vaultPreviewMint(waDAI, expectedWrappedAmountsIn[partialWaDaiIdx]),
@@ -605,7 +592,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         uint256[] memory expectedUnderlyingAmountsIn = new uint256[](2);
-        _prankStaticCall();
         expectedUnderlyingAmountsIn[partialWaDaiIdx] = _vaultPreviewMint(
             waDAI,
             expectedWrappedAmountsIn[partialWaDaiIdx]
@@ -631,7 +617,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsIn[partialWaDaiIdx],
             _vaultPreviewMint(waDAI, expectedWrappedAmountsIn[partialWaDaiIdx]),
@@ -783,9 +768,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 beforeBPTBalance = IERC20(address(erc4626Pool)).balanceOf(bob);
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        _prankStaticCall();
         minAmountsOut[waWethIdx] = _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]);
-        _prankStaticCall();
         minAmountsOut[waDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
@@ -805,13 +788,11 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterRemoveLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsOut[waDaiIdx],
             _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]),
             "DAI actualUnderlyingAmountsOut should match expected"
         );
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsOut[waWethIdx],
             _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]),
@@ -838,9 +819,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 beforeBPTBalance = IERC20(address(erc4626Pool)).balanceOf(bob);
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        _prankStaticCall();
         minAmountsOut[waWethIdx] = _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]);
-        _prankStaticCall();
         minAmountsOut[waDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
@@ -861,13 +840,11 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterRemoveLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsOut[waDaiIdx],
             _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]),
             "DAI actualUnderlyingAmountsOut should match expected"
         );
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsOut[waWethIdx],
             _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]),
@@ -895,7 +872,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory minAmountsOut = new uint256[](2);
         minAmountsOut[partialWethIdx] = expectedWrappedAmountsOut[partialWethIdx];
-        _prankStaticCall();
         minAmountsOut[partialWaDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
@@ -920,7 +896,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterRemoveLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsOut[partialWaDaiIdx],
             _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[partialWaDaiIdx]),
@@ -954,7 +929,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory minAmountsOut = new uint256[](2);
         minAmountsOut[partialWethIdx] = expectedWrappedAmountsOut[partialWethIdx];
-        _prankStaticCall();
         minAmountsOut[partialWaDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
@@ -980,7 +954,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterRemoveLiquidity(balancesBefore, balancesAfter, vars);
 
-        _prankStaticCall();
         assertEq(
             actualUnderlyingAmountsOut[partialWaDaiIdx],
             _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[partialWaDaiIdx]),

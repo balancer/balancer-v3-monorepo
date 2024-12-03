@@ -52,17 +52,17 @@ contract YieldBearingPoolsTest is BaseERC4626BufferTest {
     }
 
     function testAddLiquidityEvents() public {
+        uint256 daiWrappedAmount = _vaultPreviewDeposit(waDAI, bufferInitialAmount);
+        uint256 wethWrappedAmount = _vaultPreviewDeposit(waWETH, bufferInitialAmount);
+
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waDAI,
             bufferInitialAmount,
-            _vaultPreviewDeposit(waDAI, bufferInitialAmount),
-            PackedTokenBalance.toPackedBalance(
-                2 * bufferInitialAmount,
-                2 * _vaultPreviewDeposit(waDAI, bufferInitialAmount)
-            )
+            daiWrappedAmount,
+            PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * daiWrappedAmount)
         );
         bufferRouter.addLiquidityToBuffer(waDAI, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
 
@@ -70,11 +70,8 @@ contract YieldBearingPoolsTest is BaseERC4626BufferTest {
         emit IVaultEvents.LiquidityAddedToBuffer(
             waWETH,
             bufferInitialAmount,
-            _vaultPreviewDeposit(waWETH, bufferInitialAmount),
-            PackedTokenBalance.toPackedBalance(
-                2 * bufferInitialAmount,
-                2 * _vaultPreviewDeposit(waWETH, bufferInitialAmount)
-            )
+            wethWrappedAmount,
+            PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * wethWrappedAmount)
         );
         bufferRouter.addLiquidityToBuffer(waWETH, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
         vm.stopPrank();
@@ -305,17 +302,15 @@ contract YieldBearingPoolsTest is BaseERC4626BufferTest {
     }
 
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
+        uint256 wrappedAmount = _vaultPreviewDeposit(waWETH, unbalancedUnderlyingDelta);
+
         vm.startPrank(lp);
         // Positive imbalance of underlying.
         dai.approve(address(vault), unbalancedUnderlyingDelta);
         vault.addLiquidityToBufferUnbalancedForTests(waDAI, unbalancedUnderlyingDelta, 0);
         // Positive imbalance of wrapped.
-        IERC20(address(waWETH)).approve(address(vault), _vaultPreviewDeposit(waWETH, unbalancedUnderlyingDelta));
-        vault.addLiquidityToBufferUnbalancedForTests(
-            waWETH,
-            0,
-            _vaultPreviewDeposit(waWETH, unbalancedUnderlyingDelta)
-        );
+        IERC20(address(waWETH)).approve(address(vault), wrappedAmount);
+        vault.addLiquidityToBufferUnbalancedForTests(waWETH, 0, wrappedAmount);
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
