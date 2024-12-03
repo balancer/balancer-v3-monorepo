@@ -47,6 +47,9 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     /// forge-config: default.fuzz.runs = 100
     function testCreateVault__Fuzz(bytes32 salt) public {
         address vaultAddress = factory.getDeploymentAddress(salt);
+
+        assertFalse(factory.isDeployed(vaultAddress), "Deployment flag is set before deployment");
+
         vm.prank(deployer);
         factory.create(
             salt,
@@ -67,7 +70,11 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
             address(0),
             "Vault extension not set for vault address"
         );
-        assertNotEq(address(factory.deployedVaultAdmins(vaultAddress)), address(0), "Vault admin not set for vault address");
+        assertNotEq(
+            address(factory.deployedVaultAdmins(vaultAddress)),
+            address(0),
+            "Vault admin not set for vault address"
+        );
 
         // We cannot compare the deployed bytecode of the created vault against a second deployment of the Vault
         // because the actionIdDisambiguator of the authentication contract is stored in immutable storage.
