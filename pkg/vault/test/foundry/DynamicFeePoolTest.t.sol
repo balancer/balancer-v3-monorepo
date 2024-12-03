@@ -76,7 +76,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             liquidityManagement
         );
 
-        poolArguments = abi.encode(vault, name, symbol);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function initPool() internal override {
