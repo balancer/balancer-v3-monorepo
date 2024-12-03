@@ -504,10 +504,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
         // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
         // since `redeem` is an EXACT_IN operation that rounds down the result.
-        issuedShares =
-            wrappedToken.previewRedeem(amountWrappedRaw > 1 ? amountWrappedRaw - 1 : amountWrappedRaw) +
-            amountUnderlyingRaw;
-        issuedShares = issuedShares > 1 ? issuedShares - 1 : issuedShares;
+        issuedShares = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
         _ensureBufferMinimumTotalSupply(issuedShares);
 
         // Divide `issuedShares` between the zero address, which receives the minimum supply, and the account

@@ -110,7 +110,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
         uint256 waDAIInvariantDelta = bufferInitialAmount +
-            _vaultPreviewRedeem(waDAI, _vaultPreviewDeposit(waDAI, bufferInitialAmount));
+            waDAI.previewRedeem(waDAI.previewDeposit(bufferInitialAmount));
         assertEq(
             vault.getBufferOwnerShares(IERC4626(waDAI), lp),
             waDAIInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
@@ -123,7 +123,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         );
 
         uint256 waWETHInvariantDelta = bufferInitialAmount +
-            _vaultPreviewRedeem(waWETH, _vaultPreviewDeposit(waWETH, bufferInitialAmount));
+            waWETH.previewRedeem(waWETH.previewDeposit(bufferInitialAmount));
         assertEq(
             vault.getBufferOwnerShares(IERC4626(waWETH), lp),
             waWETHInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
@@ -143,7 +143,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         assertEq(baseBalance, bufferInitialAmount, "Wrong waDAI buffer balance for base token");
         assertEq(
             wrappedBalance,
-            _vaultPreviewDeposit(waDAI, bufferInitialAmount),
+            waDAI.previewDeposit(bufferInitialAmount),
             "Wrong waDAI buffer balance for wrapped token"
         );
 
@@ -151,16 +151,16 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         assertEq(baseBalance, bufferInitialAmount, "Wrong waWETH buffer balance for base token");
         assertEq(
             wrappedBalance,
-            _vaultPreviewDeposit(waWETH, bufferInitialAmount),
+            waWETH.previewDeposit(bufferInitialAmount),
             "Wrong waWETH buffer balance for wrapped token"
         );
     }
 
     function _initializeBuffers() private {
         // Create and fund buffer pools.
-        uint256 waDAILPShares = _vaultPreviewDeposit(waDAI, bufferInitialAmount);
-        uint256 waUSDCLPShares = _vaultPreviewDeposit(waUSDC, bufferInitialAmount);
-        uint256 waWETHLPShares = _vaultPreviewDeposit(waWETH, bufferInitialAmount);
+        uint256 waDAILPShares = waDAI.previewDeposit(bufferInitialAmount);
+        uint256 waUSDCLPShares = waUSDC.previewDeposit(bufferInitialAmount);
+        uint256 waWETHLPShares = waWETH.previewDeposit(bufferInitialAmount);
 
         vm.startPrank(lp);
         bufferRouter.initializeBuffer(waDAI, bufferInitialAmount, waDAILPShares, 0);

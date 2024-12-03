@@ -52,34 +52,23 @@ contract YieldBearingPoolsTest is BaseERC4626BufferTest {
     }
 
     function testAddLiquidityEvents() public {
-        uint256 bufferDaiInitialWrapped = _vaultPreviewDeposit(waDAI, bufferInitialAmount);
-        uint256 daiUnderlyingAmount = _vaultPreviewMint(waDAI, bufferInitialAmount) + 1;
-        uint256 bufferWethInitialWrapped = _vaultPreviewDeposit(waWETH, bufferInitialAmount);
-        uint256 wethUnderlyingAmount = _vaultPreviewMint(waWETH, bufferInitialAmount) + 1;
-
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waDAI,
-            daiUnderlyingAmount,
             bufferInitialAmount,
-            PackedTokenBalance.toPackedBalance(
-                bufferInitialAmount + daiUnderlyingAmount,
-                bufferDaiInitialWrapped + bufferInitialAmount
-            )
+            waDAI.previewDeposit(bufferInitialAmount),
+            PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * waDAI.previewDeposit(bufferInitialAmount))
         );
         bufferRouter.addLiquidityToBuffer(waDAI, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waWETH,
-            wethUnderlyingAmount,
             bufferInitialAmount,
-            PackedTokenBalance.toPackedBalance(
-                bufferInitialAmount + wethUnderlyingAmount,
-                bufferWethInitialWrapped + bufferInitialAmount
-            )
+            waWETH.previewDeposit(bufferInitialAmount),
+            PackedTokenBalance.toPackedBalance(2 * bufferInitialAmount, 2 * waWETH.previewDeposit(bufferInitialAmount))
         );
         bufferRouter.addLiquidityToBuffer(waWETH, MAX_UINT128, MAX_UINT128, 2 * bufferInitialAmount);
         vm.stopPrank();
