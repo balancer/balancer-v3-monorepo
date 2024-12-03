@@ -49,6 +49,15 @@ contract SwapMedusaTest is BaseMedusaTest {
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
+        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
+        for (uint256 i = 0; i < tokens.length; i++) {
+            emit Debug("balance", lastBalancesLiveScaled18[i]);
+        }
+
+        emit Debug("token index in", tokenIndexIn);
+        emit Debug("token index out", tokenIndexOut);
+        emit Debug("exact amount in", exactAmountIn);
+
         medusa.prank(alice);
         router.swapSingleTokenExactIn(
             address(pool),
@@ -60,10 +69,6 @@ contract SwapMedusaTest is BaseMedusaTest {
             false,
             bytes("")
         );
-
-        emit Debug("token index in", tokenIndexIn);
-        emit Debug("token index out", tokenIndexOut);
-        emit Debug("exact amount in", exactAmountIn);
 
         updateInvariant();
     }
@@ -91,6 +96,6 @@ contract SwapMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountIn) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        boundedAmountIn = bound(tokenAmountIn, MIN_SWAP_AMOUNT, MAX_BALANCE - balancesRaw[tokenIndex]);
+        boundedAmountIn = bound(tokenAmountIn, MIN_SWAP_AMOUNT, balancesRaw[tokenIndex] / 3);
     }
 }
