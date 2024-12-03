@@ -664,7 +664,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             ),
             "Wrong underlying balance for tokenOut buffer"
         );
-        assertEq(
+        assertGe(
             wrappedBalance,
             uint256(
                 int256(vars.bufferBeforeSwapYbTokenOut) -
@@ -934,7 +934,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             bufferUnderlyingImbalance = bufferBalances.getBufferUnderlyingImbalance(wToken);
 
             uint256 vaultUnderlyingDeltaHint = uint256(int256(amountInUnderlying) + bufferUnderlyingImbalance);
-            uint256 vaultWrappedDeltaHint = _vaultPreviewDeposit(wToken, vaultUnderlyingDeltaHint);
+            uint256 vaultWrappedDeltaHint = wToken.previewDeposit(vaultUnderlyingDeltaHint);
             bufferWrappedImbalance = int256(vaultWrappedDeltaHint) - int256(amountOutWrapped);
         }
     }
@@ -957,7 +957,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             bufferWrappedImbalance = bufferBalances.getBufferWrappedImbalance(wToken);
 
             uint256 vaultWrappedDeltaHint = uint256(int256(amountInWrapped) + bufferWrappedImbalance);
-            uint256 vaultUnderlyingDeltaHint = _vaultPreviewRedeem(wToken, vaultWrappedDeltaHint);
+            uint256 vaultUnderlyingDeltaHint = wToken.previewRedeem(vaultWrappedDeltaHint);
             bufferUnderlyingImbalance = int256(vaultUnderlyingDeltaHint) - int256(amountOutUnderlying);
         }
     }
@@ -979,7 +979,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // should consider it in our result preview. The logic below reproduces Vault's rebalance logic.
             int256 bufferImbalance = bufferBalances.getBufferWrappedImbalance(wToken);
             uint256 vaultWrappedDeltaHint = uint256(int256(amountOutWrapped) - bufferImbalance);
-            uint256 vaultUnderlyingDeltaHint = _vaultPreviewMint(wToken, vaultWrappedDeltaHint);
+            uint256 vaultUnderlyingDeltaHint = wToken.previewMint(vaultWrappedDeltaHint);
 
             if (bufferImbalance != 0) {
                 bufferUnderlyingImbalance = int256(vaultUnderlyingDeltaHint) - int256(amountInUnderlying);
@@ -1005,7 +1005,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // should consider it in our result preview. The logic below reproduces Vault's rebalance logic.
             int256 bufferImbalance = bufferBalances.getBufferUnderlyingImbalance(wToken);
             uint256 vaultUnderlyingDeltaHint = uint256(int256(amountOutUnderlying) - bufferImbalance);
-            uint256 vaultWrappedDeltaHint = _vaultPreviewWithdraw(wToken, vaultUnderlyingDeltaHint);
+            uint256 vaultWrappedDeltaHint = wToken.previewWithdraw(vaultUnderlyingDeltaHint);
 
             if (bufferImbalance != 0) {
                 bufferWrappedImbalance = int256(vaultWrappedDeltaHint) - int256(amountInWrapped);

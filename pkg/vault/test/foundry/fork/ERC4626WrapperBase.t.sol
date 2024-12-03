@@ -76,7 +76,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         amountToDeposit = bound(amountToDeposit, MIN_DEPOSIT, userInitialUnderlying);
 
         uint256 convertedShares = wrapper.convertToShares(amountToDeposit);
-        uint256 previewedShares = _vaultPreviewDeposit(wrapper, amountToDeposit);
+        uint256 previewedShares = wrapper.previewDeposit(amountToDeposit);
 
         uint256 balanceUnderlyingBefore = underlyingToken.balanceOf(user);
         uint256 balanceSharesBefore = wrapper.balanceOf(user);
@@ -117,7 +117,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         );
 
         uint256 convertedUnderlying = wrapper.convertToAssets(amountToMint);
-        uint256 previewedUnderlying = _vaultPreviewMint(wrapper, amountToMint);
+        uint256 previewedUnderlying = wrapper.previewMint(amountToMint);
 
         uint256 balanceUnderlyingBefore = underlyingToken.balanceOf(user);
         uint256 balanceSharesBefore = wrapper.balanceOf(user);
@@ -152,7 +152,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         amountToWithdraw = bound(amountToWithdraw, MIN_DEPOSIT, userInitialUnderlying - TOLERANCE);
 
         uint256 convertedShares = wrapper.convertToShares(amountToWithdraw);
-        uint256 previewedShares = _vaultPreviewWithdraw(wrapper, amountToWithdraw);
+        uint256 previewedShares = wrapper.previewWithdraw(amountToWithdraw);
 
         uint256 balanceUnderlyingBefore = underlyingToken.balanceOf(user);
         uint256 balanceSharesBefore = wrapper.balanceOf(user);
@@ -186,7 +186,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         amountToRedeem = bound(amountToRedeem, MIN_DEPOSIT * underlyingToWrappedFactor, userInitialShares - TOLERANCE);
 
         uint256 convertedAssets = wrapper.convertToAssets(amountToRedeem);
-        uint256 previewedAssets = _vaultPreviewRedeem(wrapper, amountToRedeem);
+        uint256 previewedAssets = wrapper.previewRedeem(amountToRedeem);
 
         uint256 balanceUnderlyingBefore = underlyingToken.balanceOf(user);
         uint256 balanceSharesBefore = wrapper.balanceOf(user);
