@@ -44,7 +44,7 @@ library TransientEnumerableSet {
     // solhint-disable func-name-mixedcase
 
     struct AddressSet {
-        // Storage of set values
+        // Storage of set values.
         address[] __values;
         // Position of the value in the `values` array, plus 1 because index 0
         // means a value is not in the set.
@@ -67,7 +67,7 @@ library TransientEnumerableSet {
             _values(set).tPush(value);
 
             // The value is stored at length-1, but we add 1 to all indexes
-            // and use 0 as a sentinel value
+            // and use 0 as a sentinel value.
             _indexes(set).tSet(value, _values(set).tLength());
 
             return true;
@@ -79,11 +79,10 @@ library TransientEnumerableSet {
     /**
      * @dev Removes a value from a set. O(1).
      *
-     * Returns true if the value was removed from the set, that is if it was
-     * present.
+     * Returns true if the value was removed from the set; i.e., if it was present.
      */
     function remove(AddressSet storage set, address value) internal returns (bool) {
-        // We read and store the value's index to prevent multiple reads from the same storage slot
+        // We read and store the value's index to prevent multiple reads from the same storage slot.
         uint256 valueIndex = _indexes(set).tGet(value);
 
         if (valueIndex != 0) {
@@ -99,18 +98,18 @@ library TransientEnumerableSet {
                 lastIndex = _values(set).tLength() - 1;
             }
 
-            // The swap is only necessary if we're not removing the last element
+            // The swap is only necessary if we're not removing the last element.
             if (toDeleteIndex != lastIndex) {
                 address lastValue = _values(set).tAt(lastIndex);
 
-                // Move the last value to the index where the value to delete is
+                // Move the last entry to the index of the entry to delete.
                 _values(set).tSet(toDeleteIndex, lastValue);
 
-                // Update the index for the moved value
+                // Update the index for the moved value.
                 _indexes(set).tSet(lastValue, valueIndex); // = toDeleteIndex + 1; all indices are 1-based
             }
 
-            // Delete the slot where the moved value was stored
+            // Delete the slot where the moved value was stored.
             _values(set).tPop();
 
             // We need to delete the index for the deleted slot with transient storage because another operation in the

@@ -46,8 +46,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) BatchRouterCommon(vault, weth, permit2, version) {
+        string memory routerVersion
+    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

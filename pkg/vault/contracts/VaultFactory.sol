@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
-import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
-import { VaultAdmin } from "./VaultAdmin.sol";
-import { VaultExtension } from "./VaultExtension.sol";
 import { ProtocolFeeController } from "./ProtocolFeeController.sol";
+import { VaultExtension } from "./VaultExtension.sol";
+import { VaultAdmin } from "./VaultAdmin.sol";
 
 /// @notice One-off factory to deploy the Vault at a specific address.
 contract VaultFactory is Authentication {
