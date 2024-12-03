@@ -94,6 +94,19 @@ interface IVaultExplorer {
      */
     function getReservesOf(IERC20 token) external view returns (uint256 reserveAmount);
 
+    /**
+     * @notice This flag is used to detect and tax "round trip" transactions (adding and removing liquidity in the
+     * same pool).
+     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same transaction adds an extra
+     * layer of security, discouraging operations that try to undo others for profit. Remove liquidity proportional
+     * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
+     * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
+     * than a simple swap for every pool type.
+     * @param pool Address of the pool to check
+     * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
+     */
+    function getAddLiquidityCalledFlag(address pool) external view returns (bool);
+
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
@@ -333,15 +346,22 @@ interface IVaultExplorer {
     *******************************************************************************/
 
     /**
-     * @notice Checks if the queries enabled on the Vault.
-     * @dev This is a one-way switch. Once queries are disabled, they can never be re-enabled.
-     * The query functions rely on a specific EVM feature to detect static calls. Query operations are exempt from
-     * settlement constraints, so it's critical that no state changes can occur. We retain the ability to disable
+     * @notice Checks whether queries are reversibly disabled on the Vault.
+     * @dev Governance can call `enableQuery` to restore query functionality, unless `disableQueryPermanently` was
+     * called. The query functions rely on a specific EVM feature to detect static calls. Query operations are exempt
+     * from settlement constraints, so it's critical that no state changes can occur. We retain the ability to disable
      * queries in the unlikely event that EVM changes violate its assumptions (perhaps on an L2).
      *
-     * @return queryDisabled If true, then queries are disabled
+     * @return queryDisabled If true, then queries are reversibly disabled
      */
     function isQueryDisabled() external view returns (bool queryDisabled);
+
+    /**
+     * @notice Returns true if queries are disabled permanently; false if they are enabled.
+     * @dev This is a one-way switch. Once queries are disabled permanently, they can never be re-enabled.
+     * @return queryDisabled If true, then queries are permanently disabled
+     */
+    function isQueryDisabledPermanently() external view returns (bool);
 
     /***************************************************************************
                               Vault Admin Functions
