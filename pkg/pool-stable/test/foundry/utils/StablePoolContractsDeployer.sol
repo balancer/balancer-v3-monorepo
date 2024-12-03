@@ -8,8 +8,8 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
-import { StablePool } from "../../../contracts/StablePool.sol";
 import { StablePoolFactory } from "../../../contracts/StablePoolFactory.sol";
+import { StablePool } from "../../../contracts/StablePool.sol";
 
 /**
  * @dev This contract contains functions for deploying mocks and contracts related to the "StablePool". These functions should have support for reusing artifacts from the hardhat compilation.

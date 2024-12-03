@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { Rounding } from "../vault/VaultTypes.sol";
 import { IBasePool } from "../vault/IBasePool.sol";
 
 interface IGyro2CLPPool is IBasePool {

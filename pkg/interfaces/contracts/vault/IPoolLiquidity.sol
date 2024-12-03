@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-/// @notice Interface for custom liquidity operations
+/// @notice Interface for custom liquidity operations.
 interface IPoolLiquidity {
     /**
      * @notice Add liquidity to the pool with a custom hook.
