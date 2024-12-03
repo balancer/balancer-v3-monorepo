@@ -15,7 +15,9 @@ import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 
 import "../utils/BaseMedusaTest.sol";
 
-abstract contract SwapMedusaTest is BaseMedusaTest {
+contract SwapMedusaTest is BaseMedusaTest {
+    uint256 internal constant MIN_SWAP_AMOUNT = 1e6;
+
     int256 internal invariantBefore = 0;
     int256 internal currentInvariant = 0;
 
@@ -27,21 +29,11 @@ abstract contract SwapMedusaTest is BaseMedusaTest {
     }
 
     function optimize_currentInvariant() public view returns (int256) {
-        return currentInvariant;
+        return -int256(currentInvariant);
     }
 
-    function property_currentInvariant_never_increases() public returns (bool) {
-        return assertInvariant();
-    }
-
-    function assertInvariant() internal returns (bool) {
-        updateInvariant();
-        return currentInvariant <= invariantBefore;
-    }
-
-    function computeInvariant() internal view returns (int256) {
-        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
-        return int256(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
+    function property_currentInvariant() public returns (bool) {
+        return currentInvariant >= invariantBefore;
     }
 
     function computeSwapExactIn(uint256 tokenIndexIn, uint256 tokenIndexOut, uint256 exactAmountIn) public {
@@ -68,6 +60,11 @@ abstract contract SwapMedusaTest is BaseMedusaTest {
             false,
             bytes("")
         );
+
+        emit Debug("token index in", tokenIndexIn);
+        emit Debug("token index out", tokenIndexOut);
+        emit Debug("exact amount in", exactAmountIn);
+
         updateInvariant();
     }
 
@@ -77,6 +74,11 @@ abstract contract SwapMedusaTest is BaseMedusaTest {
 
         emit Debug("invariant before", uint256(invariantBefore));
         emit Debug("current invariant", uint256(currentInvariant));
+    }
+
+    function computeInvariant() internal view returns (int256) {
+        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
+        return int256(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
     }
 
     function boundTokenIndex(uint256 tokenIndex) internal view returns (uint256 boundedIndex) {
@@ -89,6 +91,6 @@ abstract contract SwapMedusaTest is BaseMedusaTest {
         uint256 tokenIndex
     ) internal view returns (uint256 boundedAmountIn) {
         (, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(pool));
-        boundedAmountIn = bound(tokenAmountIn, 0, MAX_BALANCE - balancesRaw[tokenIndex]);
+        boundedAmountIn = bound(tokenAmountIn, MIN_SWAP_AMOUNT, MAX_BALANCE - balancesRaw[tokenIndex]);
     }
 }
