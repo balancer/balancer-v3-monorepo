@@ -105,7 +105,7 @@ interface IVaultExplorer {
      * @param pool Address of the pool to check
      * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
      */
-    function getAddLiquidityCalledFlag(address pool) external view returns (bool);
+    function getAddLiquidityCalledFlag(address pool) external view returns (bool liquidityAdded);
 
     /*******************************************************************************
                                     Pool Registration
@@ -179,7 +179,7 @@ interface IVaultExplorer {
      * @return tokens The pool tokens, sorted in registration order
      * @return tokenInfo Token info, sorted in token registration order
      * @return balancesRaw Raw balances, sorted in token registration order
-     * @return lastLiveBalances Last saved live balances, sorted in token registration order
+     * @return lastBalancesLiveScaled18 Last saved live balances, sorted in token registration order
      */
     function getPoolTokenInfo(
         address pool
@@ -190,7 +190,7 @@ interface IVaultExplorer {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         );
 
     /**
@@ -232,26 +232,26 @@ interface IVaultExplorer {
     /**
      * @notice Gets the total supply of a given ERC20 token.
      * @param token The token address
-     * @return totalSupply Total supply of the token
+     * @return tokenTotalSupply Total supply of the token
      */
-    function totalSupply(address token) external view returns (uint256);
+    function totalSupply(address token) external view returns (uint256 tokenTotalSupply);
 
     /**
      * @notice Gets the balance of an account for a given ERC20 token.
      * @param token Address of the token
      * @param account Address of the account
-     * @return balance Balance of the account for the token
+     * @return tokenBalance Token balance of the account
      */
-    function balanceOf(address token, address account) external view returns (uint256 balance);
+    function balanceOf(address token, address account) external view returns (uint256 tokenBalance);
 
     /**
      * @notice Gets the allowance of a spender for a given ERC20 token and owner.
      * @param token Address of the token
      * @param owner Address of the owner
      * @param spender Address of the spender
-     * @return allowance Amount of tokens the spender is allowed to spend
+     * @return tokenAllowance Amount of tokens the spender is allowed to spend
      */
-    function allowance(address token, address owner, address spender) external view returns (uint256);
+    function allowance(address token, address owner, address spender) external view returns (uint256 tokenAllowance);
 
     /*******************************************************************************
                                     Pool Pausing
@@ -359,9 +359,9 @@ interface IVaultExplorer {
     /**
      * @notice Returns true if queries are disabled permanently; false if they are enabled.
      * @dev This is a one-way switch. Once queries are disabled permanently, they can never be re-enabled.
-     * @return queryDisabled If true, then queries are permanently disabled
+     * @return queryDisabledPermanently If true, then queries are permanently disabled
      */
-    function isQueryDisabledPermanently() external view returns (bool);
+    function isQueryDisabledPermanently() external view returns (bool queryDisabledPermanently);
 
     /***************************************************************************
                               Vault Admin Functions
@@ -486,7 +486,7 @@ interface IVaultExplorer {
 
     /**
      * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
-     * @dev Fees are sent to the ProtocolFeeController address.
+     * @dev This function is called on the Vault's ProtocolFeeController, and fees are sent to that contract.
      * @param pool The pool on which all aggregate fees should be collected
      */
     function collectAggregateFees(address pool) external;
