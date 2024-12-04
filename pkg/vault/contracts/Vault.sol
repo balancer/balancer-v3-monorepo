@@ -1322,8 +1322,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
             // receives an underlying amount out and calculates the wrapped amount in with the correct rounding. 1 wei
-            // is added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview result
-            // to compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // is added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the preview
+            // result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven + 1) + 1, amountGiven);
         }
 
