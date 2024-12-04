@@ -1201,8 +1201,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
             // wrapped amount out and calculates the underlying amount in with the correct rounding. 1 wei is
-            // added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview
-            // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven + 1) + 1, amountGiven);
         }
 
