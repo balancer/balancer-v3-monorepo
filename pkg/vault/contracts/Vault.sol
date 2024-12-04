@@ -1186,7 +1186,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _ensureValidWrapAmount(params.wrappedToken, amountCalculatedRaw);
     }
 
-    // If amount is too small, rounding issues can be introduced that favors the user and can drain the buffer.
+    // If amount is too small, rounding issues can be introduced that favor the user and can leak value
+    // from the buffer.
     // _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already; this is just an extra layer
     // of security.
     function _ensureValidWrapAmount(IERC4626 wrappedToken, uint256 amount) private view {
@@ -1211,14 +1212,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding. 1 wei is
-            // removed from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview
-            // result to compensate any rounding imprecision, so we avoid the buffer leaking value.
+            // removed from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
             // wrapped amount out and calculates the underlying amount in with the correct rounding. 1 wei is
-            // added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview
-            // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven + 1) + 1, amountGiven);
         }
 
@@ -1332,14 +1333,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding. 1 wei is removed
-            // from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview result to
-            // compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the preview result
+            // to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
             // receives an underlying amount out and calculates the wrapped amount in with the correct rounding. 1 wei
-            // is added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview result
-            // to compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // is added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the preview
+            // result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven + 1) + 1, amountGiven);
         }
 
