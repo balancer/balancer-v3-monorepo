@@ -30,6 +30,16 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * Since we expect to release new versions of pool types regularly - and the blockchain is forever - versioning will
  * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
  * prevent the creation of any future pools from the factory.
+ *
+ * Use of factories is also important for security. Calls to `registerPool` or `initialize` made directly on the Vault
+ * could potentially be frontrun. In the case of registration, a DoS attack could register a pool with malicious
+ * parameters, causing the legitimate registration transaction to fail. The standard Balancer factories avoid this by
+ * deploying and registering in a single `create` function.
+ *
+ * It would also be possible to frontrun `initialize` (e.g., with unbalanced liquidity), and cause the intended
+ * initialization to fail. Like registration, initialization only happens once. While the Balancer standard factories
+ * do not initialize on create, this is a factor to consider when launching new pools. To avoid any possibility of
+ * frontrunning, best practice would be to create (i.e., deploy and register) and initialize in the same transaction.
  */
 abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
     mapping(address pool => bool isFromFactory) private _isPoolFromFactory;
