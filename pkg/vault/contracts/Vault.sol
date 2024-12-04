@@ -1173,8 +1173,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountCalculatedRaw = amountOutRaw;
         } else {
             if (amountInRaw < _MINIMUM_WRAP_AMOUNT) {
-                // If amount calculated is too small, rounding issues can be introduced that favors the user and can
-                // drain the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already,
+                // If amount calculated is too small, rounding issues can be introduced that favor the user and can
+                // drain the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already;
                 // this is just an extra layer of security.
                 revert WrapAmountTooSmall(params.wrappedToken);
             }
