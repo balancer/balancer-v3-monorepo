@@ -130,7 +130,7 @@ contract VaultExplorer is IVaultExplorer {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory scalingFactors
+            uint256[] memory lastBalancesLiveScaled18
         )
     {
         return _vault.getPoolTokenInfo(pool);
