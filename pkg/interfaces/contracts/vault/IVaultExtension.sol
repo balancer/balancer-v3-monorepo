@@ -69,9 +69,9 @@ interface IVaultExtension {
     function getReservesOf(IERC20 token) external view returns (uint256 reserveAmount);
 
     /**
-     * @notice This flag is used to detect and tax "round trip" transactions (adding and removing liquidity in the
+     * @notice This flag is used to detect and tax "round-trip" interactions (adding and removing liquidity in the
      * same pool).
-     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same transaction adds an extra
+     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same `unlock` call adds an extra
      * layer of security, discouraging operations that try to undo others for profit. Remove liquidity proportional
      * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
      * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
@@ -79,6 +79,8 @@ interface IVaultExtension {
      *
      * @param pool Address of the pool to check
      * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
+     
+     * Note that there is no `sessionId` argument; it always returns the value for the current (i.e., latest) session.
      */
     function getAddLiquidityCalledFlag(address pool) external view returns (bool liquidityAdded);
 

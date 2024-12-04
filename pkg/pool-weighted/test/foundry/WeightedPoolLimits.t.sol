@@ -251,9 +251,6 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         startingBalances[daiIdx] = dai.balanceOf(bob);
         startingBalances[usdcIdx] = usdc.balanceOf(bob);
 
-        // Prevent roundtrip fee
-        vault.manualSetAddLiquidityCalledFlag(pool, false);
-
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(weightedPool),
             bptAmountIn,
