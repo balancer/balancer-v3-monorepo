@@ -1174,8 +1174,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     // If amount is too small, rounding issues can be introduced that favors the user and can drain the buffer.
     // _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already; this is just an extra layer
     // of security.
-    function _ensureValidWrapAmount(IERC4626 wrappedToken, uint256 amount) private pure {
-        if (amountOutRaw < _MINIMUM_WRAP_AMOUNT) {
+    function _ensureValidWrapAmount(IERC4626 wrappedToken, uint256 amount) private view {
+        if (amount < _MINIMUM_WRAP_AMOUNT) {
             revert WrapAmountTooSmall(wrappedToken);
         }
     }
