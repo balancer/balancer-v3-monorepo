@@ -164,7 +164,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquidityNotInitialized() public {
-        pool = createPool();
+        (pool, ) = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, pool));
         router.addLiquidityUnbalanced(
@@ -345,7 +345,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function testRemoveLiquidityNotInitialized() public {
         vm.startPrank(alice);
 
-        pool = createPool();
+        (pool, ) = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, pool));
         router.removeLiquidityProportional(

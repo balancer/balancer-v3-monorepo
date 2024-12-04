@@ -93,6 +93,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IProtocolFeeController internal feeController;
     // Pool for tests.
     address internal pool;
+    // Arguments used to build pool. Used to check deployment address.
+    bytes internal poolArguments;
     // Pool Hooks.
     address internal poolHooksContract;
 
@@ -162,7 +164,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(feeController), "fee controller");
 
         poolHooksContract = createHook();
-        pool = createPool();
+        (pool, poolArguments) = createPool();
 
         // Approve vault allowances.
         for (uint256 i = 0; i < users.length; ++i) {
@@ -238,17 +240,23 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
-    function createPool() internal virtual returns (address) {
+    function createPool() internal virtual returns (address, bytes memory) {
         return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = factoryMock.createPool(name, symbol);
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
 
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function createHook() internal virtual returns (address) {

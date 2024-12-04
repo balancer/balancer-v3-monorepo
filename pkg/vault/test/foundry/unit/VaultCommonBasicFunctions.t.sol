@@ -58,8 +58,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
     }
 
-    function createPool() internal pure override returns (address) {
-        return address(0);
+    function createPool() internal pure override returns (address, bytes memory) {
+        return (address(0), new bytes(0));
     }
 
     function initPool() internal pure override {}

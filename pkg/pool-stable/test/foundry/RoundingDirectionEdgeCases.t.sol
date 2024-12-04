@@ -7,22 +7,24 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 import { RateProviderMock } from "../../../vault/contracts/test/RateProviderMock.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-contract RoundingDirectionStablePoolEdgeCasesTest is BasePoolTest {
+contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer, BasePoolTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for uint256;
@@ -39,8 +41,12 @@ contract RoundingDirectionStablePoolEdgeCasesTest is BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
-        factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
+        factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
 
         TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
@@ -62,24 +68,30 @@ contract RoundingDirectionStablePoolEdgeCasesTest is BasePoolTest {
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        address stablePool = address(
-            StablePool(
-                StablePoolFactory(address(factory)).create(
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    tokenConfigs,
-                    // DEFAULT_AMP_FACTOR,
-                    2000,
-                    roleAccounts,
-                    BASE_MIN_SWAP_FEE,
-                    poolHooksContract,
-                    false, // Do not enable donations
-                    false, // Do not disable unbalanced add/remove liquidity
-                    ZERO_BYTES32
-                )
-            )
+        newPool = StablePoolFactory(address(factory)).create(
+            name,
+            symbol,
+            tokenConfigs,
+            // DEFAULT_AMP_FACTOR,
+            2000,
+            roleAccounts,
+            BASE_MIN_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
-        return stablePool;
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            StablePool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                amplificationParameter: 2000,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {
