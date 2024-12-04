@@ -414,7 +414,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         );
     }
 
-    function testErc4626BufferWrapOrUnwrapWrapExactOutIfAmountInLessThenMin() public {
+    function testWrapExactOutAmountInLessThanMin() public {
         uint256 rate = 10_000;
         wDaiInitialized.mockRate(rate);
 
