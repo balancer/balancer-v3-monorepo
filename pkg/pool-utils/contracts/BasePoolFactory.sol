@@ -37,9 +37,13 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * deploying and registering in a single `create` function.
  *
  * It would also be possible to frontrun `initialize` (e.g., with unbalanced liquidity), and cause the intended
- * initialization to fail. Like registration, initialization only happens once. While the Balancer standard factories
- * do not initialize on create, this is a factor to consider when launching new pools. To avoid any possibility of
- * frontrunning, best practice would be to create (i.e., deploy and register) and initialize in the same transaction.
+ * initialization to fail. Like registration, initialization only happens once. The Balancer standard factories do not
+ * initialize on create, as this would be more complex (e.g., requiring token approvals), and it's very common for the
+ * deployment and funding to be performed from different accounts. Also, frontrunning `initialize` doesn't have serious
+ * consequences, beyond being a DoS.
+ *
+ * Nevertheless, this is a factor to consider when launching new pools. To avoid any possibility of frontrunning,
+ * the best practice would be to create (i.e., deploy and register) and initialize in the same transaction.
  */
 abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
     mapping(address pool => bool isFromFactory) private _isPoolFromFactory;
