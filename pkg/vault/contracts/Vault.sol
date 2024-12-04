@@ -1132,11 +1132,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
         _ensureCorrectBufferAsset(params.wrappedToken, address(underlyingToken));
 
-        _ensureValidWrapAmount(params.wrappedToken, params.amountGivenRaw);
+        if (params.amountGivenRaw < _MINIMUM_WRAP_AMOUNT) {
+            // If amount given is too small, rounding issues can be introduced that favors the user and can drain
+            // the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already, this
+            // is just an extra layer of security.
+            revert WrapAmountTooSmall(params.wrappedToken);
+        }
 
         if (params.direction == WrappingDirection.UNWRAP) {
             bytes32 bufferBalances;
-            (amountInRaw, amountOutRaw, amountCalculatedRaw, bufferBalances) = _unwrapWithBuffer(
+            (amountInRaw, amountOutRaw, bufferBalances) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
@@ -1145,7 +1150,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             emit Unwrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         } else {
             bytes32 bufferBalances;
-            (amountInRaw, amountOutRaw, amountCalculatedRaw, bufferBalances) = _wrapWithBuffer(
+            (amountInRaw, amountOutRaw, bufferBalances) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
@@ -1154,19 +1159,30 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             emit Wrap(params.wrappedToken, amountInRaw, amountOutRaw, bufferBalances);
         }
 
-        _ensureValidWrapAmount(params.wrappedToken, amountCalculatedRaw);
+        if (params.kind == SwapKind.EXACT_IN) {
+            if (amountOutRaw < _MINIMUM_WRAP_AMOUNT) {
+                // If amount calculated is too small, rounding issues can be introduced that favor the user and can
+                // drain the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already;
+                // this is just an extra layer of security.
+                revert WrapAmountTooSmall(params.wrappedToken);
+            }
 
-        if (amountCalculatedRaw < params.limitRaw) {
-            revert SwapLimit(amountCalculatedRaw, params.limitRaw);
-        }
-    }
+            if (amountOutRaw < params.limitRaw) {
+                revert SwapLimit(amountOutRaw, params.limitRaw);
+            }
+            amountCalculatedRaw = amountOutRaw;
+        } else {
+            if (amountInRaw < _MINIMUM_WRAP_AMOUNT) {
+                // If amount calculated is too small, rounding issues can be introduced that favor the user and can
+                // drain the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already;
+                // this is just an extra layer of security.
+                revert WrapAmountTooSmall(params.wrappedToken);
+            }
 
-    // If amount is too small, rounding issues can be introduced that favors the user and can drain the buffer.
-    // _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already; this is just an extra
-    // layer of security.
-    function _ensureValidWrapAmount(IERC4626 wrappedToken, uint256 amount) private view {
-        if (amount < _MINIMUM_WRAP_AMOUNT) {
-            revert WrapAmountTooSmall(wrappedToken);
+            if (amountInRaw > params.limitRaw) {
+                revert SwapLimit(amountInRaw, params.limitRaw);
+            }
+            amountCalculatedRaw = amountInRaw;
         }
     }
 
@@ -1182,29 +1198,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    )
-        internal
-        returns (
-            uint256 amountInUnderlying,
-            uint256 amountOutWrapped,
-            uint256 amountCalculatedRaw,
-            bytes32 bufferBalances
-        )
-    {
+    ) internal returns (uint256 amountInUnderlying, uint256 amountOutWrapped, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding. 1 wei is
             // removed from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview
             // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1) - 1);
-            amountCalculatedRaw = amountOutWrapped;
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
             // wrapped amount out and calculates the underlying amount in with the correct rounding. 1 wei is
             // added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview
             // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven + 1) + 1, amountGiven);
-            amountCalculatedRaw = amountInUnderlying;
         }
 
         bufferBalances = _bufferTokenBalances[wrappedToken];
@@ -1213,7 +1219,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // the sender to pay for underlying tokens to wrap upfront, return the calculated amount without checking for
         // the imbalance.
         if (_isQueryContext()) {
-            return (amountInUnderlying, amountOutWrapped, amountCalculatedRaw, bufferBalances);
+            return (amountInUnderlying, amountOutWrapped, bufferBalances);
         }
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
@@ -1313,29 +1319,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    )
-        internal
-        returns (
-            uint256 amountInWrapped,
-            uint256 amountOutUnderlying,
-            uint256 amountCalculatedRaw,
-            bytes32 bufferBalances
-        )
-    {
+    ) internal returns (uint256 amountInWrapped, uint256 amountOutUnderlying, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding. 1 wei is removed
             // from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview result to
             // compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1) - 1);
-            amountCalculatedRaw = amountOutUnderlying;
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
             // receives an underlying amount out and calculates the wrapped amount in with the correct rounding. 1 wei
             // is added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview result
             // to compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven + 1) + 1, amountGiven);
-            amountCalculatedRaw = amountInWrapped;
         }
 
         bufferBalances = _bufferTokenBalances[wrappedToken];
@@ -1344,7 +1340,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // the sender to pay for wrapped tokens to unwrap upfront, return the calculated amount without checking for
         // the imbalance.
         if (_isQueryContext()) {
-            return (amountInWrapped, amountOutUnderlying, amountCalculatedRaw, bufferBalances);
+            return (amountInWrapped, amountOutUnderlying, bufferBalances);
         }
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {

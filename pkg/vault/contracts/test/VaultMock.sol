@@ -751,7 +751,7 @@ contract VaultMock is IVaultMainMock, Vault {
             return 0;
         }
 
-        (, amountOutWrapped, , ) = _wrapWithBuffer(
+        (, amountOutWrapped, ) = _wrapWithBuffer(
             SwapKind.EXACT_IN,
             IERC20(wrapper.asset()),
             wrapper,
@@ -764,7 +764,7 @@ contract VaultMock is IVaultMainMock, Vault {
             return 0;
         }
 
-        (amountInUnderlying, , , ) = _wrapWithBuffer(
+        (amountInUnderlying, , ) = _wrapWithBuffer(
             SwapKind.EXACT_OUT,
             IERC20(wrapper.asset()),
             wrapper,
@@ -777,7 +777,7 @@ contract VaultMock is IVaultMainMock, Vault {
             return 0;
         }
 
-        (, amountOutUnderlying, , ) = _unwrapWithBuffer(
+        (, amountOutUnderlying, ) = _unwrapWithBuffer(
             SwapKind.EXACT_IN,
             IERC20(wrapper.asset()),
             wrapper,
@@ -790,7 +790,7 @@ contract VaultMock is IVaultMainMock, Vault {
             return 0;
         }
 
-        (amountInWrapped, , , ) = _unwrapWithBuffer(
+        (amountInWrapped, , ) = _unwrapWithBuffer(
             SwapKind.EXACT_OUT,
             IERC20(wrapper.asset()),
             wrapper,
