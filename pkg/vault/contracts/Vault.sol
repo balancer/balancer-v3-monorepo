@@ -1316,8 +1316,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding. 1 wei is removed
-            // from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview result to
-            // compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the preview result
+            // to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
