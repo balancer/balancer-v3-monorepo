@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IVault } from "./IVault.sol";
 import { IHooks } from "./IHooks.sol";
@@ -470,4 +471,17 @@ interface IVaultExtension {
      * @param eventData Encoded event data
      */
     function emitAuxiliaryEvent(bytes32 eventKey, bytes calldata eventData) external;
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Authorizer address.
+     * @dev The authorizer holds the permissions granted by governance. It is set on Vault deployment,
+     * and can be changed through a permissioned call.
+     *
+     * @return authorizer Address of the authorizer contract
+     */
+    function getAuthorizer() external view returns (IAuthorizer authorizer);
 }
