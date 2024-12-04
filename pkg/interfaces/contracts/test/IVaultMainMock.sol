@@ -294,4 +294,12 @@ interface IVaultMainMock {
     function manualGetAddLiquidityCalledFlagBySession(address pool, uint256 sessionId) external view returns (bool);
 
     function manualGetCurrentUnlockSessionId() external view returns (uint256);
+
+    function previewDeposit(IERC4626 wrapper, uint256 amountInUnderlying) external returns (uint256 amountOutWrapped);
+
+    function previewMint(IERC4626 wrapper, uint256 amountOutWrapped) external returns (uint256 amountInUnderlying);
+
+    function previewRedeem(IERC4626 wrapper, uint256 amountInWrapped) external returns (uint256 amountOutUnderlying);
+
+    function previewWithdraw(IERC4626 wrapper, uint256 amountOutUnderlying) external returns (uint256 amountInWrapped);
 }

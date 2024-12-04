@@ -56,10 +56,10 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     }
 
     function initPool() internal virtual override {
-        vm.startPrank(bob);
-        uint256 waDaiBobShares = waDAI.previewDeposit(erc4626PoolInitialAmount);
-        uint256 waWethBobShares = waWETH.previewDeposit(erc4626PoolInitialAmount);
+        uint256 waDaiBobShares = _vaultPreviewDeposit(waDAI, erc4626PoolInitialAmount);
+        uint256 waWethBobShares = _vaultPreviewDeposit(waWETH, erc4626PoolInitialAmount);
 
+        vm.startPrank(bob);
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[waDaiIdx] = waDaiBobShares;
         amountsIn[waWethIdx] = waWethBobShares;
@@ -83,7 +83,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         return tokenConfig;
     }
 
-    function testERC4626BufferPreconditions() public view {
+    function testERC4626BufferPreconditions() public {
         // Bob should own all pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
         // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur.
         assertApproxEqAbs(
@@ -99,12 +99,12 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         assertEq(address(tokens[waWethIdx]), address(waWETH), "Wrong yield-bearing pool token (waWETH)");
         assertEq(
             balancesRaw[waDaiIdx],
-            waDAI.previewDeposit(erc4626PoolInitialAmount),
+            _vaultPreviewDeposit(waDAI, erc4626PoolInitialAmount),
             "Wrong yield-bearing pool balance waDAI"
         );
         assertEq(
             balancesRaw[waWethIdx],
-            waWETH.previewDeposit(erc4626PoolInitialAmount),
+            _vaultPreviewDeposit(waWETH, erc4626PoolInitialAmount),
             "Wrong yield-bearing pool balance waWETH"
         );
 

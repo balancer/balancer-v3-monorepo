@@ -1149,12 +1149,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
         _ensureCorrectBufferAsset(params.wrappedToken, address(underlyingToken));
 
-        if (params.amountGivenRaw < _MINIMUM_WRAP_AMOUNT) {
-            // If amount given is too small, rounding issues can be introduced that favors the user and can drain
-            // the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already, this
-            // is just an extra layer of security.
-            revert WrapAmountTooSmall(params.wrappedToken);
-        }
+        _ensureValidWrapAmount(params.wrappedToken, params.amountGivenRaw);
 
         if (params.direction == WrappingDirection.UNWRAP) {
             bytes32 bufferBalances;
@@ -1187,6 +1182,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
             amountCalculatedRaw = amountInRaw;
         }
+
+        _ensureValidWrapAmount(params.wrappedToken, amountCalculatedRaw);
+    }
+
+    // If amount is too small, rounding issues can be introduced that favor the user and can leak value
+    // from the buffer.
+    // _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already; this is just an extra layer
+    // of security.
+    function _ensureValidWrapAmount(IERC4626 wrappedToken, uint256 amount) private view {
+        if (amount < _MINIMUM_WRAP_AMOUNT) {
+            revert WrapAmountTooSmall(wrappedToken);
+        }
     }
 
     /**
@@ -1201,15 +1208,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped, bytes32 bufferBalances) {
+    ) internal returns (uint256 amountInUnderlying, uint256 amountOutWrapped, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
-            // an underlying amount in and calculates the wrapped amount out with the correct rounding.
-            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven));
+            // an underlying amount in and calculates the wrapped amount out with the correct rounding. 1 wei is
+            // removed from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
+            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
-            // wrapped amount out and calculates the underlying amount in with the correct rounding.
-            (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven), amountGiven);
+            // wrapped amount out and calculates the underlying amount in with the correct rounding. 1 wei is
+            // added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
+            (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven + 1) + 1, amountGiven);
         }
 
         bufferBalances = _bufferTokenBalances[wrappedToken];
@@ -1318,15 +1329,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying, bytes32 bufferBalances) {
+    ) internal returns (uint256 amountInWrapped, uint256 amountOutUnderlying, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
-            // wrapped amount in and calculates the underlying amount out with the correct rounding.
-            (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven));
+            // wrapped amount in and calculates the underlying amount out with the correct rounding. 1 wei is removed
+            // from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the preview result
+            // to compensate for any rounding imprecision, so that the buffer does not leak value.
+            (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
-            // receives an underlying amount out and calculates the wrapped amount in with the correct rounding.
-            (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven), amountGiven);
+            // receives an underlying amount out and calculates the wrapped amount in with the correct rounding. 1 wei
+            // is added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the preview
+            // result to compensate for any rounding imprecision, so that the buffer does not leak value.
+            (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven + 1) + 1, amountGiven);
         }
 
         bufferBalances = _bufferTokenBalances[wrappedToken];
@@ -1480,7 +1495,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 wrappedToken,
         uint256 expectedUnderlyingReservesAfter,
         uint256 expectedWrappedReservesAfter
-    ) private {
+    ) internal {
         // Update the Vault's underlying reserves.
         uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
         if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
