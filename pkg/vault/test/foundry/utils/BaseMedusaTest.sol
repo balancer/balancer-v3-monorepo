@@ -42,6 +42,7 @@ contract BaseMedusaTest is Test {
     // In certain places, console.log will not print to stdout the intended message, so we use this event to print
     // messages and values.
     event Debug(string, uint256);
+    event Debug(string, int256);
 
     IPermit2 internal permit2;
 

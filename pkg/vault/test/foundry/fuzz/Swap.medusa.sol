@@ -18,25 +18,22 @@ import "../utils/BaseMedusaTest.sol";
 contract SwapMedusaTest is BaseMedusaTest {
     uint256 internal constant MIN_SWAP_AMOUNT = 1e6;
 
-    int256 internal invariantBefore = 0;
-    int256 internal currentInvariant = 0;
+    int256 internal invariantDiff = 0;
 
     constructor() BaseMedusaTest() {
-        currentInvariant = computeInvariant();
-        invariantBefore = currentInvariant;
-
         vault.manuallySetSwapFee(address(pool), 0);
     }
 
     function optimize_currentInvariant() public view returns (int256) {
-        return -int256(currentInvariant);
+        return -int256(invariantDiff);
     }
 
     function property_currentInvariant() public returns (bool) {
-        return currentInvariant >= invariantBefore;
+        return invariantDiff >= 0;
     }
 
     function computeSwapExactIn(uint256 tokenIndexIn, uint256 tokenIndexOut, uint256 exactAmountIn) public {
+        int256 invariantBefore = computeInvariant();
         tokenIndexIn = boundTokenIndex(tokenIndexIn);
         tokenIndexOut = boundTokenIndex(tokenIndexOut);
 
@@ -48,11 +45,6 @@ contract SwapMedusaTest is BaseMedusaTest {
         exactAmountIn = boundSwapAmount(exactAmountIn, tokenIndexIn);
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
-
-        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
-        for (uint256 i = 0; i < tokens.length; i++) {
-            emit Debug("balance", lastBalancesLiveScaled18[i]);
-        }
 
         emit Debug("token index in", tokenIndexIn);
         emit Debug("token index out", tokenIndexOut);
@@ -70,15 +62,10 @@ contract SwapMedusaTest is BaseMedusaTest {
             bytes("")
         );
 
-        updateInvariant();
-    }
+        int256 invariantAfter = computeInvariant();
 
-    function updateInvariant() internal {
-        invariantBefore = currentInvariant;
-        currentInvariant = computeInvariant();
-
-        emit Debug("invariant before", uint256(invariantBefore));
-        emit Debug("current invariant", uint256(currentInvariant));
+        invariantDiff = invariantAfter - invariantBefore;
+        emit Debug("invariantDiff", invariantDiff);
     }
 
     function computeInvariant() internal view returns (int256) {
