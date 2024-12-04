@@ -1195,8 +1195,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding. 1 wei is
-            // removed from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview
-            // result to compensate any rounding imprecision, so we avoid the buffer leaking value.
+            // removed from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
