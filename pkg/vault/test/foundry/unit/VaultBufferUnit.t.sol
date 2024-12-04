@@ -434,6 +434,23 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vault.erc4626BufferWrapOrUnwrap(params);
     }
 
+    function testWrapExactInAmountInLessThanMin() public {
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_IN,
+            direction: WrappingDirection.WRAP,
+            wrappedToken: IERC4626(address(wDaiInitialized)),
+            amountGivenRaw: (_minWrapAmount - 1),
+            limitRaw: UINT256_MAX
+        });
+
+        vault.forceUnlock();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, IERC4626(address(wDaiInitialized)))
+        );
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
     function testUnwrapExactOutAmountInLessThanMin() public {
         uint256 rate = 10_000;
         wDaiInitialized.mockRate(rate);
@@ -443,6 +460,23 @@ contract VaultBufferUnitTest is BaseVaultTest {
             direction: WrappingDirection.UNWRAP,
             wrappedToken: IERC4626(address(wDaiInitialized)),
             amountGivenRaw: (_minWrapAmount - 1) * rate,
+            limitRaw: UINT256_MAX
+        });
+
+        vault.forceUnlock();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, IERC4626(address(wDaiInitialized)))
+        );
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function testUnwrapExactInAmountInLessThanMin() public {
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_IN,
+            direction: WrappingDirection.UNWRAP,
+            wrappedToken: IERC4626(address(wDaiInitialized)),
+            amountGivenRaw: (_minWrapAmount - 1),
             limitRaw: UINT256_MAX
         });
 
