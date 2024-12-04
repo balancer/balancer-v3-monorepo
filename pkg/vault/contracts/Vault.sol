@@ -1201,11 +1201,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) internal returns (uint256 amountInUnderlying, uint256 amountOutWrapped, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
-            // an underlying amount in and calculates the wrapped amount out with the correct rounding.
+            // an underlying amount in and calculates the wrapped amount out with the correct rounding. 1 wei is
+            // removed from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview
+            // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
-            // wrapped amount out and calculates the underlying amount in with the correct rounding.
+            // wrapped amount out and calculates the underlying amount in with the correct rounding. 1 wei is
+            // added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview
+            // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven + 1) + 1, amountGiven);
         }
 
@@ -1318,11 +1322,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) internal returns (uint256 amountInWrapped, uint256 amountOutUnderlying, bytes32 bufferBalances) {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
-            // wrapped amount in and calculates the underlying amount out with the correct rounding.
+            // wrapped amount in and calculates the underlying amount out with the correct rounding. 1 wei is removed
+            // from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview result to
+            // compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
-            // receives an underlying amount out and calculates the wrapped amount in with the correct rounding.
+            // receives an underlying amount out and calculates the wrapped amount in with the correct rounding. 1 wei
+            // is added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview result
+            // to compensate any rounding imprecision, so we avoid the buffer to be drained.
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven + 1) + 1, amountGiven);
         }
 
