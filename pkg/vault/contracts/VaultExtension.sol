@@ -129,7 +129,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getAddLiquidityCalledFlag(address pool) external view onlyVaultDelegateCall returns (bool) {
-        return _addLiquidityCalled().tGet(pool);
+        return _addLiquidityCalled().tGet(_sessionIdSlot().tload(), pool);
     }
 
     /*******************************************************************************
@@ -784,7 +784,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // proportional withdrawals. To keep things simple, all we do is reduce the `amountsOut`, leaving the "fee"
         // tokens in the pool.
         locals.swapFeeAmountsRaw = new uint256[](locals.numTokens);
-        locals.chargeRoundtripFee = _addLiquidityCalled().tGet(pool);
+        locals.chargeRoundtripFee = _addLiquidityCalled().tGet(_sessionIdSlot().tload(), pool);
 
         // Don't make the call to retrieve the fee unless we have to.
         if (locals.chargeRoundtripFee) {
