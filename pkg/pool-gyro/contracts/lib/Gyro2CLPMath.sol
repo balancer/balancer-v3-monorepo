@@ -96,7 +96,7 @@ library Gyro2CLPMath {
         }
         // For better fixed point precision, calculate in expanded form, re-ordering multiplications.
         // `b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta`
-        bSquare = _mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
+        bSquare = _mulUpOrDown(_mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), sqrtAlpha), sqrtAlpha);
         uint256 bSq2 = _divUpOrDown(2 * _mulUpOrDown(_mulUpOrDown(balances[0], balances[1]), sqrtAlpha), sqrtBeta);
         uint256 bSq3 = _divUpOrDown(_mulUpOrDown(balances[1], balances[1]), _mulDownOrUp(sqrtBeta, sqrtBeta));
         bSquare = bSquare + bSq2 + bSq3;
