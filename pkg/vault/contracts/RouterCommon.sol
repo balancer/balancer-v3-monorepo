@@ -214,7 +214,16 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
 
         // Only call permit2 if there's something to do.
         if (permit2Batch.details.length > 0) {
-            // Use Permit2 for tokens that are swapped and added into the Vault.
+            // Use Permit2 for tokens that are swapped and added into the Vault. Note that this call on Permit2 is
+            // theoretically also vulnerable to the same DoS attack as above. This edge case was not mitigated
+            // on-chain, mainly due to the increased complexity and cost of protecting the batch call.
+            //
+            // If this is a concern, we recommend submitting through a private node to avoid front-running the public
+            // mempool. In any case, best practice is to always use expiring, limited approvals, and only with known
+            // and trusted contracts.
+            //
+            // See https://www.immunebytes.com/blog/permit2-erc-20-token-approvals-and-associated-risks/.
+
             _permit2.permit(msg.sender, permit2Batch, permit2Signature);
         }
     }

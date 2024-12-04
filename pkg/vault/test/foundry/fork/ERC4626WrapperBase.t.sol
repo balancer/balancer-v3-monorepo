@@ -339,6 +339,38 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         assertLe(wrappedRemoved, wrappedDeposited, "User received more than they added");
     }
 
+    function testPreviewDepositRounding__Fuzz__Fork(uint256 amount) public view {
+        amount = bound(amount, 1, 100_000_000e18);
+        uint256 previewRoundDown = wrapper.previewDeposit(amount - 1);
+        vm.assume(previewRoundDown > 0);
+        previewRoundDown -= 1;
+        uint256 preview = wrapper.previewDeposit(amount);
+        assertLe(previewRoundDown, preview, "Preview round down does not match expectations");
+    }
+
+    function testPreviewMintRounding__Fuzz__Fork(uint256 amount) public view {
+        amount = bound(amount, 0, 100_000_000e18);
+        uint256 previewRoundUp = wrapper.previewMint(amount + 1) + 1;
+        uint256 preview = wrapper.previewMint(amount);
+        assertGe(previewRoundUp, preview, "Preview round up does not match expectations");
+    }
+
+    function testPreviewRedeemRounding__Fuzz__Fork(uint256 amount) public view {
+        amount = bound(amount, 1, 100_000_000e18);
+        uint256 previewRoundDown = wrapper.previewRedeem(amount - 1);
+        vm.assume(previewRoundDown > 0);
+        previewRoundDown -= 1;
+        uint256 preview = wrapper.previewRedeem(amount);
+        assertLe(previewRoundDown, preview, "Preview round down does not match expectations");
+    }
+
+    function testPreviewWithdrawRounding__Fuzz__Fork(uint256 amount) public view {
+        amount = bound(amount, 0, 100_000_000e18);
+        uint256 previewRoundUp = wrapper.previewWithdraw(amount + 1) + 1;
+        uint256 preview = wrapper.previewWithdraw(amount);
+        assertGe(previewRoundUp, preview, "Preview round up does not match expectations");
+    }
+
     function _initializeWallet(address receiver) private {
         uint256 initialDeposit = amountToDonate / 2;
 

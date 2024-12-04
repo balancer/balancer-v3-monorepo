@@ -109,6 +109,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             _isUnlocked().tstore(false);
+
+            // If a user adds liquidity to a pool, then does a proportional withdrawal from that pool during the same
+            // interaction, the system charges a "round-trip" fee on the withdrawal. This fee makes it harder for an
+            // user to add liquidity to a pool using a virtually infinite flash loan, swapping in the same pool in a way
+            // that benefits him and removes liquidity in the same transaction, which is not a valid use case.
+            //
+            // Here we introduce the "session" concept, to prevent this fee from being charged accidentally. For
+            // example, if an aggregator or account abstraction contract bundled several unrelated operations in the
+            // same transaction that involved the same pool with different senders, the guardrail could be triggered
+            // for a user doing a simple withdrawal. If proper limits were set, the whole transaction would revert,
+            // and if they were not, the user would be unfairly "taxed."
+            //
+            // Defining an "interaction" this way - as a single `unlock` call vs. an entire transaction - prevents the
+            // guardrail from being triggered in the cases described above.
+
+            // Increase session counter after locking the Vault.
+            _sessionIdSlot().tIncrement();
         }
     }
 
@@ -501,7 +518,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         _ensureUnpaused(params.pool);
-        _addLiquidityCalled().tSet(params.pool, true);
+        _addLiquidityCalled().tSet(_sessionIdSlot().tload(), params.pool, true);
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -882,13 +899,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
 
-            // Charge roundtrip fee if liquidity was added to this pool in the same transaction; this is not really a
+            // Charge round-trip fee if liquidity was added to this pool in the same unlock call; this is not really a
             // valid use case, and may be an attack. Use caution when removing liquidity through a Safe or other
             // multisig / non-EOA address. Use "sign and execute," ideally through a private node (or at least not
             // allowing public execution) to avoid front-running, and always set strict limits so that it will revert
             // if any unexpected fees are charged. (It is also possible to check whether the flag has been set before
             // withdrawing, by calling `getAddLiquidityCalledFlag`.)
-            if (_addLiquidityCalled().tGet(params.pool)) {
+            if (_addLiquidityCalled().tGet(_sessionIdSlot().tload(), params.pool)) {
                 uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
                 for (uint256 i = 0; i < locals.numTokens; ++i) {
                     swapFeeAmounts[i] = amountsOutScaled18[i].mulUp(swapFeePercentage);
@@ -1169,7 +1186,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _ensureValidWrapAmount(params.wrappedToken, amountCalculatedRaw);
     }
 
-    // If amount is too small, rounding issues can be introduced that favors the user and can drain the buffer.
+    // If amount is too small, rounding issues can be introduced that favor the user and can leak value
+    // from the buffer.
     // _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already; this is just an extra layer
     // of security.
     function _ensureValidWrapAmount(IERC4626 wrappedToken, uint256 amount) private view {
@@ -1194,14 +1212,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
             // an underlying amount in and calculates the wrapped amount out with the correct rounding. 1 wei is
-            // removed from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview
-            // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // removed from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT wrap, so AmountGiven is a wrapped amount. `mint` is the ERC4626 operation that receives a
             // wrapped amount out and calculates the underlying amount in with the correct rounding. 1 wei is
-            // added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview
-            // result to compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the
+            // preview result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven + 1) + 1, amountGiven);
         }
 
@@ -1315,14 +1333,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is a wrapped amount. `redeem` is the ERC4626 operation that receives a
             // wrapped amount in and calculates the underlying amount out with the correct rounding. 1 wei is removed
-            // from amountGiven to compensate any rate manipulation. Also, 1 wei is removed from the preview result to
-            // compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // from amountGiven to compensate for any rate manipulation. Also, 1 wei is removed from the preview result
+            // to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven - 1) - 1);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
             // receives an underlying amount out and calculates the wrapped amount in with the correct rounding. 1 wei
-            // is added to amountGiven to compensate any rate manipulation. Also, 1 wei is added to the preview result
-            // to compensate any rounding imprecision, so we avoid the buffer to be drained.
+            // is added to amountGiven to compensate for any rate manipulation. Also, 1 wei is added to the preview
+            // result to compensate for any rounding imprecision, so that the buffer does not leak value.
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven + 1) + 1, amountGiven);
         }
 
@@ -1537,15 +1555,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
         }
-    }
-
-    /*******************************************************************************
-                                    Authentication
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
     }
 
     /*******************************************************************************

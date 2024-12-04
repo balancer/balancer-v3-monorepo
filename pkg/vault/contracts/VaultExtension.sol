@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -128,7 +129,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getAddLiquidityCalledFlag(address pool) external view onlyVaultDelegateCall returns (bool) {
-        return _addLiquidityCalled().tGet(pool);
+        return _addLiquidityCalled().tGet(_sessionIdSlot().tload(), pool);
     }
 
     /*******************************************************************************
@@ -783,7 +784,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // proportional withdrawals. To keep things simple, all we do is reduce the `amountsOut`, leaving the "fee"
         // tokens in the pool.
         locals.swapFeeAmountsRaw = new uint256[](locals.numTokens);
-        locals.chargeRoundtripFee = _addLiquidityCalled().tGet(pool);
+        locals.chargeRoundtripFee = _addLiquidityCalled().tGet(_sessionIdSlot().tload(), pool);
 
         // Don't make the call to retrieve the fee unless we have to.
         if (locals.chargeRoundtripFee) {
@@ -900,6 +901,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function isQueryDisabledPermanently() external view onlyVaultDelegateCall returns (bool) {
         return _queriesDisabledPermanently;
+    }
+
+    /*******************************************************************************
+                                    Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
+    function getAuthorizer() external view onlyVaultDelegateCall returns (IAuthorizer) {
+        return _authorizer;
     }
 
     /*******************************************************************************
