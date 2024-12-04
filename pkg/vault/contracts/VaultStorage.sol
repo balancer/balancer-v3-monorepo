@@ -44,7 +44,7 @@ contract VaultStorage {
 
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
-    uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
+    uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 180 days;
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors.
