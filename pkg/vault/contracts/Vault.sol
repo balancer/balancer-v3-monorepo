@@ -1155,20 +1155,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (params.kind == SwapKind.EXACT_IN) {
-            _ensureValidWrapAmount(params.wrappedToken, amountOutRaw);
-
             if (amountOutRaw < params.limitRaw) {
                 revert SwapLimit(amountOutRaw, params.limitRaw);
             }
             amountCalculatedRaw = amountOutRaw;
         } else {
-            _ensureValidWrapAmount(params.wrappedToken, amountInRaw);
-
             if (amountInRaw > params.limitRaw) {
                 revert SwapLimit(amountInRaw, params.limitRaw);
             }
             amountCalculatedRaw = amountInRaw;
         }
+
+        _ensureValidWrapAmount(params.wrappedToken, amountCalculatedRaw);
     }
 
     // If amount is too small, rounding issues can be introduced that favors the user and can drain the buffer.
