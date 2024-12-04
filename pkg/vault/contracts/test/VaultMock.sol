@@ -701,7 +701,15 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAddLiquidityCalledFlag(address pool, bool flag) public {
-        _addLiquidityCalled().tSet(pool, flag);
+        _addLiquidityCalled().tSet(_sessionIdSlot().tload(), pool, flag);
+    }
+
+    function manualGetAddLiquidityCalledFlagBySession(address pool, uint256 sessionId) public view returns (bool) {
+        return _addLiquidityCalled().tGet(sessionId, pool);
+    }
+
+    function manualGetCurrentUnlockSessionId() public view returns (uint256) {
+        return _sessionIdSlot().tload();
     }
 
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {

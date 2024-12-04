@@ -109,6 +109,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             _isUnlocked().tstore(false);
+
+            // If a user adds liquidity to a pool, then does a proportional withdrawal from that pool during the same
+            // interaction, the system charges a "round-trip" fee on the withdrawal. This fee makes it harder for an
+            // user to add liquidity to a pool using a virtually infinite flash loan, swapping in the same pool in a way
+            // that benefits him and removes liquidity in the same transaction, which is not a valid use case.
+            //
+            // Here we introduce the "session" concept, to prevent this fee from being charged accidentally. For
+            // example, if an aggregator or account abstraction contract bundled several unrelated operations in the
+            // same transaction that involved the same pool with different senders, the guardrail could be triggered
+            // for a user doing a simple withdrawal. If proper limits were set, the whole transaction would revert,
+            // and if they were not, the user would be unfairly "taxed."
+            //
+            // Defining an "interaction" this way - as a single `unlock` call vs. an entire transaction - prevents the
+            // guardrail from being triggered in the cases described above.
+
+            // Increase session counter after locking the Vault.
+            _sessionIdSlot().tIncrement();
         }
     }
 
@@ -501,7 +518,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         _ensureUnpaused(params.pool);
-        _addLiquidityCalled().tSet(params.pool, true);
+        _addLiquidityCalled().tSet(_sessionIdSlot().tload(), params.pool, true);
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -882,13 +899,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
 
-            // Charge roundtrip fee if liquidity was added to this pool in the same transaction; this is not really a
+            // Charge round-trip fee if liquidity was added to this pool in the same unlock call; this is not really a
             // valid use case, and may be an attack. Use caution when removing liquidity through a Safe or other
             // multisig / non-EOA address. Use "sign and execute," ideally through a private node (or at least not
             // allowing public execution) to avoid front-running, and always set strict limits so that it will revert
             // if any unexpected fees are charged. (It is also possible to check whether the flag has been set before
             // withdrawing, by calling `getAddLiquidityCalledFlag`.)
-            if (_addLiquidityCalled().tGet(params.pool)) {
+            if (_addLiquidityCalled().tGet(_sessionIdSlot().tload(), params.pool)) {
                 uint256 swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
                 for (uint256 i = 0; i < locals.numTokens; ++i) {
                     swapFeeAmounts[i] = amountsOutScaled18[i].mulUp(swapFeePercentage);

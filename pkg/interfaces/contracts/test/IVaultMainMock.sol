@@ -290,4 +290,8 @@ interface IVaultMainMock {
     function ensureValidSwapAmount(uint256 tradeAmount) external view;
 
     function manualUpdateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
+
+    function manualGetAddLiquidityCalledFlagBySession(address pool, uint256 sessionId) external view returns (bool);
+
+    function manualGetCurrentUnlockSessionId() external view returns (uint256);
 }
