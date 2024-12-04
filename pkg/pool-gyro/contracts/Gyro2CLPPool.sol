@@ -108,7 +108,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
         // All the calculations in one function to avoid Error Stack Too Deep
-        (uint256 virtualParamIn, uint256 virtualParamOut) = _getVirtualBalances(
+        (uint256 virtualParamIn, uint256 virtualParamOut) = _getVirtualOffsets(
             balanceTokenInScaled18,
             balanceTokenOutScaled18,
             tokenInIsToken0,
@@ -145,12 +145,12 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     }
 
     /**
-     * @notice Return the virtual balances of each token of the 2CLP pool.
+     * @notice Return the virtual offsets of each token of the 2CLP pool.
      * @dev The 2CLP invariant is defined as `L=(x+a)(y+b)`. "x" and "y" are the real balances, and "a" and "b" are
      * offsets to concentrate the liquidity of the pool. The sum of real balance and offset is known as
-     * "virtual balance".
+     * "virtual balance". Here we return the offsets a and b.
      */
-    function _getVirtualBalances(
+    function _getVirtualOffsets(
         uint256 balanceTokenInScaled18,
         uint256 balanceTokenOutScaled18,
         bool tokenInIsToken0,
@@ -164,21 +164,21 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
         uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(balances, sqrtAlpha, sqrtBeta, rounding);
 
-        uint256[2] memory virtualBalances = _calculateVirtualBalances(currentInvariant, sqrtAlpha, sqrtBeta);
+        uint256[2] memory virtualOffsets = _calculateVirtualOffsets(currentInvariant, sqrtAlpha, sqrtBeta);
 
-        virtualBalanceIn = tokenInIsToken0 ? virtualBalances[0] : virtualBalances[1];
-        virtualBalanceOut = tokenInIsToken0 ? virtualBalances[1] : virtualBalances[0];
+        virtualBalanceIn = tokenInIsToken0 ? virtualOffsets[0] : virtualOffsets[1];
+        virtualBalanceOut = tokenInIsToken0 ? virtualOffsets[1] : virtualOffsets[0];
     }
 
-    /// @notice Returns an array with virtual balances of both tokens of the pool, in registration order.
-    function _calculateVirtualBalances(
+    /// @notice Returns an array with virtual offsets of both tokens of the pool, in registration order.
+    function _calculateVirtualOffsets(
         uint256 invariant,
         uint256 sqrtAlpha,
         uint256 sqrtBeta
-    ) internal view virtual returns (uint256[2] memory virtualBalances) {
-        virtualBalances[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta);
-        virtualBalances[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha);
-        return virtualBalances;
+    ) internal view virtual returns (uint256[2] memory virtualOffsets) {
+        virtualOffsets[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta);
+        virtualOffsets[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha);
+        return virtualOffsets;
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
