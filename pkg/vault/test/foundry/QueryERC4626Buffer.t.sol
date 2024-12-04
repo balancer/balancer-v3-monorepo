@@ -108,9 +108,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         assertApproxEqRel(amountsIn[0], queryAmountsIn[0], errorTolerance, "amountsIn's do not match");
     }
 
-    function _buildExactInPaths(
-        uint256 amountIn
-    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+    function _buildExactInPaths(uint256 amountIn) private returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
@@ -125,7 +123,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         // For ExactIn, the steps are computed in order (Wrap -> Swap -> Unwrap).
         // Compute Wrap. The exact amount is `swapAmount`. The token in is DAI, so the wrap occurs in the waDAI buffer.
         // `waDaiAmountInRaw` is the output of the wrap.
-        uint256 waDaiAmountInRaw = waDAI.previewDeposit(amountIn);
+        uint256 waDaiAmountInRaw = _vaultPreviewDeposit(waDAI, amountIn);
         // Compute Swap. `waDaiAmountInRaw` is the amount in of pool swap. To compute the swap with precision, we
         // need to take into account the rates used by the Vault, instead of using a wrapper "preview" function.
         uint256 waDaiAmountInScaled18 = waDaiAmountInRaw.mulDown(waDAI.getRate());
@@ -134,7 +132,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         uint256 waWethAmountOutRaw = waDaiAmountInScaled18.divDown(waWETH.getRate().computeRateRoundUp());
         // Compute Unwrap. `waWethAmountOutRaw` is the output of the swap and the input of the unwrap. The amount out
         // WETH is calculated by the waWETH buffer.
-        uint256 wethAmountOutRaw = waWETH.previewRedeem(waWethAmountOutRaw);
+        uint256 wethAmountOutRaw = _vaultPreviewRedeem(waWETH, waWethAmountOutRaw);
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
@@ -146,7 +144,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
 
     function _buildExactOutPaths(
         uint256 amountOut
-    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
+    ) private returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
@@ -161,7 +159,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).
         // Compute Unwrap. The exact amount out in WETH is `swapAmount` and the token out is WETH, so the unwrap
         // occurs in the waWETH buffer.
-        uint256 waWethAmountOutRaw = waWETH.previewWithdraw(amountOut);
+        uint256 waWethAmountOutRaw = _vaultPreviewWithdraw(waWETH, amountOut);
         // Compute Swap. `waWethAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
         // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "preview"
         // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up. Adds 1e6 to cover
@@ -171,7 +169,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
         uint256 waDaiAmountInRaw = waWethAmountOutScaled18.divDown(waDAI.getRate());
         // Compute Wrap. The amount in DAI is calculated by the waDAI buffer.
-        uint256 daiAmountInRaw = waDAI.previewMint(waDaiAmountInRaw);
+        uint256 daiAmountInRaw = _vaultPreviewMint(waDAI, waDaiAmountInRaw);
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
