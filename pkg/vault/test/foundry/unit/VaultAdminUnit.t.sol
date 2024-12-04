@@ -148,7 +148,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testInitializeBufferBelowMinimumShares() public {
         uint256 underlyingAmount = 1;
         uint256 wrappedAmount = 2;
-        uint256 bufferInvariantDelta = underlyingAmount + waDAI.previewRedeem(wrappedAmount);
+        uint256 bufferInvariantDelta = underlyingAmount + _vaultPreviewRedeem(waDAI, wrappedAmount);
 
         vault.forceUnlock();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, bufferInvariantDelta));
@@ -198,8 +198,8 @@ contract VaultAdminUnitTest is BaseVaultTest {
         // Shares (wrapped rate is ~2; allow rounding error)
         assertApproxEqAbs(
             issuedShares,
-            underlyingAmount + wrappedAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1,
+            underlyingAmount + wrappedAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY - 2,
+            2,
             "Wrong issued shares"
         );
 

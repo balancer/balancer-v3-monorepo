@@ -44,7 +44,7 @@ interface IHooks {
         address pool,
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /**
      * @notice Return the set of hooks implemented by the contract.
@@ -69,7 +69,7 @@ interface IHooks {
      * @param userData Optional, arbitrary data sent with the encoded request
      * @return success True if the pool wishes to proceed with initialization
      */
-    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool);
+    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool success);
 
     /**
      * @notice Hook to be executed after pool initialization.
@@ -85,7 +85,7 @@ interface IHooks {
         uint256[] memory exactAmountsIn,
         uint256 bptAmountOut,
         bytes memory userData
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /***************************************************************************
                                    Add Liquidity

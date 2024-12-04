@@ -40,8 +40,12 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         PoolRoleAccounts memory roleAccounts;
 
         uint256 numTokens = vault.getMaximumPoolTokens();
@@ -59,21 +63,31 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        WeightedPool newPool = WeightedPool(
-            WeightedPoolFactory(address(factory)).create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(bigPoolTokens),
-                weights,
-                roleAccounts,
-                DEFAULT_SWAP_FEE,
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = WeightedPoolFactory(address(factory)).create(
+            name,
+            symbol,
+            vault.buildTokenConfig(bigPoolTokens),
+            weights,
+            roleAccounts,
+            DEFAULT_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
-        vm.label(address(newPool), "Big weighted pool");
+        vm.label(newPool, "Big weighted pool");
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: bigPoolTokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault
+        );
 
         // Get the sorted list of tokens.
         bigPoolTokens = vault.getPoolTokens(address(newPool));
@@ -83,8 +97,6 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         }
 
         _approveForPool(IERC20(address(newPool)));
-
-        return address(newPool);
     }
 
     function _approveForSender() internal {

@@ -4,17 +4,17 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     TransientStorageHelpers,
     TokenDeltaMappingSlotType,
-    AddressToBooleanMappingSlot
+    UintToAddressToBooleanMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -69,6 +69,7 @@ contract VaultStorage {
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
     bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
     bytes32 private immutable _ADD_LIQUIDITY_CALLED_SLOT = _calculateVaultStorageSlot("addLiquidityCalled");
+    bytes32 private immutable _SESSION_ID_SLOT = _calculateVaultStorageSlot("sessionId");
     // solhint-enable var-name-mixedcase
 
     /***************************************************************************
@@ -120,7 +121,7 @@ contract VaultStorage {
      */
     mapping(IERC20 token => uint256 vaultBalance) internal _reservesOf;
 
-    /// @dev Flag that makes re-enabling queries impossible.
+    /// @dev Flag that prevents re-enabling queries.
     bool internal _queriesDisabledPermanently;
 
     /***************************************************************************
@@ -179,8 +180,12 @@ contract VaultStorage {
         return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTAS_SLOT);
     }
 
-    function _addLiquidityCalled() internal view returns (AddressToBooleanMappingSlot slot) {
-        return AddressToBooleanMappingSlot.wrap(_ADD_LIQUIDITY_CALLED_SLOT);
+    function _addLiquidityCalled() internal view returns (UintToAddressToBooleanMappingSlot slot) {
+        return UintToAddressToBooleanMappingSlot.wrap(_ADD_LIQUIDITY_CALLED_SLOT);
+    }
+
+    function _sessionIdSlot() internal view returns (StorageSlotExtension.Uint256SlotType slot) {
+        return _SESSION_ID_SLOT.asUint256();
     }
 
     function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {

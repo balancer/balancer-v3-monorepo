@@ -50,9 +50,15 @@ contract LotteryHookExampleTest is BaseVaultTest {
     }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity).
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = deployPoolMock(IVault(address(vault)), "Lottery Pool", "LOTTERY-POOL");
-        vm.label(address(newPool), label);
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "Lottery Pool";
+        string memory symbol = "LOTTERY-POOL";
+
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
+        vm.label(newPool, label);
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
@@ -64,14 +70,14 @@ contract LotteryHookExampleTest is BaseVaultTest {
         emit LotteryHookExample.LotteryHookExampleRegistered(poolHooksContract, address(newPool));
 
         factoryMock.registerPool(
-            address(newPool),
+            newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
             poolHooksContract,
             liquidityManagement
         );
 
-        return address(newPool);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testLotterySwapExactIn() public {

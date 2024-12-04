@@ -43,7 +43,7 @@ contract FactoryWidePauseWindow {
 
     /**
      * @notice Return the pause window duration. This is the time pools will be pausable after factory deployment.
-     * @return The duration in seconds
+     * @return pauseWindowDuration The duration in seconds
      */
     function getPauseWindowDuration() external view returns (uint32) {
         return _pauseWindowDuration;
@@ -51,7 +51,7 @@ contract FactoryWidePauseWindow {
 
     /**
      * @notice Returns the original factory pauseWindowEndTime, regardless of the current time.
-     * @return The end time as a timestamp
+     * @return pauseWindowEndTime The end time as a timestamp
      */
     function getOriginalPauseWindowEndTime() external view returns (uint32) {
         return _poolsPauseWindowEndTime;
@@ -63,7 +63,7 @@ contract FactoryWidePauseWindow {
      * this date, all future pools will be unpausable). This function will return `_poolsPauseWindowEndTime`
      * until it passes, after which it will return 0.
      *
-     * @return The resolved pause window end time (0 indicating it's no longer pausable)
+     * @return pauseWindowEndTime The resolved pause window end time (0 indicating it's no longer pausable)
      */
     function getNewPoolPauseWindowEndTime() public view returns (uint32) {
         // We know _poolsPauseWindowEndTime <= _MAX_TIMESTAMP (checked above).

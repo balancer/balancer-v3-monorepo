@@ -250,4 +250,9 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getERC4626BufferAsset(IERC4626(address(1)));
     }
+
+    function testGetAuthorizerWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getAuthorizer();
+    }
 }

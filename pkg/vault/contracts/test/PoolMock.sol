@@ -2,18 +2,19 @@
 
 pragma solidity ^0.8.24;
 
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolAuthentication } from "@balancer-labs/v3-pool-utils/contracts/BasePoolAuthentication.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
+contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolAuthentication, PoolInfo {
     using FixedPoint for uint256;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it.
@@ -26,7 +27,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         IVault vault,
         string memory name,
         string memory symbol
-    ) BalancerPoolToken(vault, name, symbol) PoolInfo(vault) {
+    ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) PoolInfo(vault) {
         // solhint-previous-line no-empty-blocks
     }
 

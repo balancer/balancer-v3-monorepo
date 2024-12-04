@@ -14,16 +14,16 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import {
-    TransientStorageHelpers
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
-import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
-import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -137,7 +137,12 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         }
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2, string memory version) VaultGuard(vault) Version(version) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory routerVersion
+    ) VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
         _permit2 = permit2;
     }
@@ -300,7 +305,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
             _vault.settle(_weth, amountIn);
         } else {
             if (amountIn > 0) {
-                // Send the tokenIn amount to the Vault
+                // Send the tokenIn amount to the Vault.
                 _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
                 _vault.settle(tokenIn, amountIn);
             }

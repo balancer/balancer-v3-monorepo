@@ -49,9 +49,9 @@ interface IRouterCommon {
 
     /**
      * @notice Get the first sender which initialized the call to Router.
-     * @return address The sender address
+     * @return sender The address of the sender
      */
-    function getSender() external view returns (address);
+    function getSender() external view returns (address sender);
 
     /*******************************************************************************
                                          Utils
