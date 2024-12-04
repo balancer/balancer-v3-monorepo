@@ -1132,12 +1132,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
         _ensureCorrectBufferAsset(params.wrappedToken, address(underlyingToken));
 
-        if (params.amountGivenRaw < _MINIMUM_WRAP_AMOUNT) {
-            // If amount given is too small, rounding issues can be introduced that favors the user and can drain
-            // the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already, this
-            // is just an extra layer of security.
-            revert WrapAmountTooSmall(params.wrappedToken);
-        }
+        _ensureValidWrapAmount(params.wrappedToken, params.amountGivenRaw);
 
         if (params.direction == WrappingDirection.UNWRAP) {
             bytes32 bufferBalances;
@@ -1160,29 +1155,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (params.kind == SwapKind.EXACT_IN) {
-            if (amountOutRaw < _MINIMUM_WRAP_AMOUNT) {
-                // If amount calculated is too small, rounding issues can be introduced that favor the user and can
-                // drain the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already;
-                // this is just an extra layer of security.
-                revert WrapAmountTooSmall(params.wrappedToken);
-            }
+            _ensureValidWrapAmount(params.wrappedToken, amountOutRaw);
 
             if (amountOutRaw < params.limitRaw) {
                 revert SwapLimit(amountOutRaw, params.limitRaw);
             }
             amountCalculatedRaw = amountOutRaw;
         } else {
-            if (amountInRaw < _MINIMUM_WRAP_AMOUNT) {
-                // If amount calculated is too small, rounding issues can be introduced that favor the user and can
-                // drain the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already;
-                // this is just an extra layer of security.
-                revert WrapAmountTooSmall(params.wrappedToken);
-            }
+            _ensureValidWrapAmount(params.wrappedToken, amountInRaw);
 
             if (amountInRaw > params.limitRaw) {
                 revert SwapLimit(amountInRaw, params.limitRaw);
             }
             amountCalculatedRaw = amountInRaw;
+        }
+    }
+
+    // If amount is too small, rounding issues can be introduced that favors the user and can drain the buffer.
+    // _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already; this is just an extra layer
+    // of security.
+    function _ensureValidWrapAmount(IERC4626 wrappedToken, uint256 amount) private pure {
+        if (amountOutRaw < _MINIMUM_WRAP_AMOUNT) {
+            revert WrapAmountTooSmall(wrappedToken);
         }
     }
 
