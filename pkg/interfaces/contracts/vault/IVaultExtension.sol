@@ -245,26 +245,26 @@ interface IVaultExtension {
     /**
      * @notice Gets the total supply of a given ERC20 token.
      * @param token The token address
-     * @return totalSupply Total supply of the token
+     * @return tokenTotalSupply Total supply of the token
      */
-    function totalSupply(address token) external view returns (uint256);
+    function totalSupply(address token) external view returns (uint256 tokenTotalSupply);
 
     /**
      * @notice Gets the balance of an account for a given ERC20 token.
      * @param token Address of the token
      * @param account Address of the account
-     * @return balance Balance of the account for the token
+     * @return tokenBalance Token balance of the account
      */
-    function balanceOf(address token, address account) external view returns (uint256 balance);
+    function balanceOf(address token, address account) external view returns (uint256 tokenBalance);
 
     /**
      * @notice Gets the allowance of a spender for a given ERC20 token and owner.
      * @param token Address of the token
      * @param owner Address of the owner
      * @param spender Address of the spender
-     * @return allowance Amount of tokens the spender is allowed to spend
+     * @return tokenAllowance Amount of tokens the spender is allowed to spend
      */
-    function allowance(address token, address owner, address spender) external view returns (uint256);
+    function allowance(address token, address owner, address spender) external view returns (uint256 tokenAllowance);
 
     /**
      * @notice Approves a spender to spend pool tokens on behalf of sender.
