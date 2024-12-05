@@ -42,8 +42,14 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        address newPool = factoryMock.createPool("TestPool", "TEST");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "TestPool";
+        string memory symbol = "TEST";
+
+        newPool = factoryMock.createPool(name, symbol);
         vm.label(newPool, label);
 
         rateProviders = new IRateProvider[](2);
@@ -52,7 +58,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20(), rateProviders));
 
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function initPool() internal override {
@@ -537,7 +543,11 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         vm.revertTo(snapshotId);
 
         vm.prank(lp);
-        uint256[] memory actualAmountsOut = router.removeLiquidityRecovery(pool, exactBptAmountIn);
+        uint256[] memory actualAmountsOut = router.removeLiquidityRecovery(
+            pool,
+            exactBptAmountIn,
+            new uint256[](expectedAmountsOut.length)
+        );
 
         assertEq(queryAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Query and Actual amounts out are wrong");
         assertEq(expectedAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Expected amount out is wrong");

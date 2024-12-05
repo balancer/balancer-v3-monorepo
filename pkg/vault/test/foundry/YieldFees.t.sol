@@ -38,7 +38,10 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt).
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
         wstETHRateProvider = deployRateProviderMock();
         daiRateProvider = deployRateProviderMock();
 
@@ -50,10 +53,10 @@ contract YieldFeesTest is BaseVaultTest {
         rateProviders[1] = daiRateProvider;
         yieldFeeFlags[0] = true;
 
-        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
 
         factoryMock.registerTestPool(
-            address(newPool),
+            newPool,
             vault.buildTokenConfig(
                 [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                 rateProviders,
@@ -63,12 +66,12 @@ contract YieldFeesTest is BaseVaultTest {
             lp
         );
 
-        vm.label(address(newPool), "pool");
-        return address(newPool);
+        vm.label(newPool, "pool");
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {
-        pool = createPool();
+        (pool, ) = createPool();
         initPool();
 
         verifyLiveBalances(FixedPoint.ONE, FixedPoint.ONE, roundUp);
@@ -78,7 +81,7 @@ contract YieldFeesTest is BaseVaultTest {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        pool = createPool();
+        (pool, ) = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 
@@ -105,7 +108,7 @@ contract YieldFeesTest is BaseVaultTest {
         // Prevent PrecisionTooHigh error.
         aggregateYieldFeePercentage = (aggregateYieldFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
 
-        pool = createPool();
+        (pool, ) = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 
@@ -131,7 +134,7 @@ contract YieldFeesTest is BaseVaultTest {
         for (uint256 i = 0; i < 2; ++i) {
             liveBalanceDeltas[i] = newLiveBalances[i] - originalLiveBalances[i];
             // Balances should have increased, but delta can be 0 if creator fee is 100%.
-            assertTrue(liveBalanceDeltas[i] >= 0, "Live balance delta is 0");
+            assertGe(liveBalanceDeltas[i], 0, "Live balance delta is 0");
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt.
@@ -139,7 +142,7 @@ contract YieldFeesTest is BaseVaultTest {
 
         // There should be fees on non-exempt wsteth.
         uint256 actualProtocolFee = vault.manualGetAggregateYieldFeeAmount(pool, wsteth);
-        assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
+        assertGt(actualProtocolFee, 0, "wstETH did not collect any protocol fees");
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in.
@@ -232,9 +235,9 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function testYieldFeesOnSwap() public {
-        // Protocol yield fee 20%, and pool creator yield fees 100%.
+        // Protocol yield fee 20%, and pool creator yield fees near 100%.
         uint256 protocolYieldFeePercentage = 20e16;
-        uint256 poolCreatorFeePercentage = 100e16;
+        uint256 poolCreatorFeePercentage = 99e16;
 
         uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
             protocolYieldFeePercentage,
@@ -248,7 +251,7 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function _testYieldFeesOnSwap(uint256 wstethRate, uint256 daiRate, uint256 aggregateYieldFeePercentage) private {
-        pool = createPool();
+        (pool, ) = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 

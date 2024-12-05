@@ -16,9 +16,6 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
@@ -38,7 +35,7 @@ struct SwapStepLocals {
  * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
-contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransient {
+contract BatchRouter is IBatchRouter, BatchRouterCommon {
     using CastingHelpers for *;
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
@@ -49,8 +46,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) BatchRouterCommon(vault, weth, permit2, version) {
+        string memory routerVersion
+    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -169,7 +166,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
 
             if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
-                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
+                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
             } else {
                 // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
                 // in a set with unique addresses that can be iterated later on.
@@ -225,8 +222,8 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                     // required amount when performing the operation. These tokens might be the output of a previous
                     // step, in which case the user will have a BPT credit.
 
-                    if (stepLocals.isFirstStep && params.sender != address(this)) {
-                        if (stepExactAmountIn > 0) {
+                    if (stepLocals.isFirstStep) {
+                        if (stepExactAmountIn > 0 && params.sender != address(this)) {
                             // If this is the first step, the sender must have the tokens. Therefore, we can transfer
                             // them to the Router, which acts as an intermediary. If the sender is the Router, we just
                             // skip this step (useful for queries).
@@ -240,15 +237,15 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                                 address(stepTokenIn)
                             );
                         }
+
+                        // BPT is burned instantly, so we don't need to send it back later.
+                        if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
+                            _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
+                        }
                     } else {
                         // If this is an intermediate step, we don't expect the sender to have BPT to burn.
                         // Then, we flashloan tokens here (which should in practice just use existing credit).
                         _vault.sendTo(IERC20(step.pool), address(this), stepExactAmountIn);
-                    }
-
-                    // BPT is burned instantly, so we don't need to send it back later.
-                    if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
-                        _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
                     }
 
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
@@ -444,7 +441,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon, ReentrancyGuardTransien
                 if (step.isBuffer) {
                     if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
                         // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
-                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, params.wethIsEth);
                     }
 
                     (, uint256 amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(

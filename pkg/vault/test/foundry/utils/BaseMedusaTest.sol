@@ -62,6 +62,8 @@ contract BaseMedusaTest is Test {
 
     uint256 internal constant MAX_UINT128 = type(uint128).max;
     uint256 internal constant MAX_UINT256 = type(uint256).max;
+
+    // PackedTokenBalance.sol defines a max of 128 bits to store the balance of the pool.
     uint256 internal constant MAX_BALANCE = MAX_UINT128;
 
     uint256 internal constant DEFAULT_USER_BALANCE = 1e18 * 1e18;
@@ -161,7 +163,7 @@ contract BaseMedusaTest is Test {
             minWrapAmount
         );
         vaultExtension = new VaultExtensionMock(IVault(payable(address(newVault))), vaultAdmin);
-        feeController = new ProtocolFeeControllerMock(IVault(payable(address(newVault))));
+        feeController = new ProtocolFeeControllerMock(IVaultMock(payable(address(newVault))));
 
         _create3(abi.encode(vaultExtension, authorizer, feeController), vaultMockBytecode, salt);
 

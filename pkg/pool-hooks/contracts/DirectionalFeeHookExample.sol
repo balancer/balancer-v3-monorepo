@@ -97,7 +97,8 @@ contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
         );
     }
 
-    /** @notice This example assumes that the pool math is linear and that final balances of token in and out are
+    /**
+     * @dev This example assumes that the pool math is linear and that final balances of token in and out are
      *  changed proportionally. This approximation is just to illustrate this hook in a simple manner, but is
      *  also reasonable, since stable pools behave linearly near equilibrium. Also, this example requires
      *  the rates to be 1:1, which is common among assets that are pegged around the same value, such as USD.

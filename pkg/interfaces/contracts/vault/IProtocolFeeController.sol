@@ -36,12 +36,14 @@ interface IProtocolFeeController {
 
     /**
      * @notice Emitted when the pool creator swap fee percentage of a pool is updated.
+     * @param pool The pool whose pool creator swap fee will be changed
      * @param poolCreatorSwapFeePercentage The new pool creator swap fee percentage for the pool
      */
     event PoolCreatorSwapFeePercentageChanged(address indexed pool, uint256 poolCreatorSwapFeePercentage);
 
     /**
      * @notice Emitted when the pool creator yield fee percentage of a pool is updated.
+     * @param pool The pool whose pool creator yield fee will be changed
      * @param poolCreatorYieldFeePercentage The new pool creator yield fee percentage for the pool
      */
     event PoolCreatorYieldFeePercentageChanged(address indexed pool, uint256 poolCreatorYieldFeePercentage);
@@ -101,7 +103,7 @@ interface IProtocolFeeController {
 
     /**
      * @notice Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
-     * @dev Note that this is checked for both the global and pool-specific protocol swap fee percentages.
+     * @dev Note that this is checked for both the global and pool-specific protocol yield fee percentages.
      */
     error ProtocolYieldFeePercentageTooHigh();
 
@@ -137,13 +139,13 @@ interface IProtocolFeeController {
      * @notice Getter for the current global protocol swap fee.
      * @return protocolSwapFeePercentage The global protocol swap fee percentage
      */
-    function getGlobalProtocolSwapFeePercentage() external view returns (uint256);
+    function getGlobalProtocolSwapFeePercentage() external view returns (uint256 protocolSwapFeePercentage);
 
     /**
      * @notice Getter for the current global protocol yield fee.
      * @return protocolYieldFeePercentage The global protocol yield fee percentage
      */
-    function getGlobalProtocolYieldFeePercentage() external view returns (uint256);
+    function getGlobalProtocolYieldFeePercentage() external view returns (uint256 protocolYieldFeePercentage);
 
     /**
      * @notice Getter for the current protocol swap fee for a given pool.
@@ -151,7 +153,9 @@ interface IProtocolFeeController {
      * @return protocolSwapFeePercentage The global protocol swap fee percentage
      * @return isOverride True if the protocol fee has been overridden
      */
-    function getPoolProtocolSwapFeeInfo(address pool) external view returns (uint256, bool);
+    function getPoolProtocolSwapFeeInfo(
+        address pool
+    ) external view returns (uint256 protocolSwapFeePercentage, bool isOverride);
 
     /**
      * @notice Getter for the current protocol yield fee for a given pool.
@@ -159,7 +163,9 @@ interface IProtocolFeeController {
      * @return protocolYieldFeePercentage The global protocol yield fee percentage
      * @return isOverride True if the protocol fee has been overridden
      */
-    function getPoolProtocolYieldFeeInfo(address pool) external view returns (uint256, bool);
+    function getPoolProtocolYieldFeeInfo(
+        address pool
+    ) external view returns (uint256 protocolYieldFeePercentage, bool isOverride);
 
     /**
      * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
@@ -179,10 +185,11 @@ interface IProtocolFeeController {
 
     /**
      * @notice Returns a calculated aggregate percentage from protocol and pool creator fee percentages.
-     * @dev Not tied to any particular pool; this just performs the low-level "additive fee" calculation.
-     * Note that pool creator fees are calculated based on creatorAndLpFees, and not in totalFees.
-     * Since aggregate fees are stored in the Vault with 24-bit precision, this will revert if greater
-     * precision would be required.
+     * @dev Not tied to any particular pool; this just performs the low-level "additive fee" calculation. Note that
+     * pool creator fees are calculated based on creatorAndLpFees, and not in totalFees. Since aggregate fees are
+     * stored in the Vault with 24-bit precision, this will truncate any values that require greater precision.
+     * It is expected that pool creators will negotiate with the DAO and agree on reasonable values for these fee
+     * components, but the truncation ensures it will not revert for any valid set of fee percentages.
      *
      * See example below:
      *
@@ -272,7 +279,7 @@ interface IProtocolFeeController {
      * @notice Assigns a new pool creator swap fee percentage to the specified pool.
      * @dev Fees are divided between the protocol, pool creator, and LPs. The pool creator percentage is applied to
      * the "net" amount after protocol fees, and divides the remainder between the pool creator and LPs. If the
-     * pool creator fee is 100%, none of the fee amount remains in the pool for LPs.
+     * pool creator fee is near 100%, almost none of the fee amount remains in the pool for LPs.
      *
      * @param pool The address of the pool for which the pool creator fee will be changed
      * @param poolCreatorSwapFeePercentage The new pool creator swap fee percentage to apply to the pool
@@ -283,7 +290,7 @@ interface IProtocolFeeController {
      * @notice Assigns a new pool creator yield fee percentage to the specified pool.
      * @dev Fees are divided between the protocol, pool creator, and LPs. The pool creator percentage is applied to
      * the "net" amount after protocol fees, and divides the remainder between the pool creator and LPs. If the
-     * pool creator fee is 100%, none of the fee amount remains in the pool for LPs.
+     * pool creator fee is near 100%, almost none of the fee amount remains in the pool for LPs.
      *
      * @param pool The address of the pool for which the pool creator fee will be changed
      * @param poolCreatorYieldFeePercentage The new pool creator yield fee percentage to apply to the pool
@@ -291,12 +298,21 @@ interface IProtocolFeeController {
     function setPoolCreatorYieldFeePercentage(address pool, uint256 poolCreatorYieldFeePercentage) external;
 
     /**
-     * @notice Withdraw collected protocol fees for a given pool. This is a permissioned function.
+     * @notice Withdraw collected protocol fees for a given pool (all tokens). This is a permissioned function.
      * @dev Sends swap and yield protocol fees to the recipient.
      * @param pool The pool on which fees were collected
      * @param recipient Address to send the tokens
      */
     function withdrawProtocolFees(address pool, address recipient) external;
+
+    /**
+     * @notice Withdraw collected protocol fees for a given pool and a given token. This is a permissioned function.
+     * @dev Sends swap and yield protocol fees to the recipient.
+     * @param pool The pool on which fees were collected
+     * @param recipient Address to send the tokens
+     * @param token Token to withdraw
+     */
+    function withdrawProtocolFeesForToken(address pool, address recipient, IERC20 token) external;
 
     /**
      * @notice Withdraw collected pool creator fees for a given pool. This is a permissioned function.
@@ -308,7 +324,9 @@ interface IProtocolFeeController {
 
     /**
      * @notice Withdraw collected pool creator fees for a given pool.
-     * @dev Sends swap and yield pool creator fees to the registered poolCreator.
+     * @dev Sends swap and yield pool creator fees to the registered poolCreator. Since this is a known and immutable
+     * value, this function is permissionless.
+     *
      * @param pool The pool on which fees were collected
      */
     function withdrawPoolCreatorFees(address pool) external;

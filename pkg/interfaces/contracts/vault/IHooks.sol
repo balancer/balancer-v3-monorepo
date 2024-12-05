@@ -44,7 +44,7 @@ interface IHooks {
         address pool,
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /**
      * @notice Return the set of hooks implemented by the contract.
@@ -69,7 +69,7 @@ interface IHooks {
      * @param userData Optional, arbitrary data sent with the encoded request
      * @return success True if the pool wishes to proceed with initialization
      */
-    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool);
+    function onBeforeInitialize(uint256[] memory exactAmountsIn, bytes memory userData) external returns (bool success);
 
     /**
      * @notice Hook to be executed after pool initialization.
@@ -85,7 +85,7 @@ interface IHooks {
         uint256[] memory exactAmountsIn,
         uint256 bptAmountOut,
         bytes memory userData
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /***************************************************************************
                                    Add Liquidity
@@ -98,7 +98,7 @@ interface IHooks {
      *
      * @param router The address (usually a router contract) that initiated an add liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the Vault (pool config, tokens, etc.)
-     * @param kind The type of add liquidity operation (e.g., proportional, custom)
+     * @param kind The add liquidity operation type (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param balancesScaled18 Current pool balances, sorted in token registration order
@@ -123,7 +123,7 @@ interface IHooks {
      *
      * @param router The address (usually a router contract) that initiated an add liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the Vault (pool config, tokens, etc.)
-     * @param kind The type of add liquidity operation (e.g., proportional, custom)
+     * @param kind The add liquidity operation type (e.g., proportional, custom)
      * @param amountsInScaled18 Actual amounts of tokens added, sorted in token registration order
      * @param amountsInRaw Actual amounts of tokens added, sorted in token registration order
      * @param bptAmountOut Amount of pool tokens minted

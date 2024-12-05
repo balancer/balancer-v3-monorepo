@@ -11,5 +11,5 @@ interface IAuthorizer {
      * @param where Target contract for the action
      * @return success True if the action is permitted
      */
-    function canPerform(bytes32 actionId, address account, address where) external view returns (bool);
+    function canPerform(bytes32 actionId, address account, address where) external view returns (bool success);
 }

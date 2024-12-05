@@ -9,8 +9,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    IWeightedPool,
+    WeightedPoolImmutableData,
+    WeightedPoolDynamicData
+} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -48,7 +54,11 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
@@ -57,28 +67,37 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        WeightedPool newPool = WeightedPool(
-            WeightedPoolFactory(address(factory)).create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(sortedTokens),
-                weights,
-                roleAccounts,
-                DEFAULT_SWAP_FEE,
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = WeightedPoolFactory(address(factory)).create(
+            name,
+            symbol,
+            vault.buildTokenConfig(sortedTokens),
+            weights,
+            roleAccounts,
+            DEFAULT_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
-        return address(newPool);
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: sortedTokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {
@@ -119,5 +138,35 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         factoryMock.registerTestPool(lowFeeWeightedPool, tokenConfigs);
+    }
+
+    function testGetWeightedPoolImmutableData() public view {
+        WeightedPoolImmutableData memory data = IWeightedPool(pool).getWeightedPoolImmutableData();
+        (uint256[] memory scalingFactors, ) = vault.getPoolTokenRates(pool);
+        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            assertEq(address(data.tokens[i]), address(tokens[i]), "Token mismatch");
+            assertEq(data.decimalScalingFactors[i], scalingFactors[i], "Decimal scaling factors mismatch");
+            assertEq(data.normalizedWeights[i], uint256(50e16), "Weight mismatch");
+        }
+    }
+
+    function testGetWeightedPoolDynamicData() public view {
+        WeightedPoolDynamicData memory data = IWeightedPool(pool).getWeightedPoolDynamicData();
+        (, uint256[] memory tokenRates) = vault.getPoolTokenRates(pool);
+        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
+        uint256 totalSupply = IERC20(pool).totalSupply();
+
+        assertTrue(data.isPoolInitialized, "Pool not initialized");
+        assertFalse(data.isPoolPaused, "Pool paused");
+        assertFalse(data.isPoolInRecoveryMode, "Pool in Recovery Mode");
+        assertEq(data.totalSupply, totalSupply, "Total supply mismatch");
+        assertEq(data.staticSwapFeePercentage, DEFAULT_SWAP_FEE, "Swap fee mismatch");
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            assertEq(data.balancesLiveScaled18[i], defaultAmount, "Live balance mismatch");
+            assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
+        }
     }
 }

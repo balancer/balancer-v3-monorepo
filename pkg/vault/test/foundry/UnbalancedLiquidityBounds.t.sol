@@ -26,13 +26,16 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
     }
 
     // Create a pool with flexible invariant ratio bounds.
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        address newPool = address(deployPoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        newPool = address(deployPoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
 
-        return newPool;
+        poolArgs = abi.encode(vault, "", "");
     }
 
     /// @dev Proportional add is not affected by min / max invariant ratio.
@@ -125,7 +128,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         vault.manualEnableRecoveryMode(pool);
 
         vm.prank(lp);
-        router.removeLiquidityRecovery(pool, bptAmountIn);
+        router.removeLiquidityRecovery(pool, bptAmountIn, new uint256[](2));
     }
 
     /// @dev Unbalanced remove (single token exact in); new invariant is smaller than allowed.

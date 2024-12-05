@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRateProvider } from "../solidity-utils/helpers/IRateProvider.sol";
 import "../vault/VaultTypes.sol";
@@ -288,4 +288,18 @@ interface IVaultMainMock {
     function ensureValidTradeAmount(uint256 tradeAmount) external view;
 
     function ensureValidSwapAmount(uint256 tradeAmount) external view;
+
+    function manualUpdateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
+
+    function manualGetAddLiquidityCalledFlagBySession(address pool, uint256 sessionId) external view returns (bool);
+
+    function manualGetCurrentUnlockSessionId() external view returns (uint256);
+
+    function previewDeposit(IERC4626 wrapper, uint256 amountInUnderlying) external returns (uint256 amountOutWrapped);
+
+    function previewMint(IERC4626 wrapper, uint256 amountOutWrapped) external returns (uint256 amountInUnderlying);
+
+    function previewRedeem(IERC4626 wrapper, uint256 amountInWrapped) external returns (uint256 amountOutUnderlying);
+
+    function previewWithdraw(IERC4626 wrapper, uint256 amountOutUnderlying) external returns (uint256 amountInWrapped);
 }

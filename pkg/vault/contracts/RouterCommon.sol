@@ -15,7 +15,11 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
     TransientStorageHelpers
@@ -29,8 +33,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
  * invocation functions (`permitBatchAndCall` and `multicall`).
  */
-abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
-    using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
+abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTransient, Version {
     using Address for address payable;
     using StorageSlotExtension for *;
     using SafeERC20 for IWETH;
@@ -101,13 +104,19 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
     modifier saveSenderAndManageEth() {
         bool isExternalSender = _saveSender(msg.sender);
 
+        // Revert if a function with this modifier is called recursively (e.g., multicall).
+        if (_isReturnEthLockedSlot().tload()) {
+            revert ReentrancyGuardReentrantCall();
+        }
+
         // Lock the return of ETH during execution
         _isReturnEthLockedSlot().tstore(true);
         _;
         _isReturnEthLockedSlot().tstore(false);
 
-        _returnEth(_getSenderSlot().tload());
+        address sender = _getSenderSlot().tload();
         _discardSenderIfRequired(isExternalSender);
+        _returnEth(sender);
     }
 
     function _saveSender(address sender) internal returns (bool isExternalSender) {
@@ -128,7 +137,12 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
         }
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2, string memory version) VaultGuard(vault) Version(version) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory routerVersion
+    ) VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
         _permit2 = permit2;
     }
@@ -150,7 +164,21 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external payable virtual saveSender(msg.sender) returns (bytes[] memory results) {
+    ) external payable virtual returns (bytes[] memory results) {
+        _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
+
+        // Execute all the required operations once permissions have been granted.
+        return multicall(multicallData);
+    }
+
+    function _permitBatch(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature
+    ) internal nonReentrant {
+        InputHelpers.ensureInputLengthMatch(permitBatch.length, permitSignatures.length);
+
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
         // and grant allowances to Vault for BPT tokens.
         for (uint256 i = 0; i < permitBatch.length; ++i) {
@@ -189,9 +217,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
             // Use Permit2 for tokens that are swapped and added into the Vault.
             _permit2.permit(msg.sender, permit2Batch, permit2Signature);
         }
-
-        // Execute all the required operations once permissions have been granted.
-        return multicall(multicallData);
     }
 
     /// @inheritdoc IRouterCommon
@@ -280,7 +305,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, Version {
             _vault.settle(_weth, amountIn);
         } else {
             if (amountIn > 0) {
-                // Send the tokenIn amount to the Vault
+                // Send the tokenIn amount to the Vault.
                 _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
                 _vault.settle(tokenIn, amountIn);
             }

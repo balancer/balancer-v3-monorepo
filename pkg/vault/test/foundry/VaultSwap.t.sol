@@ -38,7 +38,8 @@ contract VaultSwapTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
 
-        noInitPool = PoolMock(createPool());
+        (address poolMock, ) = createPool();
+        noInitPool = PoolMock(poolMock);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -210,6 +211,36 @@ contract VaultSwapTest is BaseVaultTest {
     function testSwapEventExactIn() public {
         setSwapFeePercentage(swapFeePercentage);
 
+        vm.expectEmit();
+        emit IVaultEvents.Swap(
+            pool,
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount - swapFeeExactIn,
+            swapFeePercentage,
+            defaultAmount.mulDown(swapFeePercentage)
+        );
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            pool,
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount - swapFeeExactIn,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+    }
+
+    function testSwapEventExactInRecovery() public {
+        setSwapFeePercentage(swapFeePercentage);
+
+        vault.manualEnableRecoveryMode(pool);
+
+        // Fee should be non-zero, even in RecoveryMode
         vm.expectEmit();
         emit IVaultEvents.Swap(
             pool,
