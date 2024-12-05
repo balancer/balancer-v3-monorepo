@@ -76,8 +76,8 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         vm.prank(wrongDeployer);
         vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
         wrongFactory.create(
-            HARDCODED_SALT,
-            HARDCODED_VAULT_ADDRESS,
+            _HARDCODED_SALT,
+            _HARDCODED_VAULT_ADDRESS,
             type(Vault).creationCode,
             type(VaultAdmin).creationCode,
             type(VaultExtension).creationCode
