@@ -24,35 +24,49 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
     uint256 internal poolCreationNonce;
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by FungibilityTest.
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "80/20 Weighted Pool";
+        string memory symbol = "80_20WP";
+        string memory poolVersion = "Pool v1";
+
         WeightedPoolFactory factory = deployWeightedPoolFactory(
             IVault(address(vault)),
             365 days,
             "Factory v1",
-            "Pool v1"
+            poolVersion
         );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        WeightedPool newPool = WeightedPool(
-            factory.create(
-                "80/20 Weighted Pool",
-                "80_20WP",
-                vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(80e16), uint256(20e16)].toMemoryArray(),
-                roleAccounts,
-                swapFeePercentage, // 1% swap fee, but test will force it to be 0
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                // NOTE: sends a unique salt.
-                bytes32(poolCreationNonce++)
-            )
+        newPool = factory.create(
+            name,
+            symbol,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            [uint256(80e16), uint256(20e16)].toMemoryArray(),
+            roleAccounts,
+            swapFeePercentage, // 1% swap fee, but test will force it to be 0
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            // NOTE: sends a unique salt.
+            bytes32(poolCreationNonce++)
         );
-        vm.label(address(newPool), label);
+        vm.label(newPool, label);
 
-        return address(newPool);
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: tokens.length,
+                normalizedWeights: [uint256(80e16), uint256(20e16)].toMemoryArray(),
+                version: poolVersion
+            }),
+            vault
+        );
     }
 }

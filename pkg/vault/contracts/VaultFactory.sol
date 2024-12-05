@@ -2,28 +2,38 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
-import { VaultAdmin } from "./VaultAdmin.sol";
-import { VaultExtension } from "./VaultExtension.sol";
 import { ProtocolFeeController } from "./ProtocolFeeController.sol";
+import { VaultExtension } from "./VaultExtension.sol";
+import { VaultAdmin } from "./VaultAdmin.sol";
 
 /// @notice One-off factory to deploy the Vault at a specific address.
-contract VaultFactory is Authentication {
+contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     bytes32 public immutable vaultCreationCodeHash;
     bytes32 public immutable vaultAdminCreationCodeHash;
     bytes32 public immutable vaultExtensionCreationCodeHash;
+
+    mapping(address vaultAddress => ProtocolFeeController) public deployedProtocolFeeControllers;
+    mapping(address vaultAddress => VaultExtension) public deployedVaultExtensions;
+    mapping(address vaultAddress => VaultAdmin) public deployedVaultAdmins;
+    mapping(address vaultAddress => bool deployed) public isDeployed;
 
     IAuthorizer private immutable _authorizer;
     uint32 private immutable _pauseWindowDuration;
     uint32 private immutable _bufferPeriodDuration;
     uint256 private immutable _minTradeAmount;
     uint256 private immutable _minWrapAmount;
-    address private immutable _deployer;
 
     /**
      * @notice Emitted when the Vault is deployed.
@@ -34,8 +44,17 @@ contract VaultFactory is Authentication {
     /// @notice The given salt does not match the generated address when attempting to create the Vault.
     error VaultAddressMismatch();
 
-    /// @notice The bytecode for the given contract does not match the expected bytecode.
+    /**
+     * @notice The bytecode for the given contract does not match the expected bytecode.
+     * @param contractName The name of the mismatched contract
+     */
     error InvalidBytecode(string contractName);
+
+    /**
+     * @notice The Vault has already been deployed at this target address.
+     * @param vault Vault address already consumed by a previous deployment
+     */
+    error VaultAlreadyDeployed(address vault);
 
     constructor(
         IAuthorizer authorizer,
@@ -44,11 +63,9 @@ contract VaultFactory is Authentication {
         uint256 minTradeAmount,
         uint256 minWrapAmount,
         bytes32 vaultCreationCodeHash_,
-        bytes32 vaultAdminCreationCodeHash_,
-        bytes32 vaultExtensionCreationCodeHash_
-    ) Authentication(bytes32(uint256(uint160(address(this))))) {
-        _deployer = msg.sender;
-
+        bytes32 vaultExtensionCreationCodeHash_,
+        bytes32 vaultAdminCreationCodeHash_
+    ) Ownable(msg.sender) {
         vaultCreationCodeHash = vaultCreationCodeHash_;
         vaultAdminCreationCodeHash = vaultAdminCreationCodeHash_;
         vaultExtensionCreationCodeHash = vaultExtensionCreationCodeHash_;
@@ -62,20 +79,26 @@ contract VaultFactory is Authentication {
 
     /**
      * @notice Deploys the Vault.
-     * @dev The Vault can only be deployed once. Therefore, this function is permissioned to ensure that it is
-     * deployed to the right address.
+     * @dev The Vault can only be deployed once per salt. This function is permissioned.
      *
-     * @param salt Salt used to create the Vault. See `getDeploymentAddress`.
+     * @param salt Salt used to create the Vault. See `getDeploymentAddress`
      * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
-     * Vault to the target address.
+     * Vault to the target address
+     * @param vaultCreationCode Creation code for the Vault
+     * @param vaultExtensionCreationCode Creation code for the VaultExtension
+     * @param vaultAdminCreationCode Creation code for the VaultAdmin
      */
     function create(
         bytes32 salt,
         address targetAddress,
         bytes calldata vaultCreationCode,
-        bytes calldata vaultAdminCreationCode,
-        bytes calldata vaultExtensionCreationCode
-    ) external authenticate {
+        bytes calldata vaultExtensionCreationCode,
+        bytes calldata vaultAdminCreationCode
+    ) external onlyOwner nonReentrant {
+        if (isDeployed[targetAddress]) {
+            revert VaultAlreadyDeployed(targetAddress);
+        }
+
         if (vaultCreationCodeHash != keccak256(vaultCreationCode)) {
             revert InvalidBytecode("Vault");
         } else if (vaultAdminCreationCodeHash != keccak256(vaultAdminCreationCode)) {
@@ -89,13 +112,14 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
+        ProtocolFeeController protocolFeeController = new ProtocolFeeController(IVault(vaultAddress));
+        deployedProtocolFeeControllers[vaultAddress] = protocolFeeController;
 
         VaultAdmin vaultAdmin = VaultAdmin(
             payable(
                 Create2.deploy(
-                    0,
-                    bytes32(0x00),
+                    0, // ETH value
+                    salt,
                     abi.encodePacked(
                         vaultAdminCreationCode,
                         abi.encode(
@@ -109,20 +133,22 @@ contract VaultFactory is Authentication {
                 )
             )
         );
+        deployedVaultAdmins[vaultAddress] = vaultAdmin;
 
         VaultExtension vaultExtension = VaultExtension(
             payable(
                 Create2.deploy(
-                    0,
-                    bytes32(uint256(0x01)),
+                    0, // ETH value
+                    salt,
                     abi.encodePacked(vaultExtensionCreationCode, abi.encode(vaultAddress, vaultAdmin))
                 )
             )
         );
+        deployedVaultExtensions[vaultAddress] = vaultExtension;
 
         address deployedAddress = CREATE3.deploy(
             salt,
-            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, feeController)),
+            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, protocolFeeController)),
             0
         );
 
@@ -132,14 +158,12 @@ contract VaultFactory is Authentication {
         }
 
         emit VaultCreated(vaultAddress);
+
+        isDeployed[vaultAddress] = true;
     }
 
     /// @notice Gets deployment address for a given salt.
     function getDeploymentAddress(bytes32 salt) public view returns (address) {
         return CREATE3.getDeployed(salt);
-    }
-
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 }

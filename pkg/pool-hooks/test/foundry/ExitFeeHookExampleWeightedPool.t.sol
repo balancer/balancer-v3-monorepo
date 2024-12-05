@@ -14,13 +14,17 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
+import {
+    WeightedPoolContractsDeployer
+} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
 import { ExitFeeHookExampleTest } from "./ExitFeeHookExample.t.sol";
 
-contract ExitFeeHookExampleWeightedPoolTest is ExitFeeHookExampleTest {
+contract ExitFeeHookExampleWeightedPoolTest is WeightedPoolContractsDeployer, ExitFeeHookExampleTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for uint256;
@@ -32,15 +36,22 @@ contract ExitFeeHookExampleWeightedPoolTest is ExitFeeHookExampleTest {
     uint256[] internal weights;
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation).
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        weightedPoolFactory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "Weighted Pool Test";
+        string memory symbol = "WEIGHTED-TEST";
+        string memory poolVersion = "Pool v1";
+
+        weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         PoolRoleAccounts memory roleAccounts;
 
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
-        address newPool = weightedPoolFactory.create(
-            "ERC20 Pool",
-            "ERC20POOL",
+        newPool = weightedPoolFactory.create(
+            name,
+            symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
             weights,
             roleAccounts,
@@ -50,9 +61,18 @@ contract ExitFeeHookExampleWeightedPoolTest is ExitFeeHookExampleTest {
             true, // does not support unbalanced add/remove liquidity
             ZERO_BYTES32
         );
-        vm.label(address(newPool), label);
+        vm.label(newPool, label);
 
-        return address(newPool);
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: tokens.length,
+                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     // Exit fee returns to LPs.

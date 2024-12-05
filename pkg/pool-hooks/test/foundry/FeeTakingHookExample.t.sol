@@ -51,9 +51,15 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
     }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), label);
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
+        vm.label(newPool, label);
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
@@ -62,17 +68,17 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         liquidityManagement.disableUnbalancedLiquidity = true;
 
         vm.expectEmit();
-        emit FeeTakingHookExample.FeeTakingHookExampleRegistered(poolHooksContract, address(newPool));
+        emit FeeTakingHookExample.FeeTakingHookExampleRegistered(poolHooksContract, newPool);
 
         factoryMock.registerPool(
-            address(newPool),
+            newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
             poolHooksContract,
             liquidityManagement
         );
 
-        return address(newPool);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testFeeSwapExactIn__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {

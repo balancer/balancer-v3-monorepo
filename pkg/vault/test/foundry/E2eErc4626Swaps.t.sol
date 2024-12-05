@@ -41,8 +41,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
     function setUp() public virtual override {
         super.setUp();
-        // Set the pool so we can measure the invariant with BaseVaultTest's getBalances().
-        pool = erc4626Pool;
+
         poolCreator = lp;
 
         maxSwapAmount = erc4626PoolInitialAmount.mulDown(25e16); // 25% of pool liquidity
@@ -294,7 +293,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     function _checkUserBalancesAndPoolInvariant(
         TestBalances memory balancesBefore,
         TestBalances memory balancesAfter
-    ) private view {
+    ) private {
         // Pool invariant should never decrease.
         assertGe(
             balancesAfter.balances.poolInvariant,
@@ -321,9 +320,9 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         uint256 senderDaiDelta = balancesBefore.balances.bobTokens[balancesBefore.daiIdx] -
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx];
         uint256 vaultTotalDaiBefore = balancesBefore.balances.vaultTokens[balancesBefore.daiIdx] +
-            waDAI.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
+            _vaultPreviewRedeem(waDAI, balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
         uint256 vaultTotalDaiAfter = balancesAfter.balances.vaultTokens[balancesAfter.daiIdx] +
-            waDAI.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
+            _vaultPreviewRedeem(waDAI, balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
 
         // `vaultTotalDaiAfter - vaultTotalDaiBefore = senderDaiDelta`, solve for daiAfter to prevent underflow.
         assertApproxEqAbs(
@@ -340,9 +339,9 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         uint256 senderWethDelta = balancesBefore.balances.bobTokens[balancesBefore.wethIdx] -
             balancesAfter.balances.bobTokens[balancesAfter.wethIdx];
         uint256 vaultTotalWethBefore = balancesBefore.balances.vaultTokens[balancesBefore.wethIdx] +
-            waWETH.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waWethIdx]);
+            _vaultPreviewRedeem(waWETH, balancesBefore.balances.vaultTokens[balancesBefore.waWethIdx]);
         uint256 vaultTotalWethAfter = balancesAfter.balances.vaultTokens[balancesAfter.wethIdx] +
-            waWETH.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waWethIdx]);
+            _vaultPreviewRedeem(waWETH, balancesAfter.balances.vaultTokens[balancesAfter.waWethIdx]);
 
         // `vaultTotalWethAfter - vaultTotalWethBefore = senderWethDelta`, solve for wethAfter to prevent underflow.
         assertApproxEqAbs(
@@ -397,11 +396,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // The only token transfers are DAI in (given) and WETH out (calculated).
         if (tokenIn == dai) {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waWETH, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waDAI, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
@@ -427,11 +426,11 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // The only token transfers are DAI in (calculated) and WETH out (given).
         if (tokenIn == dai) {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waWETH, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waDAI, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
@@ -452,14 +451,14 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             erc4626PoolInitialAmount.mulDown(1e16),
             erc4626PoolInitialAmount.mulDown(10000e16)
         );
-        liquidityWaDai = waDAI.previewDeposit(liquidityWaDai);
+        liquidityWaDai = _vaultPreviewDeposit(waDAI, liquidityWaDai);
         // 1% to 10000% of erc4626 initial pool liquidity.
         liquidityWaWeth = bound(
             liquidityWaWeth,
             erc4626PoolInitialAmount.mulDown(1e16),
             erc4626PoolInitialAmount.mulDown(10000e16)
         );
-        liquidityWaWeth = waWETH.previewDeposit(liquidityWaWeth);
+        liquidityWaWeth = _vaultPreviewDeposit(waWETH, liquidityWaWeth);
 
         uint256[] memory newPoolBalance = new uint256[](2);
         newPoolBalance[waDaiIdx] = liquidityWaDai;
@@ -502,7 +501,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         uint256 waWethIdx;
     }
 
-    function _getTestBalances(address sender) private view returns (TestBalances memory testBalances) {
+    function _getTestBalances(address sender) private returns (TestBalances memory testBalances) {
         // The index of each token is defined by the order of tokenArray, defined right below.
         testBalances.daiIdx = 0;
         testBalances.wethIdx = 1;
@@ -523,8 +522,8 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
         // The rate only affects swaps of a very large amount (over 1e28), so we get the rate with this amount of
         // precision.
-        testBalances.waDAIRate = waDAI.previewRedeem(1e10 * FixedPoint.ONE);
-        testBalances.waWETHRate = waWETH.previewRedeem(1e10 * FixedPoint.ONE);
+        testBalances.waDAIRate = _vaultPreviewRedeem(waDAI, 1e10 * FixedPoint.ONE);
+        testBalances.waWETHRate = _vaultPreviewRedeem(waWETH, 1e10 * FixedPoint.ONE);
     }
 
     function _donateToVault() internal virtual {

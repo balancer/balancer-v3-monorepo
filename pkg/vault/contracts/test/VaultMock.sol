@@ -701,7 +701,15 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAddLiquidityCalledFlag(address pool, bool flag) public {
-        _addLiquidityCalled().tSet(pool, flag);
+        _addLiquidityCalled().tSet(_sessionIdSlot().tload(), pool, flag);
+    }
+
+    function manualGetAddLiquidityCalledFlagBySession(address pool, uint256 sessionId) public view returns (bool) {
+        return _addLiquidityCalled().tGet(sessionId, pool);
+    }
+
+    function manualGetCurrentUnlockSessionId() public view returns (uint256) {
+        return _sessionIdSlot().tload();
     }
 
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
@@ -744,5 +752,57 @@ contract VaultMock is IVaultMainMock, Vault {
                     FEE_BITLENGTH
                 )
             );
+    }
+
+    function previewDeposit(IERC4626 wrapper, uint256 amountInUnderlying) external returns (uint256 amountOutWrapped) {
+        if (amountInUnderlying == 0 || wrapper.previewDeposit(amountInUnderlying - 1) == 0) {
+            return 0;
+        }
+
+        (, amountOutWrapped, ) = _wrapWithBuffer(
+            SwapKind.EXACT_IN,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountInUnderlying
+        );
+    }
+
+    function previewMint(IERC4626 wrapper, uint256 amountOutWrapped) external returns (uint256 amountInUnderlying) {
+        if (amountOutWrapped == 0) {
+            return 0;
+        }
+
+        (amountInUnderlying, , ) = _wrapWithBuffer(
+            SwapKind.EXACT_OUT,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountOutWrapped
+        );
+    }
+
+    function previewRedeem(IERC4626 wrapper, uint256 amountInWrapped) external returns (uint256 amountOutUnderlying) {
+        if (amountInWrapped == 0 || wrapper.previewRedeem(amountInWrapped - 1) == 0) {
+            return 0;
+        }
+
+        (, amountOutUnderlying, ) = _unwrapWithBuffer(
+            SwapKind.EXACT_IN,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountInWrapped
+        );
+    }
+
+    function previewWithdraw(IERC4626 wrapper, uint256 amountOutUnderlying) external returns (uint256 amountInWrapped) {
+        if (amountOutUnderlying == 0) {
+            return 0;
+        }
+
+        (amountInWrapped, , ) = _unwrapWithBuffer(
+            SwapKind.EXACT_OUT,
+            IERC20(wrapper.asset()),
+            wrapper,
+            amountOutUnderlying
+        );
     }
 }

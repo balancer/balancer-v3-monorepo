@@ -6,9 +6,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -36,8 +36,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) BatchRouterCommon(vault, weth, permit2, version) {
+        string memory routerVersion
+    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -567,7 +567,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     /**
-     * @notice Creates an array of amounts in to insert in a pool, givben an array of tokens.
+     * @notice Creates an array of amounts in to insert in a pool, given an array of tokens.
      * @dev This function requires the transient set `_currentSwapTokenInAmounts` to be initialized first with all the
      * amount in values that the sender informed in the addLiquidity call.
      */

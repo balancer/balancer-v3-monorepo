@@ -8,10 +8,10 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 
 import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol";
@@ -38,33 +38,39 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         string memory label,
         IVaultMock vault,
         address poolCreator
-    ) internal returns (address) {
+    ) internal returns (address newPool, bytes memory poolArgs) {
         Gyro2CLPPoolFactory factory = deployGyro2CLPPoolFactory(vault);
 
         PoolRoleAccounts memory roleAccounts;
 
-        Gyro2CLPPool newPool = Gyro2CLPPool(
-            factory.create(
-                "Gyro 2CLP Pool",
-                "GRP",
-                vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
-                _sqrtAlpha,
-                _sqrtBeta,
-                roleAccounts,
-                0,
-                address(0),
-                bytes32("")
-            )
+        newPool = factory.create(
+            "Gyro 2CLP Pool",
+            "GRP",
+            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
+            _sqrtAlpha,
+            _sqrtBeta,
+            roleAccounts,
+            0,
+            address(0),
+            bytes32("")
         );
-        vm.label(address(newPool), label);
+        vm.label(newPool, label);
 
         // Cannot set the pool creator directly on a standard Balancer stable pool factory.
-        vault.manualSetPoolCreator(address(newPool), poolCreator);
+        vault.manualSetPoolCreator(newPool, poolCreator);
 
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), poolCreator);
+        feeController.manualSetPoolCreator(newPool, poolCreator);
 
-        return address(newPool);
+        poolArgs = abi.encode(
+            IGyro2CLPPool.GyroParams({
+                name: "Gyro 2CLP Pool",
+                symbol: "GRP",
+                sqrtAlpha: _sqrtAlpha,
+                sqrtBeta: _sqrtBeta
+            }),
+            vault
+        );
     }
 
     function deployGyro2CLPPoolFactory(IVault vault) internal returns (Gyro2CLPPoolFactory) {

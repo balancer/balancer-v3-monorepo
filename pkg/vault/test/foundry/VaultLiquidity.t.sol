@@ -15,6 +15,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { RouterMock } from "../../contracts/test/RouterMock.sol";
 
 contract VaultLiquidityTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -164,7 +165,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquidityNotInitialized() public {
-        pool = createPool();
+        (pool, ) = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, pool));
         router.addLiquidityUnbalanced(
@@ -345,7 +346,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function testRemoveLiquidityNotInitialized() public {
         vm.startPrank(alice);
 
-        pool = createPool();
+        (pool, ) = createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, pool));
         router.removeLiquidityProportional(
@@ -394,17 +395,86 @@ contract VaultLiquidityTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
+        uint256[] memory amountsOut = new uint256[](2);
 
         Balances memory balancesBefore = getBalances(alice);
 
         assertFalse(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag is set");
 
         vm.startPrank(alice);
+        (amountsIn, , , amountsOut) = router.manualAddAndRemoveLiquidity(
+            RouterMock.ManualAddRemoveLiquidityParams({
+                pool: pool,
+                sender: alice,
+                maxAmountsIn: amountsIn,
+                minBptAmountOut: defaultAmount
+            })
+        );
+
+        // The whole test runs in the same transaction, so transient storage is set for sessionId 0.
+        assertTrue(vault.manualGetAddLiquidityCalledFlagBySession(pool, 0), "addLiquidityCalled flag not set");
+        // But will not be set for the current session (1).
+        assertEq(vault.manualGetCurrentUnlockSessionId(), 1, "Wrong sessionId");
+        assertFalse(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag still set");
+
+        Balances memory balancesAfter = getBalances(alice);
+
+        // Amount out is 90% amount in after the round-trip.
+        assertEq(amountsOut[0], amountsIn[0].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], amountsIn[1].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[1]");
+
+        // Tokens are transferred from the user to the Vault.
+        assertEq(
+            balancesAfter.userTokens[0],
+            balancesBefore.userTokens[0] - amountsIn[0] + amountsOut[0],
+            "Round-trip - User balance: token 0"
+        );
+        assertEq(
+            balancesAfter.userTokens[1],
+            balancesBefore.userTokens[1] - amountsIn[1] + amountsOut[1],
+            "Round-trip - User balance: token 1"
+        );
+
+        // Tokens are now in the Vault / pool.
+        assertEq(
+            balancesAfter.poolTokens[0],
+            balancesBefore.poolTokens[0] + amountsIn[0] - amountsOut[0],
+            "Round-trip - Pool balance: token 0"
+        );
+        assertEq(
+            balancesAfter.poolTokens[1],
+            balancesBefore.poolTokens[1] + amountsIn[1] - amountsOut[0],
+            "Round-trip - Pool balance: token 1"
+        );
+
+        assertEq(balancesAfter.userBpt, 0, "Round-trip - User BPT balance after");
+    }
+
+    function testAddRemoveWithoutRoundtripFee() public {
+        uint256 swapFeePercentage = 10e16;
+        setSwapFeePercentage(swapFeePercentage);
+
+        uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
+
+        Balances memory balancesBefore = getBalances(alice);
+
+        vm.startPrank(alice);
+
+        assertFalse(
+            vault.manualGetAddLiquidityCalledFlagBySession(pool, 0),
+            "addLiquidityCalled flag is set (session 0)"
+        );
         amountsIn = router.addLiquidityProportional(pool, amountsIn, defaultAmount, false, bytes(""));
 
-        // The whole test runs in the same transaction, so transient storage is set.
-        assertTrue(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag not set");
+        assertTrue(
+            vault.manualGetAddLiquidityCalledFlagBySession(pool, 0),
+            "addLiquidityCalled flag not set (session 0)"
+        );
 
+        assertFalse(
+            vault.manualGetAddLiquidityCalledFlagBySession(pool, 1),
+            "addLiquidityCalled flag is set (session 1)"
+        );
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             pool,
             IERC20(pool).balanceOf(alice),
@@ -413,39 +483,42 @@ contract VaultLiquidityTest is BaseVaultTest {
             bytes("")
         );
 
+        assertFalse(
+            vault.manualGetAddLiquidityCalledFlagBySession(pool, 1),
+            "addLiquidityCalled flag is set (session 1 - after remove)"
+        );
+
         Balances memory balancesAfter = getBalances(alice);
 
-        assertTrue(vault.getAddLiquidityCalledFlag(pool), "addLiquidityCalled flag not set");
-
-        // Amount out is 90% amount in after the roundtrip.
-        assertEq(amountsOut[0], amountsIn[0].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[0]");
-        assertEq(amountsOut[1], amountsIn[1].mulDown(swapFeePercentage.complement()), "Wrong AmountOut[1]");
+        // Amount out is amount in after doing without round-trip.
+        assertEq(amountsOut[0], amountsIn[0], "Wrong AmountOut[0]");
+        assertEq(amountsOut[1], amountsIn[1], "Wrong AmountOut[1]");
 
         // Tokens are transferred from the user to the Vault.
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] - amountsIn[0] + amountsOut[0],
-            "Roundtrip - User balance: token 0"
+            "No Round-trip - User balance: token 0"
         );
         assertEq(
             balancesAfter.userTokens[1],
             balancesBefore.userTokens[1] - amountsIn[1] + amountsOut[1],
-            "Roundtrip - User balance: token 1"
+            "No Round-trip - User balance: token 1"
         );
 
         // Tokens are now in the Vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0] - amountsOut[0],
-            "Roundtrip - Pool balance: token 0"
+            "No Round-trip - Pool balance: token 0"
         );
         assertEq(
             balancesAfter.poolTokens[1],
             balancesBefore.poolTokens[1] + amountsIn[1] - amountsOut[0],
-            "Roundtrip - Pool balance: token 1"
+            "Round-trip - Pool balance: token 1"
         );
 
-        assertEq(balancesAfter.userBpt, 0, "Roundtrip - User BPT balance after");
+        assertEq(balancesAfter.userBpt, 0, "No Round-trip - User BPT balance after");
     }
 
     function testSwapFeesInEventRemoveLiquidityInRecovery() public {

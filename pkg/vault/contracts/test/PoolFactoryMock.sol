@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.24;
 
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
-import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { SingletonAuthentication } from "../SingletonAuthentication.sol";
 import { PoolMock } from "./PoolMock.sol";
@@ -179,7 +180,15 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
         return _isPoolFromFactory[pool];
     }
 
-    function getPools(uint256, uint256) external pure returns (address[] memory) {
+    function getPoolCount() external pure returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function getPools() external pure returns (address[] memory) {
+        revert("Not implemented");
+    }
+
+    function getPoolsInRange(uint256, uint256) external pure returns (address[] memory) {
         revert("Not implemented");
     }
 
@@ -189,8 +198,15 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getDeploymentAddress(bytes32 salt) public view returns (address) {
-        return CREATE3.getDeployed(_computeFinalSalt(salt));
+    function getDeploymentAddress(
+        bytes memory constructorArgs,
+        bytes32 salt
+    ) public view returns (address deployAddress) {
+        bytes memory creationCode = abi.encodePacked(type(PoolMock).creationCode, constructorArgs);
+        bytes32 creationCodeHash = keccak256(creationCode);
+        bytes32 finalSalt = _computeFinalSalt(salt);
+
+        return Create2.computeAddress(finalSalt, creationCodeHash, address(this));
     }
 
     /// @inheritdoc IBasePoolFactory
