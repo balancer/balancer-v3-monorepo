@@ -501,7 +501,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     params.wethIsEth
                 );
 
-                if (!childPoolAmountsEmpty) {
+                if (childPoolAmountsEmpty == false) {
                     // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent pool
                     // will be a logic insertion, not a token transfer.
                     (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
