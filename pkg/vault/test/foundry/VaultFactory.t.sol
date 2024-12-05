@@ -20,7 +20,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     uint256 private constant _MIN_WRAP_AMOUNT = 1e4;
     bytes32 private constant _HARDCODED_SALT =
         bytes32(0xae0bdc4eeac5e950b67c6819b118761caaf619464ad74a6048c67c03598dc543);
-    address private constant HARDCODED_VAULT_ADDRESS = address(0xbA133381ef63946fF77A7D009DFcdBdE5c77b92F);
+    address private constant _HARDCODED_VAULT_ADDRESS = address(0xbA133381ef63946fF77A7D009DFcdBdE5c77b92F);
 
     address deployer;
     BasicAuthorizerMock authorizer;
