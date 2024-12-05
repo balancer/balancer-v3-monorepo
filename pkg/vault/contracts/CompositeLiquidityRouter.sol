@@ -534,7 +534,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        (uint256[] memory parentPoolAmountsIn,) = _getPoolAmountsIn(parentPoolTokens, params.sender, params.wethIsEth);
+        (uint256[] memory parentPoolAmountsIn, ) = _getPoolAmountsIn(parentPoolTokens, params.sender, params.wethIsEth);
 
         // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
