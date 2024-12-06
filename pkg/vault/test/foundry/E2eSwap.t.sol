@@ -113,7 +113,7 @@ contract E2eSwapTest is BaseVaultTest {
         address[] memory tokens = new address[](2);
         tokens[tokenAIdx] = address(tokenA);
         tokens[tokenBIdx] = address(tokenB);
-        pool = _createPool(tokens, "custom-pool");
+        (pool, ) = _createPool(tokens, "custom-pool");
 
         setPoolInitAmounts();
 

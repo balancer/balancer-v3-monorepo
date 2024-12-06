@@ -42,8 +42,12 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
-        factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
+        factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
 
         TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
@@ -60,23 +64,29 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        address stablePool = address(
-            StablePool(
-                StablePoolFactory(address(factory)).create(
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    tokenConfigs,
-                    DEFAULT_AMP_FACTOR,
-                    roleAccounts,
-                    BASE_MIN_SWAP_FEE,
-                    poolHooksContract,
-                    false, // Do not enable donations
-                    false, // Do not disable unbalanced add/remove liquidity
-                    ZERO_BYTES32
-                )
-            )
+        newPool = StablePoolFactory(address(factory)).create(
+            name,
+            symbol,
+            tokenConfigs,
+            DEFAULT_AMP_FACTOR,
+            roleAccounts,
+            BASE_MIN_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
-        return stablePool;
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            StablePool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                amplificationParameter: DEFAULT_AMP_FACTOR,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {

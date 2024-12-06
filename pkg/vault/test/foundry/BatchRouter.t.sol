@@ -41,7 +41,6 @@ contract BatchRouterTest is BaseVaultTest {
         step[0] = IBatchRouter.SwapPathStep(address(pool), IERC20(address(dai)), false);
 
         uint256 totalSupply = IERC20(pool).totalSupply();
-        console.log("total BPT supply", totalSupply);
         uint256 bptAmountIn = 1e18;
 
         require(bptAmountIn < totalSupply);

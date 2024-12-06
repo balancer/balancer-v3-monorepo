@@ -144,6 +144,13 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(explorer.getNonzeroDeltaCount(), 47, "Wrong non-zero delta count");
     }
 
+    function testAddLiquidityFlag() public {
+        assertFalse(explorer.getAddLiquidityCalledFlag(pool), "Add Liquidity flag set");
+
+        vault.manualSetAddLiquidityCalledFlag(pool, true);
+        assertTrue(explorer.getAddLiquidityCalledFlag(pool), "Add Liquidity flag not set");
+    }
+
     function testGetTokenDelta() public {
         assertEq(vault.getTokenDelta(dai), 0, "Initial token delta non-zero (Vault)");
         assertEq(explorer.getTokenDelta(dai), 0, "Initial token delta non-zero (Explorer)");
@@ -563,6 +570,19 @@ contract VaultExplorerTest is BaseVaultTest {
         vault.disableQuery();
 
         assertTrue(explorer.isQueryDisabled(), "Queries are not disabled");
+        assertFalse(explorer.isQueryDisabledPermanently(), "Queries are permanently disabled");
+    }
+
+    function testIsQueryDisabledPermanently() public {
+        assertFalse(explorer.isQueryDisabledPermanently(), "Queries are initially disabled");
+
+        bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQueryPermanently.selector);
+        authorizer.grantRole(disableQueryRole, alice);
+
+        vm.prank(alice);
+        vault.disableQueryPermanently();
+
+        assertTrue(explorer.isQueryDisabledPermanently(), "Queries are not permanently disabled");
     }
 
     function testAreBuffersPaused() public {

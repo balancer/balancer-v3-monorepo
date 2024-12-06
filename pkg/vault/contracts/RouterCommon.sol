@@ -14,16 +14,16 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import {
-    TransientStorageHelpers
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
-import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
-import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -137,7 +137,12 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         }
     }
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2, string memory version) VaultGuard(vault) Version(version) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory routerVersion
+    ) VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
         _permit2 = permit2;
     }
@@ -209,7 +214,16 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
 
         // Only call permit2 if there's something to do.
         if (permit2Batch.details.length > 0) {
-            // Use Permit2 for tokens that are swapped and added into the Vault.
+            // Use Permit2 for tokens that are swapped and added into the Vault. Note that this call on Permit2 is
+            // theoretically also vulnerable to the same DoS attack as above. This edge case was not mitigated
+            // on-chain, mainly due to the increased complexity and cost of protecting the batch call.
+            //
+            // If this is a concern, we recommend submitting through a private node to avoid front-running the public
+            // mempool. In any case, best practice is to always use expiring, limited approvals, and only with known
+            // and trusted contracts.
+            //
+            // See https://www.immunebytes.com/blog/permit2-erc-20-token-approvals-and-associated-risks/.
+
             _permit2.permit(msg.sender, permit2Batch, permit2Signature);
         }
     }
@@ -300,7 +314,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
             _vault.settle(_weth, amountIn);
         } else {
             if (amountIn > 0) {
-                // Send the tokenIn amount to the Vault
+                // Send the tokenIn amount to the Vault.
                 _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
                 _vault.settle(tokenIn, amountIn);
             }

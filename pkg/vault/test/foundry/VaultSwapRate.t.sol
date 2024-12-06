@@ -33,14 +33,17 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = deployRateProviderMock();
         // Must match the array passed in, not the sorted index, since buildTokenConfig will do the sorting.
         rateProviders[0] = rateProvider;
         rateProvider.mockRate(mockRate);
 
-        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
 
         factoryMock.registerTestPool(
             newPool,
@@ -49,7 +52,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             lp
         );
 
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testInitializePoolWithRate() public view {

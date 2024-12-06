@@ -103,30 +103,42 @@ contract BasePoolFactoryTest is BaseVaultTest {
         testFactory.manualRegisterPoolWithFactory(newPool);
 
         assertTrue(testFactory.isPoolFromFactory(newPool), "Pool is not registered with factory");
-        assertEq(testFactory.getPools(0, 1)[0], newPool, "Pools list does not contain the new pool");
+        assertEq(testFactory.getPoolsInRange(0, 1)[0], newPool, "Pools list does not contain the new pool");
+        assertEq(testFactory.getPoolCount(), 1, "Wrong pool count");
+    }
+
+    function testGetPoolsOutOfRange() public {
+        uint256 count = 30;
+        _registerPools(count);
+
+        vm.expectRevert(IBasePoolFactory.IndexOutOfBounds.selector);
+        testFactory.getPoolsInRange(count, 1);
+    }
+
+    function testGetPoolsFullList() public {
+        uint256 count = 30;
+        address[] memory poolsDeployed = _registerPools(count);
+        address[] memory poolsReturned = testFactory.getPools();
+
+        assertEq(poolsReturned.length, count, "Wrong number of pools returned");
+
+        _compareArrays(poolsDeployed, poolsReturned);
     }
 
     function testRegisterMultiplePools() public {
         uint256 count = 30;
-        address[] memory pools = new address[](count);
+        address[] memory pools = _registerPools(count);
+
+        assertEq(testFactory.getPoolCount(), count, "Wrong pool count");
+
+        _compareArrays(testFactory.getPoolsInRange(0, count), pools);
+        _compareArrays(testFactory.getPoolsInRange(0, 100000), pools);
         for (uint256 i = 0; i < count; i++) {
-            pools[i] = address(deployPoolMock(IVault(address(vault)), "Test Pool", "TEST"));
+            assertEq(testFactory.getPoolsInRange(i, 1)[0], pools[i], "Pools list does not contain the new pool");
         }
 
-        for (uint256 i = 0; i < count; i++) {
-            assertFalse(testFactory.isPoolFromFactory(pools[i]), "Pool is already registered with factory");
-            testFactory.manualRegisterPoolWithFactory(pools[i]);
-            assertTrue(testFactory.isPoolFromFactory(pools[i]), "Pool is not registered with factory");
-        }
-
-        _compareArrays(testFactory.getPools(0, count), pools);
-        _compareArrays(testFactory.getPools(0, 100000), pools);
-        for (uint256 i = 0; i < count; i++) {
-            assertEq(testFactory.getPools(i, 1)[0], pools[i], "Pools list does not contain the new pool");
-        }
-
-        address[] memory firstHalf = testFactory.getPools(0, count / 2);
-        address[] memory secondHalf = testFactory.getPools(count / 2, count);
+        address[] memory firstHalf = testFactory.getPoolsInRange(0, count / 2);
+        address[] memory secondHalf = testFactory.getPoolsInRange(count / 2, count);
 
         for (uint256 i = 0; i < count; i++) {
             if (i < count / 2) {
@@ -134,6 +146,15 @@ contract BasePoolFactoryTest is BaseVaultTest {
             } else {
                 assertEq(secondHalf[i - count / 2], pools[i], "Second half does not contain the new pool");
             }
+        }
+    }
+
+    function _registerPools(uint256 count) private returns (address[] memory pools) {
+        pools = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            pools[i] = address(deployPoolMock(IVault(address(vault)), "Test Pool", "TEST"));
+            testFactory.manualRegisterPoolWithFactory(pools[i]);
+            assertTrue(testFactory.isPoolFromFactory(pools[i]), "Pool is not registered with factory");
         }
     }
 
@@ -178,16 +199,18 @@ contract BasePoolFactoryTest is BaseVaultTest {
         string memory symbol = "DEPLOYMENT_ADDRESS";
         bytes32 salt = keccak256(abi.encode("abc"));
 
-        address predictedAddress = testFactory.getDeploymentAddress(salt);
+        bytes memory poolArgs = abi.encode(vault, name, symbol);
+
+        address predictedAddress = testFactory.getDeploymentAddress(poolArgs, salt);
         address newPool = testFactory.manualCreate(name, symbol, salt);
         assertEq(newPool, predictedAddress, "predictedAddress is wrong");
 
         vm.prank(bob);
-        address bobAddress = testFactory.getDeploymentAddress(salt);
+        address bobAddress = testFactory.getDeploymentAddress(poolArgs, salt);
         assertNotEq(bobAddress, predictedAddress, "Different sender generates the same address");
 
         vm.chainId(10000);
-        address chainAddress = testFactory.getDeploymentAddress(salt);
+        address chainAddress = testFactory.getDeploymentAddress(poolArgs, salt);
         assertNotEq(chainAddress, predictedAddress, "Different chain generates the same address");
     }
 

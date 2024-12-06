@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
@@ -40,6 +39,7 @@ interface IBufferRouter {
      * @dev Requires the buffer to be initialized beforehand. Restricting adds to proportional simplifies the Vault
      * code, avoiding rounding issues and minimum amount checks. It is possible to add unbalanced by interacting
      * with the wrapper contract directly.
+     *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param maxAmountUnderlyingIn Maximum amount of underlying tokens to add to the buffer. It is expressed in
      * underlying token native decimals

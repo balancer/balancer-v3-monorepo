@@ -16,13 +16,19 @@ contract LinearPoolExtremeAmountsTest is BaseExtremeAmountsTest {
         BaseExtremeAmountsTest.setUp();
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool - DAI/USDC", "ERC20_POOL_DAI_USDC"));
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool - DAI/USDC";
+        string memory symbol = "ERC20_POOL_DAI_USDC";
+
+        newPool = address(new PoolMock(IVault(address(vault)), name, symbol));
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), address(0), lp);
 
-        return address(newPool);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function _boundBalances(uint256[2] memory balancesRaw) internal pure override returns (uint256[] memory balances) {

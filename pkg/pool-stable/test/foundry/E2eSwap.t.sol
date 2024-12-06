@@ -84,26 +84,36 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        StablePoolFactory factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "Stable Pool";
+        string memory symbol = "STABLE";
+        string memory poolVersion = "Pool v1";
+
+        StablePoolFactory factory = deployStablePoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Factory v1",
+            poolVersion
+        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        StablePool newPool = StablePool(
-            factory.create(
-                "Stable Pool",
-                "STABLE",
-                vault.buildTokenConfig(tokens.asIERC20()),
-                DEFAULT_AMP_FACTOR,
-                roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = factory.create(
+            name,
+            symbol,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            DEFAULT_AMP_FACTOR,
+            roleAccounts,
+            DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
         vm.label(address(newPool), label);
 
@@ -119,7 +129,15 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
             admin
         );
 
-        return address(newPool);
+        poolArgs = abi.encode(
+            StablePool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                amplificationParameter: DEFAULT_AMP_FACTOR,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {

@@ -72,13 +72,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         // Initialize pools that will be used by batch router.
         // Create poolA.
         vm.startPrank(lp);
-        poolA = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "poolA");
+        (poolA, ) = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "poolA");
         _initPool(poolA, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         // Create poolB.
-        poolB = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
+        (poolB, ) = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
         _initPool(poolB, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         // Create poolC.
-        poolC = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
+        (poolC, ) = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
         _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
 

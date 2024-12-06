@@ -9,9 +9,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * See https://github.com/gnosis/canonical-weth/blob/0dd1ea3e295eef916d0c6223ec63141137d22d67/contracts/WETH9.sol
  */
 interface IWETH is IERC20 {
-    /// @dev "wrap" native ETH to WETH.
+    /**
+     * @notice "wrap" native ETH to WETH.
+     * @dev The amount is msg.value.
+     */
     function deposit() external payable;
 
-    /// @dev "unwrap" WETH to native ETH.
+    /**
+     * @notice "unwrap" WETH to native ETH.
+     * @param amount The amount to withdraw
+     */
     function withdraw(uint256 amount) external;
 }

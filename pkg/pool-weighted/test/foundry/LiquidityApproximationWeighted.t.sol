@@ -42,25 +42,33 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         excessRoundingDelta = 0.5e16; // 0.5%
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory symbol = "WEIGHTY";
+        string memory poolVersion = "Pool v1";
+
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
 
-        WeightedPoolMock weightedPool = deployWeightedPoolMock(
-            WeightedPool.NewPoolParams({
-                name: label,
-                symbol: "WEIGHTY",
-                numTokens: 2,
-                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: "Version 1"
-            }),
-            vault
+        newPool = address(
+            deployWeightedPoolMock(
+                WeightedPool.NewPoolParams({
+                    name: label,
+                    symbol: symbol,
+                    numTokens: 2,
+                    normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                    version: poolVersion
+                }),
+                vault
+            )
         );
-        vm.label(address(weightedPool), label);
+        vm.label(newPool, label);
 
         vault.registerPool(
-            address(weightedPool),
+            newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_SWAP_FEE,
             0,
@@ -70,7 +78,16 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
             liquidityManagement
         );
 
-        return address(weightedPool);
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: label,
+                symbol: symbol,
+                numTokens: 2,
+                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {

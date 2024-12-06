@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
@@ -54,6 +54,7 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
      * @param lowWeightTokenConfig The token configuration of the low weight token
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
+     * @return pool The pool address
      */
     function create(
         TokenConfig memory highWeightTokenConfig,
@@ -80,22 +81,10 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
         tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
         tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
 
-        string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
-        string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
+        bytes memory constructorArgs = _calculateConstructorArgs(highWeightToken, lowWeightToken);
+        bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
 
-        pool = _create(
-            abi.encode(
-                WeightedPool.NewPoolParams({
-                    name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
-                    symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
-                    numTokens: 2,
-                    normalizedWeights: weights,
-                    version: _poolVersion
-                }),
-                getVault()
-            ),
-            _calculateSalt(highWeightToken, lowWeightToken)
-        );
+        pool = _create(constructorArgs, salt);
 
         // Using empty pool hooks for standard 80/20 pool.
         _registerPoolWithVault(
@@ -113,14 +102,43 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
      * @notice Gets the address of the pool with the respective tokens and weights.
      * @param highWeightToken The token with 80% weight in the pool.
      * @param lowWeightToken The token with 20% weight in the pool.
+     * @return pool Address of the pool
      */
     function getPool(IERC20 highWeightToken, IERC20 lowWeightToken) external view returns (address pool) {
+        bytes memory constructorArgs = _calculateConstructorArgs(highWeightToken, lowWeightToken);
         bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
-        pool = getDeploymentAddress(salt);
+
+        pool = getDeploymentAddress(constructorArgs, salt);
     }
 
     function _calculateSalt(IERC20 highWeightToken, IERC20 lowWeightToken) internal view returns (bytes32 salt) {
         salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+    }
+
+    function _calculateConstructorArgs(
+        IERC20 highWeightToken,
+        IERC20 lowWeightToken
+    ) private view returns (bytes memory constructorArgs) {
+        // Tokens must be sorted.
+        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
+
+        string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
+        string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
+
+        uint256[] memory weights = new uint256[](2);
+        weights[highWeightTokenIdx] = _EIGHTY;
+        weights[lowWeightTokenIdx] = _TWENTY;
+
+        constructorArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
+                symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
+                numTokens: 2,
+                normalizedWeights: weights,
+                version: _poolVersion
+            }),
+            getVault()
+        );
     }
 
     /**

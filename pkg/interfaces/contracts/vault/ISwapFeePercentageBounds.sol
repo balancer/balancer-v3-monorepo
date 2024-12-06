@@ -18,8 +18,8 @@ pragma solidity ^0.8.24;
  */
 interface ISwapFeePercentageBounds {
     /// @return minimumSwapFeePercentage The minimum swap fee percentage for a pool
-    function getMinimumSwapFeePercentage() external view returns (uint256);
+    function getMinimumSwapFeePercentage() external view returns (uint256 minimumSwapFeePercentage);
 
     /// @return maximumSwapFeePercentage The maximum swap fee percentage for a pool
-    function getMaximumSwapFeePercentage() external view returns (uint256);
+    function getMaximumSwapFeePercentage() external view returns (uint256 maximumSwapFeePercentage);
 }
