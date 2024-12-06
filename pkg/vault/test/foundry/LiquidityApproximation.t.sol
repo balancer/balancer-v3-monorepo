@@ -533,9 +533,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        // Add liquidity so we have something to remove.
         uint256 currentTotalSupply = IERC20(liquidityPool).totalSupply();
-        vm.prank(alice);
+        vm.startPrank(alice);
+        // Add liquidity so we have something to remove.
         router.addLiquidityProportional(
             address(liquidityPool),
             [MAX_UINT128, MAX_UINT128].toMemoryArray(),
@@ -544,7 +544,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactOut(
             address(liquidityPool),
             IERC20(liquidityPool).balanceOf(alice),

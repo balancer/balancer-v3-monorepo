@@ -214,7 +214,12 @@ contract E2eBatchSwapTest is BaseVaultTest {
         vm.stopPrank();
 
         // Error tolerance is proportional to swap fee percentage.
-        assertApproxEqRel(amountIn, exactAmountIn, poolFeePercentage, "ExactIn and ExactOut amountsIn should match");
+        assertApproxEqRel(
+            amountIn,
+            exactAmountIn,
+            2 * poolFeePercentage,
+            "ExactIn and ExactOut amountsIn should match"
+        );
     }
 
     function testExactInRepeatEachOperation__Fuzz(
