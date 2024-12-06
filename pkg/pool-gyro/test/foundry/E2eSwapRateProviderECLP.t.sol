@@ -18,7 +18,10 @@ contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProvi
     using FixedPoint for uint256;
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address, bytes memory) {
         rateProviderTokenA = deployRateProviderMock();
         rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.

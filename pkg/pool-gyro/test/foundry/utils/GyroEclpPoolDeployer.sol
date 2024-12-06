@@ -55,11 +55,10 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
         string memory label,
         IVaultMock vault,
         address poolCreator
-    ) internal returns (address) {
+    ) internal returns (address newPool, bytes memory poolArgs) {
         GyroECLPPoolFactory factory = deployGyroECLPPoolFactory(vault);
 
         PoolRoleAccounts memory roleAccounts;
-        GyroECLPPool newPool;
 
         // Avoids Stack-too-deep.
         {
@@ -83,29 +82,39 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
 
             TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20(), rateProviders);
 
-            newPool = GyroECLPPool(
-                factory.create(
-                    label,
-                    label,
-                    tokenConfig,
-                    params,
-                    derivedParams,
-                    roleAccounts,
-                    MIN_SWAP_FEE_PERCENTAGE,
-                    address(0),
-                    bytes32("")
+            newPool = address(
+                GyroECLPPool(
+                    factory.create(
+                        label,
+                        label,
+                        tokenConfig,
+                        params,
+                        derivedParams,
+                        roleAccounts,
+                        MIN_SWAP_FEE_PERCENTAGE,
+                        address(0),
+                        bytes32("")
+                    )
                 )
             );
+
+            poolArgs = abi.encode(
+                IGyroECLPPool.GyroECLPPoolParams({
+                    name: label,
+                    symbol: label,
+                    eclpParams: params,
+                    derivedEclpParams: derivedParams
+                }),
+                vault
+            );
         }
-        vm.label(address(newPool), label);
+        vm.label(newPool, label);
 
         // Cannot set the pool creator directly on a standard Balancer stable pool factory.
-        vault.manualSetPoolCreator(address(newPool), poolCreator);
+        vault.manualSetPoolCreator(newPool, poolCreator);
 
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), poolCreator);
-
-        return address(newPool);
+        feeController.manualSetPoolCreator(newPool, poolCreator);
     }
 
     function deployGyroECLPPoolFactory(IVault vault) internal returns (GyroECLPPoolFactory) {
