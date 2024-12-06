@@ -47,14 +47,13 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     }
 
     function testCreateVaultHardcodedSalt() public {
-        authorizer.grantRole(factory.getActionId(VaultFactory.create.selector), deployer);
         vm.prank(deployer);
         factory.create(
             _HARDCODED_SALT,
             _HARDCODED_VAULT_ADDRESS,
             type(Vault).creationCode,
-            type(VaultAdmin).creationCode,
-            type(VaultExtension).creationCode
+            type(VaultExtension).creationCode,
+            type(VaultAdmin).creationCode
         );
     }
 
@@ -68,19 +67,18 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
             _MIN_TRADE_AMOUNT,
             _MIN_WRAP_AMOUNT,
             keccak256(type(Vault).creationCode),
-            keccak256(type(VaultAdmin).creationCode),
-            keccak256(type(VaultExtension).creationCode)
+            keccak256(type(VaultExtension).creationCode),
+            keccak256(type(VaultAdmin).creationCode)
         );
 
-        authorizer.grantRole(wrongFactory.getActionId(VaultFactory.create.selector), wrongDeployer);
         vm.prank(wrongDeployer);
         vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
         wrongFactory.create(
             _HARDCODED_SALT,
             _HARDCODED_VAULT_ADDRESS,
             type(Vault).creationCode,
-            type(VaultAdmin).creationCode,
-            type(VaultExtension).creationCode
+            type(VaultExtension).creationCode,
+            type(VaultAdmin).creationCode
         );
     }
 
