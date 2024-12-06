@@ -4,17 +4,17 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
-import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import "./lib/Gyro2CLPMath.sol";
 
@@ -22,15 +22,13 @@ import "./lib/Gyro2CLPMath.sol";
  * @notice Standard 2CLP Gyro Pool, with fixed Alpha and Beta parameters.
  * @dev Gyroscope's 2-CLPs are AMMs that concentrate liquidity within a pricing range. A given 2-CLP is parameterized
  * by the pricing range [α,β] and the two assets in the pool. For more information, please refer to
- * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps .
+ * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps
  */
 contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     using FixedPoint for uint256;
 
     uint256 private immutable _sqrtAlpha;
     uint256 private immutable _sqrtBeta;
-
-    bytes32 private constant _POOL_TYPE = "2CLP";
 
     constructor(GyroParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         if (params.sqrtAlpha >= params.sqrtBeta) {
@@ -113,7 +111,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
         // All the calculations in one function to avoid Error Stack Too Deep
-        (uint256 virtualParamIn, uint256 virtualParamOut) = _getVirtualBalances(
+        (uint256 virtualParamIn, uint256 virtualParamOut) = _getVirtualOffsets(
             balanceTokenInScaled18,
             balanceTokenOutScaled18,
             tokenInIsToken0,
@@ -150,12 +148,12 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     }
 
     /**
-     * @notice Return the virtual balances of each token of the 2CLP pool.
+     * @notice Return the virtual offsets of each token of the 2CLP pool.
      * @dev The 2CLP invariant is defined as `L=(x+a)(y+b)`. "x" and "y" are the real balances, and "a" and "b" are
      * offsets to concentrate the liquidity of the pool. The sum of real balance and offset is known as
-     * "virtual balance".
+     * "virtual balance". Here we return the offsets a and b.
      */
-    function _getVirtualBalances(
+    function _getVirtualOffsets(
         uint256 balanceTokenInScaled18,
         uint256 balanceTokenOutScaled18,
         bool tokenInIsToken0,
@@ -169,21 +167,21 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
         uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(balances, sqrtAlpha, sqrtBeta, rounding);
 
-        uint256[2] memory virtualBalances = _calculateVirtualBalances(currentInvariant, sqrtAlpha, sqrtBeta);
+        uint256[2] memory virtualOffsets = _calculateVirtualOffsets(currentInvariant, sqrtAlpha, sqrtBeta);
 
-        virtualBalanceIn = tokenInIsToken0 ? virtualBalances[0] : virtualBalances[1];
-        virtualBalanceOut = tokenInIsToken0 ? virtualBalances[1] : virtualBalances[0];
+        virtualBalanceIn = tokenInIsToken0 ? virtualOffsets[0] : virtualOffsets[1];
+        virtualBalanceOut = tokenInIsToken0 ? virtualOffsets[1] : virtualOffsets[0];
     }
 
-    /// @notice Returns an array with virtual balances of both tokens of the pool, in registration order.
-    function _calculateVirtualBalances(
+    /// @notice Returns an array with virtual offsets of both tokens of the pool, in registration order.
+    function _calculateVirtualOffsets(
         uint256 invariant,
         uint256 sqrtAlpha,
         uint256 sqrtBeta
-    ) internal view virtual returns (uint256[2] memory virtualBalances) {
-        virtualBalances[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta);
-        virtualBalances[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha);
-        return virtualBalances;
+    ) internal view virtual returns (uint256[2] memory virtualOffsets) {
+        virtualOffsets[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta);
+        virtualOffsets[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha);
+        return virtualOffsets;
     }
 
     /// @inheritdoc ISwapFeePercentageBounds

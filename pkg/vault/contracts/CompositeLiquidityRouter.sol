@@ -6,9 +6,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -36,8 +36,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) BatchRouterCommon(vault, weth, permit2, version) {
+        string memory routerVersion
+    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -495,32 +495,34 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Token is a BPT, so add liquidity to the child pool.
 
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                uint256[] memory childPoolAmountsIn = _getPoolAmountsIn(
+                (uint256[] memory childPoolAmountsIn, bool childPoolAmountsEmpty) = _getPoolAmountsIn(
                     childPoolTokens,
                     params.sender,
                     params.wethIsEth
                 );
 
-                // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent pool
-                // will be a logic insertion, not a token transfer.
-                (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
-                    AddLiquidityParams({
-                        pool: childToken,
-                        to: address(_vault),
-                        maxAmountsIn: childPoolAmountsIn,
-                        minBptAmountOut: 0,
-                        kind: params.kind,
-                        userData: params.userData
-                    })
-                );
+                if (childPoolAmountsEmpty == false) {
+                    // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent
+                    // pool will be a logic insertion, not a token transfer.
+                    (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
+                        AddLiquidityParams({
+                            pool: childToken,
+                            to: address(_vault),
+                            maxAmountsIn: childPoolAmountsIn,
+                            minBptAmountOut: 0,
+                            kind: params.kind,
+                            userData: params.userData
+                        })
+                    );
 
-                // Sets the amount in of child BPT to the exactBptAmountOut of the child pool, so all the minted BPT
-                // will be added to the parent pool.
-                _currentSwapTokenInAmounts().tSet(childToken, exactChildBptAmountOut);
+                    // Sets the amount in of child BPT to the exactBptAmountOut of the child pool, so all the minted BPT
+                    // will be added to the parent pool.
+                    _currentSwapTokenInAmounts().tSet(childToken, exactChildBptAmountOut);
 
-                // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
-                // advance.
-                _vault.settle(IERC20(childToken), exactChildBptAmountOut);
+                    // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
+                    // advance.
+                    _vault.settle(IERC20(childToken), exactChildBptAmountOut);
+                }
             } else if (
                 _vault.isERC4626BufferInitialized(IERC4626(childToken)) &&
                 _currentSwapTokenInAmounts().tGet(childToken) == 0 // wrapped amount in was not specified
@@ -532,7 +534,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        uint256[] memory parentPoolAmountsIn = _getPoolAmountsIn(parentPoolTokens, params.sender, params.wethIsEth);
+        (uint256[] memory parentPoolAmountsIn, ) = _getPoolAmountsIn(parentPoolTokens, params.sender, params.wethIsEth);
 
         // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
@@ -575,8 +577,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IERC20[] memory poolTokens,
         address sender,
         bool wethIsEth
-    ) private returns (uint256[] memory poolAmountsIn) {
+    ) private returns (uint256[] memory poolAmountsIn, bool amountsEmpty) {
         poolAmountsIn = new uint256[](poolTokens.length);
+        amountsEmpty = true;
 
         for (uint256 j = 0; j < poolTokens.length; j++) {
             address poolToken = address(poolTokens[j]);
@@ -595,6 +598,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // the amount in of the child pool token to 0. If the same token appears more times, the amount in
                 // will be 0 for any other pool.
                 _currentSwapTokenInAmounts().tSet(poolToken, 0);
+            }
+
+            if (poolAmountsIn[j] > 0) {
+                amountsEmpty = false;
             }
         }
     }

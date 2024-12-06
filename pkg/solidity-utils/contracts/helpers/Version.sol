@@ -21,6 +21,10 @@ contract Version is IVersion {
         _setVersion(version_);
     }
 
+    /**
+     * @notice Getter for the version.
+     * @return version The stored contract version
+     */
     function version() external view returns (string memory) {
         return _version;
     }

@@ -64,9 +64,12 @@ contract RouterTest is BaseVaultTest {
         approveForPool(IERC20(wethPool));
     }
 
-    function createPool() internal override returns (address) {
-        PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), "pool");
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
+        vm.label(newPool, "pool");
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[0] = rateProvider;
@@ -76,7 +79,7 @@ contract RouterTest is BaseVaultTest {
         paysYieldFees[1] = true;
 
         factoryMock.registerTestPool(
-            address(newPool),
+            newPool,
             vault.buildTokenConfig(
                 [address(dai), address(usdc)].toMemoryArray().asIERC20(),
                 rateProviders,
@@ -115,7 +118,7 @@ contract RouterTest is BaseVaultTest {
             lp
         );
 
-        return address(newPool);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function initPool() internal override {

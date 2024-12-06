@@ -14,7 +14,10 @@ import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
 
 contract E2eBatchSwapGyro2CLPTest is E2eBatchSwapTest, Gyro2ClpPoolDeployer {
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eBatchSwapTest tests.
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address, bytes memory) {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
         return createGyro2ClpPool(tokens, rateProviders, label, vault, lp);
     }

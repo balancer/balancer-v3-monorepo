@@ -619,7 +619,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
     function testMaxPoolCreatorAndProtocolSwapFees() public {
         // Protocol fees will be zero.
-        pool = createPool();
+        (pool, ) = createPool();
 
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setProtocolSwapFeePercentage.selector),
@@ -650,7 +650,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
     function testMaxPoolCreatorAndProtocolYieldFees() public {
         // Protocol fees will be zero.
-        pool = createPool();
+        (pool, ) = createPool();
 
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
@@ -1280,7 +1280,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.setGlobalProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE_PCT);
         vm.stopPrank();
 
-        pool = createPool();
+        (pool, ) = createPool();
     }
 
     function _verifyPoolProtocolFeePercentages(address pool) internal view {

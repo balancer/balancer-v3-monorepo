@@ -17,7 +17,10 @@ import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
 contract E2eSwapRateProviderGyro2CLPTest is VaultContractsDeployer, E2eSwapRateProviderTest, Gyro2ClpPoolDeployer {
     using FixedPoint for uint256;
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address, bytes memory) {
         rateProviderTokenA = deployRateProviderMock();
         rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
