@@ -4,12 +4,12 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
 import { StorageSlotExtension } from "../openzeppelin/StorageSlotExtension.sol";
+import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
 
 type TokenDeltaMappingSlotType is bytes32;
 type AddressToUintMappingSlot is bytes32;
-type AddressToBooleanMappingSlot is bytes32;
+type UintToAddressToBooleanMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
 
 /**
@@ -55,12 +55,27 @@ library TransientStorageHelpers {
         AddressToUintMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(value);
     }
 
-    function tGet(AddressToBooleanMappingSlot slot, address key) internal view returns (bool) {
-        return AddressToBooleanMappingSlot.unwrap(slot).deriveMapping(key).asBoolean().tload();
+    function tGet(
+        UintToAddressToBooleanMappingSlot slot,
+        uint256 uintKey,
+        address addressKey
+    ) internal view returns (bool) {
+        return
+            UintToAddressToBooleanMappingSlot
+                .unwrap(slot)
+                .deriveMapping(uintKey)
+                .deriveMapping(addressKey)
+                .asBoolean()
+                .tload();
     }
 
-    function tSet(AddressToBooleanMappingSlot slot, address key, bool value) internal {
-        AddressToBooleanMappingSlot.unwrap(slot).deriveMapping(key).asBoolean().tstore(value);
+    function tSet(UintToAddressToBooleanMappingSlot slot, uint256 uintKey, address addressKey, bool value) internal {
+        UintToAddressToBooleanMappingSlot
+            .unwrap(slot)
+            .deriveMapping(uintKey)
+            .deriveMapping(addressKey)
+            .asBoolean()
+            .tstore(value);
     }
 
     // Implement the common "+=" operation: map[key] += value.

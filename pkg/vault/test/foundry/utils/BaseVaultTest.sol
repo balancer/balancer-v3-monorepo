@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -40,18 +41,25 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     struct Balances {
         uint256[] userTokens;
+        uint256 userEth;
         uint256 userBpt;
         uint256[] aliceTokens;
+        uint256 aliceEth;
         uint256 aliceBpt;
         uint256[] bobTokens;
+        uint256 bobEth;
         uint256 bobBpt;
         uint256[] hookTokens;
+        uint256 hookEth;
         uint256 hookBpt;
         uint256[] lpTokens;
+        uint256 lpEth;
         uint256 lpBpt;
         uint256[] vaultTokens;
+        uint256 vaultEth;
         uint256[] vaultReserves;
         uint256[] poolTokens;
+        uint256 poolEth;
         uint256 poolSupply;
         uint256 poolInvariant;
         uint256[] swapFeeAmounts;
@@ -85,6 +93,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IProtocolFeeController internal feeController;
     // Pool for tests.
     address internal pool;
+    // Arguments used to build pool. Used to check deployment address.
+    bytes internal poolArguments;
     // Pool Hooks.
     address internal poolHooksContract;
 
@@ -154,7 +164,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(feeController), "fee controller");
 
         poolHooksContract = createHook();
-        pool = createPool();
+        (pool, poolArguments) = createPool();
 
         // Approve vault allowances.
         for (uint256 i = 0; i < users.length; ++i) {
@@ -230,17 +240,23 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
-    function createPool() internal virtual returns (address) {
+    function createPool() internal virtual returns (address, bytes memory) {
         return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = factoryMock.createPool(name, symbol);
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
 
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function createHook() internal virtual returns (address) {
@@ -286,24 +302,13 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         uint256 numTokens = tokens.length;
 
         balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, invariantRounding);
-        balances.userTokens = new uint256[](numTokens);
-        balances.aliceTokens = new uint256[](numTokens);
-        balances.bobTokens = new uint256[](numTokens);
-        balances.hookTokens = new uint256[](numTokens);
-        balances.lpTokens = new uint256[](numTokens);
-        balances.vaultTokens = new uint256[](numTokens);
-        balances.vaultReserves = new uint256[](numTokens);
+        balances.poolEth = pool.balance;
+
+        _fillBalances(balances, user, tokens);
+
         balances.swapFeeAmounts = new uint256[](numTokens);
         balances.yieldFeeAmounts = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            // Don't assume token ordering.
-            balances.userTokens[i] = tokens[i].balanceOf(user);
-            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
-            balances.bobTokens[i] = tokens[i].balanceOf(bob);
-            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
-            balances.lpTokens[i] = tokens[i].balanceOf(lp);
-            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
-            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
             balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(pool, tokens[i]);
             balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(pool, tokens[i]);
         }
@@ -317,29 +322,72 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
         balances.lpBpt = IERC20(pool).balanceOf(lp);
 
-        uint256 numTokens = tokensToTrack.length;
+        _fillBalances(balances, user, tokensToTrack);
+    }
+
+    function _fillBalances(Balances memory balances, address user, IERC20[] memory tokens) private view {
+        uint256 numTokens = tokens.length;
 
         balances.userTokens = new uint256[](numTokens);
+        balances.userEth = user.balance;
         balances.aliceTokens = new uint256[](numTokens);
+        balances.aliceEth = alice.balance;
         balances.bobTokens = new uint256[](numTokens);
+        balances.bobEth = bob.balance;
         balances.hookTokens = new uint256[](numTokens);
+        balances.hookEth = poolHooksContract.balance;
         balances.lpTokens = new uint256[](numTokens);
+        balances.lpEth = lp.balance;
         balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultEth = address(vault).balance;
         balances.vaultReserves = new uint256[](numTokens);
+
         for (uint256 i = 0; i < numTokens; ++i) {
             // Don't assume token ordering.
-            balances.userTokens[i] = tokensToTrack[i].balanceOf(user);
-            balances.aliceTokens[i] = tokensToTrack[i].balanceOf(alice);
-            balances.bobTokens[i] = tokensToTrack[i].balanceOf(bob);
-            balances.hookTokens[i] = tokensToTrack[i].balanceOf(poolHooksContract);
-            balances.lpTokens[i] = tokensToTrack[i].balanceOf(lp);
-            balances.vaultTokens[i] = tokensToTrack[i].balanceOf(address(vault));
-            balances.vaultReserves[i] = vault.getReservesOf(tokensToTrack[i]);
+            balances.userTokens[i] = tokens[i].balanceOf(user);
+            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
+            balances.bobTokens[i] = tokens[i].balanceOf(bob);
+            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokens[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
         }
     }
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+
+    function _vaultPreviewDeposit(
+        IERC4626 wrapper,
+        uint256 amountInUnderlying
+    ) internal returns (uint256 amountOutWrapped) {
+        _prankStaticCall();
+        return vault.previewDeposit(wrapper, amountInUnderlying);
+    }
+
+    function _vaultPreviewMint(
+        IERC4626 wrapper,
+        uint256 amountOutWrapped
+    ) internal returns (uint256 amountInUnderlying) {
+        _prankStaticCall();
+        return vault.previewMint(wrapper, amountOutWrapped);
+    }
+
+    function _vaultPreviewRedeem(
+        IERC4626 wrapper,
+        uint256 amountInWrapped
+    ) internal returns (uint256 amountOutUnderlying) {
+        _prankStaticCall();
+        return vault.previewRedeem(wrapper, amountInWrapped);
+    }
+
+    function _vaultPreviewWithdraw(
+        IERC4626 wrapper,
+        uint256 amountOutUnderlying
+    ) internal returns (uint256 amountInWrapped) {
+        _prankStaticCall();
+        return vault.previewWithdraw(wrapper, amountOutUnderlying);
     }
 
     function _prankStaticCall() internal {

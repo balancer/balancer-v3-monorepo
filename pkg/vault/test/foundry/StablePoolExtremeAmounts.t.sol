@@ -6,6 +6,7 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
@@ -20,28 +21,41 @@ contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
         BaseExtremeAmountsTest.setUp();
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "Stable Pool";
+        string memory symbol = "STABLE";
+        string memory poolVersion = "Pool v1";
+
+        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
 
         PoolRoleAccounts memory roleAccounts;
 
-        StablePool newPool = StablePool(
-            factory.create(
-                "Stable Pool",
-                "STABLE",
-                vault.buildTokenConfig(tokens.asIERC20()),
-                DEFAULT_AMP_FACTOR,
-                roleAccounts,
-                BASE_MIN_SWAP_FEE, // Set min swap fee
-                address(0),
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = factory.create(
+            name,
+            symbol,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            DEFAULT_AMP_FACTOR,
+            roleAccounts,
+            BASE_MIN_SWAP_FEE, // Set min swap fee
+            address(0),
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
         vm.label(address(newPool), label);
 
-        return address(newPool);
+        poolArgs = abi.encode(
+            StablePool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                amplificationParameter: DEFAULT_AMP_FACTOR,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function _boundBalances(uint256[2] memory balancesRaw) internal pure override returns (uint256[] memory balances) {

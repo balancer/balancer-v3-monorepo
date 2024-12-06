@@ -29,7 +29,10 @@ contract PoolDataTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         wstETHRateProvider = deployRateProviderMock();
         daiRateProvider = deployRateProviderMock();
@@ -38,7 +41,7 @@ contract PoolDataTest is BaseVaultTest {
         rateProviders[0] = daiRateProvider;
         rateProviders[1] = wstETHRateProvider;
 
-        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
 
         factoryMock.registerTestPool(
             newPool,
@@ -47,7 +50,7 @@ contract PoolDataTest is BaseVaultTest {
             lp
         );
 
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testPoolData__Fuzz(uint256 daiRate, uint256 wstETHRate, bool roundUp) public {

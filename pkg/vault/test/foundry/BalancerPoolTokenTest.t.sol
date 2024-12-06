@@ -173,9 +173,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
 
         vm.prank(user);
-        poolToken.revokePermit();
+        poolToken.incrementNonce();
 
-        // Note that `revokePermit` doesn't affect allowances already granted by executed permits.
+        // Note that `incrementNonce` doesn't affect allowances already granted by executed permits.
         // It just invalidates signatures for permits that have not yet been executed.
         assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount, "allowance mismatch");
 
@@ -197,7 +197,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
 
         vm.prank(user);
-        poolToken.revokePermit();
+        poolToken.incrementNonce();
 
         // Would have to pull in the OZ libraries to compute this, so just did it externally. This is the signer
         // recovered from the incremented nonce, which of course will not match the original signer.
@@ -239,7 +239,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
 
         vm.prank(user);
-        poolToken.revokePermit();
+        poolToken.incrementNonce();
 
         (uint8 v2, bytes32 r2, bytes32 s2) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -266,7 +266,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         );
 
         vm.prank(user);
-        poolToken.revokePermit();
+        poolToken.incrementNonce();
 
         vm.expectRevert(bytes(""));
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
@@ -284,7 +284,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         );
 
         vm.prank(user);
-        poolToken.revokePermit();
+        poolToken.incrementNonce();
 
         (uint8 v2, bytes32 r2, bytes32 s2) = getPermitSignature(
             IEIP712(address(poolToken)),

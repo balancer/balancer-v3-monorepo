@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -33,7 +33,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     error ERC2612ExpiredSignature(uint256 deadline);
 
     /**
-     * @notice Operation failed due to a non-matching signature
+     * @notice Operation failed due to a non-matching signature.
      * @param signer The address corresponding to the signature provider
      * @param owner The address of the owner (expected value of the signature provider)
      */
@@ -156,7 +156,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     }
 
     /// @notice Increment the sender's nonce to revoke any currently granted (but not yet executed) `permit`.
-    function revokePermit() external {
+    function incrementNonce() external {
         _useNonce(msg.sender);
     }
 

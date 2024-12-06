@@ -354,6 +354,7 @@ library BasePoolMath {
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @param pool The pool from which we're removing liquidity
      * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees
+     * @return swapFeeAmounts The total amount of swap fees charged
      */
     function computeRemoveLiquiditySingleTokenExactIn(
         uint256[] memory currentBalances,

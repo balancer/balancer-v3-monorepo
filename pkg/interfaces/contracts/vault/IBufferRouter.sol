@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
@@ -17,6 +16,8 @@ interface IBufferRouter {
      * @notice Adds liquidity for the first time to an internal ERC4626 buffer in the Vault.
      * @dev Calling this method binds the wrapped token to its underlying asset internally; the asset in the wrapper
      * cannot change afterwards, or every other operation on that wrapper (add / remove / wrap / unwrap) will fail.
+     * To avoid unexpected behavior, always initialize buffers before creating or initializing any pools that contain
+     * the wrapped tokens to be used with them.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param exactAmountUnderlyingIn Amount of underlying tokens that will be deposited into the buffer
@@ -38,6 +39,7 @@ interface IBufferRouter {
      * @dev Requires the buffer to be initialized beforehand. Restricting adds to proportional simplifies the Vault
      * code, avoiding rounding issues and minimum amount checks. It is possible to add unbalanced by interacting
      * with the wrapper contract directly.
+     *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param maxAmountUnderlyingIn Maximum amount of underlying tokens to add to the buffer. It is expressed in
      * underlying token native decimals
@@ -83,7 +85,7 @@ interface IBufferRouter {
     /**
      * @notice Queries an `removeLiquidityFromBuffer` operation without actually executing it.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param exactSharesToRemove The amount of shares that would be burnt, in underlying token decimals
+     * @param exactSharesToRemove The amount of shares that would be burned, in underlying token decimals
      * @return removedUnderlyingBalanceOut Amount of underlying tokens that would be removed from the buffer
      * @return removedWrappedBalanceOut Amount of wrapped tokens that would be removed from the buffer
      */

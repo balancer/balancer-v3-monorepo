@@ -148,7 +148,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testInitializeBufferBelowMinimumShares() public {
         uint256 underlyingAmount = 1;
         uint256 wrappedAmount = 2;
-        uint256 bufferInvariantDelta = underlyingAmount + waDAI.previewRedeem(wrappedAmount);
+        uint256 bufferInvariantDelta = underlyingAmount + _vaultPreviewRedeem(waDAI, wrappedAmount);
 
         vault.forceUnlock();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, bufferInvariantDelta));
@@ -198,8 +198,8 @@ contract VaultAdminUnitTest is BaseVaultTest {
         // Shares (wrapped rate is ~2; allow rounding error)
         assertApproxEqAbs(
             issuedShares,
-            underlyingAmount + wrappedAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1,
+            underlyingAmount + wrappedAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY - 2,
+            2,
             "Wrong issued shares"
         );
 
@@ -273,5 +273,83 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testBurnBufferSharesInvalidOwner() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidOwner.selector));
         vault.manualBurnBufferShares(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
+    }
+
+    function testDisableQuery() public {
+        bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQuery.selector);
+        authorizer.grantRole(disableQueryRole, admin);
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultQueriesDisabled();
+
+        vm.prank(admin);
+        vault.disableQuery();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+
+        // Calling twice is fine
+        vm.prank(admin);
+        vault.disableQuery();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+    }
+
+    function testDisableQueryPermanently() public {
+        bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQueryPermanently.selector);
+        authorizer.grantRole(disableQueryRole, admin);
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultQueriesDisabled();
+
+        vm.prank(admin);
+        vault.disableQueryPermanently();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertTrue(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+
+        // Calling twice is fine
+        vm.prank(admin);
+        vault.disableQueryPermanently();
+
+        assertTrue(vault.isQueryDisabled(), "Query not disabled");
+        assertTrue(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+    }
+
+    function testEnableQuery() public {
+        testDisableQuery();
+
+        bytes32 enableQueryRole = vault.getActionId(IVaultAdmin.enableQuery.selector);
+        authorizer.grantRole(enableQueryRole, admin);
+
+        vm.prank(admin);
+        vault.enableQuery();
+
+        assertFalse(vault.isQueryDisabled(), "Query disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+
+        // Calling twice is fine
+        vm.prank(admin);
+        vault.enableQuery();
+
+        assertFalse(vault.isQueryDisabled(), "Query disabled");
+        assertFalse(vault.isQueryDisabledPermanently(), "Query is disabled permanently");
+    }
+
+    function testEnableQueryIfDisabledPermanently() public {
+        testDisableQueryPermanently();
+
+        bytes32 enableQueryRole = vault.getActionId(IVaultAdmin.enableQuery.selector);
+        authorizer.grantRole(enableQueryRole, admin);
+
+        vm.expectRevert(IVaultErrors.QueriesDisabledPermanently.selector);
+        vm.prank(admin);
+        vault.enableQuery();
+    }
+
+    function testDisableQueryPermanentlyWhenDisabled() public {
+        testDisableQuery();
+        testDisableQueryPermanently();
     }
 }

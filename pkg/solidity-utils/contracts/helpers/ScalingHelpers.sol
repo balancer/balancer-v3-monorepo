@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 import { FixedPoint } from "../math/FixedPoint.sol";
 import { InputHelpers } from "./InputHelpers.sol";
 
@@ -111,8 +109,9 @@ library ScalingHelpers {
         uint256 length = from.length;
         InputHelpers.ensureInputLengthMatch(length, to.length);
 
-        for (uint256 i = 0; i < length; ++i) {
-            to[i] = from[i];
+        // solhint-disable-next-line no-inline-assembly
+        assembly ("memory-safe") {
+            mcopy(add(to, 0x20), add(from, 0x20), mul(length, 0x20))
         }
     }
 
@@ -184,7 +183,7 @@ library ScalingHelpers {
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      * @param tokenRates The token rate scaling factors, sorted in token registration order
-     * @return The final 18 decimal results, sorted in token registration order, rounded up
+     * @return results The final 18 decimal results, sorted in token registration order, rounded up
      */
     function copyToScaled18ApplyRateRoundUpArray(
         uint256[] memory amounts,
@@ -207,6 +206,8 @@ library ScalingHelpers {
      * @dev Rates calculated by an external rate provider have rounding errors. Intuitively, a rate provider
      * rounds the rate down so the pool math is executed with conservative amounts. However, when upscaling or
      * downscaling the amount out, the rate should be rounded up to make sure the amounts scaled are conservative.
+     * @param rate The original rate
+     * @return roundedRate The final rate, with rounding applied
      */
     function computeRateRoundUp(uint256 rate) internal pure returns (uint256) {
         uint256 roundedRate;

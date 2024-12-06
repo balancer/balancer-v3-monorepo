@@ -40,7 +40,10 @@ contract E2eSwapRateProviderWeightedTest is
         super.setUp();
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
         rateProviderTokenA = deployRateProviderMock();
         rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
@@ -62,30 +65,37 @@ contract E2eSwapRateProviderWeightedTest is
         // Allow pools created by `factory` to use poolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        WeightedPool newPool = WeightedPool(
-            factory.create(
-                "50/50 Weighted Pool",
-                "50_50WP",
-                vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
-                [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                // NOTE: sends a unique salt.
-                bytes32(poolCreationNonce++)
-            )
+        newPool = factory.create(
+            "50/50 Weighted Pool",
+            "50_50WP",
+            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
+            [uint256(50e16), uint256(50e16)].toMemoryArray(),
+            roleAccounts,
+            DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            // NOTE: sends a unique salt.
+            bytes32(poolCreationNonce++)
         );
-        vm.label(address(newPool), label);
+        vm.label(newPool, label);
 
         // Cannot set the pool creator directly on a standard Balancer weighted pool factory.
-        vault.manualSetPoolCreator(address(newPool), lp);
+        vault.manualSetPoolCreator(newPool, lp);
 
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), lp);
+        feeController.manualSetPoolCreator(newPool, lp);
 
-        return address(newPool);
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: "50/50 Weighted Pool",
+                symbol: "50_50WP",
+                numTokens: tokens.length,
+                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                version: "Pool v1"
+            }),
+            vault
+        );
     }
 
     function calculateMinAndMaxSwapAmounts() internal override {

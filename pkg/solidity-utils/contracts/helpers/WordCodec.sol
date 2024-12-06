@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
- * @dev Library for encoding and decoding values stored inside a 256 bit word. Typically used to pack multiple values in
- * a single storage slot, saving gas by performing less storage accesses.
+ * @notice Library for encoding and decoding values stored inside a 256 bit word.
+ * @dev Typically used to pack multiple values in a single slot, saving gas by performing fewer storage accesses.
  *
  * Each value is defined by its size and the least significant bit in the word, also known as offset. For example, two
  * 128 bit values may be encoded in a word by assigning one an offset of 0, and the other an offset of 128.
@@ -16,9 +16,9 @@ import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
  * error-prone library, but unfortunately Solidity only allows for structs to live in either storage, calldata or
  * memory. Because a memory struct uses not just memory but also a slot in the stack (to store its memory location),
  * using memory for word-sized values (i.e. of 256 bits or less) is strictly less gas performant, and doesn't even
- * prevent stack-too-deep issues. This is compounded by the fact that Balancer contracts typically are memory-intensive,
- * and the cost of accessing memory increases quadratically with the number of allocated words. Manual packing and
- * unpacking is therefore the preferred approach.
+ * prevent stack-too-deep issues. This is compounded by the fact that Balancer contracts typically are memory-
+ * intensive, and the cost of accessing memory increases quadratically with the number of allocated words. Manual
+ * packing and unpacking is therefore the preferred approach.
  */
 library WordCodec {
     using Math for uint256;
