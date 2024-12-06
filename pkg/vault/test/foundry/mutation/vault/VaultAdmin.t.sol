@@ -279,6 +279,26 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vaultAdmin.disableQuery();
     }
 
+    function testDisableQueryPermanentlyWhenNotAuthenticated() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        vault.disableQueryPermanently();
+    }
+
+    function testDisableQueryPermanentlyWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultAdmin.disableQueryPermanently();
+    }
+
+    function testEnableQueryWhenNotAuthenticated() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        vault.enableQuery();
+    }
+
+    function testEnableQueryWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultAdmin.enableQuery();
+    }
+
     function testAreBuffersPausedWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.areBuffersPaused();

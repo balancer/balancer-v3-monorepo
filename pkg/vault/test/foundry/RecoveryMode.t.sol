@@ -32,6 +32,8 @@ contract RecoveryModeTest is BaseVaultTest {
     }
 
     function testRecoveryModeAmountsOutBelowMin() public {
+        setSwapFeePercentage(swapFeePercentage);
+
         // Add initial liquidity.
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
@@ -41,16 +43,18 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
-        // Avoid roundtrip fee.
-        vault.manualSetAddLiquidityCalledFlag(pool, false);
         assertFalse(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
 
-        uint256 amountToRemove = bptAmountOut / 2;
+        uint256 amountToRemove = bptAmountOut;
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
         vm.revertTo(snapshotId);
+
+        // No fees; user gets all the funds back.
+        assertEq(expectedAmountsOut[0], defaultAmount, "Unexpected amount out [0]");
+        assertEq(expectedAmountsOut[1], defaultAmount, "Unexpected amount out [1]");
 
         expectedAmountsOut[daiIdx] += 1;
 
@@ -76,15 +80,29 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
-        // Check that we are paying roundrip fees
-        assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
 
-        uint256 amountToRemove = bptAmountOut / 2;
+        // Force roundtrip fees.
+        vault.manualSetAddLiquidityCalledFlag(pool, true);
+        assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag not set");
+
+        uint256 amountToRemove = bptAmountOut;
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
         vm.revertTo(snapshotId);
+
+        // Verify that roundtrip fees are being applied to the expected amounts out.
+        assertEq(
+            expectedAmountsOut[0],
+            defaultAmount.mulDown(swapFeePercentage.complement()),
+            "Unexpected amount out [0]"
+        );
+        assertEq(
+            expectedAmountsOut[1],
+            defaultAmount.mulDown(swapFeePercentage.complement()),
+            "Unexpected amount out [1]"
+        );
 
         expectedAmountsOut[daiIdx] += 1;
 
@@ -110,8 +128,6 @@ contract RecoveryModeTest is BaseVaultTest {
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
-        // Avoid roundtrip fee.
-        vault.manualSetAddLiquidityCalledFlag(pool, false);
         assertFalse(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
 
         uint256 initialSupply = IERC20(pool).totalSupply();
@@ -163,7 +179,16 @@ contract RecoveryModeTest is BaseVaultTest {
         // Set the fee, and flag to trigger collection of it.
         vault.manualSetStaticSwapFeePercentage(pool, BASE_MAX_SWAP_FEE);
         // Will still be set from the add operation above.
-        assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag not set");
+        assertTrue(
+            vault.manualGetAddLiquidityCalledFlagBySession(pool, 0),
+            "Transient AddLiquidity flag not set (session 0)"
+        );
+
+        vault.manualSetAddLiquidityCalledFlag(pool, true);
+        assertTrue(
+            vault.manualGetAddLiquidityCalledFlagBySession(pool, 1),
+            "Transient AddLiquidity flag not set (session 1)"
+        );
 
         uint256 initialSupply = IERC20(pool).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;

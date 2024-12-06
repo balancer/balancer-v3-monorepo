@@ -3,15 +3,14 @@
 pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IBufferRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
@@ -28,8 +27,8 @@ contract BufferRouter is IBufferRouter, RouterCommon {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory version
-    ) RouterCommon(vault, weth, permit2, version) {
+        string memory routerVersion
+    ) RouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -88,7 +87,9 @@ contract BufferRouter is IBufferRouter, RouterCommon {
             minIssuedShares,
             sharesOwner
         );
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), exactAmountUnderlyingIn, false);
+
+        address asset = _vault.getERC4626BufferAsset(wrappedToken);
+        _takeTokenIn(sharesOwner, IERC20(asset), exactAmountUnderlyingIn, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), exactAmountWrappedIn, false);
     }
 
@@ -146,7 +147,9 @@ contract BufferRouter is IBufferRouter, RouterCommon {
             exactSharesToIssue,
             sharesOwner
         );
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingIn, false);
+
+        address asset = _vault.getERC4626BufferAsset(wrappedToken);
+        _takeTokenIn(sharesOwner, IERC20(asset), amountUnderlyingIn, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedIn, false);
     }
 

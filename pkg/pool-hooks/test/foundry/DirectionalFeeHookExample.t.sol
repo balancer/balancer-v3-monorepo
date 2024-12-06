@@ -23,14 +23,18 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import {
+    StablePoolContractsDeployer
+} from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { DirectionalFeeHookExample } from "../../contracts/DirectionalFeeHookExample.sol";
 
-contract DirectionalHookExampleTest is BaseVaultTest {
+contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -54,7 +58,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
     function createHook() internal override returns (address) {
         // Create the factory here, because it needs to be deployed after the Vault, but before the hook contract.
-        stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         directionalFeeHook = address(new DirectionalFeeHookExample(IVault(address(vault)), address(stablePoolFactory)));
@@ -62,7 +66,13 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         return directionalFeeHook;
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "Stable Pool Test";
+        string memory symbol = "STABLE-TEST";
+
         PoolRoleAccounts memory roleAccounts;
 
         vm.expectEmit(true, true, false, false);
@@ -72,10 +82,10 @@ contract DirectionalHookExampleTest is BaseVaultTest {
             address(0)
         );
 
-        address newPool = address(
+        newPool = address(
             stablePoolFactory.create(
-                "Stable Pool Test",
-                "STABLE-TEST",
+                name,
+                symbol,
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
@@ -92,7 +102,16 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         vm.prank(admin);
         vault.setStaticSwapFeePercentage(newPool, SWAP_FEE_PERCENTAGE);
 
-        return newPool;
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            StablePool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                amplificationParameter: DEFAULT_AMP_FACTOR,
+                version: "Pool v1"
+            }),
+            vault
+        );
     }
 
     function testRegistryWithWrongFactory() public {

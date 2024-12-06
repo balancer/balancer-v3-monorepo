@@ -15,8 +15,8 @@ pragma solidity ^0.8.24;
  */
 interface IUnbalancedLiquidityInvariantRatioBounds {
     /// @return minimumInvariantRatio The minimum invariant ratio for a pool during unbalanced remove liquidity
-    function getMinimumInvariantRatio() external view returns (uint256);
+    function getMinimumInvariantRatio() external view returns (uint256 minimumInvariantRatio);
 
     /// @return maximumInvariantRatio The maximum invariant ratio for a pool during unbalanced add liquidity
-    function getMaximumInvariantRatio() external view returns (uint256);
+    function getMaximumInvariantRatio() external view returns (uint256 maximumInvariantRatio);
 }

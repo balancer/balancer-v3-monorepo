@@ -56,6 +56,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     ERC20TestToken internal wsteth;
     ERC20TestToken internal veBAL;
     ERC4626TestToken internal waDAI;
+    ERC4626TestToken internal waWETH;
     ERC4626TestToken internal waUSDC;
 
     // List of all ERC20 tokens
@@ -91,11 +92,13 @@ abstract contract BaseTest is Test, GasSnapshot {
 
         // Deploy ERC4626 tokens.
         waDAI = createERC4626("Wrapped aDAI", "waDAI", 18, dai);
+        waWETH = createERC4626("Wrapped aWETH", "waWETH", 18, weth);
         // "waUSDC" is deliberately 18 decimals to test one thing at a time.
         waUSDC = createERC4626("Wrapped aUSDC", "waUSDC", 18, usdc);
 
         // Fill the ERC4626 token list.
         erc4626Tokens.push(waDAI);
+        erc4626Tokens.push(waWETH);
         erc4626Tokens.push(waUSDC);
 
         // Create users for testing.
@@ -193,7 +196,14 @@ abstract contract BaseTest is Test, GasSnapshot {
 
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
             // Give underlying tokens to the user, for depositing in the wrapped token.
-            ERC20TestToken(erc4626Tokens[i].asset()).mint(user, defaultBalance);
+            if (erc4626Tokens[i].asset() == address(weth)) {
+                vm.deal(user, user.balance + defaultBalance);
+
+                vm.prank(user);
+                weth.deposit{ value: defaultBalance }();
+            } else {
+                ERC20TestToken(erc4626Tokens[i].asset()).mint(user, defaultBalance);
+            }
 
             // Deposit underlying to mint wrapped tokens to the user.
             vm.startPrank(user);

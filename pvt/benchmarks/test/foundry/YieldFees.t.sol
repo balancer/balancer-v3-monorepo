@@ -50,8 +50,13 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt)
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         wstETHRateProvider = deployRateProviderMock();
         daiRateProvider = deployRateProviderMock();
@@ -67,27 +72,35 @@ contract YieldFeesTest is BaseVaultTest {
 
         PoolRoleAccounts memory poolRoleAccounts;
 
-        weightedPoolWithRate = WeightedPool(
-            factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(
-                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                    rateProviders,
-                    yieldFeeFlags
-                ),
-                [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                poolRoleAccounts,
-                swapFee,
-                address(0),
-                false,
-                false,
-                bytes32(0)
-            )
+        newPool = factory.create(
+            name,
+            symbol,
+            vault.buildTokenConfig(
+                [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
+                rateProviders,
+                yieldFeeFlags
+            ),
+            weights,
+            poolRoleAccounts,
+            swapFee,
+            address(0),
+            false,
+            false,
+            bytes32(0)
         );
 
-        vm.label(address(weightedPoolWithRate), "weightedPoolWithRate");
-        return address(weightedPoolWithRate);
+        vm.label(newPool, "weightedPoolWithRate");
+
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: 2,
+                normalizedWeights: weights,
+                version: "Pool Version 1"
+            }),
+            vault
+        );
     }
 
     function testSwapWithoutYieldFeesSnapshot() public {
@@ -150,7 +163,7 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {
-        pool = createPool();
+        (pool, ) = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 

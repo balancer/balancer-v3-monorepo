@@ -55,22 +55,22 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
     function testDepositDoS() public {
         // Deposit is an EXACT_IN operation, since it's a wrap where we specify the underlying amount in.
-        _testWrapDoS(_wrapAmount, waDAI.previewDeposit(_wrapAmount), SwapKind.EXACT_IN);
+        _testWrapDoS(_wrapAmount, _vaultPreviewDeposit(waDAI, _wrapAmount), SwapKind.EXACT_IN);
     }
 
     function testMintDoS() public {
         // Mint is an EXACT_OUT operation, since it's a wrap where we specify the wrapped amount out.
-        _testWrapDoS(waDAI.previewDeposit(_wrapAmount), _wrapAmount, SwapKind.EXACT_OUT);
+        _testWrapDoS(_vaultPreviewDeposit(waDAI, _wrapAmount), _wrapAmount, SwapKind.EXACT_OUT);
     }
 
     function testWithdrawDoS() public {
         // Withdraw is an EXACT_OUT operation, since it's an unwrap where we specify the underlying amount out.
-        _testUnwrapDoS(_wrapAmount, waDAI.previewWithdraw(_wrapAmount), SwapKind.EXACT_OUT);
+        _testUnwrapDoS(_wrapAmount, _vaultPreviewWithdraw(waDAI, _wrapAmount), SwapKind.EXACT_OUT);
     }
 
     function testRedeemDoS() public {
         // Redeem is an EXACT_IN operation, since it's an unwrap where we specify the wrapped amount in.
-        _testUnwrapDoS(waDAI.previewWithdraw(_wrapAmount), _wrapAmount, SwapKind.EXACT_IN);
+        _testUnwrapDoS(_vaultPreviewWithdraw(waDAI, _wrapAmount), _wrapAmount, SwapKind.EXACT_IN);
     }
 
     function _testWrapDoS(uint256 amountGivenRaw, uint256 limitRaw, SwapKind kind) private {
@@ -78,12 +78,14 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         // make the Vault "think" that an unwrap operation took place, instead of a wrap.
         uint256 frontrunnerUnderlyingAmount = _wrapAmount + 10;
 
+        uint256 wrappedToDeposit = _vaultPreviewDeposit(waDAI, _wrapAmount / 10);
+
         // Initializes the buffer with an amount that's not enough to fulfill the mint operation.
         vm.startPrank(lp);
         bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             _wrapAmount / 10,
-            waDAI.previewDeposit(_wrapAmount / 10),
+            wrappedToDeposit,
             0 // minIssuedShares
         );
         vm.stopPrank();
@@ -117,7 +119,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
     function _testUnwrapDoS(uint256 amountGivenRaw, uint256 limitRaw, SwapKind kind) private {
         // Frontrunner will add more wrapped tokens to the Vault than the amount burned by "redeem", which could
         // trigger an arithmetic error in the Vault.
-        uint256 frontrunnerWrappedAmount = waDAI.previewWithdraw(2 * _wrapAmount);
+        uint256 frontrunnerWrappedAmount = _vaultPreviewWithdraw(waDAI, 2 * _wrapAmount);
 
         // Give alice enough liquidity to frontrun redeem call.
         dai.mint(alice, 2 * _wrapAmount);
@@ -126,12 +128,14 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         waDAI.deposit(2 * _wrapAmount, alice);
         vm.stopPrank();
 
+        uint256 wrappedToDeposit = _vaultPreviewDeposit(waDAI, _wrapAmount / 10);
+
         // Initializes the buffer with an amount that's not enough to fulfill the redeem operation.
         vm.startPrank(lp);
         bufferRouter.initializeBuffer(
             IERC4626(address(waDAI)),
             _wrapAmount / 10,
-            waDAI.previewDeposit(_wrapAmount / 10),
+            wrappedToDeposit,
             0 // minIssuedShares
         );
         vm.stopPrank();
@@ -165,7 +169,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         uint256 amountIn,
         uint256 amountOut,
         uint256 frontrunnerUnderlyingAmount
-    ) private view {
+    ) private {
         (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
@@ -175,7 +179,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         assertGe(amountIn, _wrapAmount, "AmountIn (underlying deposited) is wrong");
         // Checks if amountOut (Amount extracted from the Vault) is <= _wrapAmount. It means, if there's a rounding
         // error, it's in vault's favor.
-        assertLe(amountOut, waDAI.previewDeposit(_wrapAmount), "AmountOut (wrapped minted) is wrong");
+        assertLe(amountOut, _vaultPreviewDeposit(waDAI, _wrapAmount), "AmountOut (wrapped minted) is wrong");
 
         // Check user balances.
         assertEq(
@@ -185,7 +189,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         );
         assertEq(
             balancesAfter.lpTokens[waDaiIdx],
-            balancesBefore.lpTokens[waDaiIdx] + waDAI.previewDeposit(_wrapAmount),
+            balancesBefore.lpTokens[waDaiIdx] + _vaultPreviewDeposit(waDAI, _wrapAmount),
             "LP balance of wrapped token is wrong"
         );
 
@@ -208,7 +212,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
             balancesBefore.vaultReserves[daiIdx] + frontrunnerUnderlyingAmount,
             "Vault reserves of underlying token is wrong"
         );
-        assertEq(
+        assertGe(
             balancesAfter.vaultReserves[waDaiIdx],
             balancesBefore.vaultReserves[waDaiIdx],
             "Vault reserves of wrapped token is wrong"
@@ -232,7 +236,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         uint256 amountIn,
         uint256 amountOut,
         uint256 frontrunnerWrappedAmount
-    ) private view {
+    ) private {
         (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
@@ -242,7 +246,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         assertLe(amountOut, _wrapAmount, "AmountOut (underlying withdrawn) is wrong");
         // Checks if amountIn (Amount deposited into the Vault) is >= _wrapAmount. It means, if there's a rounding
         // error, it's in vault's favor.
-        assertGe(amountIn, waDAI.previewDeposit(_wrapAmount), "AmountIn (wrapped burned) is wrong");
+        assertGe(amountIn, _vaultPreviewDeposit(waDAI, _wrapAmount), "AmountIn (wrapped burned) is wrong");
 
         // Check user balances.
         assertEq(
@@ -252,7 +256,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         );
         assertEq(
             balancesAfter.lpTokens[waDaiIdx],
-            balancesBefore.lpTokens[waDaiIdx] - waDAI.previewWithdraw(_wrapAmount),
+            balancesBefore.lpTokens[waDaiIdx] - _vaultPreviewWithdraw(waDAI, _wrapAmount),
             "LP balance of wrapped token is wrong"
         );
 
@@ -275,7 +279,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
             balancesBefore.vaultReserves[daiIdx],
             "Vault reserves of underlying token is wrong"
         );
-        assertEq(
+        assertGe(
             balancesAfter.vaultReserves[waDaiIdx],
             balancesBefore.vaultReserves[waDaiIdx] + frontrunnerWrappedAmount,
             "Vault reserves of wrapped token is wrong"

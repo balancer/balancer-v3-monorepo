@@ -67,7 +67,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
 
         // Here the Router is also the hook.
         poolHooksContract = address(nftRouter);
-        pool = createPool();
+        (pool, ) = createPool();
 
         // Approve vault allowances.
         for (uint256 i = 0; i < users.length; ++i) {
@@ -114,9 +114,15 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity).
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = deployPoolMock(IVault(address(vault)), "NFT Pool", "NFT-POOL");
-        vm.label(address(newPool), label);
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "NFT Pool";
+        string memory symbol = "NFT Pool";
+
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
+        vm.label(newPool, label);
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
@@ -126,14 +132,14 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         liquidityManagement.enableDonation = true;
 
         factoryMock.registerPool(
-            address(newPool),
+            newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
             poolHooksContract,
             liquidityManagement
         );
 
-        return address(newPool);
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testAddLiquidity() public {

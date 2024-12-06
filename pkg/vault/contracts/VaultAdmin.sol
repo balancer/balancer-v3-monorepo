@@ -14,8 +14,8 @@ import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -253,7 +253,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     }
 
     /*******************************************************************************
-                                        Fees
+                                         Fees
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
@@ -401,16 +401,39 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     }
 
     /*******************************************************************************
-                                        Queries
+                                  Query Functionality
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external onlyVaultDelegateCall authenticate {
+        _disableQuery();
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function disableQueryPermanently() external onlyVaultDelegateCall authenticate {
+        _queriesDisabledPermanently = true;
+        _disableQuery();
+    }
+
+    function _disableQuery() internal {
         VaultStateBits vaultState = _vaultStateBits;
         vaultState = vaultState.setQueryDisabled(true);
         _vaultStateBits = vaultState;
 
         emit VaultQueriesDisabled();
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function enableQuery() external onlyVaultDelegateCall authenticate {
+        if (_queriesDisabledPermanently) {
+            revert QueriesDisabledPermanently();
+        }
+
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setQueryDisabled(false);
+        _vaultStateBits = vaultState;
+
+        emit VaultQueriesEnabled();
     }
 
     /*******************************************************************************
@@ -632,7 +655,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
         if (_isQueryContext()) {
-            // Increase `sharesOwner` balance to ensure the check below and the burn function succeeds.
+            // Increase `sharesOwner` balance to ensure that both the share amount check and the burn function succeed.
             _queryModeBufferSharesIncrease(wrappedToken, sharesOwner, sharesToRemove);
         }
 

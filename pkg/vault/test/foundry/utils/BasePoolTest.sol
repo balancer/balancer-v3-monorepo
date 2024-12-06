@@ -53,7 +53,7 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testPoolAddress() public view {
-        address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
+        address calculatedPoolAddress = factory.getDeploymentAddress(poolArguments, ZERO_BYTES32);
         assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
     }
 
@@ -143,9 +143,6 @@ abstract contract BasePoolTest is BaseVaultTest {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             minAmountsOut[i] = _less(tokenAmounts[i], 1e4);
         }
-
-        // Prevent roundtrip fee
-        vault.manualSetAddLiquidityCalledFlag(pool, false);
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             pool,

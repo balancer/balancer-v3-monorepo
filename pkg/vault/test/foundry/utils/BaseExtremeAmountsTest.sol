@@ -90,7 +90,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     // testAddAndRemoveLiquidityProportional
-    function testAddAndRemoveLiquidityProportional_Fuzz(
+    function testAddAndRemoveLiquidityProportional__Fuzz(
         uint256 exactBPTAmount,
         uint256[2] memory balancesRaw,
         uint256 swapFee
@@ -100,13 +100,13 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         _testAddAndRemoveLiquidityProportional(_boundExactBPTAmount(exactBPTAmount));
     }
 
-    function testAddAndRemoveLiquidityProportionalMaxBPTAmount_FuzzSwapFee(uint256 swapFee) public {
+    function testAddAndRemoveLiquidityProportionalMaxBPTAmount__FuzzSwapFee(uint256 swapFee) public {
         _setUpVariables([poolInitAmount, poolInitAmount].toMemoryArray(), _boundSwapFee(swapFee));
 
         _testAddAndRemoveLiquidityProportional(_calculateMaxBPTAmountForProportionalOperations());
     }
 
-    function testAddAndRemoveLiquidityProportional_FuzzBPTAmount(uint256 exactBPTAmount) public {
+    function testAddAndRemoveLiquidityProportional__FuzzBPTAmount(uint256 exactBPTAmount) public {
         _setUpVariables([poolInitAmount, poolInitAmount].toMemoryArray(), maxSwapFee / 2);
 
         _testAddAndRemoveLiquidityProportional(_boundExactBPTAmount(exactBPTAmount));
@@ -162,7 +162,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     // testAddUnbalancedAndRemoveLiquidityProportional
-    function testAddUnbalancedAndRemoveLiquidityProportional_Fuzz(
+    function testAddUnbalancedAndRemoveLiquidityProportional__Fuzz(
         uint256[2] memory amountsIn,
         uint256[2] memory balancesRaw,
         uint256 swapFee
@@ -171,12 +171,12 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         _testAddUnbalancedAndRemoveLiquidityProportional(_calculateExactAmountsIn(amountsIn));
     }
 
-    function testAddUnbalancedAndRemoveLiquidityProportional_FuzzAmountsIn(uint256[2] memory amountsIn) public {
+    function testAddUnbalancedAndRemoveLiquidityProportional__FuzzAmountsIn(uint256[2] memory amountsIn) public {
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), maxSwapFee / 2);
         _testAddUnbalancedAndRemoveLiquidityProportional(_calculateExactAmountsIn(amountsIn));
     }
 
-    function testAddUnbalancedAndRemoveLiquidityProportional_FuzzSwapFee(uint256 swapFee) public {
+    function testAddUnbalancedAndRemoveLiquidityProportional__FuzzSwapFee(uint256 swapFee) public {
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), _boundSwapFee(swapFee));
 
         uint256[] memory exactAmountsIn = new uint256[](2);
@@ -256,7 +256,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     // testAddProportionalAndRemoveLiquidityExactIn
-    function testAddProportionalAndRemoveLiquidityExactIn_Fuzz(
+    function testAddProportionalAndRemoveLiquidityExactIn__Fuzz(
         uint256 exactBPTAmount,
         uint256[2] memory balancesRaw,
         uint256 swapFee
@@ -266,14 +266,14 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         _testAddProportionalAndRemoveLiquidityExactIn(_boundExactBPTAmountForSingleTokenOperations(exactBPTAmount));
     }
 
-    function testAddProportionalAndRemoveLiquidityExactIn_FuzzSwapFee(uint256 swapFee) public {
+    function testAddProportionalAndRemoveLiquidityExactIn__FuzzSwapFee(uint256 swapFee) public {
         swapFee = _boundSwapFee(swapFee);
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), swapFee);
 
         _testAddProportionalAndRemoveLiquidityExactIn(MIN_AMOUNT);
     }
 
-    function testAddProportionalAndRemoveLiquidityExactIn_FuzzBPTAmount(uint256 exactBPTAmount) public {
+    function testAddProportionalAndRemoveLiquidityExactIn__FuzzBPTAmount(uint256 exactBPTAmount) public {
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), maxSwapFee / 2);
 
         _testAddProportionalAndRemoveLiquidityExactIn(_boundExactBPTAmountForSingleTokenOperations(exactBPTAmount));
@@ -338,7 +338,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     // testAddLiquiditySingleTokenExactOutAndRemoveExactIn
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn_Fuzz(
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn__Fuzz(
         uint256 exactBPTAmount,
         uint256[2] memory balancesRaw,
         uint256 swapFee
@@ -350,14 +350,14 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         );
     }
 
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn_FuzzSwapFee(uint256 swapFee) public {
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn__FuzzSwapFee(uint256 swapFee) public {
         swapFee = _boundSwapFee(swapFee);
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), swapFee);
 
         _testAddLiquiditySingleTokenExactOutAndRemoveExactIn(MIN_AMOUNT);
     }
 
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn_FuzzBPTAmount(uint256 exactBPTAmount) public {
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn__FuzzBPTAmount(uint256 exactBPTAmount) public {
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), maxSwapFee / 2);
 
         _testAddLiquiditySingleTokenExactOutAndRemoveExactIn(
@@ -397,7 +397,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     // testAddLiquiditySingleTokenExactOutAndRemoveExactOut
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut_Fuzz(
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut__Fuzz(
         uint256 exactBPTAmount,
         uint256[2] memory balancesRaw,
         uint256 swapFee
@@ -409,7 +409,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         );
     }
 
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut_FuzzBPTAmount(uint256 exactBPTAmount) public {
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut__FuzzBPTAmount(uint256 exactBPTAmount) public {
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), maxSwapFee / 2);
 
         _testAddLiquiditySingleTokenExactOutAndRemoveExactOut(
@@ -417,7 +417,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         );
     }
 
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut_FuzzSwapFee(uint256 swapFee) public {
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut__FuzzSwapFee(uint256 swapFee) public {
         swapFee = _boundSwapFee(swapFee);
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), swapFee);
 
@@ -484,20 +484,20 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     // testSwap
-    function testSwap_Fuzz(uint256 swapAmount, uint256 swapFee, uint256[2] memory balancesRaw) public {
+    function testSwap__Fuzz(uint256 swapAmount, uint256 swapFee, uint256[2] memory balancesRaw) public {
         _setUpVariables(_boundBalances(balancesRaw), _boundSwapFee(swapFee));
 
         _testSwap(_boundSwapAmount(swapAmount));
     }
 
-    function testSwap_FuzzSwapFee(uint256 swapFee) public {
+    function testSwap__FuzzSwapFee(uint256 swapFee) public {
         swapFee = _boundSwapFee(swapFee);
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), swapFee);
 
         _testSwap(MIN_AMOUNT);
     }
 
-    function testSwap_FuzzSwapAmount(uint256 swapAmount) public {
+    function testSwap__FuzzSwapAmount(uint256 swapAmount) public {
         _setUpVariables([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), maxSwapFee / 2);
 
         _testSwap(_boundSwapAmount(swapAmount));

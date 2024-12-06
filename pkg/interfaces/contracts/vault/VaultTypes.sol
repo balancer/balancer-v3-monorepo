@@ -24,7 +24,19 @@ struct LiquidityManagement {
 // @notice Custom type to store the entire configuration of the pool.
 type PoolConfigBits is bytes32;
 
-/// @notice Represents a pool's configuration (hooks configuration are separated in another struct).
+/**
+ * @notice Represents a pool's configuration (hooks configuration are separated in another struct).
+ * @param liquidityManagement Flags related to adding/removing liquidity
+ * @param staticSwapFeePercentage The pool's native swap fee
+ * @param aggregateSwapFeePercentage The total swap fee charged, including protocol and pool creator components
+ * @param aggregateYieldFeePercentage The total swap fee charged, including protocol and pool creator components
+ * @param tokenDecimalDiffs Compressed storage of the token decimals of each pool token
+ * @param pauseWindowEndTime Timestamp after which the pool cannot be paused
+ * @param isPoolRegistered If true, the pool has been registered with the Vault
+ * @param isPoolInitialized If true, the pool has been initialized with liquidity, and is available for trading
+ * @param isPoolPaused If true, the pool has been paused (by governance or the pauseManager)
+ * @param isPoolInRecoveryMode If true, the pool has been placed in recovery mode, enabling recovery mode withdrawals
+ */
 struct PoolConfig {
     LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
@@ -72,7 +84,13 @@ struct HooksConfig {
     address hooksContract;
 }
 
-/// @notice Represents temporary state used in a swap operation.
+/**
+ * @notice Represents temporary state used during a swap operation.
+ * @param indexIn The zero-based index of tokenIn
+ * @param indexOut The zero-based index of tokenOut
+ * @param amountGivenScaled18 The amountGiven (i.e., tokenIn for ExactIn), adjusted for token decimals
+ * @param swapFeePercentage The swap fee to be applied (might be static or dynamic)
+ */
 struct SwapState {
     uint256 indexIn;
     uint256 indexOut;
@@ -82,9 +100,8 @@ struct SwapState {
 
 /**
  * @notice Represents the Vault's configuration.
- * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
- * governance.
- * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified by governance
+ * @param isVaultPaused If set to true, swaps and add/remove liquidity operations are halted
  * @param areBuffersPaused If set to true, the Vault wrap/unwrap primitives associated with buffers will be disabled
  */
 struct VaultState {
@@ -95,9 +112,9 @@ struct VaultState {
 
 /**
  * @notice Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
- * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
+ * @param pauseManager Account empowered to pause/unpause the pool (note that governance can always pause a pool)
  * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to governance)
- * @param poolCreator Account empowered to set the pool creator fee percentage
+ * @param poolCreator Account empowered to set the pool creator fee (or 0 if all fees go to the protocol and LPs)
  */
 struct PoolRoleAccounts {
     address pauseManager;
@@ -216,13 +233,13 @@ struct TokenInfo {
 /**
  * @notice Data structure used to represent the current pool state in memory
  * @param poolConfigBits Custom type to store the entire configuration of the pool.
- * @param tokens Pool tokens, sorted in pool registration order
- * @param tokenInfo Configuration data for each token, sorted in pool registration order
+ * @param tokens Pool tokens, sorted in token registration order
+ * @param tokenInfo Configuration data for each token, sorted in token registration order
  * @param balancesRaw Token balances in native decimals
  * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
  * @param tokenRates 18-decimal FP values for rate tokens (e.g., yield-bearing), or FP(1) for standard tokens
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
- * calculations. FP(1) for 18-decimal tokens
+ * calculations. It is 1e18 (FP 1) for 18-decimal tokens
  */
 struct PoolData {
     PoolConfigBits poolConfigBits;
@@ -308,7 +325,6 @@ struct PoolSwapParams {
  * @param tokenOutBalanceScaled18 Updated (after swap) balance of tokenOut
  * @param amountCalculatedScaled18 Token amount calculated by the swap
  * @param amountCalculatedRaw Token amount calculated by the swap
- * @param user Account originating the swap operation
  * @param router The address (usually a router contract) that initiated a swap operation on the Vault
  * @param pool Pool address
  * @param userData Additional (optional) data required for the swap
@@ -417,5 +433,7 @@ struct BufferWrapOrUnwrapParams {
 // between 0% and 100% (step 0.00001%). Protocol and pool creator fees are set in the `ProtocolFeeController`, and
 // ensure both constituent and aggregate fees do not exceed this precision.
 uint256 constant FEE_BITLENGTH = 24;
-uint256 constant MAX_FEE_PERCENTAGE = 1e18; // 100%
 uint256 constant FEE_SCALING_FACTOR = 1e11;
+// Used to ensure the safety of fee-related math (e.g., pools or hooks don't set it greater than 100%).
+// This value should work for practical purposes and is well within the max precision requirements.
+uint256 constant MAX_FEE_PERCENTAGE = 99.9999e16; // 99.9999%

@@ -7,17 +7,18 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { Rounding, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eBatchSwapTest is BaseVaultTest {
@@ -58,7 +59,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
 
-        IProtocolFeeController feeController = vault.getProtocolFeeController();
+        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
         authorizer.grantRole(
@@ -71,21 +72,21 @@ contract E2eBatchSwapTest is BaseVaultTest {
         // Initialize pools that will be used by batch router.
         // Create poolA.
         vm.startPrank(lp);
-        poolA = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "poolA");
+        (poolA, ) = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "poolA");
         _initPool(poolA, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         // Create poolB.
-        poolB = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
+        (poolB, ) = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
         _initPool(poolB, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         // Create poolC.
-        poolC = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
+        (poolC, ) = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
         _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
 
         vm.startPrank(poolCreator);
-        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(poolA, FixedPoint.ONE);
-        feeController.setPoolCreatorSwapFeePercentage(poolB, FixedPoint.ONE);
-        feeController.setPoolCreatorSwapFeePercentage(poolC, FixedPoint.ONE);
+        // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolA, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolB, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(poolC, FixedPoint.ONE);
         vm.stopPrank();
 
         tokensToTrack = [address(tokenA), address(tokenB), address(tokenC), address(tokenD)].toMemoryArray().asIERC20();
