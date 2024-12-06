@@ -14,7 +14,7 @@ import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts
 import {
     TransientStorageHelpers,
     TokenDeltaMappingSlotType,
-    AddressToBooleanMappingSlot
+    UintToAddressToBooleanMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -44,7 +44,7 @@ contract VaultStorage {
 
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
-    uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
+    uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 180 days;
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors.
@@ -69,6 +69,7 @@ contract VaultStorage {
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
     bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
     bytes32 private immutable _ADD_LIQUIDITY_CALLED_SLOT = _calculateVaultStorageSlot("addLiquidityCalled");
+    bytes32 private immutable _SESSION_ID_SLOT = _calculateVaultStorageSlot("sessionId");
     // solhint-enable var-name-mixedcase
 
     /***************************************************************************
@@ -179,8 +180,12 @@ contract VaultStorage {
         return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTAS_SLOT);
     }
 
-    function _addLiquidityCalled() internal view returns (AddressToBooleanMappingSlot slot) {
-        return AddressToBooleanMappingSlot.wrap(_ADD_LIQUIDITY_CALLED_SLOT);
+    function _addLiquidityCalled() internal view returns (UintToAddressToBooleanMappingSlot slot) {
+        return UintToAddressToBooleanMappingSlot.wrap(_ADD_LIQUIDITY_CALLED_SLOT);
+    }
+
+    function _sessionIdSlot() internal view returns (StorageSlotExtension.Uint256SlotType slot) {
+        return _SESSION_ID_SLOT.asUint256();
     }
 
     function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {

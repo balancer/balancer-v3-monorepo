@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -92,6 +93,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     IProtocolFeeController internal feeController;
     // Pool for tests.
     address internal pool;
+    // Arguments used to build pool. Used to check deployment address.
+    bytes internal poolArguments;
     // Pool Hooks.
     address internal poolHooksContract;
 
@@ -161,7 +164,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(feeController), "fee controller");
 
         poolHooksContract = createHook();
-        pool = createPool();
+        (pool, poolArguments) = createPool();
 
         // Approve vault allowances.
         for (uint256 i = 0; i < users.length; ++i) {
@@ -237,17 +240,23 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
-    function createPool() internal virtual returns (address) {
+    function createPool() internal virtual returns (address, bytes memory) {
         return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = factoryMock.createPool(name, symbol);
         vm.label(newPool, label);
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
 
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function createHook() internal virtual returns (address) {
@@ -347,6 +356,38 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+
+    function _vaultPreviewDeposit(
+        IERC4626 wrapper,
+        uint256 amountInUnderlying
+    ) internal returns (uint256 amountOutWrapped) {
+        _prankStaticCall();
+        return vault.previewDeposit(wrapper, amountInUnderlying);
+    }
+
+    function _vaultPreviewMint(
+        IERC4626 wrapper,
+        uint256 amountOutWrapped
+    ) internal returns (uint256 amountInUnderlying) {
+        _prankStaticCall();
+        return vault.previewMint(wrapper, amountOutWrapped);
+    }
+
+    function _vaultPreviewRedeem(
+        IERC4626 wrapper,
+        uint256 amountInWrapped
+    ) internal returns (uint256 amountOutUnderlying) {
+        _prankStaticCall();
+        return vault.previewRedeem(wrapper, amountInWrapped);
+    }
+
+    function _vaultPreviewWithdraw(
+        IERC4626 wrapper,
+        uint256 amountOutUnderlying
+    ) internal returns (uint256 amountInWrapped) {
+        _prankStaticCall();
+        return vault.previewWithdraw(wrapper, amountOutUnderlying);
     }
 
     function _prankStaticCall() internal {

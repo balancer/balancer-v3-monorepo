@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IAuthorizer } from "./IAuthorizer.sol";
 import "./VaultTypes.sol";
 
 /**
@@ -176,19 +175,6 @@ interface IVaultMain {
     function erc4626BufferWrapOrUnwrap(
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
-
-    /*******************************************************************************
-                                Authentication
-    *******************************************************************************/
-
-    /**
-     * @notice Returns the Authorizer address.
-     * @dev The authorizer holds the permissions granted by governance. It is set on Vault deployment,
-     * and can be changed through a permissioned call.
-     *
-     * @return authorizer Address of the authorizer contract
-     */
-    function getAuthorizer() external view returns (IAuthorizer authorizer);
 
     /*******************************************************************************
                                      Miscellaneous

@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IVault } from "./IVault.sol";
 import { IHooks } from "./IHooks.sol";
@@ -68,9 +69,9 @@ interface IVaultExtension {
     function getReservesOf(IERC20 token) external view returns (uint256 reserveAmount);
 
     /**
-     * @notice This flag is used to detect and tax "round trip" transactions (adding and removing liquidity in the
+     * @notice This flag is used to detect and tax "round-trip" interactions (adding and removing liquidity in the
      * same pool).
-     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same transaction adds an extra
+     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same `unlock` call adds an extra
      * layer of security, discouraging operations that try to undo others for profit. Remove liquidity proportional
      * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
      * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
@@ -78,6 +79,8 @@ interface IVaultExtension {
      *
      * @param pool Address of the pool to check
      * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
+     
+     * Note that there is no `sessionId` argument; it always returns the value for the current (i.e., latest) session.
      */
     function getAddLiquidityCalledFlag(address pool) external view returns (bool liquidityAdded);
 
@@ -245,26 +248,26 @@ interface IVaultExtension {
     /**
      * @notice Gets the total supply of a given ERC20 token.
      * @param token The token address
-     * @return totalSupply Total supply of the token
+     * @return tokenTotalSupply Total supply of the token
      */
-    function totalSupply(address token) external view returns (uint256);
+    function totalSupply(address token) external view returns (uint256 tokenTotalSupply);
 
     /**
      * @notice Gets the balance of an account for a given ERC20 token.
      * @param token Address of the token
      * @param account Address of the account
-     * @return balance Balance of the account for the token
+     * @return tokenBalance Token balance of the account
      */
-    function balanceOf(address token, address account) external view returns (uint256 balance);
+    function balanceOf(address token, address account) external view returns (uint256 tokenBalance);
 
     /**
      * @notice Gets the allowance of a spender for a given ERC20 token and owner.
      * @param token Address of the token
      * @param owner Address of the owner
      * @param spender Address of the spender
-     * @return allowance Amount of tokens the spender is allowed to spend
+     * @return tokenAllowance Amount of tokens the spender is allowed to spend
      */
-    function allowance(address token, address owner, address spender) external view returns (uint256);
+    function allowance(address token, address owner, address spender) external view returns (uint256 tokenAllowance);
 
     /**
      * @notice Approves a spender to spend pool tokens on behalf of sender.
@@ -470,4 +473,17 @@ interface IVaultExtension {
      * @param eventData Encoded event data
      */
     function emitAuxiliaryEvent(bytes32 eventKey, bytes calldata eventData) external;
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Authorizer address.
+     * @dev The authorizer holds the permissions granted by governance. It is set on Vault deployment,
+     * and can be changed through a permissioned call.
+     *
+     * @return authorizer Address of the authorizer contract
+     */
+    function getAuthorizer() external view returns (IAuthorizer authorizer);
 }
