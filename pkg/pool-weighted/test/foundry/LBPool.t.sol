@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -58,7 +58,7 @@ contract LBPoolTest is BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address, bytes memory) {
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
@@ -67,16 +67,21 @@ contract LBPoolTest is BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1", address(router));
+        string memory factoryVersion = "Factory v1";
+        string memory poolVersion = "Pool v1";
+        factory = new LBPoolFactory(IVault(address(vault)), 365 days, factoryVersion, poolVersion, address(router));
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
+        string memory name = "LB Pool";
+        string memory symbol = "LBPOOL";
+
         LBPool newPool = LBPool(
             LBPoolFactory(address(factory)).create(
-                "LB Pool",
-                "LBPOOL",
+                name,
+                symbol,
                 vault.buildTokenConfig(sortedTokens),
                 weights,
                 DEFAULT_SWAP_FEE,
@@ -85,7 +90,22 @@ contract LBPoolTest is BasePoolTest {
                 ZERO_BYTES32
             )
         );
-        return address(newPool);
+
+        // poolArgs is used to check pool deployment address with create2.
+        bytes memory poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: sortedTokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault,
+            bob,
+            true,
+            router
+        );
+        return (address(newPool), poolArgs);
     }
 
     function testInitialize() public view override {
@@ -505,7 +525,7 @@ contract LBPoolTest is BasePoolTest {
 
         // Attempt to create a pool with 1 token
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         LBPoolFactory(address(factory)).create(
             "Invalid Pool 1",
             "IP1",
@@ -519,7 +539,7 @@ contract LBPoolTest is BasePoolTest {
 
         // Attempt to create a pool with 3 tokens
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         LBPoolFactory(address(factory)).create(
             "Invalid Pool 3",
             "IP3",
@@ -535,7 +555,7 @@ contract LBPoolTest is BasePoolTest {
     function testMismatchedWeightsAndTokens() public {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(poolTokens);
 
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         LBPoolFactory(address(factory)).create(
             "Mismatched Pool",
             "MP",
