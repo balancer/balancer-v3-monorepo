@@ -4,9 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -15,22 +18,20 @@ import {
     PoolSwapParams,
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
-import { LBPool } from "../../contracts/lbp/LBPool.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { LBPool } from "../../contracts/lbp/LBPool.sol";
 
 contract LBPoolTest is BasePoolTest {
     using CastingHelpers for address[];
@@ -58,7 +59,7 @@ contract LBPoolTest is BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
@@ -67,25 +68,41 @@ contract LBPoolTest is BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1", address(router));
+        string memory poolVersion = "Pool v1";
+
+        factory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion, address(router));
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        LBPool newPool = LBPool(
-            LBPoolFactory(address(factory)).create(
-                "LB Pool",
-                "LBPOOL",
-                vault.buildTokenConfig(sortedTokens),
-                weights,
-                DEFAULT_SWAP_FEE,
-                bob,
-                true,
-                ZERO_BYTES32
-            )
+        string memory name = "LB Pool";
+        string memory symbol = "LB_POOL";
+
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: sortedTokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault,
+            bob,
+            true,
+            address(router)
         );
-        return address(newPool);
+
+        newPool = LBPoolFactory(address(factory)).create(
+            name,
+            symbol,
+            vault.buildTokenConfig(sortedTokens),
+            weights,
+            DEFAULT_SWAP_FEE,
+            bob,
+            true,
+            ZERO_BYTES32
+        );
     }
 
     function testInitialize() public view override {
@@ -505,7 +522,7 @@ contract LBPoolTest is BasePoolTest {
 
         // Attempt to create a pool with 1 token
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         LBPoolFactory(address(factory)).create(
             "Invalid Pool 1",
             "IP1",
@@ -519,7 +536,7 @@ contract LBPoolTest is BasePoolTest {
 
         // Attempt to create a pool with 3 tokens
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         LBPoolFactory(address(factory)).create(
             "Invalid Pool 3",
             "IP3",
@@ -535,7 +552,7 @@ contract LBPoolTest is BasePoolTest {
     function testMismatchedWeightsAndTokens() public {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(poolTokens);
 
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         LBPoolFactory(address(factory)).create(
             "Mismatched Pool",
             "MP",
@@ -631,7 +648,7 @@ contract LBPoolTest is BasePoolTest {
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: 1e18,
-            balancesScaled18: new uint256[](3), // add an extra (non-existant) value to give the bad index a balance
+            balancesScaled18: new uint256[](3), // add an extra (non-existent) value to give the bad index a balance
             indexIn: 2, // Invalid token index
             indexOut: 0,
             router: address(router),
