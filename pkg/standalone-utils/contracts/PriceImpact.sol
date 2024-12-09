@@ -8,6 +8,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
@@ -177,7 +178,7 @@ contract PriceImpact is ReentrancyGuard {
         }
 
         (amountCalculated, amountIn, amountOut) = _vault.swap(
-            SwapParams({
+            VaultSwapParams({
                 kind: params.kind,
                 pool: params.pool,
                 tokenIn: params.tokenIn,
@@ -312,7 +313,7 @@ contract PriceImpact is ReentrancyGuard {
             _vault.quoteAndRevert(
                 abi.encodeWithSelector(
                     PriceImpact.queryAddLiquidityHook.selector,
-                    IRouter.AddLiquidityHookParams({
+                    IRouterCommon.AddLiquidityHookParams({
                         // we use router as a sender to simplify basic query functions
                         // but it is possible to add liquidity to any recipient
                         sender: address(this),
@@ -342,7 +343,7 @@ contract PriceImpact is ReentrancyGuard {
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryAddLiquidityHook(
-        IRouter.AddLiquidityHookParams calldata params
+        IRouterCommon.AddLiquidityHookParams calldata params
     )
         external
         payable
@@ -381,7 +382,7 @@ contract PriceImpact is ReentrancyGuard {
             _vault.quoteAndRevert(
                 abi.encodeWithSelector(
                     PriceImpact.queryRemoveLiquidityHook.selector,
-                    IRouter.RemoveLiquidityHookParams({
+                    IRouterCommon.RemoveLiquidityHookParams({
                         // We use router as a sender to simplify basic query functions
                         // but it is possible to remove liquidity from any sender
                         sender: address(this),
@@ -411,7 +412,7 @@ contract PriceImpact is ReentrancyGuard {
      * @return returnData Arbitrary (optional) data with encoded response from the pool
      */
     function queryRemoveLiquidityHook(
-        IRouter.RemoveLiquidityHookParams calldata params
+        IRouterCommon.RemoveLiquidityHookParams calldata params
     )
         external
         nonReentrant
