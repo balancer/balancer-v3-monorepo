@@ -8,7 +8,7 @@ describe('StableSurgeMedianMath', function () {
   const TEST_ITERATIONS = 100;
   const MAX_VALUE = 100000;
 
-  let surgerMath: StableSurgeMedianMathMock;
+  let surgeMath: StableSurgeMedianMathMock;
 
   function getRandomInt(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -26,7 +26,7 @@ describe('StableSurgeMedianMath', function () {
   }
 
   before('deploy mock', async () => {
-    surgerMath = await deploy('v3-pool-hooks/test/StableSurgeMedianMathMock');
+    surgeMath = await deploy('v3-pool-hooks/test/StableSurgeMedianMathMock');
   });
 
   it('absSub', async () => {
@@ -34,21 +34,21 @@ describe('StableSurgeMedianMath', function () {
       const a = getRandomInt(0, MAX_VALUE);
       const b = getRandomInt(0, MAX_VALUE);
       const expectedResult = Math.abs(a - b);
-      expect(await surgerMath.absSub(a, b)).to.eq(expectedResult);
-      expect(await surgerMath.absSub(b, a)).to.eq(expectedResult);
+      expect(await surgeMath.absSub(a, b)).to.eq(expectedResult);
+      expect(await surgeMath.absSub(b, a)).to.eq(expectedResult);
     }
   });
 
   it('findMedian', async () => {
     const worthCaseOne = [800, 700, 600, 500, 400, 300, 200, 100];
-    const worthCaseSecond = worthCaseOne.reverse();
+    const worthCaseTwo = worthCaseOne.reverse();
 
-    expect(Number(await surgerMath.findMedian(worthCaseOne))).to.eq(450);
-    expect(Number(await surgerMath.findMedian(worthCaseSecond))).to.eq(450);
+    expect(Number(await surgeMath.findMedian(worthCaseOne))).to.eq(450);
+    expect(Number(await surgeMath.findMedian(worthCaseTwo))).to.eq(450);
 
     for (let i = 0; i < TEST_ITERATIONS; i++) {
       const randomCase = new Array(getRandomInt(MIN_TOKENS, MAX_TOKENS)).fill(0).map(() => getRandomInt(0, MAX_VALUE));
-      expect(Number(await surgerMath.findMedian(randomCase))).to.eq(findMedian(randomCase));
+      expect(Number(await surgeMath.findMedian(randomCase))).to.eq(findMedian(randomCase));
     }
   });
 
@@ -67,7 +67,7 @@ describe('StableSurgeMedianMath', function () {
       }
 
       const expectedResult = (BigInt(totalDiff) * BigInt(1e18)) / BigInt(totalBalance);
-      expect(Number(await surgerMath.calculateImbalance(randomBalances))).to.eq(Number(expectedResult));
+      expect(Number(await surgeMath.calculateImbalance(randomBalances))).to.eq(Number(expectedResult));
     }
   });
 });

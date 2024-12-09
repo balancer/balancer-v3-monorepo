@@ -184,7 +184,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         uint256 tokenOut,
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
-    ) public {
+    ) public view {
         uint256[] memory balances;
         (length, tokenIn, tokenOut, amountGivenScaled18, balances) = _boundValues(
             length,
@@ -195,7 +195,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         );
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(length, tokenIn, tokenOut, amountGivenScaled18, balances),
+            _buildSwapParams(tokenIn, tokenOut, amountGivenScaled18, balances),
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
             STATIC_FEE_PERCENTAGE
         );
@@ -242,7 +242,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
         vm.prank(address(vault));
         (bool success, uint256 surgeFeePercentage) = stableSurgeHook.onComputeDynamicSwapFeePercentage(
-            _buildSwapParams(length, tokenIn, tokenOut, amountGivenScaled18, balances),
+            _buildSwapParams(tokenIn, tokenOut, amountGivenScaled18, balances),
             pool,
             STATIC_FEE_PERCENTAGE
         );
@@ -272,7 +272,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         }
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(MAX_TOKENS, 0, MAX_TOKENS - 1, 1e18, balances),
+            _buildSwapParams(0, MAX_TOKENS - 1, 1e18, balances),
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
             STATIC_FEE_PERCENTAGE
         );
@@ -289,7 +289,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         balances[3] = 10000e18;
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(MAX_TOKENS, 0, MAX_TOKENS - 1, 0, balances),
+            _buildSwapParams(0, MAX_TOKENS - 1, 0, balances),
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
             STATIC_FEE_PERCENTAGE
         );
@@ -307,7 +307,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         balances[5] = 2e18;
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(MAX_TOKENS, 0, MAX_TOKENS - 1, 1, balances),
+            _buildSwapParams(0, MAX_TOKENS - 1, 1, balances),
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
             STATIC_FEE_PERCENTAGE
         );
@@ -321,7 +321,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         uint256 tokenOut,
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
-    ) internal view returns (uint256, uint256, uint256, uint256, uint256[] memory) {
+    ) internal pure returns (uint256, uint256, uint256, uint256, uint256[] memory) {
         length = bound(length, MIN_TOKENS, MAX_TOKENS);
         uint256[] memory balances = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
@@ -340,12 +340,11 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
     }
 
     function _buildSwapParams(
-        uint256 length,
         uint256 tokenIn,
         uint256 tokenOut,
         uint256 amountGivenScaled18,
         uint256[] memory balances
-    ) internal view returns (PoolSwapParams memory) {
+    ) internal pure returns (PoolSwapParams memory) {
         return
             PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
