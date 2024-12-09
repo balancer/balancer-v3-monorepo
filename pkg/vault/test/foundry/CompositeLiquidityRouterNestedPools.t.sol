@@ -237,6 +237,107 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
     }
 
+    function testAddLiquidityUnbalanceToOneChildNestedPool() public {
+        uint256 usdcAmount = poolInitAmount;
+
+        uint256 minBptOut = 0;
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+
+        address[] memory tokensIn = new address[](1);
+        tokensIn[0] = address(usdc);
+
+        uint256[] memory amountsIn = new uint256[](1);
+        amountsIn[0] = usdcAmount;
+
+        vm.prank(lp);
+        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            parentPool,
+            tokensIn,
+            amountsIn,
+            minBptOut,
+            false,
+            bytes("")
+        );
+
+        _fillNestedPoolTestLocalsAfter(vars);
+        uint256 mintedChildPoolABpt = vars.childPoolAAfter.totalSupply - vars.childPoolABefore.totalSupply;
+        uint256 mintedChildPoolBBpt = vars.childPoolBAfter.totalSupply - vars.childPoolBBefore.totalSupply;
+
+        // Check exact BPT out.
+        // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
+        uint256 expectedBptOut = usdcAmount;
+        assertApproxEqAbs(exactBptOut, expectedBptOut, 10, "Exact BPT amount out is wrong");
+        assertLt(exactBptOut, expectedBptOut, "BPT out rounding direction is wrong");
+
+        // Check LP Balances.
+        assertEq(vars.lpAfter.dai, vars.lpBefore.dai, "LP Dai Balance is wrong");
+        assertEq(vars.lpAfter.weth, vars.lpBefore.weth, "LP Weth Balance is wrong");
+        assertEq(vars.lpAfter.wsteth, vars.lpBefore.wsteth, "LP Wsteth Balance is wrong");
+        assertEq(vars.lpAfter.usdc, vars.lpBefore.usdc - amountsIn[0], "LP Usdc Balance is wrong");
+        assertEq(vars.lpAfter.childPoolABpt, vars.lpBefore.childPoolABpt, "LP ChildPoolA BPT Balance is wrong");
+        assertEq(vars.lpAfter.childPoolBBpt, vars.lpBefore.childPoolBBpt, "LP ChildPoolB BPT Balance is wrong");
+        assertEq(
+            vars.lpAfter.parentPoolBpt,
+            vars.lpBefore.parentPoolBpt + exactBptOut,
+            "LP ParentPool BPT Balance is wrong"
+        );
+
+        // Check Vault Balances.
+        assertEq(vars.vaultAfter.dai, vars.vaultBefore.dai, "Vault Dai Balance is wrong");
+        assertEq(vars.vaultAfter.weth, vars.vaultBefore.weth, "Vault Weth Balance is wrong");
+        assertEq(vars.vaultAfter.wsteth, vars.vaultBefore.wsteth, "Vault Wsteth Balance is wrong");
+        assertEq(vars.vaultAfter.usdc, vars.vaultBefore.usdc + amountsIn[0], "Vault Usdc Balance is wrong");
+        // Since all Child Pool BPT were allocated in the parent pool, vault is holding all of the minted BPT.
+        assertEq(
+            vars.vaultAfter.childPoolABpt,
+            vars.vaultBefore.childPoolABpt + mintedChildPoolABpt,
+            "Vault ChildPoolA BPT Balance is wrong"
+        );
+        assertEq(
+            vars.vaultAfter.childPoolBBpt,
+            vars.vaultBefore.childPoolBBpt,
+            "Vault ChildPoolB BPT Balance is wrong"
+        );
+        // Vault's parent pool BPT did not change.
+        assertEq(
+            vars.vaultAfter.parentPoolBpt,
+            vars.vaultBefore.parentPoolBpt,
+            "Vault ParentPool BPT Balance is wrong"
+        );
+
+        // Check ChildPoolA balances.
+        assertEq(vars.childPoolAAfter.weth, vars.childPoolABefore.weth, "ChildPoolA Weth Balance is wrong");
+        assertEq(
+            vars.childPoolAAfter.usdc,
+            vars.childPoolABefore.usdc + amountsIn[0],
+            "ChildPoolA Usdc Balance is wrong"
+        );
+
+        // Check ChildPoolB balances.
+        assertApproxEqAbs(
+            vars.childPoolBAfter.dai,
+            vars.childPoolBBefore.dai,
+            MAX_ROUND_ERROR,
+            "ChildPoolB Dai Balance is wrong"
+        );
+        assertEq(vars.childPoolBAfter.wsteth, vars.childPoolBBefore.wsteth, "ChildPoolB Wsteth Balance is wrong");
+
+        // Check ParentPool balances.
+        // The ParentPool's DAI balance does not change since all DAI amount is inserted in the child pool A.
+        assertEq(vars.parentPoolAfter.dai, vars.parentPoolBefore.dai, "ParentPool Dai Balance is wrong");
+        assertEq(
+            vars.parentPoolAfter.childPoolABpt,
+            vars.parentPoolBefore.childPoolABpt + mintedChildPoolABpt,
+            "ParentPool ChildPoolA BPT Balance is wrong"
+        );
+        assertEq(
+            vars.parentPoolAfter.childPoolBBpt,
+            vars.parentPoolBefore.childPoolBBpt,
+            "ParentPool ChildPoolB BPT Balance is wrong"
+        );
+    }
+
     function testAddLiquidityNestedERC4626WithUnderlying__Fuzz(
         uint256 daiAmount,
         uint256 usdcAmount,

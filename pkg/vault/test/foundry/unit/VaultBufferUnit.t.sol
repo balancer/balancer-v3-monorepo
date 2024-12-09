@@ -9,6 +9,11 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import {
+    BufferWrapOrUnwrapParams,
+    SwapKind,
+    WrappingDirection
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -23,6 +28,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
+    uint256 private _minWrapAmount;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -30,6 +36,8 @@ contract VaultBufferUnitTest is BaseVaultTest {
         _createWrappedToken();
         _mintTokensToLpAndYBProtocol();
         _initializeBuffer();
+
+        _minWrapAmount = vaultAdmin.getMinimumWrapAmount();
     }
 
     function testIsERC4626BufferInitialized() public view {
@@ -404,6 +412,80 @@ contract VaultBufferUnitTest is BaseVaultTest {
             actualUnderlyingWithdrawn,
             actualWrappedBurned
         );
+    }
+
+    function testWrapExactOutAmountInLessThanMin() public {
+        uint256 rate = 10_000;
+        wDaiInitialized.mockRate(rate);
+
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_OUT,
+            direction: WrappingDirection.WRAP,
+            wrappedToken: IERC4626(address(wDaiInitialized)),
+            amountGivenRaw: (_minWrapAmount - 1) * rate,
+            limitRaw: UINT256_MAX
+        });
+
+        vault.forceUnlock();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, IERC4626(address(wDaiInitialized)))
+        );
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function testWrapExactInAmountInLessThanMin() public {
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_IN,
+            direction: WrappingDirection.WRAP,
+            wrappedToken: IERC4626(address(wDaiInitialized)),
+            amountGivenRaw: (_minWrapAmount - 1),
+            limitRaw: UINT256_MAX
+        });
+
+        vault.forceUnlock();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, IERC4626(address(wDaiInitialized)))
+        );
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function testUnwrapExactOutAmountInLessThanMin() public {
+        uint256 rate = 10_000;
+        wDaiInitialized.mockRate(rate);
+
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_OUT,
+            direction: WrappingDirection.UNWRAP,
+            wrappedToken: IERC4626(address(wDaiInitialized)),
+            amountGivenRaw: (_minWrapAmount - 1) * rate,
+            limitRaw: UINT256_MAX
+        });
+
+        vault.forceUnlock();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, IERC4626(address(wDaiInitialized)))
+        );
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function testUnwrapExactInAmountInLessThanMin() public {
+        BufferWrapOrUnwrapParams memory params = BufferWrapOrUnwrapParams({
+            kind: SwapKind.EXACT_IN,
+            direction: WrappingDirection.UNWRAP,
+            wrappedToken: IERC4626(address(wDaiInitialized)),
+            amountGivenRaw: (_minWrapAmount - 1),
+            limitRaw: UINT256_MAX
+        });
+
+        vault.forceUnlock();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrapAmountTooSmall.selector, IERC4626(address(wDaiInitialized)))
+        );
+        vault.erc4626BufferWrapOrUnwrap(params);
     }
 
     function _checkVaultReservesAfterWrap(

@@ -108,9 +108,9 @@ To run Medusa tests, we first need to install Echidna. To do so, install `echidn
 [release page](https://github.com/crytic/echidna/releases) or `brew install echidna` in Mac. Notice that the Mac
 installation will also install Crytic-compiller, so this step can be skipped when installing Medusa.
 
-Then, install Medusa using this [installation guide](https://github.com/crytic/medusa/blob/master/docs/src/getting_started/installation.md#building-from-source).
+Then, install Medusa using this [installation guide](https://github.com/crytic/medusa/blob/master/docs/src/getting_started/installation.md#building-from-source) (or just copy the adequate precompiled binary to a directory within your `PATH`).
 
-Finally, run `yarn fuzz:medusa`. This command is available inside the packages `vault`, `pool-weighted` and 
+Finally, run `yarn test:medusa`. This command is available inside the packages `vault`, `pool-weighted` and 
 `pool-stable`.
 
 ## Static analysis
