@@ -168,7 +168,7 @@ contract ProtocolFeeController is
 
     /// @inheritdoc IProtocolFeeController
     function getMaximumProtocolFeePercentages() external pure returns (uint256, uint256) {
-        return (_MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE);
+        return (MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, MAX_PROTOCOL_YIELD_FEE_PERCENTAGE);
     }
 
     /// @inheritdoc IProtocolFeeController
