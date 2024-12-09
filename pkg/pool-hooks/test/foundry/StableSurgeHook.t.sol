@@ -7,6 +7,8 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
+
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -55,7 +57,10 @@ contract StableSurgeHookTest is BaseVaultTest {
         return address(stableSurgeHook);
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
         PoolRoleAccounts memory roleAccounts;
 
         address newPool = stablePoolFactory.create(
@@ -72,7 +77,18 @@ contract StableSurgeHookTest is BaseVaultTest {
         );
         vm.label(address(newPool), label);
 
-        return address(newPool);
+        return (
+            address(newPool),
+            abi.encode(
+                StablePool.NewPoolParams({
+                    name: "Stable Pool",
+                    symbol: "STABLEPOOL",
+                    amplificationParameter: DEFAULT_AMP_FACTOR,
+                    version: "Pool v1"
+                }),
+                vault
+            )
+        );
     }
 
     function testSuccessfulRegistry() public view {
