@@ -8,15 +8,16 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import "./GyroPoolMath.sol";
 
-/** @dev Math routines for the 2CLP. Parameters are price bounds [alpha, beta] and sqrt(alpha), sqrt(beta) are used as
- * parameters.
+/**
+ * @notice Math routines for the 2CLP.
+ * @dev Parameters are price bounds [alpha, beta] and sqrt(alpha), sqrt(beta) are used as parameters.
  */
 library Gyro2CLPMath {
     using FixedPoint for uint256;
 
     error AssetBoundsExceeded();
 
-    // Invariant is used to calculate the virtual offsets used in swaps.
+    // The invariant is used to calculate the virtual offsets used in swaps.
     // It is also used to collect protocol swap fees by comparing its value between two times.
     // We can always round in the same direction. It is also used to initialize the BPT amount and,
     // because there is a minimum BPT, we round the invariant down.
@@ -95,13 +96,14 @@ library Gyro2CLPMath {
         }
         // For better fixed point precision, calculate in expanded form, re-ordering multiplications.
         // `b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta`
-        bSquare = _mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), _mulUpOrDown(sqrtAlpha, sqrtAlpha));
+        bSquare = _mulUpOrDown(_mulUpOrDown(_mulUpOrDown(balances[0], balances[0]), sqrtAlpha), sqrtAlpha);
         uint256 bSq2 = _divUpOrDown(2 * _mulUpOrDown(_mulUpOrDown(balances[0], balances[1]), sqrtAlpha), sqrtBeta);
         uint256 bSq3 = _divUpOrDown(_mulUpOrDown(balances[1], balances[1]), _mulDownOrUp(sqrtBeta, sqrtBeta));
         bSquare = bSquare + bSq2 + bSq3;
     }
 
-    /** @dev Calculates the quadratic root for a special case of the quadratic formula
+    /**
+     * @dev Calculates the quadratic root for a special case of the quadratic formula.
      *   assumes a > 0, b < 0, and c <= 0, which is the case for a L^2 + b L + c = 0
      *   where   a = 1 - sqrt(alpha/beta)
      *           b = -(y/sqrt(beta) + x*sqrt(alpha))
@@ -127,7 +129,8 @@ library Gyro2CLPMath {
         invariant = numerator.divDown(denominator);
     }
 
-    /** @dev Computes how many tokens can be taken out of a pool if `amountIn' are sent, given current balances
+    /**
+     * @dev Computes how many tokens can be taken out of a pool if `amountIn' are sent, given current balances.
      *   balanceIn = existing balance of input token
      *   balanceOut = existing balance of requested output token
      *   virtualParamIn = virtual reserve offset for input token
@@ -180,8 +183,10 @@ library Gyro2CLPMath {
         }
     }
 
-    /** @dev Computes how many tokens must be sent to a pool in order to take `amountOut`, given current balances.
-     * See also _calcOutGivenIn(). Adapted for negative values. */
+    /**
+     * @dev Computes how many tokens must be sent to a pool in order to take `amountOut`, given current balances.
+     * See also _calcOutGivenIn(). Adapted for negative values.
+     */
     function calcInGivenOut(
         uint256 balanceIn,
         uint256 balanceOut,
@@ -218,19 +223,18 @@ library Gyro2CLPMath {
         }
     }
 
-    /** @dev Calculate the virtual offset `a` for reserves `x`, as in (x+a)*(y+b)=L^2
-     */
+    /// @dev Calculate the virtual offset `a` for reserves `x`, as in (x+a)*(y+b)=L^2.
     function calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
         return invariant.divDown(_sqrtBeta);
     }
 
-    /** @dev Calculate the virtual offset `b` for reserves `y`, as in (x+a)*(y+b)=L^2
-     */
+    /// @dev Calculate the virtual offset `b` for reserves `y`, as in (x+a)*(y+b)=L^2.
     function calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
         return invariant.mulDown(_sqrtAlpha);
     }
 
-    /** @dev Calculates the spot price of token A in units of token B.
+    /**
+     * @dev Calculates the spot price of token A in units of token B.
      *
      * The spot price is bounded by pool parameters due to virtual reserves. Aside from being instantaneously
      * manipulable within a transaction, it may also not be accurate if the true price is outside of these bounds.

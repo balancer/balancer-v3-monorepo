@@ -15,7 +15,10 @@ contract LiquidityApproximationGyroTest is LiquidityApproximationTest, Gyro2ClpP
         LiquidityApproximationTest.setUp();
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address, bytes memory) {
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
         return createGyro2ClpPool(tokens, rateProviders, label, vault, lp);
     }

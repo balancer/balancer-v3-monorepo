@@ -38,7 +38,10 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[wstethIdx])).mockRate(mockRate);
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
         (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
 
         rateProviders = new IRateProvider[](2);
@@ -50,7 +53,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         // Part of the tests use the rateProvider variable from BaseVaultTest, so we set that to wstEth rate provider.
         rateProvider = RateProviderMock(address(rateProviders[wstethIdx]));
 
-        address newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
 
         // Add tokens in the same order as rate providers.
         IERC20[] memory tokens = new IERC20[](2);
@@ -58,13 +61,12 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         tokens[wstethIdx] = wsteth;
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens, rateProviders), poolHooksContract, lp);
-
-        return newPool;
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function testLastLiveBalanceInitialization() public {
         // Need to set the rate before initialization for this test.
-        pool = createPool();
+        (pool, ) = createPool();
         rateProvider.mockRate(mockRate);
         initPool();
 

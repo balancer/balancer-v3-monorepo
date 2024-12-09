@@ -54,7 +54,11 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
-    function createPool() internal override returns (address) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        string memory poolVersion = "Pool v1";
+
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
@@ -63,28 +67,37 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        WeightedPool newPool = WeightedPool(
-            WeightedPoolFactory(address(factory)).create(
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(sortedTokens),
-                weights,
-                roleAccounts,
-                DEFAULT_SWAP_FEE,
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
+        newPool = WeightedPoolFactory(address(factory)).create(
+            name,
+            symbol,
+            vault.buildTokenConfig(sortedTokens),
+            weights,
+            roleAccounts,
+            DEFAULT_SWAP_FEE,
+            poolHooksContract,
+            false, // Do not enable donations
+            false, // Do not disable unbalanced add/remove liquidity
+            ZERO_BYTES32
         );
-        return address(newPool);
+
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: sortedTokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {

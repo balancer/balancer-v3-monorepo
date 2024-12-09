@@ -4,17 +4,20 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
-import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -58,8 +61,21 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         WeightedPool pool = _createPool(tokenA, tokenB);
         address expectedPoolAddress = factory.getPool(tokenA, tokenB);
 
+        uint256[] memory poolWeights = pool.getNormalizedWeights();
+
+        bytes memory poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: "Balancer 80 TKNA 20 TKNB",
+                symbol: "B-80TKNA-20TKNB",
+                numTokens: 2,
+                normalizedWeights: poolWeights,
+                version: "8020Pool v1"
+            }),
+            vault
+        );
+
         bytes32 salt = keccak256(abi.encode(block.chainid, tokenA, tokenB));
-        address deploymentAddress = factory.getDeploymentAddress(salt);
+        address deploymentAddress = factory.getDeploymentAddress(poolArgs, salt);
 
         assertEq(address(pool), expectedPoolAddress, "Wrong pool address");
         assertEq(deploymentAddress, expectedPoolAddress, "Wrong deployment address");
@@ -92,7 +108,7 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         _createPool(tokenA, tokenB);
 
         // Should not be able to deploy identical pool
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         _createPool(tokenA, tokenB);
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
@@ -106,7 +122,7 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         tokenConfig[1].tokenType = TokenType.WITH_RATE;
 
         // Trying to create the same pool with same tokens but different token configs should revert
-        vm.expectRevert("DEPLOYMENT_FAILED");
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         factory.create(tokenConfig[0], tokenConfig[1], roleAccounts, DEFAULT_SWAP_FEE);
     }
 

@@ -13,13 +13,18 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import {
+    StablePoolContractsDeployer
+} from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
+
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
 import { ExitFeeHookExampleTest } from "./ExitFeeHookExample.t.sol";
 
-contract ExitFeeHookExampleStablePoolTest is ExitFeeHookExampleTest {
+contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFeeHookExampleTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for uint256;
@@ -31,13 +36,20 @@ contract ExitFeeHookExampleStablePoolTest is ExitFeeHookExampleTest {
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation).
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "Stable Pool Test";
+        string memory symbol = "STABLE-TEST";
+        string memory poolVersion = "Pool v1";
+
+        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         PoolRoleAccounts memory roleAccounts;
 
-        address newPool = stablePoolFactory.create(
-            "ERC20 Pool",
-            "ERC20POOL",
+        newPool = stablePoolFactory.create(
+            name,
+            symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
@@ -47,9 +59,18 @@ contract ExitFeeHookExampleStablePoolTest is ExitFeeHookExampleTest {
             true, // does not support unbalanced add/remove liquidity
             ZERO_BYTES32
         );
-        vm.label(address(newPool), label);
+        vm.label(newPool, label);
 
-        return address(newPool);
+        // poolArgs is used to check pool deployment address with create2.
+        poolArgs = abi.encode(
+            StablePool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                amplificationParameter: DEFAULT_AMP_FACTOR,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     // Exit fee returns to LPs.
