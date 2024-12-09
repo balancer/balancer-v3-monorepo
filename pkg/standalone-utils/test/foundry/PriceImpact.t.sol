@@ -50,20 +50,25 @@ contract PriceImpactTest is BaseVaultTest {
         priceImpactHelper = new PriceImpact(IVault(address(vault)));
     }
 
-    function createPool() internal override returns (address) {
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        string memory poolVersion = "Pool v1";
+
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         TokenConfig[] memory tokens = new TokenConfig[](2);
         tokens[0].token = IERC20(dai);
         tokens[1].token = IERC20(usdc);
 
         PoolRoleAccounts memory poolRoleAccounts;
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         weightedPool = WeightedPool(
             factory.create(
-                "ERC20 Pool",
-                "ERC20POOL",
+                name,
+                symbol,
                 _inputHelpersMock.sortTokenConfig(tokens),
-                [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                weights,
                 poolRoleAccounts,
                 SWAP_FEE,
                 address(0),
@@ -76,7 +81,18 @@ contract PriceImpactTest is BaseVaultTest {
         // Reset fee to 0.
         vault.manualSetAggregateSwapFeePercentage(address(weightedPool), 0);
 
-        return address(weightedPool);
+        newPool = address(weightedPool);
+
+        poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: tokens.length,
+                normalizedWeights: weights,
+                version: poolVersion
+            }),
+            vault
+        );
     }
 
     function initPool() internal override {
