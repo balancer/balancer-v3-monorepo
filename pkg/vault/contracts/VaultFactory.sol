@@ -1,97 +1,169 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
-import { Vault } from "./Vault.sol";
-import { VaultAdmin } from "./VaultAdmin.sol";
+import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 import { VaultExtension } from "./VaultExtension.sol";
+import { VaultAdmin } from "./VaultAdmin.sol";
 
-/**
- * @dev One-off factory to deploy the Vault at a specific address.
- */
-contract VaultFactory is Authentication {
-    /// @dev Emitted when the Vault is deployed.
-    event VaultCreated(address);
+/// @notice One-off factory to deploy the Vault at a specific address.
+contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
+    bytes32 public immutable vaultCreationCodeHash;
+    bytes32 public immutable vaultAdminCreationCodeHash;
+    bytes32 public immutable vaultExtensionCreationCodeHash;
 
-    /// @dev Vault has already been deployed, so this factory is disabled.
-    error VaultAlreadyCreated();
-
-    /// @dev The given salt does not match the generated address when attempting to create the Vault.
-    error VaultAddressMismatch();
-
-    bool public isDisabled;
+    mapping(address vaultAddress => ProtocolFeeController) public deployedProtocolFeeControllers;
+    mapping(address vaultAddress => VaultExtension) public deployedVaultExtensions;
+    mapping(address vaultAddress => VaultAdmin) public deployedVaultAdmins;
+    mapping(address vaultAddress => bool deployed) public isDeployed;
 
     IAuthorizer private immutable _authorizer;
-    uint256 private immutable _pauseWindowDuration;
-    uint256 private immutable _bufferPeriodDuration;
-    address private immutable _deployer;
+    uint32 private immutable _pauseWindowDuration;
+    uint32 private immutable _bufferPeriodDuration;
+    uint256 private immutable _minTradeAmount;
+    uint256 private immutable _minWrapAmount;
 
-    bytes private _creationCode;
+    /**
+     * @notice Emitted when the Vault is deployed.
+     * @param vault The Vault's address
+     */
+    event VaultCreated(address vault);
 
-    // solhint-disable not-rely-on-time
+    /// @notice The given salt does not match the generated address when attempting to create the Vault.
+    error VaultAddressMismatch();
+
+    /**
+     * @notice The bytecode for the given contract does not match the expected bytecode.
+     * @param contractName The name of the mismatched contract
+     */
+    error InvalidBytecode(string contractName);
+
+    /**
+     * @notice The Vault has already been deployed at this target address.
+     * @param vault Vault address already consumed by a previous deployment
+     */
+    error VaultAlreadyDeployed(address vault);
 
     constructor(
         IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(this))))) {
-        _deployer = msg.sender;
-        _creationCode = type(Vault).creationCode;
+        uint32 pauseWindowDuration,
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount,
+        uint256 minWrapAmount,
+        bytes32 vaultCreationCodeHash_,
+        bytes32 vaultExtensionCreationCodeHash_,
+        bytes32 vaultAdminCreationCodeHash_
+    ) Ownable(msg.sender) {
+        vaultCreationCodeHash = vaultCreationCodeHash_;
+        vaultAdminCreationCodeHash = vaultAdminCreationCodeHash_;
+        vaultExtensionCreationCodeHash = vaultExtensionCreationCodeHash_;
+
         _authorizer = authorizer;
         _pauseWindowDuration = pauseWindowDuration;
         _bufferPeriodDuration = bufferPeriodDuration;
+        _minTradeAmount = minTradeAmount;
+        _minWrapAmount = minWrapAmount;
     }
 
     /**
      * @notice Deploys the Vault.
-     * @dev The Vault can only be deployed once. Therefore, this function is permissioned to ensure that it is
-     * deployed to the right address.
-     * @param salt Salt used to create the vault. See `getDeploymentAddress`.
+     * @dev The Vault can only be deployed once per salt. This function is permissioned.
+     *
+     * @param salt Salt used to create the Vault. See `getDeploymentAddress`
      * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
-     * Vault to the target address.
+     * Vault to the target address
+     * @param vaultCreationCode Creation code for the Vault
+     * @param vaultExtensionCreationCode Creation code for the VaultExtension
+     * @param vaultAdminCreationCode Creation code for the VaultAdmin
      */
-    function create(bytes32 salt, address targetAddress) external authenticate {
-        if (isDisabled) {
-            revert VaultAlreadyCreated();
+    function create(
+        bytes32 salt,
+        address targetAddress,
+        bytes calldata vaultCreationCode,
+        bytes calldata vaultExtensionCreationCode,
+        bytes calldata vaultAdminCreationCode
+    ) external onlyOwner nonReentrant {
+        if (isDeployed[targetAddress]) {
+            revert VaultAlreadyDeployed(targetAddress);
         }
-        isDisabled = true;
+
+        if (vaultCreationCodeHash != keccak256(vaultCreationCode)) {
+            revert InvalidBytecode("Vault");
+        } else if (vaultAdminCreationCodeHash != keccak256(vaultAdminCreationCode)) {
+            revert InvalidBytecode("VaultAdmin");
+        } else if (vaultExtensionCreationCodeHash != keccak256(vaultExtensionCreationCode)) {
+            revert InvalidBytecode("VaultExtension");
+        }
 
         address vaultAddress = getDeploymentAddress(salt);
         if (targetAddress != vaultAddress) {
             revert VaultAddressMismatch();
         }
 
-        VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _pauseWindowDuration, _bufferPeriodDuration);
+        ProtocolFeeController protocolFeeController = new ProtocolFeeController(IVault(vaultAddress));
+        deployedProtocolFeeControllers[vaultAddress] = protocolFeeController;
 
-        VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
+        VaultAdmin vaultAdmin = VaultAdmin(
+            payable(
+                Create2.deploy(
+                    0, // ETH value
+                    salt,
+                    abi.encodePacked(
+                        vaultAdminCreationCode,
+                        abi.encode(
+                            IVault(vaultAddress),
+                            _pauseWindowDuration,
+                            _bufferPeriodDuration,
+                            _minTradeAmount,
+                            _minWrapAmount
+                        )
+                    )
+                )
+            )
+        );
+        deployedVaultAdmins[vaultAddress] = vaultAdmin;
 
-        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer), salt);
+        VaultExtension vaultExtension = VaultExtension(
+            payable(
+                Create2.deploy(
+                    0, // ETH value
+                    salt,
+                    abi.encodePacked(vaultExtensionCreationCode, abi.encode(vaultAddress, vaultAdmin))
+                )
+            )
+        );
+        deployedVaultExtensions[vaultAddress] = vaultExtension;
 
-        // This should always be the case, but we enforce the end state to match the expected outcome anyways.
-        if (deployedAddress != targetAddress) {
+        address deployedAddress = CREATE3.deploy(
+            salt,
+            abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, protocolFeeController)),
+            0
+        );
+
+        // This should always be the case, but we enforce the end state to match the expected outcome anyway.
+        if (deployedAddress != vaultAddress) {
             revert VaultAddressMismatch();
         }
 
         emit VaultCreated(vaultAddress);
+
+        isDeployed[vaultAddress] = true;
     }
 
     /// @notice Gets deployment address for a given salt.
     function getDeploymentAddress(bytes32 salt) public view returns (address) {
         return CREATE3.getDeployed(salt);
-    }
-
-    function _create(bytes memory constructorArgs, bytes32 finalSalt) internal returns (address) {
-        return CREATE3.deploy(finalSalt, abi.encodePacked(_creationCode, constructorArgs), 0);
-    }
-
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
     }
 }

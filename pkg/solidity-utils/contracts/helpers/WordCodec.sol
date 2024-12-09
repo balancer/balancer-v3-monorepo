@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
- * @dev Library for encoding and decoding values stored inside a 256 bit word. Typically used to pack multiple values in
- * a single storage slot, saving gas by performing less storage accesses.
+ * @notice Library for encoding and decoding values stored inside a 256 bit word.
+ * @dev Typically used to pack multiple values in a single slot, saving gas by performing fewer storage accesses.
  *
  * Each value is defined by its size and the least significant bit in the word, also known as offset. For example, two
  * 128 bit values may be encoded in a word by assigning one an offset of 0, and the other an offset of 128.
@@ -16,9 +16,9 @@ import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
  * error-prone library, but unfortunately Solidity only allows for structs to live in either storage, calldata or
  * memory. Because a memory struct uses not just memory but also a slot in the stack (to store its memory location),
  * using memory for word-sized values (i.e. of 256 bits or less) is strictly less gas performant, and doesn't even
- * prevent stack-too-deep issues. This is compounded by the fact that Balancer contracts typically are memory-intensive,
- * and the cost of accesing memory increases quadratically with the number of allocated words. Manual packing and
- * unpacking is therefore the preferred approach.
+ * prevent stack-too-deep issues. This is compounded by the fact that Balancer contracts typically are memory-
+ * intensive, and the cost of accessing memory increases quadratically with the number of allocated words. Manual
+ * packing and unpacking is therefore the preferred approach.
  */
 library WordCodec {
     using Math for uint256;
@@ -26,15 +26,11 @@ library WordCodec {
 
     // solhint-disable no-inline-assembly
 
-    /// @dev Function called with an invalid value.
+    /// @notice Function called with an invalid value.
     error CodecOverflow();
 
-    /// @dev Function called with an invalid bitLength or offset.
+    /// @notice Function called with an invalid bitLength or offset.
     error OutOfBounds();
-
-    // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
-    // or to insert a new one replacing the old.
-    uint256 private constant _MASK_1 = 2 ** (1) - 1;
 
     /***************************************************************************
                                  In-place Insertion
@@ -55,8 +51,28 @@ library WordCodec {
         // uint256 mask = (1 << bitLength) - 1;
         // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
         // result = clearedWord | bytes32(value << offset);
-        assembly {
+
+        assembly ("memory-safe") {
             let mask := sub(shl(bitLength, 1), 1)
+            let clearedWord := and(word, not(shl(offset, mask)))
+            result := or(clearedWord, shl(offset, value))
+        }
+    }
+
+    /**
+     * @dev Inserts an address (160 bits), shifted by an offset, into a 256 bit word,
+     * replacing the old value. Returns the new word.
+     */
+    function insertAddress(bytes32 word, address value, uint256 offset) internal pure returns (bytes32 result) {
+        uint256 addressBitLength = 160;
+        _validateEncodingParams(uint256(uint160(value)), offset, addressBitLength);
+        // Equivalent to:
+        // uint256 mask = (1 << bitLength) - 1;
+        // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
+        // result = clearedWord | bytes32(value << offset);
+
+        assembly ("memory-safe") {
+            let mask := sub(shl(addressBitLength, 1), 1)
             let clearedWord := and(word, not(shl(offset, mask)))
             result := or(clearedWord, shl(offset, value))
         }
@@ -114,7 +130,8 @@ library WordCodec {
     function decodeUint(bytes32 word, uint256 offset, uint256 bitLength) internal pure returns (uint256 result) {
         // Equivalent to:
         // result = uint256(word >> offset) & ((1 << bitLength) - 1);
-        assembly {
+
+        assembly ("memory-safe") {
             result := and(shr(offset, word), sub(shl(bitLength, 1), 1))
         }
     }
@@ -131,8 +148,19 @@ library WordCodec {
         //
         // Equivalent to:
         // result = value > maxInt ? (value | int256(~mask)) : value;
-        assembly {
+
+        assembly ("memory-safe") {
             result := or(mul(gt(value, maxInt), not(mask)), value)
+        }
+    }
+
+    /// @dev Decodes and returns an address (160 bits), shifted by an offset, from a 256 bit word.
+    function decodeAddress(bytes32 word, uint256 offset) internal pure returns (address result) {
+        // Equivalent to:
+        // result = address(word >> offset) & ((1 << bitLength) - 1);
+
+        assembly ("memory-safe") {
+            result := and(shr(offset, word), sub(shl(160, 1), 1))
         }
     }
 
@@ -144,7 +172,8 @@ library WordCodec {
     function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool result) {
         // Equivalent to:
         // result = (uint256(word >> offset) & 1) == 1;
-        assembly {
+
+        assembly ("memory-safe") {
             result := and(shr(offset, word), 1)
         }
     }
@@ -157,7 +186,8 @@ library WordCodec {
         // Equivalent to:
         // bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
         // bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
-        assembly {
+
+        assembly ("memory-safe") {
             let clearedWord := and(word, not(shl(offset, 1)))
             result := or(clearedWord, shl(offset, value))
         }

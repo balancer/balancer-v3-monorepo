@@ -1,261 +1,309 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
-
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+pragma solidity ^0.8.24;
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-// @notice Config type to store entire configuration of the pool
-type PoolConfigBits is bytes32;
+import { PoolConfigConst } from "./PoolConfigConst.sol";
 
-using PoolConfigLib for PoolConfigBits global;
-
+/**
+ * @notice Helper functions to read and write the packed hook configuration flags stored in `_poolConfigBits`.
+ * @dev  Note that the entire configuration of each pool is stored in the `_poolConfigBits` mapping (one slot
+ * per pool). This includes the data in the `PoolConfig` struct, plus the data in the `HookFlags` struct.
+ * The layout (i.e., offsets for each data field) is specified in `PoolConfigConst`.
+ *
+ * There are two libraries for interpreting these data. `HooksConfigLib` parses fields related to hooks, while
+ * this one contains helpers related to the non-hook-related flags, along with aggregate fee percentages and
+ * other data associated with pools.
+ *
+ * The `PoolData` struct contains the raw bitmap with the entire pool state (`PoolConfigBits`), plus the token
+ * configuration, scaling factors, and dynamic information such as current balances and rates.
+ */
 library PoolConfigLib {
     using WordCodec for bytes32;
-    using SafeCast for uint256;
+    using PoolConfigLib for PoolConfigBits;
 
-    // Bit offsets for pool config
-    uint8 public constant POOL_REGISTERED_OFFSET = 0;
-    uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
-    uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
-    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
-    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
-    uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
-    uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
-    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
-    uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
-    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
-    uint8 public constant BEFORE_INITIALIZE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
-    uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
-    uint8 public constant POOL_RECOVERY_MODE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
-
-    // Supported liquidity API bit offsets
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
-    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
-
-    uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint8 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + _STATIC_SWAP_FEE_BITLENGTH;
-    uint8 public constant PAUSE_WINDOW_END_TIME_OFFSET =
-        DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
-
-    // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
-    // This maximum token count is also hard-coded in the Vault.
-    uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
-    uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
-
-    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits
-    uint8 private constant _STATIC_SWAP_FEE_BITLENGTH = 64;
-    uint8 private constant _TIMESTAMP_BITLENGTH = 32;
-
+    // Bit offsets for main pool config settings.
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_REGISTERED_OFFSET);
+    }
+
+    function setPoolRegistered(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(value, PoolConfigConst.POOL_REGISTERED_OFFSET)
+            );
     }
 
     function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_INITIALIZED_OFFSET);
     }
 
-    function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_RECOVERY_MODE_OFFSET);
+    function setPoolInitialized(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(value, PoolConfigConst.POOL_INITIALIZED_OFFSET)
+            );
     }
 
     function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_PAUSED_OFFSET);
     }
 
-    function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
+    function setPoolPaused(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, PoolConfigConst.POOL_PAUSED_OFFSET));
     }
 
-    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint64) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH).toUint64();
+    function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_RECOVERY_MODE_OFFSET);
     }
 
-    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
+    function setPoolInRecoveryMode(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
         return
-            PoolConfigBits
-                .unwrap(config)
-                .decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH)
-                .toUint24();
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(value, PoolConfigConst.POOL_RECOVERY_MODE_OFFSET)
+            );
     }
 
-    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint32) {
-        return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH).toUint32();
+    // Bit offsets for liquidity operations.
+    function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
+        // This function returns the inverted value.
+        return !PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET);
     }
 
-    function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_SWAP_OFFSET);
+    function requireUnbalancedLiquidityEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsUnbalancedLiquidity() == false) {
+            revert IVaultErrors.DoesNotSupportUnbalancedLiquidity();
+        }
     }
 
-    function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(AFTER_SWAP_OFFSET);
-    }
-
-    function shouldCallBeforeAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET);
-    }
-
-    function shouldCallAfterAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(AFTER_ADD_LIQUIDITY_OFFSET);
-    }
-
-    function shouldCallBeforeRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET);
-    }
-
-    function shouldCallAfterRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET);
-    }
-
-    function shouldCallBeforeInitialize(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_INITIALIZE_OFFSET);
-    }
-
-    function shouldCallAfterInitialize(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(AFTER_INITIALIZE_OFFSET);
+    function setDisableUnbalancedLiquidity(
+        PoolConfigBits config,
+        bool disableUnbalancedLiquidity
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(
+                    disableUnbalancedLiquidity,
+                    PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET
+                )
+            );
     }
 
     function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ADD_LIQUIDITY_CUSTOM_OFFSET);
     }
 
-    function requireSupportsAddLiquidityCustom(PoolConfigBits config) internal pure {
+    function requireAddLiquidityCustomEnabled(PoolConfigBits config) internal pure {
         if (config.supportsAddLiquidityCustom() == false) {
             revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
         }
     }
 
-    function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+    function setAddLiquidityCustom(
+        PoolConfigBits config,
+        bool enableAddLiquidityCustom
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(
+                    enableAddLiquidityCustom,
+                    PoolConfigConst.ADD_LIQUIDITY_CUSTOM_OFFSET
+                )
+            );
     }
 
-    function requireSupportsRemoveLiquidityCustom(PoolConfigBits config) internal pure {
+    function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+    }
+
+    function requireRemoveLiquidityCustomEnabled(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityCustom() == false) {
             revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
         }
     }
 
-    function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
-        bytes32 configBits = bytes32(0);
-
-        // Stack too deep.
-        {
-            configBits = configBits
-                .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
-                .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
-                .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
-                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET)
-                .insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
-        }
-
-        {
-            configBits = configBits.insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
-                config.hooks.shouldCallAfterSwap,
-                AFTER_SWAP_OFFSET
+    function setRemoveLiquidityCustom(
+        PoolConfigBits config,
+        bool enableRemoveLiquidityCustom
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(
+                    enableRemoveLiquidityCustom,
+                    PoolConfigConst.REMOVE_LIQUIDITY_CUSTOM_OFFSET
+                )
             );
-        }
+    }
 
-        {
-            configBits = configBits
-                .insertBool(config.hooks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.hooks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
-        }
+    function supportsDonation(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.DONATION_OFFSET);
+    }
 
-        {
-            configBits = configBits
-                .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
-                .insertBool(config.liquidityManagement.supportsAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
-                .insertBool(config.liquidityManagement.supportsRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+    function setDonation(PoolConfigBits config, bool enableDonation) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(enableDonation, PoolConfigConst.DONATION_OFFSET)
+            );
+    }
+
+    function requireDonationEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsDonation() == false) {
+            revert IVaultErrors.DoesNotSupportDonation();
         }
+    }
+
+    // Bit offsets for uint values.
+    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return
+            PoolConfigBits.unwrap(config).decodeUint(PoolConfigConst.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
+    }
+
+    function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
+        // A 100% fee is not supported. In the ExactOut case, the Vault divides by the complement of the swap fee.
+        // The max fee percentage is slightly below 100%.
+        if (value > MAX_FEE_PERCENTAGE) {
+            revert IVaultErrors.PercentageAboveMax();
+        }
+        value /= FEE_SCALING_FACTOR;
 
         return
             PoolConfigBits.wrap(
-                configBits
-                    .insertUint(
-                        config.tokenDecimalDiffs,
-                        DECIMAL_SCALING_FACTORS_OFFSET,
-                        _TOKEN_DECIMAL_DIFFS_BITLENGTH
-                    )
-                    .insertUint(config.staticSwapFeePercentage, STATIC_SWAP_FEE_OFFSET, _STATIC_SWAP_FEE_BITLENGTH)
-                    .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
+                PoolConfigBits.unwrap(config).insertUint(value, PoolConfigConst.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
             );
     }
 
-    // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
-        bytes32 value;
+    function getAggregateSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return
+            PoolConfigBits.unwrap(config).decodeUint(PoolConfigConst.AGGREGATE_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
+    }
 
-        for (uint256 i = 0; i < tokenDecimalDiffs.length; i++) {
-            value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
+    function setAggregateSwapFeePercentage(
+        PoolConfigBits config,
+        uint256 value
+    ) internal pure returns (PoolConfigBits) {
+        if (value > MAX_FEE_PERCENTAGE) {
+            revert IVaultErrors.PercentageAboveMax();
         }
+        value /= FEE_SCALING_FACTOR;
 
-        return uint256(value).toUint24();
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertUint(
+                    value,
+                    PoolConfigConst.AGGREGATE_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+            );
+    }
+
+    function getAggregateYieldFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return
+            PoolConfigBits.unwrap(config).decodeUint(PoolConfigConst.AGGREGATE_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
+    }
+
+    function setAggregateYieldFeePercentage(
+        PoolConfigBits config,
+        uint256 value
+    ) internal pure returns (PoolConfigBits) {
+        if (value > MAX_FEE_PERCENTAGE) {
+            revert IVaultErrors.PercentageAboveMax();
+        }
+        value /= FEE_SCALING_FACTOR;
+
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertUint(
+                    value,
+                    PoolConfigConst.AGGREGATE_YIELD_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+            );
+    }
+
+    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint40) {
+        return
+            uint40(
+                PoolConfigBits.unwrap(config).decodeUint(
+                    PoolConfigConst.DECIMAL_SCALING_FACTORS_OFFSET,
+                    PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH
+                )
+            );
     }
 
     function getDecimalScalingFactors(
-        PoolConfig memory config,
+        PoolConfigBits config,
         uint256 numTokens
     ) internal pure returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](numTokens);
 
-        bytes32 tokenDecimalDiffs = bytes32(uint256(config.tokenDecimalDiffs));
+        bytes32 tokenDecimalDiffs = bytes32(uint256(config.getTokenDecimalDiffs()));
 
-        for (uint256 i = 0; i < numTokens; i++) {
-            uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            uint256 decimalDiff = tokenDecimalDiffs.decodeUint(
+                i * PoolConfigConst.DECIMAL_DIFF_BITLENGTH,
+                PoolConfigConst.DECIMAL_DIFF_BITLENGTH
+            );
 
-            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
-            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
+            // This is a "raw" factor, not a fixed point number. It should be applied using raw math to raw amounts
+            // instead of using FP multiplication.
+            scalingFactors[i] = 10 ** decimalDiff;
         }
 
         return scalingFactors;
     }
 
-    function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
+    function setTokenDecimalDiffs(PoolConfigBits config, uint40 value) internal pure returns (PoolConfigBits) {
         return
-            PoolConfig({
-                isPoolRegistered: config.isPoolRegistered(),
-                isPoolInitialized: config.isPoolInitialized(),
-                isPoolPaused: config.isPoolPaused(),
-                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
-                hasDynamicSwapFee: config.hasDynamicSwapFee(),
-                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
-                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
-                pauseWindowEndTime: config.getPauseWindowEndTime(),
-                hooks: PoolHooks({
-                    shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
-                    shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
-                    shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
-                    shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
-                    shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
-                    shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
-                    shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
-                    shouldCallAfterSwap: config.shouldCallAfterSwap()
-                }),
-                liquidityManagement: LiquidityManagement({
-                    supportsAddLiquidityCustom: config.supportsAddLiquidityCustom(),
-                    supportsRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
-                })
-            });
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertUint(
+                    value,
+                    PoolConfigConst.DECIMAL_SCALING_FACTORS_OFFSET,
+                    PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH
+                )
+            );
     }
 
-    /**
-     * @dev There is a lot of data packed into the PoolConfig, but most often we only need one or two pieces of it.
-     * Since it is costly to pack and unpack the entire structure, convenience functions like `getPoolPausedState`
-     * help streamline frequent operations. The pause state needs to be checked on every state-changing pool operation.
-     *
-     * @param config The encoded pool configuration
-     * @return paused Whether the pool was paused (i.e., the bit was set)
-     * @return pauseWindowEndTime The end of the pause period, used to determine whether the pool is actually paused
-     */
-    function getPoolPausedState(PoolConfigBits config) internal pure returns (bool, uint256) {
-        return (config.isPoolPaused(), config.getPauseWindowEndTime());
+    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint32) {
+        return
+            uint32(
+                PoolConfigBits.unwrap(config).decodeUint(
+                    PoolConfigConst.PAUSE_WINDOW_END_TIME_OFFSET,
+                    PoolConfigConst.TIMESTAMP_BITLENGTH
+                )
+            );
+    }
+
+    function setPauseWindowEndTime(PoolConfigBits config, uint32 value) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertUint(
+                    value,
+                    PoolConfigConst.PAUSE_WINDOW_END_TIME_OFFSET,
+                    PoolConfigConst.TIMESTAMP_BITLENGTH
+                )
+            );
+    }
+
+    // Convert from an array of decimal differences, to the encoded 40-bit value (8 tokens * 5 bits/token).
+    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint40) {
+        bytes32 value;
+
+        for (uint256 i = 0; i < tokenDecimalDiffs.length; ++i) {
+            value = value.insertUint(
+                tokenDecimalDiffs[i],
+                i * PoolConfigConst.DECIMAL_DIFF_BITLENGTH,
+                PoolConfigConst.DECIMAL_DIFF_BITLENGTH
+            );
+        }
+
+        return uint40(uint256(value));
     }
 }

@@ -1,37 +1,63 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IUnbalancedLiquidityInvariantRatioBounds } from "./IUnbalancedLiquidityInvariantRatioBounds.sol";
+import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
+import { PoolSwapParams, Rounding, SwapKind } from "./VaultTypes.sol";
 
-import { SwapKind } from "./VaultTypes.sol";
-
-/// @notice Interface for a Base Pool
-interface IBasePool {
-    /**
-     * @notice Gets the tokens registered to a pool.
-     * @dev Delegated to the Vault; added here as a convenience, mainly for off-chain processes.
-     * @return tokens List of tokens in the pool
-     */
-    function getPoolTokens() external view returns (IERC20[] memory tokens);
-
+/**
+ * @notice Base interface for a Balancer Pool.
+ * @dev All pool types should implement this interface. Note that it also requires implementation of:
+ * - `ISwapFeePercentageBounds` to specify the minimum and maximum swap fee percentages.
+ * - `IUnbalancedLiquidityInvariantRatioBounds` to specify how much the invariant can change during an unbalanced
+ * liquidity operation.
+ */
+interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRatioBounds {
     /***************************************************************************
                                    Invariant
     ***************************************************************************/
 
     /**
-     * @notice Computes and returns the pool's invariant.
-     * @dev This function computes the invariant based on current balances
-     * @param balancesLiveScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals
+     * @notice Computes the pool's invariant.
+     * @dev This function computes the invariant based on current balances (and potentially other pool state).
+     * The rounding direction must be respected for the Vault to round in the pool's favor when calling this function.
+     * If the invariant computation involves no precision loss (e.g. simple sum of balances), the same result can be
+     * returned for both rounding directions.
+     *
+     * You can think of the invariant as a measure of the "value" of the pool, which is related to the total liquidity
+     * (i.e., the "BPT rate" is `invariant` / `totalSupply`). Two critical properties must hold:
+     *
+     * 1) The invariant should not change due to a swap. In practice, it can *increase* due to swap fees, which
+     * effectively add liquidity after the swap - but it should never decrease.
+     *
+     * 2) The invariant must be "linear"; i.e., increasing the balances proportionally must increase the invariant in
+     * the same proportion: inv(a * n, b * n, c * n) = inv(a, b, c) * n
+     *
+     * Property #1 is required to prevent "round trip" paths that drain value from the pool (and all LP shareholders).
+     * Intuitively, an accurate pricing algorithm ensures the user gets an equal value of token out given token in, so
+     * the total value should not change.
+     *
+     * Property #2 is essential for the "fungibility" of LP shares. If it did not hold, then different users depositing
+     * the same total value would get a different number of LP shares. In that case, LP shares would not be
+     * interchangeable, as they must be in a fair DEX.
+     *
+     * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
+     * @param rounding Rounding direction to consider when computing the invariant
      * @return invariant The calculated invariant of the pool, represented as a uint256
      */
-    function computeInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
+    function computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) external view returns (uint256 invariant);
 
     /**
-     * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
-     * balances.
-     * @param balancesLiveScaled18 Current live balances (adjusted for decimals, rates, etc.)
-     * @param tokenInIndex The index of the token we're computing the balance for, in token registration order
+     * @notice Computes a new token balance, given the invariant growth ratio and all other balances.
+     * @dev Similar to V2's `_getTokenBalanceGivenInvariantAndAllOtherBalances` in StableMath.
+     * The pool must round up for the Vault to round in the protocol's favor when calling this function.
+     *
+     * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
+     * @param tokenInIndex The index of the token we're computing the balance for, sorted in token registration order
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @return newBalance The new balance of the selected token, after the operation
      */
@@ -46,30 +72,9 @@ interface IBasePool {
     ***************************************************************************/
 
     /**
-     * @dev Data for a swap operation.
-     * @param kind Type of swap (exact in or exact out)
-     * @param pool Address of the liquidity pool
-     * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
-     * @param balancesScaled18 Current pool balances
-     * @param indexIn Index of tokenIn
-     * @param indexOut Index of tokenOut
-     * @param sender Originator of the swap transaction
-     * @param userData Additional (optional) data required for the swap
-     */
-    struct SwapParams {
-        SwapKind kind;
-        uint256 amountGivenScaled18;
-        uint256[] balancesScaled18;
-        uint256 indexIn;
-        uint256 indexOut;
-        address sender;
-        bytes userData;
-    }
-
-    /**
      * @notice Execute a swap in the pool.
      * @param params Swap parameters (see above for struct definition)
-     * @return amountCalculatedScaled18 Calculated amount for the swap
+     * @return amountCalculatedScaled18 Calculated amount for the swap operation
      */
-    function onSwap(SwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
+    function onSwap(PoolSwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
 }

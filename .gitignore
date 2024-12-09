@@ -26,16 +26,27 @@ pkg/balancer-js/src/typechain/*
 .env
 forge-artifacts/
 forge-cache/
+.invariant
 
 # Typechain
 typechain-types/
 
 # Coverage
 coverage/
+coverage-genhtml/
 coverage.json
+lcov*.info
+lcov*.info-e
 
 # Slither
 slither/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Mac
+.DS_Store
+
+# Misc
+.vscode/
+.idea/

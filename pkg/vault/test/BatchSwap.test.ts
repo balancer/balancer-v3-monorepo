@@ -4,21 +4,32 @@ import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
+
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { BatchRouter, IRouter, Router, Vault } from '../typechain-types';
+import { BatchRouter, Router, PoolFactoryMock, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { deployPermit2 } from './Permit2Deployer';
+import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+import { IBatchRouter } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('BatchSwap', function () {
+  const BATCH_ROUTER_VERSION = 'BatchRouter v9';
+  const ROUTER_VERSION = 'Router v9';
+
+  let permit2: IPermit2;
   let vault: Vault;
+  let factory: PoolFactoryMock;
   let poolA: PoolMock, poolB: PoolMock, poolC: PoolMock;
   let poolAB: PoolMock, poolAC: PoolMock, poolBC: PoolMock;
+  let pools: PoolMock[];
   let tokens: ERC20TokenList;
   let router: BatchRouter, basicRouter: Router;
 
@@ -38,11 +49,13 @@ describe('BatchSwap', function () {
     vault = await VaultDeployer.deploy();
     vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('BatchRouter', { args: [vaultAddress, WETH] });
-    basicRouter = await deploy('Router', { args: [vaultAddress, WETH] });
+    permit2 = await deployPermit2();
+    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2, BATCH_ROUTER_VERSION] });
+    basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
+
+    factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
     tokens = await ERC20TokenList.create(3, { sorted: true });
-
     token0 = await tokens.get(0).getAddress();
     token1 = await tokens.get(1).getAddress();
     token2 = await tokens.get(2).getAddress();
@@ -52,43 +65,65 @@ describe('BatchSwap', function () {
 
     // Pool A has tokens 0 and 1.
     poolA = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool A', 'POOLA', buildTokenConfig(poolATokens), true, 0, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool A', 'POOL-A'],
     });
 
     // Pool A has tokens 1 and 2.
     poolB = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool B', 'POOLB', buildTokenConfig(poolBTokens), true, 0, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool B', 'POOL-B'],
     });
 
     // Pool C has tokens 0 and 2.
     poolC = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool C', 'POOLC', buildTokenConfig(poolCTokens), true, 0, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool C', 'POOL-C'],
     });
+
+    await factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
+    await factory.registerTestPool(poolB, buildTokenConfig(poolBTokens));
+    await factory.registerTestPool(poolC, buildTokenConfig(poolCTokens));
   });
 
   sharedBeforeEach('nested pools', async () => {
     poolABTokens = sortAddresses([await poolA.getAddress(), await poolB.getAddress()]);
     poolAB = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool A-B', 'POOL-AB', buildTokenConfig(poolABTokens), true, 0, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool A-B', 'POOL-AB'],
     });
 
     poolACTokens = sortAddresses([await poolA.getAddress(), await poolC.getAddress()]);
     poolAC = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool A-C', 'POOL-AC', buildTokenConfig(poolACTokens), true, 0, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool A-C', 'POOL-AC'],
     });
 
     poolBCTokens = sortAddresses([await poolB.getAddress(), await poolC.getAddress()]);
     poolBC = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool B-C', 'POOL-BC', buildTokenConfig(poolBCTokens), true, 0, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool B-C', 'POOL-BC'],
     });
+
+    await factory.registerTestPool(poolAB, buildTokenConfig(poolABTokens));
+    await factory.registerTestPool(poolAC, buildTokenConfig(poolACTokens));
+    await factory.registerTestPool(poolBC, buildTokenConfig(poolBCTokens));
+  });
+
+  sharedBeforeEach('allowances', async () => {
+    pools = [poolA, poolB, poolC, poolAB, poolAC, poolBC];
+
+    await tokens.mint({ to: lp, amount: fp(1e12) });
+    await tokens.mint({ to: sender, amount: fp(1e12) });
+    for (const pool of pools) {
+      await pool.connect(lp).approve(router, MAX_UINT256);
+      await pool.connect(lp).approve(basicRouter, MAX_UINT256);
+    }
+    for (const token of [...tokens.tokens, poolA, poolB, poolC, poolAB, poolAC, poolBC]) {
+      for (const from of [lp, sender]) {
+        await token.connect(from).approve(permit2, MAX_UINT256);
+        for (const to of [router, basicRouter]) {
+          await permit2.connect(from).approve(token, to, MAX_UINT160, MAX_UINT48);
+        }
+      }
+    }
   });
 
   sharedBeforeEach('initialize pools', async () => {
-    tokens.mint({ to: lp, amount: fp(1e12) });
-    tokens.mint({ to: sender, amount: fp(1e12) });
-    tokens.approve({ to: await vault.getAddress(), from: lp, amount: MAX_UINT256 });
-    tokens.approve({ to: await vault.getAddress(), from: sender, amount: MAX_UINT256 });
-
     await basicRouter
       .connect(lp)
       .initialize(poolA, poolATokens, Array(poolATokens.length).fill(fp(10000)), 0, false, '0x');
@@ -114,6 +149,12 @@ describe('BatchSwap', function () {
     await poolC.connect(lp).transfer(sender, fp(100));
   });
 
+  // This checks that the Batch Router is not susceptible to DDoS attacks by dusting the Vault.
+  sharedBeforeEach('add some dust to the Vault (DDoS check)', async () => {
+    await tokens.mint({ to: vault, amount: 1234 });
+    await Promise.all(pools.map((pool) => pool.connect(lp).transfer(vault, 12345)));
+  });
+
   describe('batch swap given in', () => {
     let doSwap: () => Promise<unknown>;
     let doSwapStatic: () => Promise<{
@@ -126,14 +167,15 @@ describe('BatchSwap', function () {
       tokensOut: string[];
       amountsOut: bigint[];
     }>;
-    let tokenIn: ERC20TestToken | PoolMock;
+    let tokensIn: (ERC20TestToken | PoolMock)[];
     let tokensOut: (ERC20TestToken | PoolMock)[];
     const pathExactAmountIn = fp(1);
     const pathMinAmountOut = fp(1);
+    const unbalancedAddRoundingError = 2n;
 
     let totalAmountIn: bigint, totalAmountOut: bigint, pathAmountsOut: bigint[], amountsOut: bigint[];
     let balanceChange: BalanceChange[];
-    let paths: IRouter.SwapPathExactAmountInStruct[];
+    let paths: IBatchRouter.SwapPathExactAmountInStruct[];
 
     function setUp() {
       const _doSwap = async (isStatic: boolean) =>
@@ -150,7 +192,7 @@ describe('BatchSwap', function () {
           tokensOut: string[];
           amountsOut: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
@@ -160,15 +202,18 @@ describe('BatchSwap', function () {
 
       if (singleTransferIn) {
         it('performs single transfer for token in', async () => {
-          await expect(doSwap()).to.emit(tokenIn, 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
+          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
         });
       }
 
       if (singleTransferOut) {
         it('performs single transfer for token out', async () => {
+          // Some operations have rounding error, and event arguments are precise. So we get the result from
+          // the query to check the event arguments.
+          const { amountsOut } = await runQuery();
           await expect(doSwap())
             .to.emit(tokensOut[0], 'Transfer')
-            .withArgs(vaultAddress, sender.address, totalAmountOut);
+            .withArgs(vaultAddress, sender.address, amountsOut[0]);
         });
       }
 
@@ -202,7 +247,7 @@ describe('BatchSwap', function () {
     }
 
     afterEach('clean up expected results and inputs', () => {
-      tokenIn = undefined;
+      tokensIn = undefined;
       tokensOut = undefined;
       totalAmountIn = undefined;
       totalAmountOut = undefined;
@@ -215,7 +260,7 @@ describe('BatchSwap', function () {
     context('pure swaps with no nesting', () => {
       context('single path', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -227,15 +272,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -243,8 +288,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -259,7 +304,7 @@ describe('BatchSwap', function () {
 
       context('single path, first - intermediate - final steps', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -271,14 +316,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -287,11 +332,11 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
-                { pool: poolC, tokenOut: token0 },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: poolC, tokenOut: token0, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -306,7 +351,7 @@ describe('BatchSwap', function () {
 
       context('multi path, SISO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -318,14 +363,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -334,15 +379,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolC, tokenOut: token2 }],
+              steps: [{ pool: poolC, tokenOut: token2, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -356,7 +401,7 @@ describe('BatchSwap', function () {
 
       context('multi path, MISO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
           const secondPathTokenIn = tokens.get(1);
 
@@ -369,7 +414,7 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -pathExactAmountIn],
                 [await secondPathTokenIn.symbol()]: ['equal', -pathExactAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
@@ -377,7 +422,7 @@ describe('BatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', pathMinAmountOut],
+                [await tokensIn[0].symbol()]: ['equal', pathMinAmountOut],
                 [await secondPathTokenIn.symbol()]: ['equal', pathMinAmountOut],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
@@ -387,15 +432,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token1,
-              steps: [{ pool: poolB, tokenOut: token2 }],
+              steps: [{ pool: poolB, tokenOut: token2, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -409,7 +454,7 @@ describe('BatchSwap', function () {
 
       context('multi path, SIMO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), tokens.get(1)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -421,7 +466,7 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', pathMinAmountOut],
               },
@@ -429,7 +474,7 @@ describe('BatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', -pathMinAmountOut],
               },
@@ -439,15 +484,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolA, tokenOut: token1 }],
+              steps: [{ pool: poolA, tokenOut: token1, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -461,7 +506,7 @@ describe('BatchSwap', function () {
 
       context('multi path, MIMO', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), poolC];
           const secondPathTokenIn = poolA;
 
@@ -474,7 +519,7 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -pathExactAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -pathExactAmountIn],
                 [await secondPathTokenIn.symbol()]: ['equal', -pathExactAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', pathMinAmountOut],
@@ -483,7 +528,7 @@ describe('BatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', pathExactAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', pathExactAmountIn],
                 [await secondPathTokenIn.symbol()]: ['equal', pathExactAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -pathMinAmountOut],
                 [await tokensOut[1].symbol()]: ['equal', -pathMinAmountOut],
@@ -494,8 +539,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -503,8 +548,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolAB, tokenOut: poolB },
-                { pool: poolBC, tokenOut: poolC },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
+                { pool: poolBC, tokenOut: poolC, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -519,7 +564,7 @@ describe('BatchSwap', function () {
 
       context('multi path, circular inputs/outputs', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), tokens.get(0)];
 
           totalAmountIn = 0n; // 2 paths
@@ -531,14 +576,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', 0],
+                [await tokensIn[0].symbol()]: ['equal', 0],
                 [await tokensOut[0].symbol()]: ['equal', 0],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', 0],
+                [await tokensIn[0].symbol()]: ['equal', 0],
                 [await tokensOut[1].symbol()]: ['equal', 0],
               },
             },
@@ -547,15 +592,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token2,
-              steps: [{ pool: poolC, tokenOut: token0 }],
+              steps: [{ pool: poolC, tokenOut: token0, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -571,7 +616,7 @@ describe('BatchSwap', function () {
     context('joinswaps (add liquidity step)', () => {
       context('single path - initial add liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [poolB];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -583,14 +628,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -600,11 +645,11 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
           ];
 
@@ -616,7 +661,7 @@ describe('BatchSwap', function () {
 
       context('single path - intermediate add liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [poolC];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -628,15 +673,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -645,12 +690,12 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
-                { pool: poolBC, tokenOut: poolC },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
+                { pool: poolBC, tokenOut: poolC, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
           ];
 
@@ -662,7 +707,7 @@ describe('BatchSwap', function () {
 
       context('multi path - initial and final add liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [poolB];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -674,15 +719,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
-                [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -691,20 +736,20 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pathMinAmountOut - unbalancedAddRoundingError,
             },
           ];
 
@@ -720,7 +765,7 @@ describe('BatchSwap', function () {
     context('exitswaps (remove liquidity step)', () => {
       context('single path - initial remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = poolA;
+          tokensIn = poolA;
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -732,14 +777,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn.symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn.symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -749,8 +794,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -765,7 +810,7 @@ describe('BatchSwap', function () {
 
       context('single path - intermediate remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -777,14 +822,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['equal', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['equal', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -794,9 +839,9 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
@@ -811,7 +856,7 @@ describe('BatchSwap', function () {
 
       context('single path - final remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(1)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -823,14 +868,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -840,8 +885,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
@@ -859,7 +904,7 @@ describe('BatchSwap', function () {
 
       context('multi path - final remove liquidity step', () => {
         beforeEach(async () => {
-          tokenIn = tokens.get(0);
+          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(1)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -871,14 +916,14 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', -totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokenIn.symbol()]: ['very-near', totalAmountIn],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
                 [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
               },
             },
@@ -888,8 +933,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
@@ -897,12 +942,12 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolC, tokenOut: poolC },
-                { pool: poolBC, tokenOut: poolB },
-                { pool: poolB, tokenOut: token1 },
+                { pool: poolC, tokenOut: poolC, isBuffer: false },
+                { pool: poolBC, tokenOut: poolB, isBuffer: false },
+                { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
-              minAmountOut: pathMinAmountOut,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
             },
           ];
 
@@ -912,6 +957,61 @@ describe('BatchSwap', function () {
         // The first step of first path is an 'add liquidity' operation, which is settled instantly.
         // Therefore, the transfer event will not have the total amount out as argument.
         // There are rounding issues in the output transfer, so we skip it.
+        itTestsBatchSwap(false, false);
+      });
+
+      context('multi path - mid remove liquidity step', () => {
+        beforeEach(async () => {
+          tokensIn = [poolA, poolB];
+          tokensOut = [poolC, tokens.get(1)];
+
+          totalAmountIn = pathExactAmountIn;
+          totalAmountOut = pathMinAmountOut;
+          pathAmountsOut = [totalAmountOut, totalAmountOut];
+          amountsOut = [totalAmountOut, totalAmountOut];
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
+                [await tokensIn[1].symbol()]: ['very-near', -totalAmountIn],
+                [await tokensOut[1].symbol()]: ['very-near', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
+                [await tokensIn[1].symbol()]: ['very-near', totalAmountIn],
+                [await tokensOut[1].symbol()]: ['very-near', -totalAmountOut],
+              },
+            },
+          ];
+
+          paths = [
+            {
+              tokenIn: poolA,
+              steps: [{ pool: poolAC, tokenOut: poolC, isBuffer: false }],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+            },
+            {
+              tokenIn: poolB,
+              steps: [
+                { pool: poolAB, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
+            },
+          ];
+
+          setUp();
+        });
+
         itTestsBatchSwap(false, false);
       });
     });
@@ -933,6 +1033,7 @@ describe('BatchSwap', function () {
     let tokenOut: ERC20TestToken | PoolMock;
     const pathExactAmountOut = fp(1);
     const pathMaxAmountIn = fp(1);
+    const unbalancedAddRoundingError = 2n;
 
     let totalAmountIn: bigint, totalAmountOut: bigint, pathAmountsIn: bigint[], amountsIn: bigint[];
     let balanceChange: BalanceChange[];
@@ -953,7 +1054,7 @@ describe('BatchSwap', function () {
           tokensIn: string[];
           amountsIn: bigint[];
         };
-      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
     }
 
     function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
@@ -963,7 +1064,11 @@ describe('BatchSwap', function () {
 
       if (singleTransferIn) {
         it('performs single transfer for token in', async () => {
-          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, vaultAddress, totalAmountIn);
+          // Some operations have rounding error, and event arguments are precise. So we get the result from
+          // the query to check the event arguments.
+          const { amountsIn } = await runQuery();
+
+          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, vaultAddress, amountsIn[0]);
         });
       }
 
@@ -1044,8 +1149,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1088,11 +1193,11 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
-                { pool: poolC, tokenOut: token0 },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: poolC, tokenOut: token0, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1135,15 +1240,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolC, tokenOut: token2 }],
+              steps: [{ pool: poolC, tokenOut: token2, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1187,15 +1292,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token1,
-              steps: [{ pool: poolB, tokenOut: token2 }],
+              steps: [{ pool: poolB, tokenOut: token2, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1240,15 +1345,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolA, tokenOut: token1 }],
+              steps: [{ pool: poolA, tokenOut: token1, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1295,8 +1400,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1304,8 +1409,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolAB, tokenOut: poolB },
-                { pool: poolBC, tokenOut: poolC },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
+                { pool: poolBC, tokenOut: poolC, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1349,15 +1454,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token2,
-              steps: [{ pool: poolC, tokenOut: token0 }],
+              steps: [{ pool: poolC, tokenOut: token0, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1402,8 +1507,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1447,8 +1552,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1456,8 +1561,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1503,8 +1608,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1537,15 +1642,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -1554,11 +1659,11 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pathMaxAmountIn + unbalancedAddRoundingError,
             },
           ];
 
@@ -1568,7 +1673,12 @@ describe('BatchSwap', function () {
         itTestsBatchSwap(false, true);
 
         it('burns amount in', async () => {
-          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, ZERO_ADDRESS, totalAmountIn);
+          // Some operations have rounding error, and event arguments are precise. So we get the result from
+          // the query to check the event arguments.
+          const { amountsIn } = await runQuery();
+
+          // Router is the one that burns the tokens, not sender.
+          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(router, ZERO_ADDRESS, amountsIn[0]);
         });
       });
 
@@ -1586,15 +1696,15 @@ describe('BatchSwap', function () {
             {
               account: sender,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', -totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', totalAmountIn],
-                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountIn],
+                [await tokenOut.symbol()]: ['very-near', -totalAmountOut],
               },
             },
           ];
@@ -1603,12 +1713,12 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolC,
               steps: [
-                { pool: poolAC, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolAC, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pathMaxAmountIn + unbalancedAddRoundingError,
             },
           ];
 
@@ -1649,11 +1759,11 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolAB, tokenOut: poolB },
-                { pool: poolB, tokenOut: token1 },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
+                { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pathMaxAmountIn + unbalancedAddRoundingError,
             },
           ];
 
@@ -1695,8 +1805,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pct(pathMaxAmountIn, 1.001), // Rounding tolerance
@@ -1704,12 +1814,12 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolC, tokenOut: poolC },
-                { pool: poolBC, tokenOut: poolB },
-                { pool: poolB, tokenOut: token1 },
+                { pool: poolC, tokenOut: poolC, isBuffer: false },
+                { pool: poolBC, tokenOut: poolB, isBuffer: false },
+                { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: pathMaxAmountIn,
+              maxAmountIn: pct(pathMaxAmountIn, 1.001), // Rounding tolerance
             },
           ];
 

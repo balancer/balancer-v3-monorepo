@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import "./LogExpMath.sol";
+import { LogExpMath } from "./LogExpMath.sol";
 
+/// @notice Support 18-decimal fixed point arithmetic. All Vault calculations use this for high and uniform precision.
 library FixedPoint {
-    /// @dev Attempted division by zero.
+    /// @notice Attempted division by zero.
     error ZeroDivision();
 
     // solhint-disable no-inline-assembly
@@ -16,29 +17,20 @@ library FixedPoint {
     uint256 internal constant FOUR = 4 * ONE;
     uint256 internal constant MAX_POW_RELATIVE_ERROR = 10000; // 10^(-14)
 
-    // Minimum base for the power function when the exponent is 'free' (larger than ONE).
-    uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
-
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Multiplication overflow protection is provided by Solidity 0.8.x
+        // Multiplication overflow protection is provided by Solidity 0.8.x.
         uint256 product = a * b;
 
         return product / ONE;
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        // Multiplication overflow protection is provided by Solidity 0.8.x
+        // Multiplication overflow protection is provided by Solidity 0.8.x.
         uint256 product = a * b;
 
-        // The traditional divUp formula is:
-        // divUp(x, y) := (x + y - 1) / y
-        // To avoid intermediate overflow in the addition, we distribute the division and get:
-        // divUp(x, y) := (x - 1) / y + 1
-        // Note that this requires x != 0, if x == 0 then the result is zero
-        //
         // Equivalent to:
-        // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
-        assembly {
+        // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1
+        assembly ("memory-safe") {
             result := mul(iszero(iszero(product)), add(div(sub(product, 1), ONE), 1))
         }
     }
@@ -52,13 +44,18 @@ library FixedPoint {
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        // This check is required because Yul's `div` doesn't revert on b==0
-        if (b == 0) {
+        return mulDivUp(a, ONE, b);
+    }
+
+    /// @dev Return (a * b) / c, rounding up.
+    function mulDivUp(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
+        // This check is required because Yul's `div` doesn't revert on c==0.
+        if (c == 0) {
             revert ZeroDivision();
         }
 
-        // Multiple overflow protection is done by Solidity 0.8x
-        uint256 aInflated = a * ONE;
+        // Multiple overflow protection is done by Solidity 0.8.x.
+        uint256 product = a * b;
 
         // The traditional divUp formula is:
         // divUp(x, y) := (x + y - 1) / y
@@ -67,9 +64,9 @@ library FixedPoint {
         // Note that this requires x != 0, if x == 0 then the result is zero
         //
         // Equivalent to:
-        // result = a == 0 ? 0 : (a * FixedPoint.ONE - 1) / b + 1;
-        assembly {
-            result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
+        // result = a == 0 ? 0 : (a * b - 1) / c + 1
+        assembly ("memory-safe") {
+            result := mul(iszero(iszero(product)), add(div(sub(product, 1), c), 1))
         }
     }
 
@@ -80,14 +77,14 @@ library FixedPoint {
      * we want to minimize the number of operations by avoiding unnecessary scaling by ONE.
      */
     function divUpRaw(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        // This check is required because Yul's `div` doesn't revert on b==0
+        // This check is required because Yul's `div` doesn't revert on b==0.
         if (b == 0) {
             revert ZeroDivision();
         }
 
         // Equivalent to:
-        // result = a == 0 ? 0 : 1 + (a - 1) / b;
-        assembly {
+        // result = a == 0 ? 0 : 1 + (a - 1) / b
+        assembly ("memory-safe") {
             result := mul(iszero(iszero(a)), add(1, div(sub(a, 1), b)))
         }
     }
@@ -150,8 +147,8 @@ library FixedPoint {
      */
     function complement(uint256 x) internal pure returns (uint256 result) {
         // Equivalent to:
-        // result = (x < ONE) ? (ONE - x) : 0;
-        assembly {
+        // result = (x < ONE) ? (ONE - x) : 0
+        assembly ("memory-safe") {
             result := mul(lt(x, ONE), sub(ONE, x))
         }
     }

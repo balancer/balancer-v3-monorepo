@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
 /**
- * @dev Building block for performing access control on external functions.
- *
- * This contract is used via the `authenticate` modifier (or the `_authenticateCaller` function), which can be applied
- * to external functions to only make them callable by authorized accounts.
+ * @notice Building block for performing access control on external functions.
+ * @dev This contract is used via the `authenticate` modifier (or the `_authenticateCaller` function), which can be
+ * applied to external functions to make them only callable by authorized accounts.
  *
  * Derived contracts must implement the `_canPerform` function, which holds the actual access control logic.
  */
@@ -17,7 +16,7 @@ abstract contract Authentication is IAuthentication {
 
     /**
      * @dev The main purpose of the `actionIdDisambiguator` is to prevent accidental function selector collisions in
-     * multi contract systems.
+     * multi-contract systems.
      *
      * There are two main uses for it:
      *  - if the contract is a singleton, any unique identifier can be used to make the associated action identifiers
@@ -47,10 +46,16 @@ abstract contract Authentication is IAuthentication {
     /// @inheritdoc IAuthentication
     function getActionId(bytes4 selector) public view override returns (bytes32) {
         // Each external function is dynamically assigned an action identifier as the hash of the disambiguator and the
-        // chain id + function selector. Disambiguation is necessary to avoid potential collisions in the function
-        // selectors of multiple contracts.
+        // function selector. Disambiguation is necessary to avoid potential collisions in the function selectors of
+        // multiple contracts.
         return keccak256(abi.encodePacked(_actionIdDisambiguator, selector));
     }
 
+    /**
+     * @dev Derived contracts must implement this function to perform the actual access control logic.
+     * @param actionId The action identifier associated with an external function
+     * @param user The account performing the action
+     * @return success True if the action is permitted
+     */
     function _canPerform(bytes32 actionId, address user) internal view virtual returns (bool);
 }

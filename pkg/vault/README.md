@@ -2,7 +2,7 @@
 
 # Balancer V3 Vault
 
-This package contains the source code of Balancer V3's main contract, the [`Vault`](./contracts/Vault.sol).
+This package contains the source code of Balancer V3's main contract, the [`Vault`](./contracts/Vault.sol), as well as its code extensions.
 
 It is generally not used directly, as two other packages should fulfill all development needs:
 
@@ -13,9 +13,7 @@ It is generally not used directly, as two other packages should fulfill all deve
 
 ### Installation
 
-```console
-$ npm install @balancer-labs/v3-vault
-```
+NPM package coming soon.
 
 ## Licensing
 

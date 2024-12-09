@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MIT
 
-// Based on the EnumerableSet library from OpenZeppelin Contracts, altered to remove the base private functions that
-// work on bytes32, replacing them with a native implementation for address values, to reduce bytecode size and
-// runtime costs.
-// The `unchecked_at` function was also added, which allows for more gas efficient data reads in some scenarios.
-
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 /**
- * @dev Library for managing sets of primitve types.
- * https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive
- * types.
+ * @notice  Library for managing sets of primitive types.
+ * @dev See https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive types.
+ *
+ * Based on the EnumerableSet library from OpenZeppelin Contracts, altered to remove the base private functions that
+ * work on bytes32, replacing them with a native implementation for address values, to reduce bytecode size and
+ * runtime costs.
+ *
+ * The `unchecked_at` function was also added, which allows for more gas efficient data reads in some scenarios.
  *
  * Sets have the following properties:
  *
  * - Elements are added, removed, and checked for existence in constant time (O(1)).
- *
  * - Elements are enumerated in O(n). No guarantees are made on the ordering.
  *
  * ```
@@ -35,17 +34,17 @@ library EnumerableSet {
     // solhint-disable func-name-mixedcase
 
     struct AddressSet {
-        // Storage of set values
+        // Storage of set values.
         address[] _values;
         // Position of the value in the `values` array, plus 1 because index 0
         // means a value is not in the set.
-        mapping(address => uint256) _indexes;
+        mapping(address addressKey => uint256 indexValue) _indexes;
     }
 
-    /// @dev An index is beyond the current bounds of the set.
+    /// @notice An index is beyond the current bounds of the set.
     error IndexOutOfBounds();
 
-    /// @dev An element that is not present in the set.
+    /// @notice An element that is not present in the set.
     error ElementNotFound();
 
     /**
@@ -57,7 +56,7 @@ library EnumerableSet {
         if (!contains(set, value)) {
             set._values.push(value);
             // The value is stored at length-1, but we add 1 to all indexes
-            // and use 0 as a sentinel value
+            // and use 0 as a sentinel value.
             set._indexes[value] = set._values.length;
             return true;
         } else {
@@ -67,12 +66,10 @@ library EnumerableSet {
 
     /**
      * @dev Removes a value from a set. O(1).
-     *
-     * Returns true if the value was removed from the set, that is if it was
-     * present.
+     * Returns true if the value was removed from the set; i.e., if it was present.
      */
     function remove(AddressSet storage set, address value) internal returns (bool) {
-        // We read and store the value's index to prevent multiple reads from the same storage slot
+        // We read and store the value's index to prevent multiple reads from the same storage slot.
         uint256 valueIndex = set._indexes[value];
 
         if (valueIndex != 0) {
@@ -88,20 +85,20 @@ library EnumerableSet {
                 lastIndex = set._values.length - 1;
             }
 
-            // The swap is only necessary if we're not removing the last element
+            // The swap is only necessary if we're not removing the last element.
             if (toDeleteIndex != lastIndex) {
                 address lastValue = set._values[lastIndex];
 
-                // Move the last value to the index where the value to delete is
+                // Move the last entry to the index of the entry to delete.
                 set._values[toDeleteIndex] = lastValue;
                 // Update the index for the moved value
-                set._indexes[lastValue] = valueIndex; // = toDeleteIndex + 1; all indices are 1-based
+                set._indexes[lastValue] = valueIndex; // = toDeleteIndex + 1; all indices are 1-based.
             }
 
-            // Delete the slot where the moved value was stored
+            // Delete the slot where the moved value was stored.
             set._values.pop();
 
-            // Delete the index for the deleted slot
+            // Delete the index for the deleted slot.
             delete set._indexes[value];
 
             return true;

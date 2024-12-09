@@ -13,11 +13,12 @@
   },
   "packageManager": "yarn@4.0.0-rc.42",
   "contributors": [
-    "Nicolás Venturo <nico@balancerlabs.dev>",
-    "Jeffrey Bennett <jeff@balancerlabs.dev>",
     "Juan Ignacio Ubeira <juani@balancerlabs.dev>",
+    "Jeffrey Bennett <jeff@balancerlabs.dev>",
     "Igor Yalovoy <igor@balancerlabs.dev>",
-    "Mike McDonald <mike@balancer.finance>"
+    "João Bruno Abou Hatem de Liz <joao@balancerlabs.dev>",
+    "Elshan Dzhafarov <elshan@balancerlabs.dev>",
+    "Nicolás Venturo <nico@balancerlabs.dev>"
   ],
   "scripts": {
     "build": "yarn workspaces foreach --parallel --verbose run build",
@@ -25,7 +26,7 @@
     "test": "yarn workspaces foreach --parallel --verbose run test",
     "coverage": "yarn workspaces foreach --parallel --verbose run coverage",
     "gas": "yarn workspaces foreach --parallel --verbose run gas",
-    "slither-install": "python3 -m venv slither && bash -c 'source slither/bin/activate && pip3 install slither-analyzer'",
+    "slither-install": "python3 -m venv slither && bash -c 'source slither/bin/activate && pip3 install https://github.com/crytic/slither/releases/download/0.10.1/0.10.1.zip'",
     "slither": "yarn workspaces foreach --parallel --verbose run slither"
   },
   "workspaces": [

@@ -1,63 +1,83 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IAuthorizer } from "./IAuthorizer.sol";
-import { IRateProvider } from "./IRateProvider.sol";
 import "./VaultTypes.sol";
 
+/**
+ * @notice Interface for functions defined on the main Vault contract.
+ * @dev These are generally "critical path" functions (swap, add/remove liquidity) that are in the main contract
+ * for technical or performance reasons.
+ */
 interface IVaultMain {
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
 
     /**
-     * @notice Creates a lock context for a sequence of operations.
+     * @notice Creates a context for a sequence of operations (i.e., "unlocks" the Vault).
      * @dev Performs a callback on msg.sender with arguments provided in `data`. The Callback is `transient`,
      * meaning all balances for the caller have to be settled at the end.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function lock(bytes calldata data) external payable returns (bytes memory result);
+    function unlock(bytes calldata data) external returns (bytes memory result);
 
     /**
      * @notice Settles deltas for a token; must be successful for the current lock to be released.
-     * @param token Token's address
-     * @return paid Amount paid during settlement
+     * @dev Protects the caller against leftover dust in the Vault for the token being settled. The caller
+     * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
+     * excess in the Vault balance.
+     *
+     * If the given hint is equal to or higher than the difference in reserves, the difference in reserves is given as
+     * credit to the caller. If it's higher, the caller sent fewer tokens than expected, so settlement would fail.
+     *
+     * If the given hint is lower than the difference in reserves, the hint is given as credit to the caller.
+     * In this case, the excess would be absorbed by the Vault (and reflected correctly in the reserves), but would
+     * not affect settlement.
+     *
+     * The credit supplied by the Vault can be calculated as `min(reserveDifference, amountHint)`, where the reserve
+     * difference equals current balance of the token minus existing reserves of the token when the function is called.
+     *
+     * @param token Address of the token
+     * @param amountHint Amount paid as reported by the caller
+     * @return credit Credit received in return of the payment
      */
-    function settle(IERC20 token) external returns (uint256 paid);
+    function settle(IERC20 token, uint256 amountHint) external returns (uint256 credit);
 
     /**
      * @notice Sends tokens to a recipient.
-     * @param token Token's address
-     * @param to Recipient's address
+     * @dev There is no inverse operation for this function. Transfer funds to the Vault and call `settle` to cancel
+     * debts.
+     *
+     * @param token Address of the token
+     * @param to Recipient address
      * @param amount Amount of tokens to send
      */
     function sendTo(IERC20 token, address to, uint256 amount) external;
 
+    /***************************************************************************
+                                       Swaps
+    ***************************************************************************/
+
     /**
-     * @notice Transfers tokens from a sender to the Vault.
-     * @dev This function can transfer tokens from users using allowances granted to the Vault.
-     * Only trusted routers are permitted to call it. Untrusted routers should use `settle` instead.
-     *
-     * @param token Token's address
-     * @param from Sender's address
-     * @param amount Amount of tokens to pull from the sender into the Vault
+     * @notice Swaps tokens based on provided parameters.
+     * @dev All parameters are given in raw token decimal encoding.
+     * @param vaultSwapParams Parameters for the swap (see above for struct definition)
+     * @return amountCalculatedRaw Calculated swap amount
+     * @return amountInRaw Amount of input tokens for the swap
+     * @return amountOutRaw Amount of output tokens from the swap
      */
-    function takeFrom(IERC20 token, address from, uint256 amount) external;
+    function swap(
+        VaultSwapParams memory vaultSwapParams
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
-
-    /// @dev Introduce to avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-    struct LiquidityLocals {
-        uint256 tokenIndex;
-        uint256[] limitsScaled18;
-    }
 
     /**
      * @notice Adds liquidity to a pool.
@@ -67,7 +87,7 @@ interface IVaultMain {
      * @param params Parameters for the add liquidity (see above for struct definition)
      * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function addLiquidity(
         AddLiquidityParams memory params
@@ -84,47 +104,13 @@ interface IVaultMain {
      * _queryModeBalanceIncrease (and only in a query context).
      *
      * @param params Parameters for the remove liquidity (see above for struct definition)
-     * @return bptAmountIn Actual amount of BPT burnt
+     * @return bptAmountIn Actual amount of BPT burned
      * @return amountsOut Actual amounts of output tokens
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function removeLiquidity(
         RemoveLiquidityParams memory params
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
-
-    /***************************************************************************
-                                       Swaps
-    ***************************************************************************/
-
-    /**
-     * @notice A swap has occurred.
-     * @param pool The pool with the tokens being swapped
-     * @param tokenIn The token entering the Vault (balance increases)
-     * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param amountIn Number of tokenIn tokens
-     * @param amountOut Number of tokenOut tokens
-     * @param swapFeeAmount Swap fee amount paid in token out
-     */
-    event Swap(
-        address indexed pool,
-        IERC20 indexed tokenIn,
-        IERC20 indexed tokenOut,
-        uint256 amountIn,
-        uint256 amountOut,
-        uint256 swapFeeAmount
-    );
-
-    /**
-     * @notice Swaps tokens based on provided parameters.
-     * @dev All parameters are given in raw token decimal encoding.
-     * @param params Parameters for the swap (see above for struct definition)
-     * @return amountCalculatedRaw Calculated swap amount
-     * @return amountInRaw Amount of input tokens for the swap
-     * @return amountOutRaw Amount of output tokens from the swap
-     */
-    function swap(
-        SwapParams memory params
-    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
                                     Pool Information
@@ -138,24 +124,68 @@ interface IVaultMain {
      * @return tokenCount Number of tokens in the pool
      * @return index Index corresponding to the given token in the pool's token list
      */
-    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
+    function getPoolTokenCountAndIndexOfToken(
+        address pool,
+        IERC20 token
+    ) external view returns (uint256 tokenCount, uint256 index);
 
     /*******************************************************************************
-                                Authentication
+                                 Balancer Pool Tokens
     *******************************************************************************/
 
     /**
-     * @notice Returns the Vault's Authorizer.
-     * @return Address of the authorizer
+     * @notice Transfers pool token from owner to a recipient.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Address of the owner
+     * @param to Address of the recipient
+     * @param amount Amount of tokens to transfer
+     * @return success True if successful, false otherwise
      */
-    function getAuthorizer() external view returns (IAuthorizer);
+    function transfer(address owner, address to, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Transfers pool token from a sender to a recipient using an allowance.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param spender Address allowed to perform the transfer
+     * @param from Address of the sender
+     * @param to Address of the recipient
+     * @param amount Amount of tokens to transfer
+     * @return success True if successful, false otherwise
+     */
+    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool success);
+
+    /*******************************************************************************
+                                  ERC4626 Buffers
+    *******************************************************************************/
+
+    /**
+     * @notice Wraps/unwraps tokens based on the parameters provided.
+     * @dev All parameters are given in raw token decimal encoding. It requires the buffer to be initialized,
+     * and uses the internal wrapped token buffer when it has enough liquidity to avoid external calls.
+     *
+     * @param params Parameters for the wrap/unwrap operation (see struct definition)
+     * @return amountCalculatedRaw Calculated swap amount
+     * @return amountInRaw Amount of input tokens for the swap
+     * @return amountOutRaw Amount of output tokens from the swap
+     */
+    function erc4626BufferWrapOrUnwrap(
+        BufferWrapOrUnwrapParams memory params
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
                                      Miscellaneous
     *******************************************************************************/
 
     /**
-     * @notice Returns the Vault Extension address.
+     * @notice Returns the VaultExtension contract address.
+     * @dev Function is in the main Vault contract. The VaultExtension handles less critical or frequently used
+     * functions, since delegate calls through the Vault are more expensive than direct calls.
+     *
+     * @return vaultExtension Address of the VaultExtension
      */
-    function getVaultExtension() external view returns (address);
+    function getVaultExtension() external view returns (address vaultExtension);
 }

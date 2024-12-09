@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import "../helpers/WordCodec.sol";
-import "./WordCodecHelpers.sol";
+import { WordCodecHelpers } from "./WordCodecHelpers.sol";
+import { WordCodec } from "../helpers/WordCodec.sol";
 
 contract WordCodecMock {
     function insertUint(

@@ -1,24 +1,32 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "@balancer-labs/v3-vault/contracts/test/VaultExtensionMock.sol";
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+
+import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
+import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 
 import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
-contract WeightedPool8020FactoryTest is Test {
-    VaultMock vault;
+contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultContractsDeployer {
+    uint256 internal DEFAULT_SWAP_FEE = 1e16; // 1%
+
+    IVaultMock vault;
     WeightedPool8020Factory factory;
     RateProviderMock rateProvider;
     ERC20TestToken tokenA;
@@ -27,98 +35,111 @@ contract WeightedPool8020FactoryTest is Test {
     address alice = vm.addr(1);
 
     function setUp() public {
-        vault = VaultMockDeployer.deploy();
-        factory = new WeightedPool8020Factory(IVault(address(vault)), 365 days);
+        vault = deployVaultMock();
+        factory = deployWeightedPool8020Factory(IVault(address(vault)), 365 days, "Factory v1", "8020Pool v1");
 
         tokenA = new ERC20TestToken("Token A", "TKNA", 18);
         tokenB = new ERC20TestToken("Token B", "TKNB", 6);
     }
 
-    function testFactoryPausedState() public {
-        uint256 pauseWindowDuration = factory.getPauseWindowDuration();
+    function _createPool(IERC20 highToken, IERC20 lowToken) private returns (WeightedPool) {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        PoolRoleAccounts memory roleAccounts;
+        tokenConfig[0].token = highToken;
+        tokenConfig[1].token = lowToken;
+
+        // The factory will sort the tokens.
+        return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], roleAccounts, DEFAULT_SWAP_FEE));
+    }
+
+    function testFactoryPausedState() public view {
+        uint32 pauseWindowDuration = factory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
     }
 
-    function testPoolCreation__Fuzz(bytes32 salt) public {
-        vm.assume(salt > 0);
-
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        uint256 highWeightIdx = tokenA > tokenB ? 1 : 0;
-        uint256 lowWeightIdx = highWeightIdx == 0 ? 1 : 0;
-
-        WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], bytes32(0))
-        );
+    function testPoolFetching() public {
+        WeightedPool pool = _createPool(tokenA, tokenB);
+        address expectedPoolAddress = factory.getPool(tokenA, tokenB);
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
-        assertEq(poolWeights[highWeightIdx], 8e17, "Higher weight token is not 80%");
-        assertEq(poolWeights[lowWeightIdx], 2e17, "Lower weight token is not 20%");
-        assertEq(pool.symbol(), "Pool8020", "Wrong pool symbol");
-    }
 
-    function testPoolSalt__Fuzz(bytes32 salt) public {
-        vm.assume(salt > 0);
-
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[0].rateProvider = rateProvider;
-
-        WeightedPool pool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], bytes32(0))
-        );
-        address expectedPoolAddress = factory.getDeploymentAddress(salt);
-
-        WeightedPool secondPool = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
+        bytes memory poolArgs = abi.encode(
+            WeightedPool.NewPoolParams({
+                name: "Balancer 80 TKNA 20 TKNB",
+                symbol: "B-80TKNA-20TKNB",
+                numTokens: 2,
+                normalizedWeights: poolWeights,
+                version: "8020Pool v1"
+            }),
+            vault
         );
 
-        assertFalse(address(pool) == address(secondPool), "Two deployed pool addresses are equal");
-        assertEq(address(secondPool), expectedPoolAddress, "Unexpected pool address");
+        bytes32 salt = keccak256(abi.encode(block.chainid, tokenA, tokenB));
+        address deploymentAddress = factory.getDeploymentAddress(poolArgs, salt);
+
+        assertEq(address(pool), expectedPoolAddress, "Wrong pool address");
+        assertEq(deploymentAddress, expectedPoolAddress, "Wrong deployment address");
     }
 
-    function testPoolSender__Fuzz(bytes32 salt) public {
-        vm.assume(salt > 0);
-        address expectedPoolAddress = factory.getDeploymentAddress(salt);
+    function testPoolCreation() public {
+        (uint256 highWeightIdx, uint256 lowWeightIdx) = tokenA > tokenB ? (1, 0) : (0, 1);
 
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[0].rateProvider = rateProvider;
+        WeightedPool pool = _createPool(tokenA, tokenB);
 
-        // Different sender should change the address of the pool, given the same salt value
-        vm.prank(alice);
-        WeightedPool pool = WeightedPool(factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt));
-        assertFalse(address(pool) == expectedPoolAddress, "Unexpected pool address");
-
-        vm.prank(alice);
-        address aliceExpectedPoolAddress = factory.getDeploymentAddress(salt);
-        assertTrue(address(pool) == aliceExpectedPoolAddress, "Unexpected pool address");
+        uint256[] memory poolWeights = pool.getNormalizedWeights();
+        assertEq(poolWeights[highWeightIdx], 80e16, "Higher weight token is not 80%");
+        assertEq(poolWeights[lowWeightIdx], 20e16, "Lower weight token is not 20%");
+        assertEq(pool.name(), "Balancer 80 TKNA 20 TKNB", "Wrong pool name");
+        assertEq(pool.symbol(), "B-80TKNA-20TKNB", "Wrong pool symbol");
     }
 
-    function testPoolCrossChainProtection__Fuzz(bytes32 salt, uint16 chainId) public {
-        vm.assume(chainId > 1);
+    function testPoolWithInvertedWeights() public {
+        WeightedPool pool = _createPool(tokenA, tokenB);
+        WeightedPool invertedPool = _createPool(tokenB, tokenA);
 
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        tokens[0].token = tokenA;
-        tokens[1].token = tokenB;
-        tokens[0].rateProvider = rateProvider;
-
-        vm.prank(alice);
-        WeightedPool poolMainnet = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
+        assertNotEq(
+            address(pool),
+            address(invertedPool),
+            "Pools with same tokens but different weights should be different"
         );
+    }
+
+    function testPoolUniqueness() public {
+        _createPool(tokenA, tokenB);
+
+        // Should not be able to deploy identical pool
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        _createPool(tokenA, tokenB);
+
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        PoolRoleAccounts memory roleAccounts;
+
+        tokenConfig[0].token = tokenA;
+        tokenConfig[0].rateProvider = IRateProvider(address(1));
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].token = tokenB;
+        tokenConfig[1].rateProvider = IRateProvider(address(2));
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+
+        // Trying to create the same pool with same tokens but different token configs should revert
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        factory.create(tokenConfig[0], tokenConfig[1], roleAccounts, DEFAULT_SWAP_FEE);
+    }
+
+    /// forge-config: default.fuzz.runs = 10
+    function testPoolCrossChainProtection__Fuzz(uint16 chainId) public {
+        // Eliminate the test chain.
+        vm.assume(chainId != 31337);
+
+        vm.prank(alice);
+        WeightedPool poolMainnet = _createPool(tokenA, tokenB);
 
         vm.chainId(chainId);
 
         vm.prank(alice);
-        WeightedPool poolL2 = WeightedPool(
-            factory.create("Balancer 80/20 Pool", "Pool8020", tokens[0], tokens[1], salt)
-        );
+        WeightedPool poolL2 = _createPool(tokenA, tokenB);
 
-        // Same sender and salt, should still be different because of the chainId.
-        assertFalse(address(poolL2) == address(poolMainnet), "L2 and mainnet pool addresses are equal");
+        // Same salt parameters, should still be different because of the chainId.
+        assertNotEq(address(poolL2), address(poolMainnet), "L2 and mainnet pool addresses are equal");
     }
 }

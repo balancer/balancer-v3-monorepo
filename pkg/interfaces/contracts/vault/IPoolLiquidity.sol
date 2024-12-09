@@ -1,27 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { IVault } from "./IVault.sol";
-
-/// @notice Interface for custom liquidity operations
+/// @notice Interface for custom liquidity operations.
 interface IPoolLiquidity {
     /**
      * @notice Add liquidity to the pool with a custom hook.
-     * @param sender Address of the sender
-     * @param maxAmountsInScaled18 Maximum input amounts, in the same order as the tokens registered in the pool
+     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param maxAmountsInScaled18 Maximum input amounts, sorted in token registration order
      * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
-     * @param userData Arbitrary data with the encoded request
-     * @return amountsInScaled18 Input token amounts, in the same order as the tokens registered in the pool
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
+     * @param userData Arbitrary data sent with the encoded request
+     * @return amountsInScaled18 Input token amounts, sorted in token registration order
      * @return bptAmountOut Calculated pool token amount to receive
      * @return swapFeeAmountsScaled18 The amount of swap fees charged for each token
-     * @return returnData Arbitrary data with encoded response from the pool
+     * @return returnData Arbitrary data with an encoded response from the pool
      */
     function onAddLiquidityCustom(
-        address sender,
+        address router,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory balancesScaled18,
@@ -37,18 +33,18 @@ interface IPoolLiquidity {
 
     /**
      * @notice Remove liquidity from the pool with a custom hook.
-     * @param sender Address of the sender
+     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
-     * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
-     * @param userData Arbitrary data with the encoded request
+     * @param minAmountsOutScaled18 Minimum output amounts, sorted in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
+     * @param userData Arbitrary data sent with the encoded request
      * @return bptAmountIn Calculated pool token amount to burn
-     * @return amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
+     * @return amountsOutScaled18 Amount of tokens to receive, sorted in token registration order
      * @return swapFeeAmountsScaled18 The amount of swap fees charged for each token
-     * @return returnData Arbitrary data with encoded response from the pool
+     * @return returnData Arbitrary data with an encoded response from the pool
      */
     function onRemoveLiquidityCustom(
-        address sender,
+        address router,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
         uint256[] memory balancesScaled18,

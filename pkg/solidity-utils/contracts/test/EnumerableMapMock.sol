@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../openzeppelin/EnumerableMap.sol";
+import { EnumerableMap } from "../openzeppelin/EnumerableMap.sol";
+
+// solhint-disable func-name-mixedcase
 
 contract EnumerableIERC20ToUint256MapMock {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
-
-    // solhint-disable func-name-mixedcase
 
     EnumerableMap.IERC20ToUint256Map private _map;
 
@@ -60,8 +60,6 @@ contract EnumerableIERC20ToUint256MapMock {
 
 contract EnumerableIERC20ToBytes32MapMock {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-
-    // solhint-disable func-name-mixedcase
 
     EnumerableMap.IERC20ToBytes32Map private _map;
 

@@ -1,68 +1,65 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+
+import { VaultGuard } from "./VaultGuard.sol";
 
 /**
- * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
+ * @notice `BalancerPoolToken` is a fully ERC20-compatible token to be used as the base contract for Balancer Pools,
  * with all the data and implementation delegated to the ERC20Multitoken contract.
 
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces {
+contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvider, EIP712, Nonces, ERC165, VaultGuard {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    // @dev Permit deadline has expired.
+    /**
+     * @notice Operation failed due to an expired permit signature.
+     * @param deadline The permit deadline that expired
+     */
     error ERC2612ExpiredSignature(uint256 deadline);
 
-    // @dev Mismatched signature.
+    /**
+     * @notice Operation failed due to a non-matching signature.
+     * @param signer The address corresponding to the signature provider
+     * @param owner The address of the owner (expected value of the signature provider)
+     */
     error ERC2612InvalidSigner(address signer, address owner);
 
-    IVault private immutable _vault;
+    // EIP712 also defines _name.
+    string private _bptName;
+    string private _bptSymbol;
 
-    string private _name;
-    string private _symbol;
-
-    modifier onlyVault() {
-        _ensureOnlyVault();
-        _;
-    }
-
-    function _ensureOnlyVault() private view {
-        if (msg.sender != address(_vault)) {
-            revert IVaultErrors.SenderIsNotVault(msg.sender);
-        }
-    }
-
-    constructor(IVault vault_, string memory name_, string memory symbol_) EIP712(name_, "1") {
-        _vault = vault_;
-        _name = name_;
-        _symbol = symbol_;
+    constructor(IVault vault_, string memory bptName, string memory bptSymbol) EIP712(bptName, "1") VaultGuard(vault_) {
+        _bptName = bptName;
+        _bptSymbol = bptSymbol;
     }
 
     /// @inheritdoc IERC20Metadata
-    function name() public view returns (string memory) {
-        return _name;
+    function name() external view returns (string memory) {
+        return _bptName;
     }
 
     /// @inheritdoc IERC20Metadata
-    function symbol() public view returns (string memory) {
-        return _symbol;
+    function symbol() external view returns (string memory) {
+        return _bptSymbol;
     }
 
     /// @inheritdoc IERC20Metadata
-    function decimals() public pure returns (uint8) {
+    function decimals() external pure returns (uint8) {
         // Always 18 decimals for BPT.
         return 18;
     }
@@ -77,42 +74,44 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
     }
 
     /// @inheritdoc IERC20
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(address account) external view returns (uint256) {
         return _vault.balanceOf(address(this), account);
     }
 
     /// @inheritdoc IERC20
-    function transfer(address to, uint256 amount) public returns (bool) {
+    function transfer(address to, uint256 amount) external returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transfer(msg.sender, to, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
-    function allowance(address owner, address spender) public view returns (uint256) {
+    function allowance(address owner, address spender) external view returns (uint256) {
         return _vault.allowance(address(this), owner, spender);
     }
 
     /// @inheritdoc IERC20
-    function approve(address spender, uint256 amount) public returns (bool) {
+    function approve(address spender, uint256 amount) external returns (bool) {
         // Vault will perform the approval and call emitApproval to emit the event from this contract.
         _vault.approve(msg.sender, spender, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
-    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transferFrom(msg.sender, from, to, amount);
         return true;
     }
 
-    /// Accounting is centralized in the MultiToken contract, and the actual transfers and approvals
-    /// are done there. Operations can be initiated from either the token contract or the MultiToken.
-    ///
-    /// To maintain compliance with the ERC-20 standard, and conform to the expections of off-chain processes,
-    /// the MultiToken calls `emitTransfer` and `emitApproval` during those operations, so that the event is emitted
-    /// only from the token contract. These events are NOT defined in the MultiToken contract.
+    /**
+     * Accounting is centralized in the MultiToken contract, and the actual transfers and approvals are done there.
+     * Operations can be initiated from either the token contract or the MultiToken.
+     *
+     * To maintain compliance with the ERC-20 standard, and conform to the expectations of off-chain processes,
+     * the MultiToken calls `emitTransfer` and `emitApproval` during those operations, so that the event is emitted
+     * only from the token contract. These events are NOT defined in the MultiToken contract.
+     */
 
     /// @dev Emit the Transfer event. This function can only be called by the MultiToken.
     function emitTransfer(address from, address to, uint256 amount) external onlyVault {
@@ -156,9 +155,25 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
         return super.nonces(owner);
     }
 
+    /// @notice Increment the sender's nonce to revoke any currently granted (but not yet executed) `permit`.
+    function incrementNonce() external {
+        _useNonce(msg.sender);
+    }
+
     // @inheritdoc IERC20Permit
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
         return _domainSeparatorV4();
+    }
+
+    /**
+     * @notice Get the BPT rate, which is defined as: pool invariant/total supply.
+     * @dev The VaultExtension contract defines a default implementation (`getBptRate`) to calculate the rate
+     * of any given pool, which should be sufficient in nearly all cases.
+     *
+     * @return rate Rate of the pool's BPT
+     */
+    function getRate() public view virtual returns (uint256) {
+        return getVault().getBptRate(address(this));
     }
 }
