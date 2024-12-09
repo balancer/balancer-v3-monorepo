@@ -110,7 +110,7 @@ installation will also install Crytic-compiller, so this step can be skipped whe
 
 Then, install Medusa using this [installation guide](https://github.com/crytic/medusa/blob/master/docs/src/getting_started/installation.md#building-from-source) (or just copy the adequate precompiled binary to a directory within your `PATH`).
 
-Finally, run `yarn fuzz:medusa`. This command is available inside the packages `vault`, `pool-weighted` and 
+Finally, run `yarn test:medusa`. This command is available inside the packages `vault`, `pool-weighted` and 
 `pool-stable`.
 
 ## Static analysis
