@@ -694,13 +694,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function removeExactOutArbitraryAmountOut(
-        uint256 exactAmountOut,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
+    function removeExactOutArbitraryAmountOut(uint256 exactAmountOut) internal returns (uint256 amountOut) {
         uint256 currentTotalSupply = IERC20(liquidityPool).totalSupply();
         vm.startPrank(alice);
         // Add liquidity so we have something to remove.

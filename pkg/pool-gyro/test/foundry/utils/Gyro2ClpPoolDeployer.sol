@@ -81,9 +81,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         string memory label,
         IVaultMock vault,
         address poolCreator
-    ) internal returns (address) {
-        address newPool;
-
+    ) internal returns (address newPool, bytes memory poolArgs) {
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = poolCreator;
@@ -116,7 +114,15 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
             liquidityManagement
         );
 
-        return newPool;
+        poolArgs = abi.encode(
+            IGyro2CLPPool.GyroParams({
+                name: "Gyro 2CLP Pool Mock",
+                symbol: "GRP-Mock",
+                sqrtAlpha: _sqrtAlpha,
+                sqrtBeta: _sqrtBeta
+            }),
+            vault
+        );
     }
 
     function deployGyro2CLPPoolFactory(IVault vault) internal returns (Gyro2CLPPoolFactory) {
