@@ -11,7 +11,7 @@ import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry
 import { Gyro2CLPPoolMock } from "../../contracts/test/Gyro2CLPPoolMock.sol";
 import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
 
-contract LiquidityApproximationGyroTest is LiquidityApproximationTest, Gyro2ClpPoolDeployer {
+contract LiquidityApproximation2CLPTest is LiquidityApproximationTest, Gyro2ClpPoolDeployer {
     // A difference smaller than the constant below causes issues during calculation of the 2-CLP pool invariant.
     uint256 private constant _MINIMUM_DIFF_ALPHA_BETA = 0.01e16;
 
@@ -47,6 +47,9 @@ contract LiquidityApproximationGyroTest is LiquidityApproximationTest, Gyro2ClpP
         // AddLiquidityUnbalanced without swap fees may have rounding issues when calculating Alice and Bob balances.
         absoluteRoundingDelta = 1e9;
         defectRoundingDelta = 3;
+
+        // 2CLP requires a minimum fee so swaps are cheaper than unbalanced adds/removes in all situations.
+        minSwapFeePercentage = 1e12;
     }
 
     function _setSqrtParams(uint256 sqrtAlpha, uint256 sqrtBeta) private {
