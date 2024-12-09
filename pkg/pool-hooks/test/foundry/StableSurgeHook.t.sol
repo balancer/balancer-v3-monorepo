@@ -24,7 +24,8 @@ contract StableSurgeHookTest is BaseVaultTest {
     using FixedPoint for uint256;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
-    uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 0.3e18;
+    uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 30e16; // 30%
+    uint256 constant DEFAULT_MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
     uint256 constant DEFAULT_POOL_TOKEN_COUNT = 2;
 
     uint256 internal daiIdx;
@@ -44,10 +45,10 @@ contract StableSurgeHookTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 
+        vm.prank(address(stablePoolFactory));
         stableSurgeHook = new StableSurgeHook(
             vault,
-            address(stablePoolFactory),
-            authorizer,
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE
         );
         vm.label(address(stableSurgeHook), "StableSurgeHook");
@@ -135,7 +136,7 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         return
             swapFeePercentage +
-            (stableSurgeHook.MAX_SURGE_FEE_PERCENTAGE() - swapFeePercentage).mulDown(
+            (stableSurgeHook.getMaxSurgeFeePercentage(pool) - swapFeePercentage).mulDown(
                 (newTotalImbalance - DEFAULT_SURGE_THRESHOLD_PERCENTAGE).divDown(
                     DEFAULT_SURGE_THRESHOLD_PERCENTAGE.complement()
                 )
