@@ -164,7 +164,10 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         assertApproxEqRel(amountIn, tokenAAmountIn, 0.00001e16, "Swap fees are not symmetric for ExactIn and ExactOut");
     }
 
-    /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
+    /**
+     * @notice Creates and initializes a weighted pool with a setter for weights, so weights can be changed without
+     * initializing the pool again. This pool is used by E2eSwapTest tests.
+     */
     function _createPool(
         address[] memory tokens,
         string memory label
@@ -173,37 +176,34 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         string memory symbol = "50_50WP";
         string memory poolVersion = "Pool v1";
 
-        WeightedPoolFactory factory = deployWeightedPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
+        LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = lp;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
-
-        newPool = factory.create(
-            name,
-            symbol,
-            vault.buildTokenConfig(tokens.asIERC20()),
-            [uint256(50e16), uint256(50e16)].toMemoryArray(),
-            roleAccounts,
-            DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-            poolHooksContract,
-            false, // Do not enable donations
-            false, // Do not disable unbalanced add/remove liquidity
-            // NOTE: sends a unique salt.
-            bytes32(poolCreationNonce++)
+        newPool = address(
+            deployWeightedPoolMock(
+                WeightedPool.NewPoolParams({
+                    name: name,
+                    symbol: symbol,
+                    numTokens: 2,
+                    normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                    version: poolVersion
+                }),
+                vault
+            )
         );
         vm.label(newPool, label);
 
-        // Cannot set the pool creator directly on a standard Balancer weighted pool factory.
-        vault.manualSetPoolCreator(newPool, lp);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(newPool, lp);
+        vault.registerPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            DEFAULT_SWAP_FEE,
+            0,
+            false,
+            roleAccounts,
+            address(0),
+            liquidityManagement
+        );
 
         poolArgs = abi.encode(
             WeightedPool.NewPoolParams({
@@ -215,41 +215,6 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             }),
             vault
         );
-    }
-
-    /**
-     * @notice Creates and initializes a weighted pool with a setter for weights, so weights can be changed without
-     * initializing the pool again. This pool is used by E2eSwapTest tests.
-     */
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        LiquidityManagement memory liquidityManagement;
-        PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = lp;
-
-        WeightedPoolMock weightedPool = deployWeightedPoolMock(
-            WeightedPool.NewPoolParams({
-                name: label,
-                symbol: "WEIGHTY",
-                numTokens: 2,
-                normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: "Version 1"
-            }),
-            vault
-        );
-        vm.label(address(weightedPool), label);
-
-        vault.registerPool(
-            address(weightedPool),
-            vault.buildTokenConfig(tokens.asIERC20()),
-            DEFAULT_SWAP_FEE,
-            0,
-            false,
-            roleAccounts,
-            address(0),
-            liquidityManagement
-        );
-
-        return address(weightedPool);
     }
 
     function _setPoolBalancesWithDifferentWeights(
