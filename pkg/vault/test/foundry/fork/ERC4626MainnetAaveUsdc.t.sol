@@ -8,6 +8,10 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { ERC4626WrapperBaseTest } from "./ERC4626WrapperBase.t.sol";
 
+/**
+ * @dev Do not extend this test. To test new wrappers, go to the repo
+ * https://github.com/balancer/balancer-v3-erc4626-tests
+ */
 contract ERC4626MainnetAaveUsdcTest is ERC4626WrapperBaseTest {
     function setUp() public override {
         ERC4626WrapperBaseTest.setUp();

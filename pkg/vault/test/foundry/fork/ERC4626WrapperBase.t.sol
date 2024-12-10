@@ -13,6 +13,10 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
+/**
+ * @dev Do not extend this test. To test new wrappers, go to the repo
+ * https://github.com/balancer/balancer-v3-erc4626-tests
+ */
 abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
