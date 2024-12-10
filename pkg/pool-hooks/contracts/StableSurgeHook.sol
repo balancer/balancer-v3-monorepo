@@ -27,8 +27,6 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
 
-//import { console } from "forge-std/console.sol";
-
 /**
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.

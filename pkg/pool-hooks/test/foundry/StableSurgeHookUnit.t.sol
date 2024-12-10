@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
-
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import {
     LiquidityManagement,
@@ -155,7 +153,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
     }
 
-    function testGetSurgeFeePercentage_Fuzz(
+    function testGetSurgeFeePercentage__Fuzz(
         uint256 length,
         uint256 indexIn,
         uint256 indexOut,
@@ -193,7 +191,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
     }
 
-    function testOnComputeDynamicSwapFeePercentage_Fuzz(
+    function testOnComputeDynamicSwapFeePercentage__Fuzz(
         uint256 length,
         uint256 indexIn,
         uint256 indexOut,
