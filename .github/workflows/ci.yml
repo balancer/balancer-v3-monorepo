@@ -3,6 +3,7 @@ name: CI
 env:
   CI: true
   MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+  GNOSIS_RPC_URL: ${{ secrets.GNOSIS_RPC_URL }}
   SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
 
 on:
