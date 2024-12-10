@@ -71,7 +71,7 @@ contract StableSurgeMedianMathTest is BaseVaultTest {
         assertEq(median, expectedMedian, "Median is not correct");
     }
 
-    function testCalculateImbalance_Fuzz(uint256 length, uint256[8] memory rawBalances) public view {
+    function testCalculateImbalance__Fuzz(uint256 length, uint256[8] memory rawBalances) public view {
         length = bound(length, MIN_TOKENS, MAX_TOKENS);
         uint256[] memory balances = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
