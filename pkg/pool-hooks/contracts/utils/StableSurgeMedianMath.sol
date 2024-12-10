@@ -3,9 +3,11 @@
 pragma solidity ^0.8.24;
 
 import { Arrays } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Arrays.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 library StableSurgeMedianMath {
     using Arrays for uint256[];
+    using FixedPoint for uint256;
 
     function calculateImbalance(uint256[] memory balances) internal pure returns (uint256) {
         uint256 median = findMedian(balances);
@@ -18,7 +20,7 @@ library StableSurgeMedianMath {
             totalDiff += absSub(balances[i], median);
         }
 
-        return (totalDiff * 1e18) / totalBalance;
+        return totalDiff.divDown(totalBalance);
     }
 
     function findMedian(uint256[] memory balances) internal pure returns (uint256) {

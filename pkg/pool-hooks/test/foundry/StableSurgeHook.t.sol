@@ -63,7 +63,7 @@ contract StableSurgeHookTest is BaseVaultTest {
     ) internal override returns (address newPool, bytes memory poolArgs) {
         PoolRoleAccounts memory roleAccounts;
 
-        address newPool = stablePoolFactory.create(
+        newPool = stablePoolFactory.create(
             "Stable Pool",
             "STABLEPOOL",
             vault.buildTokenConfig(tokens.asIERC20()),

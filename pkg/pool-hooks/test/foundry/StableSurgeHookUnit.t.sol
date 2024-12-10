@@ -157,23 +157,23 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
     function testGetSurgeFeePercentage_Fuzz(
         uint256 length,
-        uint256 tokenIn,
-        uint256 tokenOut,
+        uint256 indexIn,
+        uint256 indexOut,
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
     ) public {
         uint256[] memory balances;
-        (length, tokenIn, tokenOut, amountGivenScaled18, balances) = _boundValues(
+        (length, indexIn, indexOut, amountGivenScaled18, balances) = _boundValues(
             length,
-            tokenIn,
-            tokenOut,
+            indexIn,
+            indexOut,
             amountGivenScaled18,
             rawBalances
         );
 
         _registerPool();
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(tokenIn, tokenOut, amountGivenScaled18, balances),
+            _buildSwapParams(indexIn, indexOut, amountGivenScaled18, balances),
             pool,
             STATIC_FEE_PERCENTAGE
         );
@@ -182,8 +182,8 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         for (uint256 i = 0; i < length; ++i) {
             newBalances[i] = balances[i];
         }
-        newBalances[tokenIn] += amountGivenScaled18;
-        newBalances[tokenOut] -= amountGivenScaled18;
+        newBalances[indexIn] += amountGivenScaled18;
+        newBalances[indexOut] -= amountGivenScaled18;
 
         uint256 expectedFee = _calculateFee(
             stableSurgeMedianMathMock.calculateImbalance(newBalances),
@@ -195,16 +195,16 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
     function testOnComputeDynamicSwapFeePercentage_Fuzz(
         uint256 length,
-        uint256 tokenIn,
-        uint256 tokenOut,
+        uint256 indexIn,
+        uint256 indexOut,
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
     ) public {
         uint256[] memory balances;
-        (length, tokenIn, tokenOut, amountGivenScaled18, balances) = _boundValues(
+        (length, indexIn, indexOut, amountGivenScaled18, balances) = _boundValues(
             length,
-            tokenIn,
-            tokenOut,
+            indexIn,
+            indexOut,
             amountGivenScaled18,
             rawBalances
         );
@@ -213,7 +213,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
         vm.prank(address(vault));
         (bool success, uint256 surgeFeePercentage) = stableSurgeHook.onComputeDynamicSwapFeePercentage(
-            _buildSwapParams(tokenIn, tokenOut, amountGivenScaled18, balances),
+            _buildSwapParams(indexIn, indexOut, amountGivenScaled18, balances),
             pool,
             STATIC_FEE_PERCENTAGE
         );
@@ -224,8 +224,8 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         for (uint256 i = 0; i < length; ++i) {
             newBalances[i] = balances[i];
         }
-        newBalances[tokenIn] += amountGivenScaled18;
-        newBalances[tokenOut] -= amountGivenScaled18;
+        newBalances[indexIn] += amountGivenScaled18;
+        newBalances[indexOut] -= amountGivenScaled18;
 
         uint256 expectedFee = _calculateFee(
             stableSurgeMedianMathMock.calculateImbalance(newBalances),
@@ -241,13 +241,13 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         for (uint256 i = 0; i < numTokens; ++i) {
             balances[i] = 1e18;
         }
-        uint256 tokenIn = 0;
-        uint256 tokenOut = MAX_TOKENS - 1;
-        balances[tokenIn] = 0;
-        balances[tokenOut] = 2e18;
+        uint256 indexIn = 0;
+        uint256 indexOut = MAX_TOKENS - 1;
+        balances[indexIn] = 0;
+        balances[indexOut] = 2e18;
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(tokenIn, tokenOut, 1e18, balances),
+            _buildSwapParams(indexIn, indexOut, 1e18, balances),
             pool,
             STATIC_FEE_PERCENTAGE
         );
@@ -293,8 +293,8 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
     function _boundValues(
         uint256 length,
-        uint256 tokenIn,
-        uint256 tokenOut,
+        uint256 indexIn,
+        uint256 indexOut,
         uint256 amountGivenScaled18,
         uint256[8] memory rawBalances
     ) internal pure returns (uint256, uint256, uint256, uint256, uint256[] memory) {
@@ -304,28 +304,28 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
             balances[i] = bound(rawBalances[i], 1, MAX_UINT128);
         }
 
-        tokenIn = bound(tokenIn, 0, length - 1);
-        tokenOut = bound(tokenOut, 0, length - 1);
-        if (tokenIn == tokenOut) {
-            tokenOut = (tokenOut + 1) % length;
+        indexIn = bound(indexIn, 0, length - 1);
+        indexOut = bound(indexOut, 0, length - 1);
+        if (indexIn == indexOut) {
+            indexOut = (indexOut + 1) % length;
         }
 
-        amountGivenScaled18 = bound(amountGivenScaled18, 1, balances[tokenOut]);
+        amountGivenScaled18 = bound(amountGivenScaled18, 1, balances[indexOut]);
 
-        return (length, tokenIn, tokenOut, amountGivenScaled18, balances);
+        return (length, indexIn, indexOut, amountGivenScaled18, balances);
     }
 
     function _buildSwapParams(
-        uint256 tokenIn,
-        uint256 tokenOut,
+        uint256 indexIn,
+        uint256 indexOut,
         uint256 amountGivenScaled18,
         uint256[] memory balances
     ) internal pure returns (PoolSwapParams memory) {
         return
             PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
-                indexIn: tokenIn,
-                indexOut: tokenOut,
+                indexIn: indexIn,
+                indexOut: indexOut,
                 amountGivenScaled18: amountGivenScaled18,
                 balancesScaled18: balances,
                 router: address(0),
