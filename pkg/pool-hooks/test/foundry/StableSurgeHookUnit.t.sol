@@ -191,7 +191,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
     }
 
-    function testOnComputeDynamicSwapFeePercentage_Fuzz(
+    function testOnComputeDynamicSwapFeePercentage__Fuzz(
         uint256 length,
         uint256 tokenIn,
         uint256 tokenOut,
