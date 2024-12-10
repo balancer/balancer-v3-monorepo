@@ -103,4 +103,19 @@ library InputHelpers {
             previous = current;
         }
     }
+
+    /// @dev Ensure an array of amounts is sorted. As above, does not validate length or uniqueness.
+    function ensureSortedAmounts(uint256[] memory amounts) internal pure {
+        uint256 previous = amounts[0];
+
+        for (uint256 i = 1; i < amounts.length; ++i) {
+            uint256 current = amounts[i];
+
+            if (previous > current) {
+                revert TokensNotSorted();
+            }
+
+            previous = current;
+        }
+    }
 }
