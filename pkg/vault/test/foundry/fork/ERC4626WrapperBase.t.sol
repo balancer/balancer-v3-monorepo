@@ -18,7 +18,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
     using SafeERC20 for IERC20;
 
     // Variables to be defined by setUpForkTestVariables().
-    string internal network;a
+    string internal network;
     uint256 internal blockNumber;
     IERC4626 internal wrapper;
     address internal underlyingDonor;
