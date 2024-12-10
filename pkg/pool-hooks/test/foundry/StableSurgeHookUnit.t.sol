@@ -153,7 +153,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
     }
 
-    function testGetSurgeFeePercentage_Fuzz(
+    function testGetSurgeFeePercentage__Fuzz(
         uint256 length,
         uint256 tokenIn,
         uint256 tokenOut,
