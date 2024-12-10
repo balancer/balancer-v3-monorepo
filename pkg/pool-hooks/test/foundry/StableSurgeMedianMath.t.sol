@@ -16,7 +16,7 @@ contract StableSurgeMedianMathTest is BaseVaultTest {
 
     StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
 
-    function testAbsSub_Fuzz(uint256 a, uint256 b) public view {
+    function testAbsSub__Fuzz(uint256 a, uint256 b) public view {
         a = bound(a, 0, MAX_UINT256);
         b = bound(b, 0, MAX_UINT256);
 
