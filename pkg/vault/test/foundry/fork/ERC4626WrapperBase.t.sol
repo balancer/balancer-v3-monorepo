@@ -14,7 +14,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
-    using FixedPoint for uint256;
+    using FixedPoint for uint256;a
     using SafeERC20 for IERC20;
 
     // Variables to be defined by setUpForkTestVariables().
