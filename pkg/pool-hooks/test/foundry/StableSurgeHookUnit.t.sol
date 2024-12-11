@@ -151,6 +151,33 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
     }
 
     function testChangeSurgeThresholdPercentageRevertIfSenderIsNotFeeManager() public {
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0x01),
+            swapFeeManager: address(0x01),
+            poolCreator: address(0x01)
+        });
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(IVaultExplorer.getPoolRoleAccounts.selector, pool),
+            abi.encode(poolRoleAccounts)
+        );
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
+    }
+
+    function testChangeSurgeThresholdPercentageRevertIfFeeManagerIsZero() public {
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0x00),
+            swapFeeManager: address(0x00),
+            poolCreator: address(0x00)
+        });
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(IVaultExplorer.getPoolRoleAccounts.selector, pool),
+            abi.encode(poolRoleAccounts)
+        );
+
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
     }

@@ -91,6 +91,10 @@ library InputHelpers {
 
     /// @dev Ensure an array of tokens is sorted. As above, does not validate length or uniqueness.
     function ensureSortedTokens(IERC20[] memory tokens) internal pure {
+        if (tokens.length < 2) {
+            return;
+        }
+
         IERC20 previous = tokens[0];
 
         for (uint256 i = 1; i < tokens.length; ++i) {
@@ -106,6 +110,10 @@ library InputHelpers {
 
     /// @dev Ensure an array of amounts is sorted. As above, does not validate length or uniqueness.
     function ensureSortedAmounts(uint256[] memory amounts) internal pure {
+        if (amounts.length < 2) {
+            return;
+        }
+
         uint256 previous = amounts[0];
 
         for (uint256 i = 1; i < amounts.length; ++i) {
