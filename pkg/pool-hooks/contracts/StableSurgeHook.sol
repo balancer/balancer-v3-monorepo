@@ -7,8 +7,6 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import {
@@ -24,6 +22,8 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
 
@@ -240,47 +240,17 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     ) public view returns (uint256) {
         uint256 numTokens = params.balancesScaled18.length;
 
-        uint256 invariant = IBasePool(pool).computeInvariant(params.balancesScaled18, Rounding.ROUND_DOWN);
-        (uint256 currentAmp, , ) = IStablePool(pool).getAmplificationParameter();
-
-        uint256 amountCalculatedScaled18;
-        if (params.kind == SwapKind.EXACT_IN) {
-            amountCalculatedScaled18 = StableMath.computeOutGivenExactIn(
-                currentAmp,
-                params.balancesScaled18,
-                params.indexIn,
-                params.indexOut,
-                params.amountGivenScaled18,
-                invariant
-            );
-        } else {
-            amountCalculatedScaled18 = StableMath.computeInGivenExactOut(
-                currentAmp,
-                params.balancesScaled18,
-                params.indexIn,
-                params.indexOut,
-                params.amountGivenScaled18,
-                invariant
-            );
-        }
+        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
 
         uint256[] memory newBalances = new uint256[](numTokens);
         ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
 
-        for (uint256 i = 0; i < numTokens; ++i) {
-            if (params.kind == SwapKind.EXACT_IN) {
-                if (i == params.indexIn) {
-                    newBalances[i] -= params.amountGivenScaled18;
-                } else if (i == params.indexOut) {
-                    newBalances[i] += amountCalculatedScaled18;
-                }
-            } else {
-                if (i == params.indexIn) {
-                    newBalances[i] += amountCalculatedScaled18;
-                } else if (i == params.indexOut) {
-                    newBalances[i] -= params.amountGivenScaled18;
-                }
-            }
+        if (params.kind == SwapKind.EXACT_IN) {
+            newBalances[params.indexIn] += params.amountGivenScaled18;
+            newBalances[params.indexOut] -= amountCalculatedScaled18;
+        } else {
+            newBalances[params.indexIn] += amountCalculatedScaled18;
+            newBalances[params.indexOut] -= params.amountGivenScaled18;
         }
 
         uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(newBalances);

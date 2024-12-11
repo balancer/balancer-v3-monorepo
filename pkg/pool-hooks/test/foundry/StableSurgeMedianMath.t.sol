@@ -4,11 +4,14 @@ pragma solidity ^0.8.24;
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { Arrays } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/Arrays.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+
 import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
 
 contract StableSurgeMedianMathTest is BaseVaultTest {
     using Arrays for uint256[];
+    using FixedPoint for uint256;
     using InputHelpers for uint256[];
 
     uint256 constant MIN_TOKENS = 2;
@@ -88,7 +91,7 @@ contract StableSurgeMedianMathTest is BaseVaultTest {
             totalDiffs += stableSurgeMedianMathMock.absSub(balances[i], median);
         }
 
-        uint256 expectedImbalance = (totalDiffs * 1e18) / totalBalance;
+        uint256 expectedImbalance = totalDiffs.divDown(totalBalance);
 
         uint256 imbalance = stableSurgeMedianMathMock.calculateImbalance(balances);
         assertEq(imbalance, expectedImbalance, "Imbalance is not correct");

@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import {
     LiquidityManagement,
@@ -15,6 +16,8 @@ import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVa
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { StableSurgeHook } from "../../contracts/StableSurgeHook.sol";
 import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
@@ -49,7 +52,6 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
         vm.expectEmit();
         emit StableSurgeHook.StableSurgeHookRegistered(pool, address(factoryMock));
-
         _registerPool();
 
         assertEq(
@@ -158,36 +160,29 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         uint256 indexIn,
         uint256 indexOut,
         uint256 amountGivenScaled18,
+        uint256 kindRaw,
         uint256[8] memory rawBalances
     ) public {
+        _registerPool();
+
+        SwapKind kind;
         uint256[] memory balances;
-        (length, indexIn, indexOut, amountGivenScaled18, balances) = _boundValues(
+
+        (length, indexIn, indexOut, amountGivenScaled18, kind, balances) = _boundValues(
             length,
             indexIn,
             indexOut,
             amountGivenScaled18,
+            kindRaw,
             rawBalances
         );
-
-        _registerPool();
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(indexIn, indexOut, amountGivenScaled18, balances),
-            pool,
-            STATIC_FEE_PERCENTAGE
-        );
-
-        uint256[] memory newBalances = new uint256[](length);
-        for (uint256 i = 0; i < length; ++i) {
-            newBalances[i] = balances[i];
-        }
-        newBalances[indexIn] += amountGivenScaled18;
-        newBalances[indexOut] -= amountGivenScaled18;
-
+        PoolSwapParams memory swapParams = _buildSwapParams(indexIn, indexOut, amountGivenScaled18, kind, balances);
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(swapParams, pool, STATIC_FEE_PERCENTAGE);
+        uint256[] memory newBalances = _computeNewBalances(swapParams);
         uint256 expectedFee = _calculateFee(
             stableSurgeMedianMathMock.calculateImbalance(newBalances),
             stableSurgeMedianMathMock.calculateImbalance(balances)
         );
-
         assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
     }
 
@@ -196,35 +191,33 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         uint256 indexIn,
         uint256 indexOut,
         uint256 amountGivenScaled18,
+        uint256 kindRaw,
         uint256[8] memory rawBalances
     ) public {
+        _registerPool();
+
+        SwapKind kind;
         uint256[] memory balances;
-        (length, indexIn, indexOut, amountGivenScaled18, balances) = _boundValues(
+
+        (length, indexIn, indexOut, amountGivenScaled18, kind, balances) = _boundValues(
             length,
             indexIn,
             indexOut,
             amountGivenScaled18,
+            kindRaw,
             rawBalances
         );
 
-        _registerPool();
-
+        PoolSwapParams memory swapParams = _buildSwapParams(indexIn, indexOut, amountGivenScaled18, kind, balances);
         vm.prank(address(vault));
         (bool success, uint256 surgeFeePercentage) = stableSurgeHook.onComputeDynamicSwapFeePercentage(
-            _buildSwapParams(indexIn, indexOut, amountGivenScaled18, balances),
+            swapParams,
             pool,
             STATIC_FEE_PERCENTAGE
         );
-
         assertTrue(success, "onComputeDynamicSwapFeePercentage should return true");
 
-        uint256[] memory newBalances = new uint256[](length);
-        for (uint256 i = 0; i < length; ++i) {
-            newBalances[i] = balances[i];
-        }
-        newBalances[indexIn] += amountGivenScaled18;
-        newBalances[indexOut] -= amountGivenScaled18;
-
+        uint256[] memory newBalances = _computeNewBalances(swapParams);
         uint256 expectedFee = _calculateFee(
             stableSurgeMedianMathMock.calculateImbalance(newBalances),
             stableSurgeMedianMathMock.calculateImbalance(balances)
@@ -234,6 +227,8 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
     }
 
     function testGetSurgeFeePercentageWhenNewTotalImbalanceIsZero() public {
+        _registerPool();
+
         uint256 numTokens = 8;
         uint256[] memory balances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -245,16 +240,17 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         balances[indexOut] = 2e18;
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(indexIn, indexOut, 1e18, balances),
+            _buildSwapParams(indexIn, indexOut, 1e18, SwapKind.EXACT_IN, balances),
             pool,
             STATIC_FEE_PERCENTAGE
         );
 
-        _registerPool();
         assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
     }
 
     function testGetSurgeFeePercentageWhenNewTotalImbalanceLesOrEqOld() public {
+        _registerPool();
+
         uint256 numTokens = 8;
         uint256[] memory balances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -263,15 +259,16 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         balances[3] = 10000e18;
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(0, MAX_TOKENS - 1, 0, balances),
+            _buildSwapParams(0, MAX_TOKENS - 1, 0, SwapKind.EXACT_IN, balances),
             pool,
             STATIC_FEE_PERCENTAGE
         );
-        _registerPool();
         assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
     }
 
     function testGetSurgeFeePercentageWhenNewTotalImbalanceLessOrEqThreshold() public {
+        _registerPool();
+
         uint256 numTokens = 8;
         uint256[] memory balances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -281,47 +278,59 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         balances[5] = 2e18;
 
         uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
-            _buildSwapParams(0, MAX_TOKENS - 1, 1, balances),
+            _buildSwapParams(0, MAX_TOKENS - 1, 1, SwapKind.EXACT_IN, balances),
             pool,
             STATIC_FEE_PERCENTAGE
         );
-        _registerPool();
         assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
     }
 
     function _boundValues(
-        uint256 length,
-        uint256 indexIn,
-        uint256 indexOut,
-        uint256 amountGivenScaled18,
-        uint256[8] memory rawBalances
-    ) internal pure returns (uint256, uint256, uint256, uint256, uint256[] memory) {
-        length = bound(length, MIN_TOKENS, MAX_TOKENS);
-        uint256[] memory balances = new uint256[](length);
+        uint256 lengthRaw,
+        uint256 indexInRaw,
+        uint256 indexOutRaw,
+        uint256 amountGivenScaled18Raw,
+        uint256 kindRaw,
+        uint256[8] memory balancesRaw
+    )
+        internal
+        pure
+        returns (
+            uint256 length,
+            uint256 indexIn,
+            uint256 indexOut,
+            uint256 amountGivenScaled18,
+            SwapKind kind,
+            uint256[] memory balances
+        )
+    {
+        length = bound(lengthRaw, MIN_TOKENS, MAX_TOKENS);
+        balances = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
-            balances[i] = bound(rawBalances[i], 1, MAX_UINT128);
+            balances[i] = bound(balancesRaw[i], 1, MAX_UINT128);
         }
 
-        indexIn = bound(indexIn, 0, length - 1);
-        indexOut = bound(indexOut, 0, length - 1);
+        indexIn = bound(indexInRaw, 0, length - 1);
+        indexOut = bound(indexOutRaw, 0, length - 1);
         if (indexIn == indexOut) {
             indexOut = (indexOut + 1) % length;
         }
 
-        amountGivenScaled18 = bound(amountGivenScaled18, 1, balances[indexOut]);
+        kind = SwapKind(bound(kindRaw, 0, 1));
 
-        return (length, indexIn, indexOut, amountGivenScaled18, balances);
+        amountGivenScaled18 = bound(amountGivenScaled18Raw, 1, balances[indexOut]);
     }
 
     function _buildSwapParams(
         uint256 indexIn,
         uint256 indexOut,
         uint256 amountGivenScaled18,
+        SwapKind kind,
         uint256[] memory balances
     ) internal pure returns (PoolSwapParams memory) {
         return
             PoolSwapParams({
-                kind: SwapKind.EXACT_IN,
+                kind: kind,
                 indexIn: indexIn,
                 indexOut: indexOut,
                 amountGivenScaled18: amountGivenScaled18,
@@ -329,6 +338,23 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
                 router: address(0),
                 userData: bytes("")
             });
+    }
+
+    function _computeNewBalances(PoolSwapParams memory params) internal view returns (uint256[] memory) {
+        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
+
+        uint256[] memory newBalances = new uint256[](params.balancesScaled18.length);
+        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            newBalances[params.indexIn] += params.amountGivenScaled18;
+            newBalances[params.indexOut] -= amountCalculatedScaled18;
+        } else {
+            newBalances[params.indexIn] += amountCalculatedScaled18;
+            newBalances[params.indexOut] -= params.amountGivenScaled18;
+        }
+
+        return newBalances;
     }
 
     function _calculateFee(uint256 newTotalImbalance, uint256 oldTotalImbalance) internal view returns (uint256) {

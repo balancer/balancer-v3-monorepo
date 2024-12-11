@@ -16,6 +16,8 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { PoolSwapParams, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { StableSurgeHook } from "../../contracts/StableSurgeHook.sol";
 import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
@@ -99,46 +101,104 @@ contract StableSurgeHookTest is BaseVaultTest {
         );
     }
 
-    function testSwap_Fuzz(uint256 amountGivenScaled18) public {
+    function testSwap__Fuzz(uint256 amountGivenScaled18, uint256 kindRaw) public {
         amountGivenScaled18 = bound(amountGivenScaled18, 1e18, poolInitAmount / 2);
+        SwapKind kind = SwapKind(bound(kindRaw, 0, 1));
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
-        vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, usdc, dai, amountGivenScaled18, 0, MAX_UINT256, false, bytes(""));
+        if (kind == SwapKind.EXACT_IN) {
+            vm.prank(alice);
+            router.swapSingleTokenExactIn(pool, usdc, dai, amountGivenScaled18, 0, MAX_UINT256, false, bytes(""));
+        } else {
+            vm.prank(alice);
+            router.swapSingleTokenExactOut(
+                pool,
+                usdc,
+                dai,
+                amountGivenScaled18,
+                MAX_UINT256,
+                MAX_UINT256,
+                false,
+                bytes("")
+            );
+        }
 
-        uint256 poolInvariant = StableMath.computeInvariant(
-            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
-            balancesBefore.poolTokens
-        );
+        (uint256 currentAmp, , ) = StablePool(pool).getAmplificationParameter();
+
+        uint256 poolInvariant = StableMath.computeInvariant(currentAmp, balancesBefore.poolTokens);
         uint256 actualSwapFeePercentage = _calculateFee(
             amountGivenScaled18,
+            kind,
             [poolInitAmount, poolInitAmount].toMemoryArray()
         );
         uint256 swapFeeAmount = amountGivenScaled18.mulUp(actualSwapFeePercentage);
-        uint256 expectedAmountOut = StableMath.computeOutGivenExactIn(
-            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
-            balancesBefore.poolTokens,
-            usdcIdx,
-            daiIdx,
-            amountGivenScaled18 - swapFeeAmount,
-            poolInvariant
-        );
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
 
         uint256 actualAmountOut = balancesAfter.aliceTokens[daiIdx] - balancesBefore.aliceTokens[daiIdx];
+        uint256 actualAmountIn = balancesBefore.aliceTokens[usdcIdx] - balancesAfter.aliceTokens[usdcIdx];
+
+        uint256 expectedAmountOut;
+        uint256 expectedAmountIn;
+        if (kind == SwapKind.EXACT_IN) {
+            expectedAmountIn = amountGivenScaled18;
+            expectedAmountOut = StableMath.computeOutGivenExactIn(
+                currentAmp,
+                balancesBefore.poolTokens,
+                usdcIdx,
+                daiIdx,
+                expectedAmountIn - swapFeeAmount,
+                poolInvariant
+            );
+        } else {
+            expectedAmountOut = amountGivenScaled18;
+            expectedAmountIn = StableMath.computeInGivenExactOut(
+                currentAmp,
+                balancesBefore.poolTokens,
+                usdcIdx,
+                daiIdx,
+                expectedAmountOut,
+                poolInvariant
+            );
+
+            expectedAmountIn += expectedAmountIn.mulDivUp(
+                actualSwapFeePercentage,
+                actualSwapFeePercentage.complement()
+            );
+        }
 
         assertEq(expectedAmountOut, actualAmountOut, "Amount out should be expectedAmountOut");
+        assertEq(expectedAmountIn, actualAmountIn, "Amount in should be expectedAmountIn");
     }
 
-    function _calculateFee(uint256 amountGivenScaled18, uint256[] memory balances) internal view returns (uint256) {
+    function _calculateFee(
+        uint256 amountGivenScaled18,
+        SwapKind kind,
+        uint256[] memory balances
+    ) internal view returns (uint256) {
+        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(
+            PoolSwapParams({
+                kind: kind,
+                indexIn: usdcIdx,
+                indexOut: daiIdx,
+                amountGivenScaled18: amountGivenScaled18,
+                balancesScaled18: balances,
+                router: address(0),
+                userData: bytes("")
+            })
+        );
+
         uint256[] memory newBalances = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; ++i) {
-            newBalances[i] = balances[i];
+        ScalingHelpers.copyToArray(balances, newBalances);
+
+        if (kind == SwapKind.EXACT_IN) {
+            newBalances[usdcIdx] += amountGivenScaled18;
+            newBalances[daiIdx] -= amountCalculatedScaled18;
+        } else {
+            newBalances[usdcIdx] += amountCalculatedScaled18;
+            newBalances[daiIdx] -= amountGivenScaled18;
         }
-        newBalances[usdcIdx] += amountGivenScaled18;
-        newBalances[daiIdx] -= amountGivenScaled18;
 
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(newBalances);
         uint256 oldTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(balances);
