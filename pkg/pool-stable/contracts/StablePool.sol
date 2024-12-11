@@ -166,7 +166,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams memory request) public view virtual onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view virtual returns (uint256) {
         uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
