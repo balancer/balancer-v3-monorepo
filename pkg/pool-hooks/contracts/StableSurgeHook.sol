@@ -105,7 +105,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
         _defaultMaxSurgeFeePercentage = defaultMaxSurgeFeePercentage;
 
-        // Assumes the hook is deployed by a factory.
+        // Assumes the hook is deployed by the same factory as the pool.
         _allowedPoolFactory = msg.sender;
     }
 
