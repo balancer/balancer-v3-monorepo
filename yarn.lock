@@ -225,6 +225,7 @@ __metadata:
   dependencies:
     "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v3-interfaces": "workspace:*"
+    "@balancer-labs/v3-pool-stable": "workspace:*"
     "@balancer-labs/v3-solidity-utils": "workspace:*"
     "@typescript-eslint/eslint-plugin": "npm:^5.41.0"
     "@typescript-eslint/parser": "npm:^5.41.0"
@@ -237,7 +238,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v3-pool-stable@workspace:pkg/pool-stable":
+"@balancer-labs/v3-pool-stable@workspace:*, @balancer-labs/v3-pool-stable@workspace:pkg/pool-stable":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v3-pool-stable@workspace:pkg/pool-stable"
   dependencies:
