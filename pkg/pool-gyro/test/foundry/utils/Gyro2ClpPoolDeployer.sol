@@ -23,7 +23,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
 
     uint256 private _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
     uint256 private _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
-    uint256 private DEFAULT_SWAP_FEE = 1e16; // 1% swap fee, but can be overridden by the tests
+    uint256 private DEFAULT_SWAP_FEE = 1e12; // 0.0001% swap fee, but can be overridden by the tests
 
     string private artifactsRootDir = "artifacts/";
 
@@ -52,7 +52,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
             _sqrtAlpha,
             _sqrtBeta,
             roleAccounts,
-            0,
+            DEFAULT_SWAP_FEE,
             address(0),
             bytes32("")
         );
