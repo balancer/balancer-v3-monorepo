@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "yarn compile && rm -rf artifacts/build-info",
-    "compile": "hardhat compile --show-stack-traces",
+    "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "npx prettier --check --plugin=prettier-plugin-solidity 'contracts/**/*.sol' ''test/**/*.sol'' && npx solhint 'contracts/**/*.sol'",
