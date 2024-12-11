@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { StableSurgeMedianMathMock } from '../typechain-types/contracts/test/StableSurgeMedianMathMock';
+import { findMedian } from '@balancer-labs/v3-helpers/src/math/surgeMedianMath';
 
 describe('StableSurgeMedianMath', function () {
   const MIN_TOKENS = 2;
@@ -12,17 +13,6 @@ describe('StableSurgeMedianMath', function () {
 
   function getRandomInt(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  function findMedian(arr: Array<number>): number {
-    arr.sort((a, b) => a - b);
-    const middleIndex = Math.floor(arr.length / 2);
-
-    if (arr.length % 2 === 0) {
-      return Math.floor((arr[middleIndex - 1] + arr[middleIndex]) / 2);
-    } else {
-      return arr[middleIndex];
-    }
   }
 
   before('deploy mock', async () => {

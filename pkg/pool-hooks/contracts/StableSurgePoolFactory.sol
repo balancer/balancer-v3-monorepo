@@ -20,8 +20,6 @@ import { StableSurgeHook } from "./StableSurgeHook.sol";
 
 /// @notice Stable Pool factory that deploys a standard StablePool with a StableSurgeHook.
 contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
-    uint256 private immutable _defaultSurgeThresholdPercentage;
-    uint256 private immutable _defaultMaxSurgeFeePercentage;
     address private immutable _stableSurgeHook;
 
     string private _poolVersion;
