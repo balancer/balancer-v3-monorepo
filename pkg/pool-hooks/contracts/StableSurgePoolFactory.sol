@@ -11,12 +11,12 @@ import {
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { StableSurgeHook } from "@balancer-labs/v3-pool-hooks/contracts/StableSurgeHook.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
-import { StablePool } from "./StablePool.sol";
+import { StableSurgeHook } from "./StableSurgeHook.sol";
 
 /// @notice Stable Pool factory that deploys a standard StablePool with a StableSurgeHook.
 contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {

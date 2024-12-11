@@ -17,10 +17,10 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
-import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
+import { StableSurgePoolFactoryDeployer } from "./utils/StableSurgePoolFactoryDeployer.sol";
 import { StableSurgePoolFactory } from "../../contracts/StableSurgePoolFactory.sol";
 
-contract StableSurgePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
+contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgePoolFactoryDeployer {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
