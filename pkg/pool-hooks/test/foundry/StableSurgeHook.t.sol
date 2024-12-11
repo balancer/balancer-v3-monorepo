@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -101,9 +99,12 @@ contract StableSurgeHookTest is BaseVaultTest {
         );
     }
 
-    function testSwap__Fuzz(uint256 amountGivenScaled18, uint256 kindRaw) public {
+    function testSwap__Fuzz(uint256 amountGivenScaled18, uint256 swapFeePercentageRaw, uint256 kindRaw) public {
         amountGivenScaled18 = bound(amountGivenScaled18, 1e18, poolInitAmount / 2);
         SwapKind kind = SwapKind(bound(kindRaw, 0, 1));
+
+        vault.manuallySetSwapFee(pool, bound(swapFeePercentageRaw, 0, 1e16));
+        swapFeePercentage = vault.getStaticSwapFeePercentage(pool);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
@@ -124,15 +125,11 @@ contract StableSurgeHookTest is BaseVaultTest {
             );
         }
 
-        (uint256 currentAmp, , ) = StablePool(pool).getAmplificationParameter();
-
-        uint256 poolInvariant = StableMath.computeInvariant(currentAmp, balancesBefore.poolTokens);
         uint256 actualSwapFeePercentage = _calculateFee(
             amountGivenScaled18,
             kind,
             [poolInitAmount, poolInitAmount].toMemoryArray()
         );
-        uint256 swapFeeAmount = amountGivenScaled18.mulUp(actualSwapFeePercentage);
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
 
@@ -142,34 +139,43 @@ contract StableSurgeHookTest is BaseVaultTest {
         uint256 expectedAmountOut;
         uint256 expectedAmountIn;
         if (kind == SwapKind.EXACT_IN) {
+            // extract swap fee
             expectedAmountIn = amountGivenScaled18;
-            expectedAmountOut = StableMath.computeOutGivenExactIn(
-                currentAmp,
-                balancesBefore.poolTokens,
-                usdcIdx,
-                daiIdx,
-                expectedAmountIn - swapFeeAmount,
-                poolInvariant
+            uint256 swapAmount = amountGivenScaled18.mulUp(actualSwapFeePercentage);
+
+            uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(
+                PoolSwapParams({
+                    kind: kind,
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
+                    amountGivenScaled18: expectedAmountIn - swapAmount,
+                    balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
+                    router: address(0),
+                    userData: bytes("")
+                })
             );
+
+            expectedAmountOut = amountCalculatedScaled18;
         } else {
             expectedAmountOut = amountGivenScaled18;
-            expectedAmountIn = StableMath.computeInGivenExactOut(
-                currentAmp,
-                balancesBefore.poolTokens,
-                usdcIdx,
-                daiIdx,
-                expectedAmountOut,
-                poolInvariant
+            uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(
+                PoolSwapParams({
+                    kind: kind,
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
+                    amountGivenScaled18: expectedAmountOut,
+                    balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
+                    router: address(0),
+                    userData: bytes("")
+                })
             );
-
-            expectedAmountIn += expectedAmountIn.mulDivUp(
-                actualSwapFeePercentage,
-                actualSwapFeePercentage.complement()
-            );
+            expectedAmountIn =
+                amountCalculatedScaled18 +
+                amountCalculatedScaled18.mulDivUp(actualSwapFeePercentage, actualSwapFeePercentage.complement());
         }
 
-        assertEq(expectedAmountOut, actualAmountOut, "Amount out should be expectedAmountOut");
         assertEq(expectedAmountIn, actualAmountIn, "Amount in should be expectedAmountIn");
+        assertEq(expectedAmountOut, actualAmountOut, "Amount out should be expectedAmountOut");
     }
 
     function _calculateFee(
