@@ -24,13 +24,13 @@ interface IBalancerContractRegistry {
     /**
      * @notice Emitted wen a new contract is registered.
      * @param contractType The type of contract being registered
-     * @param contractAddress The address of the contract being registered
      * @param contractName The name of the contract
+     * @param contractAddress The address of the contract being registered
      */
     event BalancerContractRegistered(
         ContractType indexed contractType,
-        address indexed contractAddress,
-        string indexed contractName
+        string indexed contractName,
+        address indexed contractAddress
     );
 
     /**
@@ -39,6 +39,21 @@ interface IBalancerContractRegistry {
      * @param contractAddress The address of the contract being deprecated
      */
     event BalancerContractDeprecated(address indexed contractAddress);
+
+    /**
+     * @notice Emitted when a new contract is deprecated.
+     * @dev This sets the `active` flag to false.
+     * @param contractType The type of contract being registered
+     * @param contractName The name of the contract
+     * @param existingContract The address of the old contract being replaced
+     * @param newContract The address of new contract
+     */
+    event BalancerContractReplaced(
+        ContractType indexed contractType,
+        string indexed contractName,
+        address existingContract,
+        address newContract
+    );
 
     /**
      * @notice The given type and name have already been registered.
@@ -51,11 +66,8 @@ interface IBalancerContractRegistry {
      */
     error ContractAlreadyRegistered(ContractType contractType, string contractName);
 
-    /**
-     * @notice The contract being deprecated was never registered.
-     * @param contractAddress The address of the contract to be deprecated
-     */
-    error ContractNotRegistered(address contractAddress);
+    /// @notice The contract being deprecated was never registered.
+    error ContractNotRegistered();
 
     /**
      * @notice The contract being deprecated was registered, but already deprecated.
@@ -96,6 +108,26 @@ interface IBalancerContractRegistry {
      * @param contractAddress The address of the contract being deregistered
      */
     function deprecateBalancerContract(address contractAddress) external;
+
+    /**
+     * @notice Migrate a named contract to a new address.
+     * @dev This is a permissioned function, intended to address one edge case and one feature. The edge case is
+     * handling mistakes. If an address is mistakenly registered (e.g., set to the address on a different chain),
+     * this allows correction. The feature is supporting querying for the "latest" contract (e.g., the latest version
+     * of `WeightedPoolFactory`), vs. having to know the exact version. If the "latest" contract address changes --
+     * for instance, if we deprecated `v3-weighted-pool` and registered `v3-weighted-pool-v2`, we would need to
+     * update `WeightedPoolFactory` to point to the v2 address. Normal registration would fail, as that combination
+     * was already registered, pointing to v1.
+     *
+     * @param contractType The type of contract being replaced
+     * @param contractName The name of the contract being replaced
+     * @param newContractAddress The address of the contract that should replace the existing registration
+     */
+    function replaceBalancerContract(
+        ContractType contractType,
+        string memory contractName,
+        address newContractAddress
+    ) external;
 
     /**
      * @notice Determine whether an address is an official contract of the specified type.

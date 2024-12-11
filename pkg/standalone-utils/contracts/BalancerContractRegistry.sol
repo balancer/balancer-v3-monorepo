@@ -9,6 +9,25 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
+/**
+ * @notice On-chain registry of standard Balancer contracts.
+ * @dev Maintain a registry of official Balancer Factories, Routers, and Hooks, for two main purposes.
+ * The first is to support the many instances where we need to know that a contract is "trusted" (i.e., is safe and
+ * behaves in the required manner). For instance, some hooks depend critically on the identity of the msg.sender,
+ * which must be passed down through the Router. Since Routers are permissionless, a malicious one could spoof the
+ * sender and "fool" the hook. The hook must therefore "trust" the Router.
+ *
+ * Current solutions involve passing in the address of the trusted Router on deployment: but what if it needs to
+ * support multiple Routers? Or if the Router is deprecated and replaced? Instead, we can pass the registry address,
+ * and query this contract to determine whether the Router is a "trusted" one.
+ *
+ * The second use case is for off-chain queries, or other protocols that need to easily determine, say, the "latest"
+ * Weighted Pool Factory. This contract provides `isActiveBalancerContract(type, address)` for the first case, and
+ * `getBalancerContract(type, name)` for the second.
+ *
+ * Note that the `SingletonAuthentication` base contract provides `getVault`, so it is also possible to ask this
+ * contract for the Vault address, so it doesn't need to be a type.
+ */
 contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthentication {
     // ContractId is the hash of ContractType + ContractName.
     mapping(bytes32 contractId => address addr) private _contractRegistry;
@@ -22,6 +41,46 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     constructor(IVault vault) SingletonAuthentication(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    /*
+    * Example usage:
+    * 
+    * // Register both the named version and the "latest" Weighted Pool Factory.
+    * registerBalancerContract(
+    *      ContractType.FACTORY, '20241205-v3-weighted-pool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc
+    * );
+    * registerBalancerContract(ContractType.FACTORY, 'WeightedPool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
+    * 
+    * // Register the Routers (two of them anyway).
+    * registerBalancerContract(ContractType.ROUTER, '20241205-v3-router', 0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd);
+    * registerBalancerContract(
+    *      ContractType.ROUTER, '20241205-v3-batch-router', 0x136f1EFcC3f8f88516B9E94110D56FDBfB1778d1
+    * );
+    * 
+    * // Now, hooks that require trusted routers can be deployed with the registry address, and query the router to see
+    * // whether it's "trusted" (i.e., registered by governance):
+    * 
+    * isActiveBalancerContract(ContractType.ROUTER, 0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd) would return true.
+    * 
+    * Off-chain processes that wanted to know the current address of the Weighted Pool Factory could query by either name:
+    * 
+    * (address, active) = getBalancerContract(ContractType.FACTORY, '20241205-v3-weighted-pool');
+    * (address, active) = getBalancerContract(ContractType.FACTORY, 'WeightedPool');
+    * 
+    * These would return the same result.
+    * 
+    * If we replaced `20241205-v3-weighted-pool` with `20250107-v3-weighted-pool-v2`, governance would call:
+    * 
+    * deprecateBalancerContract(0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
+    * registerBalancerContract(
+    *      ContractType.FACTORY, '20250107-v3-weighted-pool-v2', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8)
+    * );
+    * replaceBalancerContract(ContractType.FACTORY, 'WeightedPool', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8);
+    * 
+    * At that point, getBalancerContract(ContractType.FACTORY, '20241205-v3-weighted-pool') would return active=false,
+    * isActiveBalancerContract(ContractType.FACTORY, 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc) would return false,
+    * and getBalancerContract(ContractType.FACTORY, 'WeightedPool') would return the v2 address (and active=true).
+    */
 
     /// @inheritdoc IBalancerContractRegistry
     function registerBalancerContract(
@@ -60,7 +119,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         // types and names).
         _contractTypes[contractAddress][contractType] = true;
 
-        emit BalancerContractRegistered(contractType, contractAddress, contractName);
+        emit BalancerContractRegistered(contractType, contractName, contractAddress);
     }
 
     /// @inheritdoc IBalancerContractRegistry
@@ -69,7 +128,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
 
         // Check that the address has been registered.
         if (status.exists == false) {
-            revert ContractNotRegistered(contractAddress);
+            revert ContractNotRegistered();
         }
 
         // If it was registered, check that it has not already been deprecated.
@@ -84,6 +143,25 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         _contractStatus[contractAddress] = status;
 
         emit BalancerContractDeprecated(contractAddress);
+    }
+
+    /// @inheritdoc IBalancerContractRegistry
+    function replaceBalancerContract(
+        ContractType contractType,
+        string memory contractName,
+        address newContract
+    ) external authenticate {
+        // Ensure the type/name combination was already registered.
+        bytes32 contractId = _getContractId(contractType, contractName);
+        address existingContract = _contractRegistry[contractId];
+        if (existingContract == address(0)) {
+            revert ContractNotRegistered();
+        }
+
+        _contractRegistry[contractId] = newContract;
+        _contractTypes[newContract][contractType] = true;
+
+        emit BalancerContractReplaced(contractType, contractName, existingContract, newContract);
     }
 
     /// @inheritdoc IBalancerContractRegistry
