@@ -120,8 +120,8 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
             );
 
             // The invariant vector contains the rounded up and rounded down invariant. Both are needed when computing
-            // the new balance, because of E-CLP math approximations. Depending on tauAlpha and tauBeta values, we
-            // want to use the invariant rounded up or rounded down to make sure we're conservative in the output.
+            // the virtual offsets. Depending on tauAlpha and tauBeta values, we want to use the invariant rounded up
+            // or rounded down to make sure we're conservative in the output.
             invariant = Vector2(
                 (currentInvariant + invErr).toUint256().mulUp(invariantRatio).toInt256(),
                 (currentInvariant - invErr).toUint256().mulUp(invariantRatio).toInt256()
