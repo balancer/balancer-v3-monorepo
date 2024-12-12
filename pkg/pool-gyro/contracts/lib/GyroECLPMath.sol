@@ -58,24 +58,17 @@ library GyroECLPMath {
 
     /// @dev Enforces limits and approximate normalization of the rotation vector.
     function validateParams(IGyroECLPPool.EclpParams memory params) internal pure {
-        if (0 > params.s || params.s > _ONE) {
-            revert RotationVectorWrong();
-        }
-
-        if (0 > params.c || params.c > _ONE) {
-            revert RotationVectorWrong();
-        }
+        require(params.s > 0 && params.s < _ONE, RotationVectorWrong());
+        require(params.c > 0 && params.c < _ONE, RotationVectorWrong());
 
         IGyroECLPPool.Vector2 memory sc = IGyroECLPPool.Vector2(params.s, params.c);
         int256 scnorm2 = scalarProd(sc, sc); // squared norm
 
-        if (_ONE - _ROTATION_VECTOR_NORM_ACCURACY > scnorm2 || scnorm2 > _ONE + _ROTATION_VECTOR_NORM_ACCURACY) {
-            revert RotationVectorNotNormalized();
-        }
-
-        if (params.lambda < 0 || params.lambda > _MAX_STRETCH_FACTOR) {
-            revert StretchingFactorWrong();
-        }
+        require(
+            scnorm2 > _ONE - _ROTATION_VECTOR_NORM_ACCURACY && scnorm2 < _ONE + _ROTATION_VECTOR_NORM_ACCURACY,
+            RotationVectorNotNormalized()
+        );
+        require(params.lambda > 0 && params.lambda < _MAX_STRETCH_FACTOR, StretchingFactorWrong());
     }
 
     /**
@@ -89,34 +82,32 @@ library GyroECLPMath {
         int256 norm2;
         norm2 = scalarProdXp(derived.tauAlpha, derived.tauAlpha);
 
-        if (_ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP > norm2 || norm2 > _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP) {
-            revert DerivedTauNotNormalized();
-        }
+        require(
+            norm2 > _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP && norm2 < _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
+            DerivedTauNotNormalized()
+        );
 
         norm2 = scalarProdXp(derived.tauBeta, derived.tauBeta);
 
-        if (_ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP > norm2 || norm2 > _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP) {
-            revert DerivedTauNotNormalized();
-        }
+        require(
+            norm2 > _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP && norm2 < _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
+            DerivedTauNotNormalized()
+        );
+        require(derived.u < _ONE_XP, DerivedUvwzWrong());
+        require(derived.v < _ONE_XP, DerivedUvwzWrong());
+        require(derived.w < _ONE_XP, DerivedUvwzWrong());
+        require(derived.z < _ONE_XP, DerivedUvwzWrong());
 
-        if (derived.u > _ONE_XP) revert DerivedUvwzWrong();
-        if (derived.v > _ONE_XP) revert DerivedUvwzWrong();
-        if (derived.w > _ONE_XP) revert DerivedUvwzWrong();
-        if (derived.z > _ONE_XP) revert DerivedUvwzWrong();
-
-        if (
-            _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP > derived.dSq ||
-            derived.dSq > _ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP
-        ) {
-            revert DerivedDsqWrong();
-        }
+        require(
+            derived.dSq > _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP &&
+                derived.dSq < _ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP,
+            DerivedDsqWrong()
+        );
 
         // NB No anti-overflow checks are required given the checks done above and in validateParams().
         int256 mulDenominator = _ONE_XP.divXpU(calcAChiAChiInXp(params, derived) - _ONE_XP);
 
-        if (mulDenominator > _MAX_INV_INVARIANT_DENOMINATOR_XP) {
-            revert InvariantDenominatorWrong();
-        }
+        require(mulDenominator < _MAX_INV_INVARIANT_DENOMINATOR_XP, InvariantDenominatorWrong());
     }
 
     function scalarProd(
@@ -252,9 +243,7 @@ library GyroECLPMath {
     ) internal pure returns (int256, int256) {
         (int256 x, int256 y) = (balances[0].toInt256(), balances[1].toInt256());
 
-        if (x + y > _MAX_BALANCES) {
-            revert MaxAssetsExceeded();
-        }
+        require(x + y < _MAX_BALANCES, MaxAssetsExceeded());
 
         int256 atAChi = calcAtAChi(x, y, params, derived);
         (int256 sqrt, int256 err) = calcInvariantSqrt(x, y, params, derived);
@@ -297,9 +286,7 @@ library GyroECLPMath {
             _ONE_XP +
             1;
 
-        if (invariant + err > _MAX_INVARIANT) {
-            revert MaxInvariantExceeded();
-        }
+        require(invariant + err < _MAX_INVARIANT, MaxInvariantExceeded());
 
         return (invariant, err);
     }
@@ -517,12 +504,10 @@ library GyroECLPMath {
     ) internal pure {
         if (assetIndex == 0) {
             int256 xPlus = maxBalances0(params, derived, invariant);
-            if (!(newBal <= _MAX_BALANCES && newBal <= xPlus)) revert AssetBoundsExceeded();
-            return;
-        }
-        {
+            require(newBal <= _MAX_BALANCES && newBal <= xPlus, AssetBoundsExceeded());
+        } else {
             int256 yPlus = maxBalances1(params, derived, invariant);
-            if (!(newBal <= _MAX_BALANCES && newBal <= yPlus)) revert AssetBoundsExceeded();
+            require(newBal <= _MAX_BALANCES && newBal <= yPlus, AssetBoundsExceeded());
         }
     }
 
@@ -586,7 +571,7 @@ library GyroECLPMath {
             calcGiven = calcYGivenX; // this reverses compared to calcOutGivenIn
         }
 
-        if (!(amountOut <= balances[ixOut])) revert AssetBoundsExceeded();
+        require(amountOut <= balances[ixOut], AssetBoundsExceeded());
         int256 balOutNew = (balances[ixOut] - amountOut).toInt256();
         int256 balInNew = calcGiven(balOutNew, params, derived, invariant);
         // The checks in the following two lines should really always succeed; we keep them as extra safety against
