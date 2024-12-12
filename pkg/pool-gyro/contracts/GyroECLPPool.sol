@@ -119,16 +119,17 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
                 derivedECLPParams
             );
 
-            // invariant = overestimate in x-component, underestimate in y-component.
+            // The invariant vector contains the rounded up and rounded down invariant. Both are needed when computing
+            // the new balance, because of E-CLP math approximations. Depending on tauAlpha and tauBeta values, we
+            // want to use the invariant rounded up or rounded down to make sure we're conservative in the output.
             invariant = Vector2(
-                (currentInvariant + 2 * invErr).toUint256().mulUp(invariantRatio).toInt256(),
-                currentInvariant.toUint256().mulUp(invariantRatio).toInt256()
+                (currentInvariant + invErr).toUint256().mulUp(invariantRatio).toInt256(),
+                (currentInvariant - invErr).toUint256().mulUp(invariantRatio).toInt256()
             );
 
-            // Edge case check. Should never happen except for insane tokens.
-            // If this is hit, actually adding the tokens would lead to a revert or (if it
-            // went through) a deadlock downstream, so we catch it here.
-            if (invariant.y > GyroECLPMath._MAX_INVARIANT) {
+            // Edge case check. Should never happen except for insane tokens. If this is hit, actually adding the
+            // tokens would lead to a revert or (if it went through) a deadlock downstream, so we catch it here.
+            if (invariant.x > GyroECLPMath._MAX_INVARIANT) {
                 revert GyroECLPMath.MaxInvariantExceeded();
             }
         }
