@@ -32,6 +32,8 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     using FixedPoint for uint256;
     using SafeCast for *;
 
+    bytes32 private constant _POOL_TYPE = "ECLP";
+
     /// @dev Parameters of the ECLP pool
     int256 internal immutable _paramsAlpha;
     int256 internal immutable _paramsBeta;
@@ -52,8 +54,6 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     int256 internal immutable _w;
     int256 internal immutable _z;
     int256 internal immutable _dSq;
-
-    bytes32 private constant _POOL_TYPE = "ECLP";
 
     constructor(GyroECLPPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         GyroECLPMath.validateParams(params.eclpParams);
@@ -97,7 +97,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
         );
 
         if (rounding == Rounding.ROUND_DOWN) {
-            return currentInvariant.toUint256();
+            return (currentInvariant - invErr).toUint256();
         } else {
             return (currentInvariant + invErr).toUint256();
         }
