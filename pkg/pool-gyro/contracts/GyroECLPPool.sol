@@ -219,11 +219,11 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMinimumInvariantRatio() external pure returns (uint256) {
-        return 0;
+        return GyroECLPMath.MIN_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
-        return type(uint256).max;
+        return GyroECLPMath.MAX_INVARIANT_RATIO;
     }
 }

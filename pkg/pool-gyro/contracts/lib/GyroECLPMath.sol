@@ -24,12 +24,17 @@ library GyroECLPMath {
     using SafeCast for uint256;
     using SafeCast for int256;
 
-    error RotationVectorWrong();
+    error RotationVectorSWrong();
+    error RotationVectorCWrong();
     error RotationVectorNotNormalized();
     error AssetBoundsExceeded();
-    error DerivedTauNotNormalized();
+    error DerivedTauAlphaNotNormalized();
+    error DerivedTauBetaNotNormalized();
     error StretchingFactorWrong();
-    error DerivedUvwzWrong();
+    error DerivedUWrong();
+    error DerivedVWrong();
+    error DerivedWWrong();
+    error DerivedZWrong();
     error InvariantDenominatorWrong();
     error MaxAssetsExceeded();
     error MaxInvariantExceeded();
@@ -50,6 +55,11 @@ library GyroECLPMath {
     int256 internal constant _MAX_BALANCES = 1e34; // 1e16 in normal precision
     int256 internal constant _MAX_INVARIANT = 3e37; // 3e19 in normal precision
 
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 public constant MIN_INVARIANT_RATIO = 60e16; // 60%
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 public constant MAX_INVARIANT_RATIO = 500e16; // 500%
+
     struct QParams {
         int256 a;
         int256 b;
@@ -58,8 +68,8 @@ library GyroECLPMath {
 
     /// @dev Enforces limits and approximate normalization of the rotation vector.
     function validateParams(IGyroECLPPool.EclpParams memory params) internal pure {
-        require(params.s > 0 && params.s < _ONE, RotationVectorWrong());
-        require(params.c > 0 && params.c < _ONE, RotationVectorWrong());
+        require(params.s > 0 && params.s < _ONE, RotationVectorSWrong());
+        require(params.c > 0 && params.c < _ONE, RotationVectorCWrong());
 
         IGyroECLPPool.Vector2 memory sc = IGyroECLPPool.Vector2(params.s, params.c);
         int256 scnorm2 = scalarProd(sc, sc); // squared norm
@@ -84,19 +94,19 @@ library GyroECLPMath {
 
         require(
             norm2 > _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP && norm2 < _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
-            DerivedTauNotNormalized()
+            DerivedTauAlphaNotNormalized()
         );
 
         norm2 = scalarProdXp(derived.tauBeta, derived.tauBeta);
 
         require(
             norm2 > _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP && norm2 < _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
-            DerivedTauNotNormalized()
+            DerivedTauBetaNotNormalized()
         );
-        require(derived.u < _ONE_XP, DerivedUvwzWrong());
-        require(derived.v < _ONE_XP, DerivedUvwzWrong());
-        require(derived.w < _ONE_XP, DerivedUvwzWrong());
-        require(derived.z < _ONE_XP, DerivedUvwzWrong());
+        require(derived.u < _ONE_XP, DerivedUWrong());
+        require(derived.v < _ONE_XP, DerivedVWrong());
+        require(derived.w < _ONE_XP, DerivedWWrong());
+        require(derived.z < _ONE_XP, DerivedZWrong());
 
         require(
             derived.dSq > _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP &&
