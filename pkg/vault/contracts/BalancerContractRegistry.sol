@@ -8,7 +8,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 
 /**
  * @notice On-chain registry of standard Balancer contracts.
