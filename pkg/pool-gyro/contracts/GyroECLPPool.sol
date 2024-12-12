@@ -2,7 +2,7 @@
 // for information on licensing please see the README in the GitHub repository
 // <https://github.com/gyrostable/concentrated-lps>.
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -149,6 +149,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
 
     /// @inheritdoc IBasePool
     function onSwap(PoolSwapParams memory request) external view onlyVault returns (uint256) {
+        // The Vault already checks that index in != index out.
         bool tokenInIsToken0 = request.indexIn == 0;
 
         (EclpParams memory eclpParams, DerivedEclpParams memory derivedECLPParams) = _reconstructECLPParams();

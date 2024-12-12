@@ -2,7 +2,7 @@
 // for information on licensing please see the README in the GitHub repository
 // <https://github.com/gyrostable/concentrated-lps>.
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
