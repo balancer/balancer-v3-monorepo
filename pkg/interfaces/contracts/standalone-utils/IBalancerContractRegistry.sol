@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.24;
 
-interface IBalancerContractRegistry {
-    /// @notice Registered contracts must be one of these types.
-    enum ContractType {
-        POOL_FACTORY,
-        ROUTER,
-        HOOK
-    }
+/// @notice Registered contracts must be one of these types.
+enum ContractType {
+    POOL_FACTORY,
+    ROUTER,
+    HOOK
+}
 
+interface IBalancerContractRegistry {
     /**
      * @notice Contracts can be deprecated, so we store an active flag indicating the status.
      * @dev With two flags, we can differentiate between deprecated and non-existent.
