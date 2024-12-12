@@ -17,24 +17,24 @@ interface IProtocolFeePercentagesProvider {
         uint256 protocolYieldFeePercentage
     );
 
+    /// @notice The protocol fee controller was configured with an incorrect Vault address.
+    error WrongProtocolFeeControllerDeployment();
+
+    /**
+     * @notice Fees can only be set on recognized factories (i.e., registered in the `BalancerContractRegistry`).
+     * @param factory The address of the unknown factory
+     */
+    error UnknownFactory(address factory);
+
     /**
      * @notice `setFactorySpecificProtocolFeePercentages` has not been called for this factory address.
      * @dev This error can by thrown by `getFactorySpecificProtocolFeePercentages` or
      * `setProtocolFeePercentagesForPools`, as both require that valid fee percentages have been set.
+     * You need to set the factory fees before you can apply them to pools from that factory.
      *
-     * @param factory The unregistered factory address
+     * @param factory The factory address where fees have not been set
      */
-    error FactoryNotRegistered(address factory);
-
-    /**
-     * @notice The factory address provided is not a valid `IBasePoolFactory`.
-     * @dev This means it responds incorrectly to `isPoolFromFactory` (e.g., always responds true). If it doesn't
-     * implement `isPoolFromFactory` or isn't a contract at all, calls on `setFactorySpecificProtocolFeePercentages`
-     * will revert with no data.
-     *
-     * @param factory The address of the invalid factory
-     */
-    error InvalidFactory(address factory);
+    error FactoryFeesNotSet(address factory);
 
     /**
      * @notice The given pool is not from the expected factory.
@@ -79,7 +79,7 @@ interface IProtocolFeePercentagesProvider {
     /**
      * @notice Update the protocol fees for a set of pools from a given factory.
      * @dev This call is permissionless. Anyone can update the fee percentages, once they're set by governance.
-     * Note that goverance must also grant this contract permmission to set protocol fee percentages on pools.
+     * Note that governance must also grant this contract permission to set protocol fee percentages on pools.
      *
      * @param factory The address of the factory
      * @param pools The pools whose fees will be set according to `setFactorySpecificProtocolFeePercentages`

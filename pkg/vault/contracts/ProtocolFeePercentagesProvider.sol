@@ -4,11 +4,15 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import {
     IProtocolFeePercentagesProvider
 } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeePercentagesProvider.sol";
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
+import {
+    IBalancerContractRegistry,
+    ContractType
+} from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { SingletonAuthentication } from "./SingletonAuthentication.sol";
@@ -16,23 +20,21 @@ import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, SingletonAuthentication {
     using SafeCast for uint256;
 
-    /// @notice The protocol fee controller was configured with an incorrect Vault address.
-    error WrongProtocolFeeControllerDeployment();
-
     /**
      * @dev Data structure to store default protocol fees by factory. Fee percentages are 18-decimal floating point
      * numbers, so we know they fit in 64 bits, allowing the fees to be stored in a single slot.
      *
      * @param protocolSwapFee The protocol swap fee
      * @param protocolYieldFee The protocol yield fee
-     * @param isFactoryRegistered Flag indicating fees have been set (allows zero values)
+     * @param areFactoryFeesSet Flag indicating fees have been set (allows zero values)
      */
     struct FactoryProtocolFees {
         uint64 protocolSwapFeePercentage;
         uint64 protocolYieldFeePercentage;
-        bool isFactoryRegistered;
+        bool areFactoryFeesSet;
     }
 
+    IBalancerContractRegistry private immutable _trustedContractRegistry;
     IProtocolFeeController private immutable _protocolFeeController;
 
     uint256 private immutable _maxProtocolSwapFeePercentage;
@@ -41,8 +43,13 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     // Factory address => FactoryProtocolFees
     mapping(IBasePoolFactory => FactoryProtocolFees) private _factoryDefaultFeePercentages;
 
-    constructor(IVault vault, IProtocolFeeController protocolFeeController) SingletonAuthentication(vault) {
+    constructor(
+        IVault vault,
+        IProtocolFeeController protocolFeeController,
+        IBalancerContractRegistry trustedContractRegistry
+    ) SingletonAuthentication(vault) {
         _protocolFeeController = protocolFeeController;
+        _trustedContractRegistry = trustedContractRegistry;
 
         if (protocolFeeController.vault() != vault) {
             revert WrongProtocolFeeControllerDeployment();
@@ -87,17 +94,16 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         _protocolFeeController.ensureValidPrecision(protocolSwapFeePercentage);
         _protocolFeeController.ensureValidPrecision(protocolYieldFeePercentage);
 
-        // Best effort check that `factory` is the address of an IBasePoolFactory.
-        bool poolFromFactory = IBasePoolFactory(factory).isPoolFromFactory(address(0));
-        if (poolFromFactory) {
-            revert InvalidFactory(factory);
+        // Ensure the factory is valid.
+        if (_trustedContractRegistry.isActiveBalancerContract(ContractType.POOL_FACTORY, factory) == false) {
+            revert UnknownFactory(factory);
         }
 
         // Store the default fee percentages, and mark the factory as registered.
         _factoryDefaultFeePercentages[IBasePoolFactory(factory)] = FactoryProtocolFees({
             protocolSwapFeePercentage: protocolSwapFeePercentage.toUint64(),
             protocolYieldFeePercentage: protocolYieldFeePercentage.toUint64(),
-            isFactoryRegistered: true
+            areFactoryFeesSet: true
         });
 
         emit FactorySpecificProtocolFeePercentagesSet(factory, protocolSwapFeePercentage, protocolYieldFeePercentage);
@@ -125,8 +131,8 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     function _getValidatedProtocolFees(address factory) private view returns (FactoryProtocolFees memory factoryFees) {
         factoryFees = _factoryDefaultFeePercentages[IBasePoolFactory(factory)];
 
-        if (factoryFees.isFactoryRegistered == false) {
-            revert FactoryNotRegistered(factory);
+        if (factoryFees.areFactoryFeesSet == false) {
+            revert FactoryFeesNotSet(factory);
         }
     }
 
