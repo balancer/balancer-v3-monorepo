@@ -12,3 +12,7 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | --------------------------------- | ------------- | ---------------------------------------------------- |
 | Vault, Weighted Pool, Stable Pool | Certora       | [`2024-09-04`](./certora/2024-09-04.pdf)             |
 | Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2024-10-08`](./trail-of-bits/2024-10-08.pdf)       |
+| Vault, Weighted Pool, Stable Pool | Spearbit*     | [`2024-10-04`](./spearbit/2024-10-04.pdf)            |
+
+## Addenda
+* Note that 5.2.6 in the Spearbit audit of 2024-10-04 was resolved after the date of the audit. [PR #1113](https://github.com/balancer/balancer-v3-monorepo/pull/1113) replaces the event with explicit add/remove liquidity events, and accounts for swap fees in a separate field.
