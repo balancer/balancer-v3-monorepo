@@ -8,7 +8,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import {
     IBalancerContractRegistry,
     ContractType
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+} from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -33,7 +33,7 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         authorizer.grantRole(registry.getActionId(BalancerContractRegistry.replaceBalancerContract.selector), admin);
     }
 
-    function testGetVault() public {
+    function testGetVault() public view {
         assertEq(address(registry.getVault()), address(vault), "Wrong Vault address");
     }
 
