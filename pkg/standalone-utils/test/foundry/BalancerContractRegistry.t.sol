@@ -4,15 +4,15 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import {
     IBalancerContractRegistry,
     ContractType
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-
-import { BalancerContractRegistry } from "../../contracts/BalancerContractRegistry.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+
+import { BalancerContractRegistry } from "../../contracts/BalancerContractRegistry.sol";
 
 contract BalancerContractRegistryTest is BaseVaultTest {
     address private constant ANY_ADDRESS = 0x388C818CA8B9251b393131C08a736A67ccB19297;
@@ -31,6 +31,10 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         authorizer.grantRole(registry.getActionId(BalancerContractRegistry.registerBalancerContract.selector), admin);
         authorizer.grantRole(registry.getActionId(BalancerContractRegistry.deprecateBalancerContract.selector), admin);
         authorizer.grantRole(registry.getActionId(BalancerContractRegistry.replaceBalancerContract.selector), admin);
+    }
+
+    function testGetVault() public {
+        assertEq(address(registry.getVault()), address(vault), "Wrong Vault address");
     }
 
     function testRegisterWithoutPermission() public {
@@ -57,17 +61,29 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
 
         // Should return the registered contract as active.
-        assertTrue(registry.isActiveBalancerContract(ContractType.POOL_FACTORY, ANY_ADDRESS));
+        assertTrue(
+            registry.isActiveBalancerContract(ContractType.POOL_FACTORY, ANY_ADDRESS),
+            "ANY_ADDRESS is not active"
+        );
         // Zero address should not be active.
-        assertFalse(registry.isActiveBalancerContract(ContractType.POOL_FACTORY, ZERO_ADDRESS));
+        assertFalse(
+            registry.isActiveBalancerContract(ContractType.POOL_FACTORY, ZERO_ADDRESS),
+            "ZERO_ADDRESS is active"
+        );
         // Random address should not be active.
-        assertFalse(registry.isActiveBalancerContract(ContractType.POOL_FACTORY, SECOND_ADDRESS));
+        assertFalse(
+            registry.isActiveBalancerContract(ContractType.POOL_FACTORY, SECOND_ADDRESS),
+            "SECOND_ADDRESS is active"
+        );
         // Only active with the correct type.
-        assertFalse(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS));
+        assertFalse(
+            registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS),
+            "Address is active as a Router"
+        );
 
         (address contractAddress, bool active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME);
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertTrue(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong contract address");
+        assertTrue(active, "Contract not active");
     }
 
     function testValidRegistrationEmitsEvent() public {
@@ -91,15 +107,15 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
 
         (address contractAddress, bool active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME);
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertTrue(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong active contract address");
+        assertTrue(active, "Contract is not active");
 
         registry.deprecateBalancerContract(ANY_ADDRESS);
         vm.stopPrank();
 
         (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME);
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertFalse(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong deprecated contract address");
+        assertFalse(active, "Deprecated contract is active");
     }
 
     function testDeprecationEmitsEvent() public {
@@ -133,24 +149,24 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         registry.registerBalancerContract(ContractType.POOL_FACTORY, "WeightedPool", ANY_ADDRESS);
 
         (address contractAddress, bool active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME);
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertTrue(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong default address");
+        assertTrue(active, "Default contract is not active");
 
         (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, "WeightedPool");
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertTrue(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong WeightedPool address");
+        assertTrue(active, "Canonical contract is not active");
 
         registry.deprecateBalancerContract(ANY_ADDRESS);
         vm.stopPrank();
 
         // Deprecate the address, and all aliases show as inactive.
         (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME);
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertFalse(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong deprecated default address");
+        assertFalse(active, "Deprecated default contract is active");
 
         (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, "WeightedPool");
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertFalse(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong deprecated WeightedPool address");
+        assertFalse(active, "Deprecated canonical contract is active");
     }
 
     function testReplacementWithInvalidContract() public {
@@ -176,11 +192,14 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         vm.stopPrank();
 
         (address contractAddress, bool active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME);
-        assertEq(contractAddress, SECOND_ADDRESS);
-        assertTrue(active);
+        assertEq(contractAddress, SECOND_ADDRESS, "Wrong replaced address");
+        assertTrue(active, "Replaced address is not active");
 
-        assertTrue(registry.isActiveBalancerContract(ContractType.POOL_FACTORY, SECOND_ADDRESS));
-        assertFalse(registry.isActiveBalancerContract(ContractType.POOL_FACTORY, ANY_ADDRESS));
+        assertTrue(
+            registry.isActiveBalancerContract(ContractType.POOL_FACTORY, SECOND_ADDRESS),
+            "SECOND_ADDRESS is not active"
+        );
+        assertFalse(registry.isActiveBalancerContract(ContractType.POOL_FACTORY, ANY_ADDRESS), "ANY_ADDRESS is active");
     }
 
     function testReplacementEmitsEvent() public {
@@ -214,18 +233,18 @@ contract BalancerContractRegistryTest is BaseVaultTest {
             ContractType.POOL_FACTORY,
             "20241205-v3-weighted-pool"
         );
-        assertEq(contractAddress, ANY_ADDRESS);
-        assertFalse(active);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong v1 pool address");
+        assertFalse(active, "v1 pool address is active");
 
         (contractAddress, active) = registry.getBalancerContract(
             ContractType.POOL_FACTORY,
             "20250107-v3-weighted-pool-v2"
         );
-        assertEq(contractAddress, SECOND_ADDRESS);
-        assertTrue(active);
+        assertEq(contractAddress, SECOND_ADDRESS, "Wrong v2 pool address");
+        assertTrue(active, "v2 pool is not active");
 
         (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, "WeightedPool");
-        assertEq(contractAddress, SECOND_ADDRESS);
-        assertTrue(active);
+        assertEq(contractAddress, SECOND_ADDRESS, "Wrong canonical pool address");
+        assertTrue(active, "Canonical pool is not address");
     }
 }
