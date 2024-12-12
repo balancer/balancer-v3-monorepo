@@ -3,7 +3,8 @@
 pragma solidity ^0.8.24;
 
 import {
-    IBalancerContractRegistry
+    IBalancerContractRegistry,
+    ContractType
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -43,44 +44,46 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     }
 
     /*
-    * Example usage:
-    * 
-    * // Register both the named version and the "latest" Weighted Pool Factory.
-    * registerBalancerContract(
-    *      ContractType.FACTORY, '20241205-v3-weighted-pool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc
-    * );
-    * registerBalancerContract(ContractType.FACTORY, 'WeightedPool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
-    * 
-    * // Register the Routers (two of them anyway).
-    * registerBalancerContract(ContractType.ROUTER, '20241205-v3-router', 0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd);
-    * registerBalancerContract(
-    *      ContractType.ROUTER, '20241205-v3-batch-router', 0x136f1EFcC3f8f88516B9E94110D56FDBfB1778d1
-    * );
-    * 
-    * // Now, hooks that require trusted routers can be deployed with the registry address, and query the router to see
-    * // whether it's "trusted" (i.e., registered by governance):
-    * 
-    * isActiveBalancerContract(ContractType.ROUTER, 0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd) would return true.
-    * 
-    * Off-chain processes that wanted to know the current address of the Weighted Pool Factory could query by either name:
-    * 
-    * (address, active) = getBalancerContract(ContractType.FACTORY, '20241205-v3-weighted-pool');
-    * (address, active) = getBalancerContract(ContractType.FACTORY, 'WeightedPool');
-    * 
-    * These would return the same result.
-    * 
-    * If we replaced `20241205-v3-weighted-pool` with `20250107-v3-weighted-pool-v2`, governance would call:
-    * 
-    * deprecateBalancerContract(0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
-    * registerBalancerContract(
-    *      ContractType.FACTORY, '20250107-v3-weighted-pool-v2', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8)
-    * );
-    * replaceBalancerContract(ContractType.FACTORY, 'WeightedPool', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8);
-    * 
-    * At that point, getBalancerContract(ContractType.FACTORY, '20241205-v3-weighted-pool') would return active=false,
-    * isActiveBalancerContract(ContractType.FACTORY, 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc) would return false,
-    * and getBalancerContract(ContractType.FACTORY, 'WeightedPool') would return the v2 address (and active=true).
-    */
+     * Example usage:
+     *
+     * // Register both the named version and the "latest" Weighted Pool Factory.
+     * registerBalancerContract(
+     *      ContractType.POOL_FACTORY, '20241205-v3-weighted-pool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc
+     * );
+     * registerBalancerContract(ContractType.POOL_FACTORY, 'WeightedPool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
+     *
+     * // Register the Routers (two of them anyway).
+     * registerBalancerContract(ContractType.ROUTER, '20241205-v3-router', 0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd);
+     * registerBalancerContract(
+     *      ContractType.ROUTER, '20241205-v3-batch-router', 0x136f1EFcC3f8f88516B9E94110D56FDBfB1778d1
+     * );
+     *
+     * // Now, hooks that require trusted routers can be deployed with the registry address, and query the router to
+     * // see whether it's "trusted" (i.e., registered by governance):
+     *
+     * isActiveBalancerContract(ContractType.ROUTER, 0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd) would return true.
+     *
+     * Off-chain processes that wanted to know the current address of the Weighted Pool Factory could query by either
+     * name:
+     *
+     * (address, active) = getBalancerContract(ContractType.POOL_FACTORY, '20241205-v3-weighted-pool');
+     * (address, active) = getBalancerContract(ContractType.POOL_FACTORY, 'WeightedPool');
+     *
+     * These would return the same result.
+     *
+     * If we replaced `20241205-v3-weighted-pool` with `20250107-v3-weighted-pool-v2`, governance would call:
+     *
+     * deprecateBalancerContract(0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
+     * registerBalancerContract(
+     *      ContractType.POOL_FACTORY, '20250107-v3-weighted-pool-v2', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8)
+     * );
+     * replaceBalancerContract(ContractType.POOL_FACTORY, 'WeightedPool', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8);
+     *
+     * At that point,
+     * getBalancerContract(ContractType.POOL_FACTORY, '20241205-v3-weighted-pool') returns active=false,
+     * isActiveBalancerContract(ContractType.POOL_FACTORY, 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc) returns false,
+     * getBalancerContract(ContractType.POOL_FACTORY, 'WeightedPool') returns the v2 address (and active=true).
+     */
 
     /// @inheritdoc IBalancerContractRegistry
     function registerBalancerContract(
@@ -151,6 +154,10 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         string memory contractName,
         address newContract
     ) external authenticate {
+        if (newContract == address(0)) {
+            revert ZeroContractAddress();
+        }
+
         // Ensure the type/name combination was already registered.
         bytes32 contractId = _getContractId(contractType, contractName);
         address existingContract = _contractRegistry[contractId];
@@ -159,6 +166,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         }
 
         _contractRegistry[contractId] = newContract;
+        _contractStatus[newContract] = ContractStatus({ exists: true, active: true });
         _contractTypes[newContract][contractType] = true;
 
         emit BalancerContractReplaced(contractType, contractName, existingContract, newContract);
