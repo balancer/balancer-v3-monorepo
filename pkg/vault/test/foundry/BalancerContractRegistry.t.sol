@@ -91,10 +91,7 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         registry.registerBalancerContract(ContractType.ERC4626, DEFAULT_NAME, ANY_ADDRESS);
 
         // Should return the registered contract as active.
-        assertTrue(
-            registry.isActiveBalancerContract(ContractType.ERC4626, ANY_ADDRESS),
-            "ANY_ADDRESS is not active"
-        );
+        assertTrue(registry.isActiveBalancerContract(ContractType.ERC4626, ANY_ADDRESS), "ANY_ADDRESS is not active");
     }
 
     function testValidRegistrationEmitsEvent() public {
