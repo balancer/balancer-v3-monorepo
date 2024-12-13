@@ -12,11 +12,19 @@ import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 
 /**
  * @notice On-chain registry of standard Balancer contracts.
- * @dev Maintain a registry of official Balancer Factories, Routers, and Hooks, for two main purposes.
- * The first is to support the many instances where we need to know that a contract is "trusted" (i.e., is safe and
- * behaves in the required manner). For instance, some hooks depend critically on the identity of the msg.sender,
- * which must be passed down through the Router. Since Routers are permissionless, a malicious one could spoof the
- * sender and "fool" the hook. The hook must therefore "trust" the Router.
+ * @dev Maintain a registry of official Balancer Factories, Routers, Hooks, and valid ERC4626 tokens, for two main
+ * purposes. The first is to support the many instances where we need to know that a contract is "trusted" (i.e.,
+ * is safe and behaves in the required manner). For instance, some hooks depend critically on the identity of the
+ * msg.sender, which must be passed down through the Router. Since Routers are permissionless, a malicious one could
+ * spoof the sender and "fool" the hook. The hook must therefore "trust" the Router.
+ *
+ * It is also important for the front-end to know when a particular wrapped token should be used with buffers. Not all
+ * "ERC4626" wrapped tokens are fully conforming, and buffer operations with non-conforming tokens may fail in various
+ * unexpected ways. It is not enough to simply check whether a buffer exists (e.g., by calling `getBufferAsset`),
+ * since best practice is for the pool creator to initialize buffers for all such tokens regardless. They are
+ * permissionless, and could otherwise be initialized by anyone in unexpected ways. This registry could be used to
+ * keep track of "known good" buffers, such that `isActiveBalancerContract(ContractType.ERC4626, <address>)` returns
+ * true for fully-compliant tokens with properly initialized buffers.
  *
  * Current solutions involve passing in the address of the trusted Router on deployment: but what if it needs to
  * support multiple Routers? Or if the Router is deprecated and replaced? Instead, we can pass the registry address,

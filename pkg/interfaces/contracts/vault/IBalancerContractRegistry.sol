@@ -6,7 +6,8 @@ pragma solidity ^0.8.24;
 enum ContractType {
     POOL_FACTORY,
     ROUTER,
-    HOOK
+    HOOK,
+    ERC4626
 }
 
 interface IBalancerContractRegistry {
