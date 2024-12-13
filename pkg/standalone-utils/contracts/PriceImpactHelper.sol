@@ -7,7 +7,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract PriceImpactHelper {
+import { CallAndRevert } from "./CallAndRevert.sol";
+
+contract PriceImpactHelper is CallAndRevert {
     using FixedPoint for uint256;
 
     IVault internal immutable _vault;
@@ -27,13 +29,8 @@ contract PriceImpactHelper {
         uint256[] memory exactAmountsIn,
         address sender
     ) external returns (uint256 priceImpact) {
-        uint256 bptAmountOut = _router.queryAddLiquidityUnbalanced(pool, exactAmountsIn, sender, "");
-        uint256[] memory proportionalAmountsOut = _router.queryRemoveLiquidityProportional(
-            pool,
-            bptAmountOut,
-            sender,
-            ""
-        );
+        uint256 bptAmountOut = _queryAddLiquidityUnbalanced(pool, exactAmountsIn, sender);
+        uint256[] memory proportionalAmountsOut = _queryRemoveLiquidityProportional(pool, bptAmountOut, sender);
 
         // get deltas between exactAmountsIn and proportionalAmountsOut
         int256[] memory deltas = new int256[](exactAmountsIn.length);
@@ -57,6 +54,102 @@ contract PriceImpactHelper {
     }
 
     /*******************************************************************************
+                                Router Queries
+    *******************************************************************************/
+
+    function _queryAddLiquidityUnbalanced(
+        address pool,
+        uint256[] memory exactAmountsIn,
+        address sender
+    ) internal returns (uint256) {
+        return
+            abi.decode(
+                _callAndRevert(
+                    address(_router),
+                    abi.encodeWithSelector(
+                        _router.queryAddLiquidityUnbalanced.selector,
+                        pool,
+                        exactAmountsIn,
+                        sender,
+                        ""
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    function _queryRemoveLiquidityProportional(
+        address pool,
+        uint256 bptAmountOut,
+        address sender
+    ) internal returns (uint256[] memory) {
+        return
+            abi.decode(
+                _callAndRevert(
+                    address(_router),
+                    abi.encodeWithSelector(
+                        _router.queryRemoveLiquidityProportional.selector,
+                        pool,
+                        bptAmountOut,
+                        sender,
+                        ""
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
+    function _querySwapSingleTokenExactIn(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountIn,
+        address sender
+    ) internal returns (uint256) {
+        return
+            abi.decode(
+                _callAndRevert(
+                    address(_router),
+                    abi.encodeWithSelector(
+                        _router.querySwapSingleTokenExactIn.selector,
+                        pool,
+                        tokenIn,
+                        tokenOut,
+                        amountIn,
+                        sender,
+                        ""
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    function _querySwapSingleTokenExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountOut,
+        address sender
+    ) internal returns (uint256) {
+        return
+            abi.decode(
+                _callAndRevert(
+                    address(_router),
+                    abi.encodeWithSelector(
+                        _router.querySwapSingleTokenExactOut.selector,
+                        pool,
+                        tokenIn,
+                        tokenOut,
+                        amountOut,
+                        sender,
+                        ""
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /*******************************************************************************
                                     Helpers
     *******************************************************************************/
 
@@ -74,7 +167,7 @@ contract PriceImpactHelper {
         }
 
         zerosWithSingleDelta[tokenIndex] = uint256(delta > 0 ? delta : -delta);
-        int256 result = int256(_router.queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, sender, ""));
+        int256 result = int256(_queryAddLiquidityUnbalanced(pool, zerosWithSingleDelta, sender));
 
         return delta > 0 ? result : -result;
     }
@@ -100,24 +193,22 @@ contract PriceImpactHelper {
             if (deltaBPTs[minPositiveDeltaIndex] < -deltaBPTs[minNegativeDeltaIndex]) {
                 givenTokenIndex = minPositiveDeltaIndex;
                 resultTokenIndex = minNegativeDeltaIndex;
-                resultAmount = _router.querySwapSingleTokenExactIn(
+                resultAmount = _querySwapSingleTokenExactIn(
                     pool,
                     poolTokens[givenTokenIndex],
                     poolTokens[resultTokenIndex],
                     uint(deltas[givenTokenIndex]),
-                    sender,
-                    ""
+                    sender
                 );
             } else {
                 givenTokenIndex = minNegativeDeltaIndex;
                 resultTokenIndex = minPositiveDeltaIndex;
-                resultAmount = _router.querySwapSingleTokenExactOut(
+                resultAmount = _querySwapSingleTokenExactOut(
                     pool,
                     poolTokens[resultTokenIndex],
                     poolTokens[givenTokenIndex],
                     uint(-deltas[givenTokenIndex]),
-                    sender,
-                    ""
+                    sender
                 );
             }
 
