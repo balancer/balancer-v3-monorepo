@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -53,13 +53,8 @@ contract GyroECLPPoolFactory is BasePoolFactory {
         address poolHooksContract,
         bytes32 salt
     ) external returns (address pool) {
-        if (tokens.length != 2) {
-            revert SupportsOnlyTwoTokens();
-        }
-
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
+        require(tokens.length == 2, SupportsOnlyTwoTokens());
+        require(roleAccounts.poolCreator == address(0), StandardPoolWithCreator());
 
         pool = _create(
             abi.encode(

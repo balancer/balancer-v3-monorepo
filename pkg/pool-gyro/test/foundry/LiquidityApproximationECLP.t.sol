@@ -18,7 +18,7 @@ contract LiquidityApproximationECLPTest is LiquidityApproximationTest, GyroEclpP
         minSwapFeePercentage = IBasePool(swapPool).getMinimumSwapFeePercentage();
 
         // The invariant of ECLP pools are smaller.
-        maxAmount = 1e6 * 1e18;
+        maxAmount = 1e5 * 1e18;
     }
 
     function _createPool(

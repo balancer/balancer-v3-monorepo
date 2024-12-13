@@ -49,6 +49,14 @@ interface IGyroECLPPool is IBasePool {
      * and increase the precision. Therefore, the numbers are stored with 38 decimals precision. Please refer to
      * https://docs.gyro.finance/gyroscope-protocol/technical-documents, document "E-CLP high-precision
      * calculations.pdf", for further explanations on how to obtain the parameters below.
+     *
+     * @param tauAlpha
+     * @param tauBeta
+     * @param u from (A chi)_y = lambda * u + v
+     * @param v from (A chi)_y = lambda * u + v
+     * @param w from (A chi)_x = w / lambda + z
+     * @param z from (A chi)_x = w / lambda + z
+     * @param dSq error in c^2 + s^2 = dSq, used to correct errors in c, s, tau, u,v,w,z calculations
      */
     struct DerivedEclpParams {
         Vector2 tauAlpha;

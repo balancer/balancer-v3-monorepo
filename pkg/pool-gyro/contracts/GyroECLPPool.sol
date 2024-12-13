@@ -2,7 +2,7 @@
 // for information on licensing please see the README in the GitHub repository
 // <https://github.com/gyrostable/concentrated-lps>.
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -32,6 +32,8 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     using FixedPoint for uint256;
     using SafeCast for *;
 
+    bytes32 private constant _POOL_TYPE = "ECLP";
+
     /// @dev Parameters of the ECLP pool
     int256 internal immutable _paramsAlpha;
     int256 internal immutable _paramsBeta;
@@ -52,8 +54,6 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     int256 internal immutable _w;
     int256 internal immutable _z;
     int256 internal immutable _dSq;
-
-    bytes32 private constant _POOL_TYPE = "ECLP";
 
     constructor(GyroECLPPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
         GyroECLPMath.validateParams(params.eclpParams);
@@ -97,7 +97,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
         );
 
         if (rounding == Rounding.ROUND_DOWN) {
-            return currentInvariant.toUint256();
+            return (currentInvariant - invErr).toUint256();
         } else {
             return (currentInvariant + invErr).toUint256();
         }
@@ -119,18 +119,17 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
                 derivedECLPParams
             );
 
-            // invariant = overestimate in x-component, underestimate in y-component.
+            // The invariant vector contains the rounded up and rounded down invariant. Both are needed when computing
+            // the virtual offsets. Depending on tauAlpha and tauBeta values, we want to use the invariant rounded up
+            // or rounded down to make sure we're conservative in the output.
             invariant = Vector2(
-                (currentInvariant + 2 * invErr).toUint256().mulUp(invariantRatio).toInt256(),
-                currentInvariant.toUint256().mulUp(invariantRatio).toInt256()
+                (currentInvariant + invErr).toUint256().mulUp(invariantRatio).toInt256(),
+                (currentInvariant - invErr).toUint256().mulUp(invariantRatio).toInt256()
             );
 
-            // Edge case check. Should never happen except for insane tokens.
-            // If this is hit, actually adding the tokens would lead to a revert or (if it
-            // went through) a deadlock downstream, so we catch it here.
-            if (invariant.y > GyroECLPMath._MAX_INVARIANT) {
-                revert GyroECLPMath.MaxInvariantExceeded();
-            }
+            // Edge case check. Should never happen except for insane tokens. If this is hit, actually adding the
+            // tokens would lead to a revert or (if it went through) a deadlock downstream, so we catch it here.
+            require(invariant.x < GyroECLPMath._MAX_INVARIANT, GyroECLPMath.MaxInvariantExceeded());
         }
 
         if (tokenInIndex == 0) {
@@ -148,6 +147,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
 
     /// @inheritdoc IBasePool
     function onSwap(PoolSwapParams memory request) external view onlyVault returns (uint256) {
+        // The Vault already checks that index in != index out.
         bool tokenInIsToken0 = request.indexIn == 0;
 
         (EclpParams memory eclpParams, DerivedEclpParams memory derivedECLPParams) = _reconstructECLPParams();
@@ -219,11 +219,11 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMinimumInvariantRatio() external pure returns (uint256) {
-        return 0;
+        return GyroECLPMath.MIN_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
-        return type(uint256).max;
+        return GyroECLPMath.MAX_INVARIANT_RATIO;
     }
 }
