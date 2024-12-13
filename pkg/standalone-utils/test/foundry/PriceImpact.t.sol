@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -23,25 +24,21 @@ import { VaultExtensionMock } from "@balancer-labs/v3-vault/contracts/test/Vault
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-vault/contracts/test/InputHelpersMock.sol";
 
-import { PriceImpact } from "../../contracts/PriceImpact.sol";
+import { PriceImpactHelper } from "../../contracts/PriceImpactHelper.sol";
 
 contract PriceImpactTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    uint256 constant USDC_AMOUNT = 1e4 * 1e18;
-    uint256 constant DAI_AMOUNT = 1e4 * 1e18;
-    uint256 constant DELTA = 1e9;
-
     WeightedPoolFactory factory;
     WeightedPool weightedPool;
-    PriceImpact priceImpactHelper;
+    PriceImpactHelper priceImpactHelper;
 
     InputHelpersMock public immutable inputHelpersMock = new InputHelpersMock();
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-        priceImpactHelper = new PriceImpact(vault, router);
+        priceImpactHelper = new PriceImpactHelper(vault, router);
     }
 
     function createPool() internal override returns (address, bytes memory) {
@@ -83,26 +80,30 @@ contract PriceImpactTest is BaseVaultTest {
         vm.startPrank(address(0), address(0));
 
         // calculate spotPrice
-        // uint256 infinitesimalAmountIn = 1e5;
-        // uint256 infinitesimalBptOut = router.queryAddLiquidityUnbalanced(
-        //     pool,
-        //     [infinitesimalAmountIn, 1].toMemoryArray(),
-        //     address(0),
-        //     bytes("")
-        // );
-        // uint256 spotPrice = infinitesimalAmountIn.divDown(infinitesimalBptOut);
+        uint256 infinitesimalAmountIn = 1e10;
+        uint256 infinitesimalBptOut = router.queryAddLiquidityUnbalanced(
+            pool,
+            [infinitesimalAmountIn, 0].toMemoryArray(),
+            address(0),
+            bytes("")
+        );
+        uint256 spotPrice = infinitesimalAmountIn.divDown(infinitesimalBptOut);
 
         // calculate priceImpact
-        uint256 amountIn = DAI_AMOUNT / 4;
+        uint256 amountIn = poolInitAmount / 2;
         uint256[] memory amountsIn = [amountIn, 0].toMemoryArray();
         uint256 priceImpact = priceImpactHelper.calculateAddLiquidityUnbalancedPriceImpact(pool, amountsIn, address(0));
 
         // calculate effectivePrice
-        // uint256 bptOut = router.queryAddLiquidityUnbalanced(pool, amountsIn, address(0), bytes(""));
-        // uint256 effectivePrice = amountIn.divDown(bptOut);
+        uint256 bptOut = router.queryAddLiquidityUnbalanced(pool, amountsIn, address(0), bytes(""));
+        uint256 effectivePrice = amountIn.divDown(bptOut);
 
-        // // calculate expectedPriceImpact for comparison
-        // uint256 expectedPriceImpact = effectivePrice.divDown(spotPrice) - 1e18;
+        console.log("spotPrice", spotPrice);
+        console.log("priceImpact", priceImpact);
+        console.log("effectivePrice", effectivePrice);
+
+        //      // calculate expectedPriceImpact for comparison
+        //     uint256 expectedPriceImpact = effectivePrice.divDown(spotPrice) - 1e18;
 
         // vm.stopPrank();
 

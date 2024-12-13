@@ -7,7 +7,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract PriceImpact {
+contract PriceImpactHelper {
     using FixedPoint for uint256;
 
     IVault internal immutable _vault;
