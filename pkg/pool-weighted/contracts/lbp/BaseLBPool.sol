@@ -24,7 +24,7 @@ import { WeightedPool } from "../WeightedPool.sol";
  * which will not be used later), and it is tremendously helpful for pool validation and any potential future
  * base contract changes.
  */
-contract LBPool is WeightedPool, Ownable, BaseHooks {
+abstract contract BaseLBPool is WeightedPool, Ownable, BaseHooks {
     using SafeCast for *;
 
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight.
@@ -36,11 +36,10 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         uint32 endTime;
         uint64 startWeight0;
         uint64 endWeight0;
-        bool swapEnabled;
     }
 
     // LBPs are constrained to two tokens.
-    uint256 private constant _NUM_TOKENS = 2;
+    uint256 internal constant _NUM_TOKENS = 2;
 
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true
     // originating account on operations. This is important for liquidity operations, as these are permissioned
@@ -51,12 +50,6 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
     address private immutable _TRUSTED_ROUTER;
 
     PoolState private _poolState;
-
-    /**
-     * @notice Emitted when the owner enables or disables swaps.
-     * @param swapEnabled True if we are enabling swaps
-     */
-    event SwapEnabledSet(bool swapEnabled);
 
     /**
      * @notice Emitted when the owner initiates a gradual weight change (e.g., at the start of the sale).
@@ -76,14 +69,13 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
     /// @dev Indicates that the router that called the Vault is not trusted, so any operations should revert.
     error RouterNotTrusted();
 
-    /// @dev Indicates that the `owner` has disabled swaps.
+    /// @dev Indicates that the swaps are not currently enabled.
     error SwapsDisabled();
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
         address owner,
-        bool swapEnabledOnStart,
         address trustedRouter
     ) WeightedPool(params, vault) Ownable(owner) {
         // WeightedPool validates `numTokens == normalizedWeights.length`, and ensures valid weights.
@@ -96,7 +88,6 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         // solhint-disable-next-line not-rely-on-time
         uint32 currentTime = block.timestamp.toUint32();
         _startGradualWeightChange(currentTime, currentTime, params.normalizedWeights, params.normalizedWeights);
-        _setSwapEnabled(swapEnabledOnStart);
     }
 
     /**
@@ -132,45 +123,6 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
     /*******************************************************************************
                                 Permissioned Functions
     *******************************************************************************/
-
-    /**
-     * @notice Enable/disable trading.
-     * @dev This is a permissioned function that can only be called by the owner.
-     * @param swapEnabled True if trading should be enabled
-     */
-    function setSwapEnabled(bool swapEnabled) external onlyOwner {
-        _setSwapEnabled(swapEnabled);
-    }
-
-    /**
-     * @notice Start a gradual weight change. Weights will change smoothly from current values to `endWeights`.
-     * @dev This is a permissioned function that can only be called by the owner.
-     * If the `startTime` is in the past, the weight change will begin immediately.
-     *
-     * @param startTime The timestamp when the weight change will start
-     * @param endTime  The timestamp when the weights will reach their final values
-     * @param endWeights The final values of the weights
-     */
-    function updateWeightsGradually(
-        uint256 startTime,
-        uint256 endTime,
-        uint256[] memory endWeights
-    ) external onlyOwner {
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, endWeights.length);
-
-        if (endWeights[0] < _MIN_WEIGHT || endWeights[1] < _MIN_WEIGHT) {
-            revert MinWeight();
-        }
-        if (endWeights[0] + endWeights[1] != FixedPoint.ONE) {
-            revert NormalizedWeightInvariant();
-        }
-
-        // Ensure startTime >= now.
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
-        // The SafeCast ensures `endTime` can't overflow.
-        _startGradualWeightChange(startTime.toUint32(), endTime.toUint32(), _getNormalizedWeights(), endWeights);
-    }
 
     /// @inheritdoc WeightedPool
     function onSwap(PoolSwapParams memory request) public view override onlyVault returns (uint256) {
@@ -258,15 +210,7 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         return GradualValueChange.interpolateValue(poolState.startWeight0, poolState.endWeight0, pctProgress);
     }
 
-    function _getPoolSwapEnabled() private view returns (bool) {
-        return _poolState.swapEnabled;
-    }
-
-    function _setSwapEnabled(bool swapEnabled) private {
-        _poolState.swapEnabled = swapEnabled;
-
-        emit SwapEnabledSet(swapEnabled);
-    }
+    function _getPoolSwapEnabled() internal view virtual returns (bool) {}
 
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,

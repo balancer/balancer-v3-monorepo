@@ -28,11 +28,12 @@ import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.so
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
-import { LBPool } from "../../contracts/lbp/LBPool.sol";
+import { LBPoolClassicFactory } from "../../contracts/lbp/LBPoolClassicFactory.sol";
+import { LBPoolClassic } from "../../contracts/lbp/LBPoolClassic.sol";
+import { BaseLBPool } from "../../contracts/lbp/BaseLBPool.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
-contract LBPoolTest is BasePoolTest {
+contract LBPoolClassicTest is BasePoolTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for uint256;
@@ -68,18 +69,18 @@ contract LBPoolTest is BasePoolTest {
         }
 
         string memory factoryVersion = "Factory v1";
-        string memory poolVersion = "Pool v1";
-        factory = new LBPoolFactory(IVault(address(vault)), 365 days, factoryVersion, poolVersion, address(router));
+        string memory poolVersion = "Classic Pool v1";
+        factory = new LBPoolClassicFactory(IVault(address(vault)), 365 days, factoryVersion, poolVersion, address(router));
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        string memory name = "LB Pool";
-        string memory symbol = "LBPOOL";
+        string memory name = "LBPoolClassic";
+        string memory symbol = "LBPC";
 
-        LBPool newPool = LBPool(
-            LBPoolFactory(address(factory)).create(
+        LBPoolClassic newPool = LBPoolClassic(
+            LBPoolClassicFactory(address(factory)).create(
                 name,
                 symbol,
                 vault.buildTokenConfig(sortedTokens),
@@ -333,7 +334,7 @@ contract LBPoolTest is BasePoolTest {
 
     function testSwapRestrictions() public {
         // Ensure swaps are initially enabled
-        assertTrue(LBPool(address(pool)).getSwapEnabled(), "Swaps should be enabled initially");
+        assertTrue(LBPoolClassic(address(pool)).getSwapEnabled(), "Swaps should be enabled initially");
 
         // Test swap when enabled
         vm.prank(alice);
@@ -350,14 +351,14 @@ contract LBPoolTest is BasePoolTest {
 
         // Disable swaps
         vm.prank(bob);
-        LBPool(address(pool)).setSwapEnabled(false);
+        LBPoolClassic(address(pool)).setSwapEnabled(false);
 
         // Verify swaps are disabled
-        assertFalse(LBPool(address(pool)).getSwapEnabled(), "Swaps should be disabled");
+        assertFalse(LBPoolClassic(address(pool)).getSwapEnabled(), "Swaps should be disabled");
 
         // Test swap when disabled
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(LBPool.SwapsDisabled.selector));
+        vm.expectRevert(abi.encodeWithSelector(BaseLBPool.SwapsDisabled.selector));
         router.swapSingleTokenExactIn(
             address(pool),
             IERC20(dai),
@@ -371,10 +372,10 @@ contract LBPoolTest is BasePoolTest {
 
         // Re-enable swaps
         vm.prank(bob);
-        LBPool(address(pool)).setSwapEnabled(true);
+        LBPoolClassic(address(pool)).setSwapEnabled(true);
 
         // Verify swaps are re-enabled
-        assertTrue(LBPool(address(pool)).getSwapEnabled(), "Swaps should be re-enabled");
+        assertTrue(LBPoolClassic(address(pool)).getSwapEnabled(), "Swaps should be re-enabled");
 
         // Test swap after re-enabling
         vm.prank(alice);
@@ -398,7 +399,7 @@ contract LBPoolTest is BasePoolTest {
 
         vm.prank(bob);
         vm.expectRevert(stdError.arithmeticError);
-        LBPool(address(pool)).updateWeightsGradually(blockDotTimestampTestStart, type(uint32).max + 1, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(blockDotTimestampTestStart, type(uint32).max + 1, endWeights);
     }
 
     function testQuerySwapDuringWeightUpdate() public {
@@ -420,7 +421,7 @@ contract LBPoolTest is BasePoolTest {
 
         // Start the gradual weight update
         vm.prank(bob);
-        LBPool(address(pool)).updateWeightsGradually(startTime, startTime + testDuration, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(startTime, startTime + testDuration, endWeights);
 
         uint256 prevAmountOut;
         uint256 amountOut;
@@ -465,9 +466,9 @@ contract LBPoolTest is BasePoolTest {
         endWeights[1] = 0.8e18; // 80%
 
         vm.prank(bob);
-        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
 
-        (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPool(
+        (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPoolClassic(
             address(pool)
         ).getGradualWeightUpdateParams();
 
@@ -488,7 +489,7 @@ contract LBPoolTest is BasePoolTest {
 
         vm.prank(bob);
         vm.expectRevert(WeightedPool.MinWeight.selector);
-        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
     }
 
     function testUpdateWeightsGraduallyNormalizedWeightInvariantRevert() public {
@@ -500,7 +501,7 @@ contract LBPoolTest is BasePoolTest {
 
         vm.prank(bob);
         vm.expectRevert(WeightedPool.NormalizedWeightInvariant.selector);
-        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
     }
 
     function testAddLiquidityRouterNotTrusted() public {
@@ -509,7 +510,7 @@ contract LBPoolTest is BasePoolTest {
         uint256[] memory amounts = [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray();
 
         vm.startPrank(bob);
-        vm.expectRevert(abi.encodeWithSelector(LBPool.RouterNotTrusted.selector));
+        vm.expectRevert(abi.encodeWithSelector(BaseLBPool.RouterNotTrusted.selector));
         mockRouter.addLiquidityUnbalanced(address(pool), amounts, 0, false, "");
         vm.stopPrank();
     }
@@ -526,7 +527,7 @@ contract LBPoolTest is BasePoolTest {
         // Attempt to create a pool with 1 token
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        LBPoolFactory(address(factory)).create(
+        LBPoolClassicFactory(address(factory)).create(
             "Invalid Pool 1",
             "IP1",
             tokenConfig1,
@@ -540,7 +541,7 @@ contract LBPoolTest is BasePoolTest {
         // Attempt to create a pool with 3 tokens
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        LBPoolFactory(address(factory)).create(
+        LBPoolClassicFactory(address(factory)).create(
             "Invalid Pool 3",
             "IP3",
             tokenConfig3,
@@ -556,7 +557,7 @@ contract LBPoolTest is BasePoolTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(poolTokens);
 
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        LBPoolFactory(address(factory)).create(
+        LBPoolClassicFactory(address(factory)).create(
             "Mismatched Pool",
             "MP",
             tokenConfig,
@@ -569,8 +570,8 @@ contract LBPoolTest is BasePoolTest {
     }
 
     function testInitializedWithSwapsDisabled() public {
-        LBPool swapsDisabledPool = LBPool(
-            LBPoolFactory(address(factory)).create(
+        LBPoolClassic swapsDisabledPool = LBPoolClassic(
+            LBPoolClassicFactory(address(factory)).create(
                 "Swaps Disabled Pool",
                 "SDP",
                 vault.buildTokenConfig(poolTokens),
@@ -595,7 +596,7 @@ contract LBPoolTest is BasePoolTest {
         vm.stopPrank();
 
         vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(LBPool.SwapsDisabled.selector));
+        vm.expectRevert(abi.encodeWithSelector(BaseLBPool.SwapsDisabled.selector));
         router.swapSingleTokenExactIn(
             address(swapsDisabledPool),
             IERC20(dai),
@@ -617,7 +618,7 @@ contract LBPoolTest is BasePoolTest {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(InputHelpers.InputLengthMismatch.selector));
-        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
     }
 
     function testUpdateWeightsGraduallyMismatchedEndWeightsTooMany() public {
@@ -630,7 +631,7 @@ contract LBPoolTest is BasePoolTest {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(InputHelpers.InputLengthMismatch.selector));
-        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
     }
 
     function testNonOwnerCannotUpdateWeights() public {
@@ -642,7 +643,7 @@ contract LBPoolTest is BasePoolTest {
 
         vm.prank(alice); // Non-owner
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(alice)));
-        LBPool(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
+        LBPoolClassic(address(pool)).updateWeightsGradually(startTime, endTime, endWeights);
     }
 
     function testOnSwapInvalidTokenIndex() public {
@@ -659,7 +660,7 @@ contract LBPoolTest is BasePoolTest {
         });
 
         vm.expectRevert(IVaultErrors.InvalidToken.selector);
-        LBPool(pool).onSwap(request);
+        LBPoolClassic(pool).onSwap(request);
     }
 
     function _executeAndUndoSwap(uint256 amountIn) internal returns (uint256) {

@@ -10,13 +10,13 @@ import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePool
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { WeightedPool } from "../WeightedPool.sol";
-import { LBPool } from "./LBPool.sol";
+import { LBPoolClassic } from "./LBPoolClassic.sol";
 
 /**
- * @notice LBPool Factory.
- * @dev This is a factory specific to LBPools, allowing only 2 tokens.
+ * @notice LBPoolClassic Factory.
+ * @dev This is a factory specific to LBPoolClassics, allowing only 2 tokens.
  */
-contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
+contract LBPoolClassicFactory is IPoolVersion, BasePoolFactory, Version {
     string private _poolVersion;
 
     // solhint-disable-next-line var-name-mixedcase
@@ -28,10 +28,10 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
         string memory factoryVersion,
         string memory poolVersion,
         address trustedRouter
-    ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
+    ) BasePoolFactory(vault, pauseWindowDuration, type(LBPoolClassic).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
 
-        // LBPools are deployed with a router known to reliably report the originating address on operations.
+        // LBPoolClassics are deployed with a router known to reliably report the originating address on operations.
         _TRUSTED_ROUTER = trustedRouter;
     }
 
@@ -41,7 +41,7 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
     }
 
     /**
-     * @notice Deploys a new `LBPool`.
+     * @notice Deploys a new `LBPoolClassic`.
      * @dev Tokens must be sorted for pool registration.
      * @param name The name of the pool
      * @param symbol The symbol of the pool
