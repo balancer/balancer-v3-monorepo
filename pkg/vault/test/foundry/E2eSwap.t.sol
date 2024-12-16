@@ -57,20 +57,6 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
 
-        // Tokens must be set before other variables, so the variables can be calculated based on tokens.
-        setUpTokens();
-        decimalsTokenA = IERC20Metadata(address(tokenA)).decimals();
-        decimalsTokenB = IERC20Metadata(address(tokenB)).decimals();
-
-        (tokenAIdx, tokenBIdx) = getSortedIndexes(address(tokenA), address(tokenB));
-
-        // Pool Init Amount values are needed to set up variables that rely on the initial pool state.
-        setPoolInitAmounts();
-
-        setUpVariables();
-        calculateMinAndMaxSwapAmounts();
-        createAndInitCustomPool();
-
         // Donate tokens to vault as a shortcut to change the pool balances without the need to pass through add/remove
         // liquidity operations. (No need to deal with BPTs, pranking LPs, guardrails, etc).
         _donateToVault();
@@ -104,14 +90,29 @@ contract E2eSwapTest is BaseVaultTest {
      * pool after the BaseVaultTest setUp finishes.
 
      */
-    function createAndInitCustomPool() internal virtual {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+        // Tokens must be set before other variables, so the variables can be calculated based on tokens.
+        setUpTokens();
+        decimalsTokenA = IERC20Metadata(address(tokenA)).decimals();
+        decimalsTokenB = IERC20Metadata(address(tokenB)).decimals();
+
+        (tokenAIdx, tokenBIdx) = getSortedIndexes(address(tokenA), address(tokenB));
+
+        // Pool Init Amount values are needed to set up variables that rely on the initial pool state.
+        setPoolInitAmounts();
+
+        setUpVariables();
+        calculateMinAndMaxSwapAmounts();
+
         address[] memory tokens = new address[](2);
         tokens[tokenAIdx] = address(tokenA);
         tokens[tokenBIdx] = address(tokenB);
-        (pool, ) = _createPool(tokens, "custom-pool");
+        (newPool, poolArgs) = _createPool(tokens, "custom-pool");
 
         setPoolInitAmounts();
+    }
 
+    function initPool() internal override {
         uint256[] memory initAmounts = new uint256[](2);
         initAmounts[tokenAIdx] = poolInitAmountTokenA;
         initAmounts[tokenBIdx] = poolInitAmountTokenB;

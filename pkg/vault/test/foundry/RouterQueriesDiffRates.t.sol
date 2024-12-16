@@ -16,6 +16,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -49,14 +50,17 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         string memory name = "TestPool";
         string memory symbol = "TEST";
 
-        newPool = factoryMock.createPool(name, symbol);
+        newPool = PoolFactoryMock(poolFactory).createPool(name, symbol);
         vm.label(newPool, label);
 
         rateProviders = new IRateProvider[](2);
         rateProviders[0] = IRateProvider(address(deployRateProviderMock()));
         rateProviders[1] = IRateProvider(address(deployRateProviderMock()));
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20(), rateProviders));
+        PoolFactoryMock(poolFactory).registerTestPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20(), rateProviders)
+        );
 
         poolArgs = abi.encode(vault, name, symbol);
     }

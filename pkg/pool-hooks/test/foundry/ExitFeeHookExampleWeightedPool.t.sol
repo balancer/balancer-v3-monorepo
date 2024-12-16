@@ -29,11 +29,16 @@ contract ExitFeeHookExampleWeightedPoolTest is WeightedPoolContractsDeployer, Ex
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
+    string constant POOL_VERSION = "Pool v1";
+
     // The minimum swap fee for a Weighted Pool is 0.001%.
     uint256 internal constant MIN_WEIGHTED_SWAP_FEE = 0.001e16;
 
-    WeightedPoolFactory internal weightedPoolFactory;
     uint256[] internal weights;
+
+    function createPoolFactory() internal override returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation).
     function _createPool(
@@ -42,14 +47,12 @@ contract ExitFeeHookExampleWeightedPoolTest is WeightedPoolContractsDeployer, Ex
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "Weighted Pool Test";
         string memory symbol = "WEIGHTED-TEST";
-        string memory poolVersion = "Pool v1";
 
-        weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         PoolRoleAccounts memory roleAccounts;
 
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
-        newPool = weightedPoolFactory.create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -69,7 +72,7 @@ contract ExitFeeHookExampleWeightedPoolTest is WeightedPoolContractsDeployer, Ex
                 symbol: symbol,
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );
