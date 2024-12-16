@@ -24,6 +24,16 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
     RateProviderMock internal rateProviderTokenA;
     RateProviderMock internal rateProviderTokenB;
 
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
+        rateProviderTokenA = deployRateProviderMock();
+        rateProviderTokenB = deployRateProviderMock();
+        // Mock rates, so all tests that keep the rate constant use a rate different than 1.
+        rateProviderTokenA.mockRate(5.2453235e18);
+        rateProviderTokenB.mockRate(0.4362784e18);
+
+        return super.createPool();
+    }
+
     function _createPool(
         address[] memory tokens,
         string memory label
@@ -33,12 +43,6 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
 
         newPool = PoolFactoryMock(poolFactory).createPool(name, symbol);
         vm.label(newPool, label);
-
-        rateProviderTokenA = deployRateProviderMock();
-        rateProviderTokenB = deployRateProviderMock();
-        // Mock rates, so all tests that keep the rate constant use a rate different than 1.
-        rateProviderTokenA.mockRate(5.2453235e18);
-        rateProviderTokenB.mockRate(0.4362784e18);
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));

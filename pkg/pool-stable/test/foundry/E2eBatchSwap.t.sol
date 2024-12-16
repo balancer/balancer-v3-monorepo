@@ -57,6 +57,7 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
 
         PoolRoleAccounts memory roleAccounts;
 
+        bytes32 salt = keccak256(abi.encode(label));
         newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
@@ -67,7 +68,7 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
             address(0),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
+            salt
         );
         vm.label(address(newPool), label);
 

@@ -90,7 +90,7 @@ contract E2eSwapTest is BaseVaultTest {
      * pool after the BaseVaultTest setUp finishes.
 
      */
-    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
         // Tokens must be set before other variables, so the variables can be calculated based on tokens.
         setUpTokens();
         decimalsTokenA = IERC20Metadata(address(tokenA)).decimals();

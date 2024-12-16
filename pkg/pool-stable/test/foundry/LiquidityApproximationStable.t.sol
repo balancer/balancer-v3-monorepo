@@ -60,6 +60,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
+        bytes32 salt = keccak256(abi.encodePacked(poolCreationNonce++));
         newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
@@ -70,7 +71,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
+            salt
         );
         vm.label(newPool, label);
 
