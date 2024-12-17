@@ -68,17 +68,17 @@ library GyroECLPMath {
 
     /// @dev Enforces limits and approximate normalization of the rotation vector.
     function validateParams(IGyroECLPPool.EclpParams memory params) internal pure {
-        require(params.s > 0 && params.s < _ONE, RotationVectorSWrong());
-        require(params.c > 0 && params.c < _ONE, RotationVectorCWrong());
+        require(0 <= params.s && params.s <= _ONE, RotationVectorSWrong());
+        require(0 <= params.c && params.c <= _ONE, RotationVectorCWrong());
 
         IGyroECLPPool.Vector2 memory sc = IGyroECLPPool.Vector2(params.s, params.c);
         int256 scnorm2 = scalarProd(sc, sc); // squared norm
 
         require(
-            scnorm2 > _ONE - _ROTATION_VECTOR_NORM_ACCURACY && scnorm2 < _ONE + _ROTATION_VECTOR_NORM_ACCURACY,
+            _ONE - _ROTATION_VECTOR_NORM_ACCURACY <= scnorm2 && scnorm2 <= _ONE + _ROTATION_VECTOR_NORM_ACCURACY,
             RotationVectorNotNormalized()
         );
-        require(params.lambda > 0 && params.lambda < _MAX_STRETCH_FACTOR, StretchingFactorWrong());
+        require(0 <= params.lambda && params.lambda <= _MAX_STRETCH_FACTOR, StretchingFactorWrong());
     }
 
     /**
@@ -93,31 +93,31 @@ library GyroECLPMath {
         norm2 = scalarProdXp(derived.tauAlpha, derived.tauAlpha);
 
         require(
-            norm2 > _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP && norm2 < _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
+            _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP <= norm2 && norm2 <= _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
             DerivedTauAlphaNotNormalized()
         );
 
         norm2 = scalarProdXp(derived.tauBeta, derived.tauBeta);
 
         require(
-            norm2 > _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP && norm2 < _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
+            _ONE_XP - _DERIVED_TAU_NORM_ACCURACY_XP <= norm2 && norm2 <= _ONE_XP + _DERIVED_TAU_NORM_ACCURACY_XP,
             DerivedTauBetaNotNormalized()
         );
-        require(derived.u < _ONE_XP, DerivedUWrong());
-        require(derived.v < _ONE_XP, DerivedVWrong());
-        require(derived.w < _ONE_XP, DerivedWWrong());
-        require(derived.z < _ONE_XP, DerivedZWrong());
+
+        require(derived.u <= _ONE_XP, DerivedUWrong());
+        require(derived.v <= _ONE_XP, DerivedVWrong());
+        require(derived.w <= _ONE_XP, DerivedWWrong());
+        require(derived.z <= _ONE_XP, DerivedZWrong());
 
         require(
-            derived.dSq > _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP &&
-                derived.dSq < _ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP,
+            _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP <= derived.dSq && derived.dSq <= _ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP,
             DerivedDsqWrong()
         );
 
         // NB No anti-overflow checks are required given the checks done above and in validateParams().
         int256 mulDenominator = _ONE_XP.divXpU(calcAChiAChiInXp(params, derived) - _ONE_XP);
 
-        require(mulDenominator < _MAX_INV_INVARIANT_DENOMINATOR_XP, InvariantDenominatorWrong());
+        require(mulDenominator <= _MAX_INV_INVARIANT_DENOMINATOR_XP, InvariantDenominatorWrong());
     }
 
     function scalarProd(
@@ -253,7 +253,7 @@ library GyroECLPMath {
     ) internal pure returns (int256, int256) {
         (int256 x, int256 y) = (balances[0].toInt256(), balances[1].toInt256());
 
-        require(x + y < _MAX_BALANCES, MaxAssetsExceeded());
+        require(x + y <= _MAX_BALANCES, MaxAssetsExceeded());
 
         int256 atAChi = calcAtAChi(x, y, params, derived);
         (int256 sqrt, int256 err) = calcInvariantSqrt(x, y, params, derived);
@@ -296,7 +296,7 @@ library GyroECLPMath {
             _ONE_XP +
             1;
 
-        require(invariant + err < _MAX_INVARIANT, MaxInvariantExceeded());
+        require(invariant + err <= _MAX_INVARIANT, MaxInvariantExceeded());
 
         return (invariant, err);
     }
