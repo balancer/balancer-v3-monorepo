@@ -4,16 +4,21 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import {
-    IProtocolFeePercentagesProvider
-} from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeePercentagesProvider.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
+import {
+    IProtocolFeePercentagesProvider
+} from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeePercentagesProvider.sol";
+import {
+    IBalancerContractRegistry,
+    ContractType
+} from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { ProtocolFeePercentagesProvider } from "../../contracts/ProtocolFeePercentagesProvider.sol";
+import { BalancerContractRegistry } from "../../contracts/BalancerContractRegistry.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -21,6 +26,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
     address internal constant INVALID_ADDRESS = address(0x1234);
 
     IProtocolFeePercentagesProvider internal percentagesProvider;
+    BalancerContractRegistry internal trustedContractRegistry;
 
     IAuthentication internal percentagesProviderAuth;
     IAuthentication internal feeControllerAuth;
@@ -33,7 +39,24 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
     function setUp() public override {
         BaseVaultTest.setUp();
 
-        percentagesProvider = new ProtocolFeePercentagesProvider(vault, feeController);
+        trustedContractRegistry = new BalancerContractRegistry(vault);
+        percentagesProvider = new ProtocolFeePercentagesProvider(vault, feeController, trustedContractRegistry);
+
+        // Mark the factoryMock as trusted, so that operations on it won't fail.
+        authorizer.grantRole(
+            trustedContractRegistry.getActionId(BalancerContractRegistry.registerBalancerContract.selector),
+            admin
+        );
+        authorizer.grantRole(
+            trustedContractRegistry.getActionId(BalancerContractRegistry.deprecateBalancerContract.selector),
+            admin
+        );
+        vm.prank(admin);
+        trustedContractRegistry.registerBalancerContract(
+            ContractType.POOL_FACTORY,
+            "MockFactory",
+            address(factoryMock)
+        );
 
         percentagesProviderAuth = IAuthentication(address(percentagesProvider));
         feeControllerAuth = IAuthentication(address(feeController));
@@ -49,8 +72,8 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
     }
 
     function testInvalidConstruction() public {
-        vm.expectRevert(ProtocolFeePercentagesProvider.WrongProtocolFeeControllerDeployment.selector);
-        new ProtocolFeePercentagesProvider(IVault(INVALID_ADDRESS), feeController);
+        vm.expectRevert(IProtocolFeePercentagesProvider.WrongProtocolFeeControllerDeployment.selector);
+        new ProtocolFeePercentagesProvider(IVault(INVALID_ADDRESS), feeController, trustedContractRegistry);
     }
 
     function testGetProtocolFeeController() public view {
@@ -63,7 +86,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
 
     function testGetFactorySpecificProtocolFeePercentagesUnregisteredFactory() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IProtocolFeePercentagesProvider.FactoryNotRegistered.selector, INVALID_ADDRESS)
+            abi.encodeWithSelector(IProtocolFeePercentagesProvider.FactoryFeesNotSet.selector, INVALID_ADDRESS)
         );
         percentagesProvider.getFactorySpecificProtocolFeePercentages(INVALID_ADDRESS);
     }
@@ -94,8 +117,11 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         // Cause `isPoolFromFactory` to return "true" for address(0).
         factoryMock.manualSetPoolFromFactory(address(0));
 
+        vm.prank(admin);
+        trustedContractRegistry.deprecateBalancerContract(address(factoryMock));
+
         vm.expectRevert(
-            abi.encodeWithSelector(IProtocolFeePercentagesProvider.InvalidFactory.selector, address(factoryMock))
+            abi.encodeWithSelector(IProtocolFeePercentagesProvider.UnknownFactory.selector, address(factoryMock))
         );
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
@@ -181,7 +207,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
 
     function testSetProtocolFeePercentagesForPoolsUnregisteredFactory() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IProtocolFeePercentagesProvider.FactoryNotRegistered.selector, INVALID_ADDRESS)
+            abi.encodeWithSelector(IProtocolFeePercentagesProvider.FactoryFeesNotSet.selector, INVALID_ADDRESS)
         );
         percentagesProvider.setProtocolFeePercentagesForPools(INVALID_ADDRESS, pools);
     }
