@@ -110,7 +110,8 @@ library GyroECLPMath {
         require(derived.z <= _ONE_XP, DerivedZWrong());
 
         require(
-            _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP <= derived.dSq && derived.dSq <= _ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP,
+            _ONE_XP - _DERIVED_DSQ_NORM_ACCURACY_XP <= derived.dSq &&
+                derived.dSq <= _ONE_XP + _DERIVED_DSQ_NORM_ACCURACY_XP,
             DerivedDsqWrong()
         );
 
