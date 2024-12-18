@@ -21,7 +21,7 @@ import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
@@ -1327,7 +1327,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         newPool = address(deployPoolMock(IVault(address(vault)), "PARTIAL ERC4626 Pool", "PART-ERC4626P"));
 
-        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract);
+        PoolFactoryMock(poolFactory).registerTestPool(newPool, tokenConfig, poolHooksContract);
 
         vm.label(newPool, "partial erc4626 pool");
 

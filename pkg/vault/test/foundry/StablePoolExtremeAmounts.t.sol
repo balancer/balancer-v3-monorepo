@@ -15,10 +15,15 @@ import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
     using CastingHelpers for *;
 
+    string constant POOL_VERSION = "Pool v1";
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
     function setUp() public virtual override {
         BaseExtremeAmountsTest.setUp();
+    }
+
+    function createPoolFactory() internal override returns (address) {
+        return address(new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
     }
 
     function _createPool(
@@ -27,13 +32,10 @@ contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "Stable Pool";
         string memory symbol = "STABLE";
-        string memory poolVersion = "Pool v1";
-
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
 
         PoolRoleAccounts memory roleAccounts;
 
-        newPool = factory.create(
+        newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -52,7 +54,7 @@ contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

@@ -28,6 +28,10 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
+    }
+
     function _createPool(
         address[] memory tokens,
         string memory label
@@ -42,13 +46,12 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        StablePoolFactory factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = factory.create(
+        newPool = StablePoolFactory(poolFactory).create(
             "Stable Pool",
             "STABLE",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),

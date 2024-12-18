@@ -23,6 +23,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
+import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
@@ -33,6 +34,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
+    string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
@@ -54,10 +56,13 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
-        string memory poolVersion = "Pool v1";
 
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
@@ -67,14 +72,13 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = WeightedPoolFactory(address(factory)).create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(sortedTokens),
@@ -94,7 +98,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
                 symbol: symbol,
                 numTokens: sortedTokens.length,
                 normalizedWeights: weights,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );
@@ -123,7 +127,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
 
         PoolRoleAccounts memory roleAccounts;
 
-        address lowFeeWeightedPool = WeightedPoolFactory(address(factory)).create(
+        address lowFeeWeightedPool = WeightedPoolFactory(poolFactory).create(
             "ERC20 Pool",
             "ERC20POOL",
             tokenConfigs,
@@ -137,7 +141,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         );
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
-        factoryMock.registerTestPool(lowFeeWeightedPool, tokenConfigs);
+        PoolFactoryMock(poolFactory).registerTestPool(lowFeeWeightedPool, tokenConfigs);
     }
 
     function testGetWeightedPoolImmutableData() public view {

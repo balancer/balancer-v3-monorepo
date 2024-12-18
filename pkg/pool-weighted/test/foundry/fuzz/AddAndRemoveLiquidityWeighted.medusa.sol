@@ -31,10 +31,7 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         maxRateTolerance = 10;
     }
 
-    function createPool(
-        IERC20[] memory tokens,
-        uint256[] memory initialBalances
-    ) internal override returns (address newPool) {
+    function createPool(IERC20[] memory tokens, uint256[] memory initialBalances) internal override returns (address) {
         uint256[] memory weights = new uint256[](3);
         weights[0] = _WEIGHT1;
         weights[1] = _WEIGHT2;

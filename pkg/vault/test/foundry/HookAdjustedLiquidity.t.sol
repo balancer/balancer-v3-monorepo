@@ -17,6 +17,7 @@ import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -69,7 +70,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
 
-        factoryMock.registerPool(
+        PoolFactoryMock(poolFactory).registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,

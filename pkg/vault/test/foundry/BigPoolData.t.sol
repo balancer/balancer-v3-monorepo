@@ -17,7 +17,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BigPoolDataTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -51,7 +51,7 @@ contract BigPoolDataTest is BaseVaultTest {
 
         _approveForPool(IERC20(newPool));
 
-        factoryMock.registerTestPool(
+        PoolFactoryMock(poolFactory).registerTestPool(
             newPool,
             vault.buildTokenConfig(bigPoolTokens, bigPoolRateProviders),
             poolHooksContract,

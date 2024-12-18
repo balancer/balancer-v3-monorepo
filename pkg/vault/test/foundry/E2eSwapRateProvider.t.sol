@@ -12,6 +12,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
 import { E2eSwapTest } from "./E2eSwap.t.sol";
@@ -23,6 +24,16 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
     RateProviderMock internal rateProviderTokenA;
     RateProviderMock internal rateProviderTokenB;
 
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
+        rateProviderTokenA = deployRateProviderMock();
+        rateProviderTokenB = deployRateProviderMock();
+        // Mock rates, so all tests that keep the rate constant use a rate different than 1.
+        rateProviderTokenA.mockRate(5.2453235e18);
+        rateProviderTokenB.mockRate(0.4362784e18);
+
+        return super.createPool();
+    }
+
     function _createPool(
         address[] memory tokens,
         string memory label
@@ -30,20 +41,14 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
 
-        newPool = factoryMock.createPool(name, symbol);
+        newPool = PoolFactoryMock(poolFactory).createPool(name, symbol);
         vm.label(newPool, label);
-
-        rateProviderTokenA = deployRateProviderMock();
-        rateProviderTokenB = deployRateProviderMock();
-        // Mock rates, so all tests that keep the rate constant use a rate different than 1.
-        rateProviderTokenA.mockRate(5.2453235e18);
-        rateProviderTokenB.mockRate(0.4362784e18);
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        factoryMock.registerTestPool(
+        PoolFactoryMock(poolFactory).registerTestPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
             poolHooksContract,

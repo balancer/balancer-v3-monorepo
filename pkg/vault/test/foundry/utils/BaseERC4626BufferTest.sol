@@ -16,6 +16,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
+import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "./BaseVaultTest.sol";
 
 abstract contract BaseERC4626BufferTest is BaseVaultTest {
@@ -50,7 +51,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         newPool = address(new PoolMock(IVault(address(vault)), name, symbol));
         vm.label(newPool, name);
 
-        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
+        PoolFactoryMock(poolFactory).registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
 
         poolArgs = abi.encode(vault, name, symbol);
     }

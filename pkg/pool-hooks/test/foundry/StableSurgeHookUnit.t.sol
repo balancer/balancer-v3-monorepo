@@ -39,7 +39,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
     function setUp() public override {
         super.setUp();
 
-        vm.prank(address(factoryMock));
+        vm.prank(address(poolFactory));
         stableSurgeHook = new StableSurgeHook(
             vault,
             DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
@@ -51,7 +51,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
 
         vm.expectEmit();
-        emit StableSurgeHook.StableSurgeHookRegistered(pool, address(factoryMock));
+        emit StableSurgeHook.StableSurgeHookRegistered(pool, poolFactory);
         _registerPool();
 
         assertEq(
@@ -78,7 +78,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         LiquidityManagement memory emptyLiquidityManagement;
 
         vm.prank(address(vault));
-        stableSurgeHook.onRegister(address(factoryMock), pool, new TokenConfig[](0), emptyLiquidityManagement);
+        stableSurgeHook.onRegister(poolFactory, pool, new TokenConfig[](0), emptyLiquidityManagement);
     }
 
     function testGetHookFlags() public view {

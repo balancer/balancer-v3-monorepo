@@ -40,6 +40,10 @@ contract E2eSwapRateProviderWeightedTest is
         super.setUp();
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
+    }
+
     function _createPool(
         address[] memory tokens,
         string memory label
@@ -54,18 +58,12 @@ contract E2eSwapRateProviderWeightedTest is
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        WeightedPoolFactory factory = deployWeightedPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            "Pool v1"
-        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = factory.create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             "50/50 Weighted Pool",
             "50_50WP",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),

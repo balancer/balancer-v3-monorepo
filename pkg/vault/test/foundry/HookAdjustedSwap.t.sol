@@ -14,6 +14,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -59,7 +60,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
 
-        factoryMock.registerPool(
+        PoolFactoryMock(poolFactory).registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,

@@ -20,8 +20,6 @@ import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 abstract contract BasePoolTest is BaseVaultTest {
     using FixedPoint for uint256;
 
-    IBasePoolFactory public factory;
-
     uint256 public constant DELTA = 1e9;
 
     IERC20[] internal poolTokens;
@@ -53,7 +51,7 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testPoolAddress() public view {
-        address calculatedPoolAddress = factory.getDeploymentAddress(poolArguments, ZERO_BYTES32);
+        address calculatedPoolAddress = IBasePoolFactory(poolFactory).getDeploymentAddress(poolArguments, ZERO_BYTES32);
         assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
     }
 

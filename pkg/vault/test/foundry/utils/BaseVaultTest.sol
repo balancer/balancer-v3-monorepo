@@ -84,7 +84,6 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     RouterMock internal router;
     BatchRouterMock internal batchRouter;
     BufferRouterMock internal bufferRouter;
-    PoolFactoryMock internal factoryMock;
     RateProviderMock internal rateProvider;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
     BasicAuthorizerMock internal authorizer;
@@ -97,6 +96,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     bytes internal poolArguments;
     // Pool Hooks.
     address internal poolHooksContract;
+    // Pool factory.
+    address internal poolFactory;
 
     // Default amount to use in tests for user operations.
     uint256 internal defaultAmount = 1e3 * 1e18;
@@ -150,8 +151,6 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(vaultAdmin), "vaultAdmin");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
-        factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
-        vm.label(address(factoryMock), "factory");
         router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
@@ -163,6 +162,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
 
+        poolFactory = createPoolFactory();
         poolHooksContract = createHook();
         (pool, poolArguments) = createPool();
 
@@ -240,6 +240,13 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
+    function createPoolFactory() internal virtual returns (address) {
+        PoolFactoryMock factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
+        vm.label(address(factoryMock), "factory");
+
+        return address(factoryMock);
+    }
+
     function createPool() internal virtual returns (address, bytes memory) {
         return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
     }
@@ -251,10 +258,15 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
 
-        newPool = factoryMock.createPool(name, symbol);
+        newPool = PoolFactoryMock(poolFactory).createPool(name, symbol);
         vm.label(newPool, label);
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
+        PoolFactoryMock(poolFactory).registerTestPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            poolHooksContract,
+            lp
+        );
 
         poolArgs = abi.encode(vault, name, symbol);
     }
@@ -268,7 +280,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     function _createHook(HookFlags memory hookFlags) internal virtual returns (address) {
         PoolHooksMock newHook = deployPoolHooksMock(IVault(address(vault)));
         // Allow pools built with factoryMock to use the poolHooksMock.
-        newHook.allowFactory(address(factoryMock));
+        newHook.allowFactory(poolFactory);
         // Configure pool hook flags.
         newHook.setHookFlags(hookFlags);
         vm.label(address(newHook), "pool hooks");
