@@ -19,7 +19,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { BaseTestState, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BalancerPoolTokenTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -481,8 +481,10 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testGetRate() public {
+        BaseTestState bState = getBaseTestState();
+
         // Init pool, so it has a BPT supply and rate can be calculated.
-        vm.startPrank(lp);
+        vm.startPrank(bState.accounts.lp);
         IERC20[] memory tokens = vault.getPoolTokens(address(poolToken));
         router.initialize(
             address(poolToken),

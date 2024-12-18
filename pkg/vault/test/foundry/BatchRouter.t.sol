@@ -10,7 +10,7 @@ import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatc
 
 import { MOCK_BATCH_ROUTER_VERSION } from "../../contracts/test/BatchRouterMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { BaseTestState, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BatchRouterTest is BaseVaultTest {
     function setUp() public virtual override {
@@ -36,9 +36,11 @@ contract BatchRouterTest is BaseVaultTest {
     }
 
     function testQuerySingleStepRemove() public {
+        BaseTestState memory state = getBaseTestState();
+
         // create a swap step and query the batch router, where the first token is the bpt.
         IBatchRouter.SwapPathStep[] memory step = new IBatchRouter.SwapPathStep[](1);
-        step[0] = IBatchRouter.SwapPathStep(address(pool), IERC20(address(dai)), false);
+        step[0] = IBatchRouter.SwapPathStep(address(pool), IERC20(address(state.tokensInfo.dai)), false);
 
         uint256 totalSupply = IERC20(pool).totalSupply();
         uint256 bptAmountIn = 1e18;
@@ -55,7 +57,7 @@ contract BatchRouterTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
         paths[0] = path;
 
-        vm.prank(alice, address(0));
+        vm.prank(state.accounts.alice, address(0));
         batchRouter.querySwapExactIn(paths, address(0), bytes(""));
     }
 }

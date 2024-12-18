@@ -17,7 +17,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+import { BaseTest, BaseTestState } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
@@ -143,6 +143,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     function _setUpBaseVaultTest() internal {
         vault = deployVaultMock(vaultMockMinTradeAmount, vaultMockMinWrapAmount);
 
+        BaseTestState memory bState = getBaseTestState();
+
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");
@@ -152,13 +154,17 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
-        router = deployRouterMock(IVault(address(vault)), weth, permit2);
+        router = deployRouterMock(IVault(address(vault)), bState.tokensInfo.weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
+        batchRouter = deployBatchRouterMock(IVault(address(vault)), bState.tokensInfo.weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
+        compositeLiquidityRouter = new CompositeLiquidityRouterMock(
+            IVault(address(vault)),
+            bState.tokensInfo.weth,
+            permit2
+        );
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
-        bufferRouter = deployBufferRouterMock(IVault(address(vault)), weth, permit2);
+        bufferRouter = deployBufferRouterMock(IVault(address(vault)), bState.tokensInfo.weth, permit2);
         vm.label(address(bufferRouter), "buffer router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
@@ -166,6 +172,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         poolHooksContract = createHook();
         (pool, poolArguments) = createPool();
 
+        address[] memory users = bState.accounts.users;
         // Approve vault allowances.
         for (uint256 i = 0; i < users.length; ++i) {
             address user = users[i];
@@ -179,6 +186,9 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function approveForSender() internal virtual {
+        BaseTestState memory bState = getBaseTestState();
+
+        IERC20[] memory tokens = bState.tokens;
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
@@ -187,6 +197,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             permit2.approve(address(tokens[i]), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
         }
 
+        IERC4626[] memory erc4626Tokens = bState.tokensInfo.erc4626Tokens;
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
             erc4626Tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);
@@ -206,6 +217,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function approveForPool(IERC20 bpt) internal virtual {
+        address[] memory users = getBaseTestState().accounts.users;
         for (uint256 i = 0; i < users.length; ++i) {
             vm.startPrank(users[i]);
 
@@ -225,7 +237,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function initPool() internal virtual {
-        vm.startPrank(lp);
+        vm.startPrank(getBaseTestState().accounts.lp);
         _initPool(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
     }
@@ -241,7 +253,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function createPool() internal virtual returns (address, bytes memory) {
-        return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
+        BaseTestState memory bState = getBaseTestState();
+        return _createPool([address(bState.tokensInfo.dai), address(bState.tokensInfo.usdc)].toMemoryArray(), "pool");
     }
 
     function _createPool(
@@ -254,7 +267,12 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         newPool = factoryMock.createPool(name, symbol);
         vm.label(newPool, label);
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
+        factoryMock.registerTestPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            poolHooksContract,
+            getBaseTestState().accounts.lp
+        );
 
         poolArgs = abi.encode(vault, name, symbol);
     }
@@ -288,11 +306,13 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function getBalances(address user, Rounding invariantRounding) internal view returns (Balances memory balances) {
+        BaseTestState memory bState = getBaseTestState();
+
         balances.userBpt = IERC20(pool).balanceOf(user);
-        balances.aliceBpt = IERC20(pool).balanceOf(alice);
-        balances.bobBpt = IERC20(pool).balanceOf(bob);
+        balances.aliceBpt = IERC20(pool).balanceOf(bState.accounts.alice);
+        balances.bobBpt = IERC20(pool).balanceOf(bState.accounts.bob);
         balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
-        balances.lpBpt = IERC20(pool).balanceOf(lp);
+        balances.lpBpt = IERC20(pool).balanceOf(bState.accounts.lp);
 
         balances.poolSupply = IERC20(pool).totalSupply();
 
@@ -316,28 +336,31 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
 
     /// @dev A different function is needed to measure token balances when tracking tokens across multiple pools.
     function getBalances(address user, IERC20[] memory tokensToTrack) internal view returns (Balances memory balances) {
+        BaseTestState memory bState = getBaseTestState();
         balances.userBpt = IERC20(pool).balanceOf(user);
-        balances.aliceBpt = IERC20(pool).balanceOf(alice);
-        balances.bobBpt = IERC20(pool).balanceOf(bob);
+        balances.aliceBpt = IERC20(pool).balanceOf(bState.accounts.alice);
+        balances.bobBpt = IERC20(pool).balanceOf(bState.accounts.bob);
         balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
-        balances.lpBpt = IERC20(pool).balanceOf(lp);
+        balances.lpBpt = IERC20(pool).balanceOf(bState.accounts.lp);
 
         _fillBalances(balances, user, tokensToTrack);
     }
 
     function _fillBalances(Balances memory balances, address user, IERC20[] memory tokens) private view {
+        BaseTestState memory bState = getBaseTestState();
+
         uint256 numTokens = tokens.length;
 
         balances.userTokens = new uint256[](numTokens);
         balances.userEth = user.balance;
         balances.aliceTokens = new uint256[](numTokens);
-        balances.aliceEth = alice.balance;
+        balances.aliceEth = bState.accounts.alice.balance;
         balances.bobTokens = new uint256[](numTokens);
-        balances.bobEth = bob.balance;
+        balances.bobEth = bState.accounts.bob.balance;
         balances.hookTokens = new uint256[](numTokens);
         balances.hookEth = poolHooksContract.balance;
         balances.lpTokens = new uint256[](numTokens);
-        balances.lpEth = lp.balance;
+        balances.lpEth = bState.accounts.lp.balance;
         balances.vaultTokens = new uint256[](numTokens);
         balances.vaultEth = address(vault).balance;
         balances.vaultReserves = new uint256[](numTokens);
@@ -345,10 +368,10 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         for (uint256 i = 0; i < numTokens; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
-            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
-            balances.bobTokens[i] = tokens[i].balanceOf(bob);
+            balances.aliceTokens[i] = tokens[i].balanceOf(bState.accounts.alice);
+            balances.bobTokens[i] = tokens[i].balanceOf(bState.accounts.bob);
             balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
-            balances.lpTokens[i] = tokens[i].balanceOf(lp);
+            balances.lpTokens[i] = tokens[i].balanceOf(bState.accounts.lp);
             balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
             balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
         }

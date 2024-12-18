@@ -9,7 +9,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { BaseTestState, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract AuxiliaryEventTest is BaseVaultTest {
     function setUp() public virtual override {
@@ -17,10 +17,12 @@ contract AuxiliaryEventTest is BaseVaultTest {
     }
 
     function testWithNonPoolCall() public {
-        // Only registered pools can emit aux event
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, admin));
+        BaseTestState bState = getBaseTestState();
 
-        vm.prank(admin);
+        // Only registered pools can emit aux event
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, bState.accounts.admin));
+
+        vm.prank(bState.accounts.admin);
         vault.emitAuxiliaryEvent("TestEvent", abi.encode(777));
     }
 

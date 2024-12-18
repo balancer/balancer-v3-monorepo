@@ -16,57 +16,76 @@ import { ERC4626TestToken } from "../../../contracts/test/ERC4626TestToken.sol";
 import { ERC20TestToken } from "../../../contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "../../../contracts/test/WETHTestToken.sol";
 
+struct Accounts {
+    // Default admin.
+    address payable admin;
+    uint256 adminKey;
+    // Default liquidity provider.
+    address payable lp;
+    uint256 lpKey;
+    // Default user.
+    address payable alice;
+    uint256 aliceKey;
+    // Default counterparty.
+    address payable bob;
+    uint256 bobKey;
+    // Malicious user.
+    address payable hacker;
+    uint256 hackerKey;
+    // Broke user.
+    address payable broke;
+    uint256 brokeUserKey;
+    // List of all users
+    address payable[] users;
+    uint256[] userKeys;
+}
+
+struct TokensInfo {
+    // ERC20 tokens used for tests.
+    ERC20TestToken dai;
+    ERC20TestToken usdc;
+    WETHTestToken weth;
+    ERC20TestToken wsteth;
+    ERC20TestToken veBAL;
+    ERC4626TestToken waDAI;
+    ERC4626TestToken waWETH;
+    ERC4626TestToken waUSDC;
+    // List of all ERC20 tokens
+    IERC20[] tokens;
+    // List of all ERC4626 tokens
+    IERC4626[] erc4626Tokens;
+}
+
+struct BaseTestState {
+    Accounts accounts;
+    TokensInfo tokensInfo;
+}
+
 abstract contract BaseTest is Test, GasSnapshot {
     using CastingHelpers for *;
 
     // Reasonable block.timestamp `MAY_1_2023`
     uint32 internal constant START_TIMESTAMP = 1_682_899_200;
 
+    uint256 internal constant DEFAULT_BALANCE = 1e9 * 1e18;
+
     uint256 internal constant MAX_UINT256 = type(uint256).max;
     // Raw token balances are stored in half a slot, so the max is uint128.
     uint256 internal constant MAX_UINT128 = type(uint128).max;
 
-    // Default admin.
-    address payable internal admin;
-    uint256 internal adminKey;
-    // Default liquidity provider.
-    address payable internal lp;
-    uint256 internal lpKey;
-    // Default user.
-    address payable internal alice;
-    uint256 internal aliceKey;
-    // Default counterparty.
-    address payable internal bob;
-    uint256 internal bobKey;
-    // Malicious user.
-    address payable internal hacker;
-    uint256 internal hackerKey;
-    // Broke user.
-    address payable internal broke;
-    uint256 internal brokeUserKey;
-
-    // List of all users
-    address payable[] internal users;
-    uint256[] internal userKeys;
-
-    // ERC20 tokens used for tests.
-    ERC20TestToken internal dai;
-    ERC20TestToken internal usdc;
-    WETHTestToken internal weth;
-    ERC20TestToken internal wsteth;
-    ERC20TestToken internal veBAL;
-    ERC4626TestToken internal waDAI;
-    ERC4626TestToken internal waWETH;
-    ERC4626TestToken internal waUSDC;
-
-    // List of all ERC20 tokens
-    IERC20[] internal tokens;
-
-    // List of all ERC4626 tokens
-    IERC4626[] internal erc4626Tokens;
-
     // Default balance for accounts
-    uint256 internal defaultBalance = 1e9 * 1e18;
+    bool private _initialized;
+    uint256 private _defaultBalance = DEFAULT_BALANCE;
+    BaseTestState private _state;
+
+    // -------------------- Initializers --------------------
+    function setDefaultBalance(uint256 defaultBalance) internal {
+        if (_initialized) {
+            revert("Default balance can only be set before the test is initialized");
+        }
+
+        _defaultBalance = defaultBalance;
+    }
 
     function setUp() public virtual {
         // Set timestamp only if testing locally
@@ -76,57 +95,101 @@ abstract contract BaseTest is Test, GasSnapshot {
         }
 
         // Deploy the base test contracts.
-        dai = createERC20("DAI", 18);
+        ERC20TestToken dai = createERC20("DAI", 18);
         // "USDC" is deliberately 18 decimals to test one thing at a time.
-        usdc = createERC20("USDC", 18);
-        wsteth = createERC20("WSTETH", 18);
-        weth = new WETHTestToken();
+        ERC20TestToken usdc = createERC20("USDC", 18);
+        ERC20TestToken wsteth = createERC20("WSTETH", 18);
+        ERC20TestToken weth = new WETHTestToken();
         vm.label(address(weth), "WETH");
-        veBAL = createERC20("veBAL", 18);
+        ERC20TestToken veBAL = createERC20("veBAL", 18);
 
-        // Fill the token list.
-        tokens.push(dai);
-        tokens.push(usdc);
-        tokens.push(weth);
-        tokens.push(wsteth);
+        _state.tokensInfo.dai = dai;
+        _state.tokensInfo.usdc = usdc;
+        _state.tokensInfo.weth = weth;
+        _state.tokensInfo.wsteth = wsteth;
+        _state.tokensInfo.veBAL = veBAL;
+
+        _state.tokensInfo.tokens.push(dai);
+        _state.tokensInfo.tokens.push(usdc);
+        _state.tokensInfo.tokens.push(weth);
+        _state.tokensInfo.tokens.push(wsteth);
+        _state.tokensInfo.tokens.push(veBAL);
 
         // Deploy ERC4626 tokens.
-        waDAI = createERC4626("Wrapped aDAI", "waDAI", 18, dai);
-        waWETH = createERC4626("Wrapped aWETH", "waWETH", 18, weth);
+        ERC4626TestToken waDAI = createERC4626("Wrapped aDAI", "waDAI", 18, dai);
+        ERC4626TestToken waWETH = createERC4626("Wrapped aWETH", "waWETH", 18, weth);
         // "waUSDC" is deliberately 18 decimals to test one thing at a time.
-        waUSDC = createERC4626("Wrapped aUSDC", "waUSDC", 18, usdc);
+        ERC4626TestToken waUSDC = createERC4626("Wrapped aUSDC", "waUSDC", 18, usdc);
+
+        _state.tokensInfo.waDAI = waDAI;
+        _state.tokensInfo.waWETH = waWETH;
+        _state.tokensInfo.waUSDC = waUSDC;
 
         // Fill the ERC4626 token list.
-        erc4626Tokens.push(waDAI);
-        erc4626Tokens.push(waWETH);
-        erc4626Tokens.push(waUSDC);
+        _state.tokensInfo.erc4626Tokens.push(waDAI);
+        _state.tokensInfo.erc4626Tokens.push(waWETH);
+        _state.tokensInfo.erc4626Tokens.push(waUSDC);
 
         // Create users for testing.
-        (admin, adminKey) = createUser("admin");
-        (lp, lpKey) = createUser("lp");
-        (alice, aliceKey) = createUser("alice");
-        (bob, bobKey) = createUser("bob");
-        (hacker, hackerKey) = createUser("hacker");
+        (address admin, uint256 adminKey) = createUser("admin");
+        (address lp, uint256 lpKey) = createUser("lp");
+        (address alice, uint256 aliceKey) = createUser("alice");
+        (address bob, uint256 bobKey) = createUser("bob");
+        (address hacker, uint256 hackerKey) = createUser("hacker");
         address brokeNonPay;
+        uint256 brokeUserKey;
         (brokeNonPay, brokeUserKey) = makeAddrAndKey("broke");
-        broke = payable(brokeNonPay);
-        vm.label(broke, "broke");
+        vm.label(brokeNonPay, "broke");
+
+        _state.accounts.admin = admin;
+        _state.accounts.adminKey = adminKey;
+        _state.accounts.lp = lp;
+        _state.accounts.lpKey = lpKey;
+        _state.accounts.alice = alice;
+        _state.accounts.aliceKey = aliceKey;
+        _state.accounts.bob = bob;
+        _state.accounts.bobKey = bobKey;
+        _state.accounts.hacker = hacker;
+        _state.accounts.hackerKey = hackerKey;
+        _state.accounts.broke = payable(brokeNonPay);
+        _state.accounts.brokeUserKey = brokeUserKey;
+
+        _state.accounts.users.push(admin);
+        _state.accounts.userKeys.push(adminKey);
+        _state.accounts.users.push(lp);
+        _state.accounts.userKeys.push(lpKey);
+        _state.accounts.users.push(alice);
+        _state.accounts.userKeys.push(aliceKey);
+        _state.accounts.users.push(bob);
+        _state.accounts.userKeys.push(bobKey);
+        _state.accounts.users.push(hacker);
+        _state.accounts.userKeys.push(hackerKey);
+        _state.accounts.users.push(payable(brokeNonPay));
+        _state.accounts.userKeys.push(brokeUserKey);
 
         // Must mock rates after giving wrapped tokens to users, but before creating pools and initializing buffers.
         mockERC4626TokenRates();
 
-        // Fill the users list
-        users.push(admin);
-        userKeys.push(adminKey);
-        users.push(lp);
-        userKeys.push(lpKey);
-        users.push(alice);
-        userKeys.push(aliceKey);
-        users.push(bob);
-        userKeys.push(bobKey);
-        users.push(broke);
-        userKeys.push(brokeUserKey);
+        _initialized = true;
     }
+
+    function isBaseTestInitialized() internal view returns (bool) {
+        return _initialized;
+    }
+
+    function getBaseTestState() internal view returns (BaseTestState memory) {
+        return _state;
+    }
+
+    function getTokens() internal view returns (TokensInfo memory) {
+        return _state.tokensInfo;
+    }
+
+    function getAccounts() internal view returns (Accounts memory) {
+        return _state.accounts;
+    }
+
+    // -------------------- Helpers --------------------
 
     /**
      * @notice Manipulate rates of ERC4626 tokens.
@@ -134,8 +197,8 @@ abstract contract BaseTest is Test, GasSnapshot {
      * wrapped and underlying amounts. For certain tests, we may need to override these rates for simplicity.
      */
     function mockERC4626TokenRates() internal virtual {
-        waDAI.inflateUnderlyingOrWrapped(0, 6 * defaultBalance);
-        waUSDC.inflateUnderlyingOrWrapped(23 * defaultBalance, 0);
+        _state.tokensInfo.waDAI.inflateUnderlyingOrWrapped(0, 6 * _defaultBalance);
+        _state.tokensInfo.waUSDC.inflateUnderlyingOrWrapped(23 * _defaultBalance, 0);
     }
 
     function getSortedIndexes(
@@ -186,29 +249,35 @@ abstract contract BaseTest is Test, GasSnapshot {
 
     /// @dev Generates a user, labels its address, and funds it with test assets.
     function createUser(string memory name) internal returns (address payable, uint256) {
+        return createUser(name, _defaultBalance);
+    }
+
+    /// @dev Generates a user, labels its address, and funds it with test assets.
+    function createUser(string memory name, uint256 balance) internal returns (address payable, uint256) {
         (address user, uint256 key) = makeAddrAndKey(name);
         vm.label(user, name);
-        vm.deal(payable(user), defaultBalance);
+        vm.deal(payable(user), balance);
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            deal(address(tokens[i]), user, defaultBalance);
+        for (uint256 i = 0; i < _state.tokensInfo.tokens.length; ++i) {
+            deal(address(_state.tokensInfotokens[i]), user, balance);
         }
 
+        ERC4626TestToken[] memory erc4626Tokens = _state.tokensInfo.erc4626Tokens;
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
             // Give underlying tokens to the user, for depositing in the wrapped token.
-            if (erc4626Tokens[i].asset() == address(weth)) {
-                vm.deal(user, user.balance + defaultBalance);
+            if (erc4626Tokens[i].asset() == address(_state.tokensInfo.weth)) {
+                vm.deal(user, user.balance + balance);
 
                 vm.prank(user);
-                weth.deposit{ value: defaultBalance }();
+                _state.tokensInfo.weth.deposit{ value: balance }();
             } else {
-                ERC20TestToken(erc4626Tokens[i].asset()).mint(user, defaultBalance);
+                ERC20TestToken(erc4626Tokens[i].asset()).mint(user, balance);
             }
 
             // Deposit underlying to mint wrapped tokens to the user.
             vm.startPrank(user);
-            IERC20(erc4626Tokens[i].asset()).approve(address(erc4626Tokens[i]), defaultBalance);
-            erc4626Tokens[i].deposit(defaultBalance, user);
+            IERC20(erc4626Tokens[i].asset()).approve(address(erc4626Tokens[i]), balance);
+            erc4626Tokens[i].deposit(balance, user);
             vm.stopPrank();
         }
 
