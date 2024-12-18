@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
@@ -24,7 +25,7 @@ import { WeightedPool } from "../WeightedPool.sol";
  * which will not be used later), and it is tremendously helpful for pool validation and any potential future
  * base contract changes.
  */
-contract LBPool is WeightedPool, Ownable, BaseHooks {
+contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     using SafeCast for *;
 
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight.
