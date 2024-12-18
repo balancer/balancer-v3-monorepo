@@ -247,7 +247,7 @@ describe('LBPool', function () {
 
     it('should always sum weights to 1', async () => {
       const currentTime = await time.latest();
-      const startTime = currentTime + 60; // Set startTime 60 seconds in the future
+      const startTime = currentTime + MINUTE; // Set startTime 1 min in the future
       const endTime = startTime + MONTH;
       const startWeights = [fp(0.5), fp(0.5)];
       const endWeights = [fp(0.7), fp(0.3)];
