@@ -12,6 +12,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { BaseMedusaTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseMedusaTest.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { StableMathMock } from "../../../contracts/test/StableMathMock.sol";
 
@@ -22,59 +23,63 @@ contract StableMathInvariantMedusaTest is BaseMedusaTest {
 
     StableMathMock public stableMath;
 
-    uint256 tokenCount;
-    uint256[] balances;
-
-    int256 internal initInvariant;
     int256 internal currentInvariant;
+    int256 internal invariantWithDelta;
 
     constructor() BaseMedusaTest() {
         stableMath = new StableMathMock();
-        currentInvariant = type(int256).max;
     }
 
     function optimize_currentInvariant() public view returns (int256) {
-        return -int256(currentInvariant);
+        return currentInvariant;
+    }
+
+    function optimize_InvariantWithDelta() public view returns (int256) {
+        return -invariantWithDelta;
     }
 
     function property_currentInvariant() public returns (bool) {
-        return currentInvariant >= initInvariant;
+        return invariantWithDelta >= currentInvariant;
     }
 
-    function initBalances(uint256 tokenCountRaw, uint256[8] memory balancesRaw) external {
-        uint256 prevTokenCount = tokenCount;
-        uint256[] memory prevBalances = balances;
-        delete balances;
-
-        tokenCount = bound(tokenCountRaw, MIN_TOKENS, MAX_TOKENS);
-
-        for (uint256 i = 0; i < tokenCount; i++) {
-            balances.push(bound(balancesRaw[i], 1, type(uint128).max));
-            emit Debug("initBalances", balancesRaw[i]);
-        }
-
-        try stableMath.computeInvariant(DEFAULT_AMP_FACTOR, balances, Rounding.ROUND_DOWN) returns (uint256 invariant) {
-            initInvariant = int256(invariant);
-            currentInvariant = initInvariant;
-        } catch {
-            tokenCount = prevTokenCount;
-            balances = prevBalances;
-        }
-    }
-
-    function addDeltaToBalances(uint256 deltaCount, uint256[8] memory indexes, uint256[8] memory deltas) external {
+    function computeInvariants(
+        uint256 tokenCount,
+        uint256 deltaCount,
+        uint256[8] memory indexes,
+        uint256[8] memory deltas,
+        uint256[8] memory balancesRaw
+    ) external {
+        tokenCount = bound(tokenCount, MIN_TOKENS, MAX_TOKENS);
         deltaCount = bound(deltaCount, 1, tokenCount);
 
-        uint256[] memory newBalances = balances;
-        for (uint256 i = 0; i < deltaCount; i++) {
-            uint256 tokenIndex = bound(indexes[i], 0, tokenCount - 1);
-            uint256 delta = bound(deltas[i], 0, type(uint128).max - newBalances[tokenIndex]);
-            newBalances[tokenIndex] += delta;
-            emit Debug("delta", delta);
+        uint256[] memory balances = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            balances[i] = bound(balancesRaw[i], 1, type(uint128).max);
+            emit Debug("initBalances", balances[i]);
         }
 
-        try stableMath.computeInvariant(DEFAULT_AMP_FACTOR, balances, Rounding.ROUND_DOWN) returns (uint256 invariant) {
-            currentInvariant = int256(invariant);
+        uint256[] memory newBalances = new uint256[](tokenCount);
+        ScalingHelpers.copyToArray(balances, newBalances);
+
+        for (uint256 i = 0; i < deltaCount; i++) {
+            uint256 tokenIndex = bound(indexes[i], 0, tokenCount - 1);
+            emit Debug("tokenIndex", tokenIndex);
+
+            uint256 delta = bound(deltas[i], 0, type(uint128).max - newBalances[tokenIndex]);
+            emit Debug("delta", delta);
+
+            newBalances[tokenIndex] += delta;
+        }
+
+        try stableMath.computeInvariant(DEFAULT_AMP_FACTOR, balances, Rounding.ROUND_DOWN) returns (
+            uint256 _currentInvariant
+        ) {
+            try stableMath.computeInvariant(DEFAULT_AMP_FACTOR, newBalances, Rounding.ROUND_DOWN) returns (
+                uint256 _invariantWithDelta
+            ) {
+                currentInvariant = int256(_currentInvariant);
+                invariantWithDelta = int256(_invariantWithDelta);
+            } catch {}
         } catch {}
     }
 }
