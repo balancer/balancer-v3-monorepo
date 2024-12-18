@@ -92,8 +92,9 @@ library GyroECLPMath {
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory derived
     ) internal pure {
-        require(derived.tauAlpha.y >= 0, DerivedTauAlphaYWrong());
-        require(derived.tauBeta.y >= 0, DerivedTauBetaYWrong());
+        // If tau is not within the range below, the pool math may be messed.
+        require(derived.tauAlpha.y > 0, DerivedTauAlphaYWrong());
+        require(derived.tauBeta.y > 0, DerivedTauBetaYWrong());
         require(derived.tauBeta.x > derived.tauAlpha.x, DerivedTauXWrong());
 
         int256 norm2;
