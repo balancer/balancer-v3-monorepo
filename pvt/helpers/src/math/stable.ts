@@ -3,8 +3,8 @@ import { BigNumberish } from 'ethers';
 import { decimal, bn, fp, fromFp, toFp } from '../numbers';
 
 export enum Rounding {
-  ROUND_DOWN,
   ROUND_UP,
+  ROUND_DOWN,
 }
 
 export function calculateInvariant(
