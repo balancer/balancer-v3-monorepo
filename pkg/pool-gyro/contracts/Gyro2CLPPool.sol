@@ -40,7 +40,10 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
+    function computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) external view returns (uint256) {
         (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
         return Gyro2CLPMath.calculateInvariant(balancesLiveScaled18, sqrtAlpha, sqrtBeta, rounding);
@@ -102,7 +105,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams calldata request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams calldata request) external view onlyVault returns (uint256) {
         bool tokenInIsToken0 = request.indexIn == 0;
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];

@@ -16,6 +16,14 @@
       }
     },
     {
+      "files": "**/pool-gyro/**/*.sol",
+      "options": {
+        "singleQuote": false,
+        "tabWidth": 4,
+        "compiler": "0.8.27"
+      }
+    },
+    {
       "files": "*.md",
       "options": {
         "printWidth": 80

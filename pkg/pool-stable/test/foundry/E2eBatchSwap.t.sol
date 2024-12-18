@@ -36,10 +36,9 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
         minSwapAmountTokenA = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
         minSwapAmountTokenD = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
 
-        // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
-        // balance).
-        maxSwapAmountTokenA = poolInitAmount / 10;
-        maxSwapAmountTokenD = poolInitAmount / 10;
+        // 25% of pool init amount, so MIN and MAX invariant ratios are not violated.
+        maxSwapAmountTokenA = poolInitAmount / 4;
+        maxSwapAmountTokenD = poolInitAmount / 4;
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eBatchSwapTest tests.
