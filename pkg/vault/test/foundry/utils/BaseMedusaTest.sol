@@ -42,6 +42,7 @@ contract BaseMedusaTest is Test {
     // In certain places, console.log will not print to stdout the intended message, so we use this event to print
     // messages and values.
     event Debug(string, uint256);
+    event Debug(string, int256);
 
     IPermit2 internal permit2;
 
@@ -58,6 +59,12 @@ contract BaseMedusaTest is Test {
 
     IBasePool internal pool;
     uint256 internal poolCreationNonce;
+
+    uint256 internal constant MAX_UINT128 = type(uint128).max;
+    uint256 internal constant MAX_UINT256 = type(uint256).max;
+
+    // PackedTokenBalance.sol defines a max of 128 bits to store the balance of the pool.
+    uint256 internal constant MAX_BALANCE = MAX_UINT128;
 
     uint256 internal constant DEFAULT_USER_BALANCE = 1e18 * 1e18;
     uint256 internal constant DEFAULT_INITIAL_POOL_BALANCE = 1e6 * 1e18;
