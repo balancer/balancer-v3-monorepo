@@ -28,6 +28,7 @@
     "test:hardhat": "hardhat test",
     "test:forge": "forge test --no-match-test \"FFI\" -vvv",
     "test:stress": "FOUNDRY_PROFILE=intense forge test --ffi -vvv",
+    "test:medusa": "medusa fuzz --config medusa.json",
     "coverage": "./coverage.sh forge",
     "coverage:hardhat": "./coverage.sh hardhat",
     "coverage:all": "./coverage.sh all",
