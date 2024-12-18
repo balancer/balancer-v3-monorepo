@@ -224,10 +224,10 @@ contract LBPool is WeightedPool, Ownable, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault returns (bool) {
-        if (router == _TRUSTED_ROUTER) {
-            return IRouterCommon(router).getSender() == owner();
+        if (router != _TRUSTED_ROUTER) {
+            revert RouterNotTrusted();
         }
-        revert RouterNotTrusted();
+        return IRouterCommon(router).getSender() == owner();
     }
 
     /*******************************************************************************
