@@ -16,7 +16,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultSwapWithRatesTest is BaseVaultTest {
     using CastingHelpers for address[];
@@ -45,7 +45,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
         newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
 
-        factoryMock.registerTestPool(
+        PoolFactoryMock(poolFactory).registerTestPool(
             newPool,
             vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
             poolHooksContract,

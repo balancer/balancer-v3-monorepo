@@ -28,7 +28,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterTest is BaseVaultTest {
     using CastingHelpers for address[];
@@ -78,7 +78,7 @@ contract RouterTest is BaseVaultTest {
         paysYieldFees[0] = true;
         paysYieldFees[1] = true;
 
-        factoryMock.registerTestPool(
+        PoolFactoryMock(poolFactory).registerTestPool(
             newPool,
             vault.buildTokenConfig(
                 [address(dai), address(usdc)].toMemoryArray().asIERC20(),
@@ -93,7 +93,7 @@ contract RouterTest is BaseVaultTest {
         wethPool = deployPoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
-        factoryMock.registerTestPool(
+        PoolFactoryMock(poolFactory).registerTestPool(
             address(wethPool),
             vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20()),
             poolHooksContract,
@@ -111,7 +111,7 @@ contract RouterTest is BaseVaultTest {
         wethPoolNoInit = deployPoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
 
-        factoryMock.registerTestPool(
+        PoolFactoryMock(poolFactory).registerTestPool(
             address(wethPoolNoInit),
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
             poolHooksContract,
@@ -145,7 +145,7 @@ contract RouterTest is BaseVaultTest {
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens), address(0), lp);
+        PoolFactoryMock(poolFactory).registerTestPool(newPool, vault.buildTokenConfig(tokens), address(0), lp);
 
         vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
         vm.prank(lp);

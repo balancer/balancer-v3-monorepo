@@ -20,6 +20,7 @@ import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer
 contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
 
+    string internal constant POOL_VERSION = "Pool v1";
     uint256 internal constant DEFAULT_SWAP_FEE_STABLE = 1e12; // 0.0001%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
@@ -41,6 +42,10 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
         maxSwapAmountTokenD = poolInitAmount / 4;
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eBatchSwapTest tests.
     function _createPool(
         address[] memory tokens,
@@ -48,17 +53,11 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "Stable Pool";
         string memory symbol = "STABLE";
-        string memory poolVersion = "Pool v1";
 
-        StablePoolFactory factory = deployStablePoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
         PoolRoleAccounts memory roleAccounts;
 
-        newPool = factory.create(
+        bytes32 salt = keccak256(abi.encode(label));
+        newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -68,7 +67,7 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
             address(0),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
+            salt
         );
         vm.label(address(newPool), label);
 
@@ -83,7 +82,7 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

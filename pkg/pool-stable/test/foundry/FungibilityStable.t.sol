@@ -19,7 +19,12 @@ import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer
 contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
     using CastingHelpers for address[];
 
+    string internal constant POOL_VERSION = "Pool v1";
     uint256 internal constant DEFAULT_AMP_FACTOR = 2000;
+
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by FungibilityTest.
     function _createPool(
@@ -28,20 +33,13 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "Stable Pool";
         string memory symbol = "STABLE";
-        string memory poolVersion = "Pool v1";
 
-        StablePoolFactory factory = deployStablePoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = factory.create(
+        newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -60,7 +58,7 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

@@ -29,11 +29,16 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
+    string constant POOL_VERSION = "Pool v1";
+
     // The minimum swap fee for a Stable Pool is 0.0001%.
     uint256 internal constant MIN_STABLE_SWAP_FEE = 1e12;
 
-    StablePoolFactory internal stablePoolFactory;
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
+
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation).
     function _createPool(
@@ -42,12 +47,10 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "Stable Pool Test";
         string memory symbol = "STABLE-TEST";
-        string memory poolVersion = "Pool v1";
 
-        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         PoolRoleAccounts memory roleAccounts;
 
-        newPool = stablePoolFactory.create(
+        newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -67,7 +70,7 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

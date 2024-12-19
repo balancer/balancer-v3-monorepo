@@ -21,7 +21,12 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
+    string constant POOL_VERSION = "Pool v1";
     uint256 internal poolCreationNonce;
+
+    function createPoolFactory() internal override returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by FungibilityTest.
     function _createPool(
@@ -30,20 +35,13 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "80/20 Weighted Pool";
         string memory symbol = "80_20WP";
-        string memory poolVersion = "Pool v1";
 
-        WeightedPoolFactory factory = deployWeightedPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = factory.create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -64,7 +62,7 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
                 symbol: symbol,
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(80e16), uint256(20e16)].toMemoryArray(),
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );
