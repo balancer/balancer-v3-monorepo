@@ -51,7 +51,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         // This will unbalance the pool; adding liquidity will result in different proportions being added on each run.
         vault.manualSetPoolBalances(pool, initialBalances, initialBalances);
 
-        uint256[] memory maxAmountsIn = [defaultBalance, defaultBalance].toMemoryArray();
+        uint256[] memory maxAmountsIn = [defaultAccountBalance(), defaultAccountBalance()].toMemoryArray();
 
         // Strict invariant ratio
         PoolMockFlexibleInvariantRatio(pool).setMinimumInvariantRatio(FixedPoint.ONE);
@@ -91,7 +91,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         // `12 * defaultAmount`, so the invariant ratio (new / old) will be FP(6).
         uint256 bptAmountOut = defaultAmount * 10;
         uint256 maxInvariantRatio = FixedPoint.ONE * 2;
-        uint256 maxAmountIn = defaultBalance;
+        uint256 maxAmountIn = defaultAccountBalance();
 
         // Reasonable invariant ratio
         PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);

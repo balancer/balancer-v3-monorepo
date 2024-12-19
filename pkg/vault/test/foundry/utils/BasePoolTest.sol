@@ -72,7 +72,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             // Tokens are transferred from lp.
             assertEq(
-                defaultBalance - poolTokens[i].balanceOf(lp),
+                defaultAccountBalance() - poolTokens[i].balanceOf(lp),
                 tokenAmounts[i],
                 string.concat("LP: Wrong balance for ", Strings.toString(i))
             );
@@ -106,7 +106,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             // Tokens are transferred from Bob.
             assertEq(
-                defaultBalance - poolTokens[i].balanceOf(bob),
+                defaultAccountBalance() - poolTokens[i].balanceOf(bob),
                 tokenAmounts[i],
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
             );
@@ -160,7 +160,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             // Tokens are transferred to Bob.
             assertApproxEqAbs(
                 poolTokens[i].balanceOf(bob),
-                defaultBalance,
+                defaultAccountBalance(),
                 DELTA,
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
             );
@@ -216,8 +216,8 @@ abstract contract BasePoolTest is BaseVaultTest {
         );
 
         // Tokens are transferred from Bob.
-        assertEq(tokenOut.balanceOf(bob), defaultBalance + amountCalculated, "LP: Wrong tokenOut balance");
-        assertEq(tokenIn.balanceOf(bob), defaultBalance - tokenAmountIn, "LP: Wrong tokenIn balance");
+        assertEq(tokenOut.balanceOf(bob), defaultAccountBalance() + amountCalculated, "LP: Wrong tokenOut balance");
+        assertEq(tokenIn.balanceOf(bob), defaultAccountBalance() - tokenAmountIn, "LP: Wrong tokenIn balance");
 
         // Tokens are stored in the Vault.
         assertEq(
