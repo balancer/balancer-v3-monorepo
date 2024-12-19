@@ -72,7 +72,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
 
         PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = WeightedPoolFactory(address(factory)).create(
             name,
@@ -81,7 +81,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             weights,
             roleAccounts,
             DEFAULT_SWAP_FEE,
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
@@ -103,7 +103,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     function initPool() internal override {
         vm.startPrank(lp);
         bptAmountOut = _initPool(
-            pool,
+            pool(),
             tokenAmounts,
             // Account for the precision loss
             expectedAddLiquidityBptAmountOut - DELTA
@@ -113,7 +113,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
 
     function testGetBptRate() public {
         vm.expectRevert(WeightedPool.WeightedPoolBptRateUnsupported.selector);
-        IRateProvider(pool).getRate();
+        IRateProvider(pool()).getRate();
     }
 
     function testFailSwapFeeTooLow() public {
@@ -129,8 +129,8 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             tokenConfigs,
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
-            IBasePool(pool).getMinimumSwapFeePercentage() - 1, // Swap fee too low
-            poolHooksContract,
+            IBasePool(pool()).getMinimumSwapFeePercentage() - 1, // Swap fee too low
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             "Low fee pool"
@@ -141,9 +141,9 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     }
 
     function testGetWeightedPoolImmutableData() public view {
-        WeightedPoolImmutableData memory data = IWeightedPool(pool).getWeightedPoolImmutableData();
-        (uint256[] memory scalingFactors, ) = vault.getPoolTokenRates(pool);
-        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
+        WeightedPoolImmutableData memory data = IWeightedPool(pool()).getWeightedPoolImmutableData();
+        (uint256[] memory scalingFactors, ) = vault.getPoolTokenRates(pool());
+        IERC20[] memory tokens = IPoolInfo(pool()).getTokens();
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             assertEq(address(data.tokens[i]), address(tokens[i]), "Token mismatch");
@@ -153,10 +153,10 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     }
 
     function testGetWeightedPoolDynamicData() public view {
-        WeightedPoolDynamicData memory data = IWeightedPool(pool).getWeightedPoolDynamicData();
-        (, uint256[] memory tokenRates) = vault.getPoolTokenRates(pool);
-        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
-        uint256 totalSupply = IERC20(pool).totalSupply();
+        WeightedPoolDynamicData memory data = IWeightedPool(pool()).getWeightedPoolDynamicData();
+        (, uint256[] memory tokenRates) = vault.getPoolTokenRates(pool());
+        IERC20[] memory tokens = IPoolInfo(pool()).getTokens();
+        uint256 totalSupply = IERC20(pool()).totalSupply();
 
         assertTrue(data.isPoolInitialized, "Pool not initialized");
         assertFalse(data.isPoolPaused, "Pool paused");
@@ -165,7 +165,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         assertEq(data.staticSwapFeePercentage, DEFAULT_SWAP_FEE, "Swap fee mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            assertEq(data.balancesLiveScaled18[i], defaultAmount, "Live balance mismatch");
+            assertEq(data.balancesLiveScaled18[i], DEFAULT_AMOUNT, "Live balance mismatch");
             assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
         }
     }

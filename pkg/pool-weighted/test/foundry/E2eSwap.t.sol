@@ -270,7 +270,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             bytes("")
         );
 
-        // An ExactIn swap with `defaultAmount` tokenIn returned `amountOut` tokenOut.
+        // An ExactIn swap with `DEFAULT_AMOUNT` tokenIn returned `amountOut` tokenOut.
         // Since Exact_In and Exact_Out are symmetrical, an ExactOut swap with `amountOut` tokenOut should return the
         // same amount of tokenIn.
         assertApproxEqRel(amountIn, tokenAAmountIn, 0.00001e16, "Swap fees are not symmetric for ExactIn and ExactOut");
@@ -294,7 +294,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = factory.create(
             name,
@@ -303,7 +303,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
             DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             // NOTE: sends a unique salt.
@@ -386,7 +386,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         poolWithMutableWeights.setNormalizedWeights(newWeights);
 
         newPoolBalances = new uint256[](2);
-        // This operation will change the invariant of the pool, but what matters is the proportion of each token.
+        // This operation will change the invariant of the pool(), but what matters is the proportion of each token.
         newPoolBalances[tokenAIdx] = (poolInitAmountTokenA).mulDown(newWeights[tokenAIdx]);
         newPoolBalances[tokenBIdx] = (poolInitAmountTokenB).mulDown(newWeights[tokenBIdx]);
 

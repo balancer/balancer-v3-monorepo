@@ -32,29 +32,29 @@ contract RecoveryModeTest is BaseVaultTest {
     }
 
     function testRecoveryModeAmountsOutBelowMin() public {
-        setSwapFeePercentage(swapFeePercentage);
+        setSwapFeePercentage(DEFAULT_SWAP_FEE_PERCENTAGE);
 
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool(), amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
-        assertFalse(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
+        assertFalse(vault.getAddLiquidityCalledFlag(pool()), "Transient AddLiquidity flag set");
 
         uint256 amountToRemove = bptAmountOut;
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
+        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool(), amountToRemove);
         vm.revertTo(snapshotId);
 
         // No fees; user gets all the funds back.
-        assertEq(expectedAmountsOut[0], defaultAmount, "Unexpected amount out [0]");
-        assertEq(expectedAmountsOut[1], defaultAmount, "Unexpected amount out [1]");
+        assertEq(expectedAmountsOut[0], DEFAULT_AMOUNT, "Unexpected amount out [0]");
+        assertEq(expectedAmountsOut[1], DEFAULT_AMOUNT, "Unexpected amount out [1]");
 
         expectedAmountsOut[daiIdx] += 1;
 
@@ -67,40 +67,40 @@ contract RecoveryModeTest is BaseVaultTest {
             )
         );
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, amountToRemove, expectedAmountsOut);
+        router.removeLiquidityRecovery(pool(), amountToRemove, expectedAmountsOut);
     }
 
     function testRecoveryModeAmountsOutBelowMinWithRoundtripFee() public {
-        setSwapFeePercentage(swapFeePercentage);
+        setSwapFeePercentage(DEFAULT_SWAP_FEE_PERCENTAGE);
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool(), amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
         // Force roundtrip fees.
-        vault.manualSetAddLiquidityCalledFlag(pool, true);
-        assertTrue(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag not set");
+        vault.manualSetAddLiquidityCalledFlag(pool(), true);
+        assertTrue(vault.getAddLiquidityCalledFlag(pool()), "Transient AddLiquidity flag not set");
 
         uint256 amountToRemove = bptAmountOut;
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
+        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool(), amountToRemove);
         vm.revertTo(snapshotId);
 
         // Verify that roundtrip fees are being applied to the expected amounts out.
         assertEq(
             expectedAmountsOut[0],
-            defaultAmount.mulDown(swapFeePercentage.complement()),
+            DEFAULT_AMOUNT.mulDown(DEFAULT_SWAP_FEE_PERCENTAGE.complement()),
             "Unexpected amount out [0]"
         );
         assertEq(
             expectedAmountsOut[1],
-            defaultAmount.mulDown(swapFeePercentage.complement()),
+            DEFAULT_AMOUNT.mulDown(DEFAULT_SWAP_FEE_PERCENTAGE.complement()),
             "Unexpected amount out [1]"
         );
 
@@ -115,90 +115,90 @@ contract RecoveryModeTest is BaseVaultTest {
             )
         );
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, amountToRemove, expectedAmountsOut);
+        router.removeLiquidityRecovery(pool(), amountToRemove, expectedAmountsOut);
     }
 
     function testRecoveryModeEmitsPoolBalanceChangedEvent() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool(), amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
-        assertFalse(vault.getAddLiquidityCalledFlag(pool), "Transient AddLiquidity flag set");
+        assertFalse(vault.getAddLiquidityCalledFlag(pool()), "Transient AddLiquidity flag set");
 
-        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 initialSupply = IERC20(pool()).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityRemoved(
-            pool,
+            pool(),
             alice,
             RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [defaultAmount / 2, defaultAmount / 2].toMemoryArray(),
+            [DEFAULT_AMOUNT / 2, DEFAULT_AMOUNT / 2].toMemoryArray(),
             new uint256[](2)
         );
 
         uint256 daiBalanceBefore = dai.balanceOf(alice);
         uint256 usdcBalanceBefore = usdc.balanceOf(alice);
 
-        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool()).getTokenInfo();
 
         // Do a recovery withdrawal.
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, amountToRemove, new uint256[](amountsIn.length));
+        router.removeLiquidityRecovery(pool(), amountToRemove, new uint256[](amountsIn.length));
 
-        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        uint256 bptAfter = IERC20(pool()).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT
-        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+        assertEq(initialSupply - IERC20(pool()).totalSupply(), amountToRemove);
 
         uint256 daiBalanceAfter = dai.balanceOf(alice);
         uint256 usdcBalanceAfter = usdc.balanceOf(alice);
 
-        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
-        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+        assertEq(daiBalanceAfter - daiBalanceBefore, DEFAULT_AMOUNT / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, DEFAULT_AMOUNT / 2, "Ending USDC balance wrong (alice)");
 
-        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
-        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
-        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool()).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], DEFAULT_AMOUNT / 2, "Ending balance[0] wrong (pool())");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], DEFAULT_AMOUNT / 2, "Ending balance[1] wrong (pool())");
     }
 
     function testRecoveryModeWithRoundtripFee() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool(), amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
         // Set the fee, and flag to trigger collection of it.
-        vault.manualSetStaticSwapFeePercentage(pool, BASE_MAX_SWAP_FEE);
+        vault.manualSetStaticSwapFeePercentage(pool(), BASE_MAX_SWAP_FEE);
         // Will still be set from the add operation above.
         assertTrue(
-            vault.manualGetAddLiquidityCalledFlagBySession(pool, 0),
+            vault.manualGetAddLiquidityCalledFlagBySession(pool(), 0),
             "Transient AddLiquidity flag not set (session 0)"
         );
 
-        vault.manualSetAddLiquidityCalledFlag(pool, true);
+        vault.manualSetAddLiquidityCalledFlag(pool(), true);
         assertTrue(
-            vault.manualGetAddLiquidityCalledFlagBySession(pool, 1),
+            vault.manualGetAddLiquidityCalledFlagBySession(pool(), 1),
             "Transient AddLiquidity flag not set (session 1)"
         );
 
-        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 initialSupply = IERC20(pool()).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;
-        uint256 amountOutWithoutFee = defaultAmount / 2;
+        uint256 amountOutWithoutFee = DEFAULT_AMOUNT / 2;
         uint256 feeAmount = amountOutWithoutFee.mulDown(BASE_MAX_SWAP_FEE);
         uint256 amountOutAfterFee = amountOutWithoutFee - feeAmount;
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityRemoved(
-            pool,
+            pool(),
             alice,
             RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
@@ -209,15 +209,15 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 daiBalanceBefore = dai.balanceOf(alice);
         uint256 usdcBalanceBefore = usdc.balanceOf(alice);
 
-        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool()).getTokenInfo();
 
         // Do a recovery withdrawal.
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, amountToRemove, new uint256[](amountsIn.length));
+        router.removeLiquidityRecovery(pool(), amountToRemove, new uint256[](amountsIn.length));
 
-        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        uint256 bptAfter = IERC20(pool()).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT
-        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+        assertEq(initialSupply - IERC20(pool()).totalSupply(), amountToRemove);
 
         uint256 daiBalanceAfter = dai.balanceOf(alice);
         uint256 usdcBalanceAfter = usdc.balanceOf(alice);
@@ -225,53 +225,53 @@ contract RecoveryModeTest is BaseVaultTest {
         assertEq(daiBalanceAfter - daiBalanceBefore, amountOutAfterFee, "Ending DAI balance wrong");
         assertEq(usdcBalanceAfter - usdcBalanceBefore, amountOutAfterFee, "Ending USDC balance wrong");
 
-        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
-        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], amountOutAfterFee, "Ending balance[0] wrong (pool)");
-        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], amountOutAfterFee, "Ending balance[1] wrong (pool)");
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool()).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], amountOutAfterFee, "Ending balance[0] wrong (pool())");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], amountOutAfterFee, "Ending balance[1] wrong (pool())");
     }
 
     function testRecoveryModeBalances() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool(), amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Raw and live should be in sync.
         assertRawAndLiveBalanceRelationship(true);
 
         // Put pool in recovery mode.
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
-        uint256 initialSupply = IERC20(pool).totalSupply();
+        uint256 initialSupply = IERC20(pool()).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;
         uint256 daiBalanceBefore = dai.balanceOf(alice);
         uint256 usdcBalanceBefore = usdc.balanceOf(alice);
 
-        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool).getTokenInfo();
+        (, , uint256[] memory poolBalancesBefore, ) = IPoolInfo(pool()).getTokenInfo();
 
         // Do a recovery withdrawal.
         vm.prank(alice);
-        router.removeLiquidityRecovery(pool, bptAmountOut / 2, new uint256[](amountsIn.length));
+        router.removeLiquidityRecovery(pool(), bptAmountOut / 2, new uint256[](amountsIn.length));
 
-        uint256 bptAfter = IERC20(pool).balanceOf(alice);
+        uint256 bptAfter = IERC20(pool()).balanceOf(alice);
         assertEq(bptAfter, amountToRemove); // this is half the BPT
-        assertEq(initialSupply - IERC20(pool).totalSupply(), amountToRemove);
+        assertEq(initialSupply - IERC20(pool()).totalSupply(), amountToRemove);
 
         uint256 daiBalanceAfter = dai.balanceOf(alice);
         uint256 usdcBalanceAfter = usdc.balanceOf(alice);
 
-        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
-        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+        assertEq(daiBalanceAfter - daiBalanceBefore, DEFAULT_AMOUNT / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, DEFAULT_AMOUNT / 2, "Ending USDC balance wrong (alice)");
 
-        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
-        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
-        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
+        (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool()).getTokenInfo();
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], DEFAULT_AMOUNT / 2, "Ending balance[0] wrong (pool())");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], DEFAULT_AMOUNT / 2, "Ending balance[1] wrong (pool())");
 
         // Raw and live should be out of sync.
         assertRawAndLiveBalanceRelationship(false);
 
-        vault.manualDisableRecoveryMode(pool);
+        vault.manualDisableRecoveryMode(pool());
 
         // Raw and live should be back in sync.
         assertRawAndLiveBalanceRelationship(true);
@@ -280,7 +280,7 @@ contract RecoveryModeTest is BaseVaultTest {
     function testRecoveryModeEmitTransferFail() public {
         // We only want a partial match of the call, triggered when BPT are burned.
         vm.mockCallRevert(
-            pool,
+            pool(),
             abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, alice, address(0)),
             bytes("")
         );
@@ -290,11 +290,11 @@ contract RecoveryModeTest is BaseVaultTest {
     function testRecoveryModeEmitApprovalFail() public {
         // Revoke infinite approval so that the event is emitted.
         vm.prank(alice);
-        IERC20(pool).approve(address(router), type(uint256).max - 1);
+        IERC20(pool()).approve(address(router), type(uint256).max - 1);
 
         // We only want a partial match of the call, triggered when BPT are burned.
         vm.mockCallRevert(
-            pool,
+            pool(),
             abi.encodeWithSelector(BalancerPoolToken.emitApproval.selector, alice, router),
             bytes("")
         );
@@ -303,8 +303,8 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal view {
         // Ensure raw and last live balances are in sync after the operation.
-        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory lastBalancesLiveScaled18 = vault.getLastLiveBalances(pool);
+        uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool());
+        uint256[] memory lastBalancesLiveScaled18 = vault.getLastLiveBalances(pool());
 
         assertEq(
             currentLiveBalances.length,
@@ -327,52 +327,52 @@ contract RecoveryModeTest is BaseVaultTest {
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
         // Pause Vault
         vault.manualPauseVault();
 
         assertTrue(vault.isVaultPaused(), "Vault should be paused");
-        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
+        assertFalse(vault.isPoolInRecoveryMode(pool()), "Pool should not be in Recovery Mode after pausing");
 
         // Can enable recovery mode by an LP with no permission grant.
         vm.prank(lp);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
         assertTrue(vault.isVaultPaused(), "Vault should still be paused");
-        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
+        assertTrue(vault.isPoolInRecoveryMode(pool()), "Pool should be in Recovery Mode");
     }
 
     function testRecoveryModePermissionlessWhenPoolPaused() public {
         // When Pool is not paused, `enableRecoveryMode` is permissioned.
-        require(vault.isPoolPaused(pool) == false, "Pool should not be paused initially");
+        require(vault.isPoolPaused(pool()) == false, "Pool should not be paused initially");
         // Also ensure Vault is not paused.
         require(vault.isVaultPaused() == false, "Vault should not be paused initially");
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
         // Pause Pool.
-        vault.manualSetPoolPaused(pool, true);
+        vault.manualSetPoolPaused(pool(), true);
 
-        assertTrue(vault.isPoolPaused(pool), "Pool should be paused");
-        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
+        assertTrue(vault.isPoolPaused(pool()), "Pool should be paused");
+        assertFalse(vault.isPoolInRecoveryMode(pool()), "Pool should not be in Recovery Mode after pausing");
 
         // Can enable recovery mode by an LP with no permission grant.
         vm.prank(lp);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
         assertFalse(vault.isVaultPaused(), "Vault should still not be paused");
-        assertTrue(vault.isPoolPaused(pool), "Pool should still be paused");
-        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
+        assertTrue(vault.isPoolPaused(pool()), "Pool should still be paused");
+        assertTrue(vault.isPoolInRecoveryMode(pool()), "Pool should be in Recovery Mode");
     }
 
     function testRecoveryModePermissionedWhenVaultPermissionless() public {
         // Pause Vault
         vault.manualPauseVault();
         require(vault.isVaultPaused(), "Vault should be paused initially");
-        require(vault.isPoolPaused(pool) == false, "Pool should not be paused initially");
+        require(vault.isPoolPaused(pool()) == false, "Pool should not be paused initially");
 
         uint32 bufferPeriodEndTime = vault.getBufferPeriodEndTime();
 
@@ -386,15 +386,15 @@ contract RecoveryModeTest is BaseVaultTest {
         assertFalse(vault.isVaultPaused(), "Vault should unpause itself after buffer expiration");
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
         // Can still set it if granted permission.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
 
         vm.prank(admin);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
-        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
+        assertTrue(vault.isPoolInRecoveryMode(pool()), "Pool should be in Recovery Mode");
     }
 
     function testRecoveryModePermissionedWhenPoolPermissionless() public {
@@ -402,13 +402,13 @@ contract RecoveryModeTest is BaseVaultTest {
         require(vault.isVaultPaused() == false, "Vault should not be paused initially");
 
         // Pause pool
-        vault.manualSetPoolPaused(pool, true);
+        vault.manualSetPoolPaused(pool(), true);
 
-        assertTrue(vault.isPoolPaused(pool), "Pool should be paused");
-        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
+        assertTrue(vault.isPoolPaused(pool()), "Pool should be paused");
+        assertFalse(vault.isPoolInRecoveryMode(pool()), "Pool should not be in Recovery Mode after pausing");
 
         // Ensure we are in the permissionless period of the Pool.
-        (, , uint32 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
+        (, , uint32 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool());
 
         vm.warp(bufferPeriodEndTime + 1);
 
@@ -416,43 +416,43 @@ contract RecoveryModeTest is BaseVaultTest {
         assertGt(block.timestamp, bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
 
         // Recovery Mode is permissioned even though the Pool's pause bit is set, because it's no longer pausable.
-        assertFalse(vault.isPoolPaused(pool), "Pool should unpause itself after buffer expiration");
+        assertFalse(vault.isPoolPaused(pool()), "Pool should unpause itself after buffer expiration");
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
         // Can still set it if granted permission.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
 
         vm.prank(admin);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
-        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
+        assertTrue(vault.isPoolInRecoveryMode(pool()), "Pool should be in Recovery Mode");
     }
 
     // Disable Recovery Mode
 
     function testDisableRecoveryModeRevert() public {
-        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode");
+        assertFalse(vault.isPoolInRecoveryMode(pool()), "Pool should not be in Recovery Mode");
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInRecoveryMode.selector, pool));
-        vault.disableRecoveryMode(pool);
+        vault.disableRecoveryMode(pool());
     }
 
     function testDisableRecoveryModeSuccessfully() public {
         // Enable recovery mode
         authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
         vm.prank(admin);
-        vault.enableRecoveryMode(pool);
+        vault.enableRecoveryMode(pool());
 
-        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
+        assertTrue(vault.isPoolInRecoveryMode(pool()), "Pool should be in Recovery Mode");
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
         vm.prank(admin);
-        vault.disableRecoveryMode(pool);
+        vault.disableRecoveryMode(pool());
 
-        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool not should be in Recovery Mode");
+        assertFalse(vault.isPoolInRecoveryMode(pool()), "Pool not should be in Recovery Mode");
     }
 }

@@ -53,8 +53,8 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testPoolAddress() public view {
-        address calculatedPoolAddress = factory.getDeploymentAddress(poolArguments, ZERO_BYTES32);
-        assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
+        address calculatedPoolAddress = factory.getDeploymentAddress(poolArguments(), ZERO_BYTES32);
+        assertEq(pool(), calculatedPoolAddress, "Pool address mismatch");
     }
 
     function testPoolPausedState() public view {
@@ -93,7 +93,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         }
 
         // Should mint the correct amount of BPT poolTokens, within a maximum error of DELTA due to precision loss.
-        assertApproxEqAbs(IERC20(pool).balanceOf(lp), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
+        assertApproxEqAbs(IERC20(pool()).balanceOf(lp), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
 
@@ -126,7 +126,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         }
 
         // Should mint the correct amount of BPT poolTokens, within a maximum error of DELTA due to precision loss.
-        assertApproxEqAbs(IERC20(pool).balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
+        assertApproxEqAbs(IERC20(pool()).balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
         assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
 
@@ -134,9 +134,9 @@ abstract contract BasePoolTest is BaseVaultTest {
         vm.startPrank(bob);
         router.addLiquidityUnbalanced(pool, tokenAmounts, tokenAmountIn - DELTA, false, bytes(""));
 
-        IERC20(pool).approve(address(vault), MAX_UINT256);
+        IERC20(pool()).approve(address(vault), MAX_UINT256);
 
-        uint256 bobBptBalance = IERC20(pool).balanceOf(bob);
+        uint256 bobBptBalance = IERC20(pool()).balanceOf(bob);
         uint256 bptAmountIn = bobBptBalance;
 
         uint256[] memory minAmountsOut = new uint256[](poolTokens.length);
@@ -191,7 +191,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         }
 
         // Should burn the correct amount of BPT poolTokens.
-        assertEq(IERC20(pool).balanceOf(bob), 0, "LP: Wrong BPT balance");
+        assertEq(IERC20(pool()).balanceOf(bob), 0, "LP: Wrong BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
 

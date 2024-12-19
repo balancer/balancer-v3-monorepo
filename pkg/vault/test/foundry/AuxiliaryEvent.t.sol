@@ -28,8 +28,8 @@ contract AuxiliaryEventTest is BaseVaultTest {
         uint256 testValue = 777;
 
         vm.expectEmit();
-        emit IVaultEvents.VaultAuxiliary(pool, "TestEvent", abi.encode(testValue));
+        emit IVaultEvents.VaultAuxiliary(pool(), "TestEvent", abi.encode(testValue));
 
-        PoolMock(pool).mockEventFunction(testValue);
+        PoolMock(pool()).mockEventFunction(testValue);
     }
 }

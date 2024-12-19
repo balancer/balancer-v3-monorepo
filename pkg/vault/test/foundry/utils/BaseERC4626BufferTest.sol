@@ -50,7 +50,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         newPool = address(new PoolMock(IVault(address(vault)), name, symbol));
         vm.label(newPool, name);
 
-        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
+        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract(), lp);
 
         poolArgs = abi.encode(vault, name, symbol);
     }
@@ -65,7 +65,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         amountsIn[waWethIdx] = waWethBobShares;
 
         // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
-        _initPool(pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
+        _initPool(pool(), amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
 
         vm.stopPrank();
     }
@@ -87,13 +87,13 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         // Bob should own all pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
         // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur.
         assertApproxEqAbs(
-            IERC20(pool).balanceOf(bob),
+            IERC20(pool()).balanceOf(bob),
             erc4626PoolInitialAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
             errorTolerance,
             "Wrong yield-bearing pool BPT amount"
         );
 
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(pool());
         // The yield-bearing pool should have `erc4626PoolInitialAmount` of both tokens.
         assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
         assertEq(address(tokens[waWethIdx]), address(waWETH), "Wrong yield-bearing pool token (waWETH)");

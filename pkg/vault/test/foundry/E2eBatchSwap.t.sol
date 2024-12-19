@@ -55,7 +55,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
     function setUp() public virtual override {
         // We will use min trade amount in this test.
-        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+        setVaultMockMinTradeAmount(PRODUCTION_MIN_TRADE_AMOUNT);
 
         BaseVaultTest.setUp();
 
@@ -73,13 +73,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         // Create poolA.
         vm.startPrank(lp);
         (poolA, ) = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "poolA");
-        _initPool(poolA, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(poolA, [poolInitAmount(), poolInitAmount()].toMemoryArray(), 0);
         // Create poolB.
         (poolB, ) = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
-        _initPool(poolB, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(poolB, [poolInitAmount(), poolInitAmount()].toMemoryArray(), 0);
         // Create poolC.
         (poolC, ) = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
-        _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(poolC, [poolInitAmount(), poolInitAmount()].toMemoryArray(), 0);
         vm.stopPrank();
 
         vm.startPrank(poolCreator);
@@ -121,10 +121,10 @@ contract E2eBatchSwapTest is BaseVaultTest {
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 10 creates a margin.
         minSwapAmountTokenA = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
-        maxSwapAmountTokenA = poolInitAmount / 2;
+        maxSwapAmountTokenA = poolInitAmount() / 2;
 
         minSwapAmountTokenD = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
-        maxSwapAmountTokenD = poolInitAmount / 2;
+        maxSwapAmountTokenD = poolInitAmount() / 2;
     }
 
     function testDoUndoExactIn__Fuzz(

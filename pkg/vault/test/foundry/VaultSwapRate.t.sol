@@ -41,14 +41,14 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
         // Must match the array passed in, not the sorted index, since buildTokenConfig will do the sorting.
         rateProviders[0] = rateProvider;
-        rateProvider.mockRate(mockRate);
+        rateProvider.mockRate(DEFAULT_MOCK_RATE);
 
         newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
 
         factoryMock.registerTestPool(
             newPool,
             vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-            poolHooksContract,
+            poolHooksContract(),
             lp
         );
 
@@ -58,34 +58,34 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     function testInitializePoolWithRate() public view {
         // Mock pool invariant is linear (just a sum of all balances).
         assertEq(
-            PoolMock(pool).balanceOf(lp),
-            defaultAmount + defaultAmount.mulDown(mockRate) - POOL_MINIMUM_TOTAL_SUPPLY,
+            PoolMock(pool()).balanceOf(lp),
+            DEFAULT_AMOUNT + DEFAULT_AMOUNT.mulDown(DEFAULT_MOCK_RATE) - POOL_MINIMUM_TOTAL_SUPPLY,
             "Invalid amount of BPT"
         );
     }
 
     function testInitialRateProviderState() public view {
-        (, TokenInfo[] memory tokenInfo, , ) = vault.getPoolTokenInfo(pool);
+        (, TokenInfo[] memory tokenInfo, , ) = vault.getPoolTokenInfo(pool());
 
         assertEq(address(tokenInfo[wstethIdx].rateProvider), address(rateProvider), "Wrong rate provider");
         assertEq(address(tokenInfo[daiIdx].rateProvider), address(0), "Rate provider should be 0");
     }
 
     function testSwapSingleTokenExactIWithRate() public {
-        uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
-        uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
+        uint256 rateAdjustedLimit = DEFAULT_AMOUNT.divDown(DEFAULT_MOCK_RATE);
+        uint256 rateAdjustedAmount = DEFAULT_AMOUNT.mulDown(DEFAULT_MOCK_RATE);
 
         uint256[] memory expectedBalances = new uint256[](2);
         expectedBalances[wstethIdx] = rateAdjustedAmount;
-        expectedBalances[daiIdx] = defaultAmount;
+        expectedBalances[daiIdx] = DEFAULT_AMOUNT;
 
         vm.expectCall(
-            pool,
+            pool(),
             abi.encodeCall(
                 IBasePool.onSwap,
                 PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
-                    amountGivenScaled18: defaultAmount,
+                    amountGivenScaled18: DEFAULT_AMOUNT,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,
@@ -97,10 +97,10 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         router.swapSingleTokenExactIn(
-            pool,
+            pool(),
             dai,
             wsteth,
-            defaultAmount,
+            DEFAULT_AMOUNT,
             rateAdjustedLimit,
             MAX_UINT256,
             false,
@@ -109,20 +109,20 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     }
 
     function testSwapSingleTokenExactOutWithRate() public {
-        uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
-        uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
+        uint256 rateAdjustedBalance = DEFAULT_AMOUNT.mulDown(DEFAULT_MOCK_RATE);
+        uint256 rateAdjustedAmountGiven = DEFAULT_AMOUNT.divDown(DEFAULT_MOCK_RATE);
 
         uint256[] memory expectedBalances = new uint256[](2);
         expectedBalances[wstethIdx] = rateAdjustedBalance;
-        expectedBalances[daiIdx] = defaultAmount;
+        expectedBalances[daiIdx] = DEFAULT_AMOUNT;
 
         vm.expectCall(
-            pool,
+            pool(),
             abi.encodeCall(
                 IBasePool.onSwap,
                 PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
-                    amountGivenScaled18: defaultAmount,
+                    amountGivenScaled18: DEFAULT_AMOUNT,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,
@@ -134,11 +134,11 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         router.swapSingleTokenExactOut(
-            pool,
+            pool(),
             dai,
             wsteth,
             rateAdjustedAmountGiven,
-            defaultAmount,
+            DEFAULT_AMOUNT,
             MAX_UINT256,
             false,
             bytes("")

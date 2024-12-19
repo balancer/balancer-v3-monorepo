@@ -46,7 +46,7 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
         factoryMock.registerTestPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
-            poolHooksContract,
+            poolHooksContract(),
             lp
         );
 

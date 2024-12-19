@@ -476,8 +476,8 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         // `maxAmount` must be lower than 30% of the lowest pool liquidity. Below, `maxAmount` is calculated as 25%
         // of the lowest liquidity to have some error margin.
         maxAmount = weightDai > 50e16
-            ? poolInitAmount.mulDown(weightDai.complement())
-            : poolInitAmount.mulDown(weightDai);
+            ? poolInitAmount().mulDown(weightDai.complement())
+            : poolInitAmount().mulDown(weightDai);
         maxAmount = maxAmount.mulDown(25e16);
     }
 
@@ -508,9 +508,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         WeightedPoolMock(swapPool).setNormalizedWeights(newWeights);
 
         newPoolBalances = new uint256[](2);
-        // This operation will change the invariant of the pool, but what matters is the proportion of each token.
-        newPoolBalances[daiIdx] = (poolInitAmount).mulDown(newWeights[daiIdx]);
-        newPoolBalances[usdcIdx] = (poolInitAmount).mulDown(newWeights[usdcIdx]);
+        // This operation will change the invariant of the pool(), but what matters is the proportion of each token.
+        newPoolBalances[daiIdx] = (poolInitAmount()).mulDown(newWeights[daiIdx]);
+        newPoolBalances[usdcIdx] = (poolInitAmount()).mulDown(newWeights[usdcIdx]);
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(liquidityPool);
         // liveBalances = rawBalances because rate is 1 and both tokens are 18 decimals.

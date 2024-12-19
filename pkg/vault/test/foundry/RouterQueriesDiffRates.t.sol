@@ -63,7 +63,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
     function initPool() internal override {
         vm.startPrank(lp);
-        _initPool(pool, [biggerPoolInitAmount, biggerPoolInitAmount].toMemoryArray(), 0);
+        _initPool(pool(), [biggerPoolInitAmount, biggerPoolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
     }
 
@@ -83,7 +83,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256 queryAmountOut = router.querySwapSingleTokenExactIn(
-            pool,
+            pool(),
             dai,
             usdc,
             exactAmountIn,
@@ -95,7 +95,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         uint256 actualAmountOut = router.swapSingleTokenExactIn(
-            pool,
+            pool(),
             dai,
             usdc,
             exactAmountIn,
@@ -125,7 +125,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256 queryAmountIn = router.querySwapSingleTokenExactOut(
-            pool,
+            pool(),
             dai,
             usdc,
             exactAmountOut,
@@ -137,7 +137,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         uint256 actualAmountIn = router.swapSingleTokenExactOut(
-            pool,
+            pool(),
             dai,
             usdc,
             exactAmountOut,
@@ -169,7 +169,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(
-            pool,
+            pool(),
             exactBptAmountOut,
             address(this),
             bytes("")
@@ -179,7 +179,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         uint256[] memory actualAmountsIn = router.addLiquidityProportional(
-            pool,
+            pool(),
             expectedAmountsIn,
             exactBptAmountOut,
             false,
@@ -207,17 +207,17 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         exactAmountsInScaled18[daiIdx] = exactAmountsInRaw[daiIdx].mulUp(daiMockRate);
         exactAmountsInScaled18[usdcIdx] = exactAmountsInRaw[usdcIdx].mulUp(usdcMockRate);
         (uint256 expectedBptAmountOut, ) = BasePoolMath.computeAddLiquidityUnbalanced(
-            vault.getCurrentLiveBalances(pool),
+            vault.getCurrentLiveBalances(pool()),
             exactAmountsInScaled18,
-            IERC20(pool).totalSupply(),
+            IERC20(pool()).totalSupply(),
             0,
-            IBasePool(pool)
+            IBasePool(pool())
         );
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256 queryBptAmountOut = router.queryAddLiquidityUnbalanced(
-            pool,
+            pool(),
             exactAmountsInRaw,
             address(this),
             bytes("")
@@ -227,7 +227,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         uint256 actualBptAmountOut = router.addLiquidityUnbalanced(
-            pool,
+            pool(),
             exactAmountsInRaw,
             expectedBptAmountOut,
             false,
@@ -248,19 +248,19 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         // 1% of biggerPoolInitAmount, arbitrarily.
         uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(1e16);
         (uint256 expectedAmountInScaled18, ) = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
-            vault.getCurrentLiveBalances(pool),
+            vault.getCurrentLiveBalances(pool()),
             daiIdx,
             exactBptAmountOut,
-            IERC20(pool).totalSupply(),
+            IERC20(pool()).totalSupply(),
             0,
-            IBasePool(pool)
+            IBasePool(pool())
         );
         uint256 expectedAmountInRaw = expectedAmountInScaled18.divUp(daiMockRate);
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256 queryAmountIn = router.queryAddLiquiditySingleTokenExactOut(
-            pool,
+            pool(),
             dai,
             exactBptAmountOut,
             address(this),
@@ -271,7 +271,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         uint256 actualAmountIn = router.addLiquiditySingleTokenExactOut(
-            pool,
+            pool(),
             dai,
             MAX_UINT128,
             exactBptAmountOut,
@@ -304,7 +304,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         (uint256[] memory queryAmountsIn, uint256 queryBptOut, ) = router.queryAddLiquidityCustom(
-            pool,
+            pool(),
             maxAmountsIn,
             expectedBptAmountOut,
             address(this),
@@ -315,7 +315,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         (uint256[] memory actualAmountsIn, uint256 actualBptOut, ) = router.addLiquidityCustom(
-            pool,
+            pool(),
             maxAmountsIn,
             expectedBptAmountOut,
             false,
@@ -350,7 +350,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256[] memory queryAmountsOut = router.queryRemoveLiquidityProportional(
-            pool,
+            pool(),
             exactBptAmountIn,
             address(this),
             bytes("")
@@ -360,7 +360,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(lp);
         uint256[] memory actualAmountsOut = router.removeLiquidityProportional(
-            pool,
+            pool(),
             exactBptAmountIn,
             expectedAmountsOut,
             false,
@@ -387,19 +387,19 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         // 1% of biggerPoolInitAmount, arbitrarily.
         uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(1e16);
         (uint256 expectedAmountOutScaled18, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
-            vault.getCurrentLiveBalances(pool),
+            vault.getCurrentLiveBalances(pool()),
             daiIdx,
             exactBptAmountIn,
-            IERC20(pool).totalSupply(),
+            IERC20(pool()).totalSupply(),
             0,
-            IBasePool(pool)
+            IBasePool(pool())
         );
         uint256 expectedAmountOutRaw = expectedAmountOutScaled18.divDown(daiMockRate);
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256 queryAmountOut = router.queryRemoveLiquiditySingleTokenExactIn(
-            pool,
+            pool(),
             exactBptAmountIn,
             dai,
             address(this),
@@ -410,7 +410,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(lp);
         uint256 actualAmountOut = router.removeLiquiditySingleTokenExactIn(
-            pool,
+            pool(),
             exactBptAmountIn,
             dai,
             expectedAmountOutRaw,
@@ -435,19 +435,19 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         // 1% of biggerPoolInitAmount, arbitrarily.
         uint256 exactAmountOut = biggerPoolInitAmount.mulUp(1e16);
         (uint256 expectedBptAmountIn, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
-            vault.getCurrentLiveBalances(pool),
+            vault.getCurrentLiveBalances(pool()),
             daiIdx,
             // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals).
             exactAmountOut.mulUp(daiMockRate),
-            IERC20(pool).totalSupply(),
+            IERC20(pool()).totalSupply(),
             0,
-            IBasePool(pool)
+            IBasePool(pool())
         );
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256 queryBptAmountIn = router.queryRemoveLiquiditySingleTokenExactOut(
-            pool,
+            pool(),
             dai,
             exactAmountOut,
             address(this),
@@ -458,7 +458,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(lp);
         uint256 actualBptAmountIn = router.removeLiquiditySingleTokenExactOut(
-            pool,
+            pool(),
             expectedBptAmountIn,
             dai,
             exactAmountOut,
@@ -491,7 +491,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         (uint256 queryBptIn, uint256[] memory queryAmountsOut, ) = router.queryRemoveLiquidityCustom(
-            pool,
+            pool(),
             expectedBptAmountIn,
             minAmountsOut,
             address(this),
@@ -502,7 +502,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         vm.prank(lp);
         (uint256 actualBptIn, uint256[] memory actualAmountsOut, ) = router.removeLiquidityCustom(
-            pool,
+            pool(),
             expectedBptAmountIn,
             minAmountsOut,
             false,
@@ -534,17 +534,17 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256[] memory expectedAmountsOut = [exactBptAmountIn.divUp(2e18), exactBptAmountIn.divUp(2e18)]
             .toMemoryArray();
 
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
+        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityRecovery(pool(), exactBptAmountIn);
 
         vm.revertTo(snapshotId);
 
         vm.prank(lp);
         uint256[] memory actualAmountsOut = router.removeLiquidityRecovery(
-            pool,
+            pool(),
             exactBptAmountIn,
             new uint256[](expectedAmountsOut.length)
         );

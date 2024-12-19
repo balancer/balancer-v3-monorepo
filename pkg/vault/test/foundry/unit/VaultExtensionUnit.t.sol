@@ -17,13 +17,13 @@ contract VaultExtensionUnitTest is BaseVaultTest {
 
     function testComputeDynamicSwapFeePercentageRevert() public {
         PoolSwapParams memory params;
-        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool());
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        vault.manualSetHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool(), hooksConfig);
 
         // should fail
-        PoolHooksMock(poolHooksContract).setFailOnComputeDynamicSwapFeeHook(true);
+        PoolHooksMock(poolHooksContract()).setFailOnComputeDynamicSwapFeeHook(true);
         vm.expectRevert(IVaultErrors.DynamicSwapFeeHookFailed.selector);
-        vault.computeDynamicSwapFeePercentage(pool, params);
+        vault.computeDynamicSwapFeePercentage(pool(), params);
     }
 }

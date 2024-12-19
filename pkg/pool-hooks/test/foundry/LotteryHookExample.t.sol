@@ -41,7 +41,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    // Sets the hook for the pool, and stores the address in `poolHooksContract`.
+    // Sets the hook for the pool(), and stores the address in `poolHooksContract()`.
     function createHook() internal override returns (address) {
         // lp will be the owner of the hook. Only the owner can set hook fee percentages.
         vm.prank(lp);
@@ -67,13 +67,13 @@ contract LotteryHookExampleTest is BaseVaultTest {
         liquidityManagement.disableUnbalancedLiquidity = true;
 
         vm.expectEmit();
-        emit LotteryHookExample.LotteryHookExampleRegistered(poolHooksContract, address(newPool));
+        emit LotteryHookExample.LotteryHookExampleRegistered(poolHooksContract(), address(newPool));
 
         factoryMock.registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
-            poolHooksContract,
+            poolHooksContract(),
             liquidityManagement
         );
 
@@ -235,13 +235,13 @@ contract LotteryHookExampleTest is BaseVaultTest {
             uint256 iterations
         )
     {
-        swapAmount = poolInitAmount / 100;
+        swapAmount = poolInitAmount() / 100;
 
         vm.expectEmit();
-        emit LotteryHookExample.HookSwapFeePercentageChanged(poolHooksContract, MAX_SWAP_FEE_PERCENTAGE);
+        emit LotteryHookExample.HookSwapFeePercentageChanged(poolHooksContract(), MAX_SWAP_FEE_PERCENTAGE);
 
         vm.prank(lp);
-        LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE);
+        LotteryHookExample(poolHooksContract()).setHookSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE);
         uint256 hookFee = swapAmount.mulDown(MAX_SWAP_FEE_PERCENTAGE);
 
         balancesBefore = getBalances(bob);
@@ -258,43 +258,43 @@ contract LotteryHookExampleTest is BaseVaultTest {
                 routerMethod = IRouter.swapSingleTokenExactOut.selector;
             }
 
-            uint8 randomNumber = LotteryHookExample(poolHooksContract).getRandomNumber();
+            uint8 randomNumber = LotteryHookExample(poolHooksContract()).getRandomNumber();
 
             uint256 amountGiven = swapAmount;
             uint256 amountCalculated = routerMethod == IRouter.swapSingleTokenExactIn.selector
                 ? swapAmount - hookFee // If EXACT_IN, amount calculated is amount out; user receives less
                 : swapAmount + hookFee; // If EXACT_IN, amount calculated is amount in; user pays more
 
-            if (randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER()) {
-                uint256 daiWinnings = dai.balanceOf(poolHooksContract);
-                uint256 usdcWinnings = usdc.balanceOf(poolHooksContract);
+            if (randomNumber == LotteryHookExample(poolHooksContract()).LUCKY_NUMBER()) {
+                uint256 daiWinnings = dai.balanceOf(poolHooksContract());
+                uint256 usdcWinnings = usdc.balanceOf(poolHooksContract());
 
                 if (daiWinnings > 0) {
                     vm.expectEmit();
-                    emit LotteryHookExample.LotteryWinningsPaid(poolHooksContract, alice, IERC20(dai), daiWinnings);
+                    emit LotteryHookExample.LotteryWinningsPaid(poolHooksContract(), alice, IERC20(dai), daiWinnings);
                 }
 
                 if (usdcWinnings > 0) {
                     vm.expectEmit();
-                    emit LotteryHookExample.LotteryWinningsPaid(poolHooksContract, alice, IERC20(usdc), usdcWinnings);
+                    emit LotteryHookExample.LotteryWinningsPaid(poolHooksContract(), alice, IERC20(usdc), usdcWinnings);
                 }
             } else {
                 if (routerMethod == IRouter.swapSingleTokenExactIn.selector) {
                     vm.expectEmit();
-                    emit LotteryHookExample.LotteryFeeCollected(poolHooksContract, IERC20(usdc), hookFee);
+                    emit LotteryHookExample.LotteryFeeCollected(poolHooksContract(), IERC20(usdc), hookFee);
                 } else {
                     vm.expectEmit();
-                    emit LotteryHookExample.LotteryFeeCollected(poolHooksContract, IERC20(dai), hookFee);
+                    emit LotteryHookExample.LotteryFeeCollected(poolHooksContract(), IERC20(dai), hookFee);
                 }
             }
 
             // Bob is the paying user, Alice is the user who will win the lottery (so we can measure the
             // amount of fee tokens sent).
-            vm.prank(randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER() ? alice : bob);
+            vm.prank(randomNumber == LotteryHookExample(poolHooksContract()).LUCKY_NUMBER() ? alice : bob);
             (bool success, ) = address(router).call(
                 abi.encodeWithSelector(
                     routerMethod,
-                    address(pool),
+                    address(pool()),
                     dai,
                     usdc,
                     amountGiven,
@@ -307,7 +307,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
 
             assertTrue(success, "Swap has failed");
 
-            if (randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER()) {
+            if (randomNumber == LotteryHookExample(poolHooksContract()).LUCKY_NUMBER()) {
                 break;
             } else {
                 if (routerMethod == IRouter.swapSingleTokenExactIn.selector) {

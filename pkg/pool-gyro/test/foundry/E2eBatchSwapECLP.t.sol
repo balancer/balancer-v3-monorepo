@@ -36,7 +36,7 @@ contract E2eBatchSwapECLPTest is E2eBatchSwapTest, GyroEclpPoolDeployer {
         minSwapAmountTokenD = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
 
         // 25% of pool init amount, so MIN and MAX invariant ratios are not violated.
-        maxSwapAmountTokenA = poolInitAmount / 4;
-        maxSwapAmountTokenD = poolInitAmount / 4;
+        maxSwapAmountTokenA = poolInitAmount() / 4;
+        maxSwapAmountTokenD = poolInitAmount() / 4;
     }
 }

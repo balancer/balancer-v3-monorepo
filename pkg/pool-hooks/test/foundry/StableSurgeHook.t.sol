@@ -69,8 +69,8 @@ contract StableSurgeHookTest is BaseVaultTest {
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            swapFeePercentage,
-            poolHooksContract,
+            DEFAULT_SWAP_FEE_PERCENTAGE,
+            poolHooksContract(),
             false,
             false,
             ZERO_BYTES32
@@ -93,28 +93,28 @@ contract StableSurgeHookTest is BaseVaultTest {
 
     function testSuccessfulRegistry() public view {
         assertEq(
-            stableSurgeHook.getSurgeThresholdPercentage(pool),
+            stableSurgeHook.getSurgeThresholdPercentage(pool()),
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
             "Surge threshold is wrong"
         );
     }
 
     function testSwap__Fuzz(uint256 amountGivenScaled18, uint256 swapFeePercentageRaw, uint256 kindRaw) public {
-        amountGivenScaled18 = bound(amountGivenScaled18, 1e18, poolInitAmount / 2);
+        amountGivenScaled18 = bound(amountGivenScaled18, 1e18, poolInitAmount() / 2);
         SwapKind kind = SwapKind(bound(kindRaw, 0, 1));
 
-        vault.manuallySetSwapFee(pool, bound(swapFeePercentageRaw, 0, 1e16));
-        swapFeePercentage = vault.getStaticSwapFeePercentage(pool);
+        vault.manuallySetSwapFee(pool(), bound(swapFeePercentageRaw, 0, 1e16));
+        uint256 swapFeePercentage = vault.getStaticSwapFeePercentage(pool());
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         if (kind == SwapKind.EXACT_IN) {
             vm.prank(alice);
-            router.swapSingleTokenExactIn(pool, usdc, dai, amountGivenScaled18, 0, MAX_UINT256, false, bytes(""));
+            router.swapSingleTokenExactIn(pool(), usdc, dai, amountGivenScaled18, 0, MAX_UINT256, false, bytes(""));
         } else {
             vm.prank(alice);
             router.swapSingleTokenExactOut(
-                pool,
+                pool(),
                 usdc,
                 dai,
                 amountGivenScaled18,
@@ -128,7 +128,8 @@ contract StableSurgeHookTest is BaseVaultTest {
         uint256 actualSwapFeePercentage = _calculateFee(
             amountGivenScaled18,
             kind,
-            [poolInitAmount, poolInitAmount].toMemoryArray()
+            swapFeePercentage,
+            [poolInitAmount(), poolInitAmount()].toMemoryArray()
         );
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
@@ -143,13 +144,13 @@ contract StableSurgeHookTest is BaseVaultTest {
             expectedAmountIn = amountGivenScaled18;
             uint256 swapAmount = amountGivenScaled18.mulUp(actualSwapFeePercentage);
 
-            uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(
+            uint256 amountCalculatedScaled18 = StablePool(pool()).onSwap(
                 PoolSwapParams({
                     kind: kind,
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
                     amountGivenScaled18: expectedAmountIn - swapAmount,
-                    balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
+                    balancesScaled18: [poolInitAmount(), poolInitAmount()].toMemoryArray(),
                     router: address(0),
                     userData: bytes("")
                 })
@@ -158,13 +159,13 @@ contract StableSurgeHookTest is BaseVaultTest {
             expectedAmountOut = amountCalculatedScaled18;
         } else {
             expectedAmountOut = amountGivenScaled18;
-            uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(
+            uint256 amountCalculatedScaled18 = StablePool(pool()).onSwap(
                 PoolSwapParams({
                     kind: kind,
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
                     amountGivenScaled18: expectedAmountOut,
-                    balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
+                    balancesScaled18: [poolInitAmount(), poolInitAmount()].toMemoryArray(),
                     router: address(0),
                     userData: bytes("")
                 })
@@ -181,9 +182,10 @@ contract StableSurgeHookTest is BaseVaultTest {
     function _calculateFee(
         uint256 amountGivenScaled18,
         SwapKind kind,
+        uint256 swapFeePercentage,
         uint256[] memory balances
     ) internal view returns (uint256) {
-        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(
+        uint256 amountCalculatedScaled18 = StablePool(pool()).onSwap(
             PoolSwapParams({
                 kind: kind,
                 indexIn: usdcIdx,
@@ -218,7 +220,7 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         return
             swapFeePercentage +
-            (stableSurgeHook.getMaxSurgeFeePercentage(pool) - swapFeePercentage).mulDown(
+            (stableSurgeHook.getMaxSurgeFeePercentage(pool()) - swapFeePercentage).mulDown(
                 (newTotalImbalance - DEFAULT_SURGE_THRESHOLD_PERCENTAGE).divDown(
                     DEFAULT_SURGE_THRESHOLD_PERCENTAGE.complement()
                 )

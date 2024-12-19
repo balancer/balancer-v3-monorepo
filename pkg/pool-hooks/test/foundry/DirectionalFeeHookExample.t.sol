@@ -90,7 +90,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
                 BASE_MIN_SWAP_FEE,
-                poolHooksContract,
+                poolHooksContract(),
                 false, // Does not allow donations
                 false, // Do not disable unbalanced add/remove liquidity
                 ZERO_BYTES32
@@ -124,7 +124,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,
-                poolHooksContract,
+                poolHooksContract(),
                 directionalFeePool,
                 address(factoryMock)
             )
@@ -133,18 +133,18 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
     }
 
     function testSuccessfulRegistry() public view {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool());
 
-        assertEq(hooksConfig.hooksContract, poolHooksContract, "hooksContract is wrong");
+        assertEq(hooksConfig.hooksContract, poolHooksContract(), "hooksContract is wrong");
         assertTrue(hooksConfig.shouldCallComputeDynamicSwapFee, "shouldCallComputeDynamicSwapFee is false");
     }
 
     function testSwapBalancingPoolFee() public {
         // Make an initial swap to meaningfully unbalance the pool (USDC >> DAI).
         vm.prank(bob);
-        router.swapSingleTokenExactIn(pool, usdc, dai, poolInitAmount / 2, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool(), usdc, dai, poolInitAmount() / 2, 0, MAX_UINT256, false, bytes(""));
 
-        uint256 daiExactAmountIn = poolInitAmount / 10;
+        uint256 daiExactAmountIn = poolInitAmount() / 10;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
 
@@ -165,7 +165,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
 
         // Swap DAI for USDC, bringing the pool closer to equilibrium.
         vm.prank(bob);
-        router.swapSingleTokenExactIn(pool, dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool(), dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
@@ -229,7 +229,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
     // Test the swap fee percentage when the pool is taken further from equilibrium.
     function testSwapUnbalancingPoolFee() public {
         // Swap to meaningfully take the pool out of equilibrium.
-        uint256 daiExactAmountIn = poolInitAmount / 2;
+        uint256 daiExactAmountIn = poolInitAmount() / 2;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
         // Since there's no rate providers, and all tokens are 18 decimals, scaled18 and raw values are equal.
@@ -243,7 +243,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
 
         // Call the dynamic fee hook to fetch the expected swap fee percentage.
         vm.prank(address(vault));
-        (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract)
+        (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract())
             .onComputeDynamicSwapFeePercentage(
                 PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
@@ -254,7 +254,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
                     router: address(0), // The router is not used by the hook
                     userData: bytes("") // User data is not used by the hook
                 }),
-                pool,
+                pool(),
                 SWAP_FEE_PERCENTAGE
             );
 
@@ -270,7 +270,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
 
         // Swap DAI for USDC to bring the pool closer to equilibrium.
         vm.prank(bob);
-        router.swapSingleTokenExactIn(pool, dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool(), dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
@@ -333,7 +333,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
         );
     }
 
-    // Registration tests require a new pool, because an existing pool may already be registered.
+    // Registration tests require a new pool(), because an existing pool may already be registered.
     function _createPoolToRegister() private returns (address newPool) {
         newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
         vm.label(newPool, "Directional Fee Pool");
@@ -345,6 +345,12 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
 
         LiquidityManagement memory liquidityManagement;
 
-        factoryMock.registerPool(directionalFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+        factoryMock.registerPool(
+            directionalFeePool,
+            tokenConfig,
+            roleAccounts,
+            poolHooksContract(),
+            liquidityManagement
+        );
     }
 }

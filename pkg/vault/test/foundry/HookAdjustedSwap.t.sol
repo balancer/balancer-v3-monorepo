@@ -29,7 +29,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        _swapAmount = poolInitAmount / 100;
+        _swapAmount = poolInitAmount() / 100;
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -63,7 +63,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
-            poolHooksContract,
+            poolHooksContract(),
             liquidityManagement
         );
 
@@ -72,18 +72,18 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function testFeeExactIn__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
         // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount());
 
         // Fee between 0 and 100%.
         hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
-        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        PoolHooksMock(poolHooksContract()).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -92,18 +92,18 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: swapAmount,
                     amountOutScaled18: swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - swapAmount,
                     amountCalculatedScaled18: swapAmount,
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
         );
 
-        router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool()), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
@@ -129,15 +129,15 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function testDiscountExactIn__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
         // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount());
 
         // Discount between 0 and 100%
         hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
-        PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
+        PoolHooksMock(poolHooksContract()).setHookSwapDiscountPercentage(hookDiscountPercentage);
         uint256 hookDiscount = swapAmount.mulDown(hookDiscountPercentage);
 
         // Hook needs to pay the discount to the pool. Since it's exact in, the discount is paid in tokenOut amount.
-        usdc.mint(address(poolHooksContract), hookDiscount);
+        usdc.mint(address(poolHooksContract()), hookDiscount);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
@@ -145,7 +145,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vm.prank(bob);
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -154,18 +154,18 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: swapAmount,
                     amountOutScaled18: swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - swapAmount,
                     amountCalculatedScaled18: swapAmount,
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
         );
 
-        router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool()), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
@@ -191,11 +191,11 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function testFeeExactOut__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
         // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount());
 
         // Fee between 0 and 100%.
         hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
-        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        PoolHooksMock(poolHooksContract()).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
@@ -204,7 +204,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vm.prank(bob);
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -213,19 +213,19 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: swapAmount,
                     amountOutScaled18: swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - swapAmount,
                     amountCalculatedScaled18: swapAmount,
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
         );
 
         router.swapSingleTokenExactOut(
-            address(pool),
+            address(pool()),
             dai,
             usdc,
             swapAmount,
@@ -259,15 +259,15 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function testDiscountExactOut__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
         // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount());
 
         // Discount between 0 and 100%
         hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
-        PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
+        PoolHooksMock(poolHooksContract()).setHookSwapDiscountPercentage(hookDiscountPercentage);
         uint256 hookDiscount = swapAmount.mulDown(hookDiscountPercentage);
 
         // Hook needs to pay the discount to the pool. Since it's exact out, the discount is paid in tokenIn amount.
-        dai.mint(address(poolHooksContract), hookDiscount);
+        dai.mint(address(poolHooksContract()), hookDiscount);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
@@ -275,7 +275,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vm.prank(bob);
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -284,19 +284,19 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: swapAmount,
                     amountOutScaled18: swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - swapAmount,
                     amountCalculatedScaled18: swapAmount,
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
         );
 
         router.swapSingleTokenExactOut(
-            address(pool),
+            address(pool()),
             dai,
             usdc,
             swapAmount,
@@ -330,14 +330,14 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function testFeeExactInLimitViolation() public {
         uint256 hookFeePercentage = 1e16;
-        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        PoolHooksMock(poolHooksContract()).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook.
         vm.prank(bob);
         // Check that  onAfterHook was called with the correct params.
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -346,12 +346,12 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: _swapAmount,
                     amountOutScaled18: _swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - _swapAmount,
                     amountCalculatedScaled18: _swapAmount,
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
@@ -362,7 +362,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         );
 
         router.swapSingleTokenExactIn(
-            address(pool),
+            address(pool()),
             dai,
             usdc,
             _swapAmount,
@@ -375,14 +375,14 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function testFeeExactOutLimitViolation() public {
         uint256 hookFeePercentage = 1e16;
-        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        PoolHooksMock(poolHooksContract()).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook.
         vm.prank(bob);
         // Check that onAfterSwap was called with the correct parameters.
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -391,12 +391,12 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: _swapAmount,
                     amountOutScaled18: _swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - _swapAmount,
                     amountCalculatedScaled18: _swapAmount,
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
@@ -408,7 +408,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         );
 
         router.swapSingleTokenExactOut(
-            address(pool),
+            address(pool()),
             dai,
             usdc,
             _swapAmount,
@@ -421,14 +421,14 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function testBalanceNotSettled() public {
         uint256 hookDiscountPercentage = 1e16;
-        PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
-        PoolHooksMock(poolHooksContract).setShouldSettleDiscount(false);
+        PoolHooksMock(poolHooksContract()).setHookSwapDiscountPercentage(hookDiscountPercentage);
+        PoolHooksMock(poolHooksContract()).setShouldSettleDiscount(false);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook.
         vm.prank(bob);
         // Check that onAfterHook was called with the correct params.
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -437,12 +437,12 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: _swapAmount,
                     amountOutScaled18: _swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - _swapAmount,
                     amountCalculatedScaled18: _swapAmount,
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
@@ -451,7 +451,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BalanceNotSettled.selector));
 
         router.swapSingleTokenExactIn(
-            address(pool),
+            address(pool()),
             dai,
             usdc,
             _swapAmount,

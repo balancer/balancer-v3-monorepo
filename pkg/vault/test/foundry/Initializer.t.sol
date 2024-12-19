@@ -29,10 +29,10 @@ contract InitializerTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        HooksConfig memory config = vault.getHooksConfig(pool);
+        HooksConfig memory config = vault.getHooksConfig(pool());
         config.shouldCallBeforeInitialize = true;
         config.shouldCallAfterInitialize = true;
-        vault.manualSetHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool(), config);
 
         standardPoolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
     }
@@ -40,19 +40,19 @@ contract InitializerTest is BaseVaultTest {
     function initPool() internal override {}
 
     function testNoRevertWithZeroConfig() public {
-        HooksConfig memory config = vault.getHooksConfig(pool);
+        HooksConfig memory config = vault.getHooksConfig(pool());
         config.shouldCallBeforeInitialize = false;
         config.shouldCallAfterInitialize = false;
-        vault.manualSetHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool(), config);
 
-        PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
-        PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
+        PoolHooksMock(poolHooksContract()).setFailOnBeforeInitializeHook(true);
+        PoolHooksMock(poolHooksContract()).setFailOnAfterInitializeHook(true);
 
         vm.prank(bob);
         router.initialize(
-            pool,
+            pool(),
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -62,13 +62,13 @@ contract InitializerTest is BaseVaultTest {
     function testOnBeforeInitializeHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksContract),
-            abi.encodeCall(IHooks.onBeforeInitialize, ([defaultAmount, defaultAmount].toMemoryArray(), bytes("0xff")))
+            address(poolHooksContract()),
+            abi.encodeCall(IHooks.onBeforeInitialize, ([DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), bytes("0xff")))
         );
         router.initialize(
-            pool,
+            pool(),
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -76,13 +76,13 @@ contract InitializerTest is BaseVaultTest {
     }
 
     function testOnBeforeInitializeHookRevert() public {
-        PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
+        PoolHooksMock(poolHooksContract()).setFailOnBeforeInitializeHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.BeforeInitializeHookFailed.selector);
         router.initialize(
-            pool,
+            pool(),
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -92,20 +92,20 @@ contract InitializerTest is BaseVaultTest {
     function testOnAfterInitializeHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterInitialize,
                 (
-                    [defaultAmount, defaultAmount].toMemoryArray(),
-                    2 * defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY,
+                    [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                    2 * DEFAULT_AMOUNT - POOL_MINIMUM_TOTAL_SUPPLY,
                     bytes("0xff")
                 )
             )
         );
         router.initialize(
-            pool,
+            pool(),
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -113,13 +113,13 @@ contract InitializerTest is BaseVaultTest {
     }
 
     function testOnAfterInitializeHookRevert() public {
-        PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
+        PoolHooksMock(poolHooksContract()).setFailOnAfterInitializeHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.AfterInitializeHookFailed.selector);
         router.initialize(
-            pool,
+            pool(),
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -129,19 +129,19 @@ contract InitializerTest is BaseVaultTest {
     function testInitializeEmitsPoolBalanceChangedEvent() public {
         vm.expectEmit();
         emit IVaultEvents.LiquidityAdded(
-            pool,
+            pool(),
             bob,
             AddLiquidityKind.UNBALANCED,
-            defaultAmount * 3,
-            [defaultAmount, defaultAmount * 2].toMemoryArray(),
+            DEFAULT_AMOUNT * 3,
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT * 2].toMemoryArray(),
             new uint256[](2)
         );
 
         vm.prank(bob);
         router.initialize(
-            pool,
+            pool(),
             standardPoolTokens,
-            [defaultAmount, defaultAmount * 2].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT * 2].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -154,9 +154,9 @@ contract InitializerTest is BaseVaultTest {
 
         vm.prank(bob);
         router.initialize(
-            pool,
+            pool(),
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")

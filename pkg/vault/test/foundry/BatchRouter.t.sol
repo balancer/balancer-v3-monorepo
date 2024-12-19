@@ -38,15 +38,15 @@ contract BatchRouterTest is BaseVaultTest {
     function testQuerySingleStepRemove() public {
         // create a swap step and query the batch router, where the first token is the bpt.
         IBatchRouter.SwapPathStep[] memory step = new IBatchRouter.SwapPathStep[](1);
-        step[0] = IBatchRouter.SwapPathStep(address(pool), IERC20(address(dai)), false);
+        step[0] = IBatchRouter.SwapPathStep(address(pool()), IERC20(address(dai)), false);
 
-        uint256 totalSupply = IERC20(pool).totalSupply();
+        uint256 totalSupply = IERC20(pool()).totalSupply();
         uint256 bptAmountIn = 1e18;
 
         require(bptAmountIn < totalSupply);
 
         IBatchRouter.SwapPathExactAmountIn memory path = IBatchRouter.SwapPathExactAmountIn(
-            IERC20(address(pool)),
+            IERC20(address(pool())),
             step,
             bptAmountIn,
             0

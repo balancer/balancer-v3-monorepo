@@ -88,7 +88,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
-        poolInitAmount = 1e9 * 1e18;
+        setPoolInitAmount(1e9 * 1e18);
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
 
@@ -112,8 +112,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function initPool() internal override {
         vm.startPrank(lp);
-        _initPool(swapPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
-        _initPool(liquidityPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(swapPool, [poolInitAmount(), poolInitAmount()].toMemoryArray(), 0);
+        _initPool(liquidityPool, [poolInitAmount(), poolInitAmount()].toMemoryArray(), 0);
         vm.stopPrank();
     }
 

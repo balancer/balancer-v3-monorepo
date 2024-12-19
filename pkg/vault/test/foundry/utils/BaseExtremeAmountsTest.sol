@@ -40,8 +40,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
     // Test setup
     function setUp() public virtual override(BaseTest, BaseVaultTest) {
-        BaseTest.setUp();
-        _setUpBaseVaultTest();
+        BaseVaultTest.setUp();
     }
 
     function initPool() internal override {
@@ -58,33 +57,33 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         dai.mint(lp, MAX_UINT128);
 
         initPool();
-        minSwapFee = IBasePool(pool).getMinimumSwapFeePercentage();
-        maxSwapFee = IBasePool(pool).getMaximumSwapFeePercentage();
+        minSwapFee = IBasePool(pool()).getMinimumSwapFeePercentage();
+        maxSwapFee = IBasePool(pool()).getMaximumSwapFeePercentage();
 
-        initBPTAmount = IBasePool(pool).computeInvariant(balances, Rounding.ROUND_DOWN);
+        initBPTAmount = IBasePool(pool()).computeInvariant(balances, Rounding.ROUND_DOWN);
         maxBPTAmount = _initMaxBPTAmount();
         maxAdditionalBPTAmount = maxBPTAmount - initBPTAmount;
 
         maxAdditionalAmountsIn.push(MAX_UINT128 - balances[0]);
         maxAdditionalAmountsIn.push(MAX_UINT128 - balances[1]);
 
-        minInvariantRatio = IBasePool(pool).getMinimumInvariantRatio();
-        maxInvariantRatio = IBasePool(pool).getMaximumInvariantRatio();
+        minInvariantRatio = IBasePool(pool()).getMinimumInvariantRatio();
+        maxInvariantRatio = IBasePool(pool()).getMaximumInvariantRatio();
 
         vault.manualSetAggregateSwapFeePercentage(pool, swapFee);
     }
 
     function _initMaxBPTAmount() internal virtual returns (uint256) {
-        return IBasePool(pool).computeInvariant([MAX_BALANCE, MAX_BALANCE].toMemoryArray(), Rounding.ROUND_DOWN);
+        return IBasePool(pool()).computeInvariant([MAX_BALANCE, MAX_BALANCE].toMemoryArray(), Rounding.ROUND_DOWN);
     }
 
     modifier checkInvariant() {
         (, , uint256[] memory poolBalancesBefore, ) = vault.getPoolTokenInfo(pool);
-        uint256 invariantBefore = IBasePool(pool).computeInvariant(poolBalancesBefore, Rounding.ROUND_UP);
+        uint256 invariantBefore = IBasePool(pool()).computeInvariant(poolBalancesBefore, Rounding.ROUND_UP);
         _;
 
         (, , uint256[] memory poolBalancesAfter, ) = vault.getPoolTokenInfo(pool);
-        uint256 invariantAfter = IBasePool(pool).computeInvariant(poolBalancesAfter, Rounding.ROUND_UP);
+        uint256 invariantAfter = IBasePool(pool()).computeInvariant(poolBalancesAfter, Rounding.ROUND_UP);
 
         assertGe(invariantAfter, invariantBefore, "InvariantAfter should be greater or equal to invariantBefore");
     }
@@ -101,13 +100,13 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     function testAddAndRemoveLiquidityProportionalMaxBPTAmount__FuzzSwapFee(uint256 swapFee) public {
-        _setUpVariables([poolInitAmount, poolInitAmount].toMemoryArray(), _boundSwapFee(swapFee));
+        _setUpVariables([poolInitAmount(), poolInitAmount()].toMemoryArray(), _boundSwapFee(swapFee));
 
         _testAddAndRemoveLiquidityProportional(_calculateMaxBPTAmountForProportionalOperations());
     }
 
     function testAddAndRemoveLiquidityProportional__FuzzBPTAmount(uint256 exactBPTAmount) public {
-        _setUpVariables([poolInitAmount, poolInitAmount].toMemoryArray(), maxSwapFee / 2);
+        _setUpVariables([poolInitAmount(), poolInitAmount()].toMemoryArray(), maxSwapFee / 2);
 
         _testAddAndRemoveLiquidityProportional(_boundExactBPTAmount(exactBPTAmount));
     }
@@ -133,7 +132,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 to: address(this),
                 maxAmountsIn: [maxAdditionalAmountsIn[0], maxAdditionalAmountsIn[1]].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
@@ -145,7 +144,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = vault.removeLiquidity(
             RemoveLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 from: address(this),
                 maxBptAmountIn: exactBPTAmount,
                 minAmountsOut: [0, uint256(0)].toMemoryArray(),
@@ -222,7 +221,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 to: address(this),
                 maxAmountsIn: exactAmountsIn,
                 minBptAmountOut: 0,
@@ -235,7 +234,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = vault.removeLiquidity(
             RemoveLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 from: address(this),
                 maxBptAmountIn: bptAmountOut,
                 minAmountsOut: new uint256[](2),
@@ -288,7 +287,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 to: address(this),
                 maxAmountsIn: [maxAdditionalAmountsIn[0], maxAdditionalAmountsIn[1]].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
@@ -303,7 +302,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         // first single token exact in removal
         (uint256 bptAmountInTokenOne, uint256[] memory amountsOutTokenOne, ) = vault.removeLiquidity(
             RemoveLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 from: address(this),
                 maxBptAmountIn: removePerOperation,
                 minAmountsOut: [uint256(1), 0].toMemoryArray(),
@@ -316,7 +315,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         // second single token exact in removal
         (uint256 bptAmountInTokenTwo, uint256[] memory amountsOutTokenTwo, ) = vault.removeLiquidity(
             RemoveLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 from: address(this),
                 maxBptAmountIn: removePerOperation,
                 minAmountsOut: [0, uint256(1)].toMemoryArray(),
@@ -370,7 +369,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 to: address(this),
                 maxAmountsIn: [0, maxAdditionalAmountsIn[1]].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
@@ -382,7 +381,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = vault.removeLiquidity(
             RemoveLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 from: address(this),
                 maxBptAmountIn: bptAmountOut,
                 minAmountsOut: [0, uint256(1)].toMemoryArray(),
@@ -429,7 +428,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 to: address(this),
                 maxAmountsIn: [0, maxAdditionalAmountsIn[1]].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
@@ -444,7 +443,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         vm.prank(address(this), address(0));
         (uint256 queryBPTAmountIn, , ) = vault.removeLiquidity(
             RemoveLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 from: address(this),
                 maxBptAmountIn: MAX_UINT128,
                 minAmountsOut: [0, amountsIn[1]].toMemoryArray(),
@@ -467,7 +466,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = vault.removeLiquidity(
             RemoveLiquidityParams({
-                pool: pool,
+                pool: pool(),
                 from: address(this),
                 maxBptAmountIn: MAX_UINT128,
                 minAmountsOut: [0, amountsIn[1]].toMemoryArray(),
@@ -517,7 +516,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (, uint256 amountIn, uint256 amountOut) = vault.swap(
             VaultSwapParams({
-                pool: pool,
+                pool: pool(),
                 kind: SwapKind.EXACT_IN,
                 tokenIn: tokens[0],
                 tokenOut: tokens[1],
@@ -530,7 +529,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         (, uint256 amountInReturn, uint256 amountOutReturn) = vault.swap(
             VaultSwapParams({
-                pool: pool,
+                pool: pool(),
                 kind: SwapKind.EXACT_IN,
                 tokenIn: tokens[1],
                 tokenOut: tokens[0],

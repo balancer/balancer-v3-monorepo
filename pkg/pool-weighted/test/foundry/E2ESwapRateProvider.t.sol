@@ -63,7 +63,7 @@ contract E2eSwapRateProviderWeightedTest is
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = factory.create(
             "50/50 Weighted Pool",
@@ -72,7 +72,7 @@ contract E2eSwapRateProviderWeightedTest is
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
             DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             // NOTE: sends a unique salt.

@@ -25,27 +25,27 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        setSwapFeePercentage(swapFeePercentage);
+        setSwapFeePercentage(DEFAULT_SWAP_FEE_PERCENTAGE);
         aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
-            protocolSwapFeePercentage,
+            DEFAULT_PROTOCOL_SWAP_FEE_PERCENTAGE,
             poolCreatorFeePercentage
         );
-        vault.manualSetAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage);
+        vault.manualSetAggregateSwapFeePercentage(pool(), aggregateSwapFeePercentage);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function testPrerequisites() public view {
-        assertGt(swapFeePercentage, 0, "swapFeePercentage is zero");
-        assertGt(protocolSwapFeePercentage, 0, "protocolSwapFeePercentage is zero");
+        assertGt(DEFAULT_SWAP_FEE_PERCENTAGE, 0, "DEFAULT_SWAP_FEE_PERCENTAGE is zero");
+        assertGt(DEFAULT_PROTOCOL_SWAP_FEE_PERCENTAGE, 0, "DEFAULT_PROTOCOL_SWAP_FEE_PERCENTAGE is zero");
         assertGt(poolCreatorFeePercentage, 0, "poolCreatorFeePercentage is zero");
 
-        PoolConfig memory config = vault.getPoolConfig(pool);
+        PoolConfig memory config = vault.getPoolConfig(pool());
 
-        assertEq(config.staticSwapFeePercentage, swapFeePercentage);
+        assertEq(config.staticSwapFeePercentage, DEFAULT_SWAP_FEE_PERCENTAGE);
         assertEq(
             config.aggregateSwapFeePercentage,
-            feeController.computeAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+            feeController.computeAggregateFeePercentage(DEFAULT_PROTOCOL_SWAP_FEE_PERCENTAGE, poolCreatorFeePercentage)
         );
     }
 
@@ -58,16 +58,16 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         amountsIn = new uint256[](2);
         aggregateSwapFees = new uint256[](2);
 
-        amountsIn[daiIdx] = defaultAmount;
+        amountsIn[daiIdx] = DEFAULT_AMOUNT;
 
-        uint256 swapFeeAmount = defaultAmount / 200;
+        uint256 swapFeeAmount = DEFAULT_AMOUNT / 200;
         aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
 
-        // expectedBptAmountOut = defaultAmount - defaultAmount * 1% / 2
-        uint256 expectedBptAmountOut = (defaultAmountRoundDown * 995) / 1000;
+        // expectedBptAmountOut = DEFAULT_AMOUNT - DEFAULT_AMOUNT * 1% / 2
+        uint256 expectedBptAmountOut = (DEFAULT_AMOUNT_ROUND_DOWN * 995) / 1000;
 
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(pool(), amountsIn, 0, false, bytes(""));
 
         // Should mint correct amount of BPT tokens.
         assertApproxEqAbs(bptAmountOut, expectedBptAmountOut, 10, "Invalid amount of BPT");
@@ -82,27 +82,27 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         public
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, uint256[] memory aggregateSwapFees)
     {
-        bptAmountOut = defaultAmount;
+        bptAmountOut = DEFAULT_AMOUNT;
 
         aggregateSwapFees = new uint256[](2);
-        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2) + 1;
+        uint256 swapFeeAmount = uint256((DEFAULT_AMOUNT / 99) / 2) + 1;
         aggregateSwapFees[daiIdx] = swapFeeAmount.mulDown(aggregateSwapFeePercentage);
 
         vm.prank(alice);
         uint256 amountIn = router.addLiquiditySingleTokenExactOut(
-            pool,
+            pool(),
             dai,
             // amount + (amount / ( 100% - swapFee%)) / 2 + 1
-            defaultAmount + (defaultAmount / 99) / 2 + 1,
+            DEFAULT_AMOUNT + (DEFAULT_AMOUNT / 99) / 2 + 1,
             bptAmountOut,
             false,
             bytes("")
         );
 
-        (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
+        (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool(), dai, amountIn);
 
         // Should mint correct amount of BPT tokens.
-        assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
+        assertEq(bptAmountOut, DEFAULT_AMOUNT, "Invalid amount of BPT");
     }
 
     function testAddLiquiditySingleTokenExactOut() public {
@@ -115,26 +115,26 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         public
         returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory aggregateSwapFees)
     {
-        bptAmountIn = bptAmount;
+        bptAmountIn = DEFAULT_BPT_AMOUNT;
 
         aggregateSwapFees = new uint256[](2);
-        uint256 swapFeeAmount = defaultAmount / 100;
+        uint256 swapFeeAmount = DEFAULT_AMOUNT / 100;
         aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
 
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
-            pool,
+            pool(),
             bptAmountIn,
             dai,
-            defaultAmount,
+            DEFAULT_AMOUNT,
             false,
             bytes("")
         );
 
-        (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
+        (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool(), dai, amountOut);
 
         // Ensure `amountsOut` are correct.
         // 2 * amount - (amount * swapFee%).
-        assertEq(amountsOut[daiIdx], defaultAmount * 2 - defaultAmount / 100, "Wrong AmountOut[DAI]");
+        assertEq(amountsOut[daiIdx], DEFAULT_AMOUNT * 2 - DEFAULT_AMOUNT / 100, "Wrong AmountOut[DAI]");
         assertEq(amountsOut[usdcIdx], 0, "AmountOut[USDC] > 0");
     }
 
@@ -149,23 +149,23 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         amountsOut = new uint256[](2);
         aggregateSwapFees = new uint256[](2);
 
-        amountsOut[daiIdx] = defaultAmount;
-        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2) + 1;
+        amountsOut[daiIdx] = DEFAULT_AMOUNT;
+        uint256 swapFeeAmount = uint256((DEFAULT_AMOUNT / 99) / 2) + 1;
         aggregateSwapFees[daiIdx] = swapFeeAmount.mulDown(aggregateSwapFeePercentage);
 
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
-            pool,
-            2 * defaultAmount,
+            pool(),
+            2 * DEFAULT_AMOUNT,
             dai,
-            uint256(defaultAmount),
+            uint256(DEFAULT_AMOUNT),
             false,
             bytes("")
         );
 
         // amount + (amount / ( 100% - swapFee%)) / 2 + 1
-        uint256 expectedBptAmountIn = defaultAmount + (defaultAmount / 99) / 2 + 1;
+        uint256 expectedBptAmountIn = DEFAULT_AMOUNT + (DEFAULT_AMOUNT / 99) / 2 + 1;
         assertApproxEqAbs(bptAmountIn, expectedBptAmountIn, 2, "Wrong bptAmountIn");
-        assertGt(bptAmount, expectedBptAmountIn, "Rounding error direction is incorrect");
+        assertGt(DEFAULT_BPT_AMOUNT, expectedBptAmountIn, "Rounding error direction is incorrect");
     }
 
     function testRemoveLiquiditySingleTokenExactOut() public {
@@ -211,24 +211,24 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         // Protocol + creator fees are charged.
         assertApproxEqAbs(
             aggregateSwapFees[daiIdx],
-            vault.manualGetAggregateSwapFeeAmount(pool, dai),
+            vault.manualGetAggregateSwapFeeAmount(pool(), dai),
             10,
             "Aggregate fee amount is wrong (dai)"
         );
         assertGe(
-            vault.manualGetAggregateSwapFeeAmount(pool, dai),
+            vault.manualGetAggregateSwapFeeAmount(pool(), dai),
             aggregateSwapFees[daiIdx],
             "Swap fee rounding direction is wrong (dai)"
         );
 
         assertApproxEqAbs(
             aggregateSwapFees[usdcIdx],
-            vault.manualGetAggregateSwapFeeAmount(pool, usdc),
+            vault.manualGetAggregateSwapFeeAmount(pool(), usdc),
             10,
             "Aggregate fee amount is wrong (usdc)"
         );
         assertGe(
-            vault.manualGetAggregateSwapFeeAmount(pool, usdc),
+            vault.manualGetAggregateSwapFeeAmount(pool(), usdc),
             aggregateSwapFees[usdcIdx],
             "Swap fee rounding direction is wrong (usdc)"
         );
@@ -243,9 +243,9 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         // Simulate perfect add liquidity without rounding errors.
         router.addLiquidityCustom(
-            pool,
-            [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
-            bptAmount,
+            pool(),
+            [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray(),
+            DEFAULT_BPT_AMOUNT,
             false,
             bytes("")
         );

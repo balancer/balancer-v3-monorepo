@@ -53,7 +53,7 @@ contract E2eSwapTest is BaseVaultTest {
 
     function setUp() public virtual override {
         // We will use min trade amount in this test.
-        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+        setVaultMockMinTradeAmount(PRODUCTION_MIN_TRADE_AMOUNT);
 
         BaseVaultTest.setUp();
 
@@ -85,10 +85,10 @@ contract E2eSwapTest is BaseVaultTest {
 
         vm.prank(poolCreator);
         // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
-        feeController.manualSetPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(pool(), FixedPoint.ONE);
 
-        minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
-        maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
+        minPoolSwapFeePercentage = IBasePool(pool()).getMinimumSwapFeePercentage();
+        maxPoolSwapFeePercentage = IBasePool(pool()).getMaximumSwapFeePercentage();
 
         // These tests rely on a minimum fee to work; set something very small for pool mock.
         minPoolSwapFeePercentage = (minPoolSwapFeePercentage == 0 ? 1e12 : minPoolSwapFeePercentage);
@@ -108,7 +108,7 @@ contract E2eSwapTest is BaseVaultTest {
         address[] memory tokens = new address[](2);
         tokens[tokenAIdx] = address(tokenA);
         tokens[tokenBIdx] = address(tokenB);
-        (pool, ) = _createPool(tokens, "custom-pool");
+        (pool(), ) = _createPool(tokens, "custom-pool");
 
         setPoolInitAmounts();
 
@@ -117,7 +117,7 @@ contract E2eSwapTest is BaseVaultTest {
         initAmounts[tokenBIdx] = poolInitAmountTokenB;
 
         vm.startPrank(lp);
-        _initPool(pool, initAmounts, 0);
+        _initPool(pool(), initAmounts, 0);
         vm.stopPrank();
     }
 
@@ -328,12 +328,12 @@ contract E2eSwapTest is BaseVaultTest {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(pool(), poolSwapFeePercentage);
 
         vm.startPrank(sender);
         uint256 snapshotId = vm.snapshot();
         uint256 exactAmountOut = router.swapSingleTokenExactIn(
-            pool,
+            pool(),
             tokenA,
             tokenB,
             exactAmountIn,
@@ -345,7 +345,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         vm.revertTo(snapshotId);
         uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
-            pool,
+            pool(),
             tokenA,
             tokenB,
             exactAmountOut,
@@ -440,13 +440,13 @@ contract E2eSwapTest is BaseVaultTest {
             testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
         }
 
-        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(pool(), testLocals.poolSwapFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
-            pool,
+            pool(),
             tokenA,
             tokenB,
             exactAmountIn,
@@ -463,7 +463,7 @@ contract E2eSwapTest is BaseVaultTest {
             vm.assume(
                 exactAmountOutDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
                     testLocals.poolSwapFeePercentage.complement()
-                ) > vaultMockMinTradeAmount
+                ) > vaultMockMinTradeAmount()
             );
         }
 
@@ -472,7 +472,7 @@ contract E2eSwapTest is BaseVaultTest {
         // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
         // known.
         uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
-            pool,
+            pool(),
             tokenB,
             tokenA,
             exactAmountOutDo,
@@ -484,8 +484,8 @@ contract E2eSwapTest is BaseVaultTest {
 
         vm.assume(exactAmountOutUndo > 0);
 
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool(), tokenA);
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool(), tokenB);
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, Rounding.ROUND_UP);
@@ -555,13 +555,13 @@ contract E2eSwapTest is BaseVaultTest {
             testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
         }
 
-        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(pool(), testLocals.poolSwapFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, Rounding.ROUND_DOWN);
 
         vm.startPrank(sender);
         uint256 exactAmountInDo = router.swapSingleTokenExactOut(
-            pool,
+            pool(),
             tokenA,
             tokenB,
             exactAmountOut,
@@ -578,7 +578,7 @@ contract E2eSwapTest is BaseVaultTest {
             vm.assume(
                 exactAmountInDo.toScaled18ApplyRateRoundDown(decimalScalingFactorTokenB, rateTokenB).mulDown(
                     testLocals.poolSwapFeePercentage.complement()
-                ) > vaultMockMinTradeAmount
+                ) > vaultMockMinTradeAmount()
             );
         }
 
@@ -587,7 +587,7 @@ contract E2eSwapTest is BaseVaultTest {
         // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
         // known.
         uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
-            pool,
+            pool(),
             tokenB,
             tokenA,
             exactAmountInDo,
@@ -599,8 +599,8 @@ contract E2eSwapTest is BaseVaultTest {
 
         vm.assume(exactAmountInUndo > 0);
 
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool(), tokenA);
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool(), tokenB);
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, Rounding.ROUND_UP);
@@ -704,7 +704,7 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     function setPoolBalances(uint256 liquidityTokenA, uint256 liquidityTokenB) internal {
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool());
 
         uint256[] memory newPoolBalance = new uint256[](2);
         newPoolBalance[tokenAIdx] = liquidityTokenA;
@@ -723,7 +723,7 @@ contract E2eSwapTest is BaseVaultTest {
             rateTokenB
         );
 
-        vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalanceLiveScaled18);
+        vault.manualSetPoolTokensAndBalances(pool(), tokens, newPoolBalance, newPoolBalanceLiveScaled18);
     }
 
     function _setTokenDecimalsInPool() private {
@@ -734,9 +734,9 @@ contract E2eSwapTest is BaseVaultTest {
         // Token decimals are read only during the pool initialization and are then stored in the PoolConfig struct.
         // During vault operations, the decimals used to scale token amounts accordingly are read from PoolConfig.
         // This test leverages this behavior by setting the token decimals exclusively in the pool configuration.
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool());
         poolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        vault.manualSetPoolConfig(pool, poolConfig);
+        vault.manualSetPoolConfig(pool(), poolConfig);
 
         setPoolInitAmounts();
         setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
@@ -751,7 +751,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         // Fix pool init amounts, adjusting to new decimals. These values will be used to calculate max swap values and
         // pool liquidity.
-        poolInitAmountTokenA = poolInitAmount.mulDown(10 ** (decimalsTokenA)).divDown(rateTokenA);
-        poolInitAmountTokenB = poolInitAmount.mulDown(10 ** (decimalsTokenB)).divDown(rateTokenB);
+        poolInitAmountTokenA = poolInitAmount().mulDown(10 ** (decimalsTokenA)).divDown(rateTokenA);
+        poolInitAmountTokenB = poolInitAmount().mulDown(10 ** (decimalsTokenB)).divDown(rateTokenB);
     }
 }

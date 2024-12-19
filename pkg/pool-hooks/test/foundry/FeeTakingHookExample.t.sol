@@ -42,7 +42,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    // Sets the hook of the pool and stores the address in the variable poolHooksContract
+    // Sets the hook of the pool and stores the address in the variable poolHooksContract()
     function createHook() internal override returns (address) {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
@@ -68,13 +68,13 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         liquidityManagement.disableUnbalancedLiquidity = true;
 
         vm.expectEmit();
-        emit FeeTakingHookExample.FeeTakingHookExampleRegistered(poolHooksContract, newPool);
+        emit FeeTakingHookExample.FeeTakingHookExampleRegistered(poolHooksContract(), newPool);
 
         factoryMock.registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
-            poolHooksContract,
+            poolHooksContract(),
             liquidityManagement
         );
 
@@ -83,23 +83,23 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
     function testFeeSwapExactIn__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
         // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear)
-        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount());
 
         // Fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, FixedPoint.ONE));
 
         vm.expectEmit();
-        emit FeeTakingHookExample.HookSwapFeePercentageChanged(poolHooksContract, hookFeePercentage);
+        emit FeeTakingHookExample.HookSwapFeePercentageChanged(poolHooksContract(), hookFeePercentage);
 
         vm.prank(lp);
-        FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract()).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulUp(hookFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -108,12 +108,12 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: swapAmount,
                     amountOutScaled18: swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - swapAmount,
                     amountCalculatedScaled18: swapAmount,
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
@@ -121,10 +121,10 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         if (hookFee > 0) {
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract, IERC20(usdc), hookFee);
+            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract(), IERC20(usdc), hookFee);
         }
 
-        router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(address(pool()), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
@@ -151,23 +151,23 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
     function testFeeSwapExactOut__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
         // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear)
-        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount());
 
         // Fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, FixedPoint.ONE));
 
         vm.expectEmit();
-        emit FeeTakingHookExample.HookSwapFeePercentageChanged(poolHooksContract, hookFeePercentage);
+        emit FeeTakingHookExample.HookSwapFeePercentageChanged(poolHooksContract(), hookFeePercentage);
 
         vm.prank(lp);
-        FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract()).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulUp(hookFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterSwap,
                 AfterSwapParams({
@@ -176,12 +176,12 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
                     tokenOut: usdc,
                     amountInScaled18: swapAmount,
                     amountOutScaled18: swapAmount,
-                    tokenInBalanceScaled18: poolInitAmount + swapAmount,
-                    tokenOutBalanceScaled18: poolInitAmount - swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount() + swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount() - swapAmount,
                     amountCalculatedScaled18: swapAmount,
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
-                    pool: pool,
+                    pool: pool(),
                     userData: bytes("")
                 })
             )
@@ -189,11 +189,11 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         if (hookFee > 0) {
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract, IERC20(dai), hookFee);
+            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract(), IERC20(dai), hookFee);
         }
 
         router.swapSingleTokenExactOut(
-            address(pool),
+            address(pool()),
             dai,
             usdc,
             swapAmount,
@@ -231,17 +231,17 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, FixedPoint.ONE));
 
         vm.expectEmit();
-        emit FeeTakingHookExample.HookAddLiquidityFeePercentageChanged(poolHooksContract, hookFeePercentage);
+        emit FeeTakingHookExample.HookAddLiquidityFeePercentageChanged(poolHooksContract(), hookFeePercentage);
 
         vm.prank(lp);
-        FeeTakingHookExample(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract()).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
         // pool liquidity, or else the hook won't be able to charge fees
         expectedBptOut = bound(
             expectedBptOut,
             POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
-            hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount.divDown(hookFeePercentage)
+            hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount().divDown(hookFeePercentage)
         );
 
         // Make sure bob has enough to pay for the transaction
@@ -250,26 +250,26 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         }
 
         uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            BalancerPoolToken(pool).totalSupply(),
+            [poolInitAmount(), poolInitAmount()].toMemoryArray(),
+            BalancerPoolToken(pool()).totalSupply(),
             expectedBptOut
         );
         uint256 actualAmountIn = actualAmountsIn[daiIdx]; // Proportional, so doesn't matter which token
         uint256 hookFee = actualAmountIn.mulUp(hookFeePercentage);
 
-        uint256[] memory expectedBalances = [poolInitAmount + actualAmountIn, poolInitAmount + actualAmountIn]
+        uint256[] memory expectedBalances = [poolInitAmount() + actualAmountIn, poolInitAmount() + actualAmountIn]
             .toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterAddLiquidity,
                 (
                     address(router),
-                    pool,
+                    pool(),
                     AddLiquidityKind.PROPORTIONAL,
                     actualAmountsIn,
                     actualAmountsIn,
@@ -282,14 +282,14 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         if (hookFee > 0) {
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract, IERC20(dai), hookFee);
+            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract(), IERC20(dai), hookFee);
 
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract, IERC20(usdc), hookFee);
+            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract(), IERC20(usdc), hookFee);
         }
 
         uint256[] memory maxAmountsIn = [actualAmountIn + hookFee, actualAmountIn + hookFee].toMemoryArray();
-        router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, false, bytes(""));
+        router.addLiquidityProportional(pool(), maxAmountsIn, expectedBptOut, false, bytes(""));
 
         _checkAddLiquidityHookTestResults(balancesBefore, actualAmountsIn, expectedBptOut, hookFee);
         _checkWithdrawals(hookFee, hookFee);
@@ -299,9 +299,9 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
         router.addLiquidityProportional(
-            pool,
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            2 * poolInitAmount,
+            pool(),
+            [poolInitAmount(), poolInitAmount()].toMemoryArray(),
+            2 * poolInitAmount(),
             false,
             bytes("")
         );
@@ -310,40 +310,42 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, FixedPoint.ONE));
 
         vm.expectEmit();
-        emit FeeTakingHookExample.HookRemoveLiquidityFeePercentageChanged(poolHooksContract, hookFeePercentage);
+        emit FeeTakingHookExample.HookRemoveLiquidityFeePercentageChanged(poolHooksContract(), hookFeePercentage);
 
         vm.prank(lp);
-        FeeTakingHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract()).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction
         expectedBptIn = bound(
             expectedBptIn,
             POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
-            BalancerPoolToken(pool).balanceOf(bob)
+            BalancerPoolToken(pool()).balanceOf(bob)
         );
 
-        // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
+        // Since bob added poolInitAmount() in each token of the pool(), the pool balances are doubled
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
-            [2 * poolInitAmount, 2 * poolInitAmount].toMemoryArray(),
-            BalancerPoolToken(pool).totalSupply(),
+            [2 * poolInitAmount(), 2 * poolInitAmount()].toMemoryArray(),
+            BalancerPoolToken(pool()).totalSupply(),
             expectedBptIn
         );
         uint256 actualAmountOut = actualAmountsOut[usdcIdx];
         uint256 hookFee = actualAmountOut.mulUp(hookFeePercentage);
 
-        uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
-            .toMemoryArray();
+        uint256[] memory expectedBalances = [
+            2 * poolInitAmount() - actualAmountOut,
+            2 * poolInitAmount() - actualAmountOut
+        ].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksContract),
+            address(poolHooksContract()),
             abi.encodeCall(
                 IHooks.onAfterRemoveLiquidity,
                 (
                     address(router),
-                    pool,
+                    pool(),
                     RemoveLiquidityKind.PROPORTIONAL,
                     expectedBptIn,
                     actualAmountsOut,
@@ -356,14 +358,14 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         if (hookFee > 0) {
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract, IERC20(dai), hookFee);
+            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract(), IERC20(dai), hookFee);
 
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract, IERC20(usdc), hookFee);
+            emit FeeTakingHookExample.HookFeeCharged(poolHooksContract(), IERC20(usdc), hookFee);
         }
 
         uint256[] memory minAmountsOut = [actualAmountOut - hookFee, actualAmountOut - hookFee].toMemoryArray();
-        router.removeLiquidityProportional(pool, expectedBptIn, minAmountsOut, false, bytes(""));
+        router.removeLiquidityProportional(pool(), expectedBptIn, minAmountsOut, false, bytes(""));
 
         _checkRemoveLiquidityHookTestResults(balancesBefore, actualAmountsOut, expectedBptIn, hookFee);
         _checkWithdrawals(hookFee, hookFee);
@@ -515,15 +517,15 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         vm.startPrank(lp);
         if (daiHookFee > 0) {
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeWithdrawn(poolHooksContract, IERC20(dai), lp, daiHookFee);
+            emit FeeTakingHookExample.HookFeeWithdrawn(poolHooksContract(), IERC20(dai), lp, daiHookFee);
         }
-        FeeTakingHookExample(poolHooksContract).withdrawFees(dai);
+        FeeTakingHookExample(poolHooksContract()).withdrawFees(dai);
 
         if (usdcHookFee > 0) {
             vm.expectEmit();
-            emit FeeTakingHookExample.HookFeeWithdrawn(poolHooksContract, IERC20(usdc), lp, usdcHookFee);
+            emit FeeTakingHookExample.HookFeeWithdrawn(poolHooksContract(), IERC20(usdc), lp, usdcHookFee);
         }
-        FeeTakingHookExample(poolHooksContract).withdrawFees(usdc);
+        FeeTakingHookExample(poolHooksContract()).withdrawFees(usdc);
         vm.stopPrank();
 
         (uint256 daiAfter, uint256 usdcAfter) = (dai.balanceOf(lp), usdc.balanceOf(lp));

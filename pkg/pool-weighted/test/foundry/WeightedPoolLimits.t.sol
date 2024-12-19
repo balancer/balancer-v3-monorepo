@@ -130,7 +130,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
         // Cannot use vm.prank, because `_initPool` does multiple calls.
         vm.startPrank(lp);
-        bptAmountOut = _initPool(pool, amountsIn, expectedBptAmountOut);
+        bptAmountOut = _initPool(pool(), amountsIn, expectedBptAmountOut);
         vm.stopPrank();
 
         require(expectedBptAmountOut == bptAmountOut, "Wrong BPT amount out");
@@ -176,10 +176,10 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         weights[daiIdx] = daiWeight;
         weights[usdcIdx] = FixedPoint.ONE - daiWeight;
 
-        WeightedPoolMock(pool).setNormalizedWeights(weights);
+        WeightedPoolMock(pool()).setNormalizedWeights(weights);
 
         vm.prank(alice);
-        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+        vault.setStaticSwapFeePercentage(pool(), swapFeePercentage);
     }
 
     function _testInitialize() internal view {
@@ -192,7 +192,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         assertEq(dai.balanceOf(address(vault)), amountsIn[daiIdx], "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool.
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool()));
         assertEq(balances[daiIdx], amountsIn[daiIdx], "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], amountsIn[usdcIdx], "Pool: Wrong USDC balance");
 
@@ -211,7 +211,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
         vm.prank(bob);
         uint256[] memory actualAmountsIn = router.addLiquidityProportional(
-            pool,
+            pool(),
             [newAmountsIn[0] + DELTA, newAmountsIn[1] + DELTA].toMemoryArray(),
             expectedBptAmountOut,
             false,
@@ -241,7 +241,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
     function _testRemoveLiquidity() public {
         vm.startPrank(bob);
-        router.addLiquidityProportional(pool, newAmountsIn, TOKEN_AMOUNT - DELTA, false, bytes(""));
+        router.addLiquidityProportional(pool(), newAmountsIn, TOKEN_AMOUNT - DELTA, false, bytes(""));
         weightedPool.approve(address(vault), MAX_UINT256);
 
         uint256 bobBptBalance = weightedPool.balanceOf(bob);
@@ -283,7 +283,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         assertApproxEqAbs(dai.balanceOf(address(vault)), expectedBalances[daiIdx], DELTA, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool.
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool()));
         assertApproxEqAbs(balances[daiIdx], expectedBalances[daiIdx], DELTA, "Pool: Wrong DAI balance");
         assertApproxEqAbs(balances[usdcIdx], expectedBalances[usdcIdx], DELTA, "Pool: Wrong USDC balance");
 
@@ -298,13 +298,13 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
     function _testSwap() public {
         // Set swap fee to zero for this test.
-        vault.manuallySetSwapFee(pool, 0);
+        vault.manuallySetSwapFee(pool(), 0);
         startingBalances[daiIdx] = dai.balanceOf(bob);
         startingBalances[usdcIdx] = usdc.balanceOf(bob);
 
         vm.prank(bob);
         uint256 amountCalculated = router.swapSingleTokenExactIn(
-            address(pool),
+            address(pool()),
             dai,
             usdc,
             TOKEN_AMOUNT_IN,
@@ -325,7 +325,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         assertEq(usdc.balanceOf(address(vault)), expectedBalances[usdcIdx], "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), expectedBalances[daiIdx], "Vault: Wrong DAI balance");
 
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool()));
 
         assertEq(balances[daiIdx], expectedBalances[daiIdx], "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], expectedBalances[usdcIdx], "Pool: Wrong USDC balance");
@@ -336,10 +336,10 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         // Enlarge the pool so that adding liquidity unbalanced does not hit the invariant ratio limit.
         uint256 currentBPTSupply = IERC20(weightedPool).totalSupply();
         vm.prank(alice);
-        router.addLiquidityProportional(pool, maxAmountsIn, currentBPTSupply * 100, false, bytes(""));
+        router.addLiquidityProportional(pool(), maxAmountsIn, currentBPTSupply * 100, false, bytes(""));
 
         vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage);
+        vault.setStaticSwapFeePercentage(address(pool()), swapFeePercentage);
 
         startingBalances[daiIdx] = dai.balanceOf(bob);
         startingBalances[usdcIdx] = usdc.balanceOf(bob);
@@ -357,7 +357,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         );
 
         vm.prank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), unbalancedAmountsIn, 0, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(address(pool()), unbalancedAmountsIn, 0, false, bytes(""));
 
         // Tokens are transferred from Bob.
         assertEq(

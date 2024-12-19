@@ -25,8 +25,8 @@ contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProvi
         rateProviderTokenA = deployRateProviderMock();
         rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
-        rateProviderTokenA.mockRate(5.2453235e18);
-        rateProviderTokenB.mockRate(0.4362784e18);
+        rateProviderTokenA.DEFAULT_MOCK_RATE(5.2453235e18);
+        rateProviderTokenB.DEFAULT_MOCK_RATE(0.4362784e18);
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));

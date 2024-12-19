@@ -85,7 +85,7 @@ contract RouterTest is BaseVaultTest {
                 rateProviders,
                 paysYieldFees
             ),
-            poolHooksContract,
+            poolHooksContract(),
             lp
         );
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -96,7 +96,7 @@ contract RouterTest is BaseVaultTest {
         factoryMock.registerTestPool(
             address(wethPool),
             vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20()),
-            poolHooksContract,
+            poolHooksContract(),
             lp
         );
 
@@ -114,7 +114,7 @@ contract RouterTest is BaseVaultTest {
         factoryMock.registerTestPool(
             address(wethPoolNoInit),
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            poolHooksContract,
+            poolHooksContract(),
             lp
         );
 
@@ -122,10 +122,17 @@ contract RouterTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool());
 
         vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
+        router.initialize(
+            address(pool()),
+            tokens,
+            [poolInitAmount(), poolInitAmount()].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
 
         vm.prank(lp);
         bool wethIsEth = true;
@@ -143,7 +150,7 @@ contract RouterTest is BaseVaultTest {
         address newPool = address(deployPoolMock(IVault(address(vault)), "Big Pool", "BIGPOOL"));
         vm.label(address(newPool), "big pool");
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool());
 
         factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens), address(0), lp);
 
@@ -152,7 +159,7 @@ contract RouterTest is BaseVaultTest {
         router.initialize(
             address(newPool),
             tokens,
-            [type(uint168).max, poolInitAmount].toMemoryArray(),
+            [type(uint168).max, poolInitAmount()].toMemoryArray(),
             0,
             false,
             bytes("")
@@ -162,7 +169,7 @@ contract RouterTest is BaseVaultTest {
     function testQuerySwap() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
+        router.querySwapSingleTokenExactIn(pool(), usdc, dai, usdcAmountIn, address(this), bytes(""));
     }
 
     function testDisableQueries() public {
@@ -184,7 +191,7 @@ contract RouterTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.QueriesDisabled.selector);
 
         _prankStaticCall();
-        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, address(this), bytes(""));
+        router.querySwapSingleTokenExactIn(pool(), usdc, dai, usdcAmountIn, address(this), bytes(""));
     }
 
     function testInitializeBelowMinimum() public {
@@ -398,14 +405,14 @@ contract RouterTest is BaseVaultTest {
 
     function testRemoveLiquidityRecovery() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         // Perfect add liquidity without rounding errors.
         vm.prank(alice);
-        (, bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, bptAmountOut, ) = router.addLiquidityCustom(pool(), amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
         BaseVaultTest.Balances memory beforeBalances = getBalances(alice);
 
@@ -413,24 +420,24 @@ contract RouterTest is BaseVaultTest {
         uint256 bptAmountIn = bptAmountOut / 2;
         vm.prank(alice);
         uint256[] memory amountsOut = router.removeLiquidityRecovery(
-            pool,
+            pool(),
             bptAmountIn,
             new uint256[](amountsIn.length)
         );
         assertEq(amountsOut.length, 2, "Incorrect amounts out length");
-        assertEq(amountsOut[daiIdx], defaultAmount / 2, "Incorrect DAI amount out");
-        assertEq(amountsOut[usdcIdx], defaultAmount / 2, "Incorrect USDC amount out");
+        assertEq(amountsOut[daiIdx], DEFAULT_AMOUNT / 2, "Incorrect DAI amount out");
+        assertEq(amountsOut[usdcIdx], DEFAULT_AMOUNT / 2, "Incorrect USDC amount out");
 
         BaseVaultTest.Balances memory afterBalances = getBalances(alice);
 
         _assertBalanceChangeRemoveLiquidityRecovery(beforeBalances, afterBalances, bptAmountIn, amountsOut);
 
         // Change rates (would normally incur yield) - test that yield fees are *not* charged to raw balances.
-        vault.manualSetAggregateYieldFeePercentage(pool, 50e16);
+        vault.manualSetAggregateYieldFeePercentage(pool(), 50e16);
         rateProvider.mockRate(2e18);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
         vm.prank(admin);
-        vault.disableRecoveryMode(pool);
+        vault.disableRecoveryMode(pool());
 
         afterBalances = getBalances(alice);
 
@@ -446,25 +453,25 @@ contract RouterTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(amountIn1), uint256(amountIn2)].toMemoryArray();
 
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 1, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(pool(), amountsIn, 1, false, bytes(""));
 
         // Put pool in recovery mode.
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
         BaseVaultTest.Balances memory beforeBalances = getBalances(alice);
 
         // Do a recovery withdrawal.
         uint256 bptAmountIn = bptAmountOut.mulDown(exitPercentage);
-        (, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
+        (, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool());
         uint256[] memory expectedAmountsOutRaw = BasePoolMath.computeProportionalAmountsOut(
             poolBalances,
-            vault.totalSupply(pool),
+            vault.totalSupply(pool()),
             bptAmountIn
         );
 
         vm.prank(alice);
         uint256[] memory amountsOut = router.removeLiquidityRecovery(
-            pool,
+            pool(),
             bptAmountIn,
             new uint256[](amountsIn.length)
         );
@@ -662,20 +669,24 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testGetSingleInputArray() public {
-        (uint256[] memory amountsGiven, uint256 tokenIndex) = router.getSingleInputArrayAndTokenIndex(pool, dai, 1234);
+        (uint256[] memory amountsGiven, uint256 tokenIndex) = router.getSingleInputArrayAndTokenIndex(
+            pool(),
+            dai,
+            1234
+        );
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[daiIdx], 1234);
         assertEq(amountsGiven[usdcIdx], 0);
         assertEq(tokenIndex, daiIdx);
 
-        (amountsGiven, tokenIndex) = router.getSingleInputArrayAndTokenIndex(pool, usdc, 4321);
+        (amountsGiven, tokenIndex) = router.getSingleInputArrayAndTokenIndex(pool(), usdc, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[daiIdx], 0);
         assertEq(amountsGiven[usdcIdx], 4321);
         assertEq(tokenIndex, usdcIdx);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector, weth));
-        router.getSingleInputArrayAndTokenIndex(pool, weth, daiAmountIn);
+        router.getSingleInputArrayAndTokenIndex(pool(), weth, daiAmountIn);
     }
 
     function testRouterVersion() public view {

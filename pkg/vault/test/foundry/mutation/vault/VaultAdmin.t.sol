@@ -111,12 +111,12 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testPausePoolWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.pausePool(pool);
+        vaultAdmin.pausePool(pool());
     }
 
     function testPausePoolWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.pausePool(pool);
+        vault.pausePool(pool());
     }
 
     function testUnpausePoolWithoutRegisteredPool() public {
@@ -126,12 +126,12 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testUnpausePoolWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.unpausePool(pool);
+        vaultAdmin.unpausePool(pool());
     }
 
     function testUnpausePoolWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.unpausePool(pool);
+        vault.unpausePool(pool());
     }
 
     function testSetStaticSwapFeePercentageWithoutRegisteredPool() public {
@@ -141,21 +141,21 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testSetStaticSwapFeePercentageWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.setStaticSwapFeePercentage(pool, 1);
+        vaultAdmin.setStaticSwapFeePercentage(pool(), 1);
     }
 
     function testSetStaticSwapFeePercentageWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.setStaticSwapFeePercentage(pool, 1);
+        vault.setStaticSwapFeePercentage(pool(), 1);
     }
 
     function testSetStaticSwapFeePercentageWhenPoolPaused() public {
-        vault.manualPausePool(pool);
+        vault.manualPausePool(pool());
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
         vm.prank(admin);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
-        vault.setStaticSwapFeePercentage(pool, 1);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool()));
+        vault.setStaticSwapFeePercentage(pool(), 1);
     }
 
     function testSetStaticSwapFeePercentageWhenVaultPaused() public {
@@ -164,12 +164,12 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vm.prank(admin);
 
         vm.expectRevert(IVaultErrors.VaultPaused.selector);
-        vault.setStaticSwapFeePercentage(pool, 1);
+        vault.setStaticSwapFeePercentage(pool(), 1);
     }
 
     function testCollectAggregateFeesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.collectAggregateFees(pool);
+        vaultAdmin.collectAggregateFees(pool());
     }
 
     function testCollectAggregateFeesWhenNotUnlocked() public {
@@ -192,22 +192,22 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testUpdateAggregateSwapFeesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.updateAggregateSwapFeePercentage(pool, 1);
+        vaultAdmin.updateAggregateSwapFeePercentage(pool(), 1);
     }
 
     function testUpdateAggregateSwapFeesWhenNotProtocolFeeController() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.updateAggregateSwapFeePercentage(pool, 1);
+        vault.updateAggregateSwapFeePercentage(pool(), 1);
     }
 
     function testUpdateAggregateYieldFeesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.updateAggregateYieldFeePercentage(pool, 1);
+        vaultAdmin.updateAggregateYieldFeePercentage(pool(), 1);
     }
 
     function testUpdateAggregateYieldFeesWhenNotProtocolFeeController() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.updateAggregateYieldFeePercentage(pool, 1);
+        vault.updateAggregateYieldFeePercentage(pool(), 1);
     }
 
     function testSetProtocolFeeControllerWhenNotVault() public {
@@ -241,7 +241,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testEnableRecoveryModeWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.enableRecoveryMode(pool);
+        vaultAdmin.enableRecoveryMode(pool());
     }
 
     function testDisableRecoveryModeWithoutRegisteredPool() public {
@@ -251,22 +251,22 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testDisableRecoveryModeWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.disableRecoveryMode(pool);
+        vaultAdmin.disableRecoveryMode(pool());
     }
 
     function testDisableRecoveryModeWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.disableRecoveryMode(pool);
+        vault.disableRecoveryMode(pool());
     }
 
     function testDisableRecoveryModeNonReentrant() public {
-        vault.manualEnableRecoveryMode(pool);
+        vault.manualEnableRecoveryMode(pool());
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), address(vault));
         vm.prank(admin);
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.manualReentrancyDisableRecoveryMode(pool);
+        vault.manualReentrancyDisableRecoveryMode(pool());
     }
 
     function testDisableQueryWhenNotAuthenticated() public {

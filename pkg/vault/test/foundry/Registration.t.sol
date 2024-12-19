@@ -27,6 +27,7 @@ contract RegistrationTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
+    address defaultPool;
     IERC20[] standardPoolTokens;
     TokenConfig[] standardTokenConfig;
 
@@ -35,7 +36,7 @@ contract RegistrationTest is BaseVaultTest {
 
         standardPoolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
 
-        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        defaultPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
     // Do not register the pool in the base test.
@@ -51,10 +52,10 @@ contract RegistrationTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
 
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolAlreadyRegistered.selector, pool));
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterPoolBelowMinTokens() public {
@@ -63,7 +64,7 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.MinTokens.selector);
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterPoolAboveMaxTokens() public {
@@ -72,7 +73,7 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.MaxTokens.selector);
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterPoolTokensNotSorted() public {
@@ -85,7 +86,7 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(InputHelpers.TokensNotSorted.selector);
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterPoolAddressZeroToken() public {
@@ -95,19 +96,19 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.InvalidToken.selector);
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterPoolAddressPoolToken() public {
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            InputHelpers.sortTokens([address(pool), address(usdc)].toMemoryArray().asIERC20())
+            InputHelpers.sortTokens([address(defaultPool), address(usdc)].toMemoryArray().asIERC20())
         );
         tokenConfig[0].token = IERC20(address(0));
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.InvalidToken.selector);
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterPoolSameAddressToken() public {
@@ -118,7 +119,7 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenAlreadyRegistered.selector, usdc));
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterSetSwapFeePercentage__Fuzz(uint256 swapFeePercentage) public {
@@ -128,7 +129,7 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vault.registerPool(
-            pool,
+            defaultPool,
             tokenConfig,
             swapFeePercentage,
             0,
@@ -139,21 +140,21 @@ contract RegistrationTest is BaseVaultTest {
         );
         // Stored value is truncated.
         assertEq(
-            vault.getStaticSwapFeePercentage(pool),
+            vault.getStaticSwapFeePercentage(defaultPool),
             (swapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
             "Wrong swap fee percentage"
         );
     }
 
     function testRegisterSetSwapFeePercentageAboveMax() public {
-        swapFeePercentage = FixedPoint.ONE + 1;
+        uint256 swapFeePercentage = FixedPoint.ONE + 1;
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
         vault.registerPool(
-            pool,
+            defaultPool,
             tokenConfig,
             swapFeePercentage,
             0,
@@ -170,7 +171,7 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vault.registerPool(
-            pool,
+            defaultPool,
             tokenConfig,
             0,
             pauseWindowEndTime,
@@ -179,7 +180,7 @@ contract RegistrationTest is BaseVaultTest {
             address(0),
             liquidityManagement
         );
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        PoolConfig memory poolConfig = vault.getPoolConfig(defaultPool);
         assertEq(poolConfig.pauseWindowEndTime, pauseWindowEndTime, "Wrong pause window end time");
     }
 
@@ -193,9 +194,9 @@ contract RegistrationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         vm.mockCall(address(dai), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(daiDecimals));
         vm.mockCall(address(usdc), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(usdcDecimals));
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
         // Test end to end that the decimal scaling factors are correct.
-        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
+        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(defaultPool);
         assertEq(decimalScalingFactors[daiIdx], 10 ** (18 - daiDecimals), "Wrong dai decimal scaling factor");
         assertEq(decimalScalingFactors[usdcIdx], 10 ** (18 - usdcDecimals), "Wrong usdc decimal scaling factor");
     }
@@ -207,7 +208,7 @@ contract RegistrationTest is BaseVaultTest {
         vm.mockCall(address(dai), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(19));
 
         vm.expectRevert(IVaultErrors.InvalidTokenDecimals.selector);
-        vault.registerPool(pool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(defaultPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
     }
 
     function testRegisterEmitsEvents() public {
@@ -229,10 +230,10 @@ contract RegistrationTest is BaseVaultTest {
         PoolConfigBits config;
 
         vm.expectEmit();
-        emit IVaultEvents.SwapFeePercentageChanged(pool, swapFeePercentage);
+        emit IVaultEvents.SwapFeePercentageChanged(defaultPool, swapFeePercentage);
         vm.expectEmit();
         emit IVaultEvents.PoolRegistered(
-            pool,
+            defaultPool,
             address(this),
             tokenConfig,
             swapFeePercentage,
@@ -242,7 +243,7 @@ contract RegistrationTest is BaseVaultTest {
             liquidityManagement
         );
         vault.registerPool(
-            pool,
+            defaultPool,
             tokenConfig,
             swapFeePercentage,
             pauseWindowEndTime,

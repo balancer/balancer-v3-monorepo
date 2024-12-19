@@ -15,15 +15,15 @@ contract PoolDonationTest is BaseVaultTest {
     function setUp() public override {
         super.setUp();
 
-        PoolConfig memory config = vault.getPoolConfig(pool);
+        PoolConfig memory config = vault.getPoolConfig(pool());
         config.liquidityManagement.enableDonation = true;
-        vault.manualSetPoolConfig(pool, config);
+        vault.manualSetPoolConfig(pool(), config);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function testUnbalancedDonationToPool() public {
-        uint256 amountToDonate = poolInitAmount / 10;
+        uint256 amountToDonate = poolInitAmount() / 10;
 
         uint256[] memory amountsToDonate = new uint256[](2);
         amountsToDonate[daiIdx] = amountToDonate;
@@ -31,7 +31,7 @@ contract PoolDonationTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
-        router.donate(pool, amountsToDonate, false, bytes(""));
+        router.donate(pool(), amountsToDonate, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 

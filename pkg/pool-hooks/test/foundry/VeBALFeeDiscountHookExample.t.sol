@@ -73,7 +73,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,
-                poolHooksContract,
+                poolHooksContract(),
                 veBalFeePool,
                 unauthorizedFactory
             )
@@ -90,7 +90,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,
-                poolHooksContract,
+                poolHooksContract(),
                 veBalFeePool,
                 address(factoryMock)
             )
@@ -107,7 +107,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
         vm.expectEmit();
         emit VeBALFeeDiscountHookExample.VeBALFeeDiscountHookExampleRegistered(
-            poolHooksContract,
+            poolHooksContract(),
             address(factoryMock),
             veBalFeePool
         );
@@ -116,7 +116,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
         HooksConfig memory hooksConfig = vault.getHooksConfig(veBalFeePool);
 
-        assertEq(hooksConfig.hooksContract, poolHooksContract, "Wrong poolHooksContract");
+        assertEq(hooksConfig.hooksContract, poolHooksContract(), "Wrong poolHooksContract()");
         assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "shouldCallComputeDynamicSwapFee is false");
     }
 
@@ -141,18 +141,18 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint256 swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE;
 
         vm.prank(lp);
-        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+        vault.setStaticSwapFeePercentage(pool(), swapFeePercentage);
 
-        uint256 exactAmountIn = poolInitAmount / 100;
+        uint256 exactAmountIn = poolInitAmount() / 100;
         // PoolMock uses linear math with a rate of 1, so amountIn == amountOut when no fees are applied.
         uint256 expectedAmountOut = exactAmountIn;
         // Bob does not get a discount since it does not have VeBal.
         uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage);
-        // The hook fee will remain in the pool, so the expected amountOut discounts the fees.
+        // The hook fee will remain in the pool(), so the expected amountOut discounts the fees.
         expectedAmountOut -= expectedHookFee;
 
         vm.prank(bob, address(0));
-        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bob, bytes(""));
+        uint256 amountOut = router.querySwapSingleTokenExactIn(pool(), dai, usdc, exactAmountIn, bob, bytes(""));
 
         assertEq(amountOut, expectedAmountOut, "Wrong veBal hook fee");
     }
@@ -166,18 +166,18 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint256 swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE;
 
         vm.prank(lp);
-        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+        vault.setStaticSwapFeePercentage(pool(), swapFeePercentage);
 
-        uint256 exactAmountIn = poolInitAmount / 100;
+        uint256 exactAmountIn = poolInitAmount() / 100;
         // PoolMock uses linear math with a rate of 1, so amountIn == amountOut when no fees are applied.
         uint256 expectedAmountOut = exactAmountIn;
         // Bob has veBAL and the router is trusted, so Bob gets a 50% discount (divide by 2).
         uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage) / 2;
-        // The hook fee will remain in the pool, so the expected amountOut discounts the fees.
+        // The hook fee will remain in the pool(), so the expected amountOut discounts the fees.
         expectedAmountOut -= expectedHookFee;
 
         vm.prank(bob, address(0));
-        uint256 amountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bob, bytes(""));
+        uint256 amountOut = router.querySwapSingleTokenExactIn(pool(), dai, usdc, exactAmountIn, bob, bytes(""));
 
         assertEq(amountOut, expectedAmountOut, "Wrong veBal hook fee");
     }
@@ -204,22 +204,22 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint256 swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE;
 
         vm.prank(lp);
-        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+        vault.setStaticSwapFeePercentage(pool(), swapFeePercentage);
 
-        uint256 exactAmountIn = poolInitAmount / 100;
+        uint256 exactAmountIn = poolInitAmount() / 100;
         // PoolMock uses linear math with a rate of 1, so amountIn == amountOut when no fees are applied.
         uint256 expectedAmountOut = exactAmountIn;
         // If Bob has veBAL and the Router is trusted, Bob gets a 50% discount.
         bool shouldGetDiscount = routerToUse == trustedRouter && veBAL.balanceOf(bob) > 0;
         uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage) / (shouldGetDiscount ? 2 : 1);
-        // The hook fee will remain in the pool, so the expected amountOut discounts the fees.
+        // The hook fee will remain in the pool(), so the expected amountOut discounts the fees.
         expectedAmountOut -= expectedHookFee;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         RouterMock(routerToUse).swapSingleTokenExactIn(
-            pool,
+            pool(),
             dai,
             usdc,
             exactAmountIn,
@@ -270,7 +270,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         );
     }
 
-    // Registry tests require a new pool, because an existing pool may be already registered
+    // Registry tests require a new pool(), because an existing pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
         newPool = address(deployPoolMock(IVault(address(vault)), "VeBAL Fee Pool", "veBALFeePool"));
         vm.label(newPool, "VeBAL Fee Pool");
@@ -284,7 +284,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
             exitFeePool,
             tokenConfig,
             roleAccounts,
-            poolHooksContract,
+            poolHooksContract(),
             liquidityManagement
         );
     }

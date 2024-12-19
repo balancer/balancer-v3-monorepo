@@ -23,6 +23,7 @@ contract PoolPauseTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
+    address internal defaultPool;
     PoolMock internal unmanagedPool;
     PoolMock internal permissionlessPool;
     PoolMock internal infinityPool;
@@ -40,16 +41,16 @@ contract PoolPauseTest is BaseVaultTest {
         PoolRoleAccounts memory adminRoleAccounts;
         adminRoleAccounts.pauseManager = admin;
 
-        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        defaultPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         factoryMock.registerGeneralTestPool(
-            pool,
+            defaultPool,
             tokenConfig,
             0,
             365 days,
             false,
             adminRoleAccounts,
-            poolHooksContract
+            poolHooksContract()
         );
 
         // Pass zero for the pause manager.
@@ -62,7 +63,7 @@ contract PoolPauseTest is BaseVaultTest {
             365 days,
             false,
             defaultRoleAccounts,
-            poolHooksContract
+            poolHooksContract()
         );
 
         permissionlessPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
@@ -74,7 +75,7 @@ contract PoolPauseTest is BaseVaultTest {
             0,
             false,
             defaultRoleAccounts,
-            poolHooksContract
+            poolHooksContract()
         );
 
         infinityPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
@@ -86,7 +87,7 @@ contract PoolPauseTest is BaseVaultTest {
             10000 days,
             false,
             defaultRoleAccounts,
-            poolHooksContract
+            poolHooksContract()
         );
 
         factory = deployPoolFactoryMock(IVault(address(vault)), 365 days);
@@ -116,7 +117,7 @@ contract PoolPauseTest is BaseVaultTest {
     }
 
     function testHasPauseManager() public view {
-        (, , , address pauseManager) = vault.getPoolPausedState(pool);
+        (, , , address pauseManager) = vault.getPoolPausedState(defaultPool);
         assertEq(pauseManager, admin, "Pause manager is not admin");
 
         (, , , pauseManager) = vault.getPoolPausedState(address(unmanagedPool));
@@ -125,28 +126,28 @@ contract PoolPauseTest is BaseVaultTest {
 
     function testPauseManagerCanPause() public {
         // Pool is not paused.
-        require(vault.isPoolPaused(pool) == false, "Vault is already paused");
+        require(vault.isPoolPaused(defaultPool) == false, "Vault is already paused");
 
         // The pause manager can pause and unpause.
         vm.prank(admin);
-        vault.pausePool(pool);
+        vault.pausePool(defaultPool);
 
-        assertTrue(vault.isPoolPaused(pool), "Vault not paused");
+        assertTrue(vault.isPoolPaused(defaultPool), "Vault not paused");
 
         vm.prank(admin);
-        vault.unpausePool(pool);
+        vault.unpausePool(defaultPool);
 
-        assertFalse(vault.isPoolPaused(pool), "Vault is still paused after unpause");
+        assertFalse(vault.isPoolPaused(defaultPool), "Vault is still paused after unpause");
     }
 
     function testCannotPauseIfNotManager() public {
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.pausePool(pool);
+        vault.pausePool(defaultPool);
 
         vm.prank(alice);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.unpausePool(pool);
+        vault.unpausePool(defaultPool);
     }
 
     function testGovernancePause() public {

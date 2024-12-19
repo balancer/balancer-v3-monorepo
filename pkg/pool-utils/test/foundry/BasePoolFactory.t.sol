@@ -214,8 +214,8 @@ contract BasePoolFactoryTest is BaseVaultTest {
         assertNotEq(chainAddress, predictedAddress, "Different chain generates the same address");
     }
 
-    function testGetDefaultPoolHooksContract() public view {
-        assertEq(testFactory.getDefaultPoolHooksContract(), address(0), "Wrong hooks contract");
+    function testGetDefaultpoolHooksContract()() public view {
+        assertEq(testFactory.getDefaultpoolHooksContract()(), address(0), "Wrong hooks contract");
     }
 
     function testGetDefaultLiquidityManagement() public view {

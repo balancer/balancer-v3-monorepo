@@ -74,8 +74,25 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
     uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e3;
 
-    bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+    // Applies to Weighted Pools.
+    uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
+    uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%
+
+    // Default amount to use in tests for user operations.
+    uint256 internal constant DEFAULT_AMOUNT = 1e3 * 1e18;
+    // Default amount round down.
+    uint256 internal DEFAULT_AMOUNT_ROUND_DOWN = DEFAULT_AMOUNT - 2;
+    // Default amount of BPT to use in tests for user operations.
+    uint256 internal DEFAULT_BPT_AMOUNT = 2e3 * 1e18;
+    // Default amount of BPT round down.
+    uint256 internal DEFAULT_BPT_AMOUNT_ROUND_DOWN = DEFAULT_BPT_AMOUNT - 2;
+    // Default rate for the rate provider mock.
+    uint256 internal DEFAULT_MOCK_RATE = 2e18;
+
+    // Default swap fee percentage.
+    uint256 internal DEFAULT_SWAP_FEE_PERCENTAGE = 1e16; // 1%
+    // Default protocol swap fee percentage.
+    uint64 internal DEFAULT_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Main contract mocks.
     IVaultMock internal vault;
@@ -88,60 +105,60 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     RateProviderMock internal rateProvider;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
     BasicAuthorizerMock internal authorizer;
-
     // Fee controller deployed with the Vault.
     IProtocolFeeController internal feeController;
-    // Pool for tests.
-    address internal pool;
-    // Arguments used to build pool. Used to check deployment address.
-    bytes internal poolArguments;
-    // Pool Hooks.
-    address internal poolHooksContract;
 
-    // Default amount to use in tests for user operations.
-    uint256 internal defaultAmount = 1e3 * 1e18;
-    // Default amount round up.
-    uint256 internal defaultAmountRoundUp = defaultAmount + 1;
-    // Default amount round down.
-    uint256 internal defaultAmountRoundDown = defaultAmount - 2;
-    // Default amount of BPT to use in tests for user operations.
-    uint256 internal bptAmount = 2e3 * 1e18;
-    // Default amount of BPT round down.
-    uint256 internal bptAmountRoundDown = bptAmount - 2;
+    // Initial test variables.
     // Amount to use to init the mock pool.
-    uint256 internal poolInitAmount = 1e3 * 1e18;
-    // Default rate for the rate provider mock.
-    uint256 internal mockRate = 2e18;
-    // Default swap fee percentage.
-    uint256 internal swapFeePercentage = 1e16; // 1%
-    // Default protocol swap fee percentage.
-    uint64 internal protocolSwapFeePercentage = 50e16; // 50%
-
+    uint256 private _poolInitAmount = 1e3 * 1e18;
     // VaultMock can override min trade amount; tests shall use 0 by default to simplify fuzz tests.
     // Min trade amount is meant to be an extra protection against unknown rounding errors; the Vault should still work
     // without it, so it can be zeroed out in general.
     // Change this value before calling `setUp` to test under real conditions.
-    uint256 vaultMockMinTradeAmount = 0;
+    uint256 private _vaultMockMinTradeAmount = 0;
 
     // VaultMock can override min wrap amount; tests shall use 1 by default to simplify fuzz tests but trigger minimum
     // wrap amount errors. Min wrap amount is meant to be an extra protection against unknown rounding errors; the
     // Vault should still work without it, so it can be zeroed out in general.
     // Change this value before calling `setUp` to test under real conditions.
-    uint256 vaultMockMinWrapAmount = 1;
+    uint256 private _vaultMockMinWrapAmount = 1;
 
-    // Applies to Weighted Pools.
-    uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%
+    // Pool Hooks.
+    address private _poolHooksContract;
+    // Pool for tests.
+    address private _pool;
+    // Arguments used to build pool. Used to check deployment address.
+    bytes private _poolArguments;
 
+    bool internal _isInitialized;
+
+    // ------------------------------ Hooks ------------------------------
+    function onAfterDeployMainContracts() internal virtual {}
+
+    function onAfterApproveUsersForMainContracts() internal virtual {}
+
+    // ------------------------------ Initialization ------------------------------
     function setUp() public virtual override {
         BaseTest.setUp();
-        _setUpBaseVaultTest();
+
+        _deployMainContracts();
+        onAfterDeployMainContracts();
+        _approveUsersForMainContracts();
+        onAfterApproveUsersForMainContracts();
+
+        _poolHooksContract = createHook();
+        (_pool, _poolArguments) = createPool();
+
+        if (_pool != address(0)) {
+            approveForPool(IERC20(_pool));
+        }
+
         // Add initial liquidity
         initPool();
     }
 
-    function _setUpBaseVaultTest() internal {
-        vault = deployVaultMock(vaultMockMinTradeAmount, vaultMockMinWrapAmount);
+    function _deployMainContracts() private {
+        vault = deployVaultMock(_vaultMockMinTradeAmount, _vaultMockMinWrapAmount);
 
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
@@ -162,20 +179,48 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(bufferRouter), "buffer router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
+    }
 
-        poolHooksContract = createHook();
-        (pool, poolArguments) = createPool();
-
-        // Approve vault allowances.
+    function _approveUsersForMainContracts() private {
         for (uint256 i = 0; i < users.length; ++i) {
             address user = users[i];
             vm.startPrank(user);
             approveForSender();
             vm.stopPrank();
         }
-        if (pool != address(0)) {
-            approveForPool(IERC20(pool));
+    }
+
+    function setVaultMockMinTradeAmount(uint256 amount) internal {
+        if (_isInitialized) {
+            revert("Cannot change vault mock min trade amount after initialization");
         }
+        _vaultMockMinTradeAmount = amount;
+    }
+
+    function vaultMockMinTradeAmount() internal view returns (uint256) {
+        return _vaultMockMinTradeAmount;
+    }
+
+    function setVaultMockMinWrapAmount(uint256 amount) internal {
+        if (_isInitialized) {
+            revert("Cannot change vault mock min wrap amount after initialization");
+        }
+        _vaultMockMinWrapAmount = amount;
+    }
+
+    function vaultMockMinWrapAmount() internal view returns (uint256) {
+        return _vaultMockMinWrapAmount;
+    }
+
+    function setPoolInitAmount(uint256 amount) internal {
+        if (_isInitialized) {
+            revert("Cannot change pool init amount after initialization");
+        }
+        _poolInitAmount = amount;
+    }
+
+    function poolInitAmount() internal view returns (uint256) {
+        return _poolInitAmount;
     }
 
     function approveForSender() internal virtual {
@@ -224,41 +269,6 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         }
     }
 
-    function initPool() internal virtual {
-        vm.startPrank(lp);
-        _initPool(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
-        vm.stopPrank();
-    }
-
-    function _initPool(
-        address poolToInit,
-        uint256[] memory amountsIn,
-        uint256 minBptOut
-    ) internal virtual returns (uint256 bptOut) {
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
-
-        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
-    }
-
-    function createPool() internal virtual returns (address, bytes memory) {
-        return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
-    }
-
-    function _createPool(
-        address[] memory tokens,
-        string memory label
-    ) internal virtual returns (address newPool, bytes memory poolArgs) {
-        string memory name = "ERC20 Pool";
-        string memory symbol = "ERC20POOL";
-
-        newPool = factoryMock.createPool(name, symbol);
-        vm.label(newPool, label);
-
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
-
-        poolArgs = abi.encode(vault, name, symbol);
-    }
-
     function createHook() internal virtual returns (address) {
         // Sets all flags to false.
         HookFlags memory hookFlags;
@@ -275,8 +285,57 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         return address(newHook);
     }
 
+    function createPool() internal virtual returns (address, bytes memory) {
+        return _createPool([address(dai), address(usdc)].toMemoryArray(), "pool");
+    }
+
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal virtual returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = factoryMock.createPool(name, symbol);
+        vm.label(newPool, label);
+
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), _poolHooksContract, lp);
+
+        poolArgs = abi.encode(vault, name, symbol);
+    }
+
+    function initPool() internal virtual {
+        vm.startPrank(lp);
+        _initPool(_pool, [_poolInitAmount, _poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
+    }
+
+    function _initPool(
+        address poolToInit,
+        uint256[] memory amountsIn,
+        uint256 minBptOut
+    ) internal virtual returns (uint256 bptOut) {
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
+
+        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
+    }
+
+    function poolHooksContract() internal view returns (address) {
+        return _poolHooksContract;
+    }
+
+    function pool() internal view returns (address) {
+        return _pool;
+    }
+
+    function poolArguments() internal view returns (bytes memory) {
+        return _poolArguments;
+    }
+
+    // ------------------------------ Helper functions ------------------------------
+
     function setSwapFeePercentage(uint256 percentage) internal {
-        _setSwapFeePercentage(pool, percentage);
+        _setSwapFeePercentage(_pool, percentage);
     }
 
     function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
@@ -288,39 +347,39 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function getBalances(address user, Rounding invariantRounding) internal view returns (Balances memory balances) {
-        balances.userBpt = IERC20(pool).balanceOf(user);
-        balances.aliceBpt = IERC20(pool).balanceOf(alice);
-        balances.bobBpt = IERC20(pool).balanceOf(bob);
-        balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
-        balances.lpBpt = IERC20(pool).balanceOf(lp);
+        balances.userBpt = IERC20(_pool).balanceOf(user);
+        balances.aliceBpt = IERC20(_pool).balanceOf(alice);
+        balances.bobBpt = IERC20(_pool).balanceOf(bob);
+        balances.hookBpt = IERC20(_pool).balanceOf(_poolHooksContract);
+        balances.lpBpt = IERC20(_pool).balanceOf(lp);
 
-        balances.poolSupply = IERC20(pool).totalSupply();
+        balances.poolSupply = IERC20(_pool).totalSupply();
 
         (IERC20[] memory tokens, , uint256[] memory poolBalances, uint256[] memory lastBalancesLiveScaled18) = vault
-            .getPoolTokenInfo(pool);
+            .getPoolTokenInfo(_pool);
         balances.poolTokens = poolBalances;
         uint256 numTokens = tokens.length;
 
-        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, invariantRounding);
-        balances.poolEth = pool.balance;
+        balances.poolInvariant = IBasePool(_pool).computeInvariant(lastBalancesLiveScaled18, invariantRounding);
+        balances.poolEth = _pool.balance;
 
         _fillBalances(balances, user, tokens);
 
         balances.swapFeeAmounts = new uint256[](numTokens);
         balances.yieldFeeAmounts = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(pool, tokens[i]);
-            balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(pool, tokens[i]);
+            balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(_pool, tokens[i]);
+            balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(_pool, tokens[i]);
         }
     }
 
     /// @dev A different function is needed to measure token balances when tracking tokens across multiple pools.
     function getBalances(address user, IERC20[] memory tokensToTrack) internal view returns (Balances memory balances) {
-        balances.userBpt = IERC20(pool).balanceOf(user);
-        balances.aliceBpt = IERC20(pool).balanceOf(alice);
-        balances.bobBpt = IERC20(pool).balanceOf(bob);
-        balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
-        balances.lpBpt = IERC20(pool).balanceOf(lp);
+        balances.userBpt = IERC20(_pool).balanceOf(user);
+        balances.aliceBpt = IERC20(_pool).balanceOf(alice);
+        balances.bobBpt = IERC20(_pool).balanceOf(bob);
+        balances.hookBpt = IERC20(_pool).balanceOf(_poolHooksContract);
+        balances.lpBpt = IERC20(_pool).balanceOf(lp);
 
         _fillBalances(balances, user, tokensToTrack);
     }
@@ -335,7 +394,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         balances.bobTokens = new uint256[](numTokens);
         balances.bobEth = bob.balance;
         balances.hookTokens = new uint256[](numTokens);
-        balances.hookEth = poolHooksContract.balance;
+        balances.hookEth = _poolHooksContract.balance;
         balances.lpTokens = new uint256[](numTokens);
         balances.lpEth = lp.balance;
         balances.vaultTokens = new uint256[](numTokens);
@@ -347,7 +406,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             balances.userTokens[i] = tokens[i].balanceOf(user);
             balances.aliceTokens[i] = tokens[i].balanceOf(alice);
             balances.bobTokens[i] = tokens[i].balanceOf(bob);
-            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
+            balances.hookTokens[i] = tokens[i].balanceOf(_poolHooksContract);
             balances.lpTokens[i] = tokens[i].balanceOf(lp);
             balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
             balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);

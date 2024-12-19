@@ -41,7 +41,7 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = factory.create(
             name,
@@ -50,7 +50,7 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
             [uint256(80e16), uint256(20e16)].toMemoryArray(),
             roleAccounts,
             swapFeePercentage, // 1% swap fee, but test will force it to be 0
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             // NOTE: sends a unique salt.

@@ -31,6 +31,7 @@ contract VaultTokenTest is BaseVaultTest {
 
     ERC4626TestToken cDAI;
 
+    PoolMock defaultPool;
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
@@ -47,12 +48,12 @@ contract VaultTokenTest is BaseVaultTest {
         poolFactory = deployPoolFactoryMock(vault, 365 days);
 
         // Allow pools from factory poolFactory to use the hook PoolHooksMock.
-        PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(poolFactory));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
-        pool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        defaultPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
     function createPool() internal pure override returns (address, bytes memory) {
@@ -67,7 +68,7 @@ contract VaultTokenTest is BaseVaultTest {
         registerBuffers();
         registerPool();
 
-        IERC20[] memory tokens = vault.getPoolTokens(pool);
+        IERC20[] memory tokens = vault.getPoolTokens(defaultPool);
 
         assertEq(tokens.length, 2);
 
@@ -120,17 +121,17 @@ contract VaultTokenTest is BaseVaultTest {
         // Establish assets and supply so that buffer creation doesn't fail.
         vm.startPrank(alice);
 
-        dai.mint(alice, 2 * defaultAmount);
+        dai.mint(alice, 2 * DEFAULT_AMOUNT);
 
-        dai.approve(address(waDAI), defaultAmount);
-        waDAI.deposit(defaultAmount, alice);
+        dai.approve(address(waDAI), DEFAULT_AMOUNT);
+        waDAI.deposit(DEFAULT_AMOUNT, alice);
 
-        dai.approve(address(cDAI), defaultAmount);
-        cDAI.deposit(defaultAmount, alice);
+        dai.approve(address(cDAI), DEFAULT_AMOUNT);
+        cDAI.deposit(DEFAULT_AMOUNT, alice);
 
-        usdc.mint(alice, defaultAmount);
-        usdc.approve(address(waUSDC), defaultAmount);
-        waUSDC.deposit(defaultAmount, alice);
+        usdc.mint(alice, DEFAULT_AMOUNT);
+        usdc.approve(address(waUSDC), DEFAULT_AMOUNT);
+        waUSDC.deposit(DEFAULT_AMOUNT, alice);
         vm.stopPrank();
     }
 
@@ -150,6 +151,6 @@ contract VaultTokenTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
 
-        poolFactory.registerPool(pool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+        poolFactory.registerPool(defaultPool, tokenConfig, roleAccounts, poolHooksContract(), liquidityManagement);
     }
 }

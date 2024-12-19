@@ -46,12 +46,12 @@ contract E2eBatchSwapWeightedTest is WeightedPoolContractsDeployer, E2eBatchSwap
         sender = lp;
         poolCreator = lp;
 
-        minSwapAmountTokenA = poolInitAmount / 1e3;
-        minSwapAmountTokenD = poolInitAmount / 1e3;
+        minSwapAmountTokenA = poolInitAmount() / 1e3;
+        minSwapAmountTokenD = poolInitAmount() / 1e3;
 
         // Divide init amount by 10 to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountTokenA = poolInitAmount / 10;
-        maxSwapAmountTokenD = poolInitAmount / 10;
+        maxSwapAmountTokenA = poolInitAmount() / 10;
+        maxSwapAmountTokenD = poolInitAmount() / 10;
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.

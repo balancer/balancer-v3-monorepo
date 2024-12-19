@@ -49,7 +49,7 @@ contract YieldFeesTest is BaseVaultTest {
         (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
-    // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt)
+    // Create wsteth / dai pool(), with rate providers on wsteth (non-exempt), and dai (exempt)
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 
@@ -143,7 +143,7 @@ contract YieldFeesTest is BaseVaultTest {
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
-        vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(pool(), aggregateYieldFeePercentage);
 
         // Warm-up storage slots (using a different pool).
         // Pump the original rates [pumpRate / 2] times.
@@ -151,7 +151,7 @@ contract YieldFeesTest is BaseVaultTest {
         daiRateProvider.mockRate((daiRate * pumpRate) / 2);
 
         vm.prank(alice);
-        uint256 amountOut = router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, bytes(""));
+        uint256 amountOut = router.swapSingleTokenExactIn(pool(), dai, wsteth, 1e18, 0, MAX_UINT256, false, bytes(""));
 
         // Pump the original rates [pumpRate] times.
         wstETHRateProvider.mockRate(wstethRate * pumpRate);
@@ -159,11 +159,11 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap.
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool(), wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
     }
 
     function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {
-        (pool, ) = createPool();
+        (defaultPool, ) = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 

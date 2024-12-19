@@ -61,11 +61,11 @@ contract VaultDefaultHandlersTest is BaseVaultTest {
 
     function testOnlyVault() public {
         // Does not revert via Vault.
-        assertTrue(IVault(address(vault)).isPoolRegistered(pool));
+        assertTrue(IVault(address(vault)).isPoolRegistered(pool()));
 
         IVault vaultExtension = IVault(vault.getVaultExtension());
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.isPoolRegistered(pool);
+        vaultExtension.isPoolRegistered(pool());
     }
 
     function testSendEthNowhereExtension() public {

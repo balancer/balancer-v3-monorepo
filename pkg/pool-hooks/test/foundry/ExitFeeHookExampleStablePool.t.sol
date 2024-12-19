@@ -54,7 +54,7 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
             DEFAULT_AMP_FACTOR,
             roleAccounts,
             MIN_STABLE_SWAP_FEE,
-            poolHooksContract,
+            poolHooksContract(),
             true, // supports donation
             true, // does not support unbalanced add/remove liquidity
             ZERO_BYTES32
@@ -76,13 +76,13 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
     // Exit fee returns to LPs.
     function testExitFeeReturnToLPs() public override {
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, EXIT_FEE_PERCENTAGE);
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract(), EXIT_FEE_PERCENTAGE);
 
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
+        ExitFeeHookExample(poolHooksContract()).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
 
-        uint256 bptAmountIn = IERC20(pool).totalSupply() / 100;
-        uint256 expectedAmountOutNoFees = poolInitAmount / 100;
+        uint256 bptAmountIn = IERC20(pool()).totalSupply() / 100;
+        uint256 expectedAmountOutNoFees = poolInitAmount() / 100;
         uint256 expectedHookFee = expectedAmountOutNoFees.mulDown(EXIT_FEE_PERCENTAGE);
 
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
@@ -90,14 +90,14 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
 
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(dai), expectedHookFee);
+        emit ExitFeeHookExample.ExitFeeCharged(pool(), IERC20(dai), expectedHookFee);
 
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(usdc), expectedHookFee);
+        emit ExitFeeHookExample.ExitFeeCharged(pool(), IERC20(usdc), expectedHookFee);
 
         vm.prank(lp);
         uint256[] memory amountsOut = router.removeLiquidityProportional(
-            pool,
+            pool(),
             bptAmountIn,
             minAmountsOut,
             false,
@@ -106,7 +106,7 @@ contract ExitFeeHookExampleStablePoolTest is StablePoolContractsDeployer, ExitFe
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
-        // amountsOut must be the expectedAmountsOut minus hook fees (which will stay in the pool, similar to lp fees).
+        // amountsOut must be the expectedAmountsOut minus hook fees (which will stay in the pool(), similar to lp fees).
         assertEq(amountsOut[daiIdx], expectedAmountOutNoFees - expectedHookFee, "DAI amount out is wrong");
         assertEq(amountsOut[usdcIdx], expectedAmountOutNoFees - expectedHookFee, "USDC amount out is wrong");
 

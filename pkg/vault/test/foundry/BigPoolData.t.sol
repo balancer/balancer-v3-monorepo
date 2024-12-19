@@ -42,9 +42,9 @@ contract BigPoolDataTest is BaseVaultTest {
 
         for (uint8 i = 0; i < numTokens; ++i) {
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18 - i);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, poolInitAmount);
+            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, poolInitAmount());
             bigPoolRateProviders[i] = deployRateProviderMock();
-            initAmounts[i] = poolInitAmount;
+            initAmounts[i] = poolInitAmount();
         }
 
         newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
@@ -54,7 +54,7 @@ contract BigPoolDataTest is BaseVaultTest {
         factoryMock.registerTestPool(
             newPool,
             vault.buildTokenConfig(bigPoolTokens, bigPoolRateProviders),
-            poolHooksContract,
+            poolHooksContract(),
             lp
         );
 
@@ -71,7 +71,7 @@ contract BigPoolDataTest is BaseVaultTest {
 
     function initPool() internal override {
         vm.startPrank(lp);
-        _initPool(pool, initAmounts, 0);
+        _initPool(pool(), initAmounts, 0);
         vm.stopPrank();
     }
 
@@ -110,13 +110,13 @@ contract BigPoolDataTest is BaseVaultTest {
         // `loadPoolDataUpdatingBalancesAndYieldFees` and `getRawBalances` are functions in VaultMock.
 
         PoolData memory data = vault.loadPoolDataUpdatingBalancesAndYieldFees(
-            pool,
+            pool(),
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
 
         // Compute decimal scaling factors from the tokens, in the mock.
-        uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
-        uint256[] memory expectedRawBalances = vault.getRawBalances(pool);
+        uint256[] memory expectedScalingFactors = PoolMock(pool()).getDecimalScalingFactors();
+        uint256[] memory expectedRawBalances = vault.getRawBalances(pool());
         uint256 expectedLiveBalance;
 
         for (uint256 i = 0; i < expectedRawBalances.length; ++i) {

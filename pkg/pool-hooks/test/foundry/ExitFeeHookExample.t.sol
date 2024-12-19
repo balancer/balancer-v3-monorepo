@@ -68,13 +68,13 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         liquidityManagement.enableDonation = true;
 
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeeHookExampleRegistered(poolHooksContract, newPool);
+        emit ExitFeeHookExample.ExitFeeHookExampleRegistered(poolHooksContract(), newPool);
 
         factoryMock.registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
-            poolHooksContract,
+            poolHooksContract(),
             liquidityManagement
         );
 
@@ -105,30 +105,30 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         assertTrue(poolConfig.liquidityManagement.enableDonation, "enableDonation is false");
         assertTrue(poolConfig.liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is false");
         assertTrue(hooksConfig.enableHookAdjustedAmounts, "enableHookAdjustedAmounts is false");
-        assertEq(hooksConfig.hooksContract, poolHooksContract, "hooksContract is wrong");
+        assertEq(hooksConfig.hooksContract, poolHooksContract(), "hooksContract is wrong");
     }
 
     // Exit fee returns to LPs
     function testExitFeeReturnToLPs() public virtual {
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, EXIT_FEE_PERCENTAGE);
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract(), EXIT_FEE_PERCENTAGE);
 
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
-        uint256 amountOut = poolInitAmount / 2;
+        ExitFeeHookExample(poolHooksContract()).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
+        uint256 amountOut = poolInitAmount() / 2;
         uint256 hookFee = amountOut.mulDown(EXIT_FEE_PERCENTAGE);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
 
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(dai), hookFee);
+        emit ExitFeeHookExample.ExitFeeCharged(pool(), IERC20(dai), hookFee);
 
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(usdc), hookFee);
+        emit ExitFeeHookExample.ExitFeeCharged(pool(), IERC20(usdc), hookFee);
 
         vm.prank(lp);
-        router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
+        router.removeLiquidityProportional(pool(), 2 * amountOut, minAmountsOut, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
@@ -183,10 +183,10 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
             abi.encodeWithSelector(ExitFeeHookExample.ExitFeeAboveLimit.selector, highFee, EXIT_FEE_PERCENTAGE)
         );
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(highFee);
+        ExitFeeHookExample(poolHooksContract()).setExitFeePercentage(highFee);
     }
 
-    // Registry tests require a new pool, because an existent pool may be already registered
+    // Registry tests require a new pool(), because an existent pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
         newPool = address(deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
         vm.label(newPool, "Exit Fee Pool");
@@ -200,6 +200,6 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         liquidityManagement.disableUnbalancedLiquidity = true;
         liquidityManagement.enableDonation = enableDonation;
 
-        factoryMock.registerPool(exitFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+        factoryMock.registerPool(exitFeePool, tokenConfig, roleAccounts, poolHooksContract(), liquidityManagement);
     }
 }

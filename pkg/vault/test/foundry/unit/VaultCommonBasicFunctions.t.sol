@@ -35,6 +35,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     using ArrayHelpers for *;
     using SafeCast for *;
 
+    address defaultPool;
     // The balance and live balance are stored in the same bytes32 word, each uses 128 bits.
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;
     uint256 private constant MAX_TEST_SWAP_FEE = 10e16; // 10%
@@ -43,16 +44,16 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         // Generates a "random" address for a non-existent pool.
-        pool = address(bytes20(keccak256(abi.encode(block.timestamp))));
+        defaultPool = address(bytes20(keccak256(abi.encode(block.timestamp))));
 
         // Allow manual pool registration.
         vm.mockCall(
-            pool,
+            defaultPool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMinimumSwapFeePercentage.selector),
             abi.encode(0)
         );
         vm.mockCall(
-            pool,
+            defaultPool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
             abi.encode(FixedPoint.ONE) // 100%
         );
@@ -72,10 +73,10 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         IERC20[] memory tokens = InputHelpers.sortTokens(
             [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
         );
-        vault.manualRegisterPool(pool, tokens);
+        vault.manualRegisterPool(defaultPool, tokens);
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenInfo(pool, tokenConfig);
+        vault.manualSetPoolTokenInfo(defaultPool, tokenConfig);
         uint256[] memory originalBalancesRaw = new uint256[](3);
         originalBalancesRaw[0] = 1000;
         originalBalancesRaw[1] = 2000;
@@ -86,14 +87,14 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalLastLiveBalances[1] = 456;
         originalLastLiveBalances[2] = 789;
 
-        vault.manualSetPoolTokensAndBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(defaultPool, tokens, originalBalancesRaw, originalLastLiveBalances);
 
         (
             IERC20[] memory newTokens,
             TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
             uint256[] memory lastBalancesLiveScaled18
-        ) = vault.getPoolTokenInfo(pool);
+        ) = vault.getPoolTokenInfo(defaultPool);
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
@@ -139,7 +140,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
         );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenInfo(pool, tokenConfig);
+        vault.manualSetPoolTokenInfo(defaultPool, tokenConfig);
 
         // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
         // We don't care about last live balances for the purpose of this test.
@@ -147,7 +148,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         rawBalances[0] = 1000;
         rawBalances[1] = 2000;
         rawBalances[2] = 3000;
-        vault.manualSetPoolTokensAndBalances(pool, tokens, rawBalances, rawBalances);
+        vault.manualSetPoolTokensAndBalances(defaultPool, tokens, rawBalances, rawBalances);
 
         PoolConfigBits originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
@@ -158,9 +159,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs)
         );
         originalPoolConfig = originalPoolConfig.setPoolRegistered(true);
-        vault.manualSetPoolConfigBits(pool, originalPoolConfig);
+        vault.manualSetPoolConfigBits(defaultPool, originalPoolConfig);
 
-        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
+        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(defaultPool);
 
         assertEq(
             decimalScalingFactors.length,
@@ -175,7 +176,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
         }
         assertEq(
-            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
+            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(defaultPool)),
             PoolConfigBits.unwrap(originalPoolConfig),
             "original and new poolConfigs should be the same"
         );
@@ -199,10 +200,10 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         IERC20[] memory tokens = InputHelpers.sortTokens(
             [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
         );
-        vault.manualRegisterPool(pool, tokens);
+        vault.manualRegisterPool(defaultPool, tokens);
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenInfo(pool, tokenConfig);
+        vault.manualSetPoolTokenInfo(defaultPool, tokenConfig);
 
         // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens).
         uint256[] memory originalBalancesRaw = new uint256[](3);
@@ -214,14 +215,14 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalLastLiveBalances[0] = balance2;
         originalLastLiveBalances[1] = balance3;
         originalLastLiveBalances[2] = balance1;
-        vault.manualSetPoolTokensAndBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(defaultPool, tokens, originalBalancesRaw, originalLastLiveBalances);
 
         (
             IERC20[] memory newTokens,
             TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
             uint256[] memory lastBalancesLiveScaled18
-        ) = vault.getPoolTokenInfo(pool);
+        ) = vault.getPoolTokenInfo(defaultPool);
 
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
@@ -352,55 +353,55 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     }
 
     function testSetStaticSwapFeePercentage__Fuzz(uint256 fee) public {
-        vault.manualSetPoolRegistered(pool, true);
+        vault.manualSetPoolRegistered(defaultPool, true);
         fee = bound(fee, MIN_TEST_SWAP_FEE, MAX_TEST_SWAP_FEE);
         vm.mockCall(
-            address(pool),
+            defaultPool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMinimumSwapFeePercentage.selector),
             abi.encode(MIN_TEST_SWAP_FEE)
         );
         vm.mockCall(
-            address(pool),
+            defaultPool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
             abi.encode(MAX_TEST_SWAP_FEE)
         );
 
         vm.expectEmit();
-        emit IVaultEvents.SwapFeePercentageChanged(pool, fee);
+        emit IVaultEvents.SwapFeePercentageChanged(defaultPool, fee);
 
-        vault.manualSetStaticSwapFeePercentage(pool, fee);
+        vault.manualSetStaticSwapFeePercentage(defaultPool, fee);
         uint256 feeTruncated = (fee / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
-        assertEq(vault.getStaticSwapFeePercentage(pool), feeTruncated, "Wrong static swap fee percentage");
+        assertEq(vault.getStaticSwapFeePercentage(defaultPool), feeTruncated, "Wrong static swap fee percentage");
     }
 
     function testSetStaticSwapFeePercentageOutsideBounds() public {
-        vault.manualSetPoolRegistered(pool, true);
+        vault.manualSetPoolRegistered(defaultPool, true);
         vm.mockCall(
-            address(pool),
+            defaultPool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMinimumSwapFeePercentage.selector),
             abi.encode(MIN_TEST_SWAP_FEE)
         );
         vm.mockCall(
-            address(pool),
+            defaultPool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
             abi.encode(MAX_TEST_SWAP_FEE)
         );
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
-        vault.manualSetStaticSwapFeePercentage(pool, MIN_TEST_SWAP_FEE - 1);
+        vault.manualSetStaticSwapFeePercentage(defaultPool, MIN_TEST_SWAP_FEE - 1);
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
-        vault.manualSetStaticSwapFeePercentage(pool, MAX_TEST_SWAP_FEE + 1);
+        vault.manualSetStaticSwapFeePercentage(defaultPool, MAX_TEST_SWAP_FEE + 1);
 
         vm.mockCall(
-            address(pool),
+            defaultPool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
             abi.encode(MAX_FEE_PERCENTAGE + 10)
         );
 
         // Also revert if it's above the maximum limit.
         vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
-        vault.manualSetStaticSwapFeePercentage(pool, MAX_FEE_PERCENTAGE + 1);
+        vault.manualSetStaticSwapFeePercentage(defaultPool, MAX_FEE_PERCENTAGE + 1);
     }
 
     function testFindTokenIndex__Fuzz(address[8] memory tokensRaw, uint256 tokenIndex, uint256 length) public view {

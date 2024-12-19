@@ -53,11 +53,11 @@ contract StablePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
         // Try to donate but fails because pool does not support donations
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
-        router.donate(stablePool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
+        router.donate(stablePool, [poolInitAmount(), poolInitAmount()].toMemoryArray(), false, bytes(""));
     }
 
     function testCreatePoolWithDonation() public {
-        uint256 amountToDonate = poolInitAmount;
+        uint256 amountToDonate = poolInitAmount();
 
         address stablePool = _deployAndInitializeStablePool(true);
 
@@ -127,7 +127,14 @@ contract StablePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
 
         // Initialize pool
         vm.prank(lp);
-        router.initialize(stablePool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
+        router.initialize(
+            stablePool,
+            tokens,
+            [poolInitAmount(), poolInitAmount()].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
 
         return stablePool;
     }
@@ -154,20 +161,20 @@ contract StablePoolFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
     function _createHookTestLocals(address pool) private view returns (HookTestLocals memory vars) {
         vars.bob.daiBefore = dai.balanceOf(bob);
         vars.bob.usdcBefore = usdc.balanceOf(bob);
-        vars.bob.bptBefore = IERC20(pool).balanceOf(bob);
+        vars.bob.bptBefore = IERC20(pool()).balanceOf(bob);
         vars.vault.daiBefore = dai.balanceOf(address(vault));
         vars.vault.usdcBefore = usdc.balanceOf(address(vault));
-        vars.poolBefore = vault.getRawBalances(pool);
-        vars.bptSupplyBefore = BalancerPoolToken(pool).totalSupply();
+        vars.poolBefore = vault.getRawBalances(pool());
+        vars.bptSupplyBefore = BalancerPoolToken(pool()).totalSupply();
     }
 
     function _fillAfterHookTestLocals(HookTestLocals memory vars, address pool) private view {
         vars.bob.daiAfter = dai.balanceOf(bob);
         vars.bob.usdcAfter = usdc.balanceOf(bob);
-        vars.bob.bptAfter = IERC20(pool).balanceOf(bob);
+        vars.bob.bptAfter = IERC20(pool()).balanceOf(bob);
         vars.vault.daiAfter = dai.balanceOf(address(vault));
         vars.vault.usdcAfter = usdc.balanceOf(address(vault));
-        vars.poolAfter = vault.getRawBalances(pool);
-        vars.bptSupplyAfter = BalancerPoolToken(pool).totalSupply();
+        vars.poolAfter = vault.getRawBalances(pool());
+        vars.bptSupplyAfter = BalancerPoolToken(pool()).totalSupply();
     }
 }

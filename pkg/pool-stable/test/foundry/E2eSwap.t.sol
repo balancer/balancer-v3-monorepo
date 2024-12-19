@@ -99,7 +99,7 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = factory.create(
             name,
@@ -108,7 +108,7 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
             DEFAULT_AMP_FACTOR,
             roleAccounts,
             DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32

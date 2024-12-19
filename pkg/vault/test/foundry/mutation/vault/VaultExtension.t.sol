@@ -47,7 +47,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.registerPool(pool, config, 0, 0, false, roles, address(0), liquidityManagement);
+        vaultExtension.registerPool(pool(), config, 0, 0, false, roles, address(0), liquidityManagement);
     }
 
     function testRegisterPoolReentrancy() public {
@@ -56,12 +56,12 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.manualRegisterPoolReentrancy(pool, config, 0, 0, false, roles, address(0), liquidityManagement);
+        vault.manualRegisterPoolReentrancy(pool(), config, 0, 0, false, roles, address(0), liquidityManagement);
     }
 
     function testIsPoolRegisteredWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.isPoolRegistered(pool);
+        vaultExtension.isPoolRegistered(pool());
     }
 
     function testInitializeWhenNotVault() public {
@@ -69,7 +69,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         uint256[] memory exactAmountsIn;
 
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.initialize(pool, address(0), tokens, exactAmountsIn, 0, bytes(""));
+        vaultExtension.initialize(pool(), address(0), tokens, exactAmountsIn, 0, bytes(""));
     }
 
     function testInitializeReentrancy() public {
@@ -79,53 +79,53 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         vault.forceUnlock();
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.manualInitializePoolReentrancy(pool, address(0), tokens, exactAmountsIn, 0, bytes(""));
+        vault.manualInitializePoolReentrancy(pool(), address(0), tokens, exactAmountsIn, 0, bytes(""));
     }
 
     function testIsPoolInitializedWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.isPoolInitialized(pool);
+        vaultExtension.isPoolInitialized(pool());
     }
 
     function testGetPoolConfigWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getPoolConfig(pool);
+        vaultExtension.getPoolConfig(pool());
     }
 
     function testGetHooksConfigWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getHooksConfig(pool);
+        vaultExtension.getHooksConfig(pool());
     }
 
     function testGetPoolTokensWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getPoolTokens(pool);
+        vaultExtension.getPoolTokens(pool());
     }
 
     function testGetPoolTokenRatesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getPoolTokenRates(pool);
+        vaultExtension.getPoolTokenRates(pool());
     }
 
     function testGetPoolDataWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getPoolData(pool);
+        vaultExtension.getPoolData(pool());
     }
 
     function testGetPoolTokenInfoWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getPoolTokenInfo(pool);
+        vaultExtension.getPoolTokenInfo(pool());
     }
 
     function testGetCurrentLiveBalancesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getCurrentLiveBalances(pool);
+        vaultExtension.getCurrentLiveBalances(pool());
     }
 
     function testComputeDynamicSwapFeePercentageWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         PoolSwapParams memory swapParams;
-        vaultExtension.computeDynamicSwapFeePercentage(pool, swapParams);
+        vaultExtension.computeDynamicSwapFeePercentage(pool(), swapParams);
     }
 
     function testComputeDynamicSwapFeePercentageWhenNotInitialized() public {
@@ -141,7 +141,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testGetBptRateWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getBptRate(pool);
+        vaultExtension.getBptRate(pool());
     }
 
     function testTotalSupplyWhenNotVault() public {
@@ -166,42 +166,42 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testIsPoolPausedWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.isPoolPaused(pool);
+        vaultExtension.isPoolPaused(pool());
     }
 
     function testGetPoolPausedStateWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getPoolPausedState(pool);
+        vaultExtension.getPoolPausedState(pool());
     }
 
     function testGetAggregateSwapFeeAmountWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getAggregateSwapFeeAmount(pool, dai);
+        vaultExtension.getAggregateSwapFeeAmount(pool(), dai);
     }
 
     function testGetAggregateYieldFeeAmountWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getAggregateYieldFeeAmount(pool, dai);
+        vaultExtension.getAggregateYieldFeeAmount(pool(), dai);
     }
 
     function testGetStaticSwapFeePercentageWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getStaticSwapFeePercentage(pool);
+        vaultExtension.getStaticSwapFeePercentage(pool());
     }
 
     function testGetPoolRoleAccountsWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getPoolRoleAccounts(pool);
+        vaultExtension.getPoolRoleAccounts(pool());
     }
 
     function testIsPoolInRecoveryModeWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.isPoolInRecoveryMode(pool);
+        vaultExtension.isPoolInRecoveryMode(pool());
     }
 
     function testRemoveLiquidityRecoveryWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.removeLiquidityRecovery(pool, address(1), 0, new uint256[](2));
+        vaultExtension.removeLiquidityRecovery(pool(), address(1), 0, new uint256[](2));
     }
 
     function testQuoteWhenNotVault() public {

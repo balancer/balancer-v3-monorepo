@@ -66,7 +66,7 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
 
         PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = StablePoolFactory(address(factory)).create(
             name,
@@ -76,7 +76,7 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
             2000,
             roleAccounts,
             BASE_MIN_SWAP_FEE,
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
@@ -97,7 +97,7 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
     function initPool() internal override {
         vm.prank(lp);
         bptAmountOut = router.initialize(
-            pool,
+            pool(),
             poolTokens,
             tokenAmounts,
             expectedAddLiquidityBptAmountOut - BasePoolTest.DELTA,
@@ -119,7 +119,7 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
         tokens[0] = IERC20(usdc);
         tokens[1] = IERC20(wsteth);
         vault.manualSetPoolTokensAndBalances(
-            pool,
+            pool(),
             tokens,
             [tokenAmount, dustAmount].toMemoryArray(),
             [tokenAmount, dustAmount].toMemoryArray()
@@ -128,15 +128,15 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
 
         vm.startPrank(alice);
 
-        router.removeLiquidityProportional(pool, 0, [uint256(0), uint256(0)].toMemoryArray(), false, "");
+        router.removeLiquidityProportional(pool(), 0, [uint256(0), uint256(0)].toMemoryArray(), false, "");
 
         uint256[] memory exactAmountsIn = [tokenAmount, uint256(0)].toMemoryArray();
 
-        router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
+        router.addLiquidityUnbalanced(pool(), exactAmountsIn, 0, false, "");
 
         // This will actually revert as base pool math will attempt to compute an invariant with 0 balances.
         vm.expectRevert(stdError.divisionError);
-        router.removeLiquiditySingleTokenExactOut(pool, 1e50, usdc, tokenAmount, false, "");
+        router.removeLiquiditySingleTokenExactOut(pool(), 1e50, usdc, tokenAmount, false, "");
     }
 
     function testMockPoolBalanceWithEdgeCaseAddUnbalanced() public {
@@ -147,17 +147,17 @@ contract RoundingDirectionStablePoolEdgeCasesTest is StablePoolContractsDeployer
         tokens[0] = IERC20(usdc);
         tokens[1] = IERC20(wsteth);
         vault.manualSetPoolTokensAndBalances(
-            pool,
+            pool(),
             tokens,
             [tokenAmount, dustAmount].toMemoryArray(),
             [tokenAmount, dustAmount].toMemoryArray()
         );
         rateProviderWstEth.mockRate(1.5e18);
-        uint256 previousTotalSupply = StablePool(pool).totalSupply();
+        uint256 previousTotalSupply = StablePool(pool()).totalSupply();
         uint256[] memory exactAmountsIn = [tokenAmount * 2, dustAmount * 2].toMemoryArray();
         uint256 mintLp;
         vm.prank(alice);
-        mintLp = router.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, "");
+        mintLp = router.addLiquidityUnbalanced(pool(), exactAmountsIn, 0, false, "");
         // This is only true when trading fee is 0
         vm.assertLt(mintLp, previousTotalSupply * 2);
     }

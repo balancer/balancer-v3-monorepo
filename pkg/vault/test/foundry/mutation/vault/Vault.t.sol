@@ -46,18 +46,18 @@ contract VaultMutationTest is BaseVaultTest {
 
     address internal constant ZERO_ADDRESS = address(0x00);
 
-    uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
+    uint256[] internal amountsIn = [poolInitAmount(), poolInitAmount()].toMemoryArray();
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         swapTokens = [dai, usdc];
 
-        vault.mintERC20(pool, address(this), initTotalSupply);
+        vault.mintERC20(pool(), address(this), initTotalSupply);
     }
 
     function testLoadPoolDataUpdatingBalancesAndYieldFeesReentrancy() public {
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(pool, Rounding.ROUND_DOWN);
+        vault.loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(pool(), Rounding.ROUND_DOWN);
     }
 
     function testSettleWithLockedVault() public {
@@ -83,7 +83,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSwapWithLockedVault() public {
-        VaultSwapParams memory params = VaultSwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
+        VaultSwapParams memory params = VaultSwapParams(SwapKind.EXACT_IN, address(pool()), dai, usdc, 1, 0, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.swap(params);
@@ -91,7 +91,7 @@ contract VaultMutationTest is BaseVaultTest {
 
     function testAddLiquidityWithLockedVault() public {
         AddLiquidityParams memory params = AddLiquidityParams(
-            address(pool),
+            address(pool()),
             address(0),
             amountsIn,
             0,
@@ -105,7 +105,7 @@ contract VaultMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityWithLockedVault() public {
         RemoveLiquidityParams memory params = RemoveLiquidityParams(
-            address(pool),
+            address(pool()),
             address(0),
             0,
             amountsIn,

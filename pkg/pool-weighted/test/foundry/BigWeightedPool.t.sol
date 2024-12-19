@@ -61,7 +61,7 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         }
 
         // Allow pools created by `factory` to use PoolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = WeightedPoolFactory(address(factory)).create(
             name,
@@ -70,7 +70,7 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             weights,
             roleAccounts,
             DEFAULT_SWAP_FEE,
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
@@ -126,7 +126,7 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
     function initPool() internal override {
         vm.startPrank(lp);
         bptAmountOut = _initPool(
-            pool,
+            pool(),
             tokenAmounts,
             // Account for the precision loss
             expectedAddLiquidityBptAmountOut - DELTA

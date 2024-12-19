@@ -37,7 +37,7 @@ contract E2eBatchSwapGyro2CLPTest is E2eBatchSwapTest, Gyro2ClpPoolDeployer {
 
         // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // balance).
-        maxSwapAmountTokenA = poolInitAmount / 10;
-        maxSwapAmountTokenD = poolInitAmount / 10;
+        maxSwapAmountTokenA = poolInitAmount() / 10;
+        maxSwapAmountTokenD = poolInitAmount() / 10;
     }
 }

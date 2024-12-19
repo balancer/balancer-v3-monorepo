@@ -59,7 +59,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use PoolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = factory.create(
             name,
@@ -68,7 +68,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
             DEFAULT_AMP_FACTOR,
             roleAccounts,
             0.01e16, // Initial swap fee: 0.01%
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
@@ -180,10 +180,13 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         uint256 updateInterval = 5000 days;
 
         vm.prank(admin);
-        StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, block.timestamp + updateInterval);
+        StablePool(pool()).startAmplificationParameterUpdate(
+            newAmplificationParameter,
+            block.timestamp + updateInterval
+        );
         vm.warp(block.timestamp + updateInterval + 1);
 
-        (uint256 value, bool isUpdating, uint256 precision) = StablePool(pool).getAmplificationParameter();
+        (uint256 value, bool isUpdating, uint256 precision) = StablePool(pool()).getAmplificationParameter();
         assertFalse(isUpdating, "Pool amplification parameter is updating");
         assertEq(value / precision, newAmplificationParameter, "Amplification Parameter is wrong");
     }

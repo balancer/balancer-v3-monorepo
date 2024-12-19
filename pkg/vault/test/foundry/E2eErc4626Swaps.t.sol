@@ -67,10 +67,10 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
         vm.prank(poolCreator);
         // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
-        feeController.manualSetPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+        feeController.manualSetPoolCreatorSwapFeePercentage(pool(), FixedPoint.ONE);
 
-        minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
-        maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
+        minPoolSwapFeePercentage = IBasePool(pool()).getMinimumSwapFeePercentage();
+        maxPoolSwapFeePercentage = IBasePool(pool()).getMaximumSwapFeePercentage();
 
         // These tests rely on a minimum fee to work; set something very small for pool mock.
         minPoolSwapFeePercentage = (minPoolSwapFeePercentage == 0 ? 1e12 : minPoolSwapFeePercentage);
@@ -199,15 +199,15 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
         }
 
-        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(pool(), testLocals.poolSwapFeePercentage);
 
         vm.assertEq(
-            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI))),
+            vault.getAggregateSwapFeeAmount(pool(), IERC20(address(waDAI))),
             0,
             "Collected fees for waDAI are wrong"
         );
         vm.assertEq(
-            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waWETH))),
+            vault.getAggregateSwapFeeAmount(pool(), IERC20(address(waWETH))),
             0,
             "Collected fees for waWETH are wrong"
         );
@@ -256,15 +256,15 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
         }
 
-        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(pool(), testLocals.poolSwapFeePercentage);
 
         vm.assertEq(
-            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI))),
+            vault.getAggregateSwapFeeAmount(pool(), IERC20(address(waDAI))),
             0,
             "Collected fees for waDAI are wrong"
         );
         vm.assertEq(
-            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waWETH))),
+            vault.getAggregateSwapFeeAmount(pool(), IERC20(address(waWETH))),
             0,
             "Collected fees for waWETH are wrong"
         );
@@ -391,16 +391,16 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
         // Since this is exact in, swaps will be executed in the order given.
-        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waWETH in the yield-bearing pool,
+        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waWETH in the yield-bearing pool(),
         // and finally post-swap the waWETH through the WETH buffer to calculate the WETH amount out.
         // The only token transfers are DAI in (given) and WETH out (calculated).
         if (tokenIn == dai) {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool(), tokenOut: waWETH, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool(), tokenOut: waDAI, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
@@ -421,16 +421,16 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         IERC20 tokenIn = tokenOut == dai ? IERC20(address(weth)) : dai;
 
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
-        // Pre-swap through the WETH buffer to get waWETH, then main swap waWETH for waDAI in the yield-bearing pool,
+        // Pre-swap through the WETH buffer to get waWETH, then main swap waWETH for waDAI in the yield-bearing pool(),
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and WETH out (given).
         if (tokenIn == dai) {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waWETH, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool(), tokenOut: waWETH, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: weth, isBuffer: true });
         } else {
             steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: waDAI, isBuffer: false });
+            steps[1] = IBatchRouter.SwapPathStep({ pool: pool(), tokenOut: waDAI, isBuffer: false });
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
@@ -468,16 +468,16 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         newPoolBalanceLiveScaled18[waDaiIdx] = liquidityWaDai.toScaled18ApplyRateRoundUp(1, waDAI.getRate());
         newPoolBalanceLiveScaled18[waWethIdx] = liquidityWaWeth.toScaled18ApplyRateRoundUp(1, waWETH.getRate());
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
-        vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalanceLiveScaled18);
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool());
+        vault.manualSetPoolTokensAndBalances(pool(), tokens, newPoolBalance, newPoolBalanceLiveScaled18);
         // Updates pool data with latest token rates.
-        vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
+        vault.loadPoolDataUpdatingBalancesAndYieldFees(pool(), Rounding.ROUND_DOWN);
     }
 
     function _getMaxSwapAmount() private view returns (uint256 newMaxSwapAmount) {
-        // In the case of an yield-bearing pool, lastBalancesLiveScaled18 is the same as the balances in underlying
+        // In the case of an yield-bearing pool(), lastBalancesLiveScaled18 is the same as the balances in underlying
         // terms, if underlying and wrapped tokens have 18 decimals.
-        (, , , uint256[] memory underlyingBalances) = vault.getPoolTokenInfo(pool);
+        (, , , uint256[] memory underlyingBalances) = vault.getPoolTokenInfo(pool());
         uint256 smallerBalance = underlyingBalances[waDaiIdx] < underlyingBalances[waWethIdx]
             ? underlyingBalances[waDaiIdx]
             : underlyingBalances[waWethIdx];

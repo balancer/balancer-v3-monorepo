@@ -17,7 +17,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-        vault.manualSetPoolPauseWindowEndTime(pool, _FIXED_POOL_PAUSE_END_TIME);
+        vault.manualSetPoolPauseWindowEndTime(pool(), _FIXED_POOL_PAUSE_END_TIME);
 
         _vaultBufferPeriodEndTimeTest = vault.getBufferPeriodEndTime();
     }
@@ -30,36 +30,36 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         // Sets the time before the pause buffer period.
         vm.warp(_FIXED_POOL_PAUSE_END_TIME - 1);
 
-        vault.manualSetPoolPaused(pool, true);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
-        vault.ensurePoolNotPaused(pool);
+        vault.manualSetPoolPaused(pool(), true);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool()));
+        vault.ensurePoolNotPaused(pool());
     }
 
     function testPausedPoolAfterBufferPeriod() public {
         // Sets the time after the pause buffer period.
         vm.warp(_getTimeAfterPoolPauseBufferPeriod());
 
-        vault.manualSetPoolPaused(pool, true);
+        vault.manualSetPoolPaused(pool(), true);
         // If function does not revert, test passes.
-        vault.ensurePoolNotPaused(pool);
+        vault.ensurePoolNotPaused(pool());
     }
 
     function testUnpausedPoolBeforeBufferPeriod() public {
         // Sets the time before the pause buffer period.
         vm.warp(_FIXED_POOL_PAUSE_END_TIME - 1);
 
-        vault.manualSetPoolPaused(pool, false);
+        vault.manualSetPoolPaused(pool(), false);
         // If function does not revert, test passes.
-        vault.ensurePoolNotPaused(pool);
+        vault.ensurePoolNotPaused(pool());
     }
 
     function testUnpausedPoolAfterBufferPeriod() public {
         // Sets the time after the pause buffer period.
         vm.warp(_getTimeAfterPoolPauseBufferPeriod());
 
-        vault.manualSetPoolPaused(pool, false);
+        vault.manualSetPoolPaused(pool(), false);
         // If function does not revert, test passes.
-        vault.ensurePoolNotPaused(pool);
+        vault.ensurePoolNotPaused(pool());
     }
 
     /*******************************************************************************
@@ -72,7 +72,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetVaultPaused(true);
 
         vm.expectRevert(IVaultErrors.VaultPaused.selector);
-        vault.ensureUnpausedAndGetVaultState(pool);
+        vault.ensureUnpausedAndGetVaultState(pool());
     }
 
     function testVaultPausedByFlagAfterBufferTime() public {
@@ -81,7 +81,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetVaultPaused(true);
 
         // Since the buffer period has passed, the function should not revert.
-        vault.ensureUnpausedAndGetVaultState(pool);
+        vault.ensureUnpausedAndGetVaultState(pool());
     }
 
     function testVaultUnpausedButPoolPaused() public {
@@ -89,10 +89,10 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_FIXED_POOL_PAUSE_END_TIME - 1);
 
         vault.manualSetVaultPaused(false);
-        vault.manualSetPoolPaused(pool, true);
+        vault.manualSetPoolPaused(pool(), true);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
-        vault.ensureUnpausedAndGetVaultState(pool);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool()));
+        vault.ensureUnpausedAndGetVaultState(pool());
     }
 
     function testVaultUnpausedButPoolPausedByFlagAfterBufferTime() public {
@@ -100,10 +100,10 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_getTimeAfterPoolPauseBufferPeriod());
 
         vault.manualSetVaultPaused(false);
-        vault.manualSetPoolPaused(pool, true);
+        vault.manualSetPoolPaused(pool(), true);
 
         // Since the buffer period has passed, the function should not revert.
-        vault.ensureUnpausedAndGetVaultState(pool);
+        vault.ensureUnpausedAndGetVaultState(pool());
     }
 
     function testVaultPausedButPoolUnpaused() public {
@@ -111,10 +111,10 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_getTimeAfterPoolPauseBufferPeriod());
 
         vault.manualSetVaultPaused(true);
-        vault.manualSetPoolPaused(pool, false);
+        vault.manualSetPoolPaused(pool(), false);
 
         vm.expectRevert(IVaultErrors.VaultPaused.selector);
-        vault.ensureUnpausedAndGetVaultState(pool);
+        vault.ensureUnpausedAndGetVaultState(pool());
     }
 
     function testVaultAndPoolUnpaused() public {
@@ -122,9 +122,9 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_getTimeAfterPoolPauseBufferPeriod());
 
         vault.manualSetVaultState(false, true);
-        vault.manualSetPoolPaused(pool, false);
+        vault.manualSetPoolPaused(pool(), false);
 
-        VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(pool);
+        VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(pool());
         assertEq(vaultState.isVaultPaused, false, "vaultState.isVaultPaused should be false");
         assertEq(vaultState.isQueryDisabled, true, "vaultState.isQueryDisabled should be true");
     }

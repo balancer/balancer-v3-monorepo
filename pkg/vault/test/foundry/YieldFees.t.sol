@@ -27,6 +27,7 @@ contract YieldFeesTest is BaseVaultTest {
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
+    address defaultPool;
     // Track the indices for the local dai/wsteth pool.
     uint256 internal wstethIdx;
     uint256 internal daiIdx;
@@ -37,7 +38,7 @@ contract YieldFeesTest is BaseVaultTest {
         (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
-    // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt).
+    // Create wsteth / dai defaultPool, with rate providers on wsteth (non-exempt), and dai (exempt).
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
@@ -62,7 +63,7 @@ contract YieldFeesTest is BaseVaultTest {
                 rateProviders,
                 yieldFeeFlags
             ),
-            poolHooksContract,
+            poolHooksContract(),
             lp
         );
 
@@ -71,7 +72,7 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {
-        (pool, ) = createPool();
+        (defaultPool, ) = createPool();
         initPool();
 
         verifyLiveBalances(FixedPoint.ONE, FixedPoint.ONE, roundUp);
@@ -81,7 +82,7 @@ contract YieldFeesTest is BaseVaultTest {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        (pool, ) = createPool();
+        (defaultPool, ) = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 
@@ -108,14 +109,14 @@ contract YieldFeesTest is BaseVaultTest {
         // Prevent PrecisionTooHigh error.
         aggregateYieldFeePercentage = (aggregateYieldFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
 
-        (pool, ) = createPool();
+        (defaultPool, ) = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
 
         initPool();
 
         // Set non-zero yield fee.
-        vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(defaultPool, aggregateYieldFeePercentage);
 
         uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
 
@@ -138,16 +139,16 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt.
-        assertEq(vault.manualGetAggregateYieldFeeAmount(pool, dai), 0, "Protocol fees on exempt dai are not 0");
+        assertEq(vault.manualGetAggregateYieldFeeAmount(defaultPool, dai), 0, "Protocol fees on exempt dai are not 0");
 
         // There should be fees on non-exempt wsteth.
-        uint256 actualProtocolFee = vault.manualGetAggregateYieldFeeAmount(pool, wsteth);
+        uint256 actualProtocolFee = vault.manualGetAggregateYieldFeeAmount(defaultPool, wsteth);
         assertGt(actualProtocolFee, 0, "wstETH did not collect any protocol fees");
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in.
         YieldTestLocals memory vars;
-        uint256[] memory scalingFactors = PoolMock(pool).getDecimalScalingFactors();
+        uint256[] memory scalingFactors = PoolMock(defaultPool).getDecimalScalingFactors();
         vars.liveBalanceAfterRaw = liveBalanceDeltas[wstethIdx].toRawUndoRateRoundDown(
             scalingFactors[wstethIdx],
             wstethRate
@@ -257,10 +258,13 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        require(vault.manualGetAggregateYieldFeeAmount(pool, dai) == 0, "Initial protocol fees for DAI not 0");
-        require(vault.manualGetAggregateYieldFeeAmount(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
+        require(vault.manualGetAggregateYieldFeeAmount(defaultPool, dai) == 0, "Initial protocol fees for DAI not 0");
+        require(
+            vault.manualGetAggregateYieldFeeAmount(defaultPool, wsteth) == 0,
+            "Initial protocol fees for wstETH not 0"
+        );
 
-        vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(defaultPool, aggregateYieldFeePercentage);
 
         // Pump the rates 10 times.
         wstethRate *= 10;
@@ -270,18 +274,18 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap.
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(defaultPool, dai, wsteth, 1e18, 0, MAX_UINT256, false, bytes(""));
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.
 
         assertApproxEqAbs(
-            vault.manualGetAggregateYieldFeeAmount(pool, wsteth),
-            ((poolInitAmount * 9) / 10).mulDown(aggregateYieldFeePercentage),
+            vault.manualGetAggregateYieldFeeAmount(defaultPool, wsteth),
+            ((poolInitAmount() * 9) / 10).mulDown(aggregateYieldFeePercentage),
             1e3,
             "Yield fees for wstETH is not the expected one"
         );
-        assertEq(vault.manualGetAggregateYieldFeeAmount(pool, dai), 0, "Yield fees for exempt dai are not 0");
+        assertEq(vault.manualGetAggregateYieldFeeAmount(defaultPool, dai), 0, "Yield fees for exempt dai are not 0");
     }
 
     function verifyLiveBalances(
@@ -290,12 +294,12 @@ contract YieldFeesTest is BaseVaultTest {
         bool roundUp
     ) internal returns (uint256[] memory liveBalances) {
         PoolData memory data = vault.loadPoolDataUpdatingBalancesAndYieldFees(
-            pool,
+            defaultPool,
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
 
-        uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
-        uint256[] memory expectedRawBalances = vault.getRawBalances(pool);
+        uint256[] memory expectedScalingFactors = PoolMock(defaultPool).getDecimalScalingFactors();
+        uint256[] memory expectedRawBalances = vault.getRawBalances(defaultPool);
         uint256[] memory expectedRates = new uint256[](2);
 
         expectedRates[wstethIdx] = wstethRate;

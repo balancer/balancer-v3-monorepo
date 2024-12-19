@@ -39,7 +39,7 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = factory.create(
             name,
@@ -48,7 +48,7 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
             DEFAULT_AMP_FACTOR,
             roleAccounts,
             swapFeePercentage, // 1% swap fee, but test will force it to be 0
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32

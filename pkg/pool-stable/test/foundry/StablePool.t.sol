@@ -62,7 +62,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
 
         PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract()).allowFactory(address(factory));
 
         newPool = StablePoolFactory(address(factory)).create(
             name,
@@ -71,7 +71,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
             DEFAULT_AMP_FACTOR,
             roleAccounts,
             BASE_MIN_SWAP_FEE,
-            poolHooksContract,
+            poolHooksContract(),
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
@@ -92,7 +92,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     function initPool() internal override {
         vm.prank(lp);
         bptAmountOut = router.initialize(
-            pool,
+            pool(),
             poolTokens,
             tokenAmounts,
             // Account for the precision loss
@@ -117,7 +117,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     }
 
     function testGetAmplificationState() public {
-        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
+        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool()).getAmplificationState();
 
         // Should be initialized to the default values.
         assertEq(ampState.startTime, block.timestamp, "Wrong initial amp update start time");
@@ -126,7 +126,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         assertEq(ampState.endValue, DEFAULT_AMP_FACTOR * precision, "Wrong initial amp update end value");
 
         authorizer.grantRole(
-            IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
+            IAuthentication(pool()).getActionId(StablePool.startAmplificationParameterUpdate.selector),
             admin
         );
 
@@ -137,11 +137,11 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
 
         vm.prank(admin);
-        StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+        StablePool(pool()).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
 
         vm.warp(currentTime + updateInterval + 1);
 
-        (ampState, precision) = IStablePool(pool).getAmplificationState();
+        (ampState, precision) = IStablePool(pool()).getAmplificationState();
 
         // Should be initialized to the default values.
         assertEq(ampState.startTime, currentTime, "Wrong amp update start time");
@@ -151,10 +151,10 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     }
 
     function testGetStablePoolImmutableData() public view {
-        StablePoolImmutableData memory data = IStablePool(pool).getStablePoolImmutableData();
-        (, , uint256 precision) = IStablePool(pool).getAmplificationParameter();
-        (uint256[] memory scalingFactors, ) = vault.getPoolTokenRates(pool);
-        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
+        StablePoolImmutableData memory data = IStablePool(pool()).getStablePoolImmutableData();
+        (, , uint256 precision) = IStablePool(pool()).getAmplificationParameter();
+        (uint256[] memory scalingFactors, ) = vault.getPoolTokenRates(pool());
+        IERC20[] memory tokens = IPoolInfo(pool()).getTokens();
 
         assertEq(data.amplificationParameterPrecision, precision, "Wrong amplification parameter precision");
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -164,12 +164,12 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     }
 
     function testGetStablePoolDynamicData() public view {
-        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
-        StablePoolDynamicData memory data = IStablePool(pool).getStablePoolDynamicData();
-        (, uint256[] memory tokenRates) = vault.getPoolTokenRates(pool);
-        IERC20[] memory tokens = IPoolInfo(pool).getTokens();
-        uint256 totalSupply = IERC20(pool).totalSupply();
-        uint256 bptRate = vault.getBptRate(pool);
+        (AmplificationState memory ampState, uint256 precision) = IStablePool(pool()).getAmplificationState();
+        StablePoolDynamicData memory data = IStablePool(pool()).getStablePoolDynamicData();
+        (, uint256[] memory tokenRates) = vault.getPoolTokenRates(pool());
+        IERC20[] memory tokens = IPoolInfo(pool()).getTokens();
+        uint256 totalSupply = IERC20(pool()).totalSupply();
+        uint256 bptRate = vault.getBptRate(pool());
 
         assertTrue(data.isPoolInitialized, "Pool not initialized");
         assertFalse(data.isPoolPaused, "Pool paused");
@@ -186,7 +186,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         assertEq(data.staticSwapFeePercentage, BASE_MIN_SWAP_FEE, "Swap fee mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            assertEq(data.balancesLiveScaled18[i], defaultAmount, "Live balance mismatch");
+            assertEq(data.balancesLiveScaled18[i], DEFAULT_AMOUNT, "Live balance mismatch");
             assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
         }
     }

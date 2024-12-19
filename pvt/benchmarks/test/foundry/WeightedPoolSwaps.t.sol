@@ -127,7 +127,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
             );
 
             vm.prank(alice);
-            vault.setStaticSwapFeePercentage(pool, 1e16); // 1%
+            vault.setStaticSwapFeePercentage(pool(), 1e16); // 1%
         }
     }
 
@@ -256,7 +256,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
         vm.startPrank(bob);
         for (uint256 i = 0; i < swapTimes; ++i) {
             uint256 amountOut = router.swapSingleTokenExactIn(
-                pool,
+                pool(),
                 dai,
                 wsteth,
                 amountIn,
@@ -266,7 +266,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 bytes("")
             );
 
-            router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
+            router.swapSingleTokenExactIn(pool(), wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }
@@ -277,7 +277,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
         vm.startPrank(bob);
         for (uint256 i = 0; i < swapTimes; ++i) {
             uint256 amountIn = router.swapSingleTokenExactOut(
-                pool,
+                pool(),
                 dai,
                 wsteth,
                 amountOut,
@@ -287,7 +287,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 bytes("")
             );
 
-            router.swapSingleTokenExactOut(pool, wsteth, dai, amountIn, MAX_UINT256, MAX_UINT256, false, bytes(""));
+            router.swapSingleTokenExactOut(pool(), wsteth, dai, amountIn, MAX_UINT256, MAX_UINT256, false, bytes(""));
         }
         vm.stopPrank();
     }
