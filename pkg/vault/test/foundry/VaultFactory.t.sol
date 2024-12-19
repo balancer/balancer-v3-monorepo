@@ -20,6 +20,9 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
     // Should match the "PRODUCTION" limits in BaseVaultTest.
     uint256 private constant _MIN_TRADE_AMOUNT = 1e6;
     uint256 private constant _MIN_WRAP_AMOUNT = 1e4;
+    bytes32 private constant _HARDCODED_SALT =
+        bytes32(0xae0bdc4eeac5e950b67c6819b118761caaf619464ad74a6048c67c03598dc543);
+    address private constant _HARDCODED_VAULT_ADDRESS = address(0xbA133381ef63946fF77A7D009DFcdBdE5c77b92F);
 
     address deployer;
     address other;
@@ -30,7 +33,7 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
         deployer = makeAddr("deployer");
         other = makeAddr("other");
         authorizer = deployBasicAuthorizerMock();
-        vm.startPrank(deployer);
+        vm.prank(deployer);
         factory = deployVaultFactory(
             authorizer,
             90 days,
@@ -41,7 +44,42 @@ contract VaultFactoryTest is Test, VaultContractsDeployer {
             keccak256(type(VaultExtension).creationCode),
             keccak256(type(VaultAdmin).creationCode)
         );
-        vm.stopPrank();
+    }
+
+    function testCreateVaultHardcodedSalt() public {
+        vm.prank(deployer);
+        factory.create(
+            _HARDCODED_SALT,
+            _HARDCODED_VAULT_ADDRESS,
+            type(Vault).creationCode,
+            type(VaultExtension).creationCode,
+            type(VaultAdmin).creationCode
+        );
+    }
+
+    function testCreateVaultHardcodedSaltWrongDeployer() public {
+        address wrongDeployer = makeAddr("wrongDeployer");
+        vm.prank(wrongDeployer);
+        VaultFactory wrongFactory = deployVaultFactory(
+            authorizer,
+            90 days,
+            30 days,
+            _MIN_TRADE_AMOUNT,
+            _MIN_WRAP_AMOUNT,
+            keccak256(type(Vault).creationCode),
+            keccak256(type(VaultExtension).creationCode),
+            keccak256(type(VaultAdmin).creationCode)
+        );
+
+        vm.prank(wrongDeployer);
+        vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
+        wrongFactory.create(
+            _HARDCODED_SALT,
+            _HARDCODED_VAULT_ADDRESS,
+            type(Vault).creationCode,
+            type(VaultExtension).creationCode,
+            type(VaultAdmin).creationCode
+        );
     }
 
     /// forge-config: default.fuzz.runs = 100
