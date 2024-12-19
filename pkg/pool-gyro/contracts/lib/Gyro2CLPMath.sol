@@ -233,13 +233,21 @@ library Gyro2CLPMath {
     }
 
     /// @dev Calculate the virtual offset `a` for reserves `x`, as in (x+a)*(y+b)=L^2.
-    function calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
-        return invariant.divDown(_sqrtBeta);
+    function calculateVirtualParameter0(
+        uint256 invariant,
+        uint256 _sqrtBeta,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        return rounding == Rounding.ROUND_DOWN ? invariant.divDown(_sqrtBeta) : invariant.divUp(_sqrtBeta);
     }
 
     /// @dev Calculate the virtual offset `b` for reserves `y`, as in (x+a)*(y+b)=L^2.
-    function calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
-        return invariant.mulDown(_sqrtAlpha);
+    function calculateVirtualParameter1(
+        uint256 invariant,
+        uint256 _sqrtAlpha,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        return rounding == Rounding.ROUND_DOWN ? invariant.mulDown(_sqrtAlpha) : invariant.mulUp(_sqrtAlpha);
     }
 
     /**

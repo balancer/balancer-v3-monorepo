@@ -167,7 +167,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
         uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(balances, sqrtAlpha, sqrtBeta, rounding);
 
-        uint256[2] memory virtualOffsets = _calculateVirtualOffsets(currentInvariant, sqrtAlpha, sqrtBeta);
+        uint256[2] memory virtualOffsets = _calculateVirtualOffsets(currentInvariant, sqrtAlpha, sqrtBeta, rounding);
 
         virtualBalanceIn = tokenInIsToken0 ? virtualOffsets[0] : virtualOffsets[1];
         virtualBalanceOut = tokenInIsToken0 ? virtualOffsets[1] : virtualOffsets[0];
@@ -177,10 +177,11 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     function _calculateVirtualOffsets(
         uint256 invariant,
         uint256 sqrtAlpha,
-        uint256 sqrtBeta
+        uint256 sqrtBeta,
+        Rounding rounding
     ) internal view virtual returns (uint256[2] memory virtualOffsets) {
-        virtualOffsets[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta);
-        virtualOffsets[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha);
+        virtualOffsets[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta, rounding);
+        virtualOffsets[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha, rounding);
         return virtualOffsets;
     }
 
