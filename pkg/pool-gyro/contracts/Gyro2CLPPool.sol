@@ -91,23 +91,16 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         invariant = invariant.mulUp(invariantRatio);
         uint256 squareNewInv = invariant * invariant;
 
+        // L / sqrt(beta), rounded down to maximize newBalance.
+        uint256 a = invariant.divDown(sqrtBeta);
+        // L * sqrt(alpha), rounded down to maximize newBalance (b is in the denominator).
+        uint256 b = invariant.mulDown(sqrtAlpha);
+
         if (tokenInIndex == 0) {
             // if newBalance = newX
-
-            // L / sqrt(beta), rounded down to minimize newBalance.
-            uint256 a = invariant.divDown(sqrtBeta);
-            // L * sqrt(alpha), rounded up to minimize newBalance (b is in the denominator).
-            uint256 b = invariant.mulUp(sqrtAlpha);
-
             newBalance = squareNewInv.divUpRaw(b + balancesLiveScaled18[1]) - a;
         } else {
             // if newBalance = newY
-
-            // L / sqrt(beta), rounded up to minimize newBalance (a is in the denominator).
-            uint256 a = invariant.divUp(sqrtBeta);
-            // L * sqrt(alpha), rounded down to minimize newBalance.
-            uint256 b = invariant.mulDown(sqrtAlpha);
-
             newBalance = squareNewInv.divUpRaw(a + balancesLiveScaled18[0]) - b;
         }
     }
