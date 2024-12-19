@@ -55,8 +55,8 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         for (uint256 i = 0; i < numTokens; ++i) {
             // Use all 18-decimal tokens, for simplicity.
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, defaultBalance);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(bob, defaultBalance);
+            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, defaultAccountBalance());
+            ERC20TestToken(address(bigPoolTokens[i])).mint(bob, defaultAccountBalance());
             weights[i] = 1e18 / numTokens;
         }
 
