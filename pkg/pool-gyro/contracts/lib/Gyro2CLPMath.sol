@@ -45,7 +45,7 @@ library Gyro2CLPMath {
             rounding
         );
 
-        return calculateQuadratic(a, mb, bSquare, mc);
+        return calculateQuadratic(a, mb, bSquare, mc, rounding);
     }
 
     /**
@@ -116,17 +116,26 @@ library Gyro2CLPMath {
         uint256 a,
         uint256 mb,
         uint256 bSquare, // b^2 can be calculated separately with more precision
-        uint256 mc
+        uint256 mc,
+        Rounding rounding
     ) internal pure returns (uint256 invariant) {
-        uint256 denominator = a.mulUp(2 * FixedPoint.ONE);
+        function(uint256, uint256) pure returns (uint256) _mulUpOrDown = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.mulDown
+            : FixedPoint.mulUp;
+
+        function(uint256, uint256) pure returns (uint256) _divUpOrDown = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.divDown
+            : FixedPoint.divUp;
+
+        uint256 denominator = 2 * a;
         // Order multiplications for fixed point precision.
-        uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
+        uint256 addTerm = _mulUpOrDown(4 * mc, a);
         // The minus sign in the radicand cancels out in this special case.
         uint256 radicand = bSquare + addTerm;
         uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
         // The minus sign in the numerator cancels out in this special case.
         uint256 numerator = mb + sqrResult;
-        invariant = numerator.divDown(denominator);
+        invariant = _divUpOrDown(numerator, denominator);
     }
 
     /**
