@@ -20,11 +20,13 @@ struct QuadraticTerms {
 contract Gyro2CLPMathRoundingTest is Test {
     using ArrayHelpers for *;
 
+    uint256 internal constant MIN_DIFF_ALPHA_BETA = 1e14;
+
     uint256 internal constant MIN_SQRT_ALPHA = 0.8e18;
-    uint256 internal constant MAX_SQRT_ALPHA = 1.2e18;
+    uint256 internal constant MAX_SQRT_ALPHA = 1.2e18 - MIN_DIFF_ALPHA_BETA;
     // Make sqrtBeta 0.5% higher than sqrtAlpha
     uint256 internal constant MIN_SQRT_BETA = MIN_SQRT_ALPHA;
-    uint256 internal constant MAX_SQRT_BETA = MAX_SQRT_ALPHA;
+    uint256 internal constant MAX_SQRT_BETA = MAX_SQRT_ALPHA + MIN_DIFF_ALPHA_BETA;
 
     function testCalculateQuadraticTermsRounding__Fuzz(
         uint256[2] memory balances,
@@ -34,7 +36,7 @@ contract Gyro2CLPMathRoundingTest is Test {
         balances[0] = bound(balances[0], 1e16, 1e8 * 1e18);
         balances[1] = bound(balances[1], 1e16, 1e8 * 1e18);
         sqrtAlpha = bound(sqrtAlpha, MIN_SQRT_ALPHA, MAX_SQRT_ALPHA);
-        sqrtBeta = bound(sqrtBeta, MIN_SQRT_BETA, MAX_SQRT_BETA);
+        sqrtBeta = bound(sqrtBeta, sqrtAlpha + MIN_DIFF_ALPHA_BETA, MAX_SQRT_BETA);
 
         QuadraticTerms memory qTermsDown;
         QuadraticTerms memory qTermsUp;
@@ -75,10 +77,10 @@ contract Gyro2CLPMathRoundingTest is Test {
         uint256 sqrtAlpha,
         uint256 sqrtBeta
     ) public pure {
-        balances[0] = bound(balances[0], 1e16, 1e6 * 1e18);
-        balances[1] = bound(balances[1], 1e16, 1e6 * 1e18);
+        balances[0] = bound(balances[0], 1e16, 1e8 * 1e18);
+        balances[1] = bound(balances[1], 1e16, 1e8 * 1e18);
         sqrtAlpha = bound(sqrtAlpha, MIN_SQRT_ALPHA, MAX_SQRT_ALPHA);
-        sqrtBeta = bound(sqrtBeta, MIN_SQRT_BETA, MAX_SQRT_BETA);
+        sqrtBeta = bound(sqrtBeta, sqrtAlpha + MIN_DIFF_ALPHA_BETA, MAX_SQRT_BETA);
 
         uint256 invariantDown = Gyro2CLPMath.calculateInvariant(
             balances.toMemoryArray(),
