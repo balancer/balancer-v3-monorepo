@@ -20,10 +20,10 @@ struct QuadraticTerms {
 contract Gyro2CLPMathRoundingTest is Test {
     using ArrayHelpers for *;
 
-    uint256 internal constant MIN_DIFF_ALPHA_BETA = 1e14;
+    uint256 internal constant MIN_DIFF_ALPHA_BETA = 100;
 
-    uint256 internal constant MIN_SQRT_ALPHA = 0.8e18;
-    uint256 internal constant MAX_SQRT_ALPHA = 1.2e18 - MIN_DIFF_ALPHA_BETA;
+    uint256 internal constant MIN_SQRT_ALPHA = 0.01e18;
+    uint256 internal constant MAX_SQRT_ALPHA = 10e18 - MIN_DIFF_ALPHA_BETA;
     // Make sqrtBeta 0.5% higher than sqrtAlpha
     uint256 internal constant MIN_SQRT_BETA = MIN_SQRT_ALPHA;
     uint256 internal constant MAX_SQRT_BETA = MAX_SQRT_ALPHA + MIN_DIFF_ALPHA_BETA;
