@@ -224,9 +224,17 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function testSwapSymmetry__Fuzz(uint256 tokenAAmountIn, uint256 weightTokenA, uint256 swapFeePercentage) public {
+    function testSwapSymmetry__Fuzz(
+        uint256 tokenAAmountIn,
+        uint256 weightTokenA,
+        uint256 swapFeePercentage
+    ) public {
         weightTokenA = bound(weightTokenA, 1e16, 99e16);
-        swapFeePercentage = bound(swapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+        swapFeePercentage = bound(
+            swapFeePercentage,
+            minPoolSwapFeePercentage,
+            maxPoolSwapFeePercentage
+        );
         _setSwapFeePercentage(address(poolWithMutableWeights), swapFeePercentage);
 
         uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);
@@ -270,7 +278,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             bytes("")
         );
 
-        // An ExactIn swap with `defaultAmount` tokenIn returned `amountOut` tokenOut.
+        // An ExactIn swap with `DEFAULT_AMOUNT` tokenIn returned `amountOut` tokenOut.
         // Since Exact_In and Exact_Out are symmetrical, an ExactOut swap with `amountOut` tokenOut should return the
         // same amount of tokenIn.
         assertApproxEqRel(amountIn, tokenAAmountIn, 0.00001e16, "Swap fees are not symmetric for ExactIn and ExactOut");

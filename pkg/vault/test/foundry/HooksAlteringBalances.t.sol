@@ -115,7 +115,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
         // `newBalances` are raw and scaled18, because rate is 1 and decimals are 18.
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
-        uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
+        uint256[] memory amountsIn = [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray();
 
         // Change balances of the pool on before hook.
         PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
@@ -131,7 +131,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                     pool,
                     AddLiquidityKind.CUSTOM,
                     amountsIn,
-                    bptAmountRoundDown,
+                    DEFAULT_BPT_AMOUNT_ROUND_DOWN,
                     originalBalances,
                     bytes("")
                 )
@@ -142,11 +142,11 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             pool,
             abi.encodeCall(
                 IPoolLiquidity.onAddLiquidityCustom,
-                (address(router), amountsIn, bptAmountRoundDown, newBalances, bytes(""))
+                (address(router), amountsIn, DEFAULT_BPT_AMOUNT_ROUND_DOWN, newBalances, bytes(""))
             )
         );
 
-        router.addLiquidityCustom(pool, amountsIn, bptAmountRoundDown, false, bytes(""));
+        router.addLiquidityCustom(pool, amountsIn, DEFAULT_BPT_AMOUNT_ROUND_DOWN, false, bytes(""));
     }
 
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
@@ -154,14 +154,14 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         config.shouldCallBeforeRemoveLiquidity = true;
         vault.manualSetHooksConfig(pool, config);
 
-        uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();
-        uint256[] memory amountsOutRoundDown = [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray();
+        uint256[] memory amountsOut = [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray();
+        uint256[] memory amountsOutRoundDown = [DEFAULT_AMOUNT_ROUND_DOWN, DEFAULT_AMOUNT_ROUND_DOWN].toMemoryArray();
 
         vm.prank(alice);
         // Add liquidity to have BPTs to remove liquidity later.
         router.addLiquidityUnbalanced(pool, amountsOut, 0, false, bytes(""));
 
-        uint256 balanceAfterLiquidity = poolInitAmount + defaultAmount;
+        uint256 balanceAfterLiquidity = poolInitAmount + DEFAULT_AMOUNT;
 
         uint256[] memory originalBalances = [balanceAfterLiquidity, balanceAfterLiquidity].toMemoryArray();
         // We set balances to something related to balanceAfterLiquidity because bptAmountsOut is simpler to calculate.
@@ -180,7 +180,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                     address(router),
                     pool,
                     RemoveLiquidityKind.CUSTOM,
-                    bptAmountRoundDown,
+                    DEFAULT_BPT_AMOUNT_ROUND_DOWN,
                     amountsOutRoundDown,
                     originalBalances,
                     bytes("")
@@ -193,10 +193,10 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             pool,
             abi.encodeCall(
                 IPoolLiquidity.onRemoveLiquidityCustom,
-                (address(router), bptAmountRoundDown, amountsOutRoundDown, newBalances, bytes(""))
+                (address(router), DEFAULT_BPT_AMOUNT_ROUND_DOWN, amountsOutRoundDown, newBalances, bytes(""))
             )
         );
         vm.prank(alice);
-        router.removeLiquidityCustom(pool, bptAmountRoundDown, amountsOutRoundDown, false, bytes(""));
+        router.removeLiquidityCustom(pool, DEFAULT_BPT_AMOUNT_ROUND_DOWN, amountsOutRoundDown, false, bytes(""));
     }
 }

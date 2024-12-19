@@ -52,7 +52,7 @@ contract InitializerTest is BaseVaultTest {
         router.initialize(
             pool,
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -63,12 +63,12 @@ contract InitializerTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeCall(IHooks.onBeforeInitialize, ([defaultAmount, defaultAmount].toMemoryArray(), bytes("0xff")))
+            abi.encodeCall(IHooks.onBeforeInitialize, ([DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), bytes("0xff")))
         );
         router.initialize(
             pool,
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -82,7 +82,7 @@ contract InitializerTest is BaseVaultTest {
         router.initialize(
             pool,
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -96,8 +96,8 @@ contract InitializerTest is BaseVaultTest {
             abi.encodeCall(
                 IHooks.onAfterInitialize,
                 (
-                    [defaultAmount, defaultAmount].toMemoryArray(),
-                    2 * defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY,
+                    [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                    2 * DEFAULT_AMOUNT - POOL_MINIMUM_TOTAL_SUPPLY,
                     bytes("0xff")
                 )
             )
@@ -105,7 +105,7 @@ contract InitializerTest is BaseVaultTest {
         router.initialize(
             pool,
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -119,7 +119,7 @@ contract InitializerTest is BaseVaultTest {
         router.initialize(
             pool,
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -132,8 +132,8 @@ contract InitializerTest is BaseVaultTest {
             pool,
             bob,
             AddLiquidityKind.UNBALANCED,
-            defaultAmount * 3,
-            [defaultAmount, defaultAmount * 2].toMemoryArray(),
+            DEFAULT_AMOUNT * 3,
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT * 2].toMemoryArray(),
             new uint256[](2)
         );
 
@@ -141,7 +141,7 @@ contract InitializerTest is BaseVaultTest {
         router.initialize(
             pool,
             standardPoolTokens,
-            [defaultAmount, defaultAmount * 2].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT * 2].toMemoryArray(),
             0,
             false,
             bytes("0xff")
@@ -156,7 +156,7 @@ contract InitializerTest is BaseVaultTest {
         router.initialize(
             pool,
             standardPoolTokens,
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
             0,
             false,
             bytes("0xff")

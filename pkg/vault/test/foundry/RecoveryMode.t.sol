@@ -32,13 +32,13 @@ contract RecoveryModeTest is BaseVaultTest {
     }
 
     function testRecoveryModeAmountsOutBelowMin() public {
-        setSwapFeePercentage(swapFeePercentage);
+        setSwapFeePercentage(DEFAULT_SWAP_FEE_PERCENTAGE);
 
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
@@ -53,8 +53,8 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.revertTo(snapshotId);
 
         // No fees; user gets all the funds back.
-        assertEq(expectedAmountsOut[0], defaultAmount, "Unexpected amount out [0]");
-        assertEq(expectedAmountsOut[1], defaultAmount, "Unexpected amount out [1]");
+        assertEq(expectedAmountsOut[0], DEFAULT_AMOUNT, "Unexpected amount out [0]");
+        assertEq(expectedAmountsOut[1], DEFAULT_AMOUNT, "Unexpected amount out [1]");
 
         expectedAmountsOut[daiIdx] += 1;
 
@@ -71,12 +71,12 @@ contract RecoveryModeTest is BaseVaultTest {
     }
 
     function testRecoveryModeAmountsOutBelowMinWithRoundtripFee() public {
-        setSwapFeePercentage(swapFeePercentage);
+        setSwapFeePercentage(DEFAULT_SWAP_FEE_PERCENTAGE);
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
@@ -95,12 +95,12 @@ contract RecoveryModeTest is BaseVaultTest {
         // Verify that roundtrip fees are being applied to the expected amounts out.
         assertEq(
             expectedAmountsOut[0],
-            defaultAmount.mulDown(swapFeePercentage.complement()),
+            DEFAULT_AMOUNT.mulDown(DEFAULT_SWAP_FEE_PERCENTAGE.complement()),
             "Unexpected amount out [0]"
         );
         assertEq(
             expectedAmountsOut[1],
-            defaultAmount.mulDown(swapFeePercentage.complement()),
+            DEFAULT_AMOUNT.mulDown(DEFAULT_SWAP_FEE_PERCENTAGE.complement()),
             "Unexpected amount out [1]"
         );
 
@@ -120,10 +120,10 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function testRecoveryModeEmitsPoolBalanceChangedEvent() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
@@ -139,7 +139,7 @@ contract RecoveryModeTest is BaseVaultTest {
             alice,
             RemoveLiquidityKind.PROPORTIONAL,
             initialSupply - amountToRemove, // totalSupply after the operation
-            [defaultAmount / 2, defaultAmount / 2].toMemoryArray(),
+            [DEFAULT_AMOUNT / 2, DEFAULT_AMOUNT / 2].toMemoryArray(),
             new uint256[](2)
         );
 
@@ -159,20 +159,20 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 daiBalanceAfter = dai.balanceOf(alice);
         uint256 usdcBalanceAfter = usdc.balanceOf(alice);
 
-        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
-        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+        assertEq(daiBalanceAfter - daiBalanceBefore, DEFAULT_AMOUNT / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, DEFAULT_AMOUNT / 2, "Ending USDC balance wrong (alice)");
 
         (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
-        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
-        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], DEFAULT_AMOUNT / 2, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], DEFAULT_AMOUNT / 2, "Ending balance[1] wrong (pool)");
     }
 
     function testRecoveryModeWithRoundtripFee() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
@@ -192,7 +192,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         uint256 initialSupply = IERC20(pool).totalSupply();
         uint256 amountToRemove = bptAmountOut / 2;
-        uint256 amountOutWithoutFee = defaultAmount / 2;
+        uint256 amountOutWithoutFee = DEFAULT_AMOUNT / 2;
         uint256 feeAmount = amountOutWithoutFee.mulDown(BASE_MAX_SWAP_FEE);
         uint256 amountOutAfterFee = amountOutWithoutFee - feeAmount;
 
@@ -232,10 +232,10 @@ contract RecoveryModeTest is BaseVaultTest {
 
     function testRecoveryModeBalances() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         vm.prank(alice);
-        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, uint256 bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Raw and live should be in sync.
         assertRawAndLiveBalanceRelationship(true);
@@ -261,12 +261,12 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256 daiBalanceAfter = dai.balanceOf(alice);
         uint256 usdcBalanceAfter = usdc.balanceOf(alice);
 
-        assertEq(daiBalanceAfter - daiBalanceBefore, defaultAmount / 2, "Ending DAI balance wrong (alice)");
-        assertEq(usdcBalanceAfter - usdcBalanceBefore, defaultAmount / 2, "Ending USDC balance wrong (alice)");
+        assertEq(daiBalanceAfter - daiBalanceBefore, DEFAULT_AMOUNT / 2, "Ending DAI balance wrong (alice)");
+        assertEq(usdcBalanceAfter - usdcBalanceBefore, DEFAULT_AMOUNT / 2, "Ending USDC balance wrong (alice)");
 
         (, , uint256[] memory poolBalancesAfter, ) = IPoolInfo(pool).getTokenInfo();
-        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], defaultAmount / 2, "Ending balance[0] wrong (pool)");
-        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], defaultAmount / 2, "Ending balance[1] wrong (pool)");
+        assertEq(poolBalancesBefore[0] - poolBalancesAfter[0], DEFAULT_AMOUNT / 2, "Ending balance[0] wrong (pool)");
+        assertEq(poolBalancesBefore[1] - poolBalancesAfter[1], DEFAULT_AMOUNT / 2, "Ending balance[1] wrong (pool)");
 
         // Raw and live should be out of sync.
         assertRawAndLiveBalanceRelationship(false);

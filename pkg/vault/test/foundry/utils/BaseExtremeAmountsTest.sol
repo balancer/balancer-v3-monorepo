@@ -16,7 +16,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 import { BaseVaultTest } from "./BaseVaultTest.sol";
 
-abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
+abstract contract BaseExtremeAmountsTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for *;
 
@@ -39,12 +39,13 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     uint256[] initBalances;
 
     // Test setup
-    function setUp() public virtual override(BaseTest, BaseVaultTest) {
-        BaseTest.setUp();
-        _setUpBaseVaultTest();
+    function setUp() public virtual override {
+        BaseVaultTest.setUp();
     }
 
-    function initPool() internal override {
+    function initPool() internal override {}
+
+    function customInitPool() internal {
         vm.startPrank(lp);
         _initPool(pool, initBalances, 0);
         vm.stopPrank();
@@ -57,7 +58,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         usdc.mint(lp, MAX_UINT128);
         dai.mint(lp, MAX_UINT128);
 
-        initPool();
+        customInitPool();
         minSwapFee = IBasePool(pool).getMinimumSwapFeePercentage();
         maxSwapFee = IBasePool(pool).getMaximumSwapFeePercentage();
 

@@ -146,7 +146,7 @@ contract RegistrationTest is BaseVaultTest {
     }
 
     function testRegisterSetSwapFeePercentageAboveMax() public {
-        swapFeePercentage = FixedPoint.ONE + 1;
+        uint256 swapFeePercentage = FixedPoint.ONE + 1;
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
