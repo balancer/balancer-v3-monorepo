@@ -49,7 +49,7 @@ contract FungibilityWeightedTest is WeightedPoolContractsDeployer, FungibilityTe
             vault.buildTokenConfig(tokens.asIERC20()),
             [uint256(80e16), uint256(20e16)].toMemoryArray(),
             roleAccounts,
-            swapFeePercentage, // 1% swap fee, but test will force it to be 0
+            DEFAULT_SWAP_FEE_PERCENTAGE, // 1% swap fee, but test will force it to be 0
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity

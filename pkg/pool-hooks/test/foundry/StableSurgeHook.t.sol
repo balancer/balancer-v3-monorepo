@@ -69,7 +69,7 @@ contract StableSurgeHookTest is BaseVaultTest {
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            swapFeePercentage,
+            DEFAULT_SWAP_FEE_PERCENTAGE,
             poolHooksContract,
             false,
             false,
@@ -104,7 +104,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         SwapKind kind = SwapKind(bound(kindRaw, 0, 1));
 
         vault.manuallySetSwapFee(pool, bound(swapFeePercentageRaw, 0, 1e16));
-        swapFeePercentage = vault.getStaticSwapFeePercentage(pool);
+        uint256 swapFeePercentage = vault.getStaticSwapFeePercentage(pool);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
@@ -128,6 +128,7 @@ contract StableSurgeHookTest is BaseVaultTest {
         uint256 actualSwapFeePercentage = _calculateFee(
             amountGivenScaled18,
             kind,
+            swapFeePercentage,
             [poolInitAmount, poolInitAmount].toMemoryArray()
         );
 
@@ -181,6 +182,7 @@ contract StableSurgeHookTest is BaseVaultTest {
     function _calculateFee(
         uint256 amountGivenScaled18,
         SwapKind kind,
+        uint256 swapFeePercentage,
         uint256[] memory balances
     ) internal view returns (uint256) {
         uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(

@@ -44,9 +44,9 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256 initialBalance1,
         uint256 initialBalance2
     ) public {
-        bptAmountOut = bound(bptAmountOut, FixedPoint.ONE, defaultAmount * 100);
-        initialBalance1 = bound(initialBalance1, FixedPoint.ONE, defaultAmount * 100);
-        initialBalance2 = bound(initialBalance2, FixedPoint.ONE, defaultAmount * 100);
+        bptAmountOut = bound(bptAmountOut, FixedPoint.ONE, DEFAULT_AMOUNT * 100);
+        initialBalance1 = bound(initialBalance1, FixedPoint.ONE, DEFAULT_AMOUNT * 100);
+        initialBalance2 = bound(initialBalance2, FixedPoint.ONE, DEFAULT_AMOUNT * 100);
         uint256[] memory initialBalances = [initialBalance1, initialBalance2].toMemoryArray();
         // This will unbalance the pool; adding liquidity will result in different proportions being added on each run.
         vault.manualSetPoolBalances(pool, initialBalances, initialBalances);
@@ -64,14 +64,14 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
     /// @dev Unbalanced add; new invariant exceeds the invariant ratio limits.
     function testAddLiquidityUnbalancedAboveMaxInvariantRatio() public {
-        uint256 minBptAmountOut = defaultAmount;
+        uint256 minBptAmountOut = DEFAULT_AMOUNT;
         uint256 maxInvariantRatio = FixedPoint.ONE * 2; // 200%
 
         // Reasonable invariant ratio.
         PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);
-        // Pool balances are [defaultAmount, defaultAmount]; invariant is `2 * defaultAmount`.
-        // Adding `[8, 10] defaultAmount` will make the new invariant `20 * defaultAmount` (10x ratio).
-        uint256[] memory amountsIn = [defaultAmount * 8, defaultAmount * 10].toMemoryArray();
+        // Pool balances are [DEFAULT_AMOUNT, DEFAULT_AMOUNT]; invariant is `2 * DEFAULT_AMOUNT`.
+        // Adding `[8, 10] DEFAULT_AMOUNT` will make the new invariant `20 * DEFAULT_AMOUNT` (10x ratio).
+        uint256[] memory amountsIn = [DEFAULT_AMOUNT * 8, DEFAULT_AMOUNT * 10].toMemoryArray();
 
         // New invariant ratio has rounding errors favoring the vault.
         vm.expectRevert(
@@ -87,9 +87,9 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
     /// @dev Unbalanced add (single token exact out); new invariant exceeds the invariant ratio limits.
     function testAddLiquiditySingleTokenExactOutAboveMaxInvariantRatio() public {
-        // Current BPT supply should be `defaultAmount * 2`. Adding 10 `defaultAmount` will bring the total supply to
-        // `12 * defaultAmount`, so the invariant ratio (new / old) will be FP(6).
-        uint256 bptAmountOut = defaultAmount * 10;
+        // Current BPT supply should be `DEFAULT_AMOUNT * 2`. Adding 10 `DEFAULT_AMOUNT` will bring the total supply to
+        // `12 * DEFAULT_AMOUNT`, so the invariant ratio (new / old) will be FP(6).
+        uint256 bptAmountOut = DEFAULT_AMOUNT * 10;
         uint256 maxInvariantRatio = FixedPoint.ONE * 2;
         uint256 maxAmountIn = defaultBalance;
 
@@ -133,8 +133,8 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
     /// @dev Unbalanced remove (single token exact in); new invariant is smaller than allowed.
     function testRemoveLiquiditySingleTokenExactInBelowMinInvariantRatio() public {
-        // BPT total supply is `2 * defaultAmount`, so removing `defaultAmount` will cut the invariant in half.
-        uint256 bptAmountIn = defaultAmount;
+        // BPT total supply is `2 * DEFAULT_AMOUNT`, so removing `DEFAULT_AMOUNT` will cut the invariant in half.
+        uint256 bptAmountIn = DEFAULT_AMOUNT;
         uint256 minAmountOut = 1;
         uint256 minInvariantRatio = FixedPoint.ONE.mulDown(0.8e18);
 
@@ -149,9 +149,9 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
     /// @dev Unbalanced remove (single token exact out); new invariant is smaller than allowed.
     function testRemoveLiquiditySingleTokenExactOutBelowMinInvariantRatio() public {
-        // Token balances are [defaultAmount, defaultAmount], so removing `defaultAmount` from one of the tokens will
+        // Token balances are [DEFAULT_AMOUNT, DEFAULT_AMOUNT], so removing `DEFAULT_AMOUNT` from one of the tokens will
         // cut the sum of the balances (i.e. the invariant) by half.
-        uint256 amountOut = defaultAmountRoundDown;
+        uint256 amountOut = DEFAULT_AMOUNT_ROUND_DOWN;
         uint256 maxBptAmountIn = IERC20(pool).balanceOf(lp);
         uint256 minInvariantRatio = FixedPoint.ONE.mulDown(0.8e18);
 

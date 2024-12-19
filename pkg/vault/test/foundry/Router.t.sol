@@ -398,11 +398,11 @@ contract RouterTest is BaseVaultTest {
 
     function testRemoveLiquidityRecovery() public {
         // Add initial liquidity.
-        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        uint256[] memory amountsIn = [uint256(DEFAULT_AMOUNT), uint256(DEFAULT_AMOUNT)].toMemoryArray();
 
         // Perfect add liquidity without rounding errors.
         vm.prank(alice);
-        (, bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, bptAmount, false, bytes(""));
+        (, bptAmountOut, ) = router.addLiquidityCustom(pool, amountsIn, DEFAULT_BPT_AMOUNT, false, bytes(""));
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
@@ -418,8 +418,8 @@ contract RouterTest is BaseVaultTest {
             new uint256[](amountsIn.length)
         );
         assertEq(amountsOut.length, 2, "Incorrect amounts out length");
-        assertEq(amountsOut[daiIdx], defaultAmount / 2, "Incorrect DAI amount out");
-        assertEq(amountsOut[usdcIdx], defaultAmount / 2, "Incorrect USDC amount out");
+        assertEq(amountsOut[daiIdx], DEFAULT_AMOUNT / 2, "Incorrect DAI amount out");
+        assertEq(amountsOut[usdcIdx], DEFAULT_AMOUNT / 2, "Incorrect USDC amount out");
 
         BaseVaultTest.Balances memory afterBalances = getBalances(alice);
 
