@@ -16,6 +16,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import { Router } from "../Router.sol";
+import { RouterSwap } from "../RouterSwap.sol";
 
 string constant MOCK_ROUTER_VERSION = "Mock Router v1";
 
@@ -75,7 +76,7 @@ contract RouterMock is Router {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
-                    Router.querySwapHook,
+                    RouterSwap.querySwapHook,
                     SwapSingleTokenHookParams({
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,
