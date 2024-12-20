@@ -174,14 +174,11 @@ library Gyro2CLPMath {
       // Note that -dy > 0 is what the trader receives.                                            //
       // We exploit the fact that this formula is symmetric up to virtualOffset{X,Y}.               //
       // We do not use L^2, but rather x' * y', to prevent a potential accumulation of errors.      //
-      // We add a very small safety margin to compensate for potential errors in the invariant.     //
       **********************************************************************************************/
 
         {
-            // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
-            // that is very slightly larger than 3e-18.
-            uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
-            uint256 virtOutUnder = balanceOut + (virtualOffsetOut).mulDown(FixedPoint.ONE - 1);
+            uint256 virtInOver = balanceIn + virtualOffsetIn;
+            uint256 virtOutUnder = balanceOut + virtualOffsetOut;
 
             amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn);
         }
@@ -216,17 +213,14 @@ library Gyro2CLPMath {
       // Note that dy < 0 < dx.                                                                      //
       // We exploit the fact that this formula is symmetric up to virtualOffset{X,Y}.                //
       // We do not use L^2, but rather x' * y', to prevent a potential accumulation of errors.       //
-      // We add a very small safety margin to compensate for potential errors in the invariant.      //
       **********************************************************************************************/
         if (!(amountOut <= balanceOut)) {
             revert AssetBoundsExceeded();
         }
 
         {
-            // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
-            // that is very slightly larger than 3e-18.
-            uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
-            uint256 virtOutUnder = balanceOut + virtualOffsetOut.mulDown(FixedPoint.ONE - 1);
+            uint256 virtInOver = balanceIn + virtualOffsetIn;
+            uint256 virtOutUnder = balanceOut + virtualOffsetOut;
 
             amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut);
         }
