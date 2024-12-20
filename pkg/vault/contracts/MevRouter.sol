@@ -2,12 +2,15 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IMevRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IMevRouter.sol";
 import { IMevTaxCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IMevTaxCollector.sol";
+import { IRouterSwap } from "@balancer-labs/v3-interfaces/contracts/vault/IMevRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 import { RouterSwap } from "./RouterSwap.sol";
@@ -76,6 +79,78 @@ contract MevRouter is IMevRouter, SingletonAuthentication, RouterSwap {
     /// @inheritdoc IMevRouter
     function setPriorityGasThreshold(uint256 newPriorityGasThreshold) external authenticate {
         priorityGasThreshold = newPriorityGasThreshold;
+    }
+
+    /// @inheritdoc IRouterSwap
+    function swapSingleTokenExactIn(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
+        uint256 minAmountOut,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable override(RouterSwap, IRouterSwap) saveSender(msg.sender) returns (uint256) {
+        chargeMevTax(pool);
+
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        RouterSwap.swapSingleTokenHook,
+                        SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_IN,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountIn,
+                            limit: minAmountOut,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IRouterSwap
+    function swapSingleTokenExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        uint256 maxAmountIn,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable override(RouterSwap, IRouterSwap) saveSender(msg.sender) returns (uint256) {
+        chargeMevTax(pool);
+
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        RouterSwap.swapSingleTokenHook,
+                        SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: maxAmountIn,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     function chargeMevTax(address pool) internal {

@@ -36,7 +36,7 @@ contract RouterSwap is IRouterSwap, RouterCommon {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender(msg.sender) returns (uint256) {
+    ) external payable virtual saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -70,7 +70,7 @@ contract RouterSwap is IRouterSwap, RouterCommon {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender(msg.sender) returns (uint256) {
+    ) external payable virtual saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
