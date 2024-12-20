@@ -119,11 +119,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         this.addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
     }
 
-    function addLiquidityUnbalancedWeights(
-        uint256 daiAmountIn,
-        uint256 swapFeePercentage,
-        uint256 weightDai
-    ) public {
+    function addLiquidityUnbalancedWeights(uint256 daiAmountIn, uint256 swapFeePercentage, uint256 weightDai) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
@@ -144,11 +140,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         // exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
-        exactBptAmountOut = bound(
-            exactBptAmountOut,
-            minAmount,
-            _computeMaxBptAmount(weightDai, swapFeePercentage)
-        );
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, _computeMaxBptAmount(weightDai, swapFeePercentage));
 
         _addLiquiditySingleTokenExactOutWeights(exactBptAmountOut, swapFeePercentage, weightDai);
     }

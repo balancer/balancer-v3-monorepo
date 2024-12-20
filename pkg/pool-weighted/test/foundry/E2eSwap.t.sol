@@ -224,17 +224,9 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function testSwapSymmetry__Fuzz(
-        uint256 tokenAAmountIn,
-        uint256 weightTokenA,
-        uint256 swapFeePercentage
-    ) public {
+    function testSwapSymmetry__Fuzz(uint256 tokenAAmountIn, uint256 weightTokenA, uint256 swapFeePercentage) public {
         weightTokenA = bound(weightTokenA, 1e16, 99e16);
-        swapFeePercentage = bound(
-            swapFeePercentage,
-            minPoolSwapFeePercentage,
-            maxPoolSwapFeePercentage
-        );
+        swapFeePercentage = bound(swapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
         _setSwapFeePercentage(address(poolWithMutableWeights), swapFeePercentage);
 
         uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);

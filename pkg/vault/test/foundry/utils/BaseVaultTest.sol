@@ -133,7 +133,6 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     // ------------------------------ Hooks ------------------------------
     function onAfterDeployMainContracts() internal virtual {}
 
-
     // ------------------------------ Initialization ------------------------------
     function setUp() public virtual override {
         BaseTest.setUp();
