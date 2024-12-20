@@ -7,7 +7,7 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { Router, MevRouter, MevTaxCollectorMock, PoolFactoryMock, Vault, WETHTestToken } from '../typechain-types';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
-import { ContractTransactionResponse, VoidSigner } from 'ethers';
+import { ContractTransactionResponse } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { deployPermit2 } from './Permit2Deployer';
@@ -34,14 +34,13 @@ describe('MevSwaps', () => {
   let router: MevRouter, basicRouter: Router;
   let mevTaxCollector: MevTaxCollectorMock;
 
-  let lp: SignerWithAddress, sender: SignerWithAddress, zero: VoidSigner;
+  let lp: SignerWithAddress, sender: SignerWithAddress;
 
   let tokens: ERC20TokenList;
   let token0: ERC20, WETH: WETHTestToken;
   let vaultAddress: string;
 
   before('setup signers', async () => {
-    zero = new VoidSigner('0x0000000000000000000000000000000000000000', ethers.provider);
     [, lp, sender] = await ethers.getSigners();
   });
 
