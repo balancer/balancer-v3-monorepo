@@ -107,17 +107,14 @@ describe('MevSwaps', () => {
 
         const balancesAfter = await getBalances();
 
-        const receipt = await tx.wait();
-        const gasUsed = receipt?.gasUsed || fp(0);
-        const gasPrice = receipt?.gasPrice || fp(0);
-        const ethUsed = gasUsed * gasPrice;
+        const { gasPaidInEth } = await checkMevTax(tx, false, 0n, 0n);
 
         // Sender paid the swap with WETH, so the ETH balance is not affected by the swap.
         expect(balancesBefore.sender.weth - balancesAfter.sender.weth).to.be.eq(amountIn);
         // Since amountIn == amountOut in a linear pool (PoolMock), the amount received is amountIn.
         expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountIn);
         // If the sender paid only the gas, it means that no mev tax was charged.
-        expect(balancesBefore.sender.eth - ethUsed).to.be.eq(balancesAfter.sender.eth);
+        expect(balancesBefore.sender.eth - gasPaidInEth).to.be.eq(balancesAfter.sender.eth);
       });
 
       it('should not pay mev tax using native eth', async () => {
@@ -131,15 +128,12 @@ describe('MevSwaps', () => {
 
         const balancesAfter = await getBalances();
 
-        const receipt = await tx.wait();
-        const gasUsed = receipt?.gasUsed || fp(0);
-        const gasPrice = receipt?.gasPrice || fp(0);
-        const ethUsed = gasUsed * gasPrice;
+        const { gasPaidInEth } = await checkMevTax(tx, false, 0n, 0n);
 
         // Since amountIn == amountOut in a linear pool (PoolMock), the amount received is amountIn.
         expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountIn);
         // If the sender paid only the gas and the exact in amount, it means that no mev tax was charged.
-        expect(balancesBefore.sender.eth - ethUsed - amountIn).to.be.eq(balancesAfter.sender.eth);
+        expect(balancesBefore.sender.eth - gasPaidInEth - amountIn).to.be.eq(balancesAfter.sender.eth);
       });
     });
 
@@ -161,6 +155,7 @@ describe('MevSwaps', () => {
 
         const { gasPaidInEth, mevTax } = await checkMevTax(
           tx,
+          true,
           balancesBefore.mevTaxCollector.eth,
           balancesAfter.mevTaxCollector.eth
         );
@@ -190,6 +185,7 @@ describe('MevSwaps', () => {
 
         const { gasPaidInEth, mevTax } = await checkMevTax(
           tx,
+          true,
           balancesBefore.mevTaxCollector.eth,
           balancesAfter.mevTaxCollector.eth
         );
@@ -216,17 +212,14 @@ describe('MevSwaps', () => {
 
         const balancesAfter = await getBalances();
 
-        const receipt = await tx.wait();
-        const gasUsed = receipt?.gasUsed || fp(0);
-        const gasPrice = receipt?.gasPrice || fp(0);
-        const ethUsed = gasUsed * gasPrice;
+        const { gasPaidInEth } = await checkMevTax(tx, false, 0n, 0n);
 
         // Sender paid the swap with WETH, so the ETH balance is not affected by the swap. Also, Since amountIn ==
         // amountOut in a linear pool (PoolMock), the amount paid is amountOut.
         expect(balancesBefore.sender.weth - balancesAfter.sender.weth).to.be.eq(amountOut);
         expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountOut);
         // If the sender paid only the gas, it means that no mev tax was charged.
-        expect(balancesBefore.sender.eth - ethUsed).to.be.eq(balancesAfter.sender.eth);
+        expect(balancesBefore.sender.eth - gasPaidInEth).to.be.eq(balancesAfter.sender.eth);
       });
 
       it('should not pay mev tax using native eth', async () => {
@@ -242,15 +235,12 @@ describe('MevSwaps', () => {
 
         const balancesAfter = await getBalances();
 
-        const receipt = await tx.wait();
-        const gasUsed = receipt?.gasUsed || fp(0);
-        const gasPrice = receipt?.gasPrice || fp(0);
-        const ethUsed = gasUsed * gasPrice;
+        const { gasPaidInEth } = await checkMevTax(tx, false, 0n, 0n);
 
         expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountOut);
         // If the sender paid only the gas and the exact in amount, it means that no mev tax was charged. Also,
         // since amountIn == amountOut in a linear pool (PoolMock), the amount paid is amountOut.
-        expect(balancesBefore.sender.eth - ethUsed - amountOut).to.be.eq(balancesAfter.sender.eth);
+        expect(balancesBefore.sender.eth - gasPaidInEth - amountOut).to.be.eq(balancesAfter.sender.eth);
       });
     });
 
@@ -272,6 +262,7 @@ describe('MevSwaps', () => {
 
         const { gasPaidInEth, mevTax } = await checkMevTax(
           tx,
+          true,
           balancesBefore.mevTaxCollector.eth,
           balancesAfter.mevTaxCollector.eth
         );
@@ -301,6 +292,7 @@ describe('MevSwaps', () => {
 
         const { gasPaidInEth, mevTax } = await checkMevTax(
           tx,
+          true,
           balancesBefore.mevTaxCollector.eth,
           balancesAfter.mevTaxCollector.eth
         );
@@ -339,6 +331,7 @@ describe('MevSwaps', () => {
 
   async function checkMevTax(
     tx: ContractTransactionResponse,
+    mevWasCharged: boolean,
     ethCollectorBefore: bigint,
     ethCollectorAfter: bigint
   ): Promise<{
@@ -349,14 +342,17 @@ describe('MevSwaps', () => {
     const gasUsed = receipt?.gasUsed || fp(0);
     const gasPrice = receipt?.gasPrice || fp(0);
 
-    const mevTaxEvent = receipt?.logs.find((log) => log?.fragment?.name == 'MevTaxCharged');
-    const poolAddress: string = mevTaxEvent?.args?.[0] || '';
-    const mevTax = mevTaxEvent?.args?.[1] || fp(0);
-    const baseFee = (await tx.getBlock())?.baseFeePerGas || fp(0);
+    let mevTax = 0n;
+    if (mevWasCharged) {
+      const mevTaxEvent = receipt?.logs.find((log) => log?.fragment?.name == 'MevTaxCharged');
+      const poolAddress: string = mevTaxEvent?.args?.[0] || '';
+      mevTax = mevTaxEvent?.args?.[1] || fp(0);
+      const baseFee = (await tx.getBlock())?.baseFeePerGas || fp(0);
 
-    expect(poolAddress).to.be.eq(await pool.getAddress());
-    expect(mevTax).to.be.eq((gasPrice - baseFee) * MEV_TAX_MULTIPLIER);
-    expect(ethCollectorAfter - ethCollectorBefore).to.be.eq(mevTax);
+      expect(poolAddress).to.be.eq(await pool.getAddress());
+      expect(mevTax).to.be.eq((gasPrice - baseFee) * MEV_TAX_MULTIPLIER);
+      expect(ethCollectorAfter - ethCollectorBefore).to.be.eq(mevTax);
+    }
 
     const gasPaidInEth = gasUsed * gasPrice;
     return { gasPaidInEth, mevTax };
