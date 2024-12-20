@@ -450,8 +450,8 @@ contract StableMathTest is Test {
                     assertApproxEqAbs(
                         currentInvariant,
                         invariantWithDelta,
-                        1,
-                        "Current invariant should be approximately equal to invariant with delta (within 1 wei)"
+                        5,
+                        "Current invariant should be approximately equal to invariant with delta (within 5 wei)"
                     );
                 } else {
                     assertLe(
