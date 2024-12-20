@@ -16,10 +16,10 @@ import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 import { RouterSwap } from "./RouterSwap.sol";
 
 contract MevRouter is IMevRouter, SingletonAuthentication, RouterSwap {
-    IMevTaxCollector internal mevTaxCollector;
+    IMevTaxCollector internal _mevTaxCollector;
 
-    uint256 internal mevTaxMultiplier;
-    uint256 internal priorityGasThreshold;
+    uint256 internal _mevTaxMultiplier;
+    uint256 internal _priorityGasThreshold;
 
     bool private _isMevTaxEnabled;
 
@@ -30,9 +30,9 @@ contract MevRouter is IMevRouter, SingletonAuthentication, RouterSwap {
         string memory routerVersion,
         MevRouterParams memory params
     ) SingletonAuthentication(vault) RouterSwap(vault, weth, permit2, routerVersion) {
-        mevTaxCollector = params.mevTaxCollector;
-        mevTaxMultiplier = params.mevTaxMultiplier;
-        priorityGasThreshold = params.priorityGasThreshold;
+        _mevTaxCollector = params.mevTaxCollector;
+        _mevTaxMultiplier = params.mevTaxMultiplier;
+        _priorityGasThreshold = params.priorityGasThreshold;
         _isMevTaxEnabled = true;
     }
 
@@ -53,32 +53,32 @@ contract MevRouter is IMevRouter, SingletonAuthentication, RouterSwap {
 
     /// @inheritdoc IMevRouter
     function getMevTaxCollector() external view returns (IMevTaxCollector) {
-        return mevTaxCollector;
+        return _mevTaxCollector;
     }
 
     /// @inheritdoc IMevRouter
     function setMevTaxCollector(IMevTaxCollector newMevTaxCollector) external authenticate {
-        mevTaxCollector = newMevTaxCollector;
+        _mevTaxCollector = newMevTaxCollector;
     }
 
     /// @inheritdoc IMevRouter
     function getMevTaxMultiplier() external view returns (uint256) {
-        return mevTaxMultiplier;
+        return _mevTaxMultiplier;
     }
 
     /// @inheritdoc IMevRouter
     function setMevTaxMultiplier(uint256 newMevTaxMultiplier) external authenticate {
-        mevTaxMultiplier = newMevTaxMultiplier;
+        _mevTaxMultiplier = newMevTaxMultiplier;
     }
 
     /// @inheritdoc IMevRouter
     function getPriorityGasThreshold() external view returns (uint256) {
-        return priorityGasThreshold;
+        return _priorityGasThreshold;
     }
 
     /// @inheritdoc IMevRouter
     function setPriorityGasThreshold(uint256 newPriorityGasThreshold) external authenticate {
-        priorityGasThreshold = newPriorityGasThreshold;
+        _priorityGasThreshold = newPriorityGasThreshold;
     }
 
     /// @inheritdoc IRouterSwap
@@ -92,7 +92,7 @@ contract MevRouter is IMevRouter, SingletonAuthentication, RouterSwap {
         bool wethIsEth,
         bytes calldata userData
     ) external payable override(RouterSwap, IRouterSwap) saveSender(msg.sender) returns (uint256) {
-        chargeMevTax(pool);
+        _chargeMevTax(pool);
 
         return
             abi.decode(
@@ -128,7 +128,7 @@ contract MevRouter is IMevRouter, SingletonAuthentication, RouterSwap {
         bool wethIsEth,
         bytes calldata userData
     ) external payable override(RouterSwap, IRouterSwap) saveSender(msg.sender) returns (uint256) {
-        chargeMevTax(pool);
+        _chargeMevTax(pool);
 
         return
             abi.decode(
@@ -153,19 +153,19 @@ contract MevRouter is IMevRouter, SingletonAuthentication, RouterSwap {
             );
     }
 
-    function chargeMevTax(address pool) internal {
+    function _chargeMevTax(address pool) internal {
         if (_isMevTaxEnabled == false) {
             return;
         }
 
         uint256 priorityGasPrice = tx.gasprice - block.basefee;
 
-        if (priorityGasPrice < priorityGasThreshold) {
+        if (priorityGasPrice < _priorityGasThreshold) {
             return;
         }
 
-        uint256 mevTax = priorityGasPrice * mevTaxMultiplier;
-        mevTaxCollector.chargeMevTax{ value: mevTax }(pool);
+        uint256 mevTax = priorityGasPrice * _mevTaxMultiplier;
+        _mevTaxCollector.chargeMevTax{ value: mevTax }(pool);
 
         emit MevTaxCharged(pool, mevTax);
     }
