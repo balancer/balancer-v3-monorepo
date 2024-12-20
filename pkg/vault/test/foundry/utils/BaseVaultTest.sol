@@ -28,6 +28,7 @@ import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
+import { MevRouterMock } from "../../../contracts/test/MevRouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
@@ -84,6 +85,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     RouterMock internal router;
     BatchRouterMock internal batchRouter;
     BufferRouterMock internal bufferRouter;
+    MevRouterMock internal mevRouter;
     PoolFactoryMock internal factoryMock;
     RateProviderMock internal rateProvider;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
@@ -160,6 +162,8 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
         bufferRouter = deployBufferRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(bufferRouter), "buffer router");
+        mevRouter = deployMevRouterMock(IVault(address(vault)), weth, permit2);
+        vm.label(address(mevRouter), "mev router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
 
@@ -184,6 +188,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(bufferRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(tokens[i]), address(mevRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
         }
 
@@ -192,6 +197,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(erc4626Tokens[i]), address(bufferRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(erc4626Tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(erc4626Tokens[i]), address(mevRouter), type(uint160).max, type(uint48).max);
             permit2.approve(
                 address(erc4626Tokens[i]),
                 address(compositeLiquidityRouter),
@@ -212,12 +218,14 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             bpt.approve(address(router), type(uint256).max);
             bpt.approve(address(bufferRouter), type(uint256).max);
             bpt.approve(address(batchRouter), type(uint256).max);
+            bpt.approve(address(mevRouter), type(uint256).max);
             bpt.approve(address(compositeLiquidityRouter), type(uint256).max);
 
             IERC20(bpt).approve(address(permit2), type(uint256).max);
             permit2.approve(address(bpt), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(bufferRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(bpt), address(mevRouter), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
             vm.stopPrank();
