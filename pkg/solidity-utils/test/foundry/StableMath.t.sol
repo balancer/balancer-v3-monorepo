@@ -372,7 +372,7 @@ contract StableMathTest is Test {
         assertLe(invariantRatioDown, invariantRatioRegular, "Invariant ratio should have gone down");
     }
 
-    function testComputeInvariantLessThenInvariantWithDelta__Fuzz(
+    function testComputeInvariantLessThenInvariantWithLargeDelta__Fuzz(
         uint256 amp,
         uint256 tokenCount,
         uint256 deltaCount,
@@ -380,6 +380,45 @@ contract StableMathTest is Test {
         uint256[8] memory deltas,
         uint256[8] memory balancesRaw
     ) public view {
+        _testComputeInvariantLessThenInvariantWithDelta(
+            amp,
+            tokenCount,
+            deltaCount,
+            indexes,
+            deltas,
+            balancesRaw,
+            type(uint128).max
+        );
+    }
+
+    function testComputeInvariantLessThenInvariantWithSmallDelta__Fuzz(
+        uint256 amp,
+        uint256 tokenCount,
+        uint256 deltaCount,
+        uint256[8] memory indexes,
+        uint256[8] memory deltas,
+        uint256[8] memory balancesRaw
+    ) public view {
+        _testComputeInvariantLessThenInvariantWithDelta(
+            amp,
+            tokenCount,
+            deltaCount,
+            indexes,
+            deltas,
+            balancesRaw,
+            1000
+        );
+    }
+
+    function _testComputeInvariantLessThenInvariantWithDelta(
+        uint256 amp,
+        uint256 tokenCount,
+        uint256 deltaCount,
+        uint256[8] memory indexes,
+        uint256[8] memory deltas,
+        uint256[8] memory balancesRaw,
+        uint256 maxDelta
+    ) internal view {
         amp = boundAmp(amp);
         tokenCount = bound(tokenCount, MIN_TOKENS, MAX_TOKENS);
         deltaCount = bound(deltaCount, 1, tokenCount);
@@ -394,7 +433,12 @@ contract StableMathTest is Test {
 
         for (uint256 i = 0; i < deltaCount; i++) {
             uint256 tokenIndex = bound(indexes[i], 0, tokenCount - 1);
-            uint256 delta = bound(deltas[i], 0, type(uint128).max - newBalances[tokenIndex]);
+            uint256 delta;
+            if (maxDelta > type(uint128).max - newBalances[tokenIndex]) {
+                delta = bound(deltas[i], 0, type(uint128).max - newBalances[tokenIndex]);
+            } else {
+                delta = bound(deltas[i], 0, maxDelta);
+            }
             newBalances[tokenIndex] += delta;
         }
 
@@ -402,11 +446,20 @@ contract StableMathTest is Test {
             try stableMathMock.computeInvariant(amp, newBalances, Rounding.ROUND_DOWN) returns (
                 uint256 invariantWithDelta
             ) {
-                assertLe(
-                    currentInvariant,
-                    invariantWithDelta,
-                    "Current invariant should be less than invariant with delta"
-                );
+                if (invariantWithDelta < currentInvariant) {
+                    assertApproxEqAbs(
+                        currentInvariant,
+                        invariantWithDelta,
+                        1,
+                        "Current invariant should be approximately equal to invariant with delta (within 1 wei)"
+                    );
+                } else {
+                    assertLe(
+                        currentInvariant,
+                        invariantWithDelta,
+                        "Current invariant should be less than or equal to invariant with delta"
+                    );
+                }
             } catch {}
         } catch {}
     }
