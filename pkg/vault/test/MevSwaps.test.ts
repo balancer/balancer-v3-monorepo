@@ -100,17 +100,13 @@ describe('MevSwaps', () => {
       it('should not pay mev tax using WETH', async () => {
         const amountIn = fp(10);
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const wethSenderBefore = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
           .swapSingleTokenExactIn(pool, WETH, token0, amountIn, 0, MAX_UINT256, false, '0x');
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const wethSenderAfter = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
+        const balancesAfter = await getBalances();
 
         const receipt = await tx.wait();
         const gasUsed = receipt?.gasUsed || fp(0);
@@ -118,25 +114,23 @@ describe('MevSwaps', () => {
         const ethUsed = gasUsed * gasPrice;
 
         // Sender paid the swap with WETH, so the ETH balance is not affected by the swap.
-        expect(wethSenderBefore - wethSenderAfter).to.be.eq(amountIn);
+        expect(balancesBefore.sender.weth - balancesAfter.sender.weth).to.be.eq(amountIn);
         // Since amountIn == amountOut in a linear pool (PoolMock), the amount received is amountIn.
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountIn);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountIn);
         // If the sender paid only the gas, it means that no mev tax was charged.
-        expect(ethSenderBefore - ethUsed).to.be.eq(ethSenderAfter);
+        expect(balancesBefore.sender.eth - ethUsed).to.be.eq(balancesAfter.sender.eth);
       });
 
       it('should not pay mev tax using native eth', async () => {
         const amountIn = fp(10);
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
           .swapSingleTokenExactIn(pool, WETH, token0, amountIn, 0, MAX_UINT256, true, '0x', { value: amountIn });
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
+        const balancesAfter = await getBalances();
 
         const receipt = await tx.wait();
         const gasUsed = receipt?.gasUsed || fp(0);
@@ -144,70 +138,68 @@ describe('MevSwaps', () => {
         const ethUsed = gasUsed * gasPrice;
 
         // Since amountIn == amountOut in a linear pool (PoolMock), the amount received is amountIn.
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountIn);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountIn);
         // If the sender paid only the gas and the exact in amount, it means that no mev tax was charged.
-        expect(ethSenderBefore - ethUsed - amountIn).to.be.eq(ethSenderAfter);
+        expect(balancesBefore.sender.eth - ethUsed - amountIn).to.be.eq(balancesAfter.sender.eth);
       });
     });
 
     describe('sender paid priority', async () => {
       it('should pay mev tax using WETH', async () => {
         const amountIn = fp(10);
-        const gasPriceTx = 2 * PRIORITY_GAS_THRESHOLD;
+        const priorityGasPrice = 2 * PRIORITY_GAS_THRESHOLD;
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const wethSenderBefore = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorBefore = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
           .swapSingleTokenExactIn(pool, WETH, token0, amountIn, 0, MAX_UINT256, false, '0x', {
             value: fp(10), // Added to pay mev tax
-            gasPrice: gasPriceTx,
+            gasPrice: priorityGasPrice,
           });
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const wethSenderAfter = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorAfter = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesAfter = await getBalances();
 
-        const { gasPaidInEth, mevTax } = await checkMevTax(tx, ethCollectorBefore, ethCollectorAfter);
+        const { gasPaidInEth, mevTax } = await checkMevTax(
+          tx,
+          balancesBefore.mevTaxCollector.eth,
+          balancesAfter.mevTaxCollector.eth
+        );
 
         // Sender paid the swap with WETH, so the ETH balance is not affected by the swap.
-        expect(wethSenderBefore - wethSenderAfter).to.be.eq(amountIn);
+        expect(balancesBefore.sender.weth - balancesAfter.sender.weth).to.be.eq(amountIn);
         // Since amountIn == amountOut in a linear pool (PoolMock), the amount received is amountIn.
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountIn);
-        // Sender should pay gasand mev tax. Any excess of ETH sent to the router must be returned to the sender.
-        expect(ethSenderBefore - gasPaidInEth - mevTax).to.be.eq(ethSenderAfter);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountIn);
+        // Sender should pay gas and mev tax. Any excess of ETH sent to the router must be returned to the sender.
+        expect(balancesBefore.sender.eth - gasPaidInEth - mevTax).to.be.eq(balancesAfter.sender.eth);
       });
 
       it('should pay mev tax using native eth', async () => {
         const amountIn = fp(10);
-        const gasPriceTx = 2 * PRIORITY_GAS_THRESHOLD;
+        const priorityGasPrice = 2 * PRIORITY_GAS_THRESHOLD;
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorBefore = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
           .swapSingleTokenExactIn(pool, WETH, token0, amountIn, 0, MAX_UINT256, true, '0x', {
             value: amountIn + fp(10),
-            gasPrice: gasPriceTx,
+            gasPrice: priorityGasPrice,
           });
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorAfter = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesAfter = await getBalances();
 
-        const { gasPaidInEth, mevTax } = await checkMevTax(tx, ethCollectorBefore, ethCollectorAfter);
+        const { gasPaidInEth, mevTax } = await checkMevTax(
+          tx,
+          balancesBefore.mevTaxCollector.eth,
+          balancesAfter.mevTaxCollector.eth
+        );
 
         // Since amountIn == amountOut in a linear pool (PoolMock), the amount received is amountIn.
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountIn);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountIn);
         // Sender should pay gas, exact in amount and mev tax. Any excess of ETH sent to the router must be returned to
         // the sender.
-        expect(ethSenderBefore - gasPaidInEth - amountIn - mevTax).to.be.eq(ethSenderAfter);
+        expect(balancesBefore.sender.eth - gasPaidInEth - amountIn - mevTax).to.be.eq(balancesAfter.sender.eth);
       });
     });
   });
@@ -217,17 +209,13 @@ describe('MevSwaps', () => {
       it('should not pay mev tax using WETH', async () => {
         const amountOut = fp(10);
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const wethSenderBefore = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
           .swapSingleTokenExactOut(pool, WETH, token0, amountOut, MAX_UINT256, MAX_UINT256, false, '0x');
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const wethSenderAfter = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
+        const balancesAfter = await getBalances();
 
         const receipt = await tx.wait();
         const gasUsed = receipt?.gasUsed || fp(0);
@@ -236,17 +224,16 @@ describe('MevSwaps', () => {
 
         // Sender paid the swap with WETH, so the ETH balance is not affected by the swap. Also, Since amountIn ==
         // amountOut in a linear pool (PoolMock), the amount paid is amountOut.
-        expect(wethSenderBefore - wethSenderAfter).to.be.eq(amountOut);
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountOut);
+        expect(balancesBefore.sender.weth - balancesAfter.sender.weth).to.be.eq(amountOut);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountOut);
         // If the sender paid only the gas, it means that no mev tax was charged.
-        expect(ethSenderBefore - ethUsed).to.be.eq(ethSenderAfter);
+        expect(balancesBefore.sender.eth - ethUsed).to.be.eq(balancesAfter.sender.eth);
       });
 
       it('should not pay mev tax using native eth', async () => {
         const amountOut = fp(10);
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
@@ -254,81 +241,102 @@ describe('MevSwaps', () => {
             value: amountOut,
           });
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
+        const balancesAfter = await getBalances();
 
         const receipt = await tx.wait();
         const gasUsed = receipt?.gasUsed || fp(0);
         const gasPrice = receipt?.gasPrice || fp(0);
         const ethUsed = gasUsed * gasPrice;
 
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountOut);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountOut);
         // If the sender paid only the gas and the exact in amount, it means that no mev tax was charged. Also,
         // since amountIn == amountOut in a linear pool (PoolMock), the amount paid is amountOut.
-        expect(ethSenderBefore - ethUsed - amountOut).to.be.eq(ethSenderAfter);
+        expect(balancesBefore.sender.eth - ethUsed - amountOut).to.be.eq(balancesAfter.sender.eth);
       });
     });
 
     describe('sender paid priority', async () => {
       it('should pay mev tax using WETH', async () => {
         const amountOut = fp(10);
-        const gasPriceTx = 2 * PRIORITY_GAS_THRESHOLD;
+        const priorityGasPrice = 2 * PRIORITY_GAS_THRESHOLD;
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const wethSenderBefore = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorBefore = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
           .swapSingleTokenExactOut(pool, WETH, token0, amountOut, MAX_UINT256, MAX_UINT256, false, '0x', {
             value: fp(10), // Added to pay mev tax
-            gasPrice: gasPriceTx,
+            gasPrice: priorityGasPrice,
           });
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const wethSenderAfter = await WETH.connect(sender).balanceOf(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorAfter = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesAfter = await getBalances();
 
-        const { gasPaidInEth, mevTax } = await checkMevTax(tx, ethCollectorBefore, ethCollectorAfter);
+        const { gasPaidInEth, mevTax } = await checkMevTax(
+          tx,
+          balancesBefore.mevTaxCollector.eth,
+          balancesAfter.mevTaxCollector.eth
+        );
 
         // Sender paid the swap with WETH, so the ETH balance is not affected by the swap. Also, since amountIn ==
         // amountOut in a linear pool (PoolMock), the amount paid is amountOut.
-        expect(wethSenderBefore - wethSenderAfter).to.be.eq(amountOut);
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountOut);
+        expect(balancesBefore.sender.weth - balancesAfter.sender.weth).to.be.eq(amountOut);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountOut);
         // Sender should pay gas and mev tax. Any excess of ETH sent to the router must be returned to the sender.
-        expect(ethSenderBefore - gasPaidInEth - mevTax).to.be.eq(ethSenderAfter);
+        expect(balancesBefore.sender.eth - gasPaidInEth - mevTax).to.be.eq(balancesAfter.sender.eth);
       });
 
       it('should pay mev tax using native eth', async () => {
         const amountOut = fp(10);
-        const gasPriceTx = 2 * PRIORITY_GAS_THRESHOLD;
+        const priorityGasPrice = 2 * PRIORITY_GAS_THRESHOLD;
 
-        const ethSenderBefore = await ethers.provider.getBalance(sender);
-        const token0SenderBefore = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorBefore = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesBefore = await getBalances();
 
         const tx = await router
           .connect(sender)
           .swapSingleTokenExactOut(pool, WETH, token0, amountOut, MAX_UINT256, MAX_UINT256, true, '0x', {
             value: amountOut + fp(10),
-            gasPrice: gasPriceTx,
+            gasPrice: priorityGasPrice,
           });
 
-        const ethSenderAfter = await ethers.provider.getBalance(sender);
-        const token0SenderAfter = await token0.connect(sender).balanceOf(sender);
-        const ethCollectorAfter = await ethers.provider.getBalance(await mevTaxCollector.getAddress());
+        const balancesAfter = await getBalances();
 
-        const { gasPaidInEth, mevTax } = await checkMevTax(tx, ethCollectorBefore, ethCollectorAfter);
+        const { gasPaidInEth, mevTax } = await checkMevTax(
+          tx,
+          balancesBefore.mevTaxCollector.eth,
+          balancesAfter.mevTaxCollector.eth
+        );
 
-        expect(token0SenderAfter - token0SenderBefore).to.be.eq(amountOut);
+        expect(balancesAfter.sender.token0 - balancesBefore.sender.token0).to.be.eq(amountOut);
         // Sender should pay gas, exact in amount and mev tax. Any excess of ETH sent to the router must be returned to
         // the sender. Also, since amountIn == amountOut in a linear pool (PoolMock), the amount paid is amountOut.
-        expect(ethSenderBefore - gasPaidInEth - amountOut - mevTax).to.be.eq(ethSenderAfter);
+        expect(balancesBefore.sender.eth - gasPaidInEth - amountOut - mevTax).to.be.eq(balancesAfter.sender.eth);
       });
     });
   });
+
+  interface Balances {
+    sender: {
+      eth: bigint;
+      weth: bigint;
+      token0: bigint;
+    };
+    mevTaxCollector: {
+      eth: bigint;
+    };
+  }
+
+  async function getBalances(): Promise<Balances> {
+    return {
+      sender: {
+        eth: await ethers.provider.getBalance(sender),
+        weth: await WETH.connect(sender).balanceOf(sender),
+        token0: await token0.connect(sender).balanceOf(sender),
+      },
+      mevTaxCollector: {
+        eth: await ethers.provider.getBalance(await mevTaxCollector.getAddress()),
+      },
+    };
+  }
 
   async function checkMevTax(
     tx: ContractTransactionResponse,
