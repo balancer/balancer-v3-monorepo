@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
+import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 
