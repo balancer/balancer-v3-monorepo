@@ -21,7 +21,7 @@ import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeContr
 import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract ProtocolFeeControllerTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -730,7 +730,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     function testWithdrawalWithNoCreator() public {
         PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerTestPool(address(newPool), vault.buildTokenConfig(tokens));
+        PoolFactoryMock(poolFactory).registerTestPool(address(newPool), vault.buildTokenConfig(tokens));
 
         vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.PoolCreatorNotRegistered.selector, newPool));
         vm.prank(alice);

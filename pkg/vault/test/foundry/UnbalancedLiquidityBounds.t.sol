@@ -13,6 +13,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolMockFlexibleInvariantRatio } from "../../contracts/test/PoolMockFlexibleInvariantRatio.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -33,7 +34,12 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         newPool = address(deployPoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
         vm.label(newPool, label);
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
+        PoolFactoryMock(poolFactory).registerTestPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            poolHooksContract,
+            lp
+        );
 
         poolArgs = abi.encode(vault, "", "");
     }

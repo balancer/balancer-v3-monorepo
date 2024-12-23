@@ -53,7 +53,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         address veBalFeeHook = address(
-            new VeBALFeeDiscountHookExample(IVault(address(vault)), address(factoryMock), address(veBAL), trustedRouter)
+            new VeBALFeeDiscountHookExample(IVault(address(vault)), poolFactory, address(veBAL), trustedRouter)
         );
         vm.label(veBalFeeHook, "VeBAL Fee Hook");
         return veBalFeeHook;
@@ -92,15 +92,15 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
                 IVaultErrors.HookRegistrationFailed.selector,
                 poolHooksContract,
                 veBalFeePool,
-                address(factoryMock)
+                poolFactory
             )
         );
-        _registerPoolWithHook(veBalFeePool, tokenConfig, address(factoryMock));
+        _registerPoolWithHook(veBalFeePool, tokenConfig, poolFactory);
     }
 
     function testSuccessfulRegistry() public {
         // Register with the allowed factory.
-        address veBalFeePool = factoryMock.createPool("Test Pool", "TEST");
+        address veBalFeePool = PoolFactoryMock(poolFactory).createPool("Test Pool", "TEST");
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
@@ -108,11 +108,11 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         vm.expectEmit();
         emit VeBALFeeDiscountHookExample.VeBALFeeDiscountHookExampleRegistered(
             poolHooksContract,
-            address(factoryMock),
+            poolFactory,
             veBalFeePool
         );
 
-        _registerPoolWithHook(veBalFeePool, tokenConfig, address(factoryMock));
+        _registerPoolWithHook(veBalFeePool, tokenConfig, poolFactory);
 
         HooksConfig memory hooksConfig = vault.getHooksConfig(veBalFeePool);
 
