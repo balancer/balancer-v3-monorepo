@@ -54,8 +54,8 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         vm.label(address(vaultAdmin), "vaultAdmin");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
-        factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
-        vm.label(address(factoryMock), "factory");
+        poolFactory = address(PoolFactoryMock(address(vault.getPoolFactoryMock())));
+        vm.label(address(poolFactory), "factory");
         router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
@@ -131,7 +131,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         liquidityManagement.disableUnbalancedLiquidity = true;
         liquidityManagement.enableDonation = true;
 
-        factoryMock.registerPool(
+        PoolFactoryMock(poolFactory).registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,

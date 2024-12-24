@@ -13,7 +13,7 @@ import { TokenConfig, PoolConfig, PoolRoleAccounts } from "@balancer-labs/v3-int
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract ProtocolFeeExemptionTest is BaseVaultTest {
     uint256 internal GLOBAL_SWAP_FEE = 50e16;
@@ -58,7 +58,15 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
         pool = address(deployPoolMock(IVault(address(vault)), "Non-Exempt Pool", "NOT-EXEMPT"));
-        factoryMock.registerGeneralTestPool(pool, tokenConfig, 0, 365 days, false, roleAccounts, address(0));
+        PoolFactoryMock(poolFactory).registerGeneralTestPool(
+            pool,
+            tokenConfig,
+            0,
+            365 days,
+            false,
+            roleAccounts,
+            address(0)
+        );
 
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
 
@@ -72,7 +80,15 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
         pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
-        factoryMock.registerGeneralTestPool(pool, tokenConfig, 0, 365 days, true, roleAccounts, address(0));
+        PoolFactoryMock(poolFactory).registerGeneralTestPool(
+            pool,
+            tokenConfig,
+            0,
+            365 days,
+            true,
+            roleAccounts,
+            address(0)
+        );
 
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
 

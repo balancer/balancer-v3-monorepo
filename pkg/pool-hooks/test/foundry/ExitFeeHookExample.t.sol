@@ -20,6 +20,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
@@ -28,6 +29,8 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
+
+    PoolFactoryMock poolFactoryMock;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -39,6 +42,8 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         super.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        poolFactoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
     }
 
     function createHook() internal override returns (address) {
@@ -70,7 +75,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         vm.expectEmit();
         emit ExitFeeHookExample.ExitFeeHookExampleRegistered(poolHooksContract, newPool);
 
-        factoryMock.registerPool(
+        PoolFactoryMock(poolFactory).registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
@@ -200,6 +205,6 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         liquidityManagement.disableUnbalancedLiquidity = true;
         liquidityManagement.enableDonation = enableDonation;
 
-        factoryMock.registerPool(exitFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+        poolFactoryMock.registerPool(exitFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
     }
 }
