@@ -23,6 +23,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
@@ -70,7 +71,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         vm.expectEmit();
         emit FeeTakingHookExample.FeeTakingHookExampleRegistered(poolHooksContract, newPool);
 
-        factoryMock.registerPool(
+        PoolFactoryMock(poolFactory).registerPool(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,

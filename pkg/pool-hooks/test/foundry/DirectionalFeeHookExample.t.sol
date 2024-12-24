@@ -31,6 +31,7 @@ import {
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 
 import { DirectionalFeeHookExample } from "../../contracts/DirectionalFeeHookExample.sol";
 
@@ -42,9 +43,8 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    StablePoolFactory internal stablePoolFactory;
-
     address internal directionalFeeHook;
+    PoolFactoryMock internal poolFactoryMock;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
@@ -54,14 +54,19 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
         super.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        poolFactoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
+    }
+
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
     }
 
     function createHook() internal override returns (address) {
         // Create the factory here, because it needs to be deployed after the Vault, but before the hook contract.
-        stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
-        directionalFeeHook = address(new DirectionalFeeHookExample(IVault(address(vault)), address(stablePoolFactory)));
+        directionalFeeHook = address(new DirectionalFeeHookExample(IVault(address(vault)), poolFactory));
         vm.label(directionalFeeHook, "Directional Fee Hook");
         return directionalFeeHook;
     }
@@ -76,14 +81,10 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
         PoolRoleAccounts memory roleAccounts;
 
         vm.expectEmit(true, true, false, false);
-        emit DirectionalFeeHookExample.DirectionalFeeHookExampleRegistered(
-            directionalFeeHook,
-            address(stablePoolFactory),
-            address(0)
-        );
+        emit DirectionalFeeHookExample.DirectionalFeeHookExampleRegistered(directionalFeeHook, poolFactory, address(0));
 
         newPool = address(
-            stablePoolFactory.create(
+            StablePoolFactory(poolFactory).create(
                 name,
                 symbol,
                 vault.buildTokenConfig(tokens.asIERC20()),
@@ -126,7 +127,7 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
                 IVaultErrors.HookRegistrationFailed.selector,
                 poolHooksContract,
                 directionalFeePool,
-                address(factoryMock)
+                address(poolFactoryMock)
             )
         );
         _registerPoolWithHook(directionalFeePool, tokenConfig);
@@ -345,6 +346,12 @@ contract DirectionalHookExampleTest is StablePoolContractsDeployer, BaseVaultTes
 
         LiquidityManagement memory liquidityManagement;
 
-        factoryMock.registerPool(directionalFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+        poolFactoryMock.registerPool(
+            directionalFeePool,
+            tokenConfig,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
     }
 }

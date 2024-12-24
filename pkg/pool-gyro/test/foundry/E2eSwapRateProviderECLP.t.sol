@@ -5,37 +5,23 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 
-import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
-import { StablePool } from "../../contracts/StablePool.sol";
-import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
+import { GyroEclpPoolDeployer } from "./utils/GyroEclpPoolDeployer.sol";
 
-contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRateProviderTest, StablePoolContractsDeployer {
-    using CastingHelpers for address[];
+contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProviderTest, GyroEclpPoolDeployer {
     using FixedPoint for uint256;
 
-    uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
-    uint256 internal constant DEFAULT_AMP_FACTOR = 200;
-
-    function createPoolFactory() internal override returns (address) {
-        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
-    }
-
+    /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(
         address[] memory tokens,
         string memory label
-    ) internal override returns (address newPool, bytes memory poolArgs) {
+    ) internal override returns (address, bytes memory) {
         rateProviderTokenA = deployRateProviderMock();
         rateProviderTokenB = deployRateProviderMock();
         // Mock rates, so all tests that keep the rate constant use a rate different than 1.
@@ -46,40 +32,7 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
         rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
         rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        PoolRoleAccounts memory roleAccounts;
-
-        // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
-
-        newPool = StablePoolFactory(poolFactory).create(
-            "Stable Pool",
-            "STABLE",
-            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
-            DEFAULT_AMP_FACTOR,
-            roleAccounts,
-            DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-            poolHooksContract,
-            false, // Do not enable donations
-            false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
-        );
-        vm.label(address(newPool), label);
-
-        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
-        vault.manualSetPoolCreator(address(newPool), lp);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), lp);
-
-        poolArgs = abi.encode(
-            StablePool.NewPoolParams({
-                name: "Stable Pool",
-                symbol: "STABLE",
-                amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: "Pool v1"
-            }),
-            vault
-        );
+        return createGyroEclpPool(tokens, rateProviders, label, vault, lp);
     }
 
     function calculateMinAndMaxSwapAmounts() internal virtual override {
