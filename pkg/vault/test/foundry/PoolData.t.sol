@@ -120,8 +120,8 @@ contract PoolDataTest is BaseVaultTest {
         poolData.tokens[0] = usdc;
         poolData.tokens[1] = dai;
 
-        uint256 storedBalance0 = 1e18;
-        uint256 storedBalance1 = 10e18;
+        uint256 storedBalance0 = FixedPoint.ONE;
+        uint256 storedBalance1 = 10 * FixedPoint.ONE;
 
         poolTokenBalances[0] = PackedTokenBalance.toPackedBalance(storedBalance0, storedBalance0);
         poolTokenBalances[1] = PackedTokenBalance.toPackedBalance(storedBalance1, storedBalance1);

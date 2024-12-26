@@ -360,9 +360,9 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         uint256 decimalScalingFactor,
         uint256 tokenRate
     ) public view {
-        amountRaw = bound(amountRaw, 0, 1e30);
+        amountRaw = bound(amountRaw, 0, FixedPoint.ONE * 1e12);
         decimalScalingFactor = 10 ** bound(decimalScalingFactor, 0, 18);
-        tokenRate = bound(tokenRate, 0, 1e18 * 1e6);
+        tokenRate = bound(tokenRate, 0, FixedPoint.ONE * 1e6);
 
         VaultSwapParams memory vaultSwapParams;
         PoolData memory poolData;
@@ -379,7 +379,7 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
         uint256 amountScaled = vault.manualComputeAmountGivenScaled18(vaultSwapParams, poolData, swapState);
 
-        uint256 rateRoundUp = (tokenRate % 1e18) == 0 ? tokenRate : tokenRate + 1;
+        uint256 rateRoundUp = (tokenRate % FixedPoint.ONE) == 0 ? tokenRate : tokenRate + 1;
 
         assertEq(amountScaled, (amountRaw * decimalScalingFactor).mulUp(rateRoundUp), "Unexpected amount scaled");
     }
@@ -399,15 +399,15 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         vaultSwapParams.tokenOut = dai;
 
         vaultSwapParams.kind = SwapKind.EXACT_IN;
-        vaultSwapParams.amountGivenRaw = 10e18;
+        vaultSwapParams.amountGivenRaw = 10 * FixedPoint.ONE;
         poolData.decimalScalingFactors = new uint256[](4);
         poolData.tokenRates = new uint256[](4);
         poolData.decimalScalingFactors[indexIn] = 1;
-        poolData.tokenRates[indexIn] = 2e18;
+        poolData.tokenRates[indexIn] = 2 * FixedPoint.ONE;
 
         uint256 swapFeePercentage = 0.1234e18;
         poolData.poolConfigBits = poolData.poolConfigBits.setStaticSwapFeePercentage(swapFeePercentage);
-        uint256 amountScaled = 20e18; // (amountGivenRaw * decimalScalingFactor).mulDown(tokenRate)
+        uint256 amountScaled = 20 * FixedPoint.ONE; // (amountGivenRaw * decimalScalingFactor).mulDown(tokenRate)
 
         SwapState memory swapState = vault.manualLoadSwapState(vaultSwapParams, poolData);
 
