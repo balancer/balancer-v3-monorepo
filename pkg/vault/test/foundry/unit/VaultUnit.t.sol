@@ -327,4 +327,93 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
         assertEq(liveBalances[1], 20, "Wrong liveBalances[1]");
         assertEq(liveBalances[2], 30, "Wrong liveBalances[2]");
     }
+
+    function testComputeAmountGivenScaled18ExactIn__Fuzz(
+        uint256 amountRaw,
+        uint256 decimalScalingFactor,
+        uint256 tokenRate
+    ) public view {
+        amountRaw = bound(amountRaw, 0, 1e30);
+        decimalScalingFactor = 10 ** bound(decimalScalingFactor, 0, 18);
+        tokenRate = bound(tokenRate, 0, 1e18 * 1e6);
+
+        VaultSwapParams memory vaultSwapParams;
+        PoolData memory poolData;
+        SwapState memory swapState;
+
+        vaultSwapParams.kind = SwapKind.EXACT_IN;
+        vaultSwapParams.amountGivenRaw = amountRaw;
+        swapState.indexIn = 1;
+        poolData.decimalScalingFactors = new uint256[](4);
+        poolData.tokenRates = new uint256[](4);
+
+        poolData.decimalScalingFactors[swapState.indexIn] = decimalScalingFactor;
+        poolData.tokenRates[swapState.indexIn] = tokenRate;
+
+        uint256 amountScaled = vault.manualComputeAmountGivenScaled18(vaultSwapParams, poolData, swapState);
+
+        assertEq(amountScaled, (amountRaw * decimalScalingFactor).mulDown(tokenRate), "Unexpected amount scaled");
+    }
+
+    function testComputeAmountGivenScaled18ExactOut__Fuzz(
+        uint256 amountRaw,
+        uint256 decimalScalingFactor,
+        uint256 tokenRate
+    ) public view {
+        amountRaw = bound(amountRaw, 0, 1e30);
+        decimalScalingFactor = 10 ** bound(decimalScalingFactor, 0, 18);
+        tokenRate = bound(tokenRate, 0, 1e18 * 1e6);
+
+        VaultSwapParams memory vaultSwapParams;
+        PoolData memory poolData;
+        SwapState memory swapState;
+
+        vaultSwapParams.kind = SwapKind.EXACT_OUT;
+        vaultSwapParams.amountGivenRaw = amountRaw;
+        swapState.indexOut = 3;
+        poolData.decimalScalingFactors = new uint256[](4);
+        poolData.tokenRates = new uint256[](4);
+
+        poolData.decimalScalingFactors[swapState.indexOut] = decimalScalingFactor;
+        poolData.tokenRates[swapState.indexOut] = tokenRate;
+
+        uint256 amountScaled = vault.manualComputeAmountGivenScaled18(vaultSwapParams, poolData, swapState);
+
+        uint256 rateRoundUp = (tokenRate % 1e18) == 0 ? tokenRate : tokenRate + 1;
+
+        assertEq(amountScaled, (amountRaw * decimalScalingFactor).mulUp(rateRoundUp), "Unexpected amount scaled");
+    }
+
+    function testLoadSwapState() public view {
+        VaultSwapParams memory vaultSwapParams;
+        PoolData memory poolData;
+
+        poolData.tokens = new IERC20[](4);
+        poolData.tokens[0] = IERC20(usdc);
+        poolData.tokens[1] = IERC20(dai);
+        poolData.tokens[2] = IERC20(weth);
+        poolData.tokens[3] = IERC20(wsteth);
+
+        uint256 indexIn = 3;
+        vaultSwapParams.tokenIn = wsteth;
+        vaultSwapParams.tokenOut = dai;
+
+        vaultSwapParams.kind = SwapKind.EXACT_IN;
+        vaultSwapParams.amountGivenRaw = 10e18;
+        poolData.decimalScalingFactors = new uint256[](4);
+        poolData.tokenRates = new uint256[](4);
+        poolData.decimalScalingFactors[indexIn] = 1;
+        poolData.tokenRates[indexIn] = 2e18;
+
+        uint256 swapFeePercentage = 0.1234e18;
+        poolData.poolConfigBits = poolData.poolConfigBits.setStaticSwapFeePercentage(swapFeePercentage);
+        uint256 amountScaled = 20e18; // (amountGivenRaw * decimalScalingFactor).mulDown(tokenRate)
+
+        SwapState memory swapState = vault.manualLoadSwapState(vaultSwapParams, poolData);
+
+        assertEq(swapState.indexIn, indexIn, "Incorrect token in index");
+        assertEq(swapState.indexOut, 1, "Incorrect token out index");
+        assertEq(swapState.amountGivenScaled18, amountScaled, "Wrong amount given scaled");
+        assertEq(swapState.swapFeePercentage, swapFeePercentage, "Wrong swap fee percentage");
+    }
 }
