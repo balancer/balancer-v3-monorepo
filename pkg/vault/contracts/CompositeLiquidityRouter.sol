@@ -482,10 +482,42 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate in the tokens
         // array to find the child pool amounts to insert.
         for (uint256 i = 0; i < tokensIn.length; ++i) {
+            if (params.maxAmountsIn[i] == 0) {
+                continue;
+            }
+
             _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
+            _currentSwapTokensIn().add(tokensIn[i]);
         }
 
-        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+        (uint256[] memory amountsIn, ) = _addLiquidityRecursive(params.pool, params);
+
+        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
+        (, exactBptAmountOut, ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: isStaticCall ? address(this) : params.sender,
+                maxAmountsIn: amountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        // Settle the amounts in.
+        if (isStaticCall == false) {
+            _settlePaths(params.sender, params.wethIsEth);
+        }
+    }
+
+    function _addLiquidityRecursive(
+        address pool,
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
+        allAmountsEmpty = true;
+
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
+        amountsIn = new uint256[](parentPoolTokens.length);
 
         // Iterate over each token of the parent pool. If it's a BPT, add liquidity unbalanced to it.
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
@@ -494,11 +526,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             if (_vault.isPoolRegistered(childToken)) {
                 // Token is a BPT, so add liquidity to the child pool.
 
-                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                (uint256[] memory childPoolAmountsIn, bool childPoolAmountsEmpty) = _getPoolAmountsIn(
-                    childPoolTokens,
-                    params.sender,
-                    params.wethIsEth
+                (uint256[] memory childPoolAmountsIn, bool childPoolAmountsEmpty) = _addLiquidityRecursive(
+                    childToken,
+                    params
                 );
 
                 if (childPoolAmountsEmpty == false) {
@@ -515,9 +545,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         })
                     );
 
-                    // Sets the amount in of child BPT to the exactBptAmountOut of the child pool, so all the minted BPT
-                    // will be added to the parent pool.
-                    _currentSwapTokenInAmounts().tSet(childToken, exactChildBptAmountOut);
+                    amountsIn[i] = exactChildBptAmountOut;
 
                     // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
                     // advance.
@@ -530,78 +558,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // The ERC4626 token has a buffer initialized within the Vault. Additionally, since the sender did not
                 // specify an input amount for the wrapped token, the function will wrap the underlying asset and use
                 // the resulting wrapped tokens to add liquidity to the pool.
-                _wrapAndUpdateTokenInAmounts(IERC4626(childToken), params.sender, params.wethIsEth);
-            }
-        }
-
-        (uint256[] memory parentPoolAmountsIn, ) = _getPoolAmountsIn(parentPoolTokens, params.sender, params.wethIsEth);
-
-        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
-        (, exactBptAmountOut, ) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: isStaticCall ? address(this) : params.sender,
-                maxAmountsIn: parentPoolAmountsIn,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
-        );
-
-        // Since all values from _currentSwapTokenInAmounts are erased, recreates the set of amounts in so
-        // `_settlePaths()` can charge the sender.
-        for (uint256 i = 0; i < tokensIn.length; ++i) {
-            address tokenIn = tokensIn[i];
-            // Wrap operations take underlying token in advance, so we discount them.
-            uint256 amountIn = params.maxAmountsIn[i] - _settledTokenAmounts().tGet(tokenIn);
-            // Reset _settledTokensAmount, in case the router is called again in the same transaction.
-            _settledTokenAmounts().tSet(tokenIn, 0);
-            if (amountIn > 0) {
-                _currentSwapTokensIn().add(tokensIn[i]);
-                _currentSwapTokenInAmounts().tSet(tokenIn, amountIn);
-            }
-        }
-
-        // Settle the amounts in.
-        if (isStaticCall == false) {
-            _settlePaths(params.sender, params.wethIsEth);
-        }
-    }
-
-    /**
-     * @notice Creates an array of amounts in to insert in a pool, given an array of tokens.
-     * @dev This function requires the transient set `_currentSwapTokenInAmounts` to be initialized first with all the
-     * amount in values that the sender informed in the addLiquidity call.
-     */
-    function _getPoolAmountsIn(
-        IERC20[] memory poolTokens,
-        address sender,
-        bool wethIsEth
-    ) private returns (uint256[] memory poolAmountsIn, bool amountsEmpty) {
-        poolAmountsIn = new uint256[](poolTokens.length);
-        amountsEmpty = true;
-
-        for (uint256 j = 0; j < poolTokens.length; j++) {
-            address poolToken = address(poolTokens[j]);
-            if (
-                _vault.isERC4626BufferInitialized(IERC4626(poolToken)) &&
-                _currentSwapTokenInAmounts().tGet(poolToken) == 0 // wrapped amount in was not specified
-            ) {
-                // The token is an ERC4626 and has a buffer initialized within the Vault. Additionally, since the
-                // sender did not specify an input amount for the wrapped token, the function will wrap the underlying
-                // asset and use the resulting wrapped tokens to add liquidity to the pool.
-                uint256 wrappedAmount = _wrapAndUpdateTokenInAmounts(IERC4626(poolToken), sender, wethIsEth);
-                poolAmountsIn[j] = wrappedAmount;
-            } else {
-                poolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(poolToken);
-                // This operation does not support adding liquidity multiple times to the same token. So, we set
-                // the amount in of the child pool token to 0. If the same token appears more times, the amount in
-                // will be 0 for any other pool.
-                _currentSwapTokenInAmounts().tSet(poolToken, 0);
+                amountsIn[i] = _wrapAndUpdateTokenInAmounts(IERC4626(childToken), params.sender, params.wethIsEth);
+            } else if (_settledTokenAmounts().tGet(childToken) == 0) {
+                amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
+                _settledTokenAmounts().tSet(childToken, amountsIn[i]);
             }
 
-            if (poolAmountsIn[j] > 0) {
-                amountsEmpty = false;
+            if (amountsIn[i] > 0) {
+                allAmountsEmpty = false;
             }
         }
     }
@@ -628,8 +592,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         if (isStaticCall == false) {
             // Take the underlying token amount, required to wrap, in advance.
             _takeTokenIn(sender, IERC20(underlyingToken), underlyingAmountIn, wethIsEth);
-            // Since the wrap operation was paid in advance, set the underlying as settled.
-            _settledTokenAmounts().tSet(underlyingToken, underlyingAmountIn);
         }
 
         (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
@@ -642,9 +604,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        // Remove the underlying amount from `_currentSwapTokenInAmounts` and add the wrapped amount.
+        _currentSwapTokensIn().remove(underlyingToken);
         _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
-        _currentSwapTokenInAmounts().tSet(address(wrappedToken), wrappedAmountOut);
 
         // Updates the reserves of the vault with the wrappedToken amount.
         _vault.settle(IERC20(address(wrappedToken)), wrappedAmountOut);
