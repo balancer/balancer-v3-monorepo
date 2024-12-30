@@ -19,6 +19,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { ProtocolFeePercentagesProvider } from "../../contracts/ProtocolFeePercentagesProvider.sol";
 import { BalancerContractRegistry } from "../../contracts/BalancerContractRegistry.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -42,7 +43,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         trustedContractRegistry = new BalancerContractRegistry(vault);
         percentagesProvider = new ProtocolFeePercentagesProvider(vault, feeController, trustedContractRegistry);
 
-        // Mark the factoryMock as trusted, so that operations on it won't fail.
+        // Mark the poolFactory as trusted, so that operations on it won't fail.
         authorizer.grantRole(
             trustedContractRegistry.getActionId(BalancerContractRegistry.registerBalancerContract.selector),
             admin
@@ -52,11 +53,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
             admin
         );
         vm.prank(admin);
-        trustedContractRegistry.registerBalancerContract(
-            ContractType.POOL_FACTORY,
-            "MockFactory",
-            address(factoryMock)
-        );
+        trustedContractRegistry.registerBalancerContract(ContractType.POOL_FACTORY, "MockFactory", poolFactory);
 
         percentagesProviderAuth = IAuthentication(address(percentagesProvider));
         feeControllerAuth = IAuthentication(address(feeController));
@@ -94,7 +91,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
     function testSetFactorySpecificProtocolFeePercentageNoPermission() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             maxSwapFeePercentage,
             maxYieldFeePercentage
         );
@@ -115,17 +112,15 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         _grantPermissions();
 
         // Cause `isPoolFromFactory` to return "true" for address(0).
-        factoryMock.manualSetPoolFromFactory(address(0));
+        PoolFactoryMock(poolFactory).manualSetPoolFromFactory(address(0));
 
         vm.prank(admin);
-        trustedContractRegistry.deprecateBalancerContract(address(factoryMock));
+        trustedContractRegistry.deprecateBalancerContract(poolFactory);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IProtocolFeePercentagesProvider.UnknownFactory.selector, address(factoryMock))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeePercentagesProvider.UnknownFactory.selector, poolFactory));
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             maxSwapFeePercentage,
             maxYieldFeePercentage
         );
@@ -137,7 +132,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         vm.expectRevert(IProtocolFeeController.ProtocolSwapFeePercentageTooHigh.selector);
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             maxSwapFeePercentage + 1,
             maxYieldFeePercentage
         );
@@ -149,7 +144,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             1e16 + 234234234,
             maxYieldFeePercentage
         );
@@ -161,7 +156,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         vm.expectRevert(IProtocolFeeController.ProtocolYieldFeePercentageTooHigh.selector);
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             maxSwapFeePercentage,
             maxYieldFeePercentage + 1
         );
@@ -173,7 +168,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         vm.expectRevert(IProtocolFeeController.ProtocolYieldFeePercentageTooHigh.selector);
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             1e16 + 234234234,
             maxYieldFeePercentage + 1
         );
@@ -187,20 +182,20 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
 
         vm.expectEmit();
         emit IProtocolFeePercentagesProvider.FactorySpecificProtocolFeePercentagesSet(
-            address(factoryMock),
+            poolFactory,
             maxSwapFeePercentage,
             yieldFeePercentage
         );
 
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             maxSwapFeePercentage,
             yieldFeePercentage
         );
 
         (uint256 actualSwapFeePercentage, uint256 actualYieldFeePercentage) = percentagesProvider
-            .getFactorySpecificProtocolFeePercentages(address(factoryMock));
+            .getFactorySpecificProtocolFeePercentages(poolFactory);
         assertEq(actualSwapFeePercentage, maxSwapFeePercentage, "Wrong factory swap fee percentage");
         assertEq(actualYieldFeePercentage, yieldFeePercentage, "Wrong factory swap fee percentage");
     }
@@ -217,7 +212,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
 
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             maxSwapFeePercentage,
             maxYieldFeePercentage
         );
@@ -230,11 +225,11 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IProtocolFeePercentagesProvider.PoolNotFromFactory.selector,
                 INVALID_ADDRESS,
-                address(factoryMock)
+                poolFactory
             )
         );
 
-        percentagesProvider.setProtocolFeePercentagesForPools(address(factoryMock), pools);
+        percentagesProvider.setProtocolFeePercentagesForPools(poolFactory, pools);
     }
 
     function testSetProtocolFeePercentagesForPools() public {
@@ -246,7 +241,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
 
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            address(factoryMock),
+            poolFactory,
             expectedSwapFeePercentage,
             expectedYieldFeePercentage
         );
@@ -258,7 +253,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         assertEq(originalYieldFeePercentage, 0, "Non-zero original yield fee percentage");
 
         // Permissionless call to set fee percentages by factory.
-        percentagesProvider.setProtocolFeePercentagesForPools(address(factoryMock), pools);
+        percentagesProvider.setProtocolFeePercentagesForPools(poolFactory, pools);
 
         (uint256 currentSwapFeePercentage, uint256 currentYieldFeePercentage) = IPoolInfo(pool)
             .getAggregateFeePercentages();
