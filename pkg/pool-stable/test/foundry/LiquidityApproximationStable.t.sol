@@ -22,7 +22,10 @@ import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer
 contract LiquidityApproximationStableTest is LiquidityApproximationTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
 
+    string private constant POOL_VERSION = "Pool V1";
     uint256 private constant DEFAULT_AMP_FACTOR = 200;
+
+    uint256 private poolCreationNonce;
 
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();

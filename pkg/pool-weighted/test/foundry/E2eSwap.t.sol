@@ -189,9 +189,9 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
                 WeightedPool.NewPoolParams({
                     name: name,
                     symbol: symbol,
-                    numTokens: 2,
+                    numTokens: tokens.length,
                     normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                    version: poolVersion
+                    version: POOL_VERSION
                 }),
                 vault
             )
