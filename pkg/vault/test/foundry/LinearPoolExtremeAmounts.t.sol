@@ -7,6 +7,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 
 contract LinearPoolExtremeAmountsTest is BaseExtremeAmountsTest {
@@ -26,7 +27,12 @@ contract LinearPoolExtremeAmountsTest is BaseExtremeAmountsTest {
         newPool = address(new PoolMock(IVault(address(vault)), name, symbol));
         vm.label(newPool, label);
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), address(0), lp);
+        PoolFactoryMock(poolFactory).registerTestPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            address(0),
+            lp
+        );
 
         poolArgs = abi.encode(vault, name, symbol);
     }

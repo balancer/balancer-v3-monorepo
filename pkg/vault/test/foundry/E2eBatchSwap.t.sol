@@ -78,7 +78,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         (poolB, ) = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
         _initPool(poolB, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         // Create poolC.
-        (poolC, ) = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
+        (poolC, ) = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "poolC");
         _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
 

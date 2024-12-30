@@ -18,7 +18,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract HooksAlteringRatesTest is BaseVaultTest {
     using CastingHelpers for address[];
@@ -54,7 +54,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
         vm.label(newPool, "pool");
 
-        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
+        PoolFactoryMock(poolFactory).registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
 
         poolArgs = abi.encode(vault, name, symbol);
     }
@@ -102,7 +102,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         PoolMock newPool = deployPoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
+        PoolFactoryMock(poolFactory).registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
         HooksConfig memory config = vault.getHooksConfig(address(newPool));
         config.shouldCallBeforeInitialize = true;
