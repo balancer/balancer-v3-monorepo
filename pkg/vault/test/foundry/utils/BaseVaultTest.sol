@@ -81,18 +81,18 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     // Default amount to use in tests for user operations.
     uint256 internal constant DEFAULT_AMOUNT = 1e3 * 1e18;
     // Default amount round down.
-    uint256 internal DEFAULT_AMOUNT_ROUND_DOWN = DEFAULT_AMOUNT - 2;
+    uint256 internal constant DEFAULT_AMOUNT_ROUND_DOWN = DEFAULT_AMOUNT - 2;
     // Default amount of BPT to use in tests for user operations.
-    uint256 internal DEFAULT_BPT_AMOUNT = 2e3 * 1e18;
+    uint256 internal constant DEFAULT_BPT_AMOUNT = 2e3 * 1e18;
     // Default amount of BPT round down.
-    uint256 internal DEFAULT_BPT_AMOUNT_ROUND_DOWN = DEFAULT_BPT_AMOUNT - 2;
+    uint256 internal constant DEFAULT_BPT_AMOUNT_ROUND_DOWN = DEFAULT_BPT_AMOUNT - 2;
     // Default rate for the rate provider mock.
-    uint256 internal DEFAULT_MOCK_RATE = 2e18;
+    uint256 internal constant DEFAULT_MOCK_RATE = 2e18;
 
     // Default swap fee percentage.
-    uint256 internal DEFAULT_SWAP_FEE_PERCENTAGE = 1e16; // 1%
+    uint256 internal constant DEFAULT_SWAP_FEE_PERCENTAGE = 1e16; // 1%
     // Default protocol swap fee percentage.
-    uint64 internal DEFAULT_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+    uint64 internal constant DEFAULT_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Main contract mocks.
     IVaultMock internal vault;
