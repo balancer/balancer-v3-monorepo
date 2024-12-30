@@ -166,14 +166,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
         (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
-        // If EXACT_IN, round invariant down to give less tokens to the user. If EXACT_OUT, round invariant up to
-        // charge more tokens from the user.
-        uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(
-            balances,
-            sqrtAlpha,
-            sqrtBeta,
-            kind == SwapKind.EXACT_IN ? Rounding.ROUND_DOWN : Rounding.ROUND_UP
-        );
+        uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(balances, sqrtAlpha, sqrtBeta, Rounding.ROUND_DOWN);
 
         // virtualBalanceIn is always rounded up, because:
         // * If swap is EXACT_IN: a bigger virtualBalanceIn leads to a lower amount out;
