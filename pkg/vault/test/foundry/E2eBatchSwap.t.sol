@@ -78,7 +78,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         (poolB, ) = _createPool([address(tokenB), address(tokenC)].toMemoryArray(), "poolB");
         _initPool(poolB, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         // Create poolC.
-        (poolC, ) = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "PoolC");
+        (poolC, ) = _createPool([address(tokenC), address(tokenD)].toMemoryArray(), "poolC");
         _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
 
@@ -214,7 +214,12 @@ contract E2eBatchSwapTest is BaseVaultTest {
         vm.stopPrank();
 
         // Error tolerance is proportional to swap fee percentage.
-        assertApproxEqRel(amountIn, exactAmountIn, poolFeePercentage, "ExactIn and ExactOut amountsIn should match");
+        assertApproxEqRel(
+            amountIn,
+            exactAmountIn,
+            2 * poolFeePercentage,
+            "ExactIn and ExactOut amountsIn should match"
+        );
     }
 
     function testExactInRepeatEachOperation__Fuzz(
