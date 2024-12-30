@@ -16,29 +16,27 @@ import { StablePool } from "../../contracts/StablePool.sol";
 import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
 contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest, StablePoolContractsDeployer {
+    string internal constant POOL_VERSION = "Pool v1";
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
+
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC4626 Stable Pool";
         string memory symbol = "STABLE";
-        string memory poolVersion = "Pool v1";
 
         // Gets the tokenConfig from BaseERC4626BufferTest (it means, waDAI and waUSDC with rate providers).
         TokenConfig[] memory tokenConfig = getTokenConfig();
 
-        StablePoolFactory factory = deployStablePoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = factory.create(
+        newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
             tokenConfig,
@@ -63,7 +61,7 @@ contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest, StablePoolContractsDe
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

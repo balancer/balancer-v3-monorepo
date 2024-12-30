@@ -129,7 +129,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
 
             // Edge case check. Should never happen except for insane tokens. If this is hit, actually adding the
             // tokens would lead to a revert or (if it went through) a deadlock downstream, so we catch it here.
-            require(invariant.x < GyroECLPMath._MAX_INVARIANT, GyroECLPMath.MaxInvariantExceeded());
+            require(invariant.x <= GyroECLPMath._MAX_INVARIANT, GyroECLPMath.MaxInvariantExceeded());
         }
 
         if (tokenInIndex == 0) {

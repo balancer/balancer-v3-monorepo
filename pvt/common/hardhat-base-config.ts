@@ -23,9 +23,25 @@ const viaIR = !(process.env.COVERAGE === 'true' ? true : false);
 const optimizerSteps =
   'dhfoDgvulfnTUtnIf [ xa[r]EscLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LSsTFOtfDnca[r]Iulc ] jmul[jul] VcTOcul jmul : fDnTOcmu';
 
-export const compilers: [SolcConfig] = [
+export const compilers: SolcConfig[] = [
   {
     version: '0.8.26',
+    settings: {
+      viaIR,
+      evmVersion: 'cancun',
+      optimizer: {
+        enabled: true,
+        runs: 9999,
+        details: {
+          yulDetails: {
+            optimizerSteps,
+          },
+        },
+      },
+    },
+  },
+  {
+    version: '0.8.27',
     settings: {
       viaIR,
       evmVersion: 'cancun',
@@ -51,14 +67,21 @@ type ContractSettings = Record<
   }
 >;
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
+const COMPILER_0_8_26 = compilers.find((compiler) => compiler.version === '0.8.26')!;
+const COMPILER_0_8_27 = compilers.find((compiler) => compiler.version === '0.8.27')!;
+
+/* eslint-enable @typescript-eslint/no-non-null-assertion */
+
 const contractSettings: ContractSettings = {
   '@balancer-labs/v3-vault/contracts': {
-    version: compilers[0].version,
-    runs: compilers[0].settings.optimizer.runs,
+    version: COMPILER_0_8_26.version,
+    runs: COMPILER_0_8_26.settings.optimizer.runs,
     viaIR,
   },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
-    version: '0.8.26',
+    version: COMPILER_0_8_26.version,
     runs: 500,
     viaIR,
   },
@@ -78,13 +101,18 @@ const contractSettings: ContractSettings = {
     viaIR,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
-    version: '0.8.26',
+    version: COMPILER_0_8_26.version,
     runs: 500,
     viaIR,
   },
   '@balancer-labs/v3-vault/contracts/VaultExplorer.sol': {
-    version: '0.8.24',
-    runs: 9999,
+    version: COMPILER_0_8_27.version,
+    runs: COMPILER_0_8_27.settings.optimizer.runs,
+    viaIR,
+  },
+  '@balancer-labs/v3-pool-gyro/contracts': {
+    version: COMPILER_0_8_27.version,
+    runs: COMPILER_0_8_27.settings.optimizer.runs,
     viaIR,
   },
 };

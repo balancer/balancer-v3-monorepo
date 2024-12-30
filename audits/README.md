@@ -11,7 +11,7 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | Scope                             | Firm          | Report                                               |
 | --------------------------------- | ------------- | ---------------------------------------------------- |
 | Vault, Weighted Pool, Stable Pool | Certora       | [`2024-09-04`](./certora/2024-09-04.pdf)             |
-| Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2024-10-08`](./trail-of-bits/2024-10-08.pdf)       |
+| Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2024-12-11`](./trail-of-bits/2024-12-11.pdf)       |
 | Vault, Weighted Pool, Stable Pool | Spearbit*     | [`2024-10-04`](./spearbit/2024-10-04.pdf)            |
 
 ## Addenda
