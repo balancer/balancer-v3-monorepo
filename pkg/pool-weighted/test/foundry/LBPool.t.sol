@@ -41,6 +41,9 @@ contract LBPoolTest is BasePoolTest {
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
+    string constant factoryVersion = "Factory v1";
+    string constant poolVersion = "Pool v1";
+
     uint256[] internal weights;
 
     uint256 internal daiIdx;
@@ -59,6 +62,19 @@ contract LBPoolTest is BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
+    function createPoolFactory() internal override returns (address) {
+        LBPoolFactory factory = new LBPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            factoryVersion,
+            poolVersion,
+            address(router)
+        );
+        vm.label(address(factory), "LBPoolFactory");
+
+        return address(factory);
+    }
+
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
@@ -68,13 +84,10 @@ contract LBPoolTest is BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        string memory poolVersion = "Pool v1";
-
-        factory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion, address(router));
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        // Allow pools created by `poolFactory` to use poolHooksMock hooks
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
         string memory name = "LB Pool";
         string memory symbol = "LB_POOL";
@@ -93,7 +106,7 @@ contract LBPoolTest is BasePoolTest {
             address(router)
         );
 
-        newPool = LBPoolFactory(address(factory)).create(
+        newPool = LBPoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(sortedTokens),
@@ -111,7 +124,7 @@ contract LBPoolTest is BasePoolTest {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             // Tokens are transferred from bob (lp/owner)
             assertEq(
-                defaultBalance - poolTokens[i].balanceOf(bob),
+                defaultAccountBalance() - poolTokens[i].balanceOf(bob),
                 tokenAmounts[i],
                 string.concat("LP: Wrong balance for ", Strings.toString(i))
             );
@@ -159,7 +172,7 @@ contract LBPoolTest is BasePoolTest {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             // Tokens are transferred from Bob
             assertEq(
-                defaultBalance - poolTokens[i].balanceOf(bob),
+                defaultAccountBalance() - poolTokens[i].balanceOf(bob),
                 tokenAmounts[i] * 2, // x2 because bob (as owner) did init join and subsequent join
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
             );
@@ -232,7 +245,7 @@ contract LBPoolTest is BasePoolTest {
             // Tokens are transferred to Bob
             assertApproxEqAbs(
                 poolTokens[i].balanceOf(bob) + TOKEN_AMOUNT, //add TOKEN_AMOUNT to account for init join
-                defaultBalance,
+                defaultAccountBalance(),
                 DELTA,
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
             );
@@ -523,7 +536,7 @@ contract LBPoolTest is BasePoolTest {
         // Attempt to create a pool with 1 token
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        LBPoolFactory(address(factory)).create(
+        LBPoolFactory(poolFactory).create(
             "Invalid Pool 1",
             "IP1",
             tokenConfig1,
@@ -537,7 +550,7 @@ contract LBPoolTest is BasePoolTest {
         // Attempt to create a pool with 3 tokens
         // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        LBPoolFactory(address(factory)).create(
+        LBPoolFactory(poolFactory).create(
             "Invalid Pool 3",
             "IP3",
             tokenConfig3,
@@ -553,7 +566,7 @@ contract LBPoolTest is BasePoolTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(poolTokens);
 
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        LBPoolFactory(address(factory)).create(
+        LBPoolFactory(poolFactory).create(
             "Mismatched Pool",
             "MP",
             tokenConfig,
@@ -567,7 +580,7 @@ contract LBPoolTest is BasePoolTest {
 
     function testInitializedWithSwapsDisabled() public {
         LBPool swapsDisabledPool = LBPool(
-            LBPoolFactory(address(factory)).create(
+            LBPoolFactory(poolFactory).create(
                 "Swaps Disabled Pool",
                 "SDP",
                 vault.buildTokenConfig(poolTokens),
