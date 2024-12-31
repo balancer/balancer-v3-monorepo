@@ -18,7 +18,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
-import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     using SafeERC20 for IERC20;
@@ -903,7 +903,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         PoolMock newPool = deployPoolMock(IVault(address(vault)), "Yield-Bearing Pool", "YBPOOL");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
+        PoolFactoryMock(poolFactory).registerTestPool(address(newPool), tokenConfig, poolHooksContract);
 
         vm.label(address(newPool), "yield-bearing pool");
         yieldBearingPool = address(newPool);

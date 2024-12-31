@@ -30,6 +30,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
+    string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
@@ -42,12 +43,13 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         poolMaxSwapFeePercentage = 10e16;
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
-        string memory poolVersion = "Pool v1";
-
-        factory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
 
         TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
@@ -62,9 +64,9 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
 
         PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = StablePoolFactory(address(factory)).create(
+        newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
             tokenConfigs,
@@ -83,7 +85,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

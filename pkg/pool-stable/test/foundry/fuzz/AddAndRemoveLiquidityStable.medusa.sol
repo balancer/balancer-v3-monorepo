@@ -26,10 +26,7 @@ contract AddAndRemoveLiquidityStableMedusaTest is AddAndRemoveLiquidityMedusaTes
         maxRateTolerance = 0;
     }
 
-    function createPool(
-        IERC20[] memory tokens,
-        uint256[] memory initialBalances
-    ) internal override returns (address newPool) {
+    function createPool(IERC20[] memory tokens, uint256[] memory initialBalances) internal override returns (address) {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
