@@ -18,7 +18,7 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 import { StablePool } from "./StablePool.sol";
 
 /**
- * @notice General Stable Pool factory
+ * @notice General Stable Pool factory.
  * @dev This is the most general factory, which allows up to `StableMath.MAX_STABLE_TOKENS` (5) tokens.
  * Since this limit is less than Vault's maximum of 8 tokens, we need to enforce this at the factory level.
  */

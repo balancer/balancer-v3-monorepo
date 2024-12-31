@@ -22,19 +22,17 @@ contract WeightedPoolExtremeAmountsTest is BaseExtremeAmountsTest {
         BaseExtremeAmountsTest.setUp();
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1"));
+    }
+
     function _createPool(
         address[] memory tokens,
         string memory label
     ) internal override returns (address newPool, bytes memory poolArgs) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            "Weighted Pool v1"
-        );
         PoolRoleAccounts memory roleAccounts;
 
-        newPool = factory.create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             "50/50 Weighted Pool",
             "50_50WP",
             vault.buildTokenConfig(tokens.asIERC20()),

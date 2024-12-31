@@ -712,6 +712,21 @@ contract VaultMock is IVaultMainMock, Vault {
         return _sessionIdSlot().tload();
     }
 
+    function manualComputeAmountGivenScaled18(
+        VaultSwapParams memory vaultSwapParams,
+        PoolData memory poolData,
+        SwapState memory swapState
+    ) public pure returns (uint256) {
+        return _computeAmountGivenScaled18(vaultSwapParams, poolData, swapState);
+    }
+
+    function manualLoadSwapState(
+        VaultSwapParams memory vaultSwapParams,
+        PoolData memory poolData
+    ) public pure returns (SwapState memory swapState) {
+        return _loadSwapState(vaultSwapParams, poolData);
+    }
+
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.enableAddLiquidityCustom = true;

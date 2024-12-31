@@ -17,6 +17,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -30,7 +31,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
-        defaultBalance = 1e10 * 1e18;
+        setDefaultAccountBalance(1e10 * 1e18);
+
         // We will use min trade amount in this test.
         vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
 
@@ -68,7 +70,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         liquidityManagement.enableAddLiquidityCustom = true;
         liquidityManagement.enableRemoveLiquidityCustom = true;
 
-        factoryMock.registerPool(
+        PoolFactoryMock(poolFactory).registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,

@@ -1,4 +1,5 @@
 import { HardhatUserConfig } from 'hardhat/config';
+import { name } from './package.json';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
 
@@ -14,6 +15,7 @@ import { warnings } from '@balancer-labs/v3-common/hardhat-base-config';
 const config: HardhatUserConfig = {
   solidity: {
     compilers: hardhatBaseConfig.compilers,
+    overrides: { ...hardhatBaseConfig.overrides(name) },
   },
   warnings,
 };

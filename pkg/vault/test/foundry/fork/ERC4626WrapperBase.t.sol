@@ -13,6 +13,10 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
+/**
+ * @dev Do not extend this test. To test new wrappers, go to the repo
+ * https://github.com/balancer/balancer-v3-erc4626-tests
+ */
 abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
@@ -339,7 +343,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         assertLe(wrappedRemoved, wrappedDeposited, "User received more than they added");
     }
 
-    function testPreviewDepositRounding__Fuzz__Fork(uint256 amount) public view {
+    function testPreviewDepositRounding__Fork__Fuzz(uint256 amount) public view {
         amount = bound(amount, 1, 100_000_000e18);
         uint256 previewRoundDown = wrapper.previewDeposit(amount - 1);
         vm.assume(previewRoundDown > 0);
@@ -348,14 +352,14 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         assertLe(previewRoundDown, preview, "Preview round down does not match expectations");
     }
 
-    function testPreviewMintRounding__Fuzz__Fork(uint256 amount) public view {
+    function testPreviewMintRounding__Fork__Fuzz(uint256 amount) public view {
         amount = bound(amount, 0, 100_000_000e18);
         uint256 previewRoundUp = wrapper.previewMint(amount + 1) + 1;
         uint256 preview = wrapper.previewMint(amount);
         assertGe(previewRoundUp, preview, "Preview round up does not match expectations");
     }
 
-    function testPreviewRedeemRounding__Fuzz__Fork(uint256 amount) public view {
+    function testPreviewRedeemRounding__Fork__Fuzz(uint256 amount) public view {
         amount = bound(amount, 1, 100_000_000e18);
         uint256 previewRoundDown = wrapper.previewRedeem(amount - 1);
         vm.assume(previewRoundDown > 0);
@@ -364,7 +368,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
         assertLe(previewRoundDown, preview, "Preview round down does not match expectations");
     }
 
-    function testPreviewWithdrawRounding__Fuzz__Fork(uint256 amount) public view {
+    function testPreviewWithdrawRounding__Fork__Fuzz(uint256 amount) public view {
         amount = bound(amount, 0, 100_000_000e18);
         uint256 previewRoundUp = wrapper.previewWithdraw(amount + 1) + 1;
         uint256 preview = wrapper.previewWithdraw(amount);

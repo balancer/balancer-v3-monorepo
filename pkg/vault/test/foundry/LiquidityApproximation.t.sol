@@ -89,7 +89,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     function setUp() public virtual override {
         poolInitAmount = 1e9 * 1e18;
-        defaultBalance = 1e10 * 1e18;
+        setDefaultAccountBalance(1e10 * 1e18);
+
         BaseVaultTest.setUp();
 
         approveForPool(IERC20(liquidityPool));
@@ -226,7 +227,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
-        if (usdc.balanceOf(alice) <= defaultBalance) {
+        if (usdc.balanceOf(alice) <= defaultAccountBalance()) {
             // No amount out (trade too small, rounding ate the difference).
             // Dai balances are the same, so we just check that the USDC balances are better for Bob (direct swap).
             // There's no point in continuing the test in this case.
@@ -234,8 +235,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
             return;
         }
 
-        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
-        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
+        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultAccountBalance();
+        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultAccountBalance();
         uint256 bobToAliceRatio = bobAmountOut.divDown(aliceAmountOut);
 
         // Early returns:
@@ -267,7 +268,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
-        if (usdc.balanceOf(alice) <= defaultBalance) {
+        if (usdc.balanceOf(alice) <= defaultAccountBalance()) {
             // No amount out (trade too small, rounding ate the difference).
             // Dai balances are the same, so we just check that the USDC balances are better for Bob (direct swap).
             // There's no point in continuing the test in this case.
@@ -275,8 +276,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
             return;
         }
 
-        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultBalance;
-        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
+        uint256 aliceAmountOut = usdc.balanceOf(alice) - defaultAccountBalance();
+        uint256 bobAmountOut = usdc.balanceOf(bob) - defaultAccountBalance();
         uint256 bobToAliceRatio = bobAmountOut.divDown(aliceAmountOut);
 
         uint256 liquidityTaxPercentage = liquidityPercentageDelta.mulDown(swapFeePercentage);
@@ -416,7 +417,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            defaultBalance - dai.balanceOf(alice),
+            defaultAccountBalance() - dai.balanceOf(alice),
             0,
             MAX_UINT256,
             false,
@@ -465,7 +466,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            defaultBalance - dai.balanceOf(alice),
+            defaultAccountBalance() - dai.balanceOf(alice),
             0,
             MAX_UINT256,
             false,
@@ -517,7 +518,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            defaultBalance - dai.balanceOf(alice),
+            defaultAccountBalance() - dai.balanceOf(alice),
             0,
             MAX_UINT256,
             false,
@@ -533,9 +534,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
-        // Add liquidity so we have something to remove.
         uint256 currentTotalSupply = IERC20(liquidityPool).totalSupply();
-        vm.prank(alice);
+        vm.startPrank(alice);
+        // Add liquidity so we have something to remove.
         router.addLiquidityProportional(
             address(liquidityPool),
             [MAX_UINT128, MAX_UINT128].toMemoryArray(),
@@ -544,7 +545,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactOut(
             address(liquidityPool),
             IERC20(liquidityPool).balanceOf(alice),
@@ -571,7 +571,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(swapPool),
             dai,
             usdc,
-            defaultBalance - dai.balanceOf(alice),
+            defaultAccountBalance() - dai.balanceOf(alice),
             0,
             MAX_UINT256,
             false,
