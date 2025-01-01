@@ -23,6 +23,8 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
     using CastingHelpers for address[];
 
     uint256 poolCreationNonce;
+
+    string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
 
     function setUp() public virtual override {
@@ -42,26 +44,24 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
         maxSwapFeePercentage = IBasePool(swapPool).getMaximumSwapFeePercentage();
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     function _createPool(
         address[] memory tokens,
         string memory label
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "Stable Pool";
         string memory symbol = "STABLE";
-        string memory poolVersion = "Pool v1";
 
-        StablePoolFactory factory = deployStablePoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use PoolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = factory.create(
+        bytes32 salt = keccak256(abi.encodePacked(poolCreationNonce++));
+        newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -71,7 +71,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
+            salt
         );
         vm.label(newPool, label);
 
@@ -80,7 +80,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest, StableP
                 name: name,
                 symbol: symbol,
                 amplificationParameter: DEFAULT_AMP_FACTOR,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );
