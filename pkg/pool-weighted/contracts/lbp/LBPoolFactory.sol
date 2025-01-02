@@ -99,6 +99,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
      * Use this method in case pool initialization frontrunning is an issue.
      * If the owner is the only address with liquidity of one of the tokens, this should not be necessary.
      * This method does not support native ETH management; WETH needs to be used instead.
+
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokenConfig An array of descriptors for the tokenConfig the pool will manage

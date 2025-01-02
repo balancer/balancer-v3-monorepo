@@ -47,6 +47,11 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     // originating account on operations. This is important for liquidity operations, as these are permissioned
     // operations that can only be performed by the owner of the pool. Without this check, a malicious router
     // could spoof the address of the owner, allowing anyone to call permissioned functions.
+    //
+    // Since the initialization mechanism does not allow verification of the router, it is technically possible
+    // to front-run `initialize`. This should not be a concern in the typical LBP use case of a new token launch,
+    // where there is no existing liquidity. In the unlikely event it is a concern, `LBPoolFactory` provides the
+    // `createAndInitialize` function, which does both operations in a single step.
 
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _trustedRouter;
