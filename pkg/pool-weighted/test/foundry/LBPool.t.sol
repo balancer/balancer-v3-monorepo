@@ -227,9 +227,6 @@ contract LBPoolTest is BasePoolTest {
             minAmountsOut[i] = less(tokenAmounts[i], 1e4);
         }
 
-        // Prevent roundtrip fee
-        vault.manualSetAddLiquidityCalledFlag(pool, false);
-
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             pool,
             bptAmountIn,
@@ -245,7 +242,7 @@ contract LBPoolTest is BasePoolTest {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             // Tokens are transferred to Bob
             assertApproxEqAbs(
-                poolTokens[i].balanceOf(bob) + TOKEN_AMOUNT, //add TOKEN_AMOUNT to account for init join
+                poolTokens[i].balanceOf(bob) + TOKEN_AMOUNT, // add TOKEN_AMOUNT to account for init join
                 defaultAccountBalance(),
                 DELTA,
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
@@ -535,8 +532,7 @@ contract LBPoolTest is BasePoolTest {
         TokenConfig[] memory tokenConfig3 = vault.buildTokenConfig(sortedTokens3);
 
         // Attempt to create a pool with 1 token
-        // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
         LBPoolFactory(poolFactory).create(
             "Invalid Pool 1",
             "IP1",
@@ -549,8 +545,7 @@ contract LBPoolTest is BasePoolTest {
         );
 
         // Attempt to create a pool with 3 tokens
-        // Doesn't throw InputHelpers.InputLengthMismatch.selector b/c create3 intercepts error
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
         LBPoolFactory(poolFactory).create(
             "Invalid Pool 3",
             "IP3",
@@ -566,7 +561,7 @@ contract LBPoolTest is BasePoolTest {
     function testMismatchedWeightsAndTokens() public {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(poolTokens);
 
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
         LBPoolFactory(poolFactory).create(
             "Mismatched Pool",
             "MP",
