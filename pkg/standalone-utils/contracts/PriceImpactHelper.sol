@@ -162,7 +162,7 @@ contract PriceImpactHelper is CallAndRevert {
         uint256 tokenIndex,
         int256[] memory deltas,
         address sender
-    ) internal returns (int256 deltaBPT) {
+    ) internal returns (int256) {
         uint256[] memory zerosWithSingleDelta = new uint256[](deltas.length);
         int256 delta = deltas[tokenIndex];
 
@@ -182,21 +182,22 @@ contract PriceImpactHelper is CallAndRevert {
         int256[] memory deltaBPTs,
         address sender
     ) internal returns (uint256) {
-        uint256 minNegativeDeltaIndex = 0;
+        // Index of closest from 0 negative number in deltaBPTs array.
+        uint256 maxNegativeDeltaIndex = 0;
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < deltas.length - 1; i++) {
             // get minPositiveDeltaIndex and maxNegativeDeltaIndex
             uint256 minPositiveDeltaIndex = _minPositiveIndex(deltaBPTs);
-            minNegativeDeltaIndex = _maxNegativeIndex(deltaBPTs);
+            maxNegativeDeltaIndex = _maxNegativeIndex(deltaBPTs);
 
             uint256 givenTokenIndex;
             uint256 resultTokenIndex;
             uint256 resultAmount;
 
-            if (deltaBPTs[minPositiveDeltaIndex] < -deltaBPTs[minNegativeDeltaIndex]) {
+            if (deltaBPTs[minPositiveDeltaIndex] < -deltaBPTs[maxNegativeDeltaIndex]) {
                 givenTokenIndex = minPositiveDeltaIndex;
-                resultTokenIndex = minNegativeDeltaIndex;
+                resultTokenIndex = maxNegativeDeltaIndex;
                 resultAmount = _querySwapSingleTokenExactIn(
                     pool,
                     poolTokens[givenTokenIndex],
@@ -205,7 +206,7 @@ contract PriceImpactHelper is CallAndRevert {
                     sender
                 );
             } else {
-                givenTokenIndex = minNegativeDeltaIndex;
+                givenTokenIndex = maxNegativeDeltaIndex;
                 resultTokenIndex = minPositiveDeltaIndex;
                 resultAmount = _querySwapSingleTokenExactOut(
                     pool,
@@ -228,7 +229,7 @@ contract PriceImpactHelper is CallAndRevert {
             );
         }
 
-        return minNegativeDeltaIndex;
+        return maxNegativeDeltaIndex;
     }
 
     // returns the index of the smallest positive integer in an array - i.e. [3, 2, -2, -3] returns 1
