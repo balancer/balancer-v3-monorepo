@@ -100,6 +100,11 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         _setSwapEnabled(swapEnabledOnStart);
     }
 
+    /// @notice Returns trusted router, which is the gateway to add liquidity to the pool.
+    function getTrustedRouter() external view returns (address) {
+        return _TRUSTED_ROUTER;
+    }
+
     /**
      * @notice Return start time, end time, and endWeights as an array.
      * @dev Current weights should be retrieved via `getNormalizedWeights()`.
@@ -194,12 +199,11 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     function onRegister(
         address,
         address pool,
-        TokenConfig[] memory,
+        TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata
     ) public view override onlyVault returns (bool) {
-        // Since in this case the pool is the hook, we don't need to check anything else.
-        // We *could* check that it's two tokens, but better to let that be caught later, as it will fail with a more
-        // descriptive error.
+        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, tokenConfig.length);
+
         return pool == address(this);
     }
 

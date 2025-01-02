@@ -68,7 +68,8 @@ contract LBPoolTest is BasePoolTest {
             365 days,
             factoryVersion,
             poolVersion,
-            address(router)
+            address(router),
+            permit2
         );
         vm.label(address(factory), "LBPoolFactory");
 
