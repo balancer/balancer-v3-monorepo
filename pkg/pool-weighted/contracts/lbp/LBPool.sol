@@ -49,7 +49,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     // could spoof the address of the owner, allowing anyone to call permissioned functions.
 
     // solhint-disable-next-line var-name-mixedcase
-    address private immutable _TRUSTED_ROUTER;
+    address private immutable _trustedRouter;
 
     PoolState private _poolState;
 
@@ -74,7 +74,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         uint256[] endWeights
     );
 
-    /// @dev Indicates that the router that called the Vault is not trusted, so any operations should revert.
+    /// @dev Indicates that the router that called the Vault is not trusted, so liquidity operations should revert.
     error RouterNotTrusted();
 
     /// @dev Indicates that the `owner` has disabled swaps.
@@ -92,7 +92,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
 
         // Set the trusted router (passed down from the factory).
-        _TRUSTED_ROUTER = trustedRouter;
+        _trustedRouter = trustedRouter;
 
         // solhint-disable-next-line not-rely-on-time
         uint32 currentTime = block.timestamp.toUint32();
@@ -100,9 +100,9 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         _setSwapEnabled(swapEnabledOnStart);
     }
 
-    /// @notice Returns trusted router, which is the gateway to add liquidity to the pool.
+    /// @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
     function getTrustedRouter() external view returns (address) {
-        return _TRUSTED_ROUTER;
+        return _trustedRouter;
     }
 
     /**
@@ -229,7 +229,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault returns (bool) {
-        if (router != _TRUSTED_ROUTER) {
+        if (router != _trustedRouter) {
             revert RouterNotTrusted();
         }
         return IRouterCommon(router).getSender() == owner();
