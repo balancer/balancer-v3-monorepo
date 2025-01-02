@@ -245,6 +245,20 @@ describe('LBPool', function () {
         .reverted;
     });
 
+    it('should not allow endTime before startTime', async () => {
+      const startTime = await time.latest();
+      const endTime = startTime - MONTH;
+
+      // Try to set endTime before startTime
+      await expect(
+        pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.4), fp(0.6)])
+      ).to.be.revertedWithCustomError(pool, 'GradualUpdateTimeTravel');
+
+      // Valid time update
+      await expect(pool.connect(bob).updateWeightsGradually(startTime, startTime + MONTH, [fp(0.01), fp(0.99)])).to.not
+        .be.reverted;
+    });
+
     it('should always sum weights to 1', async () => {
       const currentTime = await time.latest();
       const startTime = currentTime + MINUTE; // Set startTime 1 min in the future
