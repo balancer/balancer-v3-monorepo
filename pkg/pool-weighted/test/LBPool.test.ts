@@ -77,7 +77,7 @@ describe('LBPool', function () {
 
   sharedBeforeEach('create and initialize pool', async () => {
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION, router, permit2],
+      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION, router],
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
