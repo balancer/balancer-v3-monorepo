@@ -43,7 +43,7 @@ contract GradualValueChangeTest is Test {
             "Should return current time for past start time"
         );
 
-        vm.expectRevert(GradualValueChange.GradualUpdateTimeTravel.selector);
+        vm.expectRevert(abi.encodeWithSelector(GradualValueChange.GradualUpdateTimeTravel.selector, futureTime + 200, futureTime + 100));
         mock.resolveStartTime(futureTime + 200, futureTime + 100);
     }
 
