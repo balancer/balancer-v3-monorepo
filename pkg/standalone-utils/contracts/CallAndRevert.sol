@@ -17,7 +17,7 @@ contract CallAndRevert {
         }
     }
 
-    function callAndRevertHook(address target, bytes memory data) external returns (uint256) {
+    function callAndRevertHook(address target, bytes memory data) external {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = (target).call(data);
         if (success) {

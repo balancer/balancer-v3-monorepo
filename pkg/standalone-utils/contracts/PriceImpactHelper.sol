@@ -3,14 +3,18 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { CallAndRevert } from "./CallAndRevert.sol";
 
 contract PriceImpactHelper is CallAndRevert {
     using FixedPoint for uint256;
+    using SafeCast for *;
 
     IVault internal immutable _vault;
     IRouter internal immutable _router;
@@ -35,7 +39,7 @@ contract PriceImpactHelper is CallAndRevert {
         // get deltas between exactAmountsIn and proportionalAmountsOut
         int256[] memory deltas = new int256[](exactAmountsIn.length);
         for (uint256 i = 0; i < exactAmountsIn.length; i++) {
-            deltas[i] = int(proportionalAmountsOut[i]) - int(exactAmountsIn[i]);
+            deltas[i] = proportionalAmountsOut[i].toInt256() - exactAmountsIn[i].toInt256();
         }
 
         // query add liquidity for each delta, so we know how unbalanced each amount in is in terms of BPT
@@ -49,7 +53,7 @@ contract PriceImpactHelper is CallAndRevert {
 
         // calculate price impact ABA with remaining delta and its respective exactAmountIn
         // remaining delta is always negative, so by multiplying by -1 we get a positive number
-        uint256 delta = uint(-deltas[remainingDeltaIndex]);
+        uint256 delta = (-deltas[remainingDeltaIndex]).toUint256();
         return delta.divDown(exactAmountsIn[remainingDeltaIndex]) / 2;
     }
 
@@ -197,7 +201,7 @@ contract PriceImpactHelper is CallAndRevert {
                     pool,
                     poolTokens[givenTokenIndex],
                     poolTokens[resultTokenIndex],
-                    uint(deltas[givenTokenIndex]),
+                    deltas[givenTokenIndex].toUint256(),
                     sender
                 );
             } else {
@@ -207,7 +211,7 @@ contract PriceImpactHelper is CallAndRevert {
                     pool,
                     poolTokens[resultTokenIndex],
                     poolTokens[givenTokenIndex],
-                    uint(-deltas[givenTokenIndex]),
+                    (-deltas[givenTokenIndex]).toUint256(),
                     sender
                 );
             }
@@ -215,7 +219,7 @@ contract PriceImpactHelper is CallAndRevert {
             // Update deltas and deltaBPTs
             deltas[givenTokenIndex] = 0;
             deltaBPTs[givenTokenIndex] = 0;
-            deltas[resultTokenIndex] += int(resultAmount);
+            deltas[resultTokenIndex] += resultAmount.toInt256();
             deltaBPTs[resultTokenIndex] = _queryAddLiquidityUnbalancedForTokenDeltas(
                 pool,
                 resultTokenIndex,
