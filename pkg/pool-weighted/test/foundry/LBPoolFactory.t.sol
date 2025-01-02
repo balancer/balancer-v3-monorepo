@@ -41,6 +41,10 @@ contract LBPoolFactoryTest is BaseVaultTest {
         vm.label(address(lbPoolFactory), "LB pool factory");
     }
 
+    function testGetTrustedRouter() public view {
+        assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
+    }
+
     function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = lbPoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
