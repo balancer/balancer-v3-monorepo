@@ -30,7 +30,14 @@ contract LBPoolFactoryTest is BaseVaultTest {
     function setUp() public override {
         super.setUp();
 
-        lbPoolFactory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion, address(router), permit2);
+        lbPoolFactory = new LBPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Factory v1",
+            poolVersion,
+            address(router),
+            permit2
+        );
         vm.label(address(lbPoolFactory), "LB pool factory");
     }
 
