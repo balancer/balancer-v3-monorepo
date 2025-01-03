@@ -22,6 +22,7 @@ contract E2eBatchSwapWeightedTest is WeightedPoolContractsDeployer, E2eBatchSwap
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
+    string internal constant POOL_VERSION = "Pool v1";
     uint256 internal constant DEFAULT_SWAP_FEE_WEIGHTED = 1e16; // 1%
     uint256 internal poolCreationNonce;
 
@@ -54,6 +55,10 @@ contract E2eBatchSwapWeightedTest is WeightedPoolContractsDeployer, E2eBatchSwap
         maxSwapAmountTokenD = poolInitAmount / 10;
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(
         address[] memory tokens,
@@ -61,17 +66,10 @@ contract E2eBatchSwapWeightedTest is WeightedPoolContractsDeployer, E2eBatchSwap
     ) internal virtual override returns (address newPool, bytes memory poolArgs) {
         string memory name = "50/50 Weighted Pool";
         string memory symbol = "50_50WP";
-        string memory poolVersion = "Pool v1";
 
-        WeightedPoolFactory factory = deployWeightedPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
         PoolRoleAccounts memory roleAccounts;
 
-        newPool = factory.create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -98,7 +96,7 @@ contract E2eBatchSwapWeightedTest is WeightedPoolContractsDeployer, E2eBatchSwap
                 symbol: symbol,
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

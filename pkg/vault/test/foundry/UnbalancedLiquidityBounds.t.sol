@@ -13,6 +13,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolMockFlexibleInvariantRatio } from "../../contracts/test/PoolMockFlexibleInvariantRatio.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
+import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -33,7 +34,12 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         newPool = address(deployPoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
         vm.label(newPool, label);
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
+        PoolFactoryMock(poolFactory).registerTestPool(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            poolHooksContract,
+            lp
+        );
 
         poolArgs = abi.encode(vault, "", "");
     }
@@ -51,7 +57,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         // This will unbalance the pool; adding liquidity will result in different proportions being added on each run.
         vault.manualSetPoolBalances(pool, initialBalances, initialBalances);
 
-        uint256[] memory maxAmountsIn = [defaultBalance, defaultBalance].toMemoryArray();
+        uint256[] memory maxAmountsIn = [defaultAccountBalance(), defaultAccountBalance()].toMemoryArray();
 
         // Strict invariant ratio
         PoolMockFlexibleInvariantRatio(pool).setMinimumInvariantRatio(FixedPoint.ONE);
@@ -91,7 +97,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         // `12 * DEFAULT_AMOUNT`, so the invariant ratio (new / old) will be FP(6).
         uint256 bptAmountOut = DEFAULT_AMOUNT * 10;
         uint256 maxInvariantRatio = FixedPoint.ONE * 2;
-        uint256 maxAmountIn = defaultBalance;
+        uint256 maxAmountIn = defaultAccountBalance();
 
         // Reasonable invariant ratio
         PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);

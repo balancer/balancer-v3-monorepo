@@ -16,7 +16,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract HooksAlteringBalancesTest is BaseVaultTest {
     using CastingHelpers for address[];
@@ -53,7 +53,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         newPool = address(deployPoolMock(IVault(address(vault)), name, symbol));
         vm.label(newPool, "pool");
 
-        factoryMock.registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
+        PoolFactoryMock(poolFactory).registerTestPool(newPool, tokenConfig, poolHooksContract, lp);
 
         poolArgs = abi.encode(vault, name, symbol);
     }

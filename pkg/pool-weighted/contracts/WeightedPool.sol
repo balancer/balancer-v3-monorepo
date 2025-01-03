@@ -52,7 +52,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
 
     // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
     // implementation of the fixed point power function, as these ratios are often exponents.
-    uint256 private constant _MIN_WEIGHT = 1e16; // 1%
+    uint256 internal constant _MIN_WEIGHT = 1e16; // 1%
 
     uint256 private immutable _totalTokens;
 
@@ -147,7 +147,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view virtual onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 

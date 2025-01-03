@@ -21,6 +21,7 @@ import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
+    string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
@@ -40,12 +41,14 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         poolMaxSwapFeePercentage = 10e16;
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
-        string memory poolVersion = "Pool v1";
 
-        factory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion);
         PoolRoleAccounts memory roleAccounts;
 
         uint256 numTokens = vault.getMaximumPoolTokens();
@@ -55,15 +58,15 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         for (uint256 i = 0; i < numTokens; ++i) {
             // Use all 18-decimal tokens, for simplicity.
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, defaultBalance);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(bob, defaultBalance);
+            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, defaultAccountBalance());
+            ERC20TestToken(address(bigPoolTokens[i])).mint(bob, defaultAccountBalance());
             weights[i] = 1e18 / numTokens;
         }
 
         // Allow pools created by `factory` to use PoolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = WeightedPoolFactory(address(factory)).create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(bigPoolTokens),
@@ -84,7 +87,7 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
                 symbol: symbol,
                 numTokens: bigPoolTokens.length,
                 normalizedWeights: weights,
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

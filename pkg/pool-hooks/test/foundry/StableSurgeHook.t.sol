@@ -33,7 +33,6 @@ contract StableSurgeHookTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    StablePoolFactory internal stablePoolFactory;
     StableSurgeHook internal stableSurgeHook;
 
     StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
@@ -44,10 +43,12 @@ contract StableSurgeHookTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function createHook() internal override returns (address) {
-        stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+    function createPoolFactory() internal override returns (address) {
+        return address(new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
+    }
 
-        vm.prank(address(stablePoolFactory));
+    function createHook() internal override returns (address) {
+        vm.prank(poolFactory);
         stableSurgeHook = new StableSurgeHook(
             vault,
             DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
@@ -63,7 +64,7 @@ contract StableSurgeHookTest is BaseVaultTest {
     ) internal override returns (address newPool, bytes memory poolArgs) {
         PoolRoleAccounts memory roleAccounts;
 
-        newPool = stablePoolFactory.create(
+        newPool = StablePoolFactory(poolFactory).create(
             "Stable Pool",
             "STABLEPOOL",
             vault.buildTokenConfig(tokens.asIERC20()),

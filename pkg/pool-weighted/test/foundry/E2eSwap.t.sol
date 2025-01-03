@@ -29,6 +29,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
+    string internal constant POOL_VERSION = "Pool v1";
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
 
     uint256 internal poolCreationNonce;
@@ -276,6 +277,10 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         assertApproxEqRel(amountIn, tokenAAmountIn, 0.00001e16, "Swap fees are not symmetric for ExactIn and ExactOut");
     }
 
+    function createPoolFactory() internal override returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(
         address[] memory tokens,
@@ -283,20 +288,13 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
     ) internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "50/50 Weighted Pool";
         string memory symbol = "50_50WP";
-        string memory poolVersion = "Pool v1";
 
-        WeightedPoolFactory factory = deployWeightedPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            poolVersion
-        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
-        newPool = factory.create(
+        newPool = WeightedPoolFactory(poolFactory).create(
             name,
             symbol,
             vault.buildTokenConfig(tokens.asIERC20()),
@@ -323,7 +321,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
                 symbol: symbol,
                 numTokens: tokens.length,
                 normalizedWeights: [uint256(50e16), uint256(50e16)].toMemoryArray(),
-                version: poolVersion
+                version: POOL_VERSION
             }),
             vault
         );

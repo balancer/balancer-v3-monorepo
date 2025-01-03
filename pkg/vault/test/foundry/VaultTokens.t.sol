@@ -27,8 +27,6 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultTokenTest is BaseVaultTest {
-    PoolFactoryMock poolFactory;
-
     ERC4626TestToken cDAI;
 
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
@@ -43,8 +41,6 @@ contract VaultTokenTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         cDAI = new ERC4626TestToken(dai, "Wrapped cDAI", "cDAI", 18);
-
-        poolFactory = deployPoolFactoryMock(vault, 365 days);
 
         // Allow pools from factory poolFactory to use the hook PoolHooksMock.
         PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));
@@ -150,6 +146,12 @@ contract VaultTokenTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         PoolRoleAccounts memory roleAccounts;
 
-        poolFactory.registerPool(pool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+        PoolFactoryMock(poolFactory).registerPool(
+            pool,
+            tokenConfig,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
     }
 }

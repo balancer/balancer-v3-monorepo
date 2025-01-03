@@ -19,6 +19,8 @@ import { WETHTestToken } from "../../../contracts/test/WETHTestToken.sol";
 abstract contract BaseTest is Test, GasSnapshot {
     using CastingHelpers for *;
 
+    uint256 internal constant DEFAULT_BALANCE = 1e9 * 1e18;
+
     // Reasonable block.timestamp `MAY_1_2023`
     uint32 internal constant START_TIMESTAMP = 1_682_899_200;
 
@@ -68,9 +70,12 @@ abstract contract BaseTest is Test, GasSnapshot {
     // List of all ERC4626 tokens
     IERC4626[] internal erc4626Tokens;
 
-    // Default balance for accounts
-    uint256 internal defaultBalance = 1e9 * 1e18;
+    bool private _initialized;
 
+    // Default balance for accounts
+    uint256 private _defaultAccountBalance = DEFAULT_BALANCE;
+
+    // ------------------------------ Initialization ------------------------------
     function setUp() public virtual {
         // Set timestamp only if testing locally
         if (block.chainid == 31337) {
@@ -78,6 +83,30 @@ abstract contract BaseTest is Test, GasSnapshot {
             vm.warp(START_TIMESTAMP);
         }
 
+        _initTokens();
+        _initAccounts();
+
+        // Must mock rates after giving wrapped tokens to users, but before creating pools and initializing buffers.
+        mockERC4626TokenRates();
+    }
+
+    function setDefaultAccountBalance(uint256 balance) internal {
+        if (isInitialized()) {
+            revert("Cannot change default account balance after initialization");
+        }
+        _defaultAccountBalance = balance;
+    }
+
+    function defaultAccountBalance() internal view returns (uint256) {
+        return _defaultAccountBalance;
+    }
+
+    // @dev Returns whether the test has been initialized.
+    function isInitialized() internal view returns (bool) {
+        return _initialized;
+    }
+
+    function _initTokens() private {
         // Deploy the base test contracts.
         dai = createERC20("DAI", 18);
         // "USDC" is deliberately 18 decimals to test one thing at a time.
@@ -103,7 +132,9 @@ abstract contract BaseTest is Test, GasSnapshot {
         erc4626Tokens.push(waDAI);
         erc4626Tokens.push(waWETH);
         erc4626Tokens.push(waUSDC);
+    }
 
+    function _initAccounts() private {
         // Create users for testing.
         (admin, adminKey) = createUser("admin");
         (lp, lpKey) = createUser("lp");
@@ -114,9 +145,6 @@ abstract contract BaseTest is Test, GasSnapshot {
         (brokeNonPay, brokeUserKey) = makeAddrAndKey("broke");
         broke = payable(brokeNonPay);
         vm.label(broke, "broke");
-
-        // Must mock rates after giving wrapped tokens to users, but before creating pools and initializing buffers.
-        mockERC4626TokenRates();
 
         // Fill the users list
         users.push(admin);
@@ -131,14 +159,16 @@ abstract contract BaseTest is Test, GasSnapshot {
         userKeys.push(brokeUserKey);
     }
 
+    // ------------------------------ Helpers ------------------------------
+
     /**
      * @notice Manipulate rates of ERC4626 tokens.
      * @dev It's important to not have a 1:1 rate when testing ERC4626 tokens, so we can differentiate between
      * wrapped and underlying amounts. For certain tests, we may need to override these rates for simplicity.
      */
     function mockERC4626TokenRates() internal virtual {
-        waDAI.inflateUnderlyingOrWrapped(0, 6 * defaultBalance);
-        waUSDC.inflateUnderlyingOrWrapped(23 * defaultBalance, 0);
+        waDAI.inflateUnderlyingOrWrapped(0, 6 * defaultAccountBalance());
+        waUSDC.inflateUnderlyingOrWrapped(23 * defaultAccountBalance(), 0);
     }
 
     function getSortedIndexes(
@@ -191,27 +221,27 @@ abstract contract BaseTest is Test, GasSnapshot {
     function createUser(string memory name) internal returns (address payable, uint256) {
         (address user, uint256 key) = makeAddrAndKey(name);
         vm.label(user, name);
-        vm.deal(payable(user), defaultBalance);
+        vm.deal(payable(user), defaultAccountBalance());
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            deal(address(tokens[i]), user, defaultBalance);
+            deal(address(tokens[i]), user, defaultAccountBalance());
         }
 
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
             // Give underlying tokens to the user, for depositing in the wrapped token.
             if (erc4626Tokens[i].asset() == address(weth)) {
-                vm.deal(user, user.balance + defaultBalance);
+                vm.deal(user, user.balance + defaultAccountBalance());
 
                 vm.prank(user);
-                weth.deposit{ value: defaultBalance }();
+                weth.deposit{ value: defaultAccountBalance() }();
             } else {
-                ERC20TestToken(erc4626Tokens[i].asset()).mint(user, defaultBalance);
+                ERC20TestToken(erc4626Tokens[i].asset()).mint(user, defaultAccountBalance());
             }
 
             // Deposit underlying to mint wrapped tokens to the user.
             vm.startPrank(user);
-            IERC20(erc4626Tokens[i].asset()).approve(address(erc4626Tokens[i]), defaultBalance);
-            erc4626Tokens[i].deposit(defaultBalance, user);
+            IERC20(erc4626Tokens[i].asset()).approve(address(erc4626Tokens[i]), defaultAccountBalance());
+            erc4626Tokens[i].deposit(defaultAccountBalance(), user);
             vm.stopPrank();
         }
 
