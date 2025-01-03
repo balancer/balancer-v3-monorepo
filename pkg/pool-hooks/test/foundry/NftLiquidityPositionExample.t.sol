@@ -46,46 +46,8 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-<<<<<<< HEAD
         approveNFTRouterForSender();
         approveNFTRouterForPool(IERC20(pool));
-=======
-        vault = deployVaultMock();
-        vm.label(address(vault), "vault");
-        vaultExtension = IVaultExtension(vault.getVaultExtension());
-        vm.label(address(vaultExtension), "vaultExtension");
-        vaultAdmin = IVaultAdmin(vault.getVaultAdmin());
-        vm.label(address(vaultAdmin), "vaultAdmin");
-        authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
-        vm.label(address(authorizer), "authorizer");
-        poolFactory = address(PoolFactoryMock(address(vault.getPoolFactoryMock())));
-        vm.label(address(poolFactory), "factory");
-        router = deployRouterMock(IVault(address(vault)), weth, permit2);
-        vm.label(address(router), "router");
-        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
-        vm.label(address(batchRouter), "batch router");
-        feeController = vault.getProtocolFeeController();
-        vm.label(address(feeController), "fee controller");
-        nftRouter = new NftLiquidityPositionExample(IVault(address(vault)), weth, permit2, "NFT LiquidityPosition v1");
-        vm.label(address(nftRouter), "nftRouter");
-
-        // Here the Router is also the hook.
-        poolHooksContract = address(nftRouter);
-        (pool, ) = createPool();
-
-        // Approve vault allowances.
-        for (uint256 i = 0; i < users.length; ++i) {
-            address user = users[i];
-            vm.startPrank(user);
-            approveForSender();
-            vm.stopPrank();
-        }
-        if (pool != address(0)) {
-            approveForPool(IERC20(pool));
-        }
-        // Add initial liquidity.
-        initPool();
->>>>>>> main
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
