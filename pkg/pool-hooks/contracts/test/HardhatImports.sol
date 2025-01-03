@@ -11,6 +11,7 @@ import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/tes
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 import { BatchRouterMock } from "@balancer-labs/v3-vault/contracts/test/BatchRouterMock.sol";
 import { BufferRouterMock } from "@balancer-labs/v3-vault/contracts/test/BufferRouterMock.sol";
+import { MevRouterMock } from "@balancer-labs/v3-vault/contracts/test/MevRouterMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 

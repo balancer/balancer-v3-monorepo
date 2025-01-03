@@ -10,6 +10,8 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IMevRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IMevRouter.sol";
+import { IMevTaxCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IMevTaxCollector.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { HooksConfigLibMock } from "@balancer-labs/v3-vault/contracts/test/HooksConfigLibMock.sol";
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
@@ -35,6 +37,8 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { RouterCommonMock } from "../../../contracts/test/RouterCommonMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
+import { MevRouterMock } from "../../../contracts/test/MevRouterMock.sol";
+import { MevTaxCollectorMock } from "../../../contracts/test/MevTaxCollectorMock.sol";
 
 /**
  * @notice This contract contains functions for deploying mocks and contracts related to the "Vault".
@@ -284,6 +288,30 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                 );
         } else {
             return new BufferRouterMock(vault, weth, permit2);
+        }
+    }
+
+    function deployMevRouterMock(IVault vault, IWETH weth, IPermit2 permit2) internal returns (MevRouterMock) {
+        IMevTaxCollector collector = new MevTaxCollectorMock();
+
+        IMevRouter.MevRouterParams memory params = IMevRouter.MevRouterParams({
+            mevTaxCollector: collector,
+            mevTaxMultiplier: 9,
+            priorityGasThreshold: 1e18
+        });
+
+        if (reusingArtifacts) {
+            return
+                MevRouterMock(
+                    payable(
+                        deployCode(
+                            _computeVaultTestPath(type(MevRouterMock).name),
+                            abi.encode(vault, weth, permit2, params)
+                        )
+                    )
+                );
+        } else {
+            return new MevRouterMock(vault, weth, permit2, params);
         }
     }
 

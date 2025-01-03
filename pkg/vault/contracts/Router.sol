@@ -13,14 +13,14 @@ import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { RouterCommon } from "./RouterCommon.sol";
+import { RouterSwap } from "./RouterSwap.sol";
 
 /**
  * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
  */
-contract Router is IRouter, RouterCommon {
+contract Router is IRouter, RouterSwap {
     using Address for address payable;
     using SafeCast for *;
 
@@ -29,7 +29,7 @@ contract Router is IRouter, RouterCommon {
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) RouterCommon(vault, weth, permit2, routerVersion) {
+    ) RouterSwap(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -554,124 +554,6 @@ contract Router is IRouter, RouterCommon {
         _returnEth(sender);
     }
 
-    /***************************************************************************
-                                       Swaps
-    ***************************************************************************/
-
-    /// @inheritdoc IRouter
-    function swapSingleTokenExactIn(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        uint256 minAmountOut,
-        uint256 deadline,
-        bool wethIsEth,
-        bytes calldata userData
-    ) external payable saveSender(msg.sender) returns (uint256) {
-        return
-            abi.decode(
-                _vault.unlock(
-                    abi.encodeCall(
-                        Router.swapSingleTokenHook,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountIn,
-                            limit: minAmountOut,
-                            deadline: deadline,
-                            wethIsEth: wethIsEth,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
-    }
-
-    /// @inheritdoc IRouter
-    function swapSingleTokenExactOut(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        uint256 maxAmountIn,
-        uint256 deadline,
-        bool wethIsEth,
-        bytes calldata userData
-    ) external payable saveSender(msg.sender) returns (uint256) {
-        return
-            abi.decode(
-                _vault.unlock(
-                    abi.encodeCall(
-                        Router.swapSingleTokenHook,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_OUT,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountOut,
-                            limit: maxAmountIn,
-                            deadline: deadline,
-                            wethIsEth: wethIsEth,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
-    }
-
-    /**
-     * @notice Hook for swaps.
-     * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouter for struct definition)
-     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
-     */
-    function swapSingleTokenHook(
-        SwapSingleTokenHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
-
-        IERC20 tokenIn = params.tokenIn;
-
-        _takeTokenIn(params.sender, tokenIn, amountIn, params.wethIsEth);
-        _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
-
-        if (tokenIn == _weth) {
-            // Return the rest of ETH to sender
-            _returnEth(params.sender);
-        }
-
-        return amountCalculated;
-    }
-
-    function _swapHook(
-        SwapSingleTokenHookParams calldata params
-    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > params.deadline) {
-            revert SwapDeadline();
-        }
-
-        (amountCalculated, amountIn, amountOut) = _vault.swap(
-            VaultSwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGiven,
-                limitRaw: params.limit,
-                userData: params.userData
-            })
-        );
-    }
-
     /*******************************************************************************
                                       Queries
     *******************************************************************************/
@@ -1001,83 +883,5 @@ contract Router is IRouter, RouterCommon {
     ) external onlyVault returns (uint256[] memory amountsOut) {
         uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
-    }
-
-    /// @inheritdoc IRouter
-    function querySwapSingleTokenExactIn(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        address sender,
-        bytes memory userData
-    ) external saveSender(sender) returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(
-                        Router.querySwapHook,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountIn,
-                            limit: 0,
-                            deadline: _MAX_AMOUNT,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
-    }
-
-    /// @inheritdoc IRouter
-    function querySwapSingleTokenExactOut(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        address sender,
-        bytes memory userData
-    ) external saveSender(sender) returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(
-                        Router.querySwapHook,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_OUT,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountOut,
-                            limit: _MAX_AMOUNT,
-                            deadline: type(uint256).max,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
-    }
-
-    /**
-     * @notice Hook for swap queries.
-     * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouter for struct definition)
-     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
-     */
-    function querySwapHook(
-        SwapSingleTokenHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, , ) = _swapHook(params);
-
-        return amountCalculated;
     }
 }
