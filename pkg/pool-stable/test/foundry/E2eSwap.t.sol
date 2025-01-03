@@ -4,11 +4,13 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
@@ -119,6 +121,12 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
         feeController.manualSetPoolCreator(address(newPool), lp);
 
+        // Grants access to admin to change the amplification parameter of the pool.
+        authorizer.grantRole(
+            IAuthentication(address(newPool)).getActionId(StablePool.startAmplificationParameterUpdate.selector),
+            admin
+        );
+
         poolArgs = abi.encode(
             StablePool.NewPoolParams({
                 name: name,
@@ -128,5 +136,24 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
             }),
             vault
         );
+    }
+
+    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {
+        // Vary amplification parameter from 1 to 5000.
+        uint256 newAmplificationParameter = bound(params[0], StableMath.MIN_AMP, StableMath.MAX_AMP);
+
+        _setAmplificationParameter(pool, newAmplificationParameter);
+    }
+
+    function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {
+        uint256 updateInterval = 5000 days;
+
+        vm.prank(admin);
+        StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, block.timestamp + updateInterval);
+        vm.warp(block.timestamp + updateInterval + 1);
+
+        (uint256 value, bool isUpdating, uint256 precision) = StablePool(pool).getAmplificationParameter();
+        assertFalse(isUpdating, "Pool amplification parameter is updating");
+        assertEq(value / precision, newAmplificationParameter, "Amplification Parameter is wrong");
     }
 }
