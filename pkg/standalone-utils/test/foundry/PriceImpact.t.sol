@@ -80,15 +80,19 @@ contract PriceImpactTest is BaseVaultTest {
         vm.startPrank(address(0), address(0));
         uint256 snapshot = vm.snapshot();
 
-        // calculate priceImpact
+        // Calculate priceImpact.
         uint256 amountIn = poolInitAmount / 2;
         uint256[] memory amountsIn = [amountIn, 0].toMemoryArray();
 
         uint256 priceImpact = priceImpactHelper.calculateAddLiquidityUnbalancedPriceImpact(pool, amountsIn, address(0));
         vm.revertTo(snapshot);
 
-        // calculate spotPrice
-        uint256 infinitesimalAmountIn = 1e10;
+        // It's tricky to choose an infinitesimal amount to calculate the spot price. A very low amount doesn't have
+        // enough resolution to calculate the price of the BPT properly, while a big amount doesn't calculate the spot
+        // price accurately enough, since the price already suffers an impact.
+        // The value below was chosen empirically, and is the value that calculates the spot price in the most accurate
+        // way for the current scenario.
+        uint256 infinitesimalAmountIn = 5e9;
 
         uint256 infinitesimalBptOut = router.queryAddLiquidityUnbalanced(
             pool,
@@ -100,16 +104,16 @@ contract PriceImpactTest is BaseVaultTest {
 
         uint256 spotPrice = infinitesimalAmountIn.divDown(infinitesimalBptOut);
 
-        // calculate effectivePrice
+        // Calculate effectivePrice.
         uint256 bptOut = router.queryAddLiquidityUnbalanced(pool, amountsIn, address(0), bytes(""));
         uint256 effectivePrice = amountIn.divDown(bptOut);
 
-        // calculate expectedPriceImpact for comparison
+        // Calculate expectedPriceImpact for comparison.
         uint256 expectedPriceImpact = effectivePrice.divDown(spotPrice) - 1e18;
 
-        // assert within acceptable bounds of +-1%
-        assertLe(priceImpact, expectedPriceImpact + 0.01e18, "Price impact greater than expected");
-        assertGe(priceImpact, expectedPriceImpact - 0.01e18, "Price impact smaller than expected");
+        // Assert within acceptable bounds of +-1%. The error is a bit high because of the spot price calculation,
+        // which is not very accurate.
+        assertApproxEqRel(priceImpact, expectedPriceImpact, 1e16, "Price impact greater than expected");
 
         vm.stopPrank();
     }
