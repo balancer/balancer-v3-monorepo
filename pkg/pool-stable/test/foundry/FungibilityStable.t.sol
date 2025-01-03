@@ -45,7 +45,7 @@ contract FungibilityStableTest is StablePoolContractsDeployer, FungibilityTest {
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            swapFeePercentage, // 1% swap fee, but test will force it to be 0
+            DEFAULT_SWAP_FEE_PERCENTAGE, // 1% swap fee, but test will force it to be 0
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
