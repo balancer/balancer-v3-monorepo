@@ -380,7 +380,7 @@ contract StableMathTest is Test {
         uint256[8] memory deltas,
         uint256[8] memory balancesRaw
     ) public view {
-        _testComputeInvariantLessThenInvariantWithDelta(
+        _testComputeInvariantLessThanInvariantWithDelta(
             amp,
             tokenCount,
             deltaCount,
@@ -420,7 +420,7 @@ contract StableMathTest is Test {
         uint256 maxDelta
     ) internal view {
         amp = boundAmp(amp);
-        tokenCount = bound(tokenCount, MIN_TOKENS, MAX_TOKENS);
+        tokenCount = bound(tokenCount, MIN_TOKENS, StableMath.MAX_STABLE_TOKENS);
         deltaCount = bound(deltaCount, 1, tokenCount);
 
         uint256[] memory balances = new uint256[](tokenCount);
@@ -446,20 +446,11 @@ contract StableMathTest is Test {
             try stableMathMock.computeInvariant(amp, newBalances, Rounding.ROUND_DOWN) returns (
                 uint256 invariantWithDelta
             ) {
-                if (invariantWithDelta < currentInvariant) {
-                    assertApproxEqAbs(
-                        currentInvariant,
-                        invariantWithDelta,
-                        5,
-                        "Current invariant should be approximately equal to invariant with delta (within 5 wei)"
-                    );
-                } else {
-                    assertLe(
-                        currentInvariant,
-                        invariantWithDelta,
-                        "Current invariant should be less than or equal to invariant with delta"
-                    );
-                }
+                assertLe(
+                    currentInvariant - 5,
+                    invariantWithDelta,
+                    "Current invariant should be less than or equal to invariant with delta (5 wei tolerance)"
+                );
             } catch {}
         } catch {}
     }
