@@ -399,7 +399,7 @@ contract StableMathTest is Test {
         uint256[8] memory deltas,
         uint256[8] memory balancesRaw
     ) public view {
-        _testComputeInvariantLessThenInvariantWithDelta(
+        _testComputeInvariantLessThanInvariantWithDelta(
             amp,
             tokenCount,
             deltaCount,
@@ -410,7 +410,7 @@ contract StableMathTest is Test {
         );
     }
 
-    function _testComputeInvariantLessThenInvariantWithDelta(
+    function _testComputeInvariantLessThanInvariantWithDelta(
         uint256 amp,
         uint256 tokenCount,
         uint256 deltaCount,
@@ -447,8 +447,8 @@ contract StableMathTest is Test {
                 uint256 invariantWithDelta
             ) {
                 assertLe(
-                    currentInvariant - 5,
-                    invariantWithDelta,
+                    currentInvariant,
+                    invariantWithDelta + 5,
                     "Current invariant should be less than or equal to invariant with delta (5 wei tolerance)"
                 );
             } catch {}
