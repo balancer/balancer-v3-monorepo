@@ -7,7 +7,8 @@ enum ContractType {
     POOL_FACTORY,
     ROUTER,
     HOOK,
-    ERC4626
+    ERC4626,
+    OTHER
 }
 
 interface IBalancerContractRegistry {
@@ -135,12 +136,12 @@ interface IBalancerContractRegistry {
      * @dev This is a permissioned function.
      * @param contractType The type of contract being renamed
      * @param contractAddress The address of the contract
-     * @return success True if the given address is a registered and active contract of the specified type
+     * @return isActive True if the given address is a registered and active contract of the specified type
      */
     function isActiveBalancerContract(
         ContractType contractType,
         address contractAddress
-    ) external view returns (bool success);
+    ) external view returns (bool isActive);
 
     /**
      * @notice Lookup a registered contract by type and name
