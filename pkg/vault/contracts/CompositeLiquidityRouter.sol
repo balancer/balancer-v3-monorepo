@@ -32,7 +32,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    uint256 constant MAX_LEVEL_IN_NESTED_OPERATIONS = 2;
+    uint256 constant _MAX_LEVEL_IN_NESTED_OPERATIONS = 2;
 
     constructor(
         IVault vault,
@@ -536,7 +536,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             if (_vault.isPoolRegistered(childToken)) {
                 // Token is a BPT, so add liquidity to the child pool.
 
-                if (level > MAX_LEVEL_IN_NESTED_OPERATIONS) {
+                if (level > _MAX_LEVEL_IN_NESTED_OPERATIONS) {
                     amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
                     _settledTokenAmounts().tSet(childToken, amountsIn[i]);
                     continue;
