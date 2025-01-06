@@ -14,13 +14,18 @@ enum ContractType {
 interface IBalancerContractRegistry {
     /**
      * @notice Contracts can be deprecated, so we store an active flag indicating the status.
-     * @dev With two flags, we can differentiate between deprecated and non-existent.
-     * @param exists This flag indicates whether there is an entry for the address or not
-     * @param active If there is an entry, this flag indicates whether it is active or deprecated
+     * @dev With two flags, we can differentiate between deprecated and non-existent. The same contract address
+     * can have multiple names, but only one type. If a contract is legitimately multiple types (e.g., a hook that
+     * also acts as a router), set the type to its "primary" function: hook, in this case. The "Other" type is
+     * intended as a catch-all for things that don't find into the standard types (e.g., helper contracts).
+     *
+     * @param isRegistered This flag indicates whether there is an entry for the address or not
+     * @param isActive If there is an entry, this flag indicates whether it is active or deprecated
      */
-    struct ContractStatus {
-        bool exists;
-        bool active;
+    struct ContractInfo {
+        ContractType contractType;
+        bool isRegistered;
+        bool isActive;
     }
 
     /**
