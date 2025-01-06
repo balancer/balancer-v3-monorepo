@@ -32,6 +32,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
+    uint256 constant MAX_LEVEL_IN_NESTED_OPERATIONS = 2;
+
     constructor(
         IVault vault,
         IWETH weth,
@@ -512,7 +514,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function _addLiquidityRecursive(
         address pool,
-        AddLiquidityHookParams calldata params
+        AddLiquidityHookParams calldata params,
+        uint256 level
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
         allAmountsEmpty = true;
 
@@ -525,6 +528,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             if (_vault.isPoolRegistered(childToken)) {
                 // Token is a BPT, so add liquidity to the child pool.
+
+                if (level > MAX_LEVEL_IN_NESTED_OPERATIONS) {
+                    amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
+                    _settledTokenAmounts().tSet(childToken, amountsIn[i]);
+                    continue;
+                }
 
                 (uint256[] memory childPoolAmountsIn, bool childPoolAmountsEmpty) = _addLiquidityRecursive(
                     childToken,
@@ -568,6 +577,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 allAmountsEmpty = false;
             }
         }
+
+        level++;
     }
 
     /**
