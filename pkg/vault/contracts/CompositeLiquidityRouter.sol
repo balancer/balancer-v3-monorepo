@@ -537,8 +537,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Token is a BPT, so add liquidity to the child pool.
 
                 if (level > _MAX_LEVEL_IN_NESTED_OPERATIONS) {
-                    amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
-                    _settledTokenAmounts().tSet(childToken, amountsIn[i]);
+                    // if we have reached the maximum level of nested operations, the token will be calculated as ERC20
+                    if (_settledTokenAmounts().tGet(childToken) == 0) {
+                        amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
+                        _settledTokenAmounts().tSet(childToken, amountsIn[i]);
+                    }
                     continue;
                 }
 
@@ -577,6 +580,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // the resulting wrapped tokens to add liquidity to the pool.
                 amountsIn[i] = _wrapAndUpdateTokenInAmounts(IERC4626(childToken), params.sender, params.wethIsEth);
             } else if (_settledTokenAmounts().tGet(childToken) == 0) {
+                // if this token is ERC20 and the amount was not settled in a previous operation, it should be added
                 amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
                 _settledTokenAmounts().tSet(childToken, amountsIn[i]);
             }
@@ -621,6 +625,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
+        // Remove the underlying token from the tokensIn and set the amount as zero because we took it here.
+        // We will take other tokens at the end of the calculation.
         _currentSwapTokensIn().remove(underlyingToken);
         _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
 
