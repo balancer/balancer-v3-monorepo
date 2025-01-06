@@ -42,10 +42,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     mapping(bytes32 contractId => address addr) private _contractRegistry;
 
     // Given an address, store the contract state (i.e., active or deprecated).
-    mapping(address addr => ContractStatus status) private _contractStatus;
-
-    // We also need to look up address/type combinations (without the name).
-    mapping(address addr => mapping(ContractType contractType => bool exists)) private _contractTypes;
+    mapping(address addr => ContractInfo info) private _contractInfo;
 
     constructor(IVault vault) SingletonAuthentication(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -114,44 +111,44 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         }
 
         // Edge case: Cannot register a new "alias" (i.e., type/name) for an address if it's already been deprecated.
-        ContractStatus memory status = _contractStatus[contractAddress];
-        if (status.exists && status.active == false) {
+        ContractInfo memory info = _contractInfo[contractAddress];
+        if (info.isRegistered && info.isActive == false) {
             revert ContractAlreadyDeprecated(contractAddress);
         }
 
         // Store the address in the registry, under the unique combination of type and name.
         _contractRegistry[contractId] = contractAddress;
 
-        // Record the address as active. The `exists` flag enables differentiating between unregistered and deprecated
+        // Record the address as active. The `isActive` flag enables differentiating between unregistered and deprecated
         // addresses.
-        _contractStatus[contractAddress] = ContractStatus({ exists: true, active: true });
-
-        // Enable querying by address + type (without the name, as a single address could be associated with multiple
-        // types and names).
-        _contractTypes[contractAddress][contractType] = true;
+        _contractInfo[contractAddress] = ContractInfo({
+            contractType: contractType,
+            isRegistered: true,
+            isActive: true
+        });
 
         emit BalancerContractRegistered(contractType, contractName, contractAddress);
     }
 
     /// @inheritdoc IBalancerContractRegistry
     function deprecateBalancerContract(address contractAddress) external authenticate {
-        ContractStatus memory status = _contractStatus[contractAddress];
+        ContractInfo memory info = _contractInfo[contractAddress];
 
         // Check that the address has been registered.
-        if (status.exists == false) {
+        if (info.isRegistered == false) {
             revert ContractNotRegistered();
         }
 
         // If it was registered, check that it has not already been deprecated.
-        if (status.active == false) {
+        if (info.isActive == false) {
             revert ContractAlreadyDeprecated(contractAddress);
         }
 
         // Set active to false to indicate that it's now deprecated. This is currently a one-way operation, since
         // deprecation is considered permanent. For instance, calling `disable` to deprecate a factory (preventing
         // new pool creation) is permanent.
-        status.active = false;
-        _contractStatus[contractAddress] = status;
+        info.isActive = false;
+        _contractInfo[contractAddress] = info;
 
         emit BalancerContractDeprecated(contractAddress);
     }
@@ -174,16 +171,17 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         }
 
         _contractRegistry[contractId] = newContract;
-        _contractStatus[newContract] = ContractStatus({ exists: true, active: true });
-        _contractTypes[newContract][contractType] = true;
+        _contractInfo[newContract] = ContractInfo({ contractType: contractType, isRegistered: true, isActive: true });
 
         emit BalancerContractReplaced(contractType, contractName, existingContract, newContract);
     }
 
     /// @inheritdoc IBalancerContractRegistry
     function isActiveBalancerContract(ContractType contractType, address contractAddress) external view returns (bool) {
+        ContractInfo memory info = _contractInfo[contractAddress];
+
         // Ensure the address was registered as the given type - and that it's still active.
-        return _contractTypes[contractAddress][contractType] && _contractStatus[contractAddress].active;
+        return info.isActive && info.contractType == contractType;
     }
 
     /// @inheritdoc IBalancerContractRegistry
@@ -194,7 +192,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         bytes32 contractId = _getContractId(contractType, contractName);
 
         contractAddress = _contractRegistry[contractId];
-        active = _contractStatus[contractAddress].active;
+        active = _contractInfo[contractAddress].isActive;
     }
 
     function _getContractId(ContractType contractType, string memory contractName) internal pure returns (bytes32) {
