@@ -118,6 +118,10 @@ contract LBPoolTest is BasePoolTest {
         );
     }
 
+    function testGetTrustedRouter() public view {
+        assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
+    }
+
     function testInitialize() public view override {
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 

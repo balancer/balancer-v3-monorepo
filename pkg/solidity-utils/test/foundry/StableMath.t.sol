@@ -10,6 +10,7 @@ import { StableMath } from "../../contracts/math/StableMath.sol";
 import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "../../contracts/test/ArrayHelpers.sol";
 import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
+import { ScalingHelpers } from "../../contracts/helpers/ScalingHelpers.sol";
 
 // In the `StableMath` functions, the protocol aims for computing a value either as small as possible or as large as possible
 // by means of rounding in its favor; in order to achieve this, it may use arbitrary rounding directions during the calculations.
@@ -20,6 +21,8 @@ contract StableMathTest is Test {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
+    uint256 constant MIN_TOKENS = 2;
+    uint256 constant MAX_TOKENS = 8;
     uint256 constant NUM_TOKENS = 4;
 
     uint256 constant MIN_BALANCE_BASE = 1e18;
@@ -367,5 +370,88 @@ contract StableMathTest is Test {
             .divDown(currentInvariantUp);
 
         assertLe(invariantRatioDown, invariantRatioRegular, "Invariant ratio should have gone down");
+    }
+
+    function testComputeInvariantLessThenInvariantWithLargeDelta__Fuzz(
+        uint256 amp,
+        uint256 tokenCount,
+        uint256 deltaCount,
+        uint256[8] memory indexes,
+        uint256[8] memory deltas,
+        uint256[8] memory balancesRaw
+    ) public view {
+        _testComputeInvariantLessThanInvariantWithDelta(
+            amp,
+            tokenCount,
+            deltaCount,
+            indexes,
+            deltas,
+            balancesRaw,
+            type(uint128).max
+        );
+    }
+
+    function testComputeInvariantLessThenInvariantWithSmallDelta__Fuzz(
+        uint256 amp,
+        uint256 tokenCount,
+        uint256 deltaCount,
+        uint256[8] memory indexes,
+        uint256[8] memory deltas,
+        uint256[8] memory balancesRaw
+    ) public view {
+        _testComputeInvariantLessThanInvariantWithDelta(
+            amp,
+            tokenCount,
+            deltaCount,
+            indexes,
+            deltas,
+            balancesRaw,
+            1000
+        );
+    }
+
+    function _testComputeInvariantLessThanInvariantWithDelta(
+        uint256 amp,
+        uint256 tokenCount,
+        uint256 deltaCount,
+        uint256[8] memory indexes,
+        uint256[8] memory deltas,
+        uint256[8] memory balancesRaw,
+        uint256 maxDelta
+    ) internal view {
+        amp = boundAmp(amp);
+        tokenCount = bound(tokenCount, MIN_TOKENS, StableMath.MAX_STABLE_TOKENS);
+        deltaCount = bound(deltaCount, 1, tokenCount);
+
+        uint256[] memory balances = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            balances[i] = bound(balancesRaw[i], 1, type(uint128).max);
+        }
+
+        uint256[] memory newBalances = new uint256[](tokenCount);
+        ScalingHelpers.copyToArray(balances, newBalances);
+
+        for (uint256 i = 0; i < deltaCount; i++) {
+            uint256 tokenIndex = bound(indexes[i], 0, tokenCount - 1);
+            uint256 delta;
+            if (maxDelta > type(uint128).max - newBalances[tokenIndex]) {
+                delta = bound(deltas[i], 0, type(uint128).max - newBalances[tokenIndex]);
+            } else {
+                delta = bound(deltas[i], 0, maxDelta);
+            }
+            newBalances[tokenIndex] += delta;
+        }
+
+        try stableMathMock.computeInvariant(amp, balances, Rounding.ROUND_DOWN) returns (uint256 currentInvariant) {
+            try stableMathMock.computeInvariant(amp, newBalances, Rounding.ROUND_DOWN) returns (
+                uint256 invariantWithDelta
+            ) {
+                assertLe(
+                    currentInvariant,
+                    invariantWithDelta + 5,
+                    "Current invariant should be less than or equal to invariant with delta (5 wei tolerance)"
+                );
+            } catch {}
+        } catch {}
     }
 }

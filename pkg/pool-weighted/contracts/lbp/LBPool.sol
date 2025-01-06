@@ -47,9 +47,14 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     // originating account on operations. This is important for liquidity operations, as these are permissioned
     // operations that can only be performed by the owner of the pool. Without this check, a malicious router
     // could spoof the address of the owner, allowing anyone to call permissioned functions.
+    //
+    // Since the initialization mechanism does not allow verification of the router, it is technically possible
+    // to front-run `initialize`. This should not be a concern in the typical LBP use case of a new token launch,
+    // where there is no existing liquidity. In the unlikely event it is a concern, `LBPoolFactory` provides the
+    // `createAndInitialize` function, which does both operations in a single step.
 
     // solhint-disable-next-line var-name-mixedcase
-    address private immutable _TRUSTED_ROUTER;
+    address private immutable _trustedRouter;
 
     PoolState private _poolState;
 
@@ -74,7 +79,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         uint256[] endWeights
     );
 
-    /// @dev Indicates that the router that called the Vault is not trusted, so any operations should revert.
+    /// @dev Indicates that the router that called the Vault is not trusted, so liquidity operations should revert.
     error RouterNotTrusted();
 
     /// @dev Indicates that the `owner` has disabled swaps.
@@ -92,7 +97,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
 
         // Set the trusted router (passed down from the factory).
-        _TRUSTED_ROUTER = trustedRouter;
+        _trustedRouter = trustedRouter;
 
         // solhint-disable-next-line not-rely-on-time
         uint32 currentTime = block.timestamp.toUint32();
@@ -100,9 +105,9 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         _setSwapEnabled(swapEnabledOnStart);
     }
 
-    /// @notice Returns trusted router, which is the gateway to add liquidity to the pool.
+    /// @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
     function getTrustedRouter() external view returns (address) {
-        return _TRUSTED_ROUTER;
+        return _trustedRouter;
     }
 
     /**
@@ -214,10 +219,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         hookFlags.shouldCallBeforeAddLiquidity = true;
     }
 
-    function onBeforeInitialize(
-        uint256[] memory,
-        bytes memory
-    ) public view override onlyVault returns (bool success) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) public view override onlyVault returns (bool success) {
         // We don't have the router argument here, but with only one trusted router this should be enough considering
         // `initialize` can only happen once.
         // If the sender is correct in the trusted router, either everything is fine, or the owner is doing something
@@ -227,7 +229,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         // the sender needs liquidity for the token being launched. For a token that is not fully public, the owner
         // should have the required liquidity, and frontrunning the pool initialization is no different from
         // just creating another pool.
-        return IRouterCommon(_TRUSTED_ROUTER).getSender() == owner();
+        return IRouterCommon(_trustedRouter).getSender() == owner();
     }
 
     /**
@@ -246,7 +248,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault returns (bool) {
-        if (router != _TRUSTED_ROUTER) {
+        if (router != _trustedRouter) {
             revert RouterNotTrusted();
         }
         return IRouterCommon(router).getSender() == owner();
