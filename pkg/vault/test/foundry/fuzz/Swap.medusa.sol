@@ -18,11 +18,13 @@ import "../utils/BaseMedusaTest.sol";
 contract SwapMedusaTest is BaseMedusaTest {
     uint256 internal constant MIN_SWAP_AMOUNT = 1e6;
 
-    int256 internal prevInvariant;
+    int256 internal initInvariant;
 
     constructor() BaseMedusaTest() {
-        prevInvariant = computeInvariant();
+        initInvariant = computeInvariant();
         vault.manuallySetSwapFee(address(pool), 0);
+
+        emit Debug("prevInvariant", initInvariant);
     }
 
     function optimize_currentInvariant() public view returns (int256) {
@@ -31,11 +33,10 @@ contract SwapMedusaTest is BaseMedusaTest {
 
     function property_currentInvariant() public returns (bool) {
         int256 currentInvariant = computeInvariant();
-        return currentInvariant >= prevInvariant;
+        return currentInvariant >= initInvariant;
     }
 
     function computeSwapExactIn(uint256 tokenIndexIn, uint256 tokenIndexOut, uint256 exactAmountIn) public {
-        prevInvariant = computeInvariant();
         tokenIndexIn = boundTokenIndex(tokenIndexIn);
         tokenIndexOut = boundTokenIndex(tokenIndexOut);
 
@@ -64,7 +65,6 @@ contract SwapMedusaTest is BaseMedusaTest {
             bytes("")
         );
 
-        emit Debug("prevInvariant", prevInvariant);
         emit Debug("currentInvariant", computeInvariant());
     }
 
