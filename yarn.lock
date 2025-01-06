@@ -71,6 +71,7 @@ __metadata:
     "@nomicfoundation/ignition-core": "npm:^0.15.0"
     "@nomiclabs/hardhat-etherscan": "npm:^3.1.7"
     "@openzeppelin/contracts": "npm:^5.0.0"
+    "@safe-global/safe-contracts": "npm:1.4.1-2"
     "@typechain/ethers-v6": "npm:^0.4.0"
     "@typechain/hardhat": "npm:^8.0.0"
     "@types/chai": "npm:^4.3.3"
@@ -1343,6 +1344,15 @@ __metadata:
   version: 5.0.0
   resolution: "@openzeppelin/contracts@npm:5.0.0"
   checksum: b45b739b7b840e4406ac3eac73a301418117e5eb7d451aec9bc63eee69425c9bdca9954a79dceea81ec4169e41d4f0c63bf933599f28ec59ffa034aeaac3a190
+  languageName: node
+  linkType: hard
+
+"@safe-global/safe-contracts@npm:1.4.1-2":
+  version: 1.4.1-2
+  resolution: "@safe-global/safe-contracts@npm:1.4.1-2"
+  peerDependencies:
+    ethers: 5.4.0
+  checksum: dad4b4679d3de26d7f2c5f08537fc017a8ebb74853360f57cb24702c5cf755f2d81438692b5962ed93e01ced262755f47474242a7a23f90fc273e9430c4b8640
   languageName: node
   linkType: hard
 

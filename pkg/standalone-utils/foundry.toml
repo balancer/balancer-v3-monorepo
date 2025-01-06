@@ -19,7 +19,8 @@ remappings = [
     '@openzeppelin/=../../node_modules/@openzeppelin/',
     'permit2/=../../node_modules/permit2/',
     '@balancer-labs/=../../node_modules/@balancer-labs/',
-    'forge-gas-snapshot/=../../node_modules/forge-gas-snapshot/src/'
+    'forge-gas-snapshot/=../../node_modules/forge-gas-snapshot/src/',
+    '@safe-global/safe-contracts/=../../node_modules/@safe-global/safe-contracts/'
 ]
 optimizer = true
 optimizer_runs = 999
