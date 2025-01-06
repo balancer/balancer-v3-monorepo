@@ -514,6 +514,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function _addLiquidityRecursive(
         address pool,
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
+        return _addLiquidityRecursive(pool, params, 1);
+    }
+
+    function _addLiquidityRecursive(
+        address pool,
         AddLiquidityHookParams calldata params,
         uint256 level
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
@@ -537,7 +544,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
                 (uint256[] memory childPoolAmountsIn, bool childPoolAmountsEmpty) = _addLiquidityRecursive(
                     childToken,
-                    params
+                    params,
+                    level + 1
                 );
 
                 if (childPoolAmountsEmpty == false) {
@@ -577,8 +585,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 allAmountsEmpty = false;
             }
         }
-
-        level++;
     }
 
     /**
