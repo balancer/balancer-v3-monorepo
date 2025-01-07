@@ -128,6 +128,13 @@ contract PauseHelperTest is BaseVaultTest {
         pauseHelper.pause(pools);
     }
 
+    function testPauseIfPoolIsNotInList() public {
+        _addPools(10);
+
+        vm.expectRevert("Pool is not in the list of pools");
+        pauseHelper.pause(new address[](1));
+    }
+
     function testGetPools() public {
         address[] memory pools = _addPools(10);
         address[] memory storedPools = pauseHelper.getPools(0, 10);

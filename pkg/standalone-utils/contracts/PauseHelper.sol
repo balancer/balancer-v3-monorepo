@@ -18,35 +18,50 @@ contract PauseHelper is SingletonAuthentication {
 
     Safe public immutable safe;
 
-    EnumerableSet.AddressSet private poolsSet;
+    EnumerableSet.AddressSet private _poolsSet;
 
     constructor(IVault vault, Safe safe_) SingletonAuthentication(vault) {
         safe = safe_;
     }
 
     // --------------------------  Manage Pools --------------------------
+
+    /**
+     * @notice Add pools to the list of pools that can be paused
+     * @param newPools List of pools to add
+     */
     function addPools(address[] calldata newPools) external authenticate {
         uint256 length = newPools.length;
 
         for (uint256 i = 0; i < length; i++) {
-            poolsSet.add(newPools[i]);
+            _poolsSet.add(newPools[i]);
 
             emit PoolAdded(newPools[i]);
         }
     }
 
+    /**
+     * @notice Remove pools from the list of pools that can be paused
+     * @param pools List of pools to remove
+     */
     function removePools(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
-            poolsSet.remove(pools[i]);
+            _poolsSet.remove(pools[i]);
 
             emit PoolRemoved(pools[i]);
         }
     }
 
+    /**
+     * @notice Pause pools
+     * @param pools List of pools to pause
+     */
     function pause(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
+            require(_poolsSet.contains(pools[i]), "Pool is not in the list of pools");
+
             safe.execTransactionFromModule(
                 address(getVault()),
                 0,
@@ -57,23 +72,38 @@ contract PauseHelper is SingletonAuthentication {
     }
 
     // --------------------------  Getters --------------------------
+    /**
+     * @notice Get the number of pools
+     * @return Number of pools
+     */
     function getPoolsCount() external view returns (uint256) {
-        return poolsSet.length();
+        return _poolsSet.length();
     }
 
+    /**
+     * @notice Check if a pool is in the list of pools
+     * @param pool Pool to check
+     * @return True if the pool is in the list, false otherwise
+     */
     function hasPool(address pool) external view returns (bool) {
-        return poolsSet.contains(pool);
+        return _poolsSet.contains(pool);
     }
 
+    /**
+     * @notice Get a range of pools
+     * @param from Start index
+     * @param to End index
+     * @return pools List of pools
+     */
     function getPools(uint256 from, uint256 to) public view returns (address[] memory pools) {
-        uint256 poolLength = poolsSet.length();
+        uint256 poolLength = _poolsSet.length();
         require(from <= to, "'From' must be less than 'to'");
         require(to <= poolLength, "'To' must be less than or eq the number of pools");
         require(from < poolLength, "'From' must be less than the number of pools");
 
         pools = new address[](to - from);
         for (uint256 i = from; i < to; i++) {
-            pools[i - from] = poolsSet.at(i);
+            pools[i - from] = _poolsSet.at(i);
         }
     }
 }
