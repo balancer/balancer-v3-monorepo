@@ -322,43 +322,34 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             if (useWrappedTokens[i] == true) {
                 amountsOut[i] = wrappedAmountsOut[i];
+
+                if (amountsOut[i] < params.minAmountsOut[i]) {
+                    revert IVaultErrors.AmountOutBelowMin(erc4626PoolTokens[i], amountsOut[i], params.minAmountsOut[i]);
+                }
+
                 if (isStaticCall == false) {
                     _sendTokenOut(params.sender, erc4626PoolTokens[i], amountsOut[i], params.wethIsEth);
                 }
-                continue;
-            }
+            } else {
+                require(
+                    address(underlyingToken) != address(0),
+                    "CompositeLiquidityRouter: ERC4626 buffer not initialized"
+                );
 
-            // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the Router treats it as a non-ERC4626 token.
-            if (address(underlyingToken) == address(0)) {
-                if (wrappedAmountsOut[i] < params.minAmountsOut[i]) {
-                    revert IVaultErrors.AmountOutBelowMin(
-                        erc4626PoolTokens[i],
-                        wrappedAmountsOut[i],
-                        params.minAmountsOut[i]
-                    );
-                }
+                // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken is not ERC4626-conforming.
+                (, , amountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: SwapKind.EXACT_IN,
+                        direction: WrappingDirection.UNWRAP,
+                        wrappedToken: wrappedToken,
+                        amountGivenRaw: wrappedAmountsOut[i],
+                        limitRaw: params.minAmountsOut[i]
+                    })
+                );
 
-                amountsOut[i] = wrappedAmountsOut[i];
                 if (isStaticCall == false) {
-                    _sendTokenOut(params.sender, erc4626PoolTokens[i], amountsOut[i], params.wethIsEth);
+                    _sendTokenOut(params.sender, underlyingToken, amountsOut[i], params.wethIsEth);
                 }
-                continue;
-            }
-
-            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken is not ERC4626-conforming.
-            (, , amountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_IN,
-                    direction: WrappingDirection.UNWRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: wrappedAmountsOut[i],
-                    limitRaw: params.minAmountsOut[i]
-                })
-            );
-
-            if (isStaticCall == false) {
-                _sendTokenOut(params.sender, underlyingToken, amountsOut[i], params.wethIsEth);
             }
         }
     }
@@ -386,61 +377,60 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             if (useWrappedTokens[i] == true) {
                 finalAmountsIn[i] = amountsIn[i];
-                _takeTokenIn(params.sender, wrappedToken, finalAmountsIn[i], params.wethIsEth);
-                continue;
-            }
 
-            // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the Router treats it as a non-ERC4626 token.
-            if (address(underlyingToken) == address(0)) {
-                if (amountsIn[i] > params.maxAmountsIn[i]) {
-                    revert IVaultErrors.AmountInAboveMax(erc4626PoolTokens[i], amountsIn[i], params.maxAmountsIn[i]);
+                if (finalAmountsIn[i] > params.maxAmountsIn[i]) {
+                    revert IVaultErrors.AmountInAboveMax(
+                        erc4626PoolTokens[i],
+                        finalAmountsIn[i],
+                        params.maxAmountsIn[i]
+                    );
                 }
-
-                finalAmountsIn[i] = amountsIn[i];
 
                 if (isStaticCall == false) {
-                    _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
+                    _takeTokenIn(params.sender, wrappedToken, finalAmountsIn[i], params.wethIsEth);
                 }
-
-                continue;
-            }
-
-            if (isStaticCall == false) {
-                if (kind == SwapKind.EXACT_IN) {
-                    // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
-                    _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
-                } else {
-                    // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
-                    // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
-                    // between the limit and the actual underlying amount is returned to the sender.
-                    _takeTokenIn(params.sender, underlyingToken, limits[i], params.wethIsEth);
-                }
-            }
-
-            uint256 underlyingAmount;
-            uint256 wrappedAmount;
-            if (amountsIn[i] > 0) {
-                // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-                (, underlyingAmount, wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
-                    BufferWrapOrUnwrapParams({
-                        kind: kind,
-                        direction: WrappingDirection.WRAP,
-                        wrappedToken: wrappedToken,
-                        amountGivenRaw: amountsIn[i],
-                        limitRaw: limits[i]
-                    })
+            } else {
+                require(
+                    address(underlyingToken) != address(0),
+                    "CompositeLiquidityRouter: ERC4626 buffer not initialized"
                 );
-            }
 
-            if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
-                bool wethIsEth = params.wethIsEth;
-                // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
-                // difference between limit and exact underlying amount needs to be returned to the sender.
-                _sendTokenOut(params.sender, underlyingToken, limits[i] - underlyingAmount, wethIsEth);
-            }
+                if (isStaticCall == false) {
+                    if (kind == SwapKind.EXACT_IN) {
+                        // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
+                        _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
+                    } else {
+                        // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
+                        // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
+                        // between the limit and the actual underlying amount is returned to the sender.
+                        _takeTokenIn(params.sender, underlyingToken, limits[i], params.wethIsEth);
+                    }
+                }
 
-            finalAmountsIn[i] = kind == SwapKind.EXACT_IN ? wrappedAmount : underlyingAmount;
+                uint256 underlyingAmount;
+                uint256 wrappedAmount;
+                if (amountsIn[i] > 0) {
+                    // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+                    (, underlyingAmount, wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
+                            kind: kind,
+                            direction: WrappingDirection.WRAP,
+                            wrappedToken: wrappedToken,
+                            amountGivenRaw: amountsIn[i],
+                            limitRaw: limits[i]
+                        })
+                    );
+                }
+
+                if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
+                    bool wethIsEth = params.wethIsEth;
+                    // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
+                    // difference between limit and exact underlying amount needs to be returned to the sender.
+                    _sendTokenOut(params.sender, underlyingToken, limits[i] - underlyingAmount, wethIsEth);
+                }
+
+                finalAmountsIn[i] = kind == SwapKind.EXACT_IN ? wrappedAmount : underlyingAmount;
+            }
         }
 
         // If there's a leftover of eth, send it back to the sender. The router should not keep ETH.
