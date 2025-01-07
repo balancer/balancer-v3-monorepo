@@ -105,10 +105,10 @@ smarter than Forge. That's because Medusa has an optimizer to create a path of t
 random.
 
 To run Medusa tests, we first need to install Echidna. To do so, install `echidna` using the 
-[release page](https://github.com/crytic/echidna/releases) or `brew install echidna` in Mac. Notice that the Mac
-installation will also install Crytic-compiller, so this step can be skipped when installing Medusa.
+[release page](https://github.com/crytic/echidna/releases) or `brew install echidna` on a Mac. Notice that the Mac
+installation will also install Crytic-compiler, so this step can be skipped when installing Medusa.
 
-Then, install Medusa using this [installation guide](https://github.com/crytic/medusa/blob/master/docs/src/getting_started/installation.md#building-from-source) (or just copy the adequate precompiled binary to a directory within your `PATH`).
+Then, install Medusa using this [installation guide](https://github.com/crytic/medusa/blob/master/docs/src/getting_started/installation.md#building-from-source), `brew install medusa` on a Mac. Alternatively, just copy the adequate precompiled binary to a directory within your `PATH`.
 
 Finally, run `yarn test:medusa`. This command is available inside the packages `vault`, `pool-weighted` and 
 `pool-stable`.
