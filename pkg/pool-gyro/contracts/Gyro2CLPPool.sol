@@ -90,9 +90,10 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         // New invariant
         invariant = invariant.mulUp(invariantRatio);
         uint256 squareNewInv = invariant * invariant;
-        // L / sqrt(beta)
+
+        // L / sqrt(beta), rounded down to maximize newBalance.
         uint256 a = invariant.divDown(sqrtBeta);
-        // L * sqrt(alpha)
+        // L * sqrt(alpha), rounded down to maximize newBalance (b is in the denominator).
         uint256 b = invariant.mulDown(sqrtAlpha);
 
         if (tokenInIndex == 0) {
@@ -115,7 +116,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
             balanceTokenInScaled18,
             balanceTokenOutScaled18,
             tokenInIsToken0,
-            request.kind == SwapKind.EXACT_IN ? Rounding.ROUND_DOWN : Rounding.ROUND_UP
+            request.kind
         );
 
         if (request.kind == SwapKind.EXACT_IN) {
@@ -157,7 +158,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         uint256 balanceTokenInScaled18,
         uint256 balanceTokenOutScaled18,
         bool tokenInIsToken0,
-        Rounding rounding
+        SwapKind kind
     ) internal view virtual returns (uint256 virtualBalanceIn, uint256 virtualBalanceOut) {
         uint256[] memory balances = new uint256[](2);
         balances[0] = tokenInIsToken0 ? balanceTokenInScaled18 : balanceTokenOutScaled18;
@@ -165,23 +166,29 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
         (uint256 sqrtAlpha, uint256 sqrtBeta) = _getSqrtAlphaAndBeta();
 
-        uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(balances, sqrtAlpha, sqrtBeta, rounding);
+        uint256 currentInvariant = Gyro2CLPMath.calculateInvariant(balances, sqrtAlpha, sqrtBeta, Rounding.ROUND_DOWN);
 
-        uint256[2] memory virtualOffsets = _calculateVirtualOffsets(currentInvariant, sqrtAlpha, sqrtBeta);
-
-        virtualBalanceIn = tokenInIsToken0 ? virtualOffsets[0] : virtualOffsets[1];
-        virtualBalanceOut = tokenInIsToken0 ? virtualOffsets[1] : virtualOffsets[0];
-    }
-
-    /// @notice Returns an array with virtual offsets of both tokens of the pool, in registration order.
-    function _calculateVirtualOffsets(
-        uint256 invariant,
-        uint256 sqrtAlpha,
-        uint256 sqrtBeta
-    ) internal view virtual returns (uint256[2] memory virtualOffsets) {
-        virtualOffsets[0] = Gyro2CLPMath.calculateVirtualParameter0(invariant, sqrtBeta);
-        virtualOffsets[1] = Gyro2CLPMath.calculateVirtualParameter1(invariant, sqrtAlpha);
-        return virtualOffsets;
+        // virtualBalanceIn is always rounded up, because:
+        // * If swap is EXACT_IN: a bigger virtualBalanceIn leads to a lower amount out;
+        // * If swap is EXACT_OUT: a bigger virtualBalanceIn leads to a bigger amount in;
+        // virtualBalanceOut is always rounded down, because:
+        // * If swap is EXACT_IN: a lower virtualBalanceOut leads to a lower amount out;
+        // * If swap is EXACT_OUT: a lower virtualBalanceOut leads to a bigger amount in;
+        if (tokenInIsToken0) {
+            virtualBalanceIn = Gyro2CLPMath.calculateVirtualParameter0(currentInvariant, sqrtBeta, Rounding.ROUND_UP);
+            virtualBalanceOut = Gyro2CLPMath.calculateVirtualParameter1(
+                currentInvariant,
+                sqrtAlpha,
+                Rounding.ROUND_DOWN
+            );
+        } else {
+            virtualBalanceIn = Gyro2CLPMath.calculateVirtualParameter1(currentInvariant, sqrtAlpha, Rounding.ROUND_UP);
+            virtualBalanceOut = Gyro2CLPMath.calculateVirtualParameter0(
+                currentInvariant,
+                sqrtBeta,
+                Rounding.ROUND_DOWN
+            );
+        }
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
