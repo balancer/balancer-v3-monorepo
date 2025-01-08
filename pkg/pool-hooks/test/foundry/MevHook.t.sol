@@ -141,6 +141,20 @@ contract MevHookTest is BaseVaultTest {
         );
     }
 
+    function testSetDefaultMevTaxMultiplierRegisteredPool() public {
+        vm.prank(admin);
+        _mevHook.setPoolMevTaxMultiplier(pool, 5e18);
+
+        vm.prank(admin);
+        _mevHook.setDefaultMevTaxMultiplier(1e18);
+
+        assertNotEq(
+            _mevHook.getDefaultMevTaxMultiplier(),
+            _mevHook.getPoolMevTaxMultiplier(pool),
+            "setDefaultMevTaxMultiplier changed pool multiplier."
+        );
+    }
+
     /********************************************************
                    getDefaultMevTaxThreshold()
     ********************************************************/
@@ -173,6 +187,20 @@ contract MevHookTest is BaseVaultTest {
             _mevHook.getDefaultMevTaxThreshold(),
             newDefaultMevTaxThreshold,
             "defaultMevTaxThreshold is not correct"
+        );
+    }
+
+    function testSetDefaultMevTaxThresholdRegisteredPool() public {
+        vm.prank(admin);
+        _mevHook.setPoolMevTaxThreshold(pool, 5e18);
+
+        vm.prank(admin);
+        _mevHook.setDefaultMevTaxThreshold(1e18);
+
+        assertNotEq(
+            _mevHook.getDefaultMevTaxThreshold(),
+            _mevHook.getPoolMevTaxThreshold(pool),
+            "setDefaultMevTaxThreshold changed pool threshold."
         );
     }
 
