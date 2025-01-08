@@ -102,7 +102,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             pool,
             tokenConfig,
             swapFeePercentage,
-            false, // (not) protocol fee exempt
+            false, // not exempt from protocol fees
             roleAccounts,
             pool, // register the pool itself as the hook contract
             getDefaultLiquidityManagement()

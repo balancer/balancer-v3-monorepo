@@ -225,7 +225,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         // If the sender is correct in the trusted router, either everything is fine, or the owner is doing something
         // else with the trusted router while at the same time giving away the execution to a frontrunner, which
         // is highly unlikely.
-        // In any case, this is just an extra guardrail to start the pool with the right proportion, and for that
+        // In any case, this is just an extra guardrail to start the pool with the correct proportions, and for that
         // the sender needs liquidity for the token being launched. For a token that is not fully public, the owner
         // should have the required liquidity, and frontrunning the pool initialization is no different from
         // just creating another pool.
