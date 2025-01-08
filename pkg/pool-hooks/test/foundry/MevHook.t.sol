@@ -21,7 +21,19 @@ contract MevHookTest is BaseVaultTest {
         authorizer.grantRole(IAuthentication(address(_mevHook)).getActionId(IMevHook.disableMevTax.selector), admin);
         authorizer.grantRole(IAuthentication(address(_mevHook)).getActionId(IMevHook.enableMevTax.selector), admin);
         authorizer.grantRole(
-            IAuthentication(address(_mevHook)).getActionId(IMevHook.setMevTaxMultiplier.selector),
+            IAuthentication(address(_mevHook)).getActionId(IMevHook.setDefaultMevTaxMultiplier.selector),
+            admin
+        );
+        authorizer.grantRole(
+            IAuthentication(address(_mevHook)).getActionId(IMevHook.setPoolMevTaxMultiplier.selector),
+            admin
+        );
+        authorizer.grantRole(
+            IAuthentication(address(_mevHook)).getActionId(IMevHook.setDefaultMevTaxThreshold.selector),
+            admin
+        );
+        authorizer.grantRole(
+            IAuthentication(address(_mevHook)).getActionId(IMevHook.setPoolMevTaxThreshold.selector),
             admin
         );
     }
@@ -95,33 +107,72 @@ contract MevHookTest is BaseVaultTest {
     }
 
     /********************************************************
-                     getMevTaxMultiplier()
+                   getDefaultMevTaxMultiplier()
     ********************************************************/
-    function testGetMevTaxMultiplierStartingState() public {
-        assertEq(_mevHook.getMevTaxMultiplier(), 0, "Mev Tax Multiplier is not 0 after hook creation.");
+    function testGetDefaultMevTaxMultiplierStartingState() public {
+        assertEq(_mevHook.getDefaultMevTaxMultiplier(), 0, "Default Mev Tax Multiplier is not 0 after hook creation.");
     }
 
     /********************************************************
-                     setMevTaxMultiplier()
+                   setDefaultMevTaxMultiplier()
     ********************************************************/
-    function testSetMevTaxMultiplierIsPermissioned() public {
+    function testSetDefaultMevTaxMultiplierIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevHook.setMevTaxMultiplier(1e18);
+        _mevHook.setDefaultMevTaxMultiplier(1e18);
     }
 
-    function testSetMevTaxMultiplier() public {
-        uint256 firstMevTaxMultiplier = _mevHook.getMevTaxMultiplier();
+    function testSetDefaultMevTaxMultiplier() public {
+        uint256 firstDefaultMevTaxMultiplier = _mevHook.getDefaultMevTaxMultiplier();
 
-        uint256 newMevTaxMultiplier = 1e18;
+        uint256 newDefaultMevTaxMultiplier = 1e18;
 
         assertNotEq(
-            firstMevTaxMultiplier,
-            newMevTaxMultiplier,
-            "New MevTaxMultiplier cannot be equal to current value"
+            firstDefaultMevTaxMultiplier,
+            newDefaultMevTaxMultiplier,
+            "New defaultMevTaxMultiplier cannot be equal to current value"
         );
 
         vm.prank(admin);
-        _mevHook.setMevTaxMultiplier(newMevTaxMultiplier);
-        assertEq(_mevHook.getMevTaxMultiplier(), newMevTaxMultiplier, "mevTaxMultiplier is not correct");
+        _mevHook.setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
+        assertEq(
+            _mevHook.getDefaultMevTaxMultiplier(),
+            newDefaultMevTaxMultiplier,
+            "defaultMevTaxMultiplier is not correct"
+        );
+    }
+
+    /********************************************************
+                   getDefaultMevTaxThreshold()
+    ********************************************************/
+    function testGetDefaultMevTaxThresholdStartingState() public {
+        assertEq(_mevHook.getDefaultMevTaxThreshold(), 0, "Default Mev Tax Threshold is not 0 after hook creation.");
+    }
+
+    /********************************************************
+                   setDefaultMevTaxThreshold()
+    ********************************************************/
+    function testSetDefaultMevTaxThresholdIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        _mevHook.setDefaultMevTaxThreshold(1e18);
+    }
+
+    function testSetDefaultMevTaxThreshold() public {
+        uint256 firstDefaultMevTaxThreshold = _mevHook.getDefaultMevTaxThreshold();
+
+        uint256 newDefaultMevTaxThreshold = 1e18;
+
+        assertNotEq(
+            firstDefaultMevTaxThreshold,
+            newDefaultMevTaxThreshold,
+            "New defaultMevTaxThreshold cannot be equal to current value"
+        );
+
+        vm.prank(admin);
+        _mevHook.setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
+        assertEq(
+            _mevHook.getDefaultMevTaxThreshold(),
+            newDefaultMevTaxThreshold,
+            "defaultMevTaxThreshold is not correct"
+        );
     }
 }
