@@ -20,10 +20,12 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 contract MevHook is BaseHooks, Authentication, VaultGuard, IMevHook {
     using FixedPoint for uint256;
 
-    uint256 private constant _MEV_MAX_FEE_PERCENTAGE = 1e18;
+    uint256 private constant _MEV_MAX_FEE_PERCENTAGE = FixedPoint.ONE;
 
     bool internal _mevTaxEnabled = false;
-    uint256 internal _mevTaxMultiplier;
+    // With a 0 multiplier, the mevSwapFeePercentage will always be smaller than staticSwapFeePercentage, so the static
+    // fee will be used.
+    uint256 internal _mevTaxMultiplier = 0;
 
     constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(this))))) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -54,7 +56,7 @@ contract MevHook is BaseHooks, Authentication, VaultGuard, IMevHook {
         uint256 staticSwapFeePercentage
     ) public view virtual returns (bool, uint256) {
         if (_mevTaxEnabled == false) {
-            return staticSwapFeePercentage;
+            return (true, staticSwapFeePercentage);
         }
 
         // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
@@ -65,11 +67,11 @@ contract MevHook is BaseHooks, Authentication, VaultGuard, IMevHook {
 
         // If the resulting fee percentage is greater than MAX_FEE_PERCENTAGE, returns the max fee percentage.
         if (mevSwapFeePercentage >= _MEV_MAX_FEE_PERCENTAGE) {
-            return _MEV_MAX_FEE_PERCENTAGE;
+            return (true, _MEV_MAX_FEE_PERCENTAGE);
         }
 
         // If static fee percentage is higher than mev fee percentage, uses the static one.
-        return staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage;
+        return (true, staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage);
     }
 
     /// @inheritdoc IMevHook
