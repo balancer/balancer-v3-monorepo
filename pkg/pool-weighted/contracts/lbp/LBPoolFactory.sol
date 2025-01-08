@@ -39,6 +39,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         _poolVersion = poolVersion;
 
         // LBPools are deployed with a router known to reliably report the originating address on operations.
+        // This is used to ensure that only the owner can add liquidity to an LBP (including on initialization).
         _trustedRouter = trustedRouter;
     }
 
