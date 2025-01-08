@@ -215,7 +215,21 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     // Return HookFlags struct that indicates which hooks this contract supports
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         // Ensure the caller is the owner, as only the owner can add liquidity.
+        hookFlags.shouldCallBeforeInitialize = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
+    }
+
+    function onBeforeInitialize(uint256[] memory, bytes memory) public view override onlyVault returns (bool success) {
+        // We don't have the router argument here, but with only one trusted router this should be enough considering
+        // `initialize` can only happen once.
+        // If the sender is correct in the trusted router, either everything is fine, or the owner is doing something
+        // else with the trusted router while at the same time giving away the execution to a frontrunner, which
+        // is highly unlikely.
+        // In any case, this is just an extra guardrail to start the pool with the correct proportions, and for that
+        // the sender needs liquidity for the token being launched. For a token that is not fully public, the owner
+        // should have the required liquidity, and frontrunning the pool initialization is no different from
+        // just creating another pool.
+        return IRouterCommon(_trustedRouter).getSender() == owner();
     }
 
     /**
