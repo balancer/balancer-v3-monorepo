@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     HookFlags,
     LiquidityManagement,
@@ -11,13 +12,13 @@ import {
     TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract MevHook is BaseHooks, Authentication, VaultGuard, IMevHook {
+contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     using FixedPoint for uint256;
 
     uint256 private constant _MEV_MAX_FEE_PERCENTAGE = FixedPoint.ONE;
@@ -27,7 +28,7 @@ contract MevHook is BaseHooks, Authentication, VaultGuard, IMevHook {
     // fee will be used.
     uint256 internal _mevTaxMultiplier = 0;
 
-    constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(this))))) VaultGuard(vault) {
+    constructor(IVault vault) SingletonAuthentication(vault) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -54,7 +55,7 @@ contract MevHook is BaseHooks, Authentication, VaultGuard, IMevHook {
         PoolSwapParams calldata,
         address,
         uint256 staticSwapFeePercentage
-    ) public view virtual returns (bool, uint256) {
+    ) public view override returns (bool, uint256) {
         if (_mevTaxEnabled == false) {
             return (true, staticSwapFeePercentage);
         }
@@ -75,27 +76,27 @@ contract MevHook is BaseHooks, Authentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function isMevTaxEnabled() internal view returns (bool) {
+    function isMevTaxEnabled() external view returns (bool) {
         return _mevTaxEnabled;
     }
 
     /// @inheritdoc IMevHook
-    function disableMevTax() internal authenticate {
+    function disableMevTax() external authenticate {
         _mevTaxEnabled = false;
     }
 
     /// @inheritdoc IMevHook
-    function enableMevTax() internal authenticate {
+    function enableMevTax() external authenticate {
         _mevTaxEnabled = true;
     }
 
     /// @inheritdoc IMevHook
-    function getMevTaxMultiplier() internal view returns (uint256) {
+    function getMevTaxMultiplier() external view returns (uint256) {
         return _mevTaxMultiplier;
     }
 
     /// @inheritdoc IMevHook
-    function setMevTaxMultiplier(uint256 newMevTaxMultiplier) internal authenticate {
+    function setMevTaxMultiplier(uint256 newMevTaxMultiplier) external authenticate {
         _mevTaxMultiplier = newMevTaxMultiplier;
     }
 }

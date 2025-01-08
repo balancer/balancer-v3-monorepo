@@ -8,13 +8,13 @@ interface IMevHook {
      * @dev If Mev Tax is disabled, all swaps will pay the static swap fee amount.
      * @return mevTaxEnabled true if the MEV Tax is enabled to be charged by the hook, false otherwise
      */
-    function isMevTaxEnabled() internal view returns (bool mevTaxEnabled);
+    function isMevTaxEnabled() external view returns (bool mevTaxEnabled);
 
     /// @notice Permissioned function to disable Mev Tax to be charged in the hook.
-    function disableMevTax() internal;
+    function disableMevTax() external;
 
     /// @notice Permissioned function to enable Mev Tax to be charged in the hook.
-    function enableMevTax() internal;
+    function enableMevTax() external;
 
     /**
      * @notice Fetch the current multiplier of the priority gas price.
@@ -25,12 +25,12 @@ interface IMevHook {
      *
      * @return mevTaxMultiplier The current MEV Tax Multiplier
      */
-    function getMevTaxMultiplier() internal view returns (uint256 mevTaxMultiplier);
+    function getMevTaxMultiplier() external view returns (uint256 mevTaxMultiplier);
 
     /**
      * @notice Permissioned function to set the multiplier of the priority gas price.
      * @param newMevTaxMultiplier Integer that will be used to multiply by the priority gas price and get the MEV swap
      * fee percentage
      */
-    function setMevTaxMultiplier(uint256 newMevTaxMultiplier) internal;
+    function setMevTaxMultiplier(uint256 newMevTaxMultiplier) external;
 }
