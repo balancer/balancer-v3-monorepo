@@ -7,22 +7,16 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
-import { Enum, Safe } from "@safe-global/safe-contracts/contracts/Safe.sol";
 
 contract PauseHelper is SingletonAuthentication {
-    // TODO: Add comments
     using EnumerableSet for EnumerableSet.AddressSet;
 
     event PoolAdded(address pool);
     event PoolRemoved(address pool);
 
-    Safe public immutable safe;
-
     EnumerableSet.AddressSet private _poolsSet;
 
-    constructor(IVault vault, Safe safe_) SingletonAuthentication(vault) {
-        safe = safe_;
-    }
+    constructor(IVault vault) SingletonAuthentication(vault) {}
 
     // --------------------------  Manage Pools --------------------------
 
@@ -62,12 +56,7 @@ contract PauseHelper is SingletonAuthentication {
         for (uint256 i = 0; i < length; i++) {
             require(_poolsSet.contains(pools[i]), "Pool is not in the list of pools");
 
-            safe.execTransactionFromModule(
-                address(getVault()),
-                0,
-                abi.encodeWithSelector(IVaultAdmin.pausePool.selector, pools[i]),
-                Enum.Operation.Call
-            );
+            getVault().pausePool(pools[i]);
         }
     }
 

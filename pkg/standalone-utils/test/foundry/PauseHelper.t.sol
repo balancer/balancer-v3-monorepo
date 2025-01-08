@@ -2,9 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { Safe } from "@safe-global/safe-contracts/contracts/Safe.sol";
-import { SafeProxyFactory } from "@safe-global/safe-contracts/contracts/proxies/SafeProxyFactory.sol";
-
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -15,48 +12,19 @@ import { PauseHelper } from "../../contracts/PauseHelper.sol";
 contract PauseHelperTest is BaseVaultTest {
     PauseHelper pauseHelper;
 
-    SafeProxyFactory safeProxyFactory = new SafeProxyFactory();
-    Safe safeSingleton = new Safe();
-
-    Safe safe;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         address[] memory owners = new address[](1);
         owners[0] = address(this);
-        safe = Safe(
-            payable(
-                address(
-                    safeProxyFactory.createProxyWithNonce(
-                        address(safeSingleton),
-                        abi.encodeWithSelector(
-                            Safe.setup.selector,
-                            owners,
-                            1,
-                            address(0x00),
-                            new bytes(0),
-                            address(0x00),
-                            address(0x00),
-                            0,
-                            address(0x00)
-                        ),
-                        0
-                    )
-                )
-            )
-        );
 
-        pauseHelper = new PauseHelper(vault, Safe(safe));
+        pauseHelper = new PauseHelper(vault);
 
         authorizer.grantRole(pauseHelper.getActionId(pauseHelper.addPools.selector), address(this));
         authorizer.grantRole(pauseHelper.getActionId(pauseHelper.removePools.selector), address(this));
         authorizer.grantRole(pauseHelper.getActionId(pauseHelper.pause.selector), address(this));
 
-        authorizer.grantRole(vault.getActionId(vault.pausePool.selector), address(safe));
-
-        vm.prank(address(safe));
-        safe.enableModule(address(pauseHelper));
+        authorizer.grantRole(vault.getActionId(vault.pausePool.selector), address(pauseHelper));
     }
 
     function testAddPoolsWithTwoBatches() public {
