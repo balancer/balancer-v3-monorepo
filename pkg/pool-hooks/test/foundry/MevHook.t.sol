@@ -7,6 +7,8 @@ import "forge-std/Test.sol";
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+
 import { MevHook } from "../../contracts/MevHook.sol";
 
 contract MevHookTest is BaseVaultTest {
