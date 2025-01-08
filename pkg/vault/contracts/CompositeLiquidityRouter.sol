@@ -359,12 +359,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         bool[] memory useWrappedTokens,
         IERC20[] memory erc4626PoolTokens,
-        uint256[] memory amountsIn,
+        uint256[] memory amountsInRaw,
         SwapKind kind,
         uint256[] memory limits
-    ) private returns (uint256[] memory finalAmountsIn) {
+    ) private returns (uint256[] memory amountsIn) {
         uint256 poolTokensLength = erc4626PoolTokens.length;
-        finalAmountsIn = new uint256[](poolTokensLength);
+        amountsIn = new uint256[](poolTokensLength);
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
@@ -376,18 +376,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
             if (useWrappedTokens[i] == true) {
-                finalAmountsIn[i] = amountsIn[i];
+                amountsIn[i] = amountsInRaw[i];
 
-                if (finalAmountsIn[i] > params.maxAmountsIn[i]) {
-                    revert IVaultErrors.AmountInAboveMax(
-                        erc4626PoolTokens[i],
-                        finalAmountsIn[i],
-                        params.maxAmountsIn[i]
-                    );
+                if (amountsIn[i] > params.maxAmountsIn[i]) {
+                    revert IVaultErrors.AmountInAboveMax(erc4626PoolTokens[i], amountsIn[i], params.maxAmountsIn[i]);
                 }
 
                 if (isStaticCall == false) {
-                    _takeTokenIn(params.sender, wrappedToken, finalAmountsIn[i], params.wethIsEth);
+                    _takeTokenIn(params.sender, wrappedToken, amountsIn[i], params.wethIsEth);
                 }
             } else {
                 require(
@@ -398,7 +394,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 if (isStaticCall == false) {
                     if (kind == SwapKind.EXACT_IN) {
                         // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
-                        _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
+                        _takeTokenIn(params.sender, underlyingToken, amountsInRaw[i], params.wethIsEth);
                     } else {
                         // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
                         // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
@@ -409,14 +405,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
                 uint256 underlyingAmount;
                 uint256 wrappedAmount;
-                if (amountsIn[i] > 0) {
+                if (amountsInRaw[i] > 0) {
                     // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
                     (, underlyingAmount, wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
                         BufferWrapOrUnwrapParams({
                             kind: kind,
                             direction: WrappingDirection.WRAP,
                             wrappedToken: wrappedToken,
-                            amountGivenRaw: amountsIn[i],
+                            amountGivenRaw: amountsInRaw[i],
                             limitRaw: limits[i]
                         })
                     );
@@ -429,7 +425,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     _sendTokenOut(params.sender, underlyingToken, limits[i] - underlyingAmount, wethIsEth);
                 }
 
-                finalAmountsIn[i] = kind == SwapKind.EXACT_IN ? wrappedAmount : underlyingAmount;
+                amountsIn[i] = kind == SwapKind.EXACT_IN ? wrappedAmount : underlyingAmount;
             }
         }
 
