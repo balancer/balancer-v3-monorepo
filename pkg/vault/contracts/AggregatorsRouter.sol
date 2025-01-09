@@ -82,7 +82,8 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
         bool,
         bytes calldata
     ) external payable returns (uint256) {
-        revert OperationNotSupported("swapSingleTokenExactOut is not supported"); // TODO: will implement this in next PR
+        // TODO: will implement this in next PR
+        revert OperationNotSupported("swapSingleTokenExactOut is not supported");
     }
 
     /**
@@ -169,7 +170,8 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
         address,
         bytes memory
     ) external pure returns (uint256) {
-        revert OperationNotSupported("swapSingleTokenExactOut is not supported"); // TODO: will implement this in next PR
+        // TODO: will implement this in next PR
+        revert OperationNotSupported("swapSingleTokenExactOut is not supported");
     }
 
     /**
