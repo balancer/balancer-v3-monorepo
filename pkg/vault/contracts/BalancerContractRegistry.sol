@@ -130,18 +130,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         }
 
         // Ensure name isn't already in use (including as an alias).
-        bytes32 contractId = _getContractId(contractName);
-        address existingContract = _contractRegistry[contractId];
-
-        if (existingContract == address(0)) {
-            existingContract = _contractAliases[contractId];
-        }
-
-        if (existingContract != address(0)) {
-            info = _contractInfo[existingContract];
-
-            revert ContractAlreadyRegistered(info.contractType, contractName);
-        }
+        bytes32 contractId = _ensureUniqueName(contractName, true);
 
         // Store the address in the registry, under the unique name.
         _contractRegistry[contractId] = contractAddress;
@@ -223,17 +212,10 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         }
 
         // Ensure the proposed alias is not in use (i.e., no collision with existing registered contracts).
-        // It can already be in `_contractAliases`; that's the "update" case. For instance, when we want to
-        // migrate the `WeightedPool` alias from v2 to v3. If the name is not already in `_contractAliases`,
-        // we are adding a new alias.
-        bytes32 contractId = _getContractId(contractAlias);
-        address registeredContract = _contractRegistry[contractId];
-
-        if (registeredContract != address(0)) {
-            info = _contractInfo[registeredContract];
-
-            revert ContractAlreadyRegistered(info.contractType, contractAlias);
-        }
+        // It can match an existing alias: that's the "update" case. For instance, if we wanted to migrate
+        // the `WeightedPool` alias from v2 to v3. If the name is not already in `_contractAliases`, we are
+        // adding a new alias.
+        bytes32 contractId = _ensureUniqueName(contractAlias, false);
 
         // This will either add a new or overwrite an existing alias.
         _contractAliases[contractId] = contractAddress;
@@ -275,6 +257,25 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     /// @inheritdoc IBalancerContractRegistry
     function getBalancerContractInfo(address contractAddress) external view returns (ContractInfo memory info) {
         return _contractInfo[contractAddress];
+    }
+
+    function _ensureUniqueName(
+        string memory contractName,
+        bool includeAliases
+    ) internal view returns (bytes32 contractId) {
+        contractId = _getContractId(contractName);
+
+        // Check both the registered names and aliases to ensure this name is not a duplicate.
+        address existingContract = _contractRegistry[contractId];
+        if (includeAliases && existingContract == address(0)) {
+            existingContract = _contractAliases[contractId];
+        }
+
+        if (existingContract != address(0)) {
+            ContractInfo memory info = _contractInfo[existingContract];
+
+            revert ContractAlreadyRegistered(info.contractType, contractName);
+        }
     }
 
     function _getContractId(string memory contractName) internal pure returns (bytes32) {
