@@ -48,7 +48,7 @@ contract MevHookTest is BaseVaultTest {
     /********************************************************
                        isMevTaxEnabled()
     ********************************************************/
-    function testIsMevTaxEnabledStartingState() public {
+    function testIsMevTaxEnabledStartingState() public view {
         assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled after hook creation.");
     }
 
@@ -109,7 +109,7 @@ contract MevHookTest is BaseVaultTest {
     /********************************************************
                    getDefaultMevTaxMultiplier()
     ********************************************************/
-    function testGetDefaultMevTaxMultiplierStartingState() public {
+    function testGetDefaultMevTaxMultiplierStartingState() public view {
         assertEq(_mevHook.getDefaultMevTaxMultiplier(), 0, "Default Mev Tax Multiplier is not 0 after hook creation.");
     }
 
@@ -158,7 +158,7 @@ contract MevHookTest is BaseVaultTest {
     /********************************************************
                    getDefaultMevTaxThreshold()
     ********************************************************/
-    function testGetDefaultMevTaxThresholdStartingState() public {
+    function testGetDefaultMevTaxThresholdStartingState() public view {
         assertEq(_mevHook.getDefaultMevTaxThreshold(), 0, "Default Mev Tax Threshold is not 0 after hook creation.");
     }
 

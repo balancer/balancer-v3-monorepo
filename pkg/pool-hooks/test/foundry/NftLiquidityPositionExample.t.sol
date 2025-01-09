@@ -67,7 +67,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         }
     }
 
-    function createHook() internal override returns (address) {
+    function createHook() internal view override returns (address) {
         return address(nftRouter);
     }
 
