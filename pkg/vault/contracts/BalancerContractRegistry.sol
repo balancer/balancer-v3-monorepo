@@ -59,6 +59,9 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     // contract state by overwriting a registry entry with an "alias" that matches a different contract).
     mapping(bytes32 contractAliasId => address addr) private _contractAliases;
 
+    /// @dev A `_contractRegistry` entry has no corresponding `_contractInfo`. Should never happen.
+    error InconsistentState();
+
     constructor(IVault vault) SingletonAuthentication(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -166,7 +169,9 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
 
         ContractInfo memory info = _contractInfo[contractAddress];
         // This should be impossible: the registry and info mappings must be in sync.
-        require(info.isRegistered, "Registry entry with no contract info");
+        if (info.isRegistered == false) {
+            revert InconsistentState();
+        }
 
         delete _contractRegistry[contractId];
         delete _contractInfo[contractAddress];
