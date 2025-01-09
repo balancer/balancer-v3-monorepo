@@ -10,6 +10,7 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IRouterSwap } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSwap.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -558,7 +559,7 @@ contract Router is IRouter, RouterCommon {
                                        Swaps
     ***************************************************************************/
 
-    /// @inheritdoc IRouter
+    /// @inheritdoc IRouterSwap
     function swapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -592,7 +593,7 @@ contract Router is IRouter, RouterCommon {
             );
     }
 
-    /// @inheritdoc IRouter
+    /// @inheritdoc IRouterSwap
     function swapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
@@ -629,7 +630,7 @@ contract Router is IRouter, RouterCommon {
     /**
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouter for struct definition)
+     * @param params Swap parameters (see IRouterSwap for struct definition)
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function swapSingleTokenHook(
@@ -1003,7 +1004,7 @@ contract Router is IRouter, RouterCommon {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
     }
 
-    /// @inheritdoc IRouter
+    /// @inheritdoc IRouterSwap
     function querySwapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -1035,7 +1036,7 @@ contract Router is IRouter, RouterCommon {
             );
     }
 
-    /// @inheritdoc IRouter
+    /// @inheritdoc IRouterSwap
     function querySwapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
@@ -1070,7 +1071,7 @@ contract Router is IRouter, RouterCommon {
     /**
      * @notice Hook for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouter for struct definition)
+     * @param params Swap parameters (see IRouterSwap for struct definition)
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function querySwapHook(
