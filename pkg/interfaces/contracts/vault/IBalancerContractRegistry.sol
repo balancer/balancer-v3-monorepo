@@ -1,0 +1,195 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.24;
+
+/// @notice Registered contracts must be one of these types.
+enum ContractType {
+    OTHER, // a blank entry will have a 0-value type, and it's safest to return this in that case
+    POOL_FACTORY,
+    ROUTER,
+    HOOK,
+    ERC4626
+}
+
+interface IBalancerContractRegistry {
+    /**
+     * @notice Contracts can be deprecated, so we store an active flag indicating the status.
+     * @dev With two flags, we can differentiate between deprecated and non-existent. The same contract address
+     * can have multiple names, but only one type. If a contract is legitimately multiple types (e.g., a hook that
+     * also acts as a router), set the type to its "primary" function: hook, in this case. The "Other" type is
+     * intended as a catch-all for things that don't find into the standard types (e.g., helper contracts).
+     *
+     * @param contractType The type of contract (e.g., Router or Hook)
+     * @param isRegistered This flag indicates whether there is an entry for the address or not
+     * @param isActive If there is an entry, this flag indicates whether it is active or deprecated
+     */
+    struct ContractInfo {
+        ContractType contractType;
+        bool isRegistered;
+        bool isActive;
+    }
+
+    /**
+     * @notice Emitted wen a new contract is registered.
+     * @param contractType The type of contract being registered
+     * @param contractName The name of the contract being registered
+     * @param contractAddress The address of the contract being registered
+     */
+    event BalancerContractRegistered(
+        ContractType indexed contractType,
+        string indexed contractName,
+        address indexed contractAddress
+    );
+
+    /**
+     * @notice Emitted wen a new contract is deregistered.
+     * @param contractType The type of contract being deregistered
+     * @param contractName The name of the contract being deregistered
+     * @param contractAddress The address of the contract being deregistered
+     */
+    event BalancerContractDeregistered(
+        ContractType indexed contractType,
+        string indexed contractName,
+        address indexed contractAddress
+    );
+
+    /**
+     * @notice Emitted when a new contract is deprecated.
+     * @dev This sets the `active` flag to false.
+     * @param contractAddress The address of the contract being deprecated
+     */
+    event BalancerContractDeprecated(address indexed contractAddress);
+
+    /**
+     * @notice Emitted when an alias is added or updated.
+     * @param contractAlias The alias name
+     * @param contractAddress The address of the contract being deprecated
+     */
+    event ContractAliasSet(string indexed contractAlias, address indexed contractAddress);
+
+    /**
+     * @notice The contract has already been registered under the given name.
+     * @dev Note that names must be unique; it is not possible to register two contracts with the same name and
+     * different types.
+     *
+     * @param contractType The contract type, provided for documentation purposes
+     * @param contractName The name of the contract
+     */
+    error ContractAlreadyRegistered(ContractType contractType, string contractName);
+
+    /**
+     * @notice The contract has already been registered under the given address.
+     * @dev Note that names must be unique; it is not possible to register two contracts with the same name and
+     * different types.
+     *
+     * @param contractType The contract type, provided for documentation purposes
+     * @param contractAddress The name of the contract
+     */
+    error AddressAlreadyRegistered(ContractType contractType, address contractAddress);
+
+    /**
+     * @notice An operation that requires a valid contract specified an unrecognized name or address.
+     * @dev The contract being deregistered or deprecated was never registered, or the target of an alias isn't a
+     * previously registered contract.
+     */
+    error ContractNotRegistered();
+
+    /**
+     * @notice The contract being deprecated was registered, but already deprecated.
+     * @param contractAddress The address of the contract to be deprecated
+     */
+    error ContractAlreadyDeprecated(address contractAddress);
+
+    /// @notice Registered contracts cannot have the zero address.
+    error ZeroContractAddress();
+
+    /// @notice Registered contract names or aliases cannot be blank.
+    error InvalidContractName();
+
+    /**
+     * @notice Register an official Balancer contract (e.g., a trusted router, standard pool factory, or hook).
+     * @dev This is a permissioned function, and does only basic validation of the address (non-zero) and the name
+     * (not blank). Governance must ensure this is called with valid information. Emits the
+     * `BalancerContractRegistered` event if successful. Reverts if either the name or address is invalid or
+     * already in use.
+     *
+     * @param contractType The type of contract being registered
+     * @param contractName A text description of the contract, usually the deployed version (e.g., "v3-pool-weighted")
+     * @param contractAddress The address of the contract
+     */
+    function registerBalancerContract(
+        ContractType contractType,
+        string memory contractName,
+        address contractAddress
+    ) external;
+
+    /**
+     * @notice Deregister an official Balancer contract (e.g., a trusted router, standard pool factory, or hook).
+     * @dev This is a permissioned function, and makes it possible to correct errors without complex validation logic.
+     * If a contract was registered with an incorrect type, name, or address, this allows governance to simply delete
+     * and register it again with the correct data. It must start with the name, as this is the key of the registry,
+     * required for deletion.
+     *
+     * Note that there might still be an alias targeting the address being deleted, but accessing it will just return
+     * inactive, and this orphan alias get simply be overwritten to point to the correct address.
+     *
+     * @param contractName The name of the contract being deprecated (cannot be an alias)
+     */
+    function deregisterBalancerContract(string memory contractName) external;
+
+    /**
+     * @notice Deprecate an official Balancer contract.
+     * @dev This is a permissioned function that sets the `isActive` flag to false in the contract info. It uses the
+     * address instead of the name for maximum clarity, and to avoid having to handle aliases. Addresses and names are
+     * enforced unique, so either the name or address could be specified in principle.
+     *
+     * @param contractAddress The address of the contract being deprecated
+     */
+    function deprecateBalancerContract(address contractAddress) external;
+
+    /**
+     * @notice Add an alias for a registered contract.
+     * @dev This is a permissioned function to support querying by a contract alias. For instance, we might create a
+     * `WeightedPool` alias meaning the "latest" version of the `WeightedPoolFactory`, so that off-chain users don't
+     * need to track specific versions. Once added, an alias can also be updated to point to a different address
+     * (e.g., when migrating from the v2 to the v3 weighted pool).
+     *
+     * @param contractAlias An alternate name that can be used to fetch a contract address
+     * @param existingContract The target address of the contract alias
+     */
+    function addOrUpdateBalancerContractAlias(string memory contractAlias, address existingContract) external;
+
+    /**
+     * @notice Determine whether an address is an official contract of the specified type.
+     * @dev This is a permissioned function.
+     * @param contractType The type of contract being renamed
+     * @param contractAddress The address of the contract
+     * @return isActive True if the given address is a registered and active contract of the specified type
+     */
+    function isActiveBalancerContract(
+        ContractType contractType,
+        address contractAddress
+    ) external view returns (bool isActive);
+
+    /**
+     * @notice Look up a registered contract by type and name.
+     * @dev This could target a particular version (e.g. `20241205-v3-weighted-pool`), or a contract alias
+     * (e.g., `WeightedPool`).
+     *
+     * @param contractType The type of the contract
+     * @param contractName The name of the contract
+     * @return contractAddress The address of the associated contract, if registered, or zero
+     * @return isActive True if the contract was registered and not deprecated
+     */
+    function getBalancerContract(
+        ContractType contractType,
+        string memory contractName
+    ) external view returns (address contractAddress, bool isActive);
+
+    /**
+     * @notice Look up complete information about a registered contract by address.
+     * @param contractAddress The address of the associated contract
+     * @return info ContractInfo struct corresponding to the address
+     */
+    function getBalancerContractInfo(address contractAddress) external view returns (ContractInfo memory info);
+}
