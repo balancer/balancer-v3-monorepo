@@ -244,8 +244,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             useWrappedTokens,
             erc4626PoolTokens,
             params.maxAmountsIn,
-            SwapKind.EXACT_IN,
-            new uint256[](poolTokensLength)
+            SwapKind.EXACT_IN
         );
 
         // Add wrapped amounts to the ERC4626 pool.
@@ -285,14 +284,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        amountsIn = _prepareTokens(
-            params,
-            useWrappedTokens,
-            erc4626PoolTokens,
-            wrappedAmountsIn,
-            SwapKind.EXACT_OUT,
-            params.maxAmountsIn
-        );
+        amountsIn = _prepareTokens(params, useWrappedTokens, erc4626PoolTokens, wrappedAmountsIn, SwapKind.EXACT_OUT);
     }
 
     function removeLiquidityERC4626PoolProportionalHook(
@@ -360,16 +352,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         bool[] memory useWrappedTokens,
         IERC20[] memory erc4626PoolTokens,
         uint256[] memory amountsInRaw,
-        SwapKind kind,
-        uint256[] memory limits
+        SwapKind kind
     ) private returns (uint256[] memory amountsIn) {
-        uint256 poolTokensLength = erc4626PoolTokens.length;
-        amountsIn = new uint256[](poolTokensLength);
+        amountsIn = new uint256[](erc4626PoolTokens.length);
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         // Wrap given underlying tokens for wrapped tokens.
-        for (uint256 i = 0; i < poolTokensLength; ++i) {
+        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
             // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
             // a valid ERC4626.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
@@ -377,10 +367,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             if (useWrappedTokens[i] == true) {
                 amountsIn[i] = amountsInRaw[i];
-
-                if (amountsIn[i] > params.maxAmountsIn[i]) {
-                    revert IVaultErrors.AmountInAboveMax(erc4626PoolTokens[i], amountsIn[i], params.maxAmountsIn[i]);
-                }
 
                 if (isStaticCall == false) {
                     _takeTokenIn(params.sender, wrappedToken, amountsIn[i], params.wethIsEth);
@@ -399,7 +385,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
                         // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
                         // between the limit and the actual underlying amount is returned to the sender.
-                        _takeTokenIn(params.sender, underlyingToken, limits[i], params.wethIsEth);
+                        _takeTokenIn(params.sender, underlyingToken, params.maxAmountsIn[i], params.wethIsEth);
                     }
                 }
 
@@ -413,19 +399,30 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             direction: WrappingDirection.WRAP,
                             wrappedToken: wrappedToken,
                             amountGivenRaw: amountsInRaw[i],
-                            limitRaw: limits[i]
+                            limitRaw: kind == SwapKind.EXACT_IN ? 0 : _MAX_AMOUNT
                         })
                     );
                 }
 
                 if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
-                    bool wethIsEth = params.wethIsEth;
                     // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
                     // difference between limit and exact underlying amount needs to be returned to the sender.
-                    _sendTokenOut(params.sender, underlyingToken, limits[i] - underlyingAmount, wethIsEth);
+                    _sendTokenOut(
+                        params.sender,
+                        underlyingToken,
+                        params.maxAmountsIn[i] - underlyingAmount,
+                        params.wethIsEth
+                    );
                 }
 
                 amountsIn[i] = kind == SwapKind.EXACT_IN ? wrappedAmount : underlyingAmount;
+            }
+
+            // Applying the limits unconditionally is not possible.
+            // For wrapped tokens == true we must apply them.
+            // For wrapped tokens == false, we must skip on exact in and must apply on exact out. 3D chess at its finest.
+            if ((useWrappedTokens[i] == true || kind == SwapKind.EXACT_OUT) && amountsIn[i] > params.maxAmountsIn[i]) {
+                revert IVaultErrors.AmountInAboveMax(erc4626PoolTokens[i], amountsIn[i], params.maxAmountsIn[i]);
             }
         }
 
