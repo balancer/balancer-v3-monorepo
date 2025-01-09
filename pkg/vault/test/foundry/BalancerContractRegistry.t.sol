@@ -141,6 +141,46 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         assertFalse(info.isActive, "Contract active");
     }
 
+    function testStaleAliasGetter() public {
+        vm.startPrank(admin);
+        // Register a contract and add an alias.
+        registry.registerBalancerContract(ContractType.ROUTER, DEFAULT_NAME, ANY_ADDRESS);
+        registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
+
+        // Deregister the contract - but the alias will still be there.
+        registry.deregisterBalancerContract(DEFAULT_NAME);
+        vm.stopPrank();
+
+        // Getting it using the primary name should return 0.
+        (address contractAddress, bool active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_NAME);
+        assertEq(contractAddress, ZERO_ADDRESS, "Wrong primary contract address");
+        assertFalse(active, "Contract is active using primary name");
+
+        // Getting it using the alias should also return 0, even though there's a record there.
+        (contractAddress, active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_ALIAS);
+        assertEq(contractAddress, ZERO_ADDRESS, "Wrong alias contract address");
+        assertFalse(active, "Contract is active using alias");
+    }
+
+    function testWrongTypeGetter() public {
+        vm.startPrank(admin);
+        // Register a contract and add an alias.
+        registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
+        registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
+
+        // Getting a valid entry with the wrong type should return 0.
+        (address contractAddress, bool active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_NAME);
+        assertEq(contractAddress, ZERO_ADDRESS, "Wrong primary contract address");
+        assertFalse(active, "Contract is active using primary name");
+
+        assertFalse(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS));
+
+        // Getting a valid entry through the alias, with the wrong type, should return 0.
+        (contractAddress, active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_ALIAS);
+        assertEq(contractAddress, ZERO_ADDRESS, "Wrong alias contract address");
+        assertFalse(active, "Contract is active using alias");
+    }
+
     function testBufferRegistration() public {
         vm.prank(admin);
         registry.registerBalancerContract(ContractType.ERC4626, DEFAULT_NAME, ANY_ADDRESS);
@@ -302,6 +342,7 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         vm.startPrank(admin);
         registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
         registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
+        vm.stopPrank();
 
         (address contractAddress, bool active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME);
         assertEq(contractAddress, ANY_ADDRESS, "Wrong default address");
@@ -309,6 +350,46 @@ contract BalancerContractRegistryTest is BaseVaultTest {
 
         (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_ALIAS);
         assertEq(contractAddress, ANY_ADDRESS, "Wrong alias address");
+        assertTrue(active, "Alias is not active");
+    }
+
+    function testAddingAliasEmitsEvent() public {
+        vm.startPrank(admin);
+        registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
+
+        vm.expectEmit();
+        emit IBalancerContractRegistry.ContractAliasUpdated(DEFAULT_ALIAS, ANY_ADDRESS);
+
+        registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
+        vm.stopPrank();
+    }
+
+    function testUpdatingAlias() public {
+        vm.startPrank(admin);
+        registry.registerBalancerContract(ContractType.POOL_FACTORY, "v3-pool-weighted", ANY_ADDRESS);
+        registry.registerBalancerContract(ContractType.POOL_FACTORY, "v3-pool-weighted-v2", SECOND_ADDRESS);
+        registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
+
+        // The alias points to v1.
+        (address contractAddress, bool active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_ALIAS);
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong alias address");
+        assertTrue(active, "Alias is not active");
+
+        // Update the alias to point to v2.
+        registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, SECOND_ADDRESS);
+        vm.stopPrank();
+
+        (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, DEFAULT_ALIAS);
+        assertEq(contractAddress, SECOND_ADDRESS, "Wrong alias address");
+        assertTrue(active, "Alias is not active");
+
+        // Can also still get by version.
+        (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, "v3-pool-weighted");
+        assertEq(contractAddress, ANY_ADDRESS, "Wrong alias address");
+        assertTrue(active, "Alias is not active");
+
+        (contractAddress, active) = registry.getBalancerContract(ContractType.POOL_FACTORY, "v3-pool-weighted-v2");
+        assertEq(contractAddress, SECOND_ADDRESS, "Wrong alias address");
         assertTrue(active, "Alias is not active");
     }
 }
