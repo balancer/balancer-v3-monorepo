@@ -13,14 +13,15 @@ enum ContractType {
 
 interface IBalancerContractRegistry {
     /**
-     * @notice Contracts can be deprecated, so we store an active flag indicating the status.
-     * @dev With two flags, we can differentiate between deprecated and non-existent. The same contract address
-     * can have multiple names, but only one type. If a contract is legitimately multiple types (e.g., a hook that
-     * also acts as a router), set the type to its "primary" function: hook, in this case. The "Other" type is
-     * intended as a catch-all for things that don't find into the standard types (e.g., helper contracts).
+     * @notice Store the state of a registered Balancer contract.
+     * @dev Contracts can be deprecated, so we store an active flag indicating the status. With two flags, we can
+     * differentiate between deprecated and non-existent. The same contract address can have multiple names, but
+     * only one type. If a contract is legitimately multiple types (e.g., a hook that also acts as a router), set
+     * the type to its "primary" function: hook, in this case. The "Other" type is intended as a catch-all for
+     * things that don't find into the standard types (e.g., helper contracts).
      *
      * @param contractType The type of contract (e.g., Router or Hook)
-     * @param isRegistered This flag indicates whether there is an entry for the address or not
+     * @param isRegistered This flag indicates whether there is an entry for the associated address
      * @param isActive If there is an entry, this flag indicates whether it is active or deprecated
      */
     struct ContractInfo {
@@ -42,7 +43,7 @@ interface IBalancerContractRegistry {
     );
 
     /**
-     * @notice Emitted wen a new contract is deregistered.
+     * @notice Emitted wen a new contract is deregistered (deleted).
      * @param contractType The type of contract being deregistered
      * @param contractName The name of the contract being deregistered
      * @param contractAddress The address of the contract being deregistered
@@ -54,8 +55,8 @@ interface IBalancerContractRegistry {
     );
 
     /**
-     * @notice Emitted when a new contract is deprecated.
-     * @dev This sets the `active` flag to false.
+     * @notice Emitted when a registered contract is deprecated.
+     * @dev This sets the `isActive` flag to false.
      * @param contractAddress The address of the contract being deprecated
      */
     event BalancerContractDeprecated(address indexed contractAddress);
@@ -65,7 +66,7 @@ interface IBalancerContractRegistry {
      * @param contractAlias The alias name
      * @param contractAddress The address of the contract being deprecated
      */
-    event ContractAliasSet(string indexed contractAlias, address indexed contractAddress);
+    event ContractAliasUpdated(string indexed contractAlias, address indexed contractAddress);
 
     /**
      * @notice The contract has already been registered under the given name.
@@ -73,17 +74,18 @@ interface IBalancerContractRegistry {
      * different types.
      *
      * @param contractType The contract type, provided for documentation purposes
-     * @param contractName The name of the contract
+     * @param contractName The name of the previously registered contract
      */
     error ContractAlreadyRegistered(ContractType contractType, string contractName);
 
     /**
      * @notice The contract has already been registered under the given address.
-     * @dev Note that names must be unique; it is not possible to register two contracts with the same name and
-     * different types.
+     * @dev Both names and addresses must be unique in the primary registration mapping. Though there are two mappings
+     * to accommodate searching by either name or address, conceptually there is a single guaranteed-consistent
+     * name => address => state mapping.
      *
      * @param contractType The contract type, provided for documentation purposes
-     * @param contractAddress The name of the contract
+     * @param contractAddress The address of the previously registered contract
      */
     error AddressAlreadyRegistered(ContractType contractType, address contractAddress);
 
@@ -96,7 +98,7 @@ interface IBalancerContractRegistry {
 
     /**
      * @notice The contract being deprecated was registered, but already deprecated.
-     * @param contractAddress The address of the contract to be deprecated
+     * @param contractAddress The address of the previously deprecated contract
      */
     error ContractAlreadyDeprecated(address contractAddress);
 
@@ -125,13 +127,14 @@ interface IBalancerContractRegistry {
 
     /**
      * @notice Deregister an official Balancer contract (e.g., a trusted router, standard pool factory, or hook).
-     * @dev This is a permissioned function, and makes it possible to correct errors without complex validation logic.
+     * @dev This is a permissioned function, and makes it possible to correct errors without complex update logic.
      * If a contract was registered with an incorrect type, name, or address, this allows governance to simply delete
-     * and register it again with the correct data. It must start with the name, as this is the key of the registry,
-     * required for deletion.
+     * it, and register it again with the correct data. It must start with the name, as this is the registry key,
+     * required for complete deletion.
      *
      * Note that there might still be an alias targeting the address being deleted, but accessing it will just return
-     * inactive, and this orphan alias get simply be overwritten to point to the correct address.
+     * inactive, and this orphan alias can simply be overwritten with `addOrUpdateBalancerContractAlias` to point to
+     * the correct address.
      *
      * @param contractName The name of the contract being deprecated (cannot be an alias)
      */
@@ -161,8 +164,7 @@ interface IBalancerContractRegistry {
 
     /**
      * @notice Determine whether an address is an official contract of the specified type.
-     * @dev This is a permissioned function.
-     * @param contractType The type of contract being renamed
+     * @param contractType The type of contract
      * @param contractAddress The address of the contract
      * @return isActive True if the given address is a registered and active contract of the specified type
      */

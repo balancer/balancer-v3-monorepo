@@ -233,7 +233,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         // This will either add a new or overwrite an existing alias.
         _contractAliases[contractId] = contractAddress;
 
-        emit ContractAliasSet(contractAlias, contractAddress);
+        emit ContractAliasUpdated(contractAlias, contractAddress);
     }
 
     /// @inheritdoc IBalancerContractRegistry
@@ -250,19 +250,21 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         string memory contractName
     ) external view returns (address contractAddress, bool isActive) {
         bytes32 contractId = _getContractId(contractName);
-
-        contractAddress = _contractRegistry[contractId];
+        address registeredAddress = _contractRegistry[contractId];
 
         // Also check the aliases, if not found in the primary registry.
-        if (contractAddress == address(0)) {
-            contractAddress = _contractAliases[contractId];
+        if (registeredAddress == address(0)) {
+            registeredAddress = _contractAliases[contractId];
         }
 
-        // It is possible to have a "stale" reference, that points to a contract entry that's been deleted.
-        // In this case, it will just return inactive. To fix this, simply `
-        ContractInfo memory info = _contractInfo[contractAddress];
-
-        isActive = info.isActive && info.contractType == contractType;
+        ContractInfo memory info = _contractInfo[registeredAddress];
+        // It is possible to register a contract and alias, then deregister the contract, leaving a "stale" alias
+        // reference. In this case, `isRegistered` will be false. Only return the contract address if it is still
+        // valid and of the correct type.
+        if (info.isRegistered && info.contractType == contractType) {
+            contractAddress = registeredAddress;
+            isActive = info.isActive;
+        }
     }
 
     /// @inheritdoc IBalancerContractRegistry
