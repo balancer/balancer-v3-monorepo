@@ -126,8 +126,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
         (uint256 virtualParamIn, uint256 virtualParamOut) = _getVirtualOffsets(
             balanceTokenInScaled18,
             balanceTokenOutScaled18,
-            tokenInIsToken0,
-            request.kind
+            tokenInIsToken0
         );
 
         if (request.kind == SwapKind.EXACT_IN) {
@@ -168,8 +167,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
     function _getVirtualOffsets(
         uint256 balanceTokenInScaled18,
         uint256 balanceTokenOutScaled18,
-        bool tokenInIsToken0,
-        SwapKind kind
+        bool tokenInIsToken0
     ) internal view virtual returns (uint256 virtualBalanceIn, uint256 virtualBalanceOut) {
         uint256[] memory balances = new uint256[](2);
         balances[0] = tokenInIsToken0 ? balanceTokenInScaled18 : balanceTokenOutScaled18;
