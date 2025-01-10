@@ -18,6 +18,8 @@ import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
+
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import { GyroECLPMath } from "./lib/GyroECLPMath.sol";
@@ -28,7 +30,7 @@ import { GyroECLPMath } from "./lib/GyroECLPMath.sol";
  * parameterized by the pricing range [α,β], the inclination angle `phi` and stretching parameter `lambda`. For more
  * information, please refer to https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/e-clps.
  */
-contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
+contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -225,5 +227,39 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken {
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
         return GyroECLPMath.MAX_INVARIANT_RATIO;
+    }
+
+    /// @inheritdoc IGyroECLPPool
+    function getGyroECLPPoolDynamicData() external view returns (GyroECLPPoolDynamicData memory data) {
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
+        (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
+        data.totalSupply = totalSupply();
+        data.bptRate = getRate();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
+    }
+
+    /// @inheritdoc IGyroECLPPool
+    function getGyroECLPPoolImmutableData() external view returns (GyroECLPPoolImmutableData memory data) {
+        data.tokens = _vault.getPoolTokens(address(this));
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.paramsAlpha = _paramsAlpha;
+        data.paramsBeta = _paramsBeta;
+        data.paramsC = _paramsC;
+        data.paramsS = _paramsS;
+        data.paramsLambda = _paramsLambda;
+        data.tauAlphaX = _tauAlphaX;
+        data.tauAlphaY = _tauAlphaY;
+        data.tauBetaX = _tauBetaX;
+        data.tauBetaY = _tauBetaY;
+        data.u = _u;
+        data.v = _v;
+        data.w = _w;
+        data.z = _z;
+        data.dSq = _dSq;
     }
 }

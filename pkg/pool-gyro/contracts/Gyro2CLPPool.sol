@@ -10,9 +10,12 @@ import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
@@ -24,7 +27,7 @@ import "./lib/Gyro2CLPMath.sol";
  * by the pricing range [α,β] and the two assets in the pool. For more information, please refer to
  * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps
  */
-contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
+contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
     using FixedPoint for uint256;
 
     uint256 private immutable _sqrtAlpha;
@@ -209,5 +212,27 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
         return type(uint256).max;
+    }
+
+    /// @inheritdoc IGyro2CLPPool
+    function getGyro2CLPPoolDynamicData() external view returns (Gyro2CLPPoolDynamicData memory data) {
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
+        (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
+        data.totalSupply = totalSupply();
+        data.bptRate = getRate();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
+    }
+
+    /// @inheritdoc IGyro2CLPPool
+    function getGyro2CLPPoolImmutableData() external view returns (Gyro2CLPPoolImmutableData memory data) {
+        data.tokens = _vault.getPoolTokens(address(this));
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.sqrtAlpha = _sqrtAlpha;
+        data.sqrtBeta = _sqrtBeta;
     }
 }
