@@ -20,8 +20,8 @@ import { Gyro2CLPPool } from "../../../contracts/Gyro2CLPPool.sol";
 contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
     using CastingHelpers for address[];
 
-    uint256 private _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
-    uint256 private _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
+    uint256 internal _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
+    uint256 internal _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
 
     string private artifactsRootDir = "artifacts/";
 
