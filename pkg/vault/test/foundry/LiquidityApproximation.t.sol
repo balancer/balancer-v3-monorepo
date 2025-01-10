@@ -317,7 +317,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperationNoSwapFee();
     }
 
-    // Remove
+    // Remove liquidity variants
 
     function testRemoveLiquiditySingleTokenExactOut__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
         exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
