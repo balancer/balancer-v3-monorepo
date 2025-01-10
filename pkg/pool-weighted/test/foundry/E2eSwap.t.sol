@@ -75,7 +75,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         _setMinAndMaxSwapAmountExactOut(newPoolBalances);
 
         // Weighted Pool has rounding errors when token decimals are different, so the number below fixes the test
-        // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther from 50/50 weights, the bigger the error.
+        // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther the weights are from 50/50, the bigger
+        // the error.
         exactInOutDecimalsErrorMultiplier = 2000;
     }
 
