@@ -22,7 +22,7 @@ contract Gyro2CLPPoolMock is Gyro2CLPPool {
         _overrideSqrtBeta = newSqrtBeta;
     }
 
-    /// @notice Return the parameters that configure a 2CLP (sqrtAlpha and sqrtBeta).
+    /// @notice Return the parameters that configure a 2-CLP (sqrtAlpha and sqrtBeta).
     function _getSqrtAlphaAndBeta() internal view override returns (uint256 sqrtAlpha, uint256 sqrtBeta) {
         return (_overrideSqrtAlpha, _overrideSqrtBeta);
     }
