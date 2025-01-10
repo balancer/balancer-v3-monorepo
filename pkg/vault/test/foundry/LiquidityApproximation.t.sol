@@ -144,7 +144,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         return maxAmount / 2 - 1;
     }
 
-    // Add
+    // Add liquidity variants
+
     function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
         daiAmountIn = bound(daiAmountIn, minAmount, getMaxDaiIn());
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
