@@ -46,8 +46,7 @@ contract DynamicAndImmutableData2CLPTest is BaseVaultTest, Gyro2ClpPoolDeployer 
         assertEq(data.bptRate, bptRate, "BPT rate mismatch");
         assertEq(data.totalSupply, totalSupply, "Total supply mismatch");
 
-        // Pool deployer initially deploys a pool with 0 swap fee.
-        assertEq(data.staticSwapFeePercentage, 0, "Swap fee mismatch");
+        assertEq(data.staticSwapFeePercentage, DEFAULT_SWAP_FEE, "Swap fee mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             assertEq(data.balancesLiveScaled18[i], DEFAULT_AMOUNT, "Live balance mismatch");
