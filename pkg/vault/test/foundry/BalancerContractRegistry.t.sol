@@ -61,19 +61,34 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         registry.registerBalancerContract(ContractType.POOL_FACTORY, "", ANY_ADDRESS);
     }
 
-    function testDuplicateRegistration() public {
+    function testDuplicateRegistrationName() public {
         vm.startPrank(admin);
         registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
 
         // Try to register the same address under a different name (must use aliases for this).
         vm.expectRevert(
             abi.encodeWithSelector(
-                IBalancerContractRegistry.AddressAlreadyRegistered.selector,
+                IBalancerContractRegistry.ContractAddressAlreadyRegistered.selector,
                 ContractType.POOL_FACTORY,
                 ANY_ADDRESS
             )
         );
         registry.registerBalancerContract(ContractType.POOL_FACTORY, "Different Name", ANY_ADDRESS);
+        vm.stopPrank();
+    }
+
+    function testDuplicateRegistrationAddress() public {
+        vm.startPrank(admin);
+        registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IBalancerContractRegistry.ContractNameAlreadyRegistered.selector,
+                ContractType.POOL_FACTORY,
+                DEFAULT_NAME
+            )
+        );
+        registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, SECOND_ADDRESS);
         vm.stopPrank();
     }
 
@@ -85,9 +100,9 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         // Try to register a new address with a contract name that is already used as an alias.
         vm.expectRevert(
             abi.encodeWithSelector(
-                IBalancerContractRegistry.ContractAlreadyRegistered.selector,
-                ContractType.POOL_FACTORY,
-                DEFAULT_ALIAS
+                IBalancerContractRegistry.ContractNameInUseAsAlias.selector,
+                DEFAULT_ALIAS,
+                ANY_ADDRESS
             )
         );
         registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_ALIAS, SECOND_ADDRESS);
@@ -201,8 +216,17 @@ contract BalancerContractRegistryTest is BaseVaultTest {
     function testDeregisterNonExistentContract() public {
         vm.prank(admin);
 
-        vm.expectRevert(IBalancerContractRegistry.ContractNotRegistered.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(IBalancerContractRegistry.ContractNameNotRegistered.selector, DEFAULT_NAME)
+        );
         registry.deregisterBalancerContract(DEFAULT_NAME);
+    }
+
+    function testInvalidDeregisterName() public {
+        vm.prank(admin);
+
+        vm.expectRevert(IBalancerContractRegistry.InvalidContractName.selector);
+        registry.deregisterBalancerContract("");
     }
 
     function testValidDeregistration() public {
@@ -231,11 +255,20 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         vm.stopPrank();
     }
 
+    function testDeprecateZeroContract() public {
+        vm.prank(admin);
+
+        vm.expectRevert(IBalancerContractRegistry.ZeroContractAddress.selector);
+        registry.deprecateBalancerContract(ZERO_ADDRESS);
+    }
+
     function testDeprecateNonExistentContract() public {
         vm.prank(admin);
 
-        vm.expectRevert(IBalancerContractRegistry.ContractNotRegistered.selector);
-        registry.deprecateBalancerContract(ZERO_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(IBalancerContractRegistry.ContractAddressNotRegistered.selector, ANY_ADDRESS)
+        );
+        registry.deprecateBalancerContract(ANY_ADDRESS);
     }
 
     function testDoubleDeprecation() public {
@@ -306,7 +339,7 @@ contract BalancerContractRegistryTest is BaseVaultTest {
     }
 
     function testInvalidAliasName() public {
-        vm.expectRevert(IBalancerContractRegistry.InvalidContractName.selector);
+        vm.expectRevert(IBalancerContractRegistry.InvalidContractAlias.selector);
         vm.prank(admin);
         registry.addOrUpdateBalancerContractAlias("", ANY_ADDRESS);
     }
@@ -318,7 +351,9 @@ contract BalancerContractRegistryTest is BaseVaultTest {
     }
 
     function testAliasForUnregistered() public {
-        vm.expectRevert(IBalancerContractRegistry.ContractNotRegistered.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(IBalancerContractRegistry.ContractAddressNotRegistered.selector, ANY_ADDRESS)
+        );
         vm.prank(admin);
         registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
     }
@@ -329,7 +364,7 @@ contract BalancerContractRegistryTest is BaseVaultTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IBalancerContractRegistry.ContractAlreadyRegistered.selector,
+                IBalancerContractRegistry.ContractAliasInUseAsName.selector,
                 ContractType.POOL_FACTORY,
                 DEFAULT_NAME
             )
