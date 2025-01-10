@@ -234,38 +234,26 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
     }
 
     // Utils
+
     /**
-     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
-     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
-     * transform an internal call into an external call to capture an error in any of the external calls.
+     * This note applies to all the External functions below: vm.expectRevert only captures the error of the next
+     * external call. If we call an internal function with multiple external calls, only the first function will be
+     * tested with vm.expectRevert. Therefore, we need to transform an internal call into an external call to capture
+     * an error in any of the external calls.
      */
+
     function removeExactInAllBptInExternal(uint256 exactBptAmount) external {
         removeExactInAllBptIn(exactBptAmount);
     }
 
-    /**
-     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
-     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
-     * transform an internal call into an external call to capture an error in any of the external calls.
-     */
     function removeExactOutAllUsdcAmountOutExternal(uint256 exactBptAmountOut) external {
         removeExactOutAllUsdcAmountOut(exactBptAmountOut);
     }
 
-    /**
-     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
-     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
-     * transform an internal call into an external call to capture an error in any of the external calls.
-     */
     function removeExactOutArbitraryAmountOutExternal(uint256 exactAmountAmount) external {
         removeExactOutArbitraryAmountOut(exactAmountAmount);
     }
 
-    /**
-     * @dev vm.expectRevert only captures the error of the next external call. If we call an internal function with
-     * multiple external calls, only the first function will be tested with vm.expectRevert. Therefore, we need to
-     * transform an internal call into an external call to capture an error in any of the external calls.
-     */
     function removeExactInArbitraryBptInExternal(uint256 exactBptAmountIn) external {
         removeExactInArbitraryBptIn(exactBptAmountIn);
     }
