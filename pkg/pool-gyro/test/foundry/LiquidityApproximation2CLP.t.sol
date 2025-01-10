@@ -48,7 +48,7 @@ contract LiquidityApproximation2CLPTest is LiquidityApproximationTest, Gyro2ClpP
         absoluteRoundingDelta = 1e9;
         defectRoundingDelta = 3;
 
-        // 2CLP requires a minimum fee so swaps are cheaper than unbalanced adds/removes in all situations.
+        // 2-CLP requires a minimum fee so swaps are cheaper than unbalanced adds/removes in all situations.
         minSwapFeePercentage = 1e12;
     }
 
