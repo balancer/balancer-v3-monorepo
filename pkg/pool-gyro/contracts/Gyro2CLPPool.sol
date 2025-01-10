@@ -193,7 +193,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
 
     /// @inheritdoc ISwapFeePercentageBounds
     function getMinimumSwapFeePercentage() external pure returns (uint256) {
-        // Liquidity Approximation tests shows that add/remove liquidity combinations are more profitable than a swap
+        // Liquidity Approximation tests show that add/remove liquidity combinations are more profitable than a swap
         // if the swap fee percentage is 0%, which is not desirable. So, a minimum percentage must be enforced.
         return 1e12; // 0.000001%
     }
