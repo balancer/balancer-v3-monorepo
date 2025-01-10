@@ -563,8 +563,8 @@ contract E2eSwapTest is BaseVaultTest {
         vm.stopPrank();
 
         if (decimalsTokenA != decimalsTokenB || exactAmountIn < PRODUCTION_MIN_TRADE_AMOUNT) {
-            // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
-            // difference of the decimals.
+            // Tokens with different decimals introduce an error whose order of magnitude is proportional to
+            // the difference.
             uint256 tolerance;
             if (decimalsTokenA < decimalsTokenB) {
                 // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
