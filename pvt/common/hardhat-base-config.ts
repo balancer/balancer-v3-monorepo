@@ -85,21 +85,6 @@ const contractSettings: ContractSettings = {
     runs: 500,
     viaIR,
   },
-  '@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol': {
-    version: '0.8.27',
-    runs: 9999,
-    viaIR,
-  },
-  '@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol': {
-    version: '0.8.27',
-    runs: 9999,
-    viaIR,
-  },
-  '@balancer-labs/v3-pool-gyro/contracts/GyroECLPPoolFactory.sol': {
-    version: '0.8.27',
-    runs: 9999,
-    viaIR,
-  },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
     version: COMPILER_0_8_26.version,
     runs: 500,
