@@ -6,12 +6,17 @@ pragma solidity ^0.8.24;
 
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
+import {
+    IGyro2CLPPool,
+    Gyro2CLPPoolDynamicData,
+    Gyro2CLPPoolImmutableData
+} from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -33,7 +38,10 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
     uint256 private immutable _sqrtAlpha;
     uint256 private immutable _sqrtBeta;
 
-    constructor(GyroParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
+    constructor(
+        GyroParams memory params,
+        IVault vault
+    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) {
         if (params.sqrtAlpha >= params.sqrtBeta) {
             revert SqrtParamsWrong();
         }

@@ -9,12 +9,16 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
+import {
+    IGyroECLPPool,
+    GyroECLPPoolDynamicData,
+    GyroECLPPoolImmutableData
+} from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -57,7 +61,10 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo {
     int256 internal immutable _z;
     int256 internal immutable _dSq;
 
-    constructor(GyroECLPPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
+    constructor(
+        GyroECLPPoolParams memory params,
+        IVault vault
+    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) {
         GyroECLPMath.validateParams(params.eclpParams);
         emit ECLPParamsValidated(true);
 
