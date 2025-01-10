@@ -10,7 +10,8 @@ import {
     HookFlags,
     LiquidityManagement,
     PoolSwapParams,
-    TokenConfig
+    TokenConfig,
+    MAX_FEE_PERCENTAGE
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -22,7 +23,8 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     using FixedPoint for uint256;
 
-    uint256 private constant _MEV_MAX_FEE_PERCENTAGE = FixedPoint.ONE;
+    // Max Fee is 99.9999% (Max supported fee by the vault).
+    uint256 private constant _MEV_MAX_FEE_PERCENTAGE = MAX_FEE_PERCENTAGE;
 
     bool internal _mevTaxEnabled = false;
     uint256 internal _defaultMevTaxMultiplier = 0;
