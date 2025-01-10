@@ -8,6 +8,7 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouterSwap } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSwap.sol";
+import { IRouterPaymentHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterPaymentHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -73,17 +74,36 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
 
     /// @inheritdoc IRouterSwap
     function swapSingleTokenExactOut(
-        address,
-        IERC20,
-        IERC20,
-        uint256,
-        uint256,
-        uint256,
-        bool,
-        bytes calldata
-    ) external payable returns (uint256) {
-        // TODO: will implement this in next PR
-        revert OperationNotSupported("swapSingleTokenExactOut is not supported");
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        uint256 maxAmountIn,
+        uint256 deadline,
+        bool wethIsEth,
+        bytes calldata userData
+    ) external payable saveSender(msg.sender) returns (uint256) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        AggregatorsRouter.swapSingleTokenHook,
+                        SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: maxAmountIn,
+                            deadline: deadline,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     /**
@@ -96,6 +116,8 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
+
+        IRouterPaymentHooks(params.sender).onPay(params.tokenIn, amountIn, params.userData);
 
         _vault.settle(params.tokenIn, amountIn);
         _sendTokenOut(params.sender, params.tokenOut, amountOut, false);
@@ -163,15 +185,34 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
 
     /// @inheritdoc IRouterSwap
     function querySwapSingleTokenExactOut(
-        address,
-        IERC20,
-        IERC20,
-        uint256,
-        address,
-        bytes memory
-    ) external pure returns (uint256) {
-        // TODO: will implement this in next PR
-        revert OperationNotSupported("swapSingleTokenExactOut is not supported");
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        address sender,
+        bytes memory userData
+    ) external saveSender(sender) returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        AggregatorsRouter.querySwapHook,
+                        SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: _MAX_AMOUNT,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     /**

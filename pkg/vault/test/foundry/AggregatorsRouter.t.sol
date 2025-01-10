@@ -10,6 +10,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRouterSwap } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSwap.sol";
+import { IRouterPaymentHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterPaymentHooks.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -17,6 +19,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { AggregatorsRouter } from "../../contracts/AggregatorsRouter.sol";
+import { AggregatorMock } from "../../contracts/test/AggregatorMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -27,6 +30,10 @@ contract AggregatorsRouterTest is BaseVaultTest {
 
     string version = "test";
     AggregatorsRouter internal aggregatorsRouter;
+    AggregatorMock internal aggregatorMock;
+
+    uint256 aggregatorUDCInitialBalance;
+    uint256 aggregatorDAIInitialBalance;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -37,6 +44,13 @@ contract AggregatorsRouterTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
         aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), weth, version);
+        aggregatorMock = new AggregatorMock(address(vault), IRouterSwap(address(aggregatorsRouter)));
+
+        uint256 aliceBalance = usdc.balanceOf(alice);
+        aggregatorUDCInitialBalance = aliceBalance;
+        aggregatorDAIInitialBalance = 0;
+        vm.prank(alice);
+        usdc.transfer(address(aggregatorMock), aliceBalance);
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
@@ -75,18 +89,18 @@ contract AggregatorsRouterTest is BaseVaultTest {
     }
 
     function testSwapExactInWithoutPayment() public {
+        aggregatorMock.setPaymentHookActive(false);
+
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        aggregatorsRouter.swapSingleTokenExactIn(address(pool), usdc, dai, 1e18, 0, MAX_UINT256, false, bytes(""));
+        aggregatorMock.swapSingleTokenExactIn(address(pool), usdc, dai, 1e18, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapExactIn_Fuzz(uint256 swapAmount) public {
         swapAmount = bound(swapAmount, 1e18, vault.getPoolData(address(pool)).balancesLiveScaled18[daiIdx]);
 
-        vm.startPrank(alice);
-        usdc.transfer(address(vault), swapAmount);
-
-        uint256 outputTokenAmount = aggregatorsRouter.swapSingleTokenExactIn(
+        vm.prank(alice);
+        uint256 outputTokenAmount = aggregatorMock.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -96,10 +110,52 @@ contract AggregatorsRouterTest is BaseVaultTest {
             false,
             bytes("")
         );
-        vm.stopPrank();
+        assertEq(
+            usdc.balanceOf(address(aggregatorMock)),
+            aggregatorUDCInitialBalance - swapAmount,
+            "Wrong usdc balance"
+        );
+        assertEq(
+            dai.balanceOf(address(aggregatorMock)),
+            aggregatorDAIInitialBalance + outputTokenAmount,
+            "Wrong dai balance"
+        );
+    }
 
-        assertEq(usdc.balanceOf(alice), defaultAccountBalance() - swapAmount, "Wrong WETH balance");
-        assertEq(dai.balanceOf(alice), defaultAccountBalance() + outputTokenAmount, "Wrong DAI balance");
+    function testSwapExactOut_Fuzz(uint256 swapAmount) public {
+        swapAmount = bound(swapAmount, 1e18, vault.getPoolData(address(pool)).balancesLiveScaled18[daiIdx]);
+
+        uint256 snapshotId = vm.snapshot();
+
+        _prankStaticCall();
+        uint256 exactAmountOut = router.querySwapSingleTokenExactIn(
+            pool,
+            usdc,
+            dai,
+            swapAmount,
+            address(this),
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256 amountIn = aggregatorMock.swapSingleTokenExactOut(
+            address(pool),
+            usdc,
+            dai,
+            exactAmountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        assertEq(usdc.balanceOf(address(aggregatorMock)), aggregatorUDCInitialBalance - amountIn, "Wrong usdc balance");
+        assertEq(
+            dai.balanceOf(address(aggregatorMock)),
+            aggregatorDAIInitialBalance + exactAmountOut,
+            "Wrong dai balance"
+        );
     }
 
     function testRouterVersion() public view {
