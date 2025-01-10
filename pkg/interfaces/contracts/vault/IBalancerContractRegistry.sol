@@ -69,17 +69,7 @@ interface IBalancerContractRegistry {
     event ContractAliasUpdated(string indexed contractAlias, address indexed contractAddress);
 
     /**
-     * @notice The contract has already been registered under the given name.
-     * @dev Note that names must be unique; it is not possible to register two contracts with the same name and
-     * different types.
-     *
-     * @param contractType The contract type, provided for documentation purposes
-     * @param contractName The name of the previously registered contract
-     */
-    error ContractAlreadyRegistered(ContractType contractType, string contractName);
-
-    /**
-     * @notice The contract has already been registered under the given address.
+     * @notice A contract has already been registered under the given address.
      * @dev Both names and addresses must be unique in the primary registration mapping. Though there are two mappings
      * to accommodate searching by either name or address, conceptually there is a single guaranteed-consistent
      * name => address => state mapping.
@@ -87,26 +77,63 @@ interface IBalancerContractRegistry {
      * @param contractType The contract type, provided for documentation purposes
      * @param contractAddress The address of the previously registered contract
      */
-    error AddressAlreadyRegistered(ContractType contractType, address contractAddress);
+    error ContractAddressAlreadyRegistered(ContractType contractType, address contractAddress);
 
     /**
-     * @notice An operation that requires a valid contract specified an unrecognized name or address.
-     * @dev The contract being deregistered or deprecated was never registered, or the target of an alias isn't a
-     * previously registered contract.
+     * @notice A contract has already been registered under the given name.
+     * @dev Note that names must be unique; it is not possible to register two contracts with the same name and
+     * different types, or the same name and different addresses.
+     *
+     * @param contractType The registered contract type, provided for documentation purposes
+     * @param contractName The name of the previously registered contract
      */
-    error ContractNotRegistered();
+    error ContractNameAlreadyRegistered(ContractType contractType, string contractName);
 
     /**
-     * @notice The contract being deprecated was registered, but already deprecated.
+     * @notice The proposed contract name has already been added as an alias.
+     * @dev This could lead to inconsistent (or at least redundant) internal state if allowed.
+     * @param contractName The name of the previously registered contract
+     * @param contractAddress The address of the previously registered contract
+     */
+    error ContractNameInUseAsAlias(string contractName, address contractAddress);
+
+    /**
+     * @notice The proposed alias has already been registered as a contract.
+     * @dev This could lead to inconsistent (or at least redundant) internal state if allowed.
+     * @param contractType The registered contract type, provided for documentation purposes
+     * @param contractName The name of the previously registered contract (and proposed alias)
+     */
+    error ContractAliasInUseAsName(ContractType contractType, string contractName);
+
+    /**
+     * @notice Thrown when attempting to deregister a contract that was not previously registered.
+     * @param contractName The name of the unregistered contract
+     */
+    error ContractNameNotRegistered(string contractName);
+
+    /**
+     * @notice An operation that requires a valid contract specified an unrecognized address.
+     * @dev A contract being deprecated was never registered, or the target of an alias isn't a previously
+     * registered contract.
+     *
+     * @param contractAddress The address of the contract that was not registered
+     */
+    error ContractAddressNotRegistered(address contractAddress);
+
+    /**
+     * @notice Contracts can only be deprecated once.
      * @param contractAddress The address of the previously deprecated contract
      */
     error ContractAlreadyDeprecated(address contractAddress);
 
-    /// @notice Registered contracts cannot have the zero address.
+    /// @notice Cannot register or deprecate contracts, or add an alias targeting the zero address.
     error ZeroContractAddress();
 
-    /// @notice Registered contract names or aliases cannot be blank.
+    /// @notice Cannot register (or deregister) a contract with an empty string as a name.
     error InvalidContractName();
+
+    /// @notice Cannot add an empty string as an alias.
+    error InvalidContractAlias();
 
     /**
      * @notice Register an official Balancer contract (e.g., a trusted router, standard pool factory, or hook).
