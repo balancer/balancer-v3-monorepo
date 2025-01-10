@@ -71,7 +71,7 @@ abstract contract ERC4626WrapperBaseTest is BaseVaultTest {
      */
     function setUpForkTestVariables() internal virtual;
 
-    function testPreConditions() public view {
+    function testPreConditions__Fork() public view {
         assertEq(userInitialUnderlying, amountToDonate / 2, "User balance of underlying is wrong.");
         assertEq(userInitialShares, wrapper.balanceOf(user), "User balance of shares is wrong.");
     }

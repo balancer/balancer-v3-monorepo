@@ -28,6 +28,9 @@ abstract contract BaseTest is Test, GasSnapshot {
     // Raw token balances are stored in half a slot, so the max is uint128.
     uint256 internal constant MAX_UINT128 = type(uint128).max;
 
+    bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+
     // Default admin.
     address payable internal admin;
     uint256 internal adminKey;

@@ -20,8 +20,6 @@ import { WeightedPool } from "./WeightedPool.sol";
  * @dev This is the most general factory, which allows up to eight tokens and arbitrary weights.
  */
 contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
-    // solhint-disable not-rely-on-time
-
     string private _poolVersion;
 
     constructor(

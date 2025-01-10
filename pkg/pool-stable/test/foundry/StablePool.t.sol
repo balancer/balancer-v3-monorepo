@@ -188,7 +188,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         assertEq(data.staticSwapFeePercentage, BASE_MIN_SWAP_FEE, "Swap fee mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            assertEq(data.balancesLiveScaled18[i], defaultAmount, "Live balance mismatch");
+            assertEq(data.balancesLiveScaled18[i], DEFAULT_AMOUNT, "Live balance mismatch");
             assertEq(data.tokenRates[i], tokenRates[i], "Token rate mismatch");
         }
     }
