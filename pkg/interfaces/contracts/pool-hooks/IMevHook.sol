@@ -91,7 +91,7 @@ interface IMevHook {
     function getPoolMevTaxThreshold(address pool) external view returns (uint256 poolMevTaxThreshold);
 
     /**
-     * @notice Permissioned function to set the threshold of a pool, overriding the default value.
+     * @notice Permissioned function to set the threshold of a pool, overriding the current value.
      * @dev The threshold can be any unsigned integer and represents the priority gas price, in gwei. It's used to
      * check if the priority gas price is in the level of a retail swap or a searcher swap. If the pool is not
      * registered with the MEV Hook, it reverts with error MevHookNotRegisteredForPool(pool).
