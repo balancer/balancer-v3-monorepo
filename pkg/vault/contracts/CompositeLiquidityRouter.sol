@@ -32,6 +32,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
+    // The level is 1-based, so the outermost pool (level 1) can contain a nested BPT, but any pool tokens in the child
+    // pool (level 2) will not be expanded further, but simply treated as standard tokens.
     uint256 constant _MAX_LEVEL_IN_NESTED_OPERATIONS = 2;
 
     constructor(
@@ -492,7 +494,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             _currentSwapTokensIn().add(tokensIn[i]);
         }
 
-        (uint256[] memory amountsIn, ) = _addLiquidityRecursive(params.pool, params);
+        (uint256[] memory amountsIn, ) = _addLiquidity(params.pool, params);
 
         // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
@@ -512,7 +514,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
-    function _addLiquidityRecursive(
+    function _addLiquidity(
         address pool,
         AddLiquidityHookParams calldata params
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
@@ -520,18 +522,21 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     function _addLiquidityRecursive(
-        address pool,
+        address currentPool,
         AddLiquidityHookParams calldata params,
         uint256 level
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
         allAmountsEmpty = true;
 
-        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(currentPool);
         amountsIn = new uint256[](parentPoolTokens.length);
 
         // Iterate over each token of the parent pool. If it's a BPT, add liquidity unbalanced to it.
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address childToken = address(parentPoolTokens[i]);
+
+            // NOTE: Recursion involving a pool containing its own BPT is explicitly prohibited by the Vault.
+            // This case is impossible and does not require handling.
 
             if (_vault.isPoolRegistered(childToken)) {
                 // Token is a BPT, so add liquidity to the child pool.
@@ -545,8 +550,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     continue;
                 }
 
+                address nextPool = childToken;
                 (uint256[] memory childPoolAmountsIn, bool childPoolAmountsEmpty) = _addLiquidityRecursive(
-                    childToken,
+                    nextPool,
                     params,
                     level + 1
                 );
