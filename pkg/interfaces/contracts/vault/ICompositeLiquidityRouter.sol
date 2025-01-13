@@ -98,8 +98,8 @@ interface ICompositeLiquidityRouter {
      * @notice Queries an `addLiquidityUnbalancedToERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param useWrappedTokens An array indicating whether the input token is a wrapper or underlying token
-     * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order of
+     * @param useWrappedTokens An array indicating whether the input token is a wrapped or underlying token
+     * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order
      * wrapped tokens in the pool
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
