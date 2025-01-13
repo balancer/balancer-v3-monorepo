@@ -23,7 +23,7 @@ interface IMevHook {
     function enableMevTax() external;
 
     /**
-     * @notice Fetch the default multiplier of the priority gas price.
+     * @notice Fetch the default multiplier for the priority gas price.
      * @dev The MEV swap fee percentage is calculated as `mevTaxMultiplier * priorityGasPrice`, where priorityGasPrice
      * is defined as `transactionGasPrice - baseFee`. A higher mevTaxMultiplier will charge a bigger swap fee from
      * searchers, absorb more priority fee to LPs, but a too high mevTaxMultiplier may put the searcher swaps in the
