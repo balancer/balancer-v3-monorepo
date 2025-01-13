@@ -44,7 +44,7 @@ interface IMevHook {
     /**
      * @notice Fetch the pool multiplier of the priority gas price.
      * @dev When a pool is registered with the MEV Hook in the vault, the MEV Hook initializes the multiplier of the
-     * pool with the defaultMevTaxMultiplier value. If the pool is not registered with the MEV Hook, it reverts with
+     * pool to the defaultMevTaxMultiplier value. If the pool is not registered with the MEV Hook, it reverts with
      * error MevHookNotRegisteredForPool(pool).
      *
      * @param pool Address of the pool with the multiplier
