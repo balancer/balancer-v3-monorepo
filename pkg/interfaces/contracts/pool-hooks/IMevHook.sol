@@ -72,7 +72,7 @@ interface IMevHook {
 
     /**
      * @notice Permissioned function to set the default multiplier of the priority gas price.
-     * @param newDefaultMevTaxMultiplier 18 decimals integer used to calculate the MEV swap fee percentage
+     * @param newDefaultMevTaxMultiplier 18-decimal used to calculate the MEV swap fee percentage
      */
     function setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) external;
 
@@ -89,7 +89,7 @@ interface IMevHook {
 
     /**
      * @notice Permissioned function to set the MEV tax multiplier of a pool, overriding the default value.
-     * @dev The multiplier can be any unsigned 18-decimal integer. If the pool is not registered with the MEV Hook,
+     * @dev The multiplier can be any unsigned 18-decimal. If the pool is not registered with the MEV Hook,
      * it reverts with error MevHookNotRegisteredForPool(pool).
      *
      * @param pool Address of the pool with the multiplier
