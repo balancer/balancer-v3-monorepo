@@ -119,147 +119,149 @@ describe('MevHook', () => {
     await pool.connect(lp).transfer(sender, fp(100));
   });
 
-  it('MEV Hook Disabled', async () => {
-    await hook.connect(admin).disableMevTax();
-    expect(await hook.isMevTaxEnabled()).to.be.false;
-
-    const amountIn = fp(10);
-    const baseFee = await getBaseFee();
-    // "BaseFee + PriorityGas + 1" should trigger Mev Tax, but static swap fee will be charged because Mev tax is
-    // disabled.
-    const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+  describe('do not pay mev tax', async () => {
     const shouldChargeMev = false;
 
-    const balancesBefore = await getBalances();
+    it('mev hook disabled', async () => {
+      await hook.connect(admin).disableMevTax();
+      expect(await hook.isMevTaxEnabled()).to.be.false;
 
-    await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-      gasPrice: txGasPrice,
+      const amountIn = fp(10);
+      const baseFee = await getBaseFee();
+      // "BaseFee + PriorityGas + 1" should trigger Mev Tax, but static swap fee will be charged because Mev tax is
+      // disabled.
+      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+
+      const balancesBefore = await getBalances();
+
+      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
+        gasPrice: txGasPrice,
+      });
+
+      const balancesAfter = await getBalances();
+
+      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
     });
 
-    const balancesAfter = await getBalances();
+    it('low priority gas price', async () => {
+      await hook.connect(admin).enableMevTax();
+      expect(await hook.isMevTaxEnabled()).to.be.true;
 
-    await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
-  });
+      const amountIn = fp(10);
+      // "PriorityGas" should not trigger Mev Tax, because to trigger the gasPrice must be BaseFee + Threshold + 1.
+      const txGasPrice = PRIORITY_GAS_THRESHOLD;
 
-  it('Low priority gas price', async () => {
-    await hook.connect(admin).enableMevTax();
-    expect(await hook.isMevTaxEnabled()).to.be.true;
+      const balancesBefore = await getBalances();
 
-    const amountIn = fp(10);
-    // "PriorityGas" should not trigger Mev Tax, because to trigger the gasPrice must be BaseFee + Threshold + 1.
-    const txGasPrice = PRIORITY_GAS_THRESHOLD;
-    const shouldChargeMev = false;
+      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
+        gasPrice: txGasPrice,
+      });
 
-    const balancesBefore = await getBalances();
+      const balancesAfter = await getBalances();
 
-    await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-      gasPrice: txGasPrice,
+      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
     });
 
-    const balancesAfter = await getBalances();
+    it('mev fee percentage smaller than static', async () => {
+      await hook.connect(admin).enableMevTax();
+      expect(await hook.isMevTaxEnabled()).to.be.true;
 
-    await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+      // Small multiplier, the mev fee percentage will be lower than static swap fee. In this case, static swap fee
+      // should be charged.
+      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(0.0001)));
+
+      const amountIn = fp(10);
+
+      const baseFee = await getBaseFee();
+      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+
+      const balancesBefore = await getBalances();
+
+      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
+        gasPrice: txGasPrice,
+      });
+
+      const balancesAfter = await getBalances();
+
+      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+    });
+
+    it('mev multiplier is 0', async () => {
+      await hook.connect(admin).enableMevTax();
+      expect(await hook.isMevTaxEnabled()).to.be.true;
+
+      // 0 multiplier. Should return static fee.
+      await hook.setPoolMevTaxMultiplier(pool, 0);
+
+      const amountIn = fp(10);
+
+      const baseFee = await getBaseFee();
+      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+
+      const balancesBefore = await getBalances();
+
+      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
+        gasPrice: txGasPrice,
+      });
+
+      const balancesAfter = await getBalances();
+
+      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+    });
   });
 
-  it('Mev Fee Percentage bigger than max value', async () => {
-    await hook.connect(admin).enableMevTax();
-    expect(await hook.isMevTaxEnabled()).to.be.true;
-
-    // Big multiplier, the mev fee percentage should be more than 99.9999%. Since the Max fee is 99.9999%, that's what
-    // will be charged.
-    await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100n)));
+  describe('should pay mev tax', async () => {
     const shouldChargeMev = true;
 
-    const amountIn = fp(10);
+    it('mev fee percentage bigger than max value', async () => {
+      await hook.connect(admin).enableMevTax();
+      expect(await hook.isMevTaxEnabled()).to.be.true;
 
-    const baseFee = await getBaseFee();
-    // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
-    const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+      // Big multiplier, the mev fee percentage should be more than 99.9999%. Since the Max fee is 99.9999%, that's what
+      // will be charged.
+      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100n)));
 
-    const balancesBefore = await getBalances();
+      const amountIn = fp(10);
 
-    await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-      gasPrice: txGasPrice,
+      const baseFee = await getBaseFee();
+      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+
+      const balancesBefore = await getBalances();
+
+      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
+        gasPrice: txGasPrice,
+      });
+
+      const balancesAfter = await getBalances();
+
+      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
     });
 
-    const balancesAfter = await getBalances();
+    it('charge mev tax proportional to priority gas price', async () => {
+      await hook.connect(admin).enableMevTax();
+      expect(await hook.isMevTaxEnabled()).to.be.true;
 
-    await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
-  });
+      await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
 
-  it('Mev Fee Percentage smaller than static', async () => {
-    await hook.connect(admin).enableMevTax();
-    expect(await hook.isMevTaxEnabled()).to.be.true;
+      const amountIn = fp(10);
 
-    // Small multiplier, the mev fee percentage will be lower than static swap fee. In this case, static swap fee
-    // should be charged.
-    await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(0.0001)));
-    const shouldChargeMev = false;
+      const baseFee = await getBaseFee();
+      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
-    const amountIn = fp(10);
+      const balancesBefore = await getBalances();
 
-    const baseFee = await getBaseFee();
-    // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
-    const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
+        gasPrice: txGasPrice,
+      });
 
-    const balancesBefore = await getBalances();
+      const balancesAfter = await getBalances();
 
-    await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-      gasPrice: txGasPrice,
+      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
     });
-
-    const balancesAfter = await getBalances();
-
-    await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
-  });
-
-  it('Mev Multiplier is 0', async () => {
-    await hook.connect(admin).enableMevTax();
-    expect(await hook.isMevTaxEnabled()).to.be.true;
-
-    // 0 multiplier. Should return static fee.
-    await hook.setPoolMevTaxMultiplier(pool, 0);
-    const shouldChargeMev = false;
-
-    const amountIn = fp(10);
-
-    const baseFee = await getBaseFee();
-    // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
-    const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
-
-    const balancesBefore = await getBalances();
-
-    await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-      gasPrice: txGasPrice,
-    });
-
-    const balancesAfter = await getBalances();
-
-    await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
-  });
-
-  it('Charge Mev Tax', async () => {
-    await hook.connect(admin).enableMevTax();
-    expect(await hook.isMevTaxEnabled()).to.be.true;
-
-    await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
-    const shouldChargeMev = true;
-
-    const amountIn = fp(10);
-
-    const baseFee = await getBaseFee();
-    // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
-    const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
-
-    const balancesBefore = await getBalances();
-
-    await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-      gasPrice: txGasPrice,
-    });
-
-    const balancesAfter = await getBalances();
-
-    await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
   });
 
   interface Balances {
