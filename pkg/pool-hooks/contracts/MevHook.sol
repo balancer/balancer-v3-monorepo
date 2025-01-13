@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     HooksConfig,
@@ -27,10 +27,14 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     uint256 private constant _MEV_MAX_FEE_PERCENTAGE = MAX_FEE_PERCENTAGE;
 
     bool internal _mevTaxEnabled;
-    uint256 internal _defaultMevTaxMultiplier;
+
+    // Global default parameter values.
     uint256 internal _defaultMevTaxThreshold;
-    mapping(address => uint256) internal _poolMevTaxMultipliers;
+    uint256 internal _defaultMevTaxMultiplier;
+        
+    // Pool-specific parameters.
     mapping(address => uint256) internal _poolMevTaxThresholds;
+    mapping(address => uint256) internal _poolMevTaxMultipliers;
 
     modifier withMevTaxEnabledPool(address pool) {
         HooksConfig memory hooksConfig = _vault.getHooksConfig(pool);
