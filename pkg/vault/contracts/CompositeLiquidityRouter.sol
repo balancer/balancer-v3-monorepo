@@ -264,11 +264,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         bool[] calldata isWrappedToken
     ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
-        // Revert if `tokensIn` length does not match `maxAmountsIn` and `useWrappedTokens`.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, useWrappedTokens.length);
-
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
+
+        // Revert if `tokensIn` length does not match `maxAmountsIn` and `isWrappedToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, isWrappedToken.length);
 
         uint256[] memory maxAmounts = new uint256[](poolTokensLength);
         for (uint256 i = 0; i < poolTokensLength; ++i) {
@@ -301,11 +301,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         RemoveLiquidityHookParams calldata params,
         bool[] calldata isWrappedToken
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
-        // Revert if `tokensOut` length does not match `minAmountsOut` and `useWrappedTokens`.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.minAmountsOut.length, useWrappedTokens.length);
-
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
+
+        // Revert if `tokensOut` length does not match `minAmountsOut` and `isWrappedToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.minAmountsOut.length, isWrappedToken.length);
+
         amountsOut = new uint256[](poolTokensLength);
 
         (, uint256[] memory wrappedAmountsOut, ) = _vault.removeLiquidity(
