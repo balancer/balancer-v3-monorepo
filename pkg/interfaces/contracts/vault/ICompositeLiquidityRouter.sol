@@ -30,8 +30,8 @@ interface ICompositeLiquidityRouter {
      * the "parent" pool, and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
-     * @param useWrappedTokens An array indicating whether the input token is a wrapper or underlying token
-     * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order of
+     * @param useWrappedTokens An array indicating whether the input token is a wrapped or underlying token
+     * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order
      * wrapped tokens in the pool
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
