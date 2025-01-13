@@ -537,7 +537,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Token is a BPT, so add liquidity to the child pool.
 
                 if (level > _MAX_LEVEL_IN_NESTED_OPERATIONS) {
-                    // if we have reached the maximum level of nested operations, the token will be calculated as ERC20
+                    // If we have exceeded the maximum level of nested operations, the token will be considered a standard ERC20.
                     if (_settledTokenAmounts().tGet(childToken) == 0) {
                         amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
                         _settledTokenAmounts().tSet(childToken, amountsIn[i]);
