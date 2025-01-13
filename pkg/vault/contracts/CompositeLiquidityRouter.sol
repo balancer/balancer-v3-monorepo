@@ -377,7 +377,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         for (uint256 i = 0; i < poolTokensLength; ++i) {
             // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
-            // a valid ERC4626.
+            // a valid ERC4626. Note that if `useWrappedTokens[i]` is false, we will treat it as a standard token.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
