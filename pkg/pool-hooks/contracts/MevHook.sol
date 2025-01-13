@@ -95,7 +95,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         uint256 mevSwapFeePercentage = priorityGasPrice.mulDown(_poolMevTaxMultipliers[pool]);
 
         // Cap the maximum fee at `MAX_FEE_PERCENTAGE`.
-        if (mevSwapFeePercentage >= _MEV_MAX_FEE_PERCENTAGE) {
+        if (mevSwapFeePercentage > _MEV_MAX_FEE_PERCENTAGE) {
             return (true, _MEV_MAX_FEE_PERCENTAGE);
         }
 
