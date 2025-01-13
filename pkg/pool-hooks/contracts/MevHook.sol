@@ -31,7 +31,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     // Global default parameter values.
     uint256 internal _defaultMevTaxThreshold;
     uint256 internal _defaultMevTaxMultiplier;
-        
+
     // Pool-specific parameters.
     mapping(address => uint256) internal _poolMevTaxThresholds;
     mapping(address => uint256) internal _poolMevTaxMultipliers;
