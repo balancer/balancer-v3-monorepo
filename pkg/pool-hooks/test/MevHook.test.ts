@@ -128,9 +128,9 @@ describe('MevHook', () => {
 
       const amountIn = fp(10);
       const baseFee = await getBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger Mev Tax, but static swap fee will be charged because Mev tax is
+      // "BaseFee + 2 * PriorityGasThreshold" should trigger Mev Tax, but static swap fee will be charged because Mev tax is
       // disabled.
-      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+      const txGasPrice = baseFee + 2n * PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
 
@@ -148,7 +148,7 @@ describe('MevHook', () => {
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
       const amountIn = fp(10);
-      // "PriorityGas" should not trigger Mev Tax, because to trigger the gasPrice must be BaseFee + Threshold + 1.
+      // txGasPrice should be at least "BaseFee + PriorityGasThreshold + 1" to trigger mev tax.
       const txGasPrice = PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
