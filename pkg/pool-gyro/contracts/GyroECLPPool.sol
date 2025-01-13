@@ -40,7 +40,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo {
 
     bytes32 private constant _POOL_TYPE = "ECLP";
 
-    /// @dev Parameters of the ECLP pool
+    /// @dev Parameters of the E-CLP pool
     int256 internal immutable _paramsAlpha;
     int256 internal immutable _paramsBeta;
     int256 internal immutable _paramsC;

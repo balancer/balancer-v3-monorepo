@@ -76,7 +76,7 @@ interface IGyroECLPPool is IBasePool {
     event ECLPDerivedParamsValidated(bool derivedParamsValidated);
 
     /**
-     * @notice Gyro ECLP pool configuration.
+     * @notice Gyro E-CLP pool configuration.
      * @param name Pool name
      * @param symbol Pool symbol
      * @param eclpParams Parameters to configure the E-CLP pool, with 18 decimals

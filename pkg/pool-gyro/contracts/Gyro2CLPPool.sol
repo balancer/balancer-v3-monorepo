@@ -27,7 +27,7 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import "./lib/Gyro2CLPMath.sol";
 
 /**
- * @notice Standard 2CLP Gyro Pool, with fixed Alpha and Beta parameters.
+ * @notice Standard 2-CLP Gyro Pool, with fixed Alpha and Beta parameters.
  * @dev Gyroscope's 2-CLPs are AMMs that concentrate liquidity within a pricing range. A given 2-CLP is parameterized
  * by the pricing range [α,β] and the two assets in the pool. For more information, please refer to
  * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps
@@ -153,14 +153,14 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
         }
     }
 
-    /// @notice Return the parameters that configure a 2CLP (sqrtAlpha and sqrtBeta).
+    /// @notice Return the parameters that configure a 2-CLP (sqrtAlpha and sqrtBeta).
     function _getSqrtAlphaAndBeta() internal view virtual returns (uint256 sqrtAlpha, uint256 sqrtBeta) {
         return (_sqrtAlpha, _sqrtBeta);
     }
 
     /**
-     * @notice Return the virtual offsets of each token of the 2CLP pool.
-     * @dev The 2CLP invariant is defined as `L=(x+a)(y+b)`. "x" and "y" are the real balances, and "a" and "b" are
+     * @notice Return the virtual offsets of each token of the 2-CLP pool.
+     * @dev The 2-CLP invariant is defined as `L=(x+a)(y+b)`. "x" and "y" are the real balances, and "a" and "b" are
      * offsets to concentrate the liquidity of the pool. The sum of real balance and offset is known as
      * "virtual balance". Here we return the offsets a and b.
      */

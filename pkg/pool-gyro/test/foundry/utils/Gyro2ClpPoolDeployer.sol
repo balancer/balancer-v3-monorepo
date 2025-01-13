@@ -46,7 +46,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         PoolRoleAccounts memory roleAccounts;
 
         newPool = factory.create(
-            "Gyro 2CLP Pool",
+            "Gyro 2-CLP Pool",
             "GRP",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
             _sqrtAlpha,
