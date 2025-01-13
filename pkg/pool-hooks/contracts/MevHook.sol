@@ -32,7 +32,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     mapping(address => uint256) internal _poolMevTaxMultipliers;
     mapping(address => uint256) internal _poolMevTaxThresholds;
 
-    modifier withRegisteredPool(address pool) {
+    modifier withMevEnabledPool(address pool) {
         HooksConfig memory hooksConfig = _vault.getHooksConfig(pool);
 
         if (hooksConfig.hooksContract != address(this)) {
@@ -127,7 +127,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function getPoolMevTaxMultiplier(address pool) external view withRegisteredPool(pool) returns (uint256) {
+    function getPoolMevTaxMultiplier(address pool) external view withMevEnabledPool(pool) returns (uint256) {
         return _poolMevTaxMultipliers[pool];
     }
 
@@ -135,7 +135,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     function setPoolMevTaxMultiplier(
         address pool,
         uint256 newPoolMevTaxMultiplier
-    ) external withRegisteredPool(pool) authenticate {
+    ) external withMevEnabledPool(pool) authenticate {
         _poolMevTaxMultipliers[pool] = newPoolMevTaxMultiplier;
     }
 
@@ -150,7 +150,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function getPoolMevTaxThreshold(address pool) external view withRegisteredPool(pool) returns (uint256) {
+    function getPoolMevTaxThreshold(address pool) external view withMevEnabledPool(pool) returns (uint256) {
         return _poolMevTaxThresholds[pool];
     }
 
@@ -158,7 +158,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     function setPoolMevTaxThreshold(
         address pool,
         uint256 newPoolMevTaxThreshold
-    ) external withRegisteredPool(pool) authenticate {
+    ) external withMevEnabledPool(pool) authenticate {
         _poolMevTaxThresholds[pool] = newPoolMevTaxThreshold;
     }
 }
