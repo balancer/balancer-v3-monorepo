@@ -80,7 +80,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         }
 
         // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
-        // by the transaction sender, is always bigger than basefee and the difference between gasprice and basefee
+        // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
         // defines the priority gas price (the part of the gas cost that will be paid to the validator).
         uint256 priorityGasPrice = tx.gasprice - block.basefee;
 
