@@ -43,7 +43,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     constructor(IVault vault) SingletonAuthentication(vault) VaultGuard(vault) {
-        // solhint-disable-previous-line no-empty-blocks
+        _setMevTaxEnabled(false);
+        _setDefaultMevTaxMultiplier(0);
+        _setDefaultMevTaxThreshold(0);
     }
 
     /// @inheritdoc IHooks
