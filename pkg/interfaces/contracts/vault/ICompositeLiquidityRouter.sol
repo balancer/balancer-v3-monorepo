@@ -78,7 +78,7 @@ interface ICompositeLiquidityRouter {
      * @param pool Address of the liquidity pool
      * @param useWrappedTokens An array indicating whether the output token is a wrapper or underlying token
      * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minAmountsOut Minimum amounts of underlying tokens out, sorted in token registration order of
+     * @param minAmountsOut Minimum amounts of underlying tokens out, sorted in token registration order
      * wrapped tokens in the pool
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
