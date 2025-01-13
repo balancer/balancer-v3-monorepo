@@ -580,7 +580,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // the resulting wrapped tokens to add liquidity to the pool.
                 amountsIn[i] = _wrapAndUpdateTokenInAmounts(IERC4626(childToken), params.sender, params.wethIsEth);
             } else if (_settledTokenAmounts().tGet(childToken) == 0) {
-                // if this token is ERC20 and the amount was not settled in a previous operation, it should be added
+                // Set this token's amountIn if it's a standard token that was not previously settled.
                 amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
                 _settledTokenAmounts().tSet(childToken, amountsIn[i]);
             }
