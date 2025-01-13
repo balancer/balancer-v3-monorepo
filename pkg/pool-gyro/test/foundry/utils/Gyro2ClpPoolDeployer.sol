@@ -21,9 +21,9 @@ import { Gyro2CLPPoolMock } from "../../../contracts/test/Gyro2CLPPoolMock.sol";
 contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
     using CastingHelpers for address[];
 
-    uint256 private _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
-    uint256 private _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
-    uint256 private DEFAULT_SWAP_FEE = 1e12; // 0.0001% swap fee, but can be overridden by the tests
+    uint256 internal _sqrtAlpha = 997496867163000167; // alpha (lower price rate) = 0.995
+    uint256 internal _sqrtBeta = 1002496882788171068; // beta (upper price rate) = 1.005
+    uint256 internal DEFAULT_SWAP_FEE = 1e12; // 0.0001% swap fee, but can be overridden by the tests
 
     string private artifactsRootDir = "artifacts/";
 
@@ -46,7 +46,7 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         PoolRoleAccounts memory roleAccounts;
 
         newPool = factory.create(
-            "Gyro 2CLP Pool",
+            "Gyro 2-CLP Pool",
             "GRP",
             vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
             _sqrtAlpha,

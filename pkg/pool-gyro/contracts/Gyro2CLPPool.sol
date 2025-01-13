@@ -6,31 +6,42 @@ pragma solidity ^0.8.24;
 
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { PoolSwapParams, Rounding, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IGyro2CLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
+import {
+    IGyro2CLPPool,
+    Gyro2CLPPoolDynamicData,
+    Gyro2CLPPoolImmutableData
+} from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyro2CLPPool.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import "./lib/Gyro2CLPMath.sol";
 
 /**
- * @notice Standard 2CLP Gyro Pool, with fixed Alpha and Beta parameters.
+ * @notice Standard 2-CLP Gyro Pool, with fixed Alpha and Beta parameters.
  * @dev Gyroscope's 2-CLPs are AMMs that concentrate liquidity within a pricing range. A given 2-CLP is parameterized
  * by the pricing range [α,β] and the two assets in the pool. For more information, please refer to
  * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps
  */
-contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
+contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
     using FixedPoint for uint256;
 
     uint256 private immutable _sqrtAlpha;
     uint256 private immutable _sqrtBeta;
 
-    constructor(GyroParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
+    constructor(
+        GyroParams memory params,
+        IVault vault
+    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) {
         if (params.sqrtAlpha >= params.sqrtBeta) {
             revert SqrtParamsWrong();
         }
@@ -115,8 +126,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         (uint256 virtualParamIn, uint256 virtualParamOut) = _getVirtualOffsets(
             balanceTokenInScaled18,
             balanceTokenOutScaled18,
-            tokenInIsToken0,
-            request.kind
+            tokenInIsToken0
         );
 
         if (request.kind == SwapKind.EXACT_IN) {
@@ -143,22 +153,21 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
         }
     }
 
-    /// @notice Return the parameters that configure a 2CLP (sqrtAlpha and sqrtBeta).
+    /// @notice Return the parameters that configure a 2-CLP (sqrtAlpha and sqrtBeta).
     function _getSqrtAlphaAndBeta() internal view virtual returns (uint256 sqrtAlpha, uint256 sqrtBeta) {
         return (_sqrtAlpha, _sqrtBeta);
     }
 
     /**
-     * @notice Return the virtual offsets of each token of the 2CLP pool.
-     * @dev The 2CLP invariant is defined as `L=(x+a)(y+b)`. "x" and "y" are the real balances, and "a" and "b" are
+     * @notice Return the virtual offsets of each token of the 2-CLP pool.
+     * @dev The 2-CLP invariant is defined as `L=(x+a)(y+b)`. "x" and "y" are the real balances, and "a" and "b" are
      * offsets to concentrate the liquidity of the pool. The sum of real balance and offset is known as
      * "virtual balance". Here we return the offsets a and b.
      */
     function _getVirtualOffsets(
         uint256 balanceTokenInScaled18,
         uint256 balanceTokenOutScaled18,
-        bool tokenInIsToken0,
-        SwapKind kind
+        bool tokenInIsToken0
     ) internal view virtual returns (uint256 virtualBalanceIn, uint256 virtualBalanceOut) {
         uint256[] memory balances = new uint256[](2);
         balances[0] = tokenInIsToken0 ? balanceTokenInScaled18 : balanceTokenOutScaled18;
@@ -211,5 +220,27 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken {
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
         return type(uint256).max;
+    }
+
+    /// @inheritdoc IGyro2CLPPool
+    function getGyro2CLPPoolDynamicData() external view returns (Gyro2CLPPoolDynamicData memory data) {
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
+        (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
+        data.totalSupply = totalSupply();
+        data.bptRate = getRate();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
+    }
+
+    /// @inheritdoc IGyro2CLPPool
+    function getGyro2CLPPoolImmutableData() external view returns (Gyro2CLPPoolImmutableData memory data) {
+        data.tokens = _vault.getPoolTokens(address(this));
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.sqrtAlpha = _sqrtAlpha;
+        data.sqrtBeta = _sqrtBeta;
     }
 }
