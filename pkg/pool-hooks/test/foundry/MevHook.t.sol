@@ -8,11 +8,16 @@ import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMev
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+
+import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { MevHook } from "../../contracts/MevHook.sol";
 
 contract MevHookTest is BaseVaultTest {
+    using CastingHelpers for address[];
+
     IMevHook private _mevHook;
 
     function setUp() public override {
@@ -36,6 +41,27 @@ contract MevHookTest is BaseVaultTest {
             IAuthentication(address(_mevHook)).getActionId(IMevHook.setPoolMevTaxThreshold.selector),
             admin
         );
+    }
+
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        string memory name = "ERC20 Pool";
+        string memory symbol = "ERC20POOL";
+
+        newPool = PoolFactoryMock(poolFactory).createPool(name, symbol);
+        vm.label(newPool, label);
+
+        // Disable Unbalanced Liquidity because pool supports dynamic fee.
+        PoolFactoryMock(poolFactory).registerTestPoolDisableUnbalancedLiquidity(
+            newPool,
+            vault.buildTokenConfig(tokens.asIERC20()),
+            poolHooksContract,
+            lp
+        );
+
+        poolArgs = abi.encode(vault, name, symbol);
     }
 
     function createHook() internal override returns (address) {

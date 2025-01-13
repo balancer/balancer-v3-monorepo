@@ -66,7 +66,7 @@ describe('MevHook', () => {
 
     hook = await deploy('MevHook', { args: [vaultAddress] });
 
-    await factory.registerPoolWithHook(pool, buildTokenConfig(poolTokens), hook);
+    await factory.registerTestPoolDisableUnbalancedLiquidity(pool, buildTokenConfig(poolTokens), hook, lp);
   });
 
   sharedBeforeEach('permissions', async () => {

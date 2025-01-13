@@ -51,12 +51,14 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         address,
         address pool,
         TokenConfig[] memory,
-        LiquidityManagement calldata
+        LiquidityManagement calldata liquidityManagement
     ) public override onlyVault returns (bool) {
         _poolMevTaxMultipliers[pool] = _defaultMevTaxMultiplier;
         _poolMevTaxThresholds[pool] = _defaultMevTaxThreshold;
 
-        return true;
+        // disable unbalanced liquidity must be true, because the hook computes dynamic swap fees and it may be
+        // bypassed by unbalanced liquidity operations.
+        return liquidityManagement.disableUnbalancedLiquidity;
     }
 
     /// @inheritdoc IHooks

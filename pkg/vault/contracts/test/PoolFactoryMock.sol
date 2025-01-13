@@ -86,6 +86,30 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
         );
     }
 
+    function registerTestPoolDisableUnbalancedLiquidity(
+        address pool,
+        TokenConfig[] memory tokenConfig,
+        address poolHooksContract,
+        address poolCreator
+    ) external {
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = poolCreator;
+
+        LiquidityManagement memory liquidityManagement = _getDefaultLiquidityManagement();
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            DEFAULT_SWAP_FEE,
+            getNewPoolPauseWindowEndTime(),
+            false,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+    }
+
     function registerGeneralTestPool(
         address pool,
         TokenConfig[] memory tokenConfig,
