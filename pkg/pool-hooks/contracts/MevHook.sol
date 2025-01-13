@@ -99,7 +99,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             return (true, _MEV_MAX_FEE_PERCENTAGE);
         }
 
-        // If static fee percentage is higher than mev fee percentage, uses the static one.
+        // Use the greater of the static and mev fee percentages.
         return (true, staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage);
     }
 
