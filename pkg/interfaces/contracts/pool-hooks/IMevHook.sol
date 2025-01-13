@@ -53,8 +53,9 @@ interface IMevHook {
 
     /**
      * @notice Permissioned function to set the multiplier of a pool, overriding the default value.
-     * @dev The multiplier can be any unsigned integer, and will be treated as an 18 decimals number. If the pool is
-     * not registered with the MEV Hook, it reverts with error MevHookNotRegisteredForPool(pool).
+     * @dev The multiplier can be any unsigned 18 decimals integer. If the pool is not registered with the MEV Hook,
+     * it reverts with error MevHookNotRegisteredForPool(pool).
+     *
      * @param pool Address of the pool with the multiplier
      * @param newPoolMevTaxMultiplier New multiplier to be set in a pool
      */
