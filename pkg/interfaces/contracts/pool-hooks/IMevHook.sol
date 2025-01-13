@@ -36,8 +36,7 @@ interface IMevHook {
 
     /**
      * @notice Permissioned function to set the default multiplier of the priority gas price.
-     * @param newDefaultMevTaxMultiplier Integer that will be used to multiply by the priority gas price and get the
-     * MEV swap fee percentage
+     * @param newDefaultMevTaxMultiplier 18 decimals integer used to calculate the MEV swap fee percentage
      */
     function setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) external;
 
