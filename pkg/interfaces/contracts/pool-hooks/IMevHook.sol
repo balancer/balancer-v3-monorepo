@@ -72,7 +72,7 @@ interface IMevHook {
 
     /**
      * @notice Permissioned function to set the default threshold of the priority gas price.
-     * @dev The threshold can be any unsigned integer and represents the priority gas price, in gwei. It's used to
+     * @dev The threshold can be any unsigned integer and represents the priority gas price, in wei. It's used to
      * check if the priority gas price is in the level of a retail swap or a searcher swap.
      *
      * @param newDefaultMevTaxThreshold The new default threshold
