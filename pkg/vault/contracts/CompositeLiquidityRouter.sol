@@ -34,7 +34,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     // The level is 1-based, so the outermost pool (level 1) can contain a nested BPT, but any pool tokens in the child
     // pool (level 2) will not be expanded further, but simply treated as standard tokens.
-    uint256 constant _MAX_LEVEL_IN_NESTED_OPERATIONS = 2;
+    uint256 internal constant _MAX_LEVEL_IN_NESTED_OPERATIONS = 2;
 
     constructor(
         IVault vault,
@@ -542,7 +542,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Token is a BPT, so add liquidity to the child pool.
 
                 if (level > _MAX_LEVEL_IN_NESTED_OPERATIONS) {
-                    // If we have exceeded the maximum level of nested operations, the token will be considered a standard ERC20.
+                    // If we have exceeded the maximum level of nested operations,
+                    // the token will be considered a standard ERC20.
                     if (_settledTokenAmounts().tGet(childToken) == 0) {
                         amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
                         _settledTokenAmounts().tSet(childToken, amountsIn[i]);
