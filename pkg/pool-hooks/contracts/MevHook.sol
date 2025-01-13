@@ -32,7 +32,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     mapping(address => uint256) internal _poolMevTaxMultipliers;
     mapping(address => uint256) internal _poolMevTaxThresholds;
 
-    modifier withMevEnabledPool(address pool) {
+    modifier withMevTaxEnabledPool(address pool) {
         HooksConfig memory hooksConfig = _vault.getHooksConfig(pool);
 
         if (hooksConfig.hooksContract != address(this)) {
@@ -141,7 +141,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function getPoolMevTaxMultiplier(address pool) external view withMevEnabledPool(pool) returns (uint256) {
+    function getPoolMevTaxMultiplier(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
         return _poolMevTaxMultipliers[pool];
     }
 
@@ -150,7 +150,10 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
     }
 
-    function _setPoolMevTaxMultiplier(address pool, uint256 newPoolMevTaxMultiplier) private withMevEnabledPool(pool) {
+    function _setPoolMevTaxMultiplier(
+        address pool,
+        uint256 newPoolMevTaxMultiplier
+    ) private withMevTaxEnabledPool(pool) {
         _poolMevTaxMultipliers[pool] = newPoolMevTaxMultiplier;
 
         emit PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
@@ -173,7 +176,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function getPoolMevTaxThreshold(address pool) external view withMevEnabledPool(pool) returns (uint256) {
+    function getPoolMevTaxThreshold(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
         return _poolMevTaxThresholds[pool];
     }
 
@@ -182,7 +185,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
-    function _setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) private withMevEnabledPool(pool) {
+    function _setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) private withMevTaxEnabledPool(pool) {
         _poolMevTaxThresholds[pool] = newPoolMevTaxThreshold;
 
         emit PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
