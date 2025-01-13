@@ -11,8 +11,8 @@ import { IBasePool } from "../vault/IBasePool.sol";
  * @param tokens Pool tokens, sorted in token registration order
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
  * calculations. FP(1) for 18-decimal tokens
- * @param sqrtAlpha Square root of alpha (the lowest price in the price interval of the 2CLP price curve)
- * @param sqrtBeta Square root of beta (the highest price in the price interval of the 2CLP price curve)
+ * @param sqrtAlpha Square root of alpha (the lowest price in the price interval of the 2-CLP price curve)
+ * @param sqrtBeta Square root of beta (the highest price in the price interval of the 2-CLP price curve)
  */
 struct Gyro2CLPPoolImmutableData {
     IERC20[] tokens;
