@@ -4,26 +4,26 @@ pragma solidity ^0.8.24;
 
 interface IMevHook {
     /**
-     * @notice Pool was registered in the vault with a hook that is different from Mev Hook.
-     * @param pool Address of the pool that should have been initialized with MevHook
+     * @notice The pool was not registered with the Mev Hook contract.
+     * @param pool Address of the pool that should have been registered with MevHook
      */
     error MevHookNotRegisteredInPool(address pool);
 
     /**
-     * @notice Check if the Mev Tax is enabled in the hook.
+     * @notice Check whether the Mev Tax is enabled in the hook.
      * @dev If Mev Tax is disabled, all swaps will pay the static swap fee amount.
-     * @return mevTaxEnabled true if the MEV Tax is enabled to be charged by the hook, false otherwise
+     * @return mevTaxEnabled True if the MEV Tax is enabled
      */
     function isMevTaxEnabled() external view returns (bool mevTaxEnabled);
 
-    /// @notice Permissioned function to disable Mev Tax to be charged in the hook.
+    /// @notice Permissioned function to reversibly disable charging the Mev Tax in registered pools.
     function disableMevTax() external;
 
-    /// @notice Permissioned function to enable Mev Tax to be charged in the hook.
+    /// @notice Permissioned function to enable charging the Mev Tax in registered pools.
     function enableMevTax() external;
 
     /**
-     * @notice Fetch the default multiplier of the priority gas price.
+     * @notice Fetch the default multiplier for the priority gas price.
      * @dev The MEV swap fee percentage is calculated as `mevTaxMultiplier * priorityGasPrice`, where priorityGasPrice
      * is defined as `transactionGasPrice - baseFee`. A higher mevTaxMultiplier will charge a bigger swap fee from
      * searchers, absorb more priority fee to LPs, but a too high mevTaxMultiplier may put the searcher swaps in the
@@ -43,7 +43,7 @@ interface IMevHook {
     /**
      * @notice Fetch the pool multiplier of the priority gas price.
      * @dev When a pool is registered with the MEV Hook in the vault, the MEV Hook initializes the multiplier of the
-     * pool with the defaultMevTaxMultiplier value. If the pool is not registered with the MEV Hook, it reverts with
+     * pool to the defaultMevTaxMultiplier value. If the pool is not registered with the MEV Hook, it reverts with
      * error MevHookNotRegisteredForPool(pool).
      *
      * @param pool Address of the pool with the multiplier
