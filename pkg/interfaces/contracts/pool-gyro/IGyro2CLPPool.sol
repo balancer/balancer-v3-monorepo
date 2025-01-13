@@ -49,7 +49,7 @@ struct Gyro2CLPPoolDynamicData {
 
 interface IGyro2CLPPool is IBasePool {
     /**
-     * @notice Gyro 2CLP pool configuration.
+     * @notice Gyro 2-CLP pool configuration.
      * @param name Pool name
      * @param symbol Pool symbol
      * @param sqrtAlpha Square root of alpha (the lowest price in the price interval of the 2CLP price curve)
