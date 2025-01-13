@@ -89,6 +89,8 @@ contract MevHookTest is BaseVaultTest {
     function testEnableMevTax() public {
         assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled");
         vm.prank(admin);
+        vm.expectEmit();
+        emit IMevHook.MevTaxEnabledSet(true);
         _mevHook.enableMevTax();
         assertTrue(_mevHook.isMevTaxEnabled(), "Mev Tax is not enabled");
     }
@@ -115,7 +117,10 @@ contract MevHookTest is BaseVaultTest {
         vm.prank(admin);
         _mevHook.enableMevTax();
         assertTrue(_mevHook.isMevTaxEnabled(), "Mev Tax is not enabled");
+
         vm.prank(admin);
+        vm.expectEmit();
+        emit IMevHook.MevTaxEnabledSet(false);
         _mevHook.disableMevTax();
         assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled");
     }
@@ -159,6 +164,8 @@ contract MevHookTest is BaseVaultTest {
         );
 
         vm.prank(admin);
+        vm.expectEmit();
+        emit IMevHook.DefaultMevTaxMultiplierSet(newDefaultMevTaxMultiplier);
         _mevHook.setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
         assertEq(
             _mevHook.getDefaultMevTaxMultiplier(),
@@ -208,6 +215,8 @@ contract MevHookTest is BaseVaultTest {
         );
 
         vm.prank(admin);
+        vm.expectEmit();
+        emit IMevHook.DefaultMevTaxThresholdSet(newDefaultMevTaxThreshold);
         _mevHook.setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
         assertEq(
             _mevHook.getDefaultMevTaxThreshold(),
@@ -246,8 +255,11 @@ contract MevHookTest is BaseVaultTest {
     ********************************************************/
     function testSetPoolMevTaxMultiplierPoolNotRegistered() public {
         // Creates a new mevHook and stores into _mevHook, so the pool won't be registered with the new MevHook.
-        createHook();
+        address newHook = createHook();
 
+        authorizer.grantRole(IAuthentication(newHook).getActionId(IMevHook.setPoolMevTaxMultiplier.selector), admin);
+
+        vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IMevHook.MevHookNotRegisteredInPool.selector, pool));
         _mevHook.setPoolMevTaxMultiplier(pool, 5e18);
     }
@@ -270,6 +282,8 @@ contract MevHookTest is BaseVaultTest {
         );
 
         vm.prank(admin);
+        vm.expectEmit();
+        emit IMevHook.PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
         _mevHook.setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
         assertEq(
             _mevHook.getPoolMevTaxMultiplier(pool),
@@ -296,8 +310,11 @@ contract MevHookTest is BaseVaultTest {
     ********************************************************/
     function testSetPoolMevTaxThresholdPoolNotRegistered() public {
         // Creates a new mevHook and stores into _mevHook, so the pool won't be registered with the new MevHook.
-        createHook();
+        address newHook = createHook();
 
+        authorizer.grantRole(IAuthentication(newHook).getActionId(IMevHook.setPoolMevTaxThreshold.selector), admin);
+
+        vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IMevHook.MevHookNotRegisteredInPool.selector, pool));
         _mevHook.setPoolMevTaxThreshold(pool, 5e18);
     }
@@ -320,6 +337,8 @@ contract MevHookTest is BaseVaultTest {
         );
 
         vm.prank(admin);
+        vm.expectEmit();
+        emit IMevHook.PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
         _mevHook.setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
         assertEq(_mevHook.getPoolMevTaxThreshold(pool), newPoolMevTaxThreshold, "poolMevTaxThreshold is not correct");
 

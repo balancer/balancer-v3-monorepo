@@ -301,6 +301,10 @@ describe('MevHook', () => {
 
     if (shouldChargeMev) {
       expect(swapEvent.args.swapFeePercentage).to.be.eq(mevSwapFeePercentage, 'Incorrect Swap Fee Percentage');
+      expect(swapEvent.args.swapFeePercentage).to.be.gte(
+        STATIC_SWAP_FEE_PERCENTAGE,
+        'Mev fee percentage lower than static fee percentage'
+      );
       expect(swapEvent.args.swapFeeAmount).to.be.eq(mevSwapFee, 'Incorrect Swap Fee');
       expect(balancesAfter.token0).to.be.eq(balancesBefore.token0 - amountIn);
       expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - mevSwapFee);

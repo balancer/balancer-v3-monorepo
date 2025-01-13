@@ -10,6 +10,40 @@ interface IMevHook {
     error MevHookNotRegisteredInPool(address pool);
 
     /**
+     * @notice Mev tax was globally set or reset in the hook.
+     * @param enabled The new value for mevTaxEnabled. If true, mev tax will be charged
+     */
+    event MevTaxEnabledSet(bool enabled);
+
+    /**
+     * @notice Default mev tax multiplier was set.
+     * @dev Registered pools should have the multiplier set using setPoolMevTaxMultiplier.
+     * @param newDefaultMevTaxMultiplier The new value for defaultMevTaxMultiplier
+     */
+    event DefaultMevTaxMultiplierSet(uint256 newDefaultMevTaxMultiplier);
+
+    /**
+     * @notice Default mev tax threshold was set.
+     * @dev Registered pools should have the threshold set using setPoolMevTaxThreshold.
+     * @param newDefaultMevTaxThreshold The new value for defaultMevTaxThreshold
+     */
+    event DefaultMevTaxThresholdSet(uint256 newDefaultMevTaxThreshold);
+
+    /**
+     * @notice Pool mev tax multiplier was set.
+     * @param pool The pool address in which the multiplier has changed
+     * @param newPoolMevTaxMultiplier The new value for the pool multiplier
+     */
+    event PoolMevTaxMultiplierSet(address pool, uint256 newPoolMevTaxMultiplier);
+
+    /**
+     * @notice Default mev tax threshold was set.
+     * @param pool The pool address in which the threshold has changed
+     * @param newPoolMevTaxThreshold The new value for the pool threshold
+     */
+    event PoolMevTaxThresholdSet(address pool, uint256 newPoolMevTaxThreshold);
+
+    /**
      * @notice Check whether the Mev Tax is enabled in the hook.
      * @dev If Mev Tax is disabled, all swaps will pay the static swap fee amount.
      * @return mevTaxEnabled True if the MEV Tax is enabled
