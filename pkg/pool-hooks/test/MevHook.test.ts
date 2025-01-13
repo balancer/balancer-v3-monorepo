@@ -148,7 +148,7 @@ describe('MevHook', () => {
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
       const amountIn = fp(10);
-      // txGasPrice should be at least "BaseFee + PriorityGasThreshold + 1" to trigger mev tax.
+      // To trigger mev tax, `txGasPrice` > `BaseFee + PriorityGasThreshold`.
       const txGasPrice = PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
