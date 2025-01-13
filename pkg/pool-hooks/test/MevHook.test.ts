@@ -120,8 +120,6 @@ describe('MevHook', () => {
   });
 
   describe('do not pay MEV tax', async () => {
-    const shouldChargeMev = false;
-
     it('MEV hook disabled', async () => {
       await hook.connect(admin).disableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.false;
@@ -140,7 +138,7 @@ describe('MevHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
     });
 
     it('low priority gas price', async () => {
@@ -159,7 +157,7 @@ describe('MevHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
     });
 
     it('MEV fee percentage smaller than static', async () => {
@@ -184,7 +182,7 @@ describe('MevHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
     });
 
     it('MEV multiplier is 0', async () => {
@@ -208,13 +206,11 @@ describe('MevHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
     });
   });
 
   describe('should pay MEV tax', async () => {
-    const shouldChargeMev = true;
-
     it('MEV fee percentage bigger than max value', async () => {
       await hook.connect(admin).enableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.true;
@@ -237,7 +233,7 @@ describe('MevHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+      await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
     });
 
     it('charge MEV tax proportional to priority gas price', async () => {
@@ -260,7 +256,7 @@ describe('MevHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
+      await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
     });
   });
 
@@ -276,12 +272,11 @@ describe('MevHook', () => {
     };
   }
 
-  async function checkSwapFeeExactIn(
+  async function checkSwapFeeExactInChargingMevTax(
     balancesBefore: Balances,
     balancesAfter: Balances,
     txGasPrice: bigint,
-    amountIn: bigint,
-    shouldChargeMev: boolean
+    amountIn: bigint
   ) {
     const mevMultiplier = await hook.getPoolMevTaxMultiplier(pool);
 
@@ -297,23 +292,28 @@ describe('MevHook', () => {
       mevSwapFeePercentage = MAX_MEV_FEE_PERCENTAGE;
     }
     const mevSwapFee = fpMulDown(mevSwapFeePercentage, amountIn);
+
+    expect(swapEvent.args.swapFeePercentage).to.be.eq(mevSwapFeePercentage, 'Incorrect Swap Fee Percentage');
+    expect(swapEvent.args.swapFeePercentage).to.be.gte(
+      STATIC_SWAP_FEE_PERCENTAGE,
+      'MEV fee percentage lower than static fee percentage'
+    );
+    expect(swapEvent.args.swapFeeAmount).to.be.eq(mevSwapFee, 'Incorrect Swap Fee');
+    expect(balancesAfter.token0).to.be.eq(balancesBefore.token0 - amountIn);
+    expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - mevSwapFee);
+  }
+
+  async function checkSwapFeeExactInWithoutMevTax(balancesBefore: Balances, balancesAfter: Balances, amountIn: bigint) {
+    const filter = vault.filters.Swap;
+    const events = await vault.queryFilter(filter, -1);
+    const swapEvent = events[0];
+
     const staticSwapFee = fpMulDown(STATIC_SWAP_FEE_PERCENTAGE, amountIn);
 
-    if (shouldChargeMev) {
-      expect(swapEvent.args.swapFeePercentage).to.be.eq(mevSwapFeePercentage, 'Incorrect Swap Fee Percentage');
-      expect(swapEvent.args.swapFeePercentage).to.be.gte(
-        STATIC_SWAP_FEE_PERCENTAGE,
-        'MEV fee percentage lower than static fee percentage'
-      );
-      expect(swapEvent.args.swapFeeAmount).to.be.eq(mevSwapFee, 'Incorrect Swap Fee');
-      expect(balancesAfter.token0).to.be.eq(balancesBefore.token0 - amountIn);
-      expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - mevSwapFee);
-    } else {
-      expect(swapEvent.args.swapFeePercentage).to.be.eq(STATIC_SWAP_FEE_PERCENTAGE, 'Incorrect Swap Fee Percentage');
-      expect(swapEvent.args.swapFeeAmount).to.be.eq(staticSwapFee, 'Incorrect Swap Fee');
-      expect(balancesAfter.token0).to.be.eq(balancesBefore.token0 - amountIn);
-      expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - staticSwapFee);
-    }
+    expect(swapEvent.args.swapFeePercentage).to.be.eq(STATIC_SWAP_FEE_PERCENTAGE, 'Incorrect Swap Fee Percentage');
+    expect(swapEvent.args.swapFeeAmount).to.be.eq(staticSwapFee, 'Incorrect Swap Fee');
+    expect(balancesAfter.token0).to.be.eq(balancesBefore.token0 - amountIn);
+    expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - staticSwapFee);
   }
 
   async function getBaseFee() {
