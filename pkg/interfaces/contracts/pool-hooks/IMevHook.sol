@@ -12,7 +12,7 @@ interface IMevHook {
     /**
      * @notice Check whether the Mev Tax is enabled in the hook.
      * @dev If Mev Tax is disabled, all swaps will pay the static swap fee amount.
-     * @return mevTaxEnabled true if the MEV Tax is enabled to be charged by the hook, false otherwise
+     * @return mevTaxEnabled True if the MEV Tax is enabled
      */
     function isMevTaxEnabled() external view returns (bool mevTaxEnabled);
 
