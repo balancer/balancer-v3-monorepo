@@ -10,7 +10,7 @@ interface IMevHook {
     error MevHookNotRegisteredInPool(address pool);
 
     /**
-     * @notice Check if the Mev Tax is enabled in the hook.
+     * @notice Check whether the Mev Tax is enabled in the hook.
      * @dev If Mev Tax is disabled, all swaps will pay the static swap fee amount.
      * @return mevTaxEnabled true if the MEV Tax is enabled to be charged by the hook, false otherwise
      */
