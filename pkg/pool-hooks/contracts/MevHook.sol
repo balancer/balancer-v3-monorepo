@@ -26,9 +26,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     // Max Fee is 99.9999% (Max supported fee by the vault).
     uint256 private constant _MEV_MAX_FEE_PERCENTAGE = MAX_FEE_PERCENTAGE;
 
-    bool internal _mevTaxEnabled = false;
-    uint256 internal _defaultMevTaxMultiplier = 0;
-    uint256 internal _defaultMevTaxThreshold = 0;
+    bool internal _mevTaxEnabled;
+    uint256 internal _defaultMevTaxMultiplier;
+    uint256 internal _defaultMevTaxThreshold;
     mapping(address => uint256) internal _poolMevTaxMultipliers;
     mapping(address => uint256) internal _poolMevTaxThresholds;
 
@@ -110,12 +110,16 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     /// @inheritdoc IMevHook
     function disableMevTax() external authenticate {
-        _mevTaxEnabled = false;
+        _setMevTaxEnabled(false);
     }
 
     /// @inheritdoc IMevHook
     function enableMevTax() external authenticate {
-        _mevTaxEnabled = true;
+        _setMevTaxEnabled(true);
+    }
+
+    function _setMevTaxEnabled(bool value) private {
+        _mevTaxEnabled = value;
     }
 
     /// @inheritdoc IMevHook
@@ -125,6 +129,10 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     /// @inheritdoc IMevHook
     function setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) external authenticate {
+        _setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
+    }
+
+    function _setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) private {
         _defaultMevTaxMultiplier = newDefaultMevTaxMultiplier;
     }
 
@@ -148,6 +156,10 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     /// @inheritdoc IMevHook
     function setDefaultMevTaxThreshold(uint256 newDefaultMevTaxThreshold) external authenticate {
+        _setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
+    }
+
+    function _setDefaultMevTaxThreshold(uint256 newDefaultMevTaxThreshold) private {
         _defaultMevTaxThreshold = newDefaultMevTaxThreshold;
     }
 
