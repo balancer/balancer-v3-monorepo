@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 interface IMevHook {
     /**
-     * @notice Pool was registered in the vault with a hook that is different from Mev Hook.
-     * @param pool Address of the pool that should have been initialized with MevHook
+     * @notice The pool was not registered with the Mev Hook contract.
+     * @param pool Address of the pool that should have been registered with MevHook
      */
     error MevHookNotRegisteredInPool(address pool);
 
