@@ -58,8 +58,8 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _poolMevTaxMultipliers[pool] = _defaultMevTaxMultiplier;
         _poolMevTaxThresholds[pool] = _defaultMevTaxThreshold;
 
-        // disable unbalanced liquidity must be true, because the hook computes dynamic swap fees and it may be
-        // bypassed by unbalanced liquidity operations.
+    // Unbalanced liquidity must be disabled because the hook computes dynamic swap fees that unbalanced liquidity
+    // operations could bypass.
         return liquidityManagement.disableUnbalancedLiquidity;
     }
 
