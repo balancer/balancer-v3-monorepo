@@ -82,7 +82,7 @@ interface ICompositeLiquidityRouter {
      * wrapped tokens in the pool
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
-     * @return amountsOut Actual amounts of tokens received, sorted in token registration order of wrapped
+     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      * tokens in the pool
      */
     function removeLiquidityProportionalFromERC4626Pool(
