@@ -84,7 +84,8 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         // defines the priority gas price (the part of the gas cost that will be paid to the validator).
         uint256 priorityGasPrice = tx.gasprice - block.basefee;
 
-        // If priorityGasPrice < threshold, it means the transaction is from a retail user.
+        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
+        // impose the MEV tax.
         if (priorityGasPrice < _poolMevTaxThresholds[pool]) {
             return (true, staticSwapFeePercentage);
         }
