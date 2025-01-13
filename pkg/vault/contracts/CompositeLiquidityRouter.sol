@@ -236,8 +236,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
 
-        // Revert if tokensIn length does not match with maxAmountsIn length.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length);
+        // Revert if `tokensIn` length does not match `maxAmountsIn` and `useWrappedTokens`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, useWrappedTokens.length);
 
         uint256[] memory amountsIn = _wrapTokensExactInIfRequired(
             params.sender,
