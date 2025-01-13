@@ -19,7 +19,7 @@ interface IMevHook {
     /// @notice Permissioned function to disable Mev Tax to be charged in the hook.
     function disableMevTax() external;
 
-    /// @notice Permissioned function to enable Mev Tax to be charged in the hook.
+    /// @notice Permissioned function to enable charging the Mev Tax in registered pools.
     function enableMevTax() external;
 
     /**
