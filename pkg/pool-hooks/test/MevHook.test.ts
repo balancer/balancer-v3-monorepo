@@ -76,7 +76,7 @@ describe('MevHook', () => {
     const actions: string[] = [];
     // Vault Actions
     actions.push(await actionId(iVault, 'setStaticSwapFeePercentage'));
-    // Mev Hook Actions
+    // MEV Hook Actions
     actions.push(await actionId(hook, 'disableMevTax'));
     actions.push(await actionId(hook, 'enableMevTax'));
     actions.push(await actionId(hook, 'setDefaultMevTaxMultiplier'));
@@ -119,16 +119,16 @@ describe('MevHook', () => {
     await pool.connect(lp).transfer(sender, fp(100));
   });
 
-  describe('do not pay mev tax', async () => {
+  describe('do not pay MEV tax', async () => {
     const shouldChargeMev = false;
 
-    it('mev hook disabled', async () => {
+    it('MEV hook disabled', async () => {
       await hook.connect(admin).disableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.false;
 
       const amountIn = fp(10);
       const baseFee = await getBaseFee();
-      // "BaseFee + 2 * PriorityGasThreshold" should trigger Mev Tax, but static swap fee will be charged because Mev tax is
+      // "BaseFee + 2 * PriorityGasThreshold" should trigger MEV Tax, but static swap fee will be charged because MEV tax is
       // disabled.
       const txGasPrice = baseFee + 2n * PRIORITY_GAS_THRESHOLD;
 
@@ -148,7 +148,7 @@ describe('MevHook', () => {
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
       const amountIn = fp(10);
-      // To trigger mev tax, `txGasPrice` > `BaseFee + PriorityGasThreshold`.
+      // To trigger MEV tax, `txGasPrice` > `BaseFee + PriorityGasThreshold`.
       const txGasPrice = PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
@@ -162,18 +162,18 @@ describe('MevHook', () => {
       await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
     });
 
-    it('mev fee percentage smaller than static', async () => {
+    it('MEV fee percentage smaller than static', async () => {
       await hook.connect(admin).enableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
-      // Small multiplier, the mev fee percentage will be lower than static swap fee. In this case, static swap fee
+      // Small multiplier, the MEV fee percentage will be lower than static swap fee. In this case, static swap fee
       // should be charged.
       await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(0.0001)));
 
       const amountIn = fp(10);
 
       const baseFee = await getBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
       const balancesBefore = await getBalances();
@@ -187,7 +187,7 @@ describe('MevHook', () => {
       await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
     });
 
-    it('mev multiplier is 0', async () => {
+    it('MEV multiplier is 0', async () => {
       await hook.connect(admin).enableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
@@ -197,7 +197,7 @@ describe('MevHook', () => {
       const amountIn = fp(10);
 
       const baseFee = await getBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
       const balancesBefore = await getBalances();
@@ -212,21 +212,21 @@ describe('MevHook', () => {
     });
   });
 
-  describe('should pay mev tax', async () => {
+  describe('should pay MEV tax', async () => {
     const shouldChargeMev = true;
 
-    it('mev fee percentage bigger than max value', async () => {
+    it('MEV fee percentage bigger than max value', async () => {
       await hook.connect(admin).enableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
-      // Big multiplier, the mev fee percentage should be more than 99.9999%. Since the Max fee is 99.9999%, that's what
+      // Big multiplier, the MEV fee percentage should be more than 99.9999%. Since the Max fee is 99.9999%, that's what
       // will be charged.
       await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100n)));
 
       const amountIn = fp(10);
 
       const baseFee = await getBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
       const balancesBefore = await getBalances();
@@ -240,7 +240,7 @@ describe('MevHook', () => {
       await checkSwapFeeExactIn(balancesBefore, balancesAfter, txGasPrice, amountIn, shouldChargeMev);
     });
 
-    it('charge mev tax proportional to priority gas price', async () => {
+    it('charge MEV tax proportional to priority gas price', async () => {
       await hook.connect(admin).enableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
@@ -249,7 +249,7 @@ describe('MevHook', () => {
       const amountIn = fp(10);
 
       const baseFee = await getBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger Mev Tax.
+      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
       const balancesBefore = await getBalances();
@@ -303,7 +303,7 @@ describe('MevHook', () => {
       expect(swapEvent.args.swapFeePercentage).to.be.eq(mevSwapFeePercentage, 'Incorrect Swap Fee Percentage');
       expect(swapEvent.args.swapFeePercentage).to.be.gte(
         STATIC_SWAP_FEE_PERCENTAGE,
-        'Mev fee percentage lower than static fee percentage'
+        'MEV fee percentage lower than static fee percentage'
       );
       expect(swapEvent.args.swapFeeAmount).to.be.eq(mevSwapFee, 'Incorrect Swap Fee');
       expect(balancesAfter.token0).to.be.eq(balancesBefore.token0 - amountIn);

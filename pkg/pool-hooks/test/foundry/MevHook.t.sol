@@ -67,7 +67,7 @@ contract MevHookTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         address mevHook = address(new MevHook(IVault(address(vault))));
         _mevHook = IMevHook(mevHook);
-        vm.label(mevHook, "Mev Hook");
+        vm.label(mevHook, "MEV Hook");
         return mevHook;
     }
 
@@ -75,7 +75,7 @@ contract MevHookTest is BaseVaultTest {
                        isMevTaxEnabled()
     ********************************************************/
     function testIsMevTaxEnabledStartingState() public view {
-        assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled after hook creation.");
+        assertFalse(_mevHook.isMevTaxEnabled(), "MEV Tax is enabled after hook creation.");
     }
 
     /********************************************************
@@ -87,22 +87,22 @@ contract MevHookTest is BaseVaultTest {
     }
 
     function testEnableMevTax() public {
-        assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled");
+        assertFalse(_mevHook.isMevTaxEnabled(), "MEV Tax is enabled");
         vm.prank(admin);
         vm.expectEmit();
         emit IMevHook.MevTaxEnabledSet(true);
         _mevHook.enableMevTax();
-        assertTrue(_mevHook.isMevTaxEnabled(), "Mev Tax is not enabled");
+        assertTrue(_mevHook.isMevTaxEnabled(), "MEV Tax is not enabled");
     }
 
     function testMultipleEnableMevTax() public {
-        assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled");
+        assertFalse(_mevHook.isMevTaxEnabled(), "MEV Tax is enabled");
         vm.prank(admin);
         _mevHook.enableMevTax();
-        assertTrue(_mevHook.isMevTaxEnabled(), "Mev Tax is not enabled");
+        assertTrue(_mevHook.isMevTaxEnabled(), "MEV Tax is not enabled");
         vm.prank(admin);
         _mevHook.enableMevTax();
-        assertTrue(_mevHook.isMevTaxEnabled(), "Mev Tax is not enabled");
+        assertTrue(_mevHook.isMevTaxEnabled(), "MEV Tax is not enabled");
     }
 
     /********************************************************
@@ -116,32 +116,32 @@ contract MevHookTest is BaseVaultTest {
     function testDisableMevTax() public {
         vm.prank(admin);
         _mevHook.enableMevTax();
-        assertTrue(_mevHook.isMevTaxEnabled(), "Mev Tax is not enabled");
+        assertTrue(_mevHook.isMevTaxEnabled(), "MEV Tax is not enabled");
 
         vm.prank(admin);
         vm.expectEmit();
         emit IMevHook.MevTaxEnabledSet(false);
         _mevHook.disableMevTax();
-        assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled");
+        assertFalse(_mevHook.isMevTaxEnabled(), "MEV Tax is enabled");
     }
 
     function testMultipleDisableMevTax() public {
         vm.prank(admin);
         _mevHook.enableMevTax();
-        assertTrue(_mevHook.isMevTaxEnabled(), "Mev Tax is not enabled");
+        assertTrue(_mevHook.isMevTaxEnabled(), "MEV Tax is not enabled");
         vm.prank(admin);
         _mevHook.disableMevTax();
-        assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled");
+        assertFalse(_mevHook.isMevTaxEnabled(), "MEV Tax is enabled");
         vm.prank(admin);
         _mevHook.disableMevTax();
-        assertFalse(_mevHook.isMevTaxEnabled(), "Mev Tax is enabled");
+        assertFalse(_mevHook.isMevTaxEnabled(), "MEV Tax is enabled");
     }
 
     /********************************************************
                    getDefaultMevTaxMultiplier()
     ********************************************************/
     function testGetDefaultMevTaxMultiplierStartingState() public view {
-        assertEq(_mevHook.getDefaultMevTaxMultiplier(), 0, "Default Mev Tax Multiplier is not 0 after hook creation.");
+        assertEq(_mevHook.getDefaultMevTaxMultiplier(), 0, "Default MEV Tax Multiplier is not 0 after hook creation.");
     }
 
     /********************************************************
@@ -192,7 +192,7 @@ contract MevHookTest is BaseVaultTest {
                    getDefaultMevTaxThreshold()
     ********************************************************/
     function testGetDefaultMevTaxThresholdStartingState() public view {
-        assertEq(_mevHook.getDefaultMevTaxThreshold(), 0, "Default Mev Tax Threshold is not 0 after hook creation.");
+        assertEq(_mevHook.getDefaultMevTaxThreshold(), 0, "Default MEV Tax Threshold is not 0 after hook creation.");
     }
 
     /********************************************************
