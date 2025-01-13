@@ -142,8 +142,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         exactWrappedAmountsIn[waDaiIdx] = operationAmount;
         exactWrappedAmountsIn[waWethIdx] = _vaultPreviewDeposit(waWETH, operationAmount);
 
-        bool[] memory useWrappedTokens = new bool[](exactUnderlyingAmountsIn.length);
-        useWrappedTokens[waDaiIdx] = true;
+        bool[] memory isWrappedToken = new bool[](exactUnderlyingAmountsIn.length);
+        isWrappedToken[waDaiIdx] = true;
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
@@ -160,7 +160,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.prank(alice);
         uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
             pool,
-            useWrappedTokens,
+            isWrappedToken,
             exactUnderlyingAmountsIn,
             1,
             false,
@@ -294,13 +294,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        bool[] memory useWrappedTokens = new bool[](exactUnderlyingAmountsIn.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](exactUnderlyingAmountsIn.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.prank(alice);
         uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             exactUnderlyingAmountsIn,
             0,
             false,
@@ -344,13 +344,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        bool[] memory useWrappedTokens = new bool[](exactUnderlyingAmountsIn.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](exactUnderlyingAmountsIn.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.prank(alice);
         uint256 bptOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{
             value: operationAmount + (forceEthLeftover ? 1e18 : 0)
-        }(partialErc4626Pool, useWrappedTokens, exactUnderlyingAmountsIn, 0, true, bytes(""));
+        }(partialErc4626Pool, isWrappedToken, exactUnderlyingAmountsIn, 0, true, bytes(""));
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
@@ -441,14 +441,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        bool[] memory useWrappedTokens = new bool[](exactUnderlyingAmountsIn.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](exactUnderlyingAmountsIn.length);
+        isWrappedToken[partialWethIdx] = true;
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256 queryBptAmountOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedToERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             exactUnderlyingAmountsIn,
             address(this),
             bytes("")
@@ -458,7 +458,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.prank(alice);
         uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             exactUnderlyingAmountsIn,
             1,
             false,
@@ -599,13 +599,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        bool[] memory useWrappedTokens = new bool[](maxAmountsIn.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](maxAmountsIn.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.prank(alice);
         uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             maxAmountsIn,
             exactBptAmountOut,
             false,
@@ -665,13 +665,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
-        bool[] memory useWrappedTokens = new bool[](maxAmountsIn.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](maxAmountsIn.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.prank(alice);
         uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool{
             value: operationAmount + (forceEthLeftover ? 1e18 : 0)
-        }(partialErc4626Pool, useWrappedTokens, maxAmountsIn, exactBptAmountOut, true, bytes(""));
+        }(partialErc4626Pool, isWrappedToken, maxAmountsIn, exactBptAmountOut, true, bytes(""));
 
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
@@ -732,8 +732,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         maxAmountsIn[partialWaDaiIdx] = operationAmount;
         maxAmountsIn[partialWethIdx] = expectedWrappedAmountsIn[partialWethIdx] - 1;
 
-        bool[] memory useWrappedTokens = new bool[](maxAmountsIn.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](maxAmountsIn.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -746,7 +746,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.prank(alice);
         compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             maxAmountsIn,
             exactBptAmountOut,
             false,
@@ -794,14 +794,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
         uint256 exactBptAmountOut = operationAmount;
 
-        bool[] memory useWrappedTokens = new bool[](maxAmountsIn.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](maxAmountsIn.length);
+        isWrappedToken[partialWethIdx] = true;
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256[] memory queryUnderlyingAmountsIn = compositeLiquidityRouter.queryAddLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             exactBptAmountOut,
             address(this),
             bytes("")
@@ -811,7 +811,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.prank(alice);
         uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             maxAmountsIn,
             exactBptAmountOut,
             false,
@@ -908,8 +908,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         minAmountsOut[waWethIdx] = _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]);
         minAmountsOut[waDaiIdx] = expectedWrappedAmountsOut[waDaiIdx];
 
-        bool[] memory useWrappedTokens = new bool[](2);
-        useWrappedTokens[waDaiIdx] = true;
+        bool[] memory isWrappedToken = new bool[](2);
+        isWrappedToken[waDaiIdx] = true;
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
@@ -917,7 +917,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
             .removeLiquidityProportionalFromERC4626Pool(
                 pool,
-                useWrappedTokens,
+                isWrappedToken,
                 exactBptAmountIn,
                 minAmountsOut,
                 false,
@@ -1030,14 +1030,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
-        bool[] memory useWrappedTokens = new bool[](minAmountsOut.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](minAmountsOut.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.prank(bob);
         uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
             .removeLiquidityProportionalFromERC4626Pool(
                 partialErc4626Pool,
-                useWrappedTokens,
+                isWrappedToken,
                 exactBptAmountIn,
                 minAmountsOut,
                 false,
@@ -1091,14 +1091,14 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
-        bool[] memory useWrappedTokens = new bool[](minAmountsOut.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](minAmountsOut.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.prank(bob);
         uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
             .removeLiquidityProportionalFromERC4626Pool(
                 partialErc4626Pool,
-                useWrappedTokens,
+                isWrappedToken,
                 exactBptAmountIn,
                 minAmountsOut,
                 true,
@@ -1163,8 +1163,8 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         minAmountsOut[partialWethIdx] = expectedWrappedAmountsOut[partialWethIdx] + 1;
         minAmountsOut[partialWaDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[partialWaDaiIdx]);
 
-        bool[] memory useWrappedTokens = new bool[](minAmountsOut.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](minAmountsOut.length);
+        isWrappedToken[partialWethIdx] = true;
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -1177,7 +1177,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         vm.prank(bob);
         compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
             partialErc4626Pool,
-            useWrappedTokens,
+            isWrappedToken,
             exactBptAmountIn,
             minAmountsOut,
             false,
@@ -1254,15 +1254,15 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             expectedWrappedAmountsOut[partialWaDaiIdx]
         );
 
-        bool[] memory useWrappedTokens = new bool[](minUnderlyingAmountsOut.length);
-        useWrappedTokens[partialWethIdx] = true;
+        bool[] memory isWrappedToken = new bool[](minUnderlyingAmountsOut.length);
+        isWrappedToken[partialWethIdx] = true;
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         uint256[] memory queryUnderlyingAmountsOut = compositeLiquidityRouter
             .queryRemoveLiquidityProportionalFromERC4626Pool(
                 partialErc4626Pool,
-                useWrappedTokens,
+                isWrappedToken,
                 exactBptAmountIn,
                 address(this),
                 bytes("")
@@ -1273,7 +1273,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
             .removeLiquidityProportionalFromERC4626Pool(
                 partialErc4626Pool,
-                useWrappedTokens,
+                isWrappedToken,
                 exactBptAmountIn,
                 minUnderlyingAmountsOut,
                 false,
