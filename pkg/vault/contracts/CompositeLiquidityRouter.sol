@@ -632,8 +632,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        // Remove the underlying token from the tokensIn and set the amount as zero because we took it here.
-        // We will take other tokens at the end of the calculation.
+        // Remove the underlying token from `_currentSwapTokensIn` and zero out the amount, as these tokens were paid
+        // in advance and wrapped. Remaining tokens will be transferred in at the end of the calculation.
         _currentSwapTokensIn().remove(underlyingToken);
         _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
 
