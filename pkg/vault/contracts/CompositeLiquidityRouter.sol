@@ -48,7 +48,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityUnbalancedToERC4626Pool(
         address pool,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
@@ -68,7 +68,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: wethIsEth,
                             userData: userData
                         }),
-                        isWrappedToken
+                        useAsStandardToken
                     )
                 )
             ),
@@ -79,7 +79,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityProportionalToERC4626Pool(
         address pool,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bool wethIsEth,
@@ -99,7 +99,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: wethIsEth,
                             userData: userData
                         }),
-                        isWrappedToken
+                        useAsStandardToken
                     )
                 )
             ),
@@ -110,7 +110,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function removeLiquidityProportionalFromERC4626Pool(
         address pool,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
         bool wethIsEth,
@@ -130,7 +130,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: wethIsEth,
                             userData: userData
                         }),
-                        isWrappedToken
+                        useAsStandardToken
                     )
                 )
             ),
@@ -141,7 +141,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function queryAddLiquidityUnbalancedToERC4626Pool(
         address pool,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         uint256[] memory exactAmountsIn,
         address sender,
         bytes memory userData
@@ -160,7 +160,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: false,
                             userData: userData
                         }),
-                        isWrappedToken
+                        useAsStandardToken
                     )
                 )
             ),
@@ -171,7 +171,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         uint256 exactBptAmountOut,
         address sender,
         bytes memory userData
@@ -190,7 +190,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: false,
                             userData: userData
                         }),
-                        isWrappedToken
+                        useAsStandardToken
                     )
                 )
             ),
@@ -201,7 +201,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         uint256 exactBptAmountIn,
         address sender,
         bytes memory userData
@@ -221,7 +221,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: false,
                             userData: userData
                         }),
-                        isWrappedToken
+                        useAsStandardToken
                     )
                 )
             ),
@@ -231,17 +231,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function addLiquidityERC4626PoolUnbalancedHook(
         AddLiquidityHookParams calldata params,
-        bool[] calldata isWrappedToken
+        bool[] calldata useAsStandardToken
     ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
 
-        // Revert if `tokensIn` length does not match `maxAmountsIn` and `isWrappedToken`.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, isWrappedToken.length);
+        // Revert if `tokensIn` length does not match `maxAmountsIn` and `useAsStandardToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, useAsStandardToken.length);
 
         uint256[] memory amountsIn = _wrapTokensExactInIfRequired(
             params.sender,
-            isWrappedToken,
+            useAsStandardToken,
             erc4626PoolTokens,
             params.maxAmountsIn,
             params.wethIsEth
@@ -262,13 +262,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function addLiquidityERC4626PoolProportionalHook(
         AddLiquidityHookParams calldata params,
-        bool[] calldata isWrappedToken
+        bool[] calldata useAsStandardToken
     ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
 
-        // Revert if `tokensIn` length does not match `maxAmountsIn` and `isWrappedToken`.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, isWrappedToken.length);
+        // Revert if `tokensIn` length does not match `maxAmountsIn` and `useAsStandardToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, useAsStandardToken.length);
 
         uint256[] memory maxAmounts = new uint256[](poolTokensLength);
         for (uint256 i = 0; i < poolTokensLength; ++i) {
@@ -289,7 +289,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         amountsIn = _wrapTokensExactOutIfRequired(
             params.sender,
-            isWrappedToken,
+            useAsStandardToken,
             erc4626PoolTokens,
             wrappedAmountsIn,
             params.maxAmountsIn,
@@ -299,13 +299,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function removeLiquidityERC4626PoolProportionalHook(
         RemoveLiquidityHookParams calldata params,
-        bool[] calldata isWrappedToken
+        bool[] calldata useAsStandardToken
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
 
-        // Revert if `tokensOut` length does not match `minAmountsOut` and `isWrappedToken`.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.minAmountsOut.length, isWrappedToken.length);
+        // Revert if `tokensOut` length does not match `minAmountsOut` and `useAsStandardToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.minAmountsOut.length, useAsStandardToken.length);
 
         amountsOut = new uint256[](poolTokensLength);
 
@@ -326,7 +326,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            if (isWrappedToken[i]) {
+            if (useAsStandardToken[i]) {
                 amountsOut[i] = wrappedAmountsOut[i];
 
                 if (amountsOut[i] < params.minAmountsOut[i]) {
@@ -366,7 +366,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @dev Assumes array lengths have been checked externally.
     function _wrapTokensExactInIfRequired(
         address sender,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         IERC20[] memory erc4626PoolTokens,
         uint256[] memory amountsIn,
         bool wethIsEth
@@ -384,7 +384,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             // Check whether the caller wants to use the token as an ERC4626 (i.e., wrap/unwrap it), or just use it as
             // a standard token.
-            if (isWrappedToken[i]) {
+            if (useAsStandardToken[i]) {
                 wrappedAmountsIn[i] = amountsIn[i];
 
                 if (isStaticCall == false) {
@@ -425,7 +425,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @dev Assumes array lengths have been checked externally.
     function _wrapTokensExactOutIfRequired(
         address sender,
-        bool[] memory isWrappedToken,
+        bool[] memory useAsStandardToken,
         IERC20[] memory erc4626PoolTokens,
         uint256[] memory wrappedAmountsIn,
         uint256[] memory maxAmountsIn,
@@ -438,13 +438,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         for (uint256 i = 0; i < poolTokensLength; ++i) {
             // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
-            // a valid ERC4626. Note that if `isWrappedToken[i]` is false, we will treat it as a standard token.
+            // a valid ERC4626. Note that if `useAsStandardToken[i]` is false, we will treat it as a standard token.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
             // Check whether the caller wants to use the token as an ERC4626 (i.e., wrap/unwrap it), or just use it as
             // a standard token.
-            if (isWrappedToken[i]) {
+            if (useAsStandardToken[i]) {
                 if (wrappedAmountsIn[i] > maxAmountsIn[i]) {
                     revert IVaultErrors.AmountInAboveMax(wrappedToken, wrappedAmountsIn[i], maxAmountsIn[i]);
                 }
