@@ -62,7 +62,7 @@ contract PauseHelper is SingletonAuthentication {
                 revert PoolExistInPausableSet(newPools[i]);
             }
 
-            emit PoolAdded(newPools[i]);
+            emit PoolAddedToPausableSet(newPools[i]);
         }
     }
 
@@ -79,7 +79,7 @@ contract PauseHelper is SingletonAuthentication {
                 revert PoolNotFoundInPausableSet(pools[i]);
             }
 
-            emit PoolRemoved(pools[i]);
+            emit PoolRemovedFromPausableSet(pools[i]);
         }
     }
 
