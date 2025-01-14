@@ -32,17 +32,40 @@ import { SingletonAuthentication } from "./SingletonAuthentication.sol";
  *
  * The second use case is for off-chain queries, or other protocols that need to easily determine, say, the "latest"
  * Weighted Pool Factory. This contract provides `isActiveBalancerContract(type, address)` for the first case, and
- * `getBalancerContract(type, name)` for the second.
+ * `getBalancerContract(type, name)` for the second. It is also possible to query all known information about an
+ * address, using `getBalancerContractInfo(address)`, which returns a struct with the detailed state.
  *
  * Note that the `SingletonAuthentication` base contract provides `getVault`, so it is also possible to ask this
  * contract for the Vault address, so it doesn't need to be a type.
  */
 contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthentication {
-    // ContractId is the hash of ContractType + ContractName.
+    // ContractId is the hash of contract name. Names must be unique (cannot have the same name with different types).
     mapping(bytes32 contractId => address addr) private _contractRegistry;
 
-    // Given an address, store the contract state (i.e., active or deprecated).
+    // Given an address, store the contract state (i.e., type, and active or deprecated).
+    //
+    // Conceptually, we maintain a <unique name> => <unique address> => <contract info> registry of contracts.
+    // The only thing that can change is the `isActive` flag, when a contract is deprecated. If a contract is
+    // registered in error (e.g., wrong type or address), the remedy is to deregister (delete) it, and then register
+    // the correct one.
+    //
+    // We also maintain a registry of aliases: <unique alias> => <unique registered address>, where the target address
+    // must be in the main registry, and the alias cannot match a unique registered contract name. Aliases can be
+    // overwritten (e.g., when the `WeightedPool` alias migrates from v2 to v3). See `_contractAliases` below.
     mapping(address addr => ContractInfo info) private _contractInfo;
+
+    // ContractAliasId is the hash of the alias (e.g., "WeightedPool").
+    // This is separate from the main contract registry to enforce different rules (e.g., prevent corrupting the
+    // contract state by overwriting a registry entry with an "alias" that matches a different contract).
+    mapping(bytes32 contractAliasId => address addr) private _contractAliases;
+
+    /**
+     * @notice A `_contractRegistry` entry has no corresponding `_contractInfo`.
+     * @dev This should never happen.
+     * @param contractName The name of the contract that has a registry entry but no contract info
+     * @param contractAddress The address of the contract with missing state
+     */
+    error InconsistentState(string contractName, address contractAddress);
 
     constructor(IVault vault) SingletonAuthentication(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -55,7 +78,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
      * registerBalancerContract(
      *      ContractType.POOL_FACTORY, '20241205-v3-weighted-pool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc
      * );
-     * registerBalancerContract(ContractType.POOL_FACTORY, 'WeightedPool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
+     * addOrUpdateBalancerContractAlias('WeightedPool', 0x201efd508c8DfE9DE1a13c2452863A78CB2a86Cc);
      *
      * // Register the Routers (two of them anyway).
      * registerBalancerContract(ContractType.ROUTER, '20241205-v3-router', 0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd);
@@ -82,7 +105,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
      * registerBalancerContract(
      *      ContractType.POOL_FACTORY, '20250107-v3-weighted-pool-v2', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8)
      * );
-     * replaceBalancerContract(ContractType.POOL_FACTORY, 'WeightedPool', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8);
+     * addOrUpdateBalancerContractAlias('WeightedPool', 0x9FC3da866e7DF3a1c57adE1a97c9f00a70f010c8);
      *
      * At that point,
      * getBalancerContract(ContractType.POOL_FACTORY, '20241205-v3-weighted-pool') returns active=false,
@@ -96,6 +119,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         string memory contractName,
         address contractAddress
     ) external authenticate {
+        // Ensure arguments are valid.
         if (contractAddress == address(0)) {
             revert ZeroContractAddress();
         }
@@ -104,19 +128,28 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
             revert InvalidContractName();
         }
 
-        bytes32 contractId = _getContractId(contractType, contractName);
-
-        if (_contractRegistry[contractId] != address(0)) {
-            revert ContractAlreadyRegistered(contractType, contractName);
-        }
-
-        // Edge case: Cannot register a new "alias" (i.e., type/name) for an address if it's already been deprecated.
+        // Ensure address isn't already in use.
         ContractInfo memory info = _contractInfo[contractAddress];
-        if (info.isRegistered && info.isActive == false) {
-            revert ContractAlreadyDeprecated(contractAddress);
+        if (info.isRegistered) {
+            revert ContractAddressAlreadyRegistered(info.contractType, contractAddress);
         }
 
-        // Store the address in the registry, under the unique combination of type and name.
+        // Ensure name isn't already in use as a registered contract name.
+        bytes32 contractId = _getContractId(contractName);
+        address existingRegistryAddress = _contractRegistry[contractId];
+        if (existingRegistryAddress != address(0)) {
+            info = _contractInfo[existingRegistryAddress];
+
+            revert ContractNameAlreadyRegistered(info.contractType, contractName);
+        }
+
+        // Also check that it isn't an existing alias.
+        address existingAliasAddress = _contractAliases[contractId];
+        if (existingAliasAddress != address(0)) {
+            revert ContractNameInUseAsAlias(contractName, existingAliasAddress);
+        }
+
+        // Store the address in the registry, under the unique name.
         _contractRegistry[contractId] = contractAddress;
 
         // Record the address as active. The `isActive` flag enables differentiating between unregistered and deprecated
@@ -131,12 +164,42 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     }
 
     /// @inheritdoc IBalancerContractRegistry
+    function deregisterBalancerContract(string memory contractName) external authenticate {
+        if (bytes(contractName).length == 0) {
+            revert InvalidContractName();
+        }
+
+        // Ensure the name is registered
+        bytes32 contractId = _getContractId(contractName);
+        address contractAddress = _contractRegistry[contractId];
+
+        if (contractAddress == address(0)) {
+            revert ContractNameNotRegistered(contractName);
+        }
+
+        ContractInfo memory info = _contractInfo[contractAddress];
+        // This should be impossible: the registry and info mappings must be in sync.
+        if (info.isRegistered == false) {
+            revert InconsistentState(contractName, contractAddress);
+        }
+
+        delete _contractRegistry[contractId];
+        delete _contractInfo[contractAddress];
+
+        emit BalancerContractDeregistered(info.contractType, contractName, contractAddress);
+    }
+
+    /// @inheritdoc IBalancerContractRegistry
     function deprecateBalancerContract(address contractAddress) external authenticate {
+        if (contractAddress == address(0)) {
+            revert ZeroContractAddress();
+        }
+
         ContractInfo memory info = _contractInfo[contractAddress];
 
         // Check that the address has been registered.
         if (info.isRegistered == false) {
-            revert ContractNotRegistered();
+            revert ContractAddressNotRegistered(contractAddress);
         }
 
         // If it was registered, check that it has not already been deprecated.
@@ -154,26 +217,41 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     }
 
     /// @inheritdoc IBalancerContractRegistry
-    function replaceBalancerContract(
-        ContractType contractType,
-        string memory contractName,
-        address newContract
+    function addOrUpdateBalancerContractAlias(
+        string memory contractAlias,
+        address contractAddress
     ) external authenticate {
-        if (newContract == address(0)) {
+        // Ensure arguments are valid.
+        if (bytes(contractAlias).length == 0) {
+            revert InvalidContractAlias();
+        }
+
+        if (contractAddress == address(0)) {
             revert ZeroContractAddress();
         }
 
-        // Ensure the type/name combination was already registered.
-        bytes32 contractId = _getContractId(contractType, contractName);
-        address existingContract = _contractRegistry[contractId];
-        if (existingContract == address(0)) {
-            revert ContractNotRegistered();
+        // Ensure the address was already registered.
+        ContractInfo memory info = _contractInfo[contractAddress];
+        if (info.isRegistered == false) {
+            revert ContractAddressNotRegistered(contractAddress);
         }
 
-        _contractRegistry[contractId] = newContract;
-        _contractInfo[newContract] = ContractInfo({ contractType: contractType, isRegistered: true, isActive: true });
+        // Ensure the proposed alias is not in use (i.e., no collision with existing registered contracts).
+        // It can match an existing alias: that's the "update" case. For instance, if we wanted to migrate
+        // the `WeightedPool` alias from v2 to v3. If the name is not already in `_contractAliases`, we are
+        // adding a new alias.
+        bytes32 contractId = _getContractId(contractAlias);
+        address existingRegistryAddress = _contractRegistry[contractId];
+        if (existingRegistryAddress != address(0)) {
+            info = _contractInfo[existingRegistryAddress];
 
-        emit BalancerContractReplaced(contractType, contractName, existingContract, newContract);
+            revert ContractAliasInUseAsName(info.contractType, contractAlias);
+        }
+
+        // This will either add a new or overwrite an existing alias.
+        _contractAliases[contractId] = contractAddress;
+
+        emit ContractAliasUpdated(contractAlias, contractAddress);
     }
 
     /// @inheritdoc IBalancerContractRegistry
@@ -188,14 +266,31 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     function getBalancerContract(
         ContractType contractType,
         string memory contractName
-    ) external view returns (address contractAddress, bool active) {
-        bytes32 contractId = _getContractId(contractType, contractName);
+    ) external view returns (address contractAddress, bool isActive) {
+        bytes32 contractId = _getContractId(contractName);
+        address registeredAddress = _contractRegistry[contractId];
 
-        contractAddress = _contractRegistry[contractId];
-        active = _contractInfo[contractAddress].isActive;
+        // Also check the aliases, if not found in the primary registry.
+        if (registeredAddress == address(0)) {
+            registeredAddress = _contractAliases[contractId];
+        }
+
+        ContractInfo memory info = _contractInfo[registeredAddress];
+        // It is possible to register a contract and alias, then deregister the contract, leaving a "stale" alias
+        // reference. In this case, `isRegistered` will be false. Only return the contract address if it is still
+        // valid and of the correct type.
+        if (info.isRegistered && info.contractType == contractType) {
+            contractAddress = registeredAddress;
+            isActive = info.isActive;
+        }
     }
 
-    function _getContractId(ContractType contractType, string memory contractName) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(contractType, contractName));
+    /// @inheritdoc IBalancerContractRegistry
+    function getBalancerContractInfo(address contractAddress) external view returns (ContractInfo memory info) {
+        return _contractInfo[contractAddress];
+    }
+
+    function _getContractId(string memory contractName) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(contractName));
     }
 }
