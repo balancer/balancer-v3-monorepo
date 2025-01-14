@@ -70,8 +70,9 @@ contract PauseHelper is SingletonAuthentication {
 
     // --------------------------  Getters --------------------------
     /**
-     * @notice Get the number of pools
-     * @return Number of pools
+     * @notice Get the number of pools.
+     * @dev Needed to support pagination in case the list is too long to process in a single transaction.
+     * @return poolCount The current number of pools in the pausable list
      */
     function getPoolsCount() external view returns (uint256) {
         return _poolsSet.length();
