@@ -11,10 +11,34 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 contract PauseHelper is SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    event PoolAdded(address pool);
-    event PoolRemoved(address pool);
+    /**
+     * @notice Revert if the pool is already in the list of pools
+     * @param  pool Pool that tried to be added
+     */
+    error PoolExistInPausableSet(address pool);
 
-    EnumerableSet.AddressSet private _poolsSet;
+    /**
+     * @notice Revert if the pool is not in the list of pools
+     * @param  pool Pool that not found
+     */
+    error PoolNotFoundInPausableSet(address pool);
+
+    /// @notice An index is beyond the current bounds of the set.
+    error IndexOutOfBounds();
+
+    /**
+     * @notice Emitted when a pool is added to the list of pools that can be paused
+     * @param pool Pool that was added
+     */
+    event PoolAddedToPausableSet(address pool);
+
+    /**
+     * @notice Emitted when a pool is removed from the list of pools that can be paused
+     * @param pool Pool that was removed
+     */
+    event PoolRemovedFromPausableSet(address pool);
+
+    EnumerableSet.AddressSet private _poolSet;
 
     constructor(IVault vault) SingletonAuthentication(vault) {}
 
@@ -28,7 +52,9 @@ contract PauseHelper is SingletonAuthentication {
         uint256 length = newPools.length;
 
         for (uint256 i = 0; i < length; i++) {
-            _poolsSet.add(newPools[i]);
+            if (_poolSet.add(newPools[i]) == false) {
+                revert PoolExistInPausableSet(newPools[i]);
+            }
 
             emit PoolAdded(newPools[i]);
         }
@@ -41,7 +67,9 @@ contract PauseHelper is SingletonAuthentication {
     function removePools(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
-            _poolsSet.remove(pools[i]);
+            if (_poolSet.remove(pools[i]) == false) {
+                revert PoolNotFoundInPausableSet(pools[i]);
+            }
 
             emit PoolRemoved(pools[i]);
         }
@@ -51,10 +79,12 @@ contract PauseHelper is SingletonAuthentication {
      * @notice Pause pools
      * @param pools List of pools to pause
      */
-    function pause(address[] memory pools) public authenticate {
+    function pausePools(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
-            require(_poolsSet.contains(pools[i]), "Pool is not in the list of pools");
+            if (_poolSet.contains(pools[i]) == false) {
+                revert PoolNotFoundInPausableSet(pools[i]);
+            }
 
             getVault().pausePool(pools[i]);
         }
@@ -66,7 +96,7 @@ contract PauseHelper is SingletonAuthentication {
      * @return Number of pools
      */
     function getPoolsCount() external view returns (uint256) {
-        return _poolsSet.length();
+        return _poolSet.length();
     }
 
     /**
@@ -75,7 +105,7 @@ contract PauseHelper is SingletonAuthentication {
      * @return True if the pool is in the list, false otherwise
      */
     function hasPool(address pool) external view returns (bool) {
-        return _poolsSet.contains(pool);
+        return _poolSet.contains(pool);
     }
 
     /**
@@ -85,14 +115,14 @@ contract PauseHelper is SingletonAuthentication {
      * @return pools List of pools
      */
     function getPools(uint256 from, uint256 to) public view returns (address[] memory pools) {
-        uint256 poolLength = _poolsSet.length();
-        require(from <= to, "'From' must be less than 'to'");
-        require(to <= poolLength, "'To' must be less than or eq the number of pools");
-        require(from < poolLength, "'From' must be less than the number of pools");
+        uint256 poolLength = _poolSet.length();
+        if (from > to || to > poolLength || from >= poolLength) {
+            revert IndexOutOfBounds();
+        }
 
         pools = new address[](to - from);
         for (uint256 i = from; i < to; i++) {
-            pools[i - from] = _poolsSet.at(i);
+            pools[i - from] = _poolSet.at(i);
         }
     }
 }
