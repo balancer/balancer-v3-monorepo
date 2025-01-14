@@ -10,6 +10,13 @@ interface IMevHook {
     error MevHookNotRegisteredInPool(address pool);
 
     /**
+     * @notice The new max MEV swap fee percentage is above the allowed absolute maximum.
+     * @param feePercentage New fee percentage being set
+     * @param maxFeePercentage Absolute maximum allowed
+     */
+    error MevSwapFeePercentageAboveMax(uint256 feePercentage, uint256 maxFeePercentage);
+
+    /**
      * @notice The MEV tax was globally enabled or disabled in the hook.
      * @param enabled The new value for mevTaxEnabled. If true, MEV tax will be charged
      */
@@ -28,6 +35,12 @@ interface IMevHook {
      * @param newDefaultMevTaxThreshold The new value for defaultMevTaxThreshold
      */
     event DefaultMevTaxThresholdSet(uint256 newDefaultMevTaxThreshold);
+
+    /**
+     * @notice The maximum MEV swap fee percentage was set.
+     * @param maxMevSwapFeePercentage The new value for maxMevSwapFeePercentage.
+     */
+    event MaxMevSwapFeePercentageSet(uint256 maxMevSwapFeePercentage);
 
     /**
      * @notice A pool's MEV tax multiplier was set.
@@ -55,6 +68,26 @@ interface IMevHook {
 
     /// @notice Permissioned function to enable charging the MEV Tax in registered pools.
     function enableMevTax() external;
+
+    /**
+     * @notice Returns maximum MEV swap fee percentage returned by `onComputeDynamicSwapFeePercentage`.
+     * @dev The absolute minimum is still the static swap fee percentage of the pool. If the maximum MEV swap fee
+     * percentage of the pool is below the static fee percentage, the static fee percentage is used anyways.
+     * In other words:
+     * - if `maxMevSwapFeePercentage > staticSwapFeePercentage`, then
+     * `staticSwapFeePercentage <= computedFeePercentage <= maxMevSwapFeePercentage`
+     * - if `maxMevSwapFeePercentage <= staticSwapFeePercentage, then `computedFeePercentage = maxMevSwapFeePercentage`
+     */
+    function getMaxMevSwapFeePercentage() external view returns (uint256);
+
+    /**
+     * @notice Permissioned function to set the maximum MEV swap fee percentage returned by
+     * `onComputeDynamicSwapFeePercentage`.
+     * @dev See `getMaxMevSwapFeePercentage` for reference; this maximum applies only when
+     * `maxMevSwapFeePercentage > staticSwapFeePercentage`.
+     * Capped by MAX_FEE_PERCENTAGE defined by the Vault.
+     */
+    function setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) external;
 
     /**
      * @notice Fetch the default multiplier for the priority gas price.
