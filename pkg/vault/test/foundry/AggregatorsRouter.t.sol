@@ -98,7 +98,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        assertEq(usdc.balanceOf(alice), defaultAccountBalance() - swapAmount, "Wrong WETH balance");
+        assertEq(usdc.balanceOf(alice), defaultAccountBalance() - swapAmount, "Wrong USDC balance");
         assertEq(dai.balanceOf(alice), defaultAccountBalance() + outputTokenAmount, "Wrong DAI balance");
     }
 
