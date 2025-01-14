@@ -25,7 +25,9 @@ contract PauseHelper is SingletonAuthentication {
     ***************************************************************************/
 
     /**
-     * @notice Add pools to the list of pools that can be paused
+     * @notice Add pools to the list of pools that can be paused.
+     * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may add
+     * pools to the pause list.
      * @param newPools List of pools to add
      */
     function addPools(address[] calldata newPools) external authenticate {
