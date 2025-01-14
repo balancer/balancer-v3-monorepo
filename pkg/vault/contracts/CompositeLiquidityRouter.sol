@@ -48,7 +48,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityUnbalancedToERC4626Pool(
         address pool,
-        uint256[] memory exactUnderlyingAmountsIn,
+        bool[] memory useAsStandardToken,
+        uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -57,15 +58,18 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             _vault.unlock(
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolUnbalancedHook,
-                    AddLiquidityHookParams({
-                        sender: msg.sender,
-                        pool: pool,
-                        maxAmountsIn: exactUnderlyingAmountsIn,
-                        minBptAmountOut: minBptAmountOut,
-                        kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: wethIsEth,
-                        userData: userData
-                    })
+                    (
+                        AddLiquidityHookParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            maxAmountsIn: exactAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            kind: AddLiquidityKind.UNBALANCED,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        }),
+                        useAsStandardToken
+                    )
                 )
             ),
             (uint256)
@@ -75,61 +79,70 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityProportionalToERC4626Pool(
         address pool,
-        uint256[] memory maxUnderlyingAmountsIn,
+        bool[] memory useAsStandardToken,
+        uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256[] memory underlyingAmountsIn) {
-        underlyingAmountsIn = abi.decode(
+    ) external payable saveSender(msg.sender) returns (address[] memory tokensIn, uint256[] memory amountsIn) {
+        (tokensIn, amountsIn) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
-                    AddLiquidityHookParams({
-                        sender: msg.sender,
-                        pool: pool,
-                        maxAmountsIn: maxUnderlyingAmountsIn,
-                        minBptAmountOut: exactBptAmountOut,
-                        kind: AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: wethIsEth,
-                        userData: userData
-                    })
+                    (
+                        AddLiquidityHookParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            maxAmountsIn: maxAmountsIn,
+                            minBptAmountOut: exactBptAmountOut,
+                            kind: AddLiquidityKind.PROPORTIONAL,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        }),
+                        useAsStandardToken
+                    )
                 )
             ),
-            (uint256[])
+            (address[], uint256[])
         );
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
     function removeLiquidityProportionalFromERC4626Pool(
         address pool,
+        bool[] memory useAsStandardToken,
         uint256 exactBptAmountIn,
-        uint256[] memory minUnderlyingAmountsOut,
+        uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256[] memory underlyingAmountsOut) {
-        underlyingAmountsOut = abi.decode(
+    ) external payable saveSender(msg.sender) returns (address[] memory tokensOut, uint256[] memory amountsOut) {
+        (tokensOut, amountsOut) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
                     CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
-                    RemoveLiquidityHookParams({
-                        sender: msg.sender,
-                        pool: pool,
-                        minAmountsOut: minUnderlyingAmountsOut,
-                        maxBptAmountIn: exactBptAmountIn,
-                        kind: RemoveLiquidityKind.PROPORTIONAL,
-                        wethIsEth: wethIsEth,
-                        userData: userData
-                    })
+                    (
+                        RemoveLiquidityHookParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            minAmountsOut: minAmountsOut,
+                            maxBptAmountIn: exactBptAmountIn,
+                            kind: RemoveLiquidityKind.PROPORTIONAL,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        }),
+                        useAsStandardToken
+                    )
                 )
             ),
-            (uint256[])
+            (address[], uint256[])
         );
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
     function queryAddLiquidityUnbalancedToERC4626Pool(
         address pool,
-        uint256[] memory exactUnderlyingAmountsIn,
+        bool[] memory useAsStandardToken,
+        uint256[] memory exactAmountsIn,
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256 bptAmountOut) {
@@ -137,15 +150,18 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             _vault.quote(
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolUnbalancedHook,
-                    AddLiquidityHookParams({
-                        sender: address(this),
-                        pool: pool,
-                        maxAmountsIn: exactUnderlyingAmountsIn,
-                        minBptAmountOut: 0,
-                        kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: false,
-                        userData: userData
-                    })
+                    (
+                        AddLiquidityHookParams({
+                            sender: address(this),
+                            pool: pool,
+                            maxAmountsIn: exactAmountsIn,
+                            minBptAmountOut: 0,
+                            kind: AddLiquidityKind.UNBALANCED,
+                            wethIsEth: false,
+                            userData: userData
+                        }),
+                        useAsStandardToken
+                    )
                 )
             ),
             (uint256)
@@ -155,71 +171,80 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
+        bool[] memory useAsStandardToken,
         uint256 exactBptAmountOut,
         address sender,
         bytes memory userData
-    ) external saveSender(sender) returns (uint256[] memory underlyingAmountsIn) {
-        underlyingAmountsIn = abi.decode(
+    ) external saveSender(sender) returns (address[] memory tokensIn, uint256[] memory amountsIn) {
+        (tokensIn, amountsIn) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
                     CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
-                    AddLiquidityHookParams({
-                        sender: address(this),
-                        pool: pool,
-                        maxAmountsIn: _maxTokenLimits(pool),
-                        minBptAmountOut: exactBptAmountOut,
-                        kind: AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
-                        userData: userData
-                    })
+                    (
+                        AddLiquidityHookParams({
+                            sender: address(this),
+                            pool: pool,
+                            maxAmountsIn: _maxTokenLimits(pool),
+                            minBptAmountOut: exactBptAmountOut,
+                            kind: AddLiquidityKind.PROPORTIONAL,
+                            wethIsEth: false,
+                            userData: userData
+                        }),
+                        useAsStandardToken
+                    )
                 )
             ),
-            (uint256[])
+            (address[], uint256[])
         );
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
     function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
+        bool[] memory useAsStandardToken,
         uint256 exactBptAmountIn,
         address sender,
         bytes memory userData
-    ) external saveSender(sender) returns (uint256[] memory underlyingAmountsOut) {
+    ) external saveSender(sender) returns (address[] memory tokensOut, uint256[] memory amountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(pool);
-        underlyingAmountsOut = abi.decode(
+        (tokensOut, amountsOut) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
                     CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
-                    RemoveLiquidityHookParams({
-                        sender: address(this),
-                        pool: pool,
-                        minAmountsOut: new uint256[](erc4626PoolTokens.length),
-                        maxBptAmountIn: exactBptAmountIn,
-                        kind: RemoveLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
-                        userData: userData
-                    })
+                    (
+                        RemoveLiquidityHookParams({
+                            sender: address(this),
+                            pool: pool,
+                            minAmountsOut: new uint256[](erc4626PoolTokens.length),
+                            maxBptAmountIn: exactBptAmountIn,
+                            kind: RemoveLiquidityKind.PROPORTIONAL,
+                            wethIsEth: false,
+                            userData: userData
+                        }),
+                        useAsStandardToken
+                    )
                 )
             ),
-            (uint256[])
+            (address[], uint256[])
         );
     }
 
     function addLiquidityERC4626PoolUnbalancedHook(
-        AddLiquidityHookParams calldata params
+        AddLiquidityHookParams calldata params,
+        bool[] calldata useAsStandardToken
     ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
 
-        // Revert if tokensIn length does not match with maxAmountsIn length.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length);
+        // Revert if `poolTokens` length does not match `maxAmountsIn` and `useAsStandardToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, useAsStandardToken.length);
 
-        (, uint256[] memory wrappedAmountsIn) = _wrapTokens(
-            params,
+        uint256[] memory amountsIn = _wrapTokensExactInIfRequired(
+            params.sender,
+            useAsStandardToken,
             erc4626PoolTokens,
             params.maxAmountsIn,
-            SwapKind.EXACT_IN,
-            new uint256[](poolTokensLength)
+            params.wethIsEth
         );
 
         // Add wrapped amounts to the ERC4626 pool.
@@ -227,7 +252,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsIn: wrappedAmountsIn,
+                maxAmountsIn: amountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -236,10 +261,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     function addLiquidityERC4626PoolProportionalHook(
-        AddLiquidityHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsIn) {
+        AddLiquidityHookParams calldata params,
+        bool[] calldata useAsStandardToken
+    ) external nonReentrant onlyVault returns (address[] memory tokensIn, uint256[] memory amountsIn) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
+
+        // Revert if `poolTokens` length does not match `maxAmountsIn` and `useAsStandardToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.maxAmountsIn.length, useAsStandardToken.length);
 
         uint256[] memory maxAmounts = new uint256[](poolTokensLength);
         for (uint256 i = 0; i < poolTokensLength; ++i) {
@@ -258,21 +287,27 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        (underlyingAmountsIn, ) = _wrapTokens(
-            params,
+        (tokensIn, amountsIn) = _wrapTokensExactOutIfRequired(
+            params.sender,
+            useAsStandardToken,
             erc4626PoolTokens,
             wrappedAmountsIn,
-            SwapKind.EXACT_OUT,
-            params.maxAmountsIn
+            params.maxAmountsIn,
+            params.wethIsEth
         );
     }
 
     function removeLiquidityERC4626PoolProportionalHook(
-        RemoveLiquidityHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsOut) {
+        RemoveLiquidityHookParams calldata params,
+        bool[] calldata useAsStandardToken
+    ) external nonReentrant onlyVault returns (address[] memory tokensOut, uint256[] memory amountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
-        underlyingAmountsOut = new uint256[](poolTokensLength);
+
+        // Revert if `poolTokens` length does not match `minAmountsOut` and `useAsStandardToken`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.minAmountsOut.length, useAsStandardToken.length);
+
+        amountsOut = new uint256[](poolTokensLength);
 
         (, uint256[] memory wrappedAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
@@ -287,120 +322,187 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
+        tokensOut = new address[](poolTokensLength);
         for (uint256 i = 0; i < poolTokensLength; ++i) {
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the Router treats it as a non-ERC4626 token.
-            if (address(underlyingToken) == address(0)) {
-                if (wrappedAmountsOut[i] < params.minAmountsOut[i]) {
-                    revert IVaultErrors.AmountOutBelowMin(
-                        erc4626PoolTokens[i],
-                        wrappedAmountsOut[i],
-                        params.minAmountsOut[i]
-                    );
+            if (useAsStandardToken[i]) {
+                amountsOut[i] = wrappedAmountsOut[i];
+                tokensOut[i] = address(wrappedToken);
+
+                if (amountsOut[i] < params.minAmountsOut[i]) {
+                    revert IVaultErrors.AmountOutBelowMin(erc4626PoolTokens[i], amountsOut[i], params.minAmountsOut[i]);
                 }
 
-                underlyingAmountsOut[i] = wrappedAmountsOut[i];
                 if (isStaticCall == false) {
-                    _sendTokenOut(params.sender, erc4626PoolTokens[i], underlyingAmountsOut[i], params.wethIsEth);
+                    _sendTokenOut(params.sender, erc4626PoolTokens[i], amountsOut[i], params.wethIsEth);
                 }
-                continue;
-            }
+            } else {
+                if (address(underlyingToken) == address(0)) {
+                    revert IVaultErrors.BufferNotInitialized(wrappedToken);
+                }
 
-            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken is not ERC4626-conforming.
-            (, , underlyingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_IN,
-                    direction: WrappingDirection.UNWRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: wrappedAmountsOut[i],
-                    limitRaw: params.minAmountsOut[i]
-                })
-            );
+                // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken is not ERC4626-conforming.
+                (, , amountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: SwapKind.EXACT_IN,
+                        direction: WrappingDirection.UNWRAP,
+                        wrappedToken: wrappedToken,
+                        amountGivenRaw: wrappedAmountsOut[i],
+                        limitRaw: params.minAmountsOut[i]
+                    })
+                );
+                tokensOut[i] = address(underlyingToken);
 
-            if (isStaticCall == false) {
-                _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
+                if (amountsOut[i] < params.minAmountsOut[i]) {
+                    revert IVaultErrors.AmountOutBelowMin(underlyingToken, amountsOut[i], params.minAmountsOut[i]);
+                }
+
+                if (isStaticCall == false) {
+                    _sendTokenOut(params.sender, underlyingToken, amountsOut[i], params.wethIsEth);
+                }
             }
         }
     }
 
     /// @dev Assumes array lengths have been checked externally.
-    function _wrapTokens(
-        AddLiquidityHookParams calldata params,
+    function _wrapTokensExactInIfRequired(
+        address sender,
+        bool[] memory useAsStandardToken,
         IERC20[] memory erc4626PoolTokens,
         uint256[] memory amountsIn,
-        SwapKind kind,
-        uint256[] memory limits
-    ) private returns (uint256[] memory underlyingAmounts, uint256[] memory wrappedAmounts) {
+        bool wethIsEth
+    ) private returns (uint256[] memory wrappedAmountsIn) {
         uint256 poolTokensLength = erc4626PoolTokens.length;
-        underlyingAmounts = new uint256[](poolTokensLength);
-        wrappedAmounts = new uint256[](poolTokensLength);
+        wrappedAmountsIn = new uint256[](poolTokensLength);
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        // Wrap given underlying tokens for wrapped tokens.
         for (uint256 i = 0; i < poolTokensLength; ++i) {
             // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
-            // a valid ERC4626.
+            // a valid ERC4626. Note that if `useWrappedTokens[i]` is false, we will treat it as a standard token.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            // If the Vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the Router treats it as a non-ERC4626 token.
-            if (address(underlyingToken) == address(0)) {
-                if (amountsIn[i] > params.maxAmountsIn[i]) {
-                    revert IVaultErrors.AmountInAboveMax(erc4626PoolTokens[i], amountsIn[i], params.maxAmountsIn[i]);
-                }
-
-                underlyingAmounts[i] = amountsIn[i];
-                wrappedAmounts[i] = amountsIn[i];
+            // Check whether the caller wants to use the token as an ERC4626 (i.e., wrap/unwrap it), or just use it as
+            // a standard token.
+            if (useAsStandardToken[i]) {
+                wrappedAmountsIn[i] = amountsIn[i];
 
                 if (isStaticCall == false) {
-                    _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
+                    _takeTokenIn(sender, wrappedToken, wrappedAmountsIn[i], wethIsEth);
                 }
-
-                continue;
-            }
-
-            if (isStaticCall == false) {
-                if (kind == SwapKind.EXACT_IN) {
-                    // If the SwapKind is EXACT_IN, take the exact amount in from the sender.
-                    _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
-                } else {
-                    // If the SwapKind is EXACT_OUT, the exact amount in is not known, because amountsIn is the
-                    // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
-                    // between the limit and the actual underlying amount is returned to the sender.
-                    _takeTokenIn(params.sender, underlyingToken, limits[i], params.wethIsEth);
-                }
-            }
-
-            if (amountsIn[i] > 0) {
-                // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-                (, underlyingAmounts[i], wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
-                    BufferWrapOrUnwrapParams({
-                        kind: kind,
-                        direction: WrappingDirection.WRAP,
-                        wrappedToken: wrappedToken,
-                        amountGivenRaw: amountsIn[i],
-                        limitRaw: limits[i]
-                    })
-                );
             } else {
-                underlyingAmounts[i] = 0;
-                wrappedAmounts[i] = 0;
-            }
+                if (address(underlyingToken) == address(0)) {
+                    revert IVaultErrors.BufferNotInitialized(wrappedToken);
+                }
 
-            if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
-                // If the SwapKind is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
-                // difference between limit and exact underlying amount needs to be returned to the sender.
-                _sendTokenOut(params.sender, underlyingToken, limits[i] - underlyingAmounts[i], params.wethIsEth);
+                uint256 wrappedAmount;
+                if (amountsIn[i] > 0) {
+                    if (isStaticCall == false) {
+                        // Take the exact amount in from the sender.
+                        _takeTokenIn(sender, underlyingToken, amountsIn[i], wethIsEth);
+                    }
+
+                    // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+                    (, , wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
+                            kind: SwapKind.EXACT_IN,
+                            direction: WrappingDirection.WRAP,
+                            wrappedToken: wrappedToken,
+                            amountGivenRaw: amountsIn[i],
+                            limitRaw: 0
+                        })
+                    );
+                }
+
+                wrappedAmountsIn[i] = wrappedAmount;
             }
         }
 
         // If there's a leftover of eth, send it back to the sender. The router should not keep ETH.
-        _returnEth(params.sender);
+        _returnEth(sender);
+    }
+
+    /// @dev Assumes array lengths have been checked externally.
+    function _wrapTokensExactOutIfRequired(
+        address sender,
+        bool[] memory useAsStandardToken,
+        IERC20[] memory erc4626PoolTokens,
+        uint256[] memory wrappedAmountsIn,
+        uint256[] memory maxAmountsIn,
+        bool wethIsEth
+    ) private returns (address[] memory tokensIn, uint256[] memory amountsIn) {
+        uint256 poolTokensLength = erc4626PoolTokens.length;
+        amountsIn = new uint256[](poolTokensLength);
+
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        tokensIn = new address[](poolTokensLength);
+
+        for (uint256 i = 0; i < poolTokensLength; ++i) {
+            // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
+            // a valid ERC4626. Note that if `useAsStandardToken[i]` is false, we will treat it as a standard token.
+            IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
+
+            // Check whether the caller wants to use the token as an ERC4626 (i.e., wrap/unwrap it), or just use it as
+            // a standard token.
+            if (useAsStandardToken[i]) {
+                if (wrappedAmountsIn[i] > maxAmountsIn[i]) {
+                    revert IVaultErrors.AmountInAboveMax(wrappedToken, wrappedAmountsIn[i], maxAmountsIn[i]);
+                }
+
+                if (isStaticCall == false) {
+                    _takeTokenIn(sender, wrappedToken, wrappedAmountsIn[i], wethIsEth);
+                }
+
+                amountsIn[i] = wrappedAmountsIn[i];
+                tokensIn[i] = address(wrappedToken);
+            } else {
+                if (address(underlyingToken) == address(0)) {
+                    revert IVaultErrors.BufferNotInitialized(wrappedToken);
+                }
+
+                uint256 underlyingAmount;
+                if (wrappedAmountsIn[i] > 0) {
+                    if (isStaticCall == false) {
+                        // The exact amount in is not known, because we have only
+                        // wrappedAmountsIn. Therefore, take the maxAmountsIn. After the wrap operation, the difference
+                        // between the maxAmountsIn and the actual underlying amount is returned to the sender.
+                        _takeTokenIn(sender, underlyingToken, maxAmountsIn[i], wethIsEth);
+                    }
+
+                    // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+                    (, underlyingAmount, ) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
+                            kind: SwapKind.EXACT_OUT,
+                            direction: WrappingDirection.WRAP,
+                            wrappedToken: wrappedToken,
+                            amountGivenRaw: wrappedAmountsIn[i],
+                            limitRaw: maxAmountsIn[i]
+                        })
+                    );
+                }
+
+                if (underlyingAmount > maxAmountsIn[i]) {
+                    revert IVaultErrors.AmountInAboveMax(underlyingToken, underlyingAmount, maxAmountsIn[i]);
+                }
+
+                if (isStaticCall == false) {
+                    // The maxAmountsIn of underlying tokens was taken from the user, so the
+                    // difference between maxAmountsIn and exact underlying amount needs to be returned to the sender.
+                    _sendTokenOut(sender, underlyingToken, maxAmountsIn[i] - underlyingAmount, wethIsEth);
+                }
+
+                amountsIn[i] = underlyingAmount;
+                tokensIn[i] = address(underlyingToken);
+            }
+        }
+
+        // If there's a leftover of eth, send it back to the sender. The router should not keep ETH.
+        _returnEth(sender);
     }
 
     /***************************************************************************
