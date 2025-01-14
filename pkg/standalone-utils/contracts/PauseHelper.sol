@@ -16,7 +16,9 @@ contract PauseHelper is SingletonAuthentication {
 
     EnumerableSet.AddressSet private _poolsSet;
 
-    constructor(IVault vault) SingletonAuthentication(vault) {}
+    constructor(IVault vault) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /***************************************************************************
                                                       Manage Pools
