@@ -7,6 +7,8 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
@@ -87,6 +89,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Number of parameters specific to the pool type to be fuzzed. Raising this parameter will lower the amount of
+    // tested scenarios, so raise with caution.
+    uint256 internal constant POOL_SPECIFIC_PARAMS_SIZE = 5;
+
     function setUp() public virtual override {
         poolInitAmount = 1e9 * 1e18;
         setDefaultAccountBalance(1e10 * 1e18);
@@ -118,31 +124,104 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    // Add
+    /**
+     * @notice Fuzz specific pool parameters.
+     * @dev Override this function to fuzz test parameters that are specific to a custom pool type.
+     */
+    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getMaxDaiIn() internal view virtual returns (uint256 maxDaiIn) {
+        return maxAmount;
+    }
+
+    function getMaxUsdcOut() internal view virtual returns (uint256 maxUsdcOut) {
+        return maxAmount;
+    }
+
+    function getMaxBptOut() internal view virtual returns (uint256 maxBptOut) {
+        return maxAmount / 2 - 1;
+    }
+
+    // Add liquidity variants
 
     function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
-        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
+        daiAmountIn = bound(daiAmountIn, minAmount, getMaxDaiIn());
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-        uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn);
+        assertLiquidityOperation(amountOut, swapFeePercentage, true);
+    }
+
+    function testAddLiquidityUnbalancedSpecific__Fuzz(
+        uint256 daiAmountIn,
+        uint256 swapFeePercentage,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        daiAmountIn = bound(daiAmountIn, minAmount, getMaxDaiIn());
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
-        daiAmountIn = bound(daiAmountIn, minAmount, maxAmount);
-        addUnbalancedOnlyDai(daiAmountIn, 0);
+        daiAmountIn = bound(daiAmountIn, minAmount, getMaxDaiIn());
+        setSwapFeePercentageInPools(0);
+        addUnbalancedOnlyDai(daiAmountIn);
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    function testAddLiquidityUnbalancedNoSwapFeeSpecific__Fuzz(
+        uint256 daiAmountIn,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        daiAmountIn = bound(daiAmountIn, minAmount, getMaxDaiIn());
+        setSwapFeePercentageInPools(0);
+        addUnbalancedOnlyDai(daiAmountIn);
         assertLiquidityOperationNoSwapFee();
     }
 
     function testAddLiquiditySingleTokenExactOut__Fuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-        uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut);
+        assertLiquidityOperation(amountOut, swapFeePercentage, true);
+    }
+
+    function testAddLiquiditySingleTokenExactOutSpecific__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
-        addExactOutArbitraryBptOut(exactBptAmountOut, 0);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
+        setSwapFeePercentageInPools(0);
+        addExactOutArbitraryBptOut(exactBptAmountOut);
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    function testAddLiquiditySingleTokenExactOutNoSwapFeeSpecific__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
+        console.log("totalSupply", IERC20(liquidityPool).totalSupply());
+        setSwapFeePercentageInPools(0);
+        addExactOutArbitraryBptOut(exactBptAmountOut);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -150,15 +229,41 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 exactBptAmount,
         uint256 swapFeePercentage
     ) public {
-        exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
+        exactBptAmount = bound(exactBptAmount, minAmount, getMaxBptOut());
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-        uint256 amountOut = removeExactInAllBptIn(exactBptAmount, swapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = removeExactInAllBptIn(exactBptAmount);
+        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactInSpecific__Fuzz(
+        uint256 exactBptAmount,
+        uint256 swapFeePercentage,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        exactBptAmount = bound(exactBptAmount, minAmount, getMaxBptOut());
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = removeExactInAllBptIn(exactBptAmount);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testAddLiquidityProportionalAndRemoveExactInNoSwapFee__Fuzz(uint256 exactBptAmount) public {
-        exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
-        removeExactInAllBptIn(exactBptAmount, 0);
+        exactBptAmount = bound(exactBptAmount, minAmount, getMaxBptOut());
+        setSwapFeePercentageInPools(0);
+        removeExactInAllBptIn(exactBptAmount);
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactInNoSwapFeeSpecific__Fuzz(
+        uint256 exactBptAmount,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        exactBptAmount = bound(exactBptAmount, minAmount, getMaxBptOut());
+        setSwapFeePercentageInPools(0);
+        removeExactInAllBptIn(exactBptAmount);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -166,50 +271,141 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) public {
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
 
-        uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+
+        uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut);
+        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactOutSpecific__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+
+        setSwapFeePercentageInPools(swapFeePercentage);
+
+        uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testAddLiquidityProportionalAndRemoveExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
-        exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
 
-        removeExactOutAllUsdcAmountOut(exactBptAmountOut, 0);
+        setSwapFeePercentageInPools(0);
+
+        removeExactOutAllUsdcAmountOut(exactBptAmountOut);
         assertLiquidityOperationNoSwapFee();
     }
 
-    // Remove
+    function testAddLiquidityProportionalAndRemoveExactOutNoSwapFeeSpecific__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+        exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
 
-    function testRemoveLiquiditySingleTokenExactOut__Fuzz(
-        uint256 exactAmountOut,
-        uint256 swapFeePercentage
-    ) public virtual {
+        setSwapFeePercentageInPools(0);
+
+        removeExactOutAllUsdcAmountOut(exactBptAmountOut);
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    // Remove liquidity variants
+
+    function testRemoveLiquiditySingleTokenExactOut__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
         exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
 
-        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+
+        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
-    function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactAmountOut) public virtual {
+    function testRemoveLiquiditySingleTokenExactOutSpecific__Fuzz(
+        uint256 exactAmountOut,
+        uint256 swapFeePercentage,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+
+        exactAmountOut = bound(exactAmountOut, minAmount, getMaxUsdcOut());
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+
+        setSwapFeePercentageInPools(swapFeePercentage);
+
+        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut);
+        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactAmountOut) public {
         exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
 
-        removeExactOutArbitraryAmountOut(exactAmountOut, 0);
+        setSwapFeePercentageInPools(0);
+
+        removeExactOutArbitraryAmountOut(exactAmountOut);
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    function testRemoveLiquiditySingleTokenExactOutNoSwapFeeSpecific__Fuzz(
+        uint256 exactAmountOut,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+
+        exactAmountOut = bound(exactAmountOut, minAmount, getMaxUsdcOut());
+
+        setSwapFeePercentageInPools(0);
+
+        removeExactOutArbitraryAmountOut(exactAmountOut);
         assertLiquidityOperationNoSwapFee();
     }
 
     function testRemoveLiquiditySingleTokenExactIn__Fuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
         exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
-        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn);
+        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testRemoveLiquiditySingleTokenExactInSpecific__Fuzz(
+        uint256 exactBptAmountIn,
+        uint256 swapFeePercentage,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
+        setSwapFeePercentageInPools(swapFeePercentage);
+        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testRemoveLiquiditySingleTokenExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
         exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
-        removeExactInArbitraryBptIn(exactBptAmountIn, 0);
+        setSwapFeePercentageInPools(0);
+        removeExactInArbitraryBptIn(exactBptAmountIn);
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    function testRemoveLiquiditySingleTokenExactInNoSwapFeeSpecific__Fuzz(
+        uint256 exactBptAmountIn,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) public {
+        fuzzPoolParams(params);
+
+        exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
+        setSwapFeePercentageInPools(0);
+        removeExactInArbitraryBptIn(exactBptAmountIn);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -313,10 +509,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         }
     }
 
-    function addUnbalancedOnlyDai(uint256 daiAmountIn, uint256 swapFeePercentage) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
+    function addUnbalancedOnlyDai(uint256 daiAmountIn) internal returns (uint256 amountOut) {
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[daiIdx] = uint256(daiAmountIn);
 
@@ -345,13 +538,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
     }
 
-    function addExactOutArbitraryBptOut(
-        uint256 exactBptAmountOut,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
+    function addExactOutArbitraryBptOut(uint256 exactBptAmountOut) internal returns (uint256 amountOut) {
         vm.startPrank(alice);
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
@@ -384,13 +571,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
     }
 
-    function removeExactInAllBptIn(
-        uint256 exactBptAmount,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
+    function removeExactInAllBptIn(uint256 exactBptAmount) internal returns (uint256 amountOut) {
         vm.startPrank(alice);
         router.addLiquidityProportional(
             address(liquidityPool),
@@ -426,13 +607,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function removeExactInArbitraryBptIn(
-        uint256 exactBptAmountIn,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
+    function removeExactInArbitraryBptIn(uint256 exactBptAmountIn) internal returns (uint256 amountOut) {
         // Add liquidity so we have something to remove.
         vm.prank(alice);
         router.addLiquidityProportional(
@@ -475,13 +650,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function removeExactOutAllUsdcAmountOut(
-        uint256 exactBptAmountOut,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
+    function removeExactOutAllUsdcAmountOut(uint256 exactBptAmountOut) internal returns (uint256 amountOut) {
         vm.startPrank(alice);
         uint256[] memory amountsIn = router.addLiquidityProportional(
             address(liquidityPool),
@@ -527,13 +696,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function removeExactOutArbitraryAmountOut(
-        uint256 exactAmountOut,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
+    function removeExactOutArbitraryAmountOut(uint256 exactAmountOut) internal returns (uint256 amountOut) {
         uint256 currentTotalSupply = IERC20(liquidityPool).totalSupply();
         vm.startPrank(alice);
         // Add liquidity so we have something to remove.
@@ -578,5 +741,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
         vm.stopPrank();
+    }
+
+    function setSwapFeePercentageInPools(uint256 swapFeePercentage) internal {
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
     }
 }

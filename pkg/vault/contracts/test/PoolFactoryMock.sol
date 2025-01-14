@@ -50,7 +50,7 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
         );
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract) external {
+    function registerPoolWithHook(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract) external {
         PoolRoleAccounts memory roleAccounts;
 
         _vault.registerPool(
@@ -83,6 +83,30 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
             roleAccounts,
             poolHooksContract,
             _getDefaultLiquidityManagement()
+        );
+    }
+
+    function registerTestPoolDisableUnbalancedLiquidity(
+        address pool,
+        TokenConfig[] memory tokenConfig,
+        address poolHooksContract,
+        address poolCreator
+    ) external {
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = poolCreator;
+
+        LiquidityManagement memory liquidityManagement = _getDefaultLiquidityManagement();
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            DEFAULT_SWAP_FEE,
+            getNewPoolPauseWindowEndTime(),
+            false,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
         );
     }
 

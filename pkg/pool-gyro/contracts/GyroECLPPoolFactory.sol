@@ -20,7 +20,7 @@ import { GyroECLPPool } from "./GyroECLPPool.sol";
 contract GyroECLPPoolFactory is BasePoolFactory {
     // solhint-disable not-rely-on-time
 
-    /// @notice ECLP pools support 2 tokens only.
+    /// @notice E-CLP pools support 2 tokens only.
     error SupportsOnlyTwoTokens();
 
     constructor(
