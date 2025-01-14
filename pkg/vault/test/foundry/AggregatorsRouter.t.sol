@@ -80,7 +80,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         aggregatorsRouter.swapSingleTokenExactIn(address(pool), usdc, dai, 1e18, 0, MAX_UINT256, false, bytes(""));
     }
 
-    function testSwapExactIn_Fuzz(uint256 swapAmount) public {
+    function testSwapExactIn__Fuzz(uint256 swapAmount) public {
         swapAmount = bound(swapAmount, 1e18, vault.getPoolData(address(pool)).balancesLiveScaled18[daiIdx]);
 
         vm.startPrank(alice);
