@@ -9,7 +9,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import "./GyroPoolMath.sol";
 
 /**
- * @notice Math routines for the 2CLP.
+ * @notice Math routines for the 2-CLP.
  * @dev Parameters are price bounds [alpha, beta] and sqrt(alpha), sqrt(beta) are used as parameters.
  */
 library Gyro2CLPMath {
@@ -54,8 +54,8 @@ library Gyro2CLPMath {
      * assumes a > 0, b < 0, and c <= 0.
      *
      * @param balances Pool balances
-     * @param sqrtAlpha Square root of Gyro's 2CLP alpha parameter
-     * @param sqrtBeta Square root of Gyro's 2CLP beta parameter
+     * @param sqrtAlpha Square root of Gyro's 2-CLP alpha parameter
+     * @param sqrtBeta Square root of Gyro's 2-CLP beta parameter
      * @param rounding Rounding direction of the invariant, which will be calculated using the quadratic terms
      * @return a Bhaskara's `a` term
      * @return mb Bhaskara's `b` term, negative (stands for minus b)
