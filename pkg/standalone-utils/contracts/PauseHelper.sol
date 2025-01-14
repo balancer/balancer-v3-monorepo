@@ -41,7 +41,9 @@ contract PauseHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Remove pools from the list of pools that can be paused
+     * @notice Remove pools from the list of pools that can be paused.
+     * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may remove
+     * pools from the pause list.
      * @param pools List of pools to remove
      */
     function removePools(address[] memory pools) public authenticate {
