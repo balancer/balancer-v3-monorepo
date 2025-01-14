@@ -75,7 +75,7 @@ interface IMevHook {
      * @dev The multiplier is not validated or limited by any value and can assume any 18-decimal number. That's
      * because the multiplier value depends on the priority gas price used by searchers in a given moment for a
      * specific chain. However, the resulting swap fee percentage, given by `priorityGasPrice * multiplier`, is capped
-     * in the lower end by the static swap fee, and in the upper end by the maximum swap fee percentage of the vault.
+     * at the lower end by the static swap fee, and at the upper end by the maximum swap fee percentage of the vault.
      * Therefore, a multiplier with value 0 will effectively disable the MEV tax, since the static swap fee will be
      * charged. Also, a very high multiplier may disable pool swaps, since the MEV tax will be 99.9999%.
      *
@@ -100,7 +100,7 @@ interface IMevHook {
      * because the multiplier value depends on the priority gas price used by searchers in a given moment for a
      * specific chain. If the pool is not registered with the MEV Hook, it reverts with error
      * MevHookNotRegisteredForPool(pool). However, the resulting swap fee percentage, given by
-     * `priorityGasPrice * multiplier`, is capped in the lower end by the static swap fee, and in the upper end by
+     * `priorityGasPrice * multiplier`, is capped in the lower end by the static swap fee, and at the upper end by
      * the maximum swap fee percentage of the vault. Therefore, a multiplier with value 0 will effectively disable the
      * MEV tax, since the static swap fee will be charged. Also, a very high multiplier may disable pool swaps, since
      * the MEV tax will be 99.9999%.
