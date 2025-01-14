@@ -40,12 +40,18 @@ contract PauseHelper is SingletonAuthentication {
 
     EnumerableSet.AddressSet private _poolSet;
 
-    constructor(IVault vault) SingletonAuthentication(vault) {}
+    constructor(IVault vault) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    // --------------------------  Manage Pools --------------------------
+    /***************************************************************************
+                                                      Manage Pools
+    ***************************************************************************/
 
     /**
-     * @notice Add pools to the list of pools that can be paused
+     * @notice Add pools to the list of pools that can be paused.
+     * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may add
+     * pools to the pause list.
      * @param newPools List of pools to add
      */
     function addPools(address[] calldata newPools) external authenticate {
@@ -61,7 +67,9 @@ contract PauseHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Remove pools from the list of pools that can be paused
+     * @notice Remove pools from the list of pools that can be paused.
+     * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may remove
+     * pools from the pause list.
      * @param pools List of pools to remove
      */
     function removePools(address[] memory pools) public authenticate {
@@ -76,7 +84,14 @@ contract PauseHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Pause pools
+     * @notice Pause a set of pools.
+     * @dev This is a permissioned function. Governance must first grant this contract permission to call `pausePool`
+     * on the Vault, then grant another account permission to call `pausePools` here. Note that this is not necessarily
+     * the same account that can add or remove pools from the pausable list.
+     *
+     * Note that there is no `unpause`. This is a helper contract designed to react quickly to emergencies. Unpausing
+     * is a more deliberate action that should be performed by accounts approved by governance for this purpose, or by
+     * the individual pools' pause managers.
      * @param pools List of pools to pause
      */
     function pausePools(address[] memory pools) public authenticate {
@@ -92,17 +107,18 @@ contract PauseHelper is SingletonAuthentication {
 
     // --------------------------  Getters --------------------------
     /**
-     * @notice Get the number of pools
-     * @return Number of pools
+     * @notice Get the number of pools.
+     * @dev Needed to support pagination in case the list is too long to process in a single transaction.
+     * @return poolCount The current number of pools in the pausable list
      */
     function getPoolsCount() external view returns (uint256) {
         return _poolSet.length();
     }
 
     /**
-     * @notice Check if a pool is in the list of pools
+     * @notice Check whether a pool is in the list of pausable pools.
      * @param pool Pool to check
-     * @return True if the pool is in the list, false otherwise
+     * @return isPausable True if the pool is in the list, false otherwise
      */
     function hasPool(address pool) external view returns (bool) {
         return _poolSet.contains(pool);
