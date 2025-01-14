@@ -6,10 +6,12 @@ import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMev
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
+    AddLiquidityKind,
     HooksConfig,
     HookFlags,
     LiquidityManagement,
     PoolSwapParams,
+    RemoveLiquidityKind,
     TokenConfig,
     MAX_FEE_PERCENTAGE
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -61,14 +63,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         address,
         address pool,
         TokenConfig[] memory,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
         _poolMevTaxMultipliers[pool] = _defaultMevTaxMultiplier;
         _poolMevTaxThresholds[pool] = _defaultMevTaxThreshold;
 
-        // Unbalanced liquidity must be disabled because the hook computes dynamic swap fees that unbalanced liquidity
-        // operations could bypass.
-        return liquidityManagement.disableUnbalancedLiquidity;
+        return true;
     }
 
     /// @inheritdoc IHooks
@@ -76,6 +76,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         HookFlags memory hookFlags;
         // The MEV Tax is charged as a swap fee. Searcher transactions pay a higher swap fee percentage.
         hookFlags.shouldCallComputeDynamicSwapFee = true;
+        hookFlags.shouldCallBeforeAddLiquidity = true;
+        hookFlags.shouldCallBeforeRemoveLiquidity = true;
+
         return hookFlags;
     }
 
@@ -92,7 +95,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
         // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
         // defines the priority gas price (the part of the gas cost that will be paid to the validator).
-        uint256 priorityGasPrice = tx.gasprice - block.basefee;
+        uint256 priorityGasPrice = _getPriorityGasPrice();
 
         // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
         // impose the MEV tax.
@@ -222,5 +225,56 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _poolMevTaxThresholds[pool] = newPoolMevTaxThreshold;
 
         emit PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
+    }
+
+    /// @inheritdoc IHooks
+    function onBeforeAddLiquidity(
+        address,
+        address pool,
+        AddLiquidityKind kind,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) public view override returns (bool success) {
+        if (_mevTaxEnabled == false) {
+            return true;
+        }
+
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+
+        // Unbalanced adds are blocked for priority gas prices above the threshold.
+        if (kind != AddLiquidityKind.PROPORTIONAL && priorityGasPrice > _poolMevTaxThresholds[pool]) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function onBeforeRemoveLiquidity(
+        address,
+        address pool,
+        RemoveLiquidityKind kind,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) public view override returns (bool success) {
+        if (_mevTaxEnabled == false) {
+            return true;
+        }
+
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+
+        // Unbalanced removes are blocked for priority gas prices above the threshold.
+        if (kind != RemoveLiquidityKind.PROPORTIONAL && priorityGasPrice > _poolMevTaxThresholds[pool]) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function _getPriorityGasPrice() internal view returns (uint256) {
+        return tx.gasprice - block.basefee;
     }
 }
