@@ -31,7 +31,7 @@ interface IBalancerContractRegistry {
     }
 
     /**
-     * @notice Emitted wen a new contract is registered.
+     * @notice Emitted when a new contract is registered.
      * @param contractType The type of contract being registered
      * @param contractName The name of the contract being registered
      * @param contractAddress The address of the contract being registered
@@ -43,7 +43,7 @@ interface IBalancerContractRegistry {
     );
 
     /**
-     * @notice Emitted wen a new contract is deregistered (deleted).
+     * @notice Emitted when a new contract is deregistered (deleted).
      * @param contractType The type of contract being deregistered
      * @param contractName The name of the contract being deregistered
      * @param contractAddress The address of the contract being deregistered
