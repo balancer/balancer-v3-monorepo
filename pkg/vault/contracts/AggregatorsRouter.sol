@@ -88,7 +88,7 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
 
     /**
      * @notice Hook for swaps.
-     * @dev Can only be called by the Vault. Also handles native ETH.
+     * @dev Can only be called by the Vault.
      * @param params Swap parameters (see IRouterSwap for struct definition)
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
