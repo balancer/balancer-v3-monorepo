@@ -18,7 +18,9 @@ contract PauseHelper is SingletonAuthentication {
 
     constructor(IVault vault) SingletonAuthentication(vault) {}
 
-    // --------------------------  Manage Pools --------------------------
+    /***************************************************************************
+                                                      Manage Pools
+    ***************************************************************************/
 
     /**
      * @notice Add pools to the list of pools that can be paused
