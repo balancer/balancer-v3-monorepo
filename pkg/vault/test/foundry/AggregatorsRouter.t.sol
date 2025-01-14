@@ -77,7 +77,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
     function testSwapExactInWithoutPayment() public {
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        aggregatorsRouter.swapSingleTokenExactIn(address(pool), usdc, dai, 1e18, 0, MAX_UINT256, false, bytes(""));
+        aggregatorsRouter.swapSingleTokenExactIn(address(pool), usdc, dai, 1e18, 0, MAX_UINT256, bytes(""));
     }
 
     function testSwapExactIn_Fuzz(uint256 swapAmount) public {
@@ -93,7 +93,6 @@ contract AggregatorsRouterTest is BaseVaultTest {
             swapAmount,
             0,
             MAX_UINT256,
-            false,
             bytes("")
         );
         vm.stopPrank();

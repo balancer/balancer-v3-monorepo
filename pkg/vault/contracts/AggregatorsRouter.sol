@@ -7,7 +7,8 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { IRouterSwap } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSwap.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IAggregatorsRouterRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorsRouterRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -18,14 +19,11 @@ import { RouterCommon } from "./RouterCommon.sol";
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  * These interact with the Vault and settle accounting.
  */
-contract AggregatorsRouter is IRouterSwap, RouterCommon {
-    error OperationNotSupported(string detail);
-
+contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
     constructor(
         IVault vault,
-        IWETH weth,
         string memory routerVersion
-    ) RouterCommon(vault, weth, IPermit2(address(0x00)), routerVersion) {
+    ) RouterCommon(vault, IWETH(address(0x00)), IPermit2(address(0x00)), routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -33,7 +31,7 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
                                        Swaps
     ***************************************************************************/
 
-    /// @inheritdoc IRouterSwap
+    /// @inheritdoc IAggregatorsRouterRouter
     function swapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -41,19 +39,14 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
         uint256 exactAmountIn,
         uint256 minAmountOut,
         uint256 deadline,
-        bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender(msg.sender) returns (uint256) {
-        if (wethIsEth) {
-            revert OperationNotSupported("ETH operations are not supported");
-        }
-
+    ) external saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
                         AggregatorsRouter.swapSingleTokenHook,
-                        SwapSingleTokenHookParams({
+                        IRouter.SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
@@ -62,7 +55,7 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
                             amountGiven: exactAmountIn,
                             limit: minAmountOut,
                             deadline: deadline,
-                            wethIsEth: wethIsEth,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -71,29 +64,16 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
             );
     }
 
-    /// @inheritdoc IRouterSwap
-    function swapSingleTokenExactOut(
-        address,
-        IERC20,
-        IERC20,
-        uint256,
-        uint256,
-        uint256,
-        bool,
-        bytes calldata
-    ) external payable returns (uint256) {
-        // TODO: will implement this in next PR
-        revert OperationNotSupported("swapSingleTokenExactOut is not supported");
-    }
-
     /**
      * @notice Hook for swaps.
-     * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouterSwap for struct definition)
+     * @dev Can only be called by the Vault. Also handles native ETH. 
+     This router expects the caller to pay upfront by sending tokens to the vault directly, 
+     so this call only accounts for the amount that has already been paid skipping transfers of any kind.
+     * @param params Swap parameters (see IRouter for struct definition)
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function swapSingleTokenHook(
-        SwapSingleTokenHookParams calldata params
+        IRouter.SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
@@ -104,7 +84,7 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
     }
 
     function _swapHook(
-        SwapSingleTokenHookParams calldata params
+        IRouter.SwapSingleTokenHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -129,7 +109,7 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
                                       Queries
     *******************************************************************************/
 
-    /// @inheritdoc IRouterSwap
+    /// @inheritdoc IAggregatorsRouterRouter
     function querySwapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -143,7 +123,7 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
                 _vault.quote(
                     abi.encodeCall(
                         AggregatorsRouter.querySwapHook,
-                        SwapSingleTokenHookParams({
+                        IRouter.SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
@@ -161,27 +141,14 @@ contract AggregatorsRouter is IRouterSwap, RouterCommon {
             );
     }
 
-    /// @inheritdoc IRouterSwap
-    function querySwapSingleTokenExactOut(
-        address,
-        IERC20,
-        IERC20,
-        uint256,
-        address,
-        bytes memory
-    ) external pure returns (uint256) {
-        // TODO: will implement this in next PR
-        revert OperationNotSupported("swapSingleTokenExactOut is not supported");
-    }
-
     /**
      * @notice Hook for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouterSwap for struct definition)
+     * @param params Swap parameters (see IRouter for struct definition)
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function querySwapHook(
-        SwapSingleTokenHookParams calldata params
+        IRouter.SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 

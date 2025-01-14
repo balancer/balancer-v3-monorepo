@@ -10,7 +10,6 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IRouterSwap } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSwap.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -49,12 +48,12 @@ contract RouterMock is Router {
     }
 
     function manualReentrancySwapSingleTokenHook() external nonReentrant {
-        IRouterSwap.SwapSingleTokenHookParams memory params;
+        IRouter.SwapSingleTokenHookParams memory params;
         Router(payable(this)).swapSingleTokenHook(params);
     }
 
     function manualReentrancyQuerySwapHook() external nonReentrant {
-        IRouterSwap.SwapSingleTokenHookParams memory params;
+        IRouter.SwapSingleTokenHookParams memory params;
         Router(payable(this)).querySwapHook(params);
     }
 

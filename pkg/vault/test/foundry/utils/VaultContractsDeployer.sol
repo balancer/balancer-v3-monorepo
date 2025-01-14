@@ -288,7 +288,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                     )
                 );
         } else {
-            return new AggregatorsRouter(vault, weth, version);
+            return new AggregatorsRouter(vault, version);
         }
     }
 
