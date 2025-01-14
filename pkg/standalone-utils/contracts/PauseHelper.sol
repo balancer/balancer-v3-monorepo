@@ -86,9 +86,9 @@ contract PauseHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Check if a pool is in the list of pools
+     * @notice Check whether a pool is in the list of pausable pools.
      * @param pool Pool to check
-     * @return True if the pool is in the list, false otherwise
+     * @return isPausable True if the pool is in the list, false otherwise
      */
     function hasPool(address pool) external view returns (bool) {
         return _poolsSet.contains(pool);
