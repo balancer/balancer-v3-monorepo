@@ -275,17 +275,11 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployAggregatorsRouter(
-        IVault vault,
-        IWETH weth,
-        string memory version
-    ) internal returns (AggregatorsRouter) {
+    function deployAggregatorsRouter(IVault vault, string memory version) internal returns (AggregatorsRouter) {
         if (reusingArtifacts) {
             return
                 AggregatorsRouter(
-                    payable(
-                        deployCode(_computeVaultPath(type(AggregatorsRouter).name), abi.encode(vault, weth, version))
-                    )
+                    payable(deployCode(_computeVaultPath(type(AggregatorsRouter).name), abi.encode(vault, version)))
                 );
         } else {
             return new AggregatorsRouter(vault, version);

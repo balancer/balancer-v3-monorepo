@@ -36,7 +36,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
-        aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), weth, version);
+        aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), version);
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
