@@ -72,6 +72,13 @@ interface IMevHook {
 
     /**
      * @notice Permissioned function to set the default multiplier of the priority gas price.
+     * @dev The multiplier is not validated or limited by any value and can assume any 18-decimal number. That's
+     * because the multiplier value depends on the priority gas price used by searchers in a given moment for a
+     * specific chain. However, the resulting swap fee percentage, given by `priorityGasPrice * multiplier`, is capped
+     * in the lower end by the static swap fee, and in the upper end by the maximum swap fee percentage of the vault.
+     * Therefore, a multiplier with value 0 will effectively disable the MEV tax, since the static swap fee will be
+     * charged. Also, a very high multiplier may disable pool swaps, since the MEV tax will be 99.9999%.
+     *
      * @param newDefaultMevTaxMultiplier 18-decimal used to calculate the MEV swap fee percentage
      */
     function setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) external;
@@ -89,8 +96,14 @@ interface IMevHook {
 
     /**
      * @notice Permissioned function to set the MEV tax multiplier of a pool, overriding the default value.
-     * @dev The multiplier can be any unsigned 18-decimal. If the pool is not registered with the MEV Hook,
-     * it reverts with error MevHookNotRegisteredForPool(pool).
+     * @dev The multiplier is not validated or limited by any value and can assume any 18-decimal number. That's
+     * because the multiplier value depends on the priority gas price used by searchers in a given moment for a
+     * specific chain. If the pool is not registered with the MEV Hook, it reverts with error
+     * MevHookNotRegisteredForPool(pool). However, the resulting swap fee percentage, given by
+     * `priorityGasPrice * multiplier`, is capped in the lower end by the static swap fee, and in the upper end by
+     * the maximum swap fee percentage of the vault. Therefore, a multiplier with value 0 will effectively disable the
+     * MEV tax, since the static swap fee will be charged. Also, a very high multiplier may disable pool swaps, since
+     * the MEV tax will be 99.9999%.
      *
      * @param pool Address of the pool with the multiplier
      * @param newPoolMevTaxMultiplier New multiplier to be set in a pool
@@ -109,7 +122,9 @@ interface IMevHook {
     /**
      * @notice Permissioned function to set the default priority gas price threshold.
      * @dev The threshold can be any unsigned integer and represents the priority gas price, in wei. It's used to
-     * check whether the priority gas price level corresponds to a retail or searcher swap.
+     * check whether the priority gas price level corresponds to a retail or searcher swap. The threshold value is not
+     * capped by any value, since it depends on the chain state. A very high threshold (above the priority gas price of
+     * searchers in the chain) will disable the MEV tax and charge the static swap fee.
      *
      * @param newDefaultMevTaxThreshold The new default threshold
      */
@@ -129,8 +144,10 @@ interface IMevHook {
     /**
      * @notice Permissioned function to set the threshold of a pool, overriding the current value.
      * @dev The threshold can be any unsigned integer and represents the priority gas price, in wei. It's used to
-     * check whether the priority gas price level corresponds to a retail or searcher swap. If the pool is not
-     * registered with the MEV Hook, it reverts with error MevHookNotRegisteredForPool(pool).
+     * check whether the priority gas price level corresponds to a retail or searcher swap. The threshold value is not
+     * capped by any value, since it depends on the chain state. If the pool is not registered with the MEV Hook, it
+     * reverts with error MevHookNotRegisteredForPool(pool). A very high threshold (above the priority gas price of
+     * searchers in the chain) will disable the MEV tax and charge the static swap fee.
      *
      * @param pool Address of the pool with the threshold
      * @param newPoolMevTaxThreshold The new threshold to be set in a pool
