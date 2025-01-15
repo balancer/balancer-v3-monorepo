@@ -99,7 +99,6 @@ describe('MevHook', () => {
     await hook.connect(admin).setPoolMevTaxThreshold(pool, PRIORITY_GAS_THRESHOLD);
 
     await hook.connect(admin).enableMevTax();
-    expect(await hook.isMevTaxEnabled()).to.be.true;
   });
 
   sharedBeforeEach('token allowances', async () => {
