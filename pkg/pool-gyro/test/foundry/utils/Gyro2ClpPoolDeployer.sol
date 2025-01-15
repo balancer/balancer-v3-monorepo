@@ -69,7 +69,8 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
                 name: "Gyro 2CLP Pool",
                 symbol: "GRP",
                 sqrtAlpha: _sqrtAlpha,
-                sqrtBeta: _sqrtBeta
+                sqrtBeta: _sqrtBeta,
+                version: ""
             }),
             vault
         );
@@ -90,7 +91,8 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
             name: "Gyro 2CLP Pool Mock",
             symbol: "GRP-Mock",
             sqrtAlpha: _sqrtAlpha,
-            sqrtBeta: _sqrtBeta
+            sqrtBeta: _sqrtBeta,
+            version: ""
         });
 
         if (reusingArtifacts) {
@@ -119,7 +121,8 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
                 name: "Gyro 2CLP Pool Mock",
                 symbol: "GRP-Mock",
                 sqrtAlpha: _sqrtAlpha,
-                sqrtBeta: _sqrtBeta
+                sqrtBeta: _sqrtBeta,
+                version: ""
             }),
             vault
         );
@@ -129,10 +132,13 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 Gyro2CLPPoolFactory(
-                    deployCode(_computeGyro2CLPPath(type(Gyro2CLPPoolFactory).name), abi.encode(vault, 365 days))
+                    deployCode(
+                        _computeGyro2CLPPath(type(Gyro2CLPPoolFactory).name),
+                        abi.encode(vault, 365 days, "", "")
+                    )
                 );
         } else {
-            return new Gyro2CLPPoolFactory(vault, 365 days);
+            return new Gyro2CLPPoolFactory(vault, 365 days, "", "");
         }
     }
 
