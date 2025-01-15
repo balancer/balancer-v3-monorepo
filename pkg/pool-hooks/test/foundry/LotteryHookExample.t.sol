@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IRouterSwap } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSwap.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     LiquidityManagement,
@@ -254,15 +255,15 @@ contract LotteryHookExampleTest is BaseVaultTest {
             bytes4 routerMethod;
             // If kind is BOTH, odd iterations are EXACT_IN and even iterations are EXACT_OUT.
             if (kind == SwapKindLottery.EXACT_IN || (kind == SwapKindLottery.BOTH && iterations % 2 == 1)) {
-                routerMethod = IRouter.swapSingleTokenExactIn.selector;
+                routerMethod = IRouterSwap.swapSingleTokenExactIn.selector;
             } else {
-                routerMethod = IRouter.swapSingleTokenExactOut.selector;
+                routerMethod = IRouterSwap.swapSingleTokenExactOut.selector;
             }
 
             uint8 randomNumber = LotteryHookExample(poolHooksContract).getRandomNumber();
 
             uint256 amountGiven = swapAmount;
-            uint256 amountCalculated = routerMethod == IRouter.swapSingleTokenExactIn.selector
+            uint256 amountCalculated = routerMethod == IRouterSwap.swapSingleTokenExactIn.selector
                 ? swapAmount - hookFee // If EXACT_IN, amount calculated is amount out; user receives less
                 : swapAmount + hookFee; // If EXACT_IN, amount calculated is amount in; user pays more
 
@@ -280,7 +281,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
                     emit LotteryHookExample.LotteryWinningsPaid(poolHooksContract, alice, IERC20(usdc), usdcWinnings);
                 }
             } else {
-                if (routerMethod == IRouter.swapSingleTokenExactIn.selector) {
+                if (routerMethod == IRouterSwap.swapSingleTokenExactIn.selector) {
                     vm.expectEmit();
                     emit LotteryHookExample.LotteryFeeCollected(poolHooksContract, IERC20(usdc), hookFee);
                 } else {
@@ -311,7 +312,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
             if (randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER()) {
                 break;
             } else {
-                if (routerMethod == IRouter.swapSingleTokenExactIn.selector) {
+                if (routerMethod == IRouterSwap.swapSingleTokenExactIn.selector) {
                     accruedFees[usdcIdx] += hookFee;
                 } else {
                     accruedFees[daiIdx] += hookFee;
