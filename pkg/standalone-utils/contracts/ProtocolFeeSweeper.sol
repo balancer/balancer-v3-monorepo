@@ -17,8 +17,14 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
  * `ProtocolFeeController`, processes them with a configurable "burner" (e.g., from CowSwap) and forwards them to
  * a recipient contract.
  * 
+ * An off-chain process can call `collectAggregateFees(pool)` on the fee controller for a given pool, which will
+ * collect and allocate the fees to the protocol and pool creator. `getProtocolFeeAmounts(pool)` returns the fee
+ * amounts available for withdrawal. If these are great enough, `sweepProtocolFees(pool)` here will withdraw,
+ * convert, and forward them to the final recipient. It is also possible to do this for a single token, using
+ * `sweepProtocolFeesForToken(pool, token)`.
+ *
  * This is the basic version that uses only the "fallback" method, simply forwarding all tokens collected to a
- * designated fee recipient (e.g., a multi-sig). It has some infrastructure that will be used for future versions.
+ * designated fee recipient (e.g., a multi-sig). It has some infrastructure that will be used in future versions.
  */
 contract ProtocolFeeSweeper is SingletonAuthentication {
     using SafeERC20 for IERC20;
@@ -28,13 +34,6 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
      * @param token The preferred token for receiving protocol fees
      */
     event TargetTokenSet(IERC20 indexed token);
-
-    /**
-     * @notice Emitted when a new fee recipient is proposed.
-     * @dev Fees will not be distributed until the fee recipient is finalized with `claimFeeRecipient`.
-     * @param feeRecipient The intended final destination of collected protocol fees
-     */
-    event PendingFeeRecipientSet(address indexed feeRecipient);
 
     /**
      * @notice Emitted when the fee recipient address is verified.
@@ -48,27 +47,13 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
      */
     event ProtocolFeeBurnerSet(address indexed protocolFeeBurner);
 
-    /// @notice Thrown if we attempt to sweep fees before setting a fee recipient.
-    error NoFeeRecipient();
-
     /// @notice This contract should not receive ETH.
     error CannotReceiveEth();
-
-    modifier withValidFeeRecipient() {
-        if (_feeRecipient == address(0)) {
-            revert NoFeeRecipient();
-        }
-        _;
-    }
 
     // Preferred token for receiving protocol fees. This does not need to be validated, since setting it to an
     // invalid or incorrect value would just mean fees could not be converted to it, in which case the contract
     // would fall back on forwarding the tokens as collected.
     IERC20 private _targetToken;
-
-    // Intended destination of the collected protocol fees. Since the protocol fee recipient is of critical importance,
-    // it must be claimed by that address to take effect.
-    address private _pendingFeeRecipient;
 
     // Final destination of the collected protocol fees, after confirmation through the claims process.
     address private _feeRecipient;
@@ -77,21 +62,11 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
     IProtocolFeeBurner private _protocolFeeBurner;
 
     constructor(IVault vault, address feeRecipient) SingletonAuthentication(vault) {
-        _setPendingFeeRecipient(feeRecipient);
-    }
-
-    /**
-     * @notice Getter for the pending fee recipient.
-     * @dev This will be initialized on deployment, and set to zero once claimed.
-     * @return pendingFeeRecipient The proposed fee recipient
-     */
-    function getPendingFeeRecipient() external view returns(address) {
-        return _pendingFeeRecipient;
+        _setFeeRecipient(feeRecipient);
     }
 
     /**
      * @notice Getter for the current fee recipient.
-     * @dev This will be zero until claimed initially.
      * @return feeRecipient The currently active fee recipient
      */
     function getFeeRecipient() external view returns(address) {
@@ -99,11 +74,11 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
     }
 
     /**
-     * @notice Withdraw and distribute protocol fees for a given pool.
-     * @dev This will withdraw all fee tokens to this contract, and attempt to distribute them.
+     * @notice Withdraw, convert, and forward protocol fees for a given pool.
+     * @dev This will withdraw all fee tokens to this contract, and attempt to convert and forward them.
      * @param pool The pool from which we're withdrawing fees
      */
-    function sweepProtocolFees(address pool) external withValidFeeRecipient() {
+    function sweepProtocolFees(address pool) external {
         // Collect protocol fees - note that governance will need to grant this contract permission to call
         // `withdrawProtocolFees` on the `ProtocolFeeController. It is not immutable in the Vault, so we need
         // to get it every time.
@@ -114,12 +89,12 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
     }
 
     /**
-     * @notice Withdraw and distribute protocol fees for a given pool and token.
-     * @dev This will withdraw any fees collected on that pool and token, and attempt to distribute them.
+     * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
+     * @dev This will withdraw any fees collected on that pool and token, and attempt to convert and forward them.
      * @param pool The pool from which we're withdrawing fees
      * @param token The fee token
      */
-    function sweepProtocolFeesForToken(address pool, IERC20 token) external withValidFeeRecipient() {
+    function sweepProtocolFeesForToken(address pool, IERC20 token) external {
         // Collect protocol fees - note that governance will need to grant this contract permission to call
         // `withdrawProtocolFeesForToken` on the `ProtocolFeeController. It is not immutable in the Vault, so we need
         // to get it every time.
@@ -153,30 +128,22 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
     }
 
     /**
-     * @notice Start the process of changing the protocol fee recipient.
-     * @dev The specified account must call `claimFeeRecipient` to complete the process, proving that the recipient
-     * address is a valid account. This is a permissioned function. If this address is set in error and can't be
-     * claimed, it can simply be overwritten.
-     *
-     * @param feeRecipient The address of the new proposed fee recipient
+     * @notice Update the fee recipient address.
+     * @dev This is a permissioned function.
+     * @param feeRecipient The address of the new fee recipient
      */
-    function setPendingFeeRecipient(address feeRecipient) external authenticate {
-        _setPendingFeeRecipient(feeRecipient);
+    function setFeeRecipient(address feeRecipient) external authenticate {
+        _setFeeRecipient(feeRecipient);
     }
 
     /**
-     * @notice Complete the 2-step process to assign a fee recipient.
-     * @dev This must be called by the pending fee recipient.
+     * @notice Set the fee recipient and emit the corresponding event.
+     * @param feeRecipient The address of the new fee recipient
      */
-    function claimFeeRecipient() external {
-        if (msg.sender != _pendingFeeRecipient) {
-            revert SenderNotAllowed();
-        }
+    function _setFeeRecipient(address feeRecipient) internal {
+        _feeRecipient = feeRecipient;
 
-        _feeRecipient = _pendingFeeRecipient;
-        _pendingFeeRecipient = address(0);
-
-        emit FeeRecipientSet(_feeRecipient);
+        emit FeeRecipientSet(feeRecipient);
     }
 
     /**
@@ -192,16 +159,19 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
         emit ProtocolFeeBurnerSet(address(protocolFeeBurner));
     }
 
+    /**
+     * @notice Update the address of the target token.
+     * @dev This is the token the burner will attempt to swap all collected fee tokens to.
+     * @param targetToken The address of the target token
+     */
+    function setTargetToken(IERC20 targetToken) external authenticate {
+        _setTargetToken(targetToken);
+    }
+
     function _setTargetToken(IERC20 targetToken) internal {
         _targetToken = targetToken;
 
         emit TargetTokenSet(targetToken);
-    }
-
-    function _setPendingFeeRecipient(address feeRecipient) internal {
-        _pendingFeeRecipient = feeRecipient;
-
-        emit PendingFeeRecipientSet(feeRecipient);
     }
 
     // Convert the given tokens to the target token (if enabled), and forward to the fee recipient. This assumes we
