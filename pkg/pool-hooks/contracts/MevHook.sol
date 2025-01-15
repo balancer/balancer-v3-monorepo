@@ -117,6 +117,46 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         return (true, staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage);
     }
 
+    /// @inheritdoc IHooks
+    function onBeforeAddLiquidity(
+        address,
+        address pool,
+        AddLiquidityKind kind,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) public view override returns (bool success) {
+        if (_mevTaxEnabled == false) {
+            return true;
+        }
+
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+
+        // Allow proportional operations, or unbalanced operations within the threshold.
+        return kind == AddLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
+    }
+
+    /// @inheritdoc IHooks
+    function onBeforeRemoveLiquidity(
+        address,
+        address pool,
+        RemoveLiquidityKind kind,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) public view override returns (bool success) {
+        if (_mevTaxEnabled == false) {
+            return true;
+        }
+
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+
+        // Allow proportional operations, or unbalanced operations within the threshold.
+        return kind == RemoveLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
+    }
+
     /// @inheritdoc IMevHook
     function isMevTaxEnabled() external view returns (bool) {
         return _mevTaxEnabled;
@@ -226,53 +266,6 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _poolMevTaxThresholds[pool] = newPoolMevTaxThreshold;
 
         emit PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
-    }
-
-    /// @inheritdoc IHooks
-    function onBeforeAddLiquidity(
-        address,
-        address pool,
-        AddLiquidityKind kind,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) public view override returns (bool success) {
-        if (_mevTaxEnabled == false) {
-            return true;
-        }
-
-        uint256 priorityGasPrice = _getPriorityGasPrice();
-
-        // Unbalanced adds are blocked for priority gas prices above the threshold.
-        if (kind != AddLiquidityKind.PROPORTIONAL && priorityGasPrice > _poolMevTaxThresholds[pool]) {
-            return false;
-        }
-
-        return true;
-    }
-
-    function onBeforeRemoveLiquidity(
-        address,
-        address pool,
-        RemoveLiquidityKind kind,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) public view override returns (bool success) {
-        if (_mevTaxEnabled == false) {
-            return true;
-        }
-
-        uint256 priorityGasPrice = _getPriorityGasPrice();
-
-        // Unbalanced removes are blocked for priority gas prices above the threshold.
-        if (kind != RemoveLiquidityKind.PROPORTIONAL && priorityGasPrice > _poolMevTaxThresholds[pool]) {
-            return false;
-        }
-
-        return true;
     }
 
     function _getPriorityGasPrice() internal view returns (uint256) {
