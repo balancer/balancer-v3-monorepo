@@ -23,7 +23,6 @@ describe('MevHook', () => {
   const ROUTER_VERSION = 'Router V1';
   const PRIORITY_GAS_THRESHOLD = 3_000_000n;
   const MEV_MULTIPLIER = fp(10_000_000_000);
-  const MAX_MEV_FEE_PERCENTAGE = fp(0.999999);
 
   const STATIC_SWAP_FEE_PERCENTAGE = fp(0.01); // 1% swap fee
 
@@ -79,6 +78,7 @@ describe('MevHook', () => {
     // MEV Hook Actions
     actions.push(await actionId(hook, 'disableMevTax'));
     actions.push(await actionId(hook, 'enableMevTax'));
+    actions.push(await actionId(hook, 'setMaxMevSwapFeePercentage'));
     actions.push(await actionId(hook, 'setDefaultMevTaxMultiplier'));
     actions.push(await actionId(hook, 'setPoolMevTaxMultiplier'));
     actions.push(await actionId(hook, 'setDefaultMevTaxThreshold'));
@@ -211,11 +211,13 @@ describe('MevHook', () => {
   });
 
   describe('should pay MEV tax', async () => {
-    it('MEV fee percentage bigger than max value', async () => {
+    it('MEV fee percentage bigger than default max value', async () => {
       await hook.connect(admin).enableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.true;
 
-      // Big multiplier, the MEV fee percentage should be more than 99.9999%. Since the Max fee is 99.9999%, that's what
+      await hook.connect(admin).setMaxMevSwapFeePercentage(fp(0.2));
+
+      // Big multiplier, the MEV fee percentage should be more than 20%. Since the Max fee is set to 20%, that's what
       // will be charged.
       await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100n)));
 
@@ -287,9 +289,11 @@ describe('MevHook', () => {
     const baseFee = await getBaseFee();
 
     let mevSwapFeePercentage = fpMulDown(txGasPrice - baseFee, mevMultiplier);
-    if (mevSwapFeePercentage >= MAX_MEV_FEE_PERCENTAGE) {
+    const maxMevSwapFeePercentage = await hook.getMaxMevSwapFeePercentage();
+
+    if (mevSwapFeePercentage >= maxMevSwapFeePercentage) {
       // If mevSwapFeePercentage > max fee percentage, charge the max value.
-      mevSwapFeePercentage = MAX_MEV_FEE_PERCENTAGE;
+      mevSwapFeePercentage = maxMevSwapFeePercentage;
     }
     const mevSwapFee = fpMulDown(mevSwapFeePercentage, amountIn);
 
