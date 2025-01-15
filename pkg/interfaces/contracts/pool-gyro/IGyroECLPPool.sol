@@ -87,6 +87,7 @@ interface IGyroECLPPool is IBasePool {
         string symbol;
         EclpParams eclpParams;
         DerivedEclpParams derivedEclpParams;
+        string version;
     }
 
     /**
