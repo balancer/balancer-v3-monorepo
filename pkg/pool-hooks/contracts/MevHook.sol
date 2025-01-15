@@ -55,6 +55,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
         _setDefaultMevTaxThreshold(0);
+        // Default to the maximum value allowed by the Vault.
         _setMaxMevSwapFeePercentage(_MEV_MAX_FEE_PERCENTAGE);
     }
 

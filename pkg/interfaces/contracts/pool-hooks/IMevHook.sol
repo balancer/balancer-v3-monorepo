@@ -70,9 +70,8 @@ interface IMevHook {
     function enableMevTax() external;
 
     /**
-     * @notice Returns maximum MEV swap fee percentage returned by `onComputeDynamicSwapFeePercentage`.
-     * @dev The absolute minimum is still the static swap fee percentage of the pool. If the maximum MEV swap fee
-     * percentage of the pool is below the static fee percentage, the static fee percentage is used anyways.
+     * @notice Returns the maximum MEV swap fee percentage returned by `onComputeDynamicSwapFeePercentage`.
+     * @dev The absolute minimum is still the static swap fee percentage of the pool.
      * In other words:
      * - if `maxMevSwapFeePercentage > staticSwapFeePercentage`, then
      * `staticSwapFeePercentage <= computedFeePercentage <= maxMevSwapFeePercentage`
@@ -110,7 +109,8 @@ interface IMevHook {
      * specific chain. However, the resulting swap fee percentage, given by `priorityGasPrice * multiplier`, is capped
      * at the lower end by the static swap fee, and at the upper end by the maximum swap fee percentage of the vault.
      * Therefore, a multiplier with value 0 will effectively disable the MEV tax, since the static swap fee will be
-     * charged. Also, a very high multiplier may disable pool swaps, since the MEV tax will be 99.9999%.
+     * charged. Also, a very high multiplier will make the trader pay the maximum configured swap fee which can be
+     * close to 100%, effectively disabling swaps.
      *
      * @param newDefaultMevTaxMultiplier 18-decimal used to calculate the MEV swap fee percentage
      */
@@ -135,8 +135,8 @@ interface IMevHook {
      * MevHookNotRegisteredForPool(pool). However, the resulting swap fee percentage, given by
      * `priorityGasPrice * multiplier`, is capped in the lower end by the static swap fee, and at the upper end by
      * the maximum swap fee percentage of the vault. Therefore, a multiplier with value 0 will effectively disable the
-     * MEV tax, since the static swap fee will be charged. Also, a very high multiplier may disable pool swaps, since
-     * the MEV tax will be 99.9999%.
+     * MEV tax, since the static swap fee will be charged. Also, a very high multiplier will make the trader pay the
+     * maximum configured swap fee which can be close to 100%, effectively disabling swaps.
      *
      * @param pool Address of the pool with the multiplier
      * @param newPoolMevTaxMultiplier New multiplier to be set in a pool
