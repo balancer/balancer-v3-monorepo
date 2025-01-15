@@ -32,6 +32,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     uint256 internal _defaultMevTaxThreshold;
     uint256 internal _defaultMevTaxMultiplier;
 
+    // Global max dynamic swap fee percentage returned by this hook.
+    uint256 internal _maxMevSwapFeePercentage;
+
     // Pool-specific parameters.
     mapping(address => uint256) internal _poolMevTaxThresholds;
     mapping(address => uint256) internal _poolMevTaxMultipliers;
@@ -50,6 +53,8 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
         _setDefaultMevTaxThreshold(0);
+        // Default to the maximum value allowed by the Vault.
+        _setMaxMevSwapFeePercentage(_MEV_MAX_FEE_PERCENTAGE);
     }
 
     /// @inheritdoc IHooks
@@ -98,9 +103,11 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
         uint256 mevSwapFeePercentage = priorityGasPrice.mulDown(_poolMevTaxMultipliers[pool]);
 
-        // Cap the maximum fee at `MAX_FEE_PERCENTAGE`.
-        if (mevSwapFeePercentage > _MEV_MAX_FEE_PERCENTAGE) {
-            return (true, _MEV_MAX_FEE_PERCENTAGE);
+        // Cap the maximum fee at `_maxMevSwapFeePercentage`.
+        uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
+        if (mevSwapFeePercentage > maxMevSwapFeePercentage) {
+            // Don't return early. If the cap is below the static fee, we'll still use the static fee.
+            mevSwapFeePercentage = maxMevSwapFeePercentage;
         }
 
         // Use the greater of the static and MEV fee percentages.
@@ -126,6 +133,26 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _mevTaxEnabled = value;
 
         emit MevTaxEnabledSet(value);
+    }
+
+    /// @inheritdoc IMevHook
+    function getMaxMevSwapFeePercentage() external view returns (uint256) {
+        return _maxMevSwapFeePercentage;
+    }
+
+    /// @inheritdoc IMevHook
+    function setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) external authenticate {
+        _setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+    }
+
+    function _setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) internal {
+        if (maxMevSwapFeePercentage > _MEV_MAX_FEE_PERCENTAGE) {
+            revert MevSwapFeePercentageAboveMax(maxMevSwapFeePercentage, _MEV_MAX_FEE_PERCENTAGE);
+        }
+
+        _maxMevSwapFeePercentage = maxMevSwapFeePercentage;
+
+        emit MaxMevSwapFeePercentageSet(maxMevSwapFeePercentage);
     }
 
     /// @inheritdoc IMevHook
