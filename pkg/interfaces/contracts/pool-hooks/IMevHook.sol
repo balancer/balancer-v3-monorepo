@@ -70,9 +70,8 @@ interface IMevHook {
     function enableMevTax() external;
 
     /**
-     * @notice Returns maximum MEV swap fee percentage returned by `onComputeDynamicSwapFeePercentage`.
-     * @dev The absolute minimum is still the static swap fee percentage of the pool. If the maximum MEV swap fee
-     * percentage of the pool is below the static fee percentage, the static fee percentage is used anyways.
+     * @notice Returns the maximum MEV swap fee percentage returned by `onComputeDynamicSwapFeePercentage`.
+     * @dev The absolute minimum is still the static swap fee percentage of the pool.
      * In other words:
      * - if `maxMevSwapFeePercentage > staticSwapFeePercentage`, then
      * `staticSwapFeePercentage <= computedFeePercentage <= maxMevSwapFeePercentage`

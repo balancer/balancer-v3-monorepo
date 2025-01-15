@@ -119,7 +119,7 @@ contract MevHookTest is BaseVaultTest {
     }
 
     /********************************************************
-                         enableMevTax()
+                   setMaxMevSwapFeePercentage()
     ********************************************************/
     function testSetMaxMevSwapFeePercentageIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
