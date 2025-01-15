@@ -59,12 +59,12 @@ contract MevHookTest is BaseVaultTest {
         newPool = PoolFactoryMock(poolFactory).createPool(name, symbol);
         vm.label(newPool, label);
 
-        // Disable Unbalanced Liquidity because pool supports dynamic fee.
-        PoolFactoryMock(poolFactory).registerTestPoolDisableUnbalancedLiquidity(
+        // Pool supports unbalanced liquidity even if technically the dynamic fee above static fee because it blocks
+        // unbalanced liquidity operations when that happens.
+        PoolFactoryMock(poolFactory).registerPoolWithHook(
             newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
-            poolHooksContract,
-            lp
+            poolHooksContract
         );
 
         poolArgs = abi.encode(vault, name, symbol);
