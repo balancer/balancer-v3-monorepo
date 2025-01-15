@@ -9,7 +9,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import "./GyroPoolMath.sol";
 
 /**
- * @notice Math routines for the 2CLP.
+ * @notice Math routines for the 2-CLP.
  * @dev Parameters are price bounds [alpha, beta] and sqrt(alpha), sqrt(beta) are used as parameters.
  */
 library Gyro2CLPMath {
@@ -45,7 +45,7 @@ library Gyro2CLPMath {
             rounding
         );
 
-        return calculateQuadratic(a, mb, bSquare, mc);
+        return calculateQuadratic(a, mb, bSquare, mc, rounding);
     }
 
     /**
@@ -54,8 +54,8 @@ library Gyro2CLPMath {
      * assumes a > 0, b < 0, and c <= 0.
      *
      * @param balances Pool balances
-     * @param sqrtAlpha Square root of Gyro's 2CLP alpha parameter
-     * @param sqrtBeta Square root of Gyro's 2CLP beta parameter
+     * @param sqrtAlpha Square root of Gyro's 2-CLP alpha parameter
+     * @param sqrtBeta Square root of Gyro's 2-CLP beta parameter
      * @param rounding Rounding direction of the invariant, which will be calculated using the quadratic terms
      * @return a Bhaskara's `a` term
      * @return mb Bhaskara's `b` term, negative (stands for minus b)
@@ -116,17 +116,26 @@ library Gyro2CLPMath {
         uint256 a,
         uint256 mb,
         uint256 bSquare, // b^2 can be calculated separately with more precision
-        uint256 mc
+        uint256 mc,
+        Rounding rounding
     ) internal pure returns (uint256 invariant) {
-        uint256 denominator = a.mulUp(2 * FixedPoint.ONE);
+        function(uint256, uint256) pure returns (uint256) _mulUpOrDown = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.mulDown
+            : FixedPoint.mulUp;
+
+        function(uint256, uint256) pure returns (uint256) _divUpOrDown = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.divDown
+            : FixedPoint.divUp;
+
+        uint256 denominator = 2 * a;
         // Order multiplications for fixed point precision.
-        uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
+        uint256 addTerm = _mulUpOrDown(4 * mc, a);
         // The minus sign in the radicand cancels out in this special case.
         uint256 radicand = bSquare + addTerm;
         uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
         // The minus sign in the numerator cancels out in this special case.
         uint256 numerator = mb + sqrResult;
-        invariant = numerator.divDown(denominator);
+        invariant = _divUpOrDown(numerator, denominator);
     }
 
     /**
@@ -165,14 +174,11 @@ library Gyro2CLPMath {
       // Note that -dy > 0 is what the trader receives.                                            //
       // We exploit the fact that this formula is symmetric up to virtualOffset{X,Y}.               //
       // We do not use L^2, but rather x' * y', to prevent a potential accumulation of errors.      //
-      // We add a very small safety margin to compensate for potential errors in the invariant.     //
       **********************************************************************************************/
 
         {
-            // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
-            // that is very slightly larger than 3e-18.
-            uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
-            uint256 virtOutUnder = balanceOut + (virtualOffsetOut).mulDown(FixedPoint.ONE - 1);
+            uint256 virtInOver = balanceIn + virtualOffsetIn;
+            uint256 virtOutUnder = balanceOut + virtualOffsetOut;
 
             amountOut = virtOutUnder.mulDown(amountIn).divDown(virtInOver + amountIn);
         }
@@ -207,30 +213,35 @@ library Gyro2CLPMath {
       // Note that dy < 0 < dx.                                                                      //
       // We exploit the fact that this formula is symmetric up to virtualOffset{X,Y}.                //
       // We do not use L^2, but rather x' * y', to prevent a potential accumulation of errors.       //
-      // We add a very small safety margin to compensate for potential errors in the invariant.      //
       **********************************************************************************************/
         if (!(amountOut <= balanceOut)) {
             revert AssetBoundsExceeded();
         }
 
         {
-            // The factors in total lead to a multiplicative "safety margin" between the employed virtual offsets
-            // that is very slightly larger than 3e-18.
-            uint256 virtInOver = balanceIn + virtualOffsetIn.mulUp(FixedPoint.ONE + 2);
-            uint256 virtOutUnder = balanceOut + virtualOffsetOut.mulDown(FixedPoint.ONE - 1);
+            uint256 virtInOver = balanceIn + virtualOffsetIn;
+            uint256 virtOutUnder = balanceOut + virtualOffsetOut;
 
             amountIn = virtInOver.mulUp(amountOut).divUp(virtOutUnder - amountOut);
         }
     }
 
     /// @dev Calculate the virtual offset `a` for reserves `x`, as in (x+a)*(y+b)=L^2.
-    function calculateVirtualParameter0(uint256 invariant, uint256 _sqrtBeta) internal pure returns (uint256) {
-        return invariant.divDown(_sqrtBeta);
+    function calculateVirtualParameter0(
+        uint256 invariant,
+        uint256 _sqrtBeta,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        return rounding == Rounding.ROUND_DOWN ? invariant.divDown(_sqrtBeta) : invariant.divUp(_sqrtBeta);
     }
 
     /// @dev Calculate the virtual offset `b` for reserves `y`, as in (x+a)*(y+b)=L^2.
-    function calculateVirtualParameter1(uint256 invariant, uint256 _sqrtAlpha) internal pure returns (uint256) {
-        return invariant.mulDown(_sqrtAlpha);
+    function calculateVirtualParameter1(
+        uint256 invariant,
+        uint256 _sqrtAlpha,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        return rounding == Rounding.ROUND_DOWN ? invariant.mulDown(_sqrtAlpha) : invariant.mulUp(_sqrtAlpha);
     }
 
     /**

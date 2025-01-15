@@ -147,6 +147,14 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         _permit2 = permit2;
     }
 
+    function getWeth() external view returns (IWETH) {
+        return _weth;
+    }
+
+    function getPermit2() external view returns (IPermit2) {
+        return _permit2;
+    }
+
     /*******************************************************************************
                                       Utilities
     *******************************************************************************/

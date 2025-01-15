@@ -293,7 +293,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _loadSwapState(
         VaultSwapParams memory vaultSwapParams,
         PoolData memory poolData
-    ) private pure returns (SwapState memory swapState) {
+    ) internal pure returns (SwapState memory swapState) {
         swapState.indexIn = _findTokenIndex(poolData.tokens, vaultSwapParams.tokenIn);
         swapState.indexOut = _findTokenIndex(poolData.tokens, vaultSwapParams.tokenOut);
 
@@ -327,7 +327,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         VaultSwapParams memory vaultSwapParams,
         PoolData memory poolData,
         SwapState memory swapState
-    ) private pure returns (uint256) {
+    ) internal pure returns (uint256) {
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         return
