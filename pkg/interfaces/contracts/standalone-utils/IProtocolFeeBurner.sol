@@ -6,9 +6,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IProtocolFeeBurner {
     function burn(
-        IERC20 tokenIn,
-        uint256 tokenInAmount,
-        IERC20 tokenOut,
+        IERC20 feeToken,
+        uint256 feeTokenAmount,
+        IERC20 targetToken,
         address recipient
-    ) external returns (uint256 tokenOutAmount);
+    ) external returns (uint256 targetTokenAmount);
 }
