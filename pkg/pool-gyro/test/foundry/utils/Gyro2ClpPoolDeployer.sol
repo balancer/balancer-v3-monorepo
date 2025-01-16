@@ -54,6 +54,8 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
             roleAccounts,
             DEFAULT_SWAP_FEE,
             address(0),
+            false,
+            false,
             bytes32("")
         );
         vm.label(newPool, label);

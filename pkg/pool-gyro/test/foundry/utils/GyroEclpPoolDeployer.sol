@@ -93,6 +93,8 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
                         roleAccounts,
                         MIN_SWAP_FEE_PERCENTAGE,
                         address(0),
+                        false,
+                        false,
                         bytes32("")
                     )
                 )

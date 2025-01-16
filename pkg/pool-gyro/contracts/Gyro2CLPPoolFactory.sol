@@ -47,6 +47,8 @@ contract Gyro2CLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
+     * @param enableDonation If true, the pool will support the donation add liquidity mechanism
+     * @param disableUnbalancedLiquidity If true, only proportional add and remove liquidity are accepted
      * @param salt The salt value that will be passed to create2 deployment
      */
     function create(
@@ -58,6 +60,8 @@ contract Gyro2CLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         address poolHooksContract,
+        bool enableDonation,
+        bool disableUnbalancedLiquidity,
         bytes32 salt
     ) external returns (address pool) {
         if (tokens.length != 2) {
@@ -82,6 +86,11 @@ contract Gyro2CLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
             salt
         );
 
+        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
+        liquidityManagement.enableDonation = enableDonation;
+        // disableUnbalancedLiquidity must be set to true if a hook has the flag enableHookAdjustedAmounts = true.
+        liquidityManagement.disableUnbalancedLiquidity = disableUnbalancedLiquidity;
+
         _registerPoolWithVault(
             pool,
             tokens,
@@ -89,7 +98,7 @@ contract Gyro2CLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
             false, // not exempt from protocol fees
             roleAccounts,
             poolHooksContract,
-            getDefaultLiquidityManagement()
+            liquidityManagement
         );
 
         _registerPoolWithFactory(pool);
