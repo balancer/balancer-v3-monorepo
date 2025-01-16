@@ -10,5 +10,5 @@ interface IProtocolFeeBurner {
         uint256 feeTokenAmount,
         IERC20 targetToken,
         address recipient
-    ) external returns (uint256 targetTokenAmount);
+    ) external;
 }

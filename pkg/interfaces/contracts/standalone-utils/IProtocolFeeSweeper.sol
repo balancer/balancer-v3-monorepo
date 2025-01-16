@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeController } from "../vault/IProtocolFeeController.sol";
+import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
+
 interface IProtocolFeeSweeper {
     /**
      * @notice Emitted when the target token is updated.
@@ -24,35 +27,14 @@ interface IProtocolFeeSweeper {
     event ProtocolFeeBurnerSet(address indexed protocolFeeBurner);
 
     /**
-     * @notice Emitted when a fee token has been burned.
-     * @dev This means it was converted to the target and sent to the recipient.
-     * @param pool The pool the fee was collected on
-     * @param feeToken The token the fee was collected in
-     * @param feeTokenAmount The number of feeTokens to be swapped for the target token
-     * @param targetToken The target token to exchange the fee token for
-     * @param targetTokenAmount The number of target tokens the burner swapped for the fee tokens
-     * @param protocolFeeBurner The address of the burner contract that performed the swap
-     * @param recipient The recipient of the target tokens
-     */
-    event ProtocolFeeBurned(
-        address indexed pool,
-        IERC20 indexed feeToken,
-        uint256 feeTokenAmount,
-        IERC20 indexed targetToken,
-        uint256 targetTokenAmount,
-        address protocolFeeBurner,
-        address recipient
-    );
-
-    /**
      * @notice Emitted when a fee token is transferred directly.
-     * @dev This happens when the fee token is already the target token.
+     * @dev This can happen if no target token or burner contract was specified, or the fee token is the target token.
      * @param pool The pool the fee was collected on
      * @param feeToken The token the fee was collected in (also the target token in this case; no swap necessary)
      * @param feeTokenAmount The number of feeTokens
      * @param recipient The recipient of the target tokens
      */
-    event ProtocolFeeTransferred(
+    event ProtocolFeeSwept(
         address indexed pool,
         IERC20 indexed feeToken,
         uint256 feeTokenAmount,
@@ -67,4 +49,30 @@ interface IProtocolFeeSweeper {
      * @param pool The pool from which we're withdrawing fees
      */
     function sweepProtocolFees(address pool) external;
+
+    /**
+     * @notice Return the address of the current `ProtocolFeeController` from the Vault.
+     * @dev It is not immutable in the Vault, so we need to get it every time.
+     * @return protocolFeeController The address of the current `ProtocolFeeController`
+     */
+    function getProtocolFeeController() public view returns (IProtocolFeeController);
+
+    /**
+     * @notice Getter for the target token.
+     * @dev This is the token the burner will swap all fee tokens for.
+     * @return targetToken The current target token
+     */
+    function getTargetToken() external view returns (IERC20);
+
+    /**
+     * @notice Getter for the current fee recipient.
+     * @return feeRecipient The currently active fee recipient
+     */
+    function getFeeRecipient() external view returns (address);
+
+    /**
+     * @notice Getter for the current protocol fee burner.
+     * @return protocolFeeBurner The currently active protocol fee burner
+     */
+    function getProtocolFeeBurner() external view returns (IProtocolFeeBurner);
 }

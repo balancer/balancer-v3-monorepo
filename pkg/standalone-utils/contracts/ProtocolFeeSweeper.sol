@@ -73,21 +73,13 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
             // If this is already the target token (or we haven't set a burner), just forward directly.
             if (canBurn && feeToken != targetToken) {
                 feeToken.forceApprove(address(burner), tokenBalance);
-                uint256 tokenOutAmount = _protocolFeeBurner.burn(feeToken, tokenBalance, targetToken, recipient);
+                // This is asynchronous; the burner will complete the action and emit an event.
+                _protocolFeeBurner.burn(feeToken, tokenBalance, targetToken, recipient);
 
-                emit ProtocolFeeBurned(
-                    pool,
-                    feeToken,
-                    tokenBalance,
-                    targetToken,
-                    tokenOutAmount,
-                    address(_protocolFeeBurner),
-                    recipient
-                );
             } else {
                 feeToken.safeTransfer(recipient, tokenBalance);
 
-                emit ProtocolFeeTransferred(pool, feeToken, tokenBalance, recipient);
+                emit ProtocolFeeSwept(pool, feeToken, tokenBalance, recipient);
             }
         }
     }
@@ -102,11 +94,28 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
     }
 
     /**
+     * @notice Getter for the target token.
+     * @dev This is the token the burner will swap all fee tokens for.
+     * @return targetToken The current target token
+     */
+    function getTargetToken() external view returns (IERC20) {
+        return _targetToken;
+    }
+
+    /**
      * @notice Getter for the current fee recipient.
      * @return feeRecipient The currently active fee recipient
      */
     function getFeeRecipient() external view returns (address) {
         return _feeRecipient;
+    }
+
+    /**
+     * @notice Getter for the current protocol fee burner.
+     * @return protocolFeeBurner The currently active protocol fee burner
+     */
+    function getProtocolFeeBurner() external view returns (IProtocolFeeBurner) {
+        return _protocolFeeBurner;
     }
 
     /***************************************************************************
