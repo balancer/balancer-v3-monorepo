@@ -30,24 +30,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
     using SafeERC20 for IERC20;
 
-    /**
-     * @notice Emitted when the target token is updated.
-     * @param token The preferred token for receiving protocol fees
-     */
-    event TargetTokenSet(IERC20 indexed token);
-
-    /**
-     * @notice Emitted when the fee recipient address is verified.
-     * @param feeRecipient The final destination of collected protocol fees
-     */
-    event FeeRecipientSet(address indexed feeRecipient);
-
-    /**
-     * @notice Emitted when governance has set the protocol fee burner contract.
-     * @param protocolFeeBurner The contract used to "burn" protocol fees (i.e., convert them to the target token)
-     */
-    event ProtocolFeeBurnerSet(address indexed protocolFeeBurner);
-
     /// @notice This contract should not receive ETH.
     error CannotReceiveEth();
 
@@ -72,7 +54,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         // `withdrawProtocolFees` on the `ProtocolFeeController.
         getProtocolFeeController().withdrawProtocolFees(pool, address(this));
 
-        _processProtocolFees(getVault().getPoolTokens(pool));
+        _processProtocolFees(pool, getVault().getPoolTokens(pool));
     }
 
     /// @inheritdoc IProtocolFeeSweeper
@@ -84,12 +66,12 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = token;
 
-        _processProtocolFees(tokens);
+        _processProtocolFees(pool, tokens);
     }
 
     // Convert the given tokens to the target token (if enabled), and forward to the fee recipient. This assumes we
     // have externally validated the fee recipient.
-    function _processProtocolFees(IERC20[] memory tokens) internal {
+    function _processProtocolFees(address pool, IERC20[] memory tokens) internal {
         IProtocolFeeBurner burner = _protocolFeeBurner;
         IERC20 targetToken = _targetToken;
         address recipient = _feeRecipient;
@@ -103,9 +85,21 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
             // If this is already the target token (or we haven't set a burner), just forward directly.
             if (canBurn && feeToken != targetToken) {
                 feeToken.forceApprove(address(burner), tokenBalance);
-                _protocolFeeBurner.burn(feeToken, tokenBalance, targetToken, recipient);
+                uint256 tokenOutAmount = _protocolFeeBurner.burn(feeToken, tokenBalance, targetToken, recipient);
+
+                emit ProtocolFeeBurned(
+                    pool,
+                    feeToken,
+                    tokenBalance,
+                    targetToken,
+                    tokenOutAmount,
+                    address(_protocolFeeBurner),
+                    recipient
+                );
             } else {
                 feeToken.safeTransfer(recipient, tokenBalance);
+
+                emit ProtocolFeeTransferred(pool, feeToken, tokenBalance, recipient);
             }
         }
     }
