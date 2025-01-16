@@ -12,6 +12,7 @@ import {
   MAX_UINT48,
   ZERO_BYTES32,
   ZERO_ADDRESS,
+  ONES_BYTES32,
 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
@@ -27,7 +28,7 @@ import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/in
 import { PoolConfigStructOutput } from '@balancer-labs/v3-solidity-utils/typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
 import { TokenConfigStruct } from '../typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
 
-describe('2CLP', function () {
+describe('2-CLP', function () {
   const FACTORY_VERSION = '2-CLP Factory v1';
   const POOL_VERSION = '2-CLP Pool v1';
   const ROUTER_VERSION = 'Router v11';
@@ -56,6 +57,7 @@ describe('2CLP', function () {
 
   let tokenAAddress: string;
   let tokenBAddress: string;
+  let tokenConfig: TokenConfigStruct[];
 
   before('setup signers', async () => {
     [, alice, bob] = await ethers.getSigners();
@@ -81,7 +83,7 @@ describe('2CLP', function () {
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
-    const tokenConfig: TokenConfigStruct[] = buildTokenConfig(poolTokens);
+    tokenConfig = buildTokenConfig(poolTokens);
 
     const tx = await factory.create(
       '2-CLP',
@@ -161,5 +163,40 @@ describe('2CLP', function () {
     const { sqrtAlpha, sqrtBeta } = await pool.getGyro2CLPPoolImmutableData();
     expect(sqrtAlpha).to.be.eq(SQRT_ALPHA);
     expect(sqrtBeta).to.be.eq(SQRT_BETA);
+  });
+
+  describe('LM flags', () => {
+    let newPool: Gyro2CLPPool;
+
+    sharedBeforeEach('create new pool with donation and disabled unbalanced liquidity', async () => {
+      const tx = await factory.create(
+        '2-CLP',
+        'Test',
+        tokenConfig,
+        SQRT_ALPHA,
+        SQRT_BETA,
+        { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
+        SWAP_FEE,
+        ZERO_ADDRESS,
+        true, // donations
+        true, // disable support to unbalanced add/remove liquidity
+        ONES_BYTES32
+      );
+
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+      newPool = (await deployedAt('Gyro2CLPPool', event.args.pool)) as unknown as Gyro2CLPPool;
+    });
+
+    it('allows donation', async () => {
+      const { liquidityManagement } = await vault.getPoolConfig(newPool);
+      expect(liquidityManagement.enableDonation).to.be.true;
+    });
+
+    it('does not allow unbalanced liquidity', async () => {
+      const { liquidityManagement } = await vault.getPoolConfig(newPool);
+      expect(liquidityManagement.disableUnbalancedLiquidity).to.be.true;
+    });
   });
 });

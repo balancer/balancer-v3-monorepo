@@ -96,7 +96,7 @@ contract GyroECLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
             false, // not exempt from protocol fees
             roleAccounts,
             poolHooksContract,
-            getDefaultLiquidityManagement()
+            liquidityManagement
         );
 
         _registerPoolWithFactory(pool);
