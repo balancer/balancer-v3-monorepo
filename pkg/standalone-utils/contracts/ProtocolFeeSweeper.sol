@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 
@@ -16,7 +17,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
  * @dev This withdraws all protocol fees previously collected and allocated to the protocol by the
  * `ProtocolFeeController`, processes them with a configurable "burner" (e.g., from CowSwap) and forwards them to
  * a recipient contract.
- * 
+ *
  * An off-chain process can call `collectAggregateFees(pool)` on the fee controller for a given pool, which will
  * collect and allocate the fees to the protocol and pool creator. `getProtocolFeeAmounts(pool)` returns the fee
  * amounts available for withdrawal. If these are great enough, `sweepProtocolFees(pool)` here will withdraw,
@@ -26,7 +27,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
  * This is the basic version that uses only the "fallback" method, simply forwarding all tokens collected to a
  * designated fee recipient (e.g., a multi-sig). It has some infrastructure that will be used in future versions.
  */
-contract ProtocolFeeSweeper is SingletonAuthentication {
+contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
     using SafeERC20 for IERC20;
 
     /**
@@ -65,41 +66,20 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
         _setFeeRecipient(feeRecipient);
     }
 
-    /**
-     * @notice Getter for the current fee recipient.
-     * @return feeRecipient The currently active fee recipient
-     */
-    function getFeeRecipient() external view returns(address) {
-        return _feeRecipient;
-    }
-
-    /**
-     * @notice Withdraw, convert, and forward protocol fees for a given pool.
-     * @dev This will withdraw all fee tokens to this contract, and attempt to convert and forward them.
-     * @param pool The pool from which we're withdrawing fees
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function sweepProtocolFees(address pool) external {
         // Collect protocol fees - note that governance will need to grant this contract permission to call
-        // `withdrawProtocolFees` on the `ProtocolFeeController. It is not immutable in the Vault, so we need
-        // to get it every time.
-        IProtocolFeeController feeController = getVault().getProtocolFeeController();
-        feeController.withdrawProtocolFees(pool, address(this));
+        // `withdrawProtocolFees` on the `ProtocolFeeController.
+        getProtocolFeeController().withdrawProtocolFees(pool, address(this));
 
         _processProtocolFees(getVault().getPoolTokens(pool));
     }
 
-    /**
-     * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
-     * @dev This will withdraw any fees collected on that pool and token, and attempt to convert and forward them.
-     * @param pool The pool from which we're withdrawing fees
-     * @param token The fee token
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function sweepProtocolFeesForToken(address pool, IERC20 token) external {
         // Collect protocol fees - note that governance will need to grant this contract permission to call
-        // `withdrawProtocolFeesForToken` on the `ProtocolFeeController. It is not immutable in the Vault, so we need
-        // to get it every time.
-        IProtocolFeeController feeController = getVault().getProtocolFeeController();
-        feeController.withdrawProtocolFeesForToken(pool, address(this), token);
+        // `withdrawProtocolFeesForToken` on the `ProtocolFeeController.
+        getProtocolFeeController().withdrawProtocolFeesForToken(pool, address(this), token);
 
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = token;
@@ -107,25 +87,49 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
         _processProtocolFees(tokens);
     }
 
-    /**
-     * @notice Retrieve any tokens "stuck" in this contract (e.g., dust, or failed conversions).
-     * @dev It will recover the full balance of all the tokens. This can only be called by the `feeRecipient`.
-     * @param tokens The tokens to recover
-     */
-    function recoverProtocolFees(IERC20[] memory tokens) external {
-        if (msg.sender != _feeRecipient) {
-            revert SenderNotAllowed();
-        }
+    // Convert the given tokens to the target token (if enabled), and forward to the fee recipient. This assumes we
+    // have externally validated the fee recipient.
+    function _processProtocolFees(IERC20[] memory tokens) internal {
+        IProtocolFeeBurner burner = _protocolFeeBurner;
+        IERC20 targetToken = _targetToken;
+        address recipient = _feeRecipient;
+
+        bool canBurn = targetToken != IERC20(address(0)) && burner != IProtocolFeeBurner(address(0));
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 tokenBalance = token.balanceOf(address(this));
+            IERC20 feeToken = tokens[i];
+            uint256 tokenBalance = feeToken.balanceOf(address(this));
 
-            if (tokenBalance > 0) {
-                token.safeTransfer(_feeRecipient, tokenBalance);
+            // If this is already the target token (or we haven't set a burner), just forward directly.
+            if (canBurn && feeToken != targetToken) {
+                feeToken.forceApprove(address(burner), tokenBalance);
+                _protocolFeeBurner.burn(feeToken, tokenBalance, targetToken, recipient);
+            } else {
+                feeToken.safeTransfer(recipient, tokenBalance);
             }
         }
     }
+
+    /**
+     * @notice Return the address of the current `ProtocolFeeController` from the Vault.
+     * @dev It is not immutable in the Vault, so we need to get it every time.
+     * @return protocolFeeController The address of the current `ProtocolFeeController`
+     */
+    function getProtocolFeeController() public view returns (IProtocolFeeController) {
+        return getVault().getProtocolFeeController();
+    }
+
+    /**
+     * @notice Getter for the current fee recipient.
+     * @return feeRecipient The currently active fee recipient
+     */
+    function getFeeRecipient() external view returns (address) {
+        return _feeRecipient;
+    }
+
+    /***************************************************************************
+                                Permissioned Functions
+    ***************************************************************************/
 
     /**
      * @notice Update the fee recipient address.
@@ -136,10 +140,6 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
         _setFeeRecipient(feeRecipient);
     }
 
-    /**
-     * @notice Set the fee recipient and emit the corresponding event.
-     * @param feeRecipient The address of the new fee recipient
-     */
     function _setFeeRecipient(address feeRecipient) internal {
         _feeRecipient = feeRecipient;
 
@@ -154,6 +154,10 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
      * @param protocolFeeBurner The address of the current protocol fee burner
      */
     function setProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external authenticate {
+        _setProtocolFeeBurner(protocolFeeBurner);
+    }
+
+    function _setProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) internal {
         _protocolFeeBurner = protocolFeeBurner;
 
         emit ProtocolFeeBurnerSet(address(protocolFeeBurner));
@@ -174,25 +178,22 @@ contract ProtocolFeeSweeper is SingletonAuthentication {
         emit TargetTokenSet(targetToken);
     }
 
-    // Convert the given tokens to the target token (if enabled), and forward to the fee recipient. This assumes we
-    // have externally validated the fee recipient.
-    function _processProtocolFees(IERC20[] memory tokens) internal {
-        IProtocolFeeBurner burner = _protocolFeeBurner;
-        IERC20 targetToken = _targetToken;
-        address recipient = _feeRecipient;
+    /**
+     * @notice Retrieve any tokens "stuck" in this contract (e.g., dust, or failed conversions).
+     * @dev It will recover the full balance of all the tokens. This can only be called by the `feeRecipient`.
+     * @param feeTokens The tokens to recover
+     */
+    function recoverProtocolFees(IERC20[] memory feeTokens) external {
+        if (msg.sender != _feeRecipient) {
+            revert SenderNotAllowed();
+        }
 
-        bool canBurn = targetToken != IERC20(address(0)) && burner != IProtocolFeeBurner(address(0));
+        for (uint256 i = 0; i < feeTokens.length; ++i) {
+            IERC20 feeToken = feeTokens[i];
+            uint256 tokenBalance = feeToken.balanceOf(address(this));
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 tokenBalance = token.balanceOf(address(this));
-
-            // If this is already the target token (or we haven't set a burner), just forward directly.
-            if (canBurn == false || token == targetToken) {
-                token.safeTransfer(recipient, tokenBalance);
-            } else {
-                token.forceApprove(address(burner), tokenBalance);
-                _protocolFeeBurner.burn(token, tokenBalance, targetToken, recipient);
+            if (tokenBalance > 0) {
+                feeToken.safeTransfer(msg.sender, tokenBalance);
             }
         }
     }
