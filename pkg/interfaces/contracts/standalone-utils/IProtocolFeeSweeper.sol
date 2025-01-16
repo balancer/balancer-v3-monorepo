@@ -61,16 +61,10 @@ interface IProtocolFeeSweeper {
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool.
-     * @dev This will withdraw all fee tokens to this contract, and attempt to convert and forward them.
+     * @dev This will withdraw all fee tokens to this contract, and attempt to convert and forward them. There is also
+     * a single token pool withdrawal, but that is an edge case not in scope for the sweeper.
+     *
      * @param pool The pool from which we're withdrawing fees
      */
     function sweepProtocolFees(address pool) external;
-
-    /**
-     * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
-     * @dev This will withdraw any fees collected on that pool and token, and attempt to convert and forward them.
-     * @param pool The pool from which we're withdrawing fees
-     * @param token The fee token
-     */
-    function sweepProtocolFeesForToken(address pool, IERC20 token) external;
 }

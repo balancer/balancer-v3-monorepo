@@ -57,18 +57,6 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         _processProtocolFees(pool, getVault().getPoolTokens(pool));
     }
 
-    /// @inheritdoc IProtocolFeeSweeper
-    function sweepProtocolFeesForToken(address pool, IERC20 token) external {
-        // Collect protocol fees - note that governance will need to grant this contract permission to call
-        // `withdrawProtocolFeesForToken` on the `ProtocolFeeController.
-        getProtocolFeeController().withdrawProtocolFeesForToken(pool, address(this), token);
-
-        IERC20[] memory tokens = new IERC20[](1);
-        tokens[0] = token;
-
-        _processProtocolFees(pool, tokens);
-    }
-
     // Convert the given tokens to the target token (if enabled), and forward to the fee recipient. This assumes we
     // have externally validated the fee recipient.
     function _processProtocolFees(address pool, IERC20[] memory tokens) internal {
