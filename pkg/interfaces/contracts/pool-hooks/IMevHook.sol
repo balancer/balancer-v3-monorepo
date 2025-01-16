@@ -10,6 +10,13 @@ interface IMevHook {
     error MevHookNotRegisteredInPool(address pool);
 
     /**
+     * @notice The new max MEV swap fee percentage is above the allowed absolute maximum.
+     * @param feePercentage New fee percentage being set
+     * @param maxFeePercentage Absolute maximum allowed
+     */
+    error MevSwapFeePercentageAboveMax(uint256 feePercentage, uint256 maxFeePercentage);
+
+    /**
      * @notice The MEV tax was globally enabled or disabled in the hook.
      * @param enabled The new value for mevTaxEnabled. If true, MEV tax will be charged
      */
@@ -28,6 +35,12 @@ interface IMevHook {
      * @param newDefaultMevTaxThreshold The new value for defaultMevTaxThreshold
      */
     event DefaultMevTaxThresholdSet(uint256 newDefaultMevTaxThreshold);
+
+    /**
+     * @notice The maximum MEV swap fee percentage was set.
+     * @param maxMevSwapFeePercentage The new value for maxMevSwapFeePercentage.
+     */
+    event MaxMevSwapFeePercentageSet(uint256 maxMevSwapFeePercentage);
 
     /**
      * @notice A pool's MEV tax multiplier was set.
@@ -57,6 +70,25 @@ interface IMevHook {
     function enableMevTax() external;
 
     /**
+     * @notice Returns the maximum MEV swap fee percentage returned by `onComputeDynamicSwapFeePercentage`.
+     * @dev The absolute minimum is still the static swap fee percentage of the pool.
+     * In other words:
+     * - if `maxMevSwapFeePercentage > staticSwapFeePercentage`, then
+     * `staticSwapFeePercentage <= computedFeePercentage <= maxMevSwapFeePercentage`
+     * - if `maxMevSwapFeePercentage <= staticSwapFeePercentage, then `computedFeePercentage = maxMevSwapFeePercentage`
+     */
+    function getMaxMevSwapFeePercentage() external view returns (uint256);
+
+    /**
+     * @notice Permissioned function to set the maximum MEV swap fee percentage returned by
+     * `onComputeDynamicSwapFeePercentage`.
+     * @dev See `getMaxMevSwapFeePercentage` for reference; this maximum applies only when
+     * `maxMevSwapFeePercentage > staticSwapFeePercentage`.
+     * Capped by MAX_FEE_PERCENTAGE defined by the Vault.
+     */
+    function setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) external;
+
+    /**
      * @notice Fetch the default multiplier for the priority gas price.
      * @dev The MEV swap fee percentage is calculated as `mevTaxMultiplier * priorityGasPrice`, where priorityGasPrice
      * is defined as `transactionGasPrice - baseFee`. This leads to a trade-off that requires careful calibration of
@@ -77,7 +109,8 @@ interface IMevHook {
      * specific chain. However, the resulting swap fee percentage, given by `priorityGasPrice * multiplier`, is capped
      * at the lower end by the static swap fee, and at the upper end by the maximum swap fee percentage of the vault.
      * Therefore, a multiplier with value 0 will effectively disable the MEV tax, since the static swap fee will be
-     * charged. Also, a very high multiplier may disable pool swaps, since the MEV tax will be 99.9999%.
+     * charged. Also, a very high multiplier will make the trader pay the maximum configured swap fee which can be
+     * close to 100%, effectively disabling swaps.
      *
      * @param newDefaultMevTaxMultiplier 18-decimal used to calculate the MEV swap fee percentage
      */
@@ -102,8 +135,8 @@ interface IMevHook {
      * MevHookNotRegisteredForPool(pool). However, the resulting swap fee percentage, given by
      * `priorityGasPrice * multiplier`, is capped in the lower end by the static swap fee, and at the upper end by
      * the maximum swap fee percentage of the vault. Therefore, a multiplier with value 0 will effectively disable the
-     * MEV tax, since the static swap fee will be charged. Also, a very high multiplier may disable pool swaps, since
-     * the MEV tax will be 99.9999%.
+     * MEV tax, since the static swap fee will be charged. Also, a very high multiplier will make the trader pay the
+     * maximum configured swap fee which can be close to 100%, effectively disabling swaps.
      *
      * @param pool Address of the pool with the multiplier
      * @param newPoolMevTaxMultiplier New multiplier to be set in a pool
