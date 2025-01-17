@@ -256,6 +256,13 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
 
     /// @inheritdoc IBalancerContractRegistry
     function isActiveBalancerContract(ContractType contractType, address contractAddress) public view returns (bool) {
+        return _isActiveBalancerContract(contractType, contractAddress);
+    }
+
+    function _isActiveBalancerContract(
+        ContractType contractType,
+        address contractAddress
+    ) internal view returns (bool) {
         ContractInfo memory info = _contractInfo[contractAddress];
 
         // Ensure the address was registered as the given type - and that it's still active.
@@ -296,6 +303,6 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
 
     /// @inheritdoc IBalancerContractRegistry
     function isTrustedRouter(address router) external view returns (bool) {
-        return isActiveBalancerContract(ContractType.ROUTER, router);
+        return _isActiveBalancerContract(ContractType.ROUTER, router);
     }
 }
