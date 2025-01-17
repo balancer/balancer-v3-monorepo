@@ -155,26 +155,26 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(vault.getTokenDelta(dai), 0, "Initial token delta non-zero (Vault)");
         assertEq(explorer.getTokenDelta(dai), 0, "Initial token delta non-zero (Explorer)");
 
-        dai.mint(address(vault), defaultAmount);
+        dai.mint(address(vault), DEFAULT_AMOUNT);
 
         vault.forceUnlock();
-        uint256 settlementAmount = vault.settle(dai, defaultAmount);
+        uint256 settlementAmount = vault.settle(dai, DEFAULT_AMOUNT);
         int256 vaultDelta = vault.getTokenDelta(dai);
 
-        assertEq(settlementAmount, defaultAmount, "Wrong settlement amount");
+        assertEq(settlementAmount, DEFAULT_AMOUNT, "Wrong settlement amount");
         assertEq(vaultDelta, -settlementAmount.toInt256(), "Wrong Vault token delta");
         assertEq(explorer.getTokenDelta(dai), vaultDelta, "getTokenDelta mismatch");
     }
 
     function testGetReservesOf() public {
-        dai.mint(address(vault), defaultAmount);
+        dai.mint(address(vault), DEFAULT_AMOUNT);
 
         vault.forceUnlock();
-        uint256 settlementAmount = vault.settle(dai, defaultAmount);
+        uint256 settlementAmount = vault.settle(dai, DEFAULT_AMOUNT);
 
-        assertEq(settlementAmount, defaultAmount, "Wrong settlement amount");
-        assertEq(vault.getReservesOf(dai), defaultAmount * 2, "Wrong Vault reserves");
-        assertEq(explorer.getReservesOf(dai), defaultAmount * 2, "Wrong Explorer reserves");
+        assertEq(settlementAmount, DEFAULT_AMOUNT, "Wrong settlement amount");
+        assertEq(vault.getReservesOf(dai), DEFAULT_AMOUNT * 2, "Wrong Vault reserves");
+        assertEq(explorer.getReservesOf(dai), DEFAULT_AMOUNT * 2, "Wrong Explorer reserves");
     }
 
     function testPoolRegistration() public {
@@ -487,10 +487,10 @@ contract VaultExplorerTest is BaseVaultTest {
 
         assertEq(swapFees, 0, "Non-zero initial swap fees");
 
-        vault.manualSetAggregateSwapFeeAmount(pool, dai, defaultAmount);
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
 
         swapFees = explorer.getAggregateSwapFeeAmount(pool, dai);
-        assertEq(swapFees, defaultAmount, "Swap fees are zero");
+        assertEq(swapFees, DEFAULT_AMOUNT, "Swap fees are zero");
     }
 
     function testGetAggregateYieldFeeAmount() public {
@@ -498,10 +498,10 @@ contract VaultExplorerTest is BaseVaultTest {
 
         assertEq(yieldFees, 0, "Non-zero initial yield fees");
 
-        vault.manualSetAggregateYieldFeeAmount(pool, dai, defaultAmount);
+        vault.manualSetAggregateYieldFeeAmount(pool, dai, DEFAULT_AMOUNT);
 
         yieldFees = explorer.getAggregateYieldFeeAmount(pool, dai);
-        assertEq(yieldFees, defaultAmount, "Yield fees are zero");
+        assertEq(yieldFees, DEFAULT_AMOUNT, "Yield fees are zero");
     }
 
     function testGetStaticSwapFeePercentage() public {
@@ -509,11 +509,11 @@ contract VaultExplorerTest is BaseVaultTest {
 
         assertEq(explorerSwapFeePercentage, 0, "Non-zero initial swap fee");
 
-        assertGt(swapFeePercentage, 0, "Swap fee is zero");
-        vault.manualSetStaticSwapFeePercentage(pool, swapFeePercentage);
+        assertGt(DEFAULT_SWAP_FEE_PERCENTAGE, 0, "Swap fee is zero");
+        vault.manualSetStaticSwapFeePercentage(pool, DEFAULT_SWAP_FEE_PERCENTAGE);
 
         explorerSwapFeePercentage = explorer.getStaticSwapFeePercentage(pool);
-        assertEq(explorerSwapFeePercentage, swapFeePercentage, "Wrong swap fee");
+        assertEq(explorerSwapFeePercentage, DEFAULT_SWAP_FEE_PERCENTAGE, "Wrong swap fee");
     }
 
     function testGetPoolRoleAccounts() public view {
@@ -528,15 +528,15 @@ contract VaultExplorerTest is BaseVaultTest {
     }
 
     function testComputeDynamicSwapFeePercentage() public {
-        assertGt(swapFeePercentage, 0, "Swap fee is zero");
-        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
+        assertGt(DEFAULT_SWAP_FEE_PERCENTAGE, 0, "Swap fee is zero");
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(DEFAULT_SWAP_FEE_PERCENTAGE);
 
         uint256 dynamicSwapFeePercentage = explorer.computeDynamicSwapFeePercentage(
             pool,
             PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
-                amountGivenScaled18: defaultAmount,
-                balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                amountGivenScaled18: DEFAULT_AMOUNT,
+                balancesScaled18: [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
                 indexIn: daiIdx,
                 indexOut: usdcIdx,
                 router: address(0),
@@ -545,7 +545,7 @@ contract VaultExplorerTest is BaseVaultTest {
         );
 
         // Should default to the static fee.
-        assertEq(dynamicSwapFeePercentage, swapFeePercentage, "Wrong dynamic fee percentage");
+        assertEq(dynamicSwapFeePercentage, DEFAULT_SWAP_FEE_PERCENTAGE, "Wrong dynamic fee percentage");
     }
 
     function testIsPoolInRecoveryMode() public {
@@ -799,7 +799,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         if (initializeNewPool) {
             vm.prank(alice);
-            router.initialize(newPool, tokens, [defaultAmount, defaultAmount].toMemoryArray(), 0, false, bytes(""));
+            router.initialize(newPool, tokens, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
         }
     }
 
@@ -830,9 +830,9 @@ contract VaultExplorerTest is BaseVaultTest {
 
     function _setupBuffer() private {
         vm.startPrank(lp);
-        dai.mint(lp, defaultAmount);
-        dai.approve(address(waDAI), defaultAmount);
-        waDAI.deposit(defaultAmount, lp);
+        dai.mint(lp, DEFAULT_AMOUNT);
+        dai.approve(address(waDAI), DEFAULT_AMOUNT);
+        waDAI.deposit(DEFAULT_AMOUNT, lp);
 
         waDAI.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);

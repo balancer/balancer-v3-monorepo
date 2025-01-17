@@ -58,8 +58,8 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         for (uint256 i = 0; i < numTokens; ++i) {
             // Use all 18-decimal tokens, for simplicity.
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, defaultBalance);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(bob, defaultBalance);
+            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, defaultAccountBalance());
+            ERC20TestToken(address(bigPoolTokens[i])).mint(bob, defaultAccountBalance());
             weights[i] = 1e18 / numTokens;
         }
 
@@ -99,10 +99,10 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        _approveForPool(IERC20(address(newPool)));
+        _approvePoolTokensForPool(IERC20(address(newPool)));
     }
 
-    function _approveForSender() internal {
+    function _approvePoolTokensForSender() internal {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             poolTokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(poolTokens[i]), address(router), type(uint160).max, type(uint48).max);
@@ -110,11 +110,11 @@ contract BigWeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         }
     }
 
-    function _approveForPool(IERC20 bpt) internal {
+    function _approvePoolTokensForPool(IERC20 bpt) internal {
         for (uint256 i = 0; i < users.length; ++i) {
             vm.startPrank(users[i]);
 
-            _approveForSender();
+            _approvePoolTokensForSender();
 
             bpt.approve(address(router), type(uint256).max);
             bpt.approve(address(batchRouter), type(uint256).max);

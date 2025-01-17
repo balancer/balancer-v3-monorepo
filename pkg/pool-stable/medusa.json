@@ -8,7 +8,7 @@
     "callSequenceLength": 10,
     "corpusDirectory": "medusa-corpus",
     "coverageEnabled": true,
-    "targetContracts": ["AddAndRemoveLiquidityStableMedusaTest"],
+    "targetContracts": ["AddAndRemoveLiquidityStableMedusaTest", "SwapMedusaTest"],
     "predeployedContracts": {},
     "targetContractsBalances": [],
     "constructorArgs": {},

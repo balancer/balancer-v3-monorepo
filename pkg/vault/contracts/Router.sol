@@ -45,7 +45,7 @@ contract Router is IRouter, RouterCommon {
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountOut) {
+    ) external payable saveSender(msg.sender) returns (uint256 bptAmountOut) {
         return
             abi.decode(
                 _vault.unlock(

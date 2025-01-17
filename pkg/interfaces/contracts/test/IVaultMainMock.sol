@@ -295,6 +295,17 @@ interface IVaultMainMock {
 
     function manualGetCurrentUnlockSessionId() external view returns (uint256);
 
+    function manualComputeAmountGivenScaled18(
+        VaultSwapParams memory vaultSwapParams,
+        PoolData memory poolData,
+        SwapState memory swapState
+    ) external pure returns (uint256);
+
+    function manualLoadSwapState(
+        VaultSwapParams memory vaultSwapParams,
+        PoolData memory poolData
+    ) external pure returns (SwapState memory swapState);
+
     function previewDeposit(IERC4626 wrapper, uint256 amountInUnderlying) external returns (uint256 amountOutWrapped);
 
     function previewMint(IERC4626 wrapper, uint256 amountOutWrapped) external returns (uint256 amountInUnderlying);

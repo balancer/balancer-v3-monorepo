@@ -1701,7 +1701,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         newPool = address(deployPoolMock(IVault(address(vault)), "PARTIAL ERC4626 Pool", "PART-ERC4626P"));
 
-        PoolFactoryMock(poolFactory).registerTestPool(newPool, tokenConfig, poolHooksContract);
+        PoolFactoryMock(poolFactory).registerPoolWithHook(newPool, tokenConfig, poolHooksContract);
 
         vm.label(newPool, "partial erc4626 pool");
 

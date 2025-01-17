@@ -31,7 +31,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
-        defaultBalance = 1e10 * 1e18;
+        setDefaultAccountBalance(1e10 * 1e18);
+
         // We will use min trade amount in this test.
         vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
 
@@ -97,7 +98,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         PoolSwapParams memory poolSwapParamsDynamicFeeHook = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
-            amountGivenScaled18: defaultAmount,
+            amountGivenScaled18: DEFAULT_AMOUNT,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
             indexIn: daiIdx,
             indexOut: usdcIdx,
@@ -108,7 +109,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         // Vault adjusts amount given to charge fees on exact in.
         PoolSwapParams memory poolSwapParamsOnSwap = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
-            amountGivenScaled18: defaultAmount - defaultAmount.mulUp(dynamicSwapFeePercentage),
+            amountGivenScaled18: DEFAULT_AMOUNT - DEFAULT_AMOUNT.mulUp(dynamicSwapFeePercentage),
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
             indexIn: daiIdx,
             indexOut: usdcIdx,
@@ -133,7 +134,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.prank(alice);
         // Perform a swap in the pool
-        router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, dai, usdc, DEFAULT_AMOUNT, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapCallsComputeFeeExactOut() public {
@@ -144,7 +145,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         PoolSwapParams memory poolSwapParams = PoolSwapParams({
             kind: SwapKind.EXACT_OUT,
-            amountGivenScaled18: defaultAmount,
+            amountGivenScaled18: DEFAULT_AMOUNT,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
             indexIn: daiIdx,
             indexOut: usdcIdx,
@@ -169,7 +170,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.prank(alice);
         // Perform a swap in the pool.
-        router.swapSingleTokenExactOut(pool, dai, usdc, defaultAmount, MAX_UINT256, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactOut(pool, dai, usdc, DEFAULT_AMOUNT, MAX_UINT256, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapCallsComputeFeeWithSender() public {
@@ -180,22 +181,26 @@ contract DynamicFeePoolTest is BaseVaultTest {
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
 
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, dai, usdc, DEFAULT_AMOUNT, 0, MAX_UINT256, false, bytes(""));
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
         // Near 100% fee; should get nothing.
-        assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount.mulDown(1e16), "Wrong alice balance (high fee)");
+        assertEq(
+            aliceBalanceAfter - aliceBalanceBefore,
+            DEFAULT_AMOUNT.mulDown(1e16),
+            "Wrong alice balance (high fee)"
+        );
 
         // Now set Alice as the special 0-fee sender.
         PoolHooksMock(poolHooksContract).setSpecialSender(alice);
         aliceBalanceBefore = aliceBalanceAfter;
 
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, dai, usdc, DEFAULT_AMOUNT, 0, MAX_UINT256, false, bytes(""));
 
         aliceBalanceAfter = usdc.balanceOf(alice);
         // No fee; should get full swap amount.
-        assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount, "Wrong alice balance (zero fee)");
+        assertEq(aliceBalanceAfter - aliceBalanceBefore, DEFAULT_AMOUNT, "Wrong alice balance (zero fee)");
     }
 
     function testExternalComputeFee() public {
@@ -254,7 +259,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             pool,
             dai,
             usdc,
-            defaultAmount,
+            DEFAULT_AMOUNT,
             0,
             MAX_UINT256,
             false,
@@ -268,7 +273,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             address(noFeeReferencePool),
             dai,
             usdc,
-            defaultAmount,
+            DEFAULT_AMOUNT,
             0,
             MAX_UINT256,
             false,
