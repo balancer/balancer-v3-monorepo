@@ -61,8 +61,8 @@ interface ICompositeLiquidityRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
-     * @return tokensIn Actual tokens added in the pool
-     * @return amountsIn Actual amounts of tokens added in the pool
+     * @return tokensIn Actual tokens added to the pool
+     * @return amountsIn Actual amounts of tokens added to the pool
      */
     function addLiquidityProportionalToERC4626Pool(
         address pool,
@@ -123,8 +123,8 @@ interface ICompositeLiquidityRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
-     * @return tokensIn Expected tokens added in the pool
-     * @return amountsIn Expected amounts of tokens added in the pool
+     * @return tokensIn Expected tokens added to the pool
+     * @return amountsIn Expected amounts of tokens added to the pool
      */
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
@@ -167,7 +167,7 @@ interface ICompositeLiquidityRouter {
      * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
      * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
      * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, sorted according to tokensIn array
+     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
      * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
@@ -187,7 +187,7 @@ interface ICompositeLiquidityRouter {
      * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
      * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
      * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, sorted according to tokensIn array
+     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
      * @return bptAmountOut Expected amount of parent pool tokens to receive
