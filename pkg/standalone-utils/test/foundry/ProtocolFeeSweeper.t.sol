@@ -77,6 +77,13 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         feeSweeper.setFeeRecipient(admin);
     }
 
+    function testSetInvalidFeeRecipient() public {
+        vm.expectRevert(ProtocolFeeSweeper.InvalidFeeRecipient.selector);
+
+        vm.prank(admin);
+        feeSweeper.setFeeRecipient(ZERO_ADDRESS);
+    }
+
     function testSetFeeRecipient() public {
         vm.prank(admin);
         feeSweeper.setFeeRecipient(alice);
