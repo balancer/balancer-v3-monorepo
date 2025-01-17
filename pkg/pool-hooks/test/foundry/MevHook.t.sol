@@ -552,4 +552,28 @@ contract MevHookTest is BaseVaultTest {
         assertEq(feePercentage, maxMevSwapFeePercentage, "Fee percentage not equal to max fee percentage");
         assertGe(feePercentage, staticSwapFeePercentage, "Fee percentage not greater than static fee percentage");
     }
+
+    function testFeePercentageAboveThresholdLowMaxFee__Fuzz(uint256 gasPriceDelta) public {
+        uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
+        uint256 priorityThreshold = 100e9;
+        uint256 multiplier = 1_000_000e18;
+
+        uint256 maxMevSwapFeePercentage = 5e16; // 5% max swap fee
+        vm.prank(admin);
+        _mevHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+
+        uint256 baseFee = 1e9;
+        gasPriceDelta = bound(gasPriceDelta, 0, type(uint256).max - priorityThreshold - baseFee);
+
+        vm.fee(baseFee);
+        vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
+
+        uint256 feePercentage = _mevHook.calculateSwapFeePercentageExternal(
+            staticSwapFeePercentage,
+            multiplier,
+            priorityThreshold
+        );
+        // If maxMevSwapFeePercentage < staticSwapFeePercentage, return staticSwapFeePercentage.
+        assertEq(feePercentage, staticSwapFeePercentage, "Fee percentage not equal to static fee percentage");
+    }
 }

@@ -275,15 +275,18 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
         (bool success, uint256 feeIncrement) = Math.tryMul(priorityGasPrice - threshold, multiplier);
 
-        // If static swap fee percentage is bigger than type(uint256).max - feeIncrement, the sum of feeIncrement and
-        // staticSwapFeePercentage will overflow. If that's the case, return maxMevSwapFeePercentage.
-        if (success == false || type(uint256).max - feeIncrement < staticSwapFeePercentage) {
+        if (success == false) {
             return maxMevSwapFeePercentage;
         }
 
+        // Math.tryMul is not an operation with 18-decimals number, so we need to fix the result dividing by 1e18.
+        feeIncrement = feeIncrement / 1e18;
+
+        // `staticSwapFeePercentage` cannot be greater than 1e18, so there is no need to check if
+        // `staticSwapFeePercentage + feeIncrement` overflows.
         uint256 mevSwapFeePercentage = staticSwapFeePercentage + feeIncrement;
 
-        // Cap the maximum fee at `_maxMevSwapFeePercentage`.
+        // Cap the maximum fee at `maxMevSwapFeePercentage`.
         if (mevSwapFeePercentage > maxMevSwapFeePercentage) {
             return maxMevSwapFeePercentage;
         }
