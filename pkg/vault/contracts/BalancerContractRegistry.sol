@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+
 import {
     IBalancerContractRegistry,
     ContractType
@@ -39,6 +41,8 @@ import { SingletonAuthentication } from "./SingletonAuthentication.sol";
  * contract for the Vault address, so it doesn't need to be a type.
  */
 contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthentication {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     // ContractId is the hash of contract name. Names must be unique (cannot have the same name with different types).
     mapping(bytes32 contractId => address addr) private _contractRegistry;
 
@@ -58,6 +62,8 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     // This is separate from the main contract registry to enforce different rules (e.g., prevent corrupting the
     // contract state by overwriting a registry entry with an "alias" that matches a different contract).
     mapping(bytes32 contractAliasId => address addr) private _contractAliases;
+
+    EnumerableSet.AddressSet internal _trustedRouters;
 
     /**
      * @notice A `_contractRegistry` entry has no corresponding `_contractInfo`.
@@ -292,5 +298,54 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
 
     function _getContractId(string memory contractName) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(contractName));
+    }
+
+    /// @inheritdoc IBalancerContractRegistry
+    function isTrustedRouter(address router) external view returns (bool) {
+        return _trustedRouters.contains(router);
+    }
+
+    /// @inheritdoc IBalancerContractRegistry
+    function getTrustedRoutersNumber() external view returns (uint256) {
+        return _trustedRouters.length();
+    }
+
+    /// @inheritdoc IBalancerContractRegistry
+    function getTrustedRouterAt(uint256 index) external view returns (address) {
+        return _trustedRouters.at(index);
+    }
+
+    /// @inheritdoc IBalancerContractRegistry
+    function addTrustedRouters(address[] memory trustedRouters) external authenticate {
+        uint256 numRouters = trustedRouters.length;
+        for (uint256 i = 0; i < numRouters; ++i) {
+            _addTrustedRouter(trustedRouters[i]);
+        }
+    }
+
+    function _addTrustedRouter(address trustedRouter) internal {
+        bool routerAdded = _trustedRouters.add(trustedRouter);
+        if (routerAdded == false) {
+            revert TrustedRouterAlreadyAdded(trustedRouter);
+        }
+
+        emit TrustedRouterAdded(trustedRouter);
+    }
+
+    /// @inheritdoc IBalancerContractRegistry
+    function removeTrustedRouters(address[] memory trustedRouters) external authenticate {
+        uint256 numRouters = trustedRouters.length;
+        for (uint256 i = 0; i < numRouters; ++i) {
+            _removeTrustedRouter(trustedRouters[i]);
+        }
+    }
+
+    function _removeTrustedRouter(address trustedRouter) internal {
+        bool routerRemoved = _trustedRouters.remove(trustedRouter);
+        if (routerRemoved == false) {
+            revert TrustedRouterNotAdded(trustedRouter);
+        }
+
+        emit TrustedRouterRemoved(trustedRouter);
     }
 }
