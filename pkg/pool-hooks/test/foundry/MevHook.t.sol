@@ -10,45 +10,43 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { PoolSwapParams, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { BalancerContractRegistry } from "@balancer-labs/v3-vault/contracts/BalancerContractRegistry.sol";
 
 import { MevHookMock } from "../../contracts/test/MevHookMock.sol";
 
 contract MevHookTest is BaseVaultTest {
+    using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
     MevHookMock private _mevHook;
 
+    BalancerContractRegistry private registry;
+
     function setUp() public override {
         super.setUp();
 
-        authorizer.grantRole(IAuthentication(address(_mevHook)).getActionId(IMevHook.disableMevTax.selector), admin);
-        authorizer.grantRole(IAuthentication(address(_mevHook)).getActionId(IMevHook.enableMevTax.selector), admin);
-        authorizer.grantRole(
-            IAuthentication(address(_mevHook)).getActionId(IMevHook.setMaxMevSwapFeePercentage.selector),
-            admin
-        );
-        authorizer.grantRole(
-            IAuthentication(address(_mevHook)).getActionId(IMevHook.setDefaultMevTaxMultiplier.selector),
-            admin
-        );
-        authorizer.grantRole(
-            IAuthentication(address(_mevHook)).getActionId(IMevHook.setPoolMevTaxMultiplier.selector),
-            admin
-        );
-        authorizer.grantRole(
-            IAuthentication(address(_mevHook)).getActionId(IMevHook.setDefaultMevTaxThreshold.selector),
-            admin
-        );
-        authorizer.grantRole(
-            IAuthentication(address(_mevHook)).getActionId(IMevHook.setPoolMevTaxThreshold.selector),
-            admin
-        );
+        bytes4[] memory mevHookSelectors = new bytes4[](9);
+
+        mevHookSelectors[0] = IMevHook.disableMevTax.selector;
+        mevHookSelectors[1] = IMevHook.enableMevTax.selector;
+        mevHookSelectors[2] = IMevHook.setMaxMevSwapFeePercentage.selector;
+        mevHookSelectors[3] = IMevHook.setDefaultMevTaxMultiplier.selector;
+        mevHookSelectors[4] = IMevHook.setPoolMevTaxMultiplier.selector;
+        mevHookSelectors[5] = IMevHook.setDefaultMevTaxThreshold.selector;
+        mevHookSelectors[6] = IMevHook.setPoolMevTaxThreshold.selector;
+        mevHookSelectors[7] = IMevHook.addMevTaxExemptSenders.selector;
+        mevHookSelectors[8] = IMevHook.removeMevTaxExemptSenders.selector;
+
+        for (uint256 i = 0; i < mevHookSelectors.length; i++) {
+            authorizer.grantRole(IAuthentication(address(_mevHook)).getActionId(mevHookSelectors[i]), admin);
+        }
     }
 
     function _createPool(
@@ -73,7 +71,8 @@ contract MevHookTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        _mevHook = new MevHookMock(IVault(address(vault)));
+        registry = new BalancerContractRegistry(vault);
+        _mevHook = new MevHookMock(IVault(address(vault)), registry);
         vm.label(address(_mevHook), "MEV Hook");
         return address(_mevHook);
     }
@@ -582,10 +581,16 @@ contract MevHookTest is BaseVaultTest {
     ********************************************************/
     function testAddMevTaxExemptSendersIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevHook.addMevTaxExemptSenders([address(1)].toMemoryArray());
+        _mevHook.addMevTaxExemptSenders([address(1), address(2)].toMemoryArray());
     }
 
-    //    function testAddMevTaxExemptSenders() public {
-    //
-    //    }
+    function testAddMevTaxExemptSenders() public {
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax exempt list is not empty");
+        vm.prank(admin);
+        _mevHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 3, "Senders not added as MEV tax exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersAt(0), lp, "LP was not added properly as MEV tax exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersAt(1), bob, "Bob was not added properly as MEV tax exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersAt(2), alice, "Alice was not added properly as MEV tax exempt");
+    }
 }
