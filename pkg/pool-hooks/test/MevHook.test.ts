@@ -369,7 +369,6 @@ describe('MevHook', () => {
 
     let mevSwapFeePercentage =
       STATIC_SWAP_FEE_PERCENTAGE + fpMulDown(txGasPrice - PRIORITY_GAS_THRESHOLD - baseFee, mevMultiplier);
-    console.log(mevSwapFeePercentage);
     const maxMevSwapFeePercentage = await hook.getMaxMevSwapFeePercentage();
 
     if (mevSwapFeePercentage >= maxMevSwapFeePercentage) {
