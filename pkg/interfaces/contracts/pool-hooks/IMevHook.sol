@@ -17,6 +17,18 @@ interface IMevHook {
     error MevSwapFeePercentageAboveMax(uint256 feePercentage, uint256 maxFeePercentage);
 
     /**
+     * @notice The sender is already registered as MEV tax exempt.
+     * @param sender Sender that is already MEV tax exempt
+     */
+    error MevTaxExemptSenderAlreadyAdded(address sender);
+
+    /**
+     * @notice The sender is not registered as MEV tax exempt.
+     * @param sender Sender that is not MEV tax exempt
+     */
+    error MevTaxExemptSenderNotAdded(address sender);
+
+    /**
      * @notice The MEV tax was globally enabled or disabled in the hook.
      * @param enabled The new value for mevTaxEnabled. If true, MEV tax will be charged
      */
@@ -55,6 +67,18 @@ interface IMevHook {
      * @param newPoolMevTaxThreshold The new value for the pool threshold
      */
     event PoolMevTaxThresholdSet(address pool, uint256 newPoolMevTaxThreshold);
+
+    /**
+     * @notice The sender was registered as MEV tax exempt.
+     * @param sender The address of the sender registered as MEV tax exempt
+     */
+    event MevTaxExemptSenderAdded(address sender);
+
+    /**
+     * @notice The sender was removed from list of MEV tax exempt senders.
+     * @param sender The address of the sender removed from MEV tax exempt list
+     */
+    event MevTaxExemptSenderRemoved(address sender);
 
     /**
      * @notice Check whether the MEV Tax is enabled in the hook.

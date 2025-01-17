@@ -576,4 +576,16 @@ contract MevHookTest is BaseVaultTest {
         // If maxMevSwapFeePercentage < staticSwapFeePercentage, return staticSwapFeePercentage.
         assertEq(feePercentage, staticSwapFeePercentage, "Fee percentage not equal to static fee percentage");
     }
+
+    /********************************************************
+                   addMevTaxExemptSenders
+    ********************************************************/
+    function testAddMevTaxExemptSendersIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        _mevHook.addMevTaxExemptSenders([address(1)].toMemoryArray());
+    }
+
+    //    function testAddMevTaxExemptSenders() public {
+    //
+    //    }
 }
