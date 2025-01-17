@@ -368,7 +368,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     function _removeMevTaxExemptSender(address sender) internal {
         bool senderRemoved = _mevTaxExemptSenders.remove(sender);
         if (senderRemoved == false) {
-            revert MevTaxExemptSenderNotAdded(sender);
+            revert SenderNotRegisteredAsMevTaxExempt(sender);
         }
 
         emit MevTaxExemptSenderRemoved(sender);
