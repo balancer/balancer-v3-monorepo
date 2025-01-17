@@ -289,11 +289,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         uint256 mevSwapFeePercentage = staticSwapFeePercentage + feeIncrement;
 
         // Cap the maximum fee at `maxMevSwapFeePercentage`.
-        if (mevSwapFeePercentage > maxMevSwapFeePercentage) {
-            return maxMevSwapFeePercentage;
-        }
-
-        return mevSwapFeePercentage;
+        return Math.min(mevSwapFeePercentage, maxMevSwapFeePercentage);
     }
 
     function _setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) private {
