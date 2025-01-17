@@ -471,10 +471,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     );
                 }
 
-                if (underlyingAmount > maxAmountsIn[i]) {
-                    revert IVaultErrors.AmountInAboveMax(underlyingToken, underlyingAmount, maxAmountsIn[i]);
-                }
-
                 if (isStaticCall == false) {
                     // The maxAmountsIn of underlying tokens was taken from the user, so the
                     // difference between maxAmountsIn and exact underlying amount needs to be returned to the sender.
@@ -484,16 +480,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 amountsIn[i] = underlyingAmount;
                 tokensIn[i] = address(underlyingToken);
             } else {
-                if (wrappedAmountsIn[i] > maxAmountsIn[i]) {
-                    revert IVaultErrors.AmountInAboveMax(wrappedToken, wrappedAmountsIn[i], maxAmountsIn[i]);
-                }
-
                 if (isStaticCall == false) {
                     _takeTokenIn(sender, wrappedToken, wrappedAmountsIn[i], wethIsEth);
                 }
 
                 amountsIn[i] = wrappedAmountsIn[i];
                 tokensIn[i] = address(wrappedToken);
+            }
+
+            if (amountsIn[i] > maxAmountsIn[i]) {
+                revert IVaultErrors.AmountInAboveMax(IERC20(tokensIn[i]), amountsIn[i], maxAmountsIn[i]);
             }
         }
 

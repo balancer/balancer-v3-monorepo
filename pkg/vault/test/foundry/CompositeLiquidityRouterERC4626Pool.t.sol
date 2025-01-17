@@ -1370,6 +1370,78 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(compositeLiquidityRouter.version(), MOCK_CL_ROUTER_VERSION, "CL BatchRouter version mismatch");
     }
 
+    function testAddLiquidityERC4626PoolProportionalIfAmountAboveMax() public {
+        uint256 exactBptAmountOut = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsIn = router.queryAddLiquidityProportional(
+            pool,
+            exactBptAmountOut,
+            address(this),
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[waDaiIdx] = expectedWrappedAmountsIn[waDaiIdx] - 1;
+        maxAmountsIn[waWethIdx] = expectedWrappedAmountsIn[waWethIdx];
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountInAboveMax.selector,
+                waDAI,
+                expectedWrappedAmountsIn[waDaiIdx],
+                maxAmountsIn[waDaiIdx]
+            )
+        );
+        vm.prank(alice);
+        compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
+            pool,
+            new bool[](maxAmountsIn.length),
+            maxAmountsIn,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolIfAmountBelowMin() public {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+            pool,
+            exactBptAmountIn,
+            address(this),
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[waDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]);
+        minAmountsOut[waWethIdx] = expectedWrappedAmountsOut[waWethIdx] + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                waWETH,
+                expectedWrappedAmountsOut[waWethIdx],
+                minAmountsOut[waWethIdx]
+            )
+        );
+        vm.prank(bob);
+        compositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
+            pool,
+            new bool[](minAmountsOut.length),
+            exactBptAmountIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+    }
+
     struct TestLocals {
         uint256 underlyingDaiAmountDelta;
         uint256 underlyingWethAmountDelta;
