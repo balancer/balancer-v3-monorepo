@@ -275,7 +275,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function getMevTaxExemptSendersNumber() external view returns (uint256) {
+    function getMevTaxExemptSendersLength() external view returns (uint256) {
         return _mevTaxExemptSenders.length();
     }
 
@@ -285,18 +285,18 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function addMevTaxExemptSenders(address[] memory mevTaxExemptSenders) external authenticate {
-        uint256 numSenders = mevTaxExemptSenders.length;
+    function addMevTaxExemptSenders(address[] memory senders) external authenticate {
+        uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
-            _addMevTaxExemptSender(mevTaxExemptSenders[i]);
+            _addMevTaxExemptSender(senders[i]);
         }
     }
 
     /// @inheritdoc IMevHook
-    function removeMevTaxExemptSenders(address[] memory mevTaxExemptSenders) external authenticate {
-        uint256 numSenders = mevTaxExemptSenders.length;
+    function removeMevTaxExemptSenders(address[] memory senders) external authenticate {
+        uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
-            _removeMevTaxExemptSender(mevTaxExemptSenders[i]);
+            _removeMevTaxExemptSender(senders[i]);
         }
     }
 
