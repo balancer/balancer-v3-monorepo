@@ -2,6 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -269,7 +273,15 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             return staticSwapFeePercentage;
         }
 
-        uint256 mevSwapFeePercentage = staticSwapFeePercentage + (priorityGasPrice - threshold).mulDown(multiplier);
+        (bool success, uint256 feeIncrement) = Math.tryMul(priorityGasPrice - threshold, multiplier);
+
+        // If static swap fee percentage is bigger than type(uint256).max - feeIncrement, the sum of feeIncrement and
+        // staticSwapFeePercentage will overflow. If that's the case, return maxMevSwapFeePercentage.
+        if (success == false || type(uint256).max - feeIncrement < staticSwapFeePercentage) {
+            return maxMevSwapFeePercentage;
+        }
+
+        uint256 mevSwapFeePercentage = staticSwapFeePercentage + feeIncrement;
 
         // Cap the maximum fee at `_maxMevSwapFeePercentage`.
         if (mevSwapFeePercentage > maxMevSwapFeePercentage) {
