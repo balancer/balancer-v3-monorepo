@@ -48,6 +48,16 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
 
     /// @inheritdoc IProtocolFeeSweeper
     function sweepProtocolFees(address pool) external {
+        IERC20[] memory poolTokens = getVault().getPoolTokens(pool);
+        uint256 numTokens = poolTokens.length;
+
+        // There could be tokens "left over" from uncompleted burns from previous sweeps. Only process the "new"
+        // tokens from the current withdrawal.
+        uint256[] memory existingBalances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            existingBalances[i] = poolTokens[i].balanceOf(address(this));
+        }
+
         // Withdraw protocol fees to this contract. Note that governance will need to grant this contract permission
         // to call `withdrawProtocolFees` on the `ProtocolFeeController.
         getProtocolFeeController().withdrawProtocolFees(pool, address(this));
@@ -58,26 +68,25 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         address recipient = _feeRecipient;
 
         bool canBurn = targetToken != IERC20(address(0)) && burner != IProtocolFeeBurner(address(0));
-        IERC20[] memory tokens = getVault().getPoolTokens(pool);
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 feeToken = tokens[i];
-            uint256 tokenBalance = feeToken.balanceOf(address(this));
+        for (uint256 i = 0; i < numTokens; ++i) {
+            IERC20 feeToken = poolTokens[i];
+            uint256 withdrawnTokenBalance = feeToken.balanceOf(address(this)) - existingBalances[i];
 
             // If no balance, nothing to do.
-            if (tokenBalance == 0) {
+            if (withdrawnTokenBalance == 0) {
                 continue;
             }
 
             // If this is already the target token (or we haven't set a burner), just forward directly.
             if (canBurn && feeToken != targetToken) {
-                feeToken.forceApprove(address(burner), tokenBalance);
+                feeToken.forceApprove(address(burner), withdrawnTokenBalance);
                 // This is asynchronous; the burner will complete the action and emit an event.
-                _protocolFeeBurner.burn(pool, feeToken, tokenBalance, targetToken, recipient);
+                _protocolFeeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, recipient);
             } else {
-                feeToken.safeTransfer(recipient, tokenBalance);
+                feeToken.safeTransfer(recipient, withdrawnTokenBalance);
 
-                emit ProtocolFeeSwept(pool, feeToken, tokenBalance, recipient);
+                emit ProtocolFeeSwept(pool, feeToken, withdrawnTokenBalance, recipient);
             }
         }
     }
