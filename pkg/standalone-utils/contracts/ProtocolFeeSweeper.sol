@@ -67,6 +67,8 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         IERC20 targetToken = _targetToken;
         address recipient = _feeRecipient;
 
+        // There must be a burner contract and valid target token to enable converting fees to the preferred currency.
+        // If these were not set, fall back on simply transferring all fee tokens directly to the recipient.
         bool canBurn = targetToken != IERC20(address(0)) && burner != IProtocolFeeBurner(address(0));
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -78,8 +80,9 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
                 continue;
             }
 
-            // If this is already the target token (or we haven't set a burner), just forward directly.
+            // If this is already the target token (or we haven't enabled burning), just forward directly.
             if (canBurn && feeToken != targetToken) {
+                // Allow the burner to withdraw tokens from this contract.
                 feeToken.forceApprove(address(burner), withdrawnTokenBalance);
                 // This is asynchronous; the burner will complete the action and emit an event.
                 _protocolFeeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, recipient);
