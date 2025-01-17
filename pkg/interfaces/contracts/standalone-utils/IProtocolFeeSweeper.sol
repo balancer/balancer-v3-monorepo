@@ -34,12 +34,7 @@ interface IProtocolFeeSweeper {
      * @param feeTokenAmount The number of feeTokens
      * @param recipient The recipient of the target tokens
      */
-    event ProtocolFeeSwept(
-        address indexed pool,
-        IERC20 indexed feeToken,
-        uint256 feeTokenAmount,
-        address recipient
-    );
+    event ProtocolFeeSwept(address indexed pool, IERC20 indexed feeToken, uint256 feeTokenAmount, address recipient);
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool.
@@ -55,7 +50,7 @@ interface IProtocolFeeSweeper {
      * @dev It is not immutable in the Vault, so we need to get it every time.
      * @return protocolFeeController The address of the current `ProtocolFeeController`
      */
-    function getProtocolFeeController() public view returns (IProtocolFeeController);
+    function getProtocolFeeController() external view returns (IProtocolFeeController);
 
     /**
      * @notice Getter for the target token.
@@ -75,4 +70,34 @@ interface IProtocolFeeSweeper {
      * @return protocolFeeBurner The currently active protocol fee burner
      */
     function getProtocolFeeBurner() external view returns (IProtocolFeeBurner);
+
+    /**
+     * @notice Update the fee recipient address.
+     * @dev This is a permissioned function.
+     * @param feeRecipient The address of the new fee recipient
+     */
+    function setFeeRecipient(address feeRecipient) external;
+
+    /**
+     * @notice Set a protocol fee burner, used to convert protocol fees to a target token.
+     * @dev This is a permissioned function. If it is not set, the contract will fall back to forwarding the fee tokens
+     * directly to the fee recipient.
+     *
+     * @param protocolFeeBurner The address of the current protocol fee burner
+     */
+    function setProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
+
+    /**
+     * @notice Update the address of the target token.
+     * @dev This is the token the burner will attempt to swap all collected fee tokens to.
+     * @param targetToken The address of the target token
+     */
+    function setTargetToken(IERC20 targetToken) external;
+
+    /**
+     * @notice Retrieve any tokens "stuck" in this contract (e.g., dust, or failed conversions).
+     * @dev It will recover the full balance of all the tokens. This can only be called by the `feeRecipient`.
+     * @param feeTokens The tokens to recover
+     */
+    function recoverProtocolFees(IERC20[] memory feeTokens) external;
 }

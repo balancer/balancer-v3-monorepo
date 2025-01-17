@@ -70,12 +70,16 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
             IERC20 feeToken = tokens[i];
             uint256 tokenBalance = feeToken.balanceOf(address(this));
 
+            // If no balance, nothing to do.
+            if (tokenBalance == 0) {
+                continue;
+            }
+
             // If this is already the target token (or we haven't set a burner), just forward directly.
             if (canBurn && feeToken != targetToken) {
                 feeToken.forceApprove(address(burner), tokenBalance);
                 // This is asynchronous; the burner will complete the action and emit an event.
-                _protocolFeeBurner.burn(feeToken, tokenBalance, targetToken, recipient);
-
+                _protocolFeeBurner.burn(pool, feeToken, tokenBalance, targetToken, recipient);
             } else {
                 feeToken.safeTransfer(recipient, tokenBalance);
 
@@ -84,36 +88,22 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         }
     }
 
-    /**
-     * @notice Return the address of the current `ProtocolFeeController` from the Vault.
-     * @dev It is not immutable in the Vault, so we need to get it every time.
-     * @return protocolFeeController The address of the current `ProtocolFeeController`
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function getProtocolFeeController() public view returns (IProtocolFeeController) {
         return getVault().getProtocolFeeController();
     }
 
-    /**
-     * @notice Getter for the target token.
-     * @dev This is the token the burner will swap all fee tokens for.
-     * @return targetToken The current target token
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function getTargetToken() external view returns (IERC20) {
         return _targetToken;
     }
 
-    /**
-     * @notice Getter for the current fee recipient.
-     * @return feeRecipient The currently active fee recipient
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function getFeeRecipient() external view returns (address) {
         return _feeRecipient;
     }
 
-    /**
-     * @notice Getter for the current protocol fee burner.
-     * @return protocolFeeBurner The currently active protocol fee burner
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function getProtocolFeeBurner() external view returns (IProtocolFeeBurner) {
         return _protocolFeeBurner;
     }
@@ -122,11 +112,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
                                 Permissioned Functions
     ***************************************************************************/
 
-    /**
-     * @notice Update the fee recipient address.
-     * @dev This is a permissioned function.
-     * @param feeRecipient The address of the new fee recipient
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function setFeeRecipient(address feeRecipient) external authenticate {
         _setFeeRecipient(feeRecipient);
     }
@@ -137,13 +123,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         emit FeeRecipientSet(feeRecipient);
     }
 
-    /**
-     * @notice Set a protocol fee burner, used to convert protocol fees to a target token.
-     * @dev This is a permissioned function. If it is not set, the contract will fall back to forwarding the fee tokens
-     * directly to the fee recipient.
-     *
-     * @param protocolFeeBurner The address of the current protocol fee burner
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function setProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external authenticate {
         _setProtocolFeeBurner(protocolFeeBurner);
     }
@@ -154,11 +134,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         emit ProtocolFeeBurnerSet(address(protocolFeeBurner));
     }
 
-    /**
-     * @notice Update the address of the target token.
-     * @dev This is the token the burner will attempt to swap all collected fee tokens to.
-     * @param targetToken The address of the target token
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function setTargetToken(IERC20 targetToken) external authenticate {
         _setTargetToken(targetToken);
     }
@@ -169,11 +145,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         emit TargetTokenSet(targetToken);
     }
 
-    /**
-     * @notice Retrieve any tokens "stuck" in this contract (e.g., dust, or failed conversions).
-     * @dev It will recover the full balance of all the tokens. This can only be called by the `feeRecipient`.
-     * @param feeTokens The tokens to recover
-     */
+    /// @inheritdoc IProtocolFeeSweeper
     function recoverProtocolFees(IERC20[] memory feeTokens) external {
         if (msg.sender != _feeRecipient) {
             revert SenderNotAllowed();
