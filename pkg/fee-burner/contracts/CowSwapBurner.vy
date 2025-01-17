@@ -84,7 +84,7 @@ OFFCHAIN_DATA_LEN: constant(uint256) = 1
 
 vault_relayer: public(immutable(address))
 composable_cow: public(immutable(ComposableCow))
-ADD_DATA: public(constant(bytes32)) = 0x058315b749613051abcbf50cf2d605b4fa4a41554ec35d73fd058fc530da559f
+    ADD_DATA: public(constant(bytes32)) = 0x058315b749613051abcbf50cf2d605b4fa4a41554ec35d73fd058fc530da559f
 SELL_KIND: constant(bytes32) = keccak256("sell")  # Surpluss in target coin
 TOKEN_BALANCE: constant(bytes32) = keccak256("erc20")
 

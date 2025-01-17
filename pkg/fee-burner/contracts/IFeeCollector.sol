@@ -19,7 +19,11 @@ interface IFeeCollector {
         uint256 amount;
     }
 
-    function fee(Epoch epoch, uint256 timestamp) external view returns (uint256);
+    function fee() external view returns (uint256);
+
+    function fee(uint256 epoch) external view returns (uint256);
+
+    function fee(uint256 epoch, uint256 timestamp) external view returns (uint256);
 
     function target() external view returns (IERC20);
 
@@ -27,7 +31,9 @@ interface IFeeCollector {
 
     function emergency_owner() external view returns (address);
 
-    function epoch_time_frame(Epoch epoch, uint256 timestamp) external view returns (uint256, uint256);
+    function epoch_time_frame(uint256 epoch) external view returns (uint256, uint256);
+
+    function epoch_time_frame(uint256 epoch, uint256 timestamp) external view returns (uint256, uint256);
 
     function can_exchange(IERC20[] memory coins) external view returns (bool);
 

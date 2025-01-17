@@ -12,6 +12,9 @@ contract FeeCollectorMock is IFeeCollector {
     address private _emergency_owner;
     address private _cowSwapBurner;
 
+    uint256 private _deployed = block.timestamp;
+    uint256 private _valid_until = _deployed + 1 days;
+
     constructor(uint256 fee_, IERC20 target_, address owner_, address emergency_owner_) {
         _fee = fee_;
         _target = target_;
@@ -24,7 +27,7 @@ contract FeeCollectorMock is IFeeCollector {
     }
 
     function burn(address[] memory coins, address receiver) external {
-        (bool success, ) = _cowSwapBurner.call(abi.encodeWithSignature("burn(address[],address)", coins, receiver));
+        (bool success, ) = _cowSwapBurner.call(abi.encodeWithSelector(FeeCollectorMock.burn.selector, coins, receiver));
         require(success, "FeeCollectorMock: burn failed");
     }
 
@@ -32,7 +35,15 @@ contract FeeCollectorMock is IFeeCollector {
         _fee = fee_;
     }
 
-    function fee(Epoch epoch, uint256 timestamp) external view returns (uint256) {
+    function fee() external view returns (uint256) {
+        return _fee;
+    }
+
+    function fee(uint256 epoch) external view returns (uint256) {
+        return _fee;
+    }
+
+    function fee(uint256 epoch, uint256 timestamp) external view returns (uint256) {
         return _fee;
     }
 
@@ -60,8 +71,12 @@ contract FeeCollectorMock is IFeeCollector {
         return _emergency_owner;
     }
 
-    function epoch_time_frame(Epoch epoch, uint256 timestamp) external pure returns (uint256, uint256) {
-        return (type(uint32).max, type(uint32).max);
+    function epoch_time_frame(uint256 epoch) external view returns (uint256, uint256) {
+        return epoch_time_frame(epoch, block.timestamp);
+    }
+
+    function epoch_time_frame(uint256 epoch, uint256 timestamp) public view returns (uint256, uint256) {
+        return (_deployed, _valid_until);
     }
 
     function can_exchange(IERC20[] memory coins) external pure returns (bool) {
@@ -70,7 +85,12 @@ contract FeeCollectorMock is IFeeCollector {
 
     function transfer(Transfer[] memory transfers) external {
         for (uint256 i = 0; i < transfers.length; i++) {
-            transfers[i].coin.transfer(transfers[i].to, transfers[i].amount);
+            uint256 amount = transfers[i].amount;
+            if (amount == type(uint256).max) {
+                amount = transfers[i].coin.balanceOf(address(this));
+            }
+
+            transfers[i].coin.transfer(transfers[i].to, amount);
         }
     }
 }
