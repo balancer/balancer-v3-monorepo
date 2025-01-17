@@ -63,13 +63,13 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
         getProtocolFeeController().withdrawProtocolFees(pool, address(this));
 
         // Convert the given tokens to the target token (if enabled), and forward to the fee recipient.
-        IProtocolFeeBurner burner = _protocolFeeBurner;
+        IProtocolFeeBurner feeBurner = _protocolFeeBurner;
         IERC20 targetToken = _targetToken;
         address recipient = _feeRecipient;
 
         // There must be a burner contract and valid target token to enable converting fees to the preferred currency.
         // If these were not set, fall back on simply transferring all fee tokens directly to the recipient.
-        bool canBurn = targetToken != IERC20(address(0)) && burner != IProtocolFeeBurner(address(0));
+        bool canBurn = targetToken != IERC20(address(0)) && feeBurner != IProtocolFeeBurner(address(0));
 
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 feeToken = poolTokens[i];
@@ -83,9 +83,9 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
             // If this is already the target token (or we haven't enabled burning), just forward directly.
             if (canBurn && feeToken != targetToken) {
                 // Allow the burner to withdraw tokens from this contract.
-                feeToken.forceApprove(address(burner), withdrawnTokenBalance);
+                feeToken.forceApprove(address(feeBurner), withdrawnTokenBalance);
                 // This is asynchronous; the burner will complete the action and emit an event.
-                _protocolFeeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, recipient);
+                feeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, recipient);
             } else {
                 feeToken.safeTransfer(recipient, withdrawnTokenBalance);
 
