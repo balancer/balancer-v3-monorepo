@@ -190,7 +190,7 @@ interface ICompositeLiquidityRouter {
      * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
      * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
      * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, sorted according to tokensIn array
+     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
      * @return bptAmountOut Expected amount of parent pool tokens to receive
