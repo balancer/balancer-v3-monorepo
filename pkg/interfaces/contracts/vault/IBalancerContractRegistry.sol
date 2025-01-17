@@ -68,12 +68,6 @@ interface IBalancerContractRegistry {
      */
     event ContractAliasUpdated(string indexed contractAlias, address indexed contractAddress);
 
-    /// @notice Trusted router successfully added to the registry.
-    event TrustedRouterAdded(address trustedRouter);
-
-    /// @notice Trusted router successfully removed from the registry.
-    event TrustedRouterRemoved(address trustedRouter);
-
     /**
      * @notice A contract has already been registered under the given address.
      * @dev Both names and addresses must be unique in the primary registration mapping. Though there are two mappings
@@ -140,12 +134,6 @@ interface IBalancerContractRegistry {
 
     /// @notice Cannot add an empty string as an alias.
     error InvalidContractAlias();
-
-    /// @notice Trying to add a trusted router that had already been added.
-    error TrustedRouterAlreadyAdded(address trustedRouter);
-
-    /// @notice Trying to remove a trusted router that had not been added before.
-    error TrustedRouterNotAdded(address trustedRouter);
 
     /**
      * @notice Register an official Balancer contract (e.g., a trusted router, standard pool factory, or hook).
@@ -234,29 +222,6 @@ interface IBalancerContractRegistry {
      */
     function getBalancerContractInfo(address contractAddress) external view returns (ContractInfo memory info);
 
-    /// @notice Returns `true` if the given address is a registered trusted router; false otherwise.
+    /// @notice Returns `true` if the given address is an active contract under the ROUTER type.
     function isTrustedRouter(address router) external view returns (bool);
-
-    /// @notice Returns how many trusted routers are registered.
-    function getTrustedRoutersNumber() external view returns (uint256);
-
-    /**
-     * @notice Returns the address of a given trusted router by index.
-     * @dev Reverts if the index is greater than or equal to the number of trusted routers.
-     */
-    function getTrustedRouterAt(uint256 index) external view returns (address);
-
-    /**
-     * @notice Adds an array of addresses to the registered trusted routers. This is a permissioned function.
-     * @dev Reverts if any of the addresses was already registered; emits one `TrustedRouterAdded` event for each
-     * router successfully added to the registry.
-     */
-    function addTrustedRouters(address[] memory trustedRouters) external;
-
-    /**
-     * @notice Removes an array of addresses from the registered trusted routers. This is a permissioned function.
-     * @dev Reverts if any of the addresses was not registered; emits one `TrustedRouterRemoved` event for each
-     * router successfully removed from the registry.
-     */
-    function removeTrustedRouters(address[] memory trustedRouters) external;
 }
