@@ -27,6 +27,7 @@ solc_version = '0.8.26'
 auto_detect_solc = false
 evm_version = 'cancun'
 ignored_error_codes = [2394, 5574, 3860] # Transient storage, code size
+skip = ["*.vy"]
 
 [fuzz]
 runs = 10000
