@@ -367,8 +367,9 @@ describe('MevHook', () => {
 
     const baseFee = await getNextBlockBaseFee();
 
+    const priorityGasPrice = txGasPrice - baseFee;
     let mevSwapFeePercentage =
-      STATIC_SWAP_FEE_PERCENTAGE + fpMulDown(txGasPrice - PRIORITY_GAS_THRESHOLD - baseFee, mevMultiplier);
+      STATIC_SWAP_FEE_PERCENTAGE + fpMulDown(priorityGasPrice - PRIORITY_GAS_THRESHOLD, mevMultiplier);
     const maxMevSwapFeePercentage = await hook.getMaxMevSwapFeePercentage();
 
     if (mevSwapFeePercentage >= maxMevSwapFeePercentage) {

@@ -15,12 +15,12 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-import { MevHook } from "../../contracts/MevHook.sol";
+import { MevHookMock } from "../../contracts/test/MevHookMock.sol";
 
 contract MevHookTest is BaseVaultTest {
     using CastingHelpers for address[];
 
-    IMevHook private _mevHook;
+    MevHookMock private _mevHook;
 
     function setUp() public override {
         super.setUp();
@@ -71,10 +71,9 @@ contract MevHookTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        address mevHook = address(new MevHook(IVault(address(vault))));
-        _mevHook = IMevHook(mevHook);
-        vm.label(mevHook, "MEV Hook");
-        return mevHook;
+        _mevHook = new MevHookMock(IVault(address(vault)));
+        vm.label(address(_mevHook), "MEV Hook");
+        return address(_mevHook);
     }
 
     /********************************************************
@@ -446,5 +445,27 @@ contract MevHookTest is BaseVaultTest {
             );
         }
         assertTrue(success, "Hook failed");
+    }
+
+    /********************************************************
+                   calculateSwapFeePercentage()
+    ********************************************************/
+    function testFeePercentageUnderThreshold__Fuzz(uint256 gasPriceDelta) public {
+        uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
+        uint256 priorityThreshold = 100e9;
+        uint256 multiplier = 1_000_000e18;
+
+        uint256 baseFee = 1e9;
+        gasPriceDelta = bound(gasPriceDelta, 1, priorityThreshold - 1);
+
+        vm.fee(baseFee);
+        vm.txGasPrice(baseFee + priorityThreshold - gasPriceDelta);
+
+        uint256 feePercentage = _mevHook.calculateSwapFeePercentageExternal(
+            staticSwapFeePercentage,
+            multiplier,
+            priorityThreshold
+        );
+        assertEq(feePercentage, staticSwapFeePercentage, "Fee percentage not equal to static fee percentage");
     }
 }
