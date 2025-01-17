@@ -9,64 +9,68 @@ import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface IProtocolFeeSweeper {
     /**
-     * @notice Emitted when the target token is updated.
+     * @notice Emitted when the target token is set or updated.
      * @param token The preferred token for receiving protocol fees
      */
     event TargetTokenSet(IERC20 indexed token);
 
     /**
-     * @notice Emitted when the fee recipient address is verified.
+     * @notice Emitted when the fee recipient address is set or updated.
      * @param feeRecipient The final destination of collected protocol fees
      */
     event FeeRecipientSet(address indexed feeRecipient);
 
     /**
-     * @notice Emitted when governance has set the protocol fee burner contract.
+     * @notice Emitted when the protocol fee burner contract is set or updated.
      * @param protocolFeeBurner The contract used to "burn" protocol fees (i.e., convert them to the target token)
      */
     event ProtocolFeeBurnerSet(address indexed protocolFeeBurner);
 
     /**
-     * @notice Emitted when a fee token is transferred directly.
+     * @notice Emitted when a fee token is transferred directly, vs. calling the burner.
      * @dev This can happen if no target token or burner contract was specified, or the fee token is the target token.
-     * @param pool The pool the fee was collected on
+     * @param pool The pool on which the fee was collected
      * @param feeToken The token the fee was collected in (also the target token in this case; no swap necessary)
      * @param feeTokenAmount The number of feeTokens
-     * @param recipient The recipient of the target tokens
+     * @param recipient The recipient of the fee tokens
      */
     event ProtocolFeeSwept(address indexed pool, IERC20 indexed feeToken, uint256 feeTokenAmount, address recipient);
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool.
-     * @dev This will withdraw all fee tokens to this contract, and attempt to convert and forward them. There is also
-     * a single token pool withdrawal, but that is an edge case not in scope for the sweeper.
+     * @dev This will withdraw all fee tokens from the controller to this contract, and attempt to convert and forward
+     * them to the fee recipient. There is also a single token pool withdrawal, but that is an edge case not in scope
+     * for the sweeper. Note that this requires governance to grant this contract permission to call
+     * `withdrawProtocolFees` on the `ProtocolFeeController`.
      *
-     * @param pool The pool from which we're withdrawing fees
+     * @param pool The pool that incurred the fees we're withdrawing
      */
     function sweepProtocolFees(address pool) external;
 
     /**
      * @notice Return the address of the current `ProtocolFeeController` from the Vault.
-     * @dev It is not immutable in the Vault, so we need to get it every time.
+     * @dev It is not immutable in the Vault, so we need to fetch it every time.
      * @return protocolFeeController The address of the current `ProtocolFeeController`
      */
     function getProtocolFeeController() external view returns (IProtocolFeeController);
 
     /**
      * @notice Getter for the target token.
-     * @dev This is the token the burner will swap all fee tokens for.
+     * @dev This is the token the burner will swap all fee tokens for. Can be changed by `setTargetToken`.
      * @return targetToken The current target token
      */
     function getTargetToken() external view returns (IERC20);
 
     /**
      * @notice Getter for the current fee recipient.
-     * @return feeRecipient The currently active fee recipient
+     * @dev Can be changed by `setFeeRecipient`.
+     * @return feeRecipient The current fee recipient
      */
     function getFeeRecipient() external view returns (address);
 
     /**
      * @notice Getter for the current protocol fee burner.
+     * @dev Can be changed by `setProtocolFeeBurner`.
      * @return protocolFeeBurner The currently active protocol fee burner
      */
     function getProtocolFeeBurner() external view returns (IProtocolFeeBurner);
@@ -79,8 +83,8 @@ interface IProtocolFeeSweeper {
     function setFeeRecipient(address feeRecipient) external;
 
     /**
-     * @notice Set a protocol fee burner, used to convert protocol fees to a target token.
-     * @dev This is a permissioned function. If it is not set, the contract will fall back to forwarding the fee tokens
+     * @notice Update the address of the protocol fee burner, used to convert protocol fees to a target token.
+     * @dev This is a permissioned function. If it is not set, the contract will fall back to forwarding all fee tokens
      * directly to the fee recipient.
      *
      * @param protocolFeeBurner The address of the current protocol fee burner
@@ -89,7 +93,7 @@ interface IProtocolFeeSweeper {
 
     /**
      * @notice Update the address of the target token.
-     * @dev This is the token the burner will attempt to swap all collected fee tokens to.
+     * @dev This is the token for which the burner will attempt to swap all collected fee tokens.
      * @param targetToken The address of the target token
      */
     function setTargetToken(IERC20 targetToken) external;
