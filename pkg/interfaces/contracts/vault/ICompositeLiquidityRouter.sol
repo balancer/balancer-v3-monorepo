@@ -126,8 +126,8 @@ interface ICompositeLiquidityRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
-     * @return tokensIn Expected tokens added in the pool
-     * @return amountsIn Expected amounts of tokens added in the pool
+     * @return tokensIn Expected tokens added to the pool
+     * @return amountsIn Expected amounts of tokens added to the pool
      */
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
