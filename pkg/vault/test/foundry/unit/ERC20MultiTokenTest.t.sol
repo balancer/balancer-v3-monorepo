@@ -14,6 +14,7 @@ import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 import { VaultContractsDeployer } from "../utils/VaultContractsDeployer.sol";
 
 contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken, VaultContractsDeployer {
+    address internal constant ZERO_ADDRESS = address(0x00);
     address internal constant POOL = address(0x01);
     address internal constant OWNER = address(0x02);
     address internal constant OWNER2 = address(0x03);

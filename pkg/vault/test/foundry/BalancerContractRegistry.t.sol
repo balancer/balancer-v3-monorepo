@@ -17,7 +17,6 @@ import { BalancerContractRegistry } from "../../contracts/BalancerContractRegist
 contract BalancerContractRegistryTest is BaseVaultTest {
     address private constant ANY_ADDRESS = 0x388C818CA8B9251b393131C08a736A67ccB19297;
     address private constant SECOND_ADDRESS = 0x26c212f06675a0149909030D15dc46DAEE9A1f8a;
-    address private constant ZERO_ADDRESS = address(0);
     string private constant DEFAULT_NAME = "Contract name";
     string private constant DEFAULT_ALIAS = "Alias name";
 
