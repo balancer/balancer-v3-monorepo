@@ -23,7 +23,7 @@ import { expect } from 'chai';
 describe('MevHook', () => {
   const ROUTER_VERSION = 'Router V1';
   const PRIORITY_GAS_THRESHOLD = 3_000_000n;
-  const MEV_MULTIPLIER = fp(10_000_000_000);
+  const MEV_MULTIPLIER = fp(10_000_000_000_000);
 
   const STATIC_SWAP_FEE_PERCENTAGE = fp(0.01); // 1% swap fee
 
@@ -160,28 +160,6 @@ describe('MevHook', () => {
       await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
     });
 
-    it('MEV fee percentage smaller than static', async () => {
-      // Small multiplier, the MEV fee percentage will be lower than static swap fee. In this case, static swap fee
-      // should be charged.
-      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(0.0001)));
-
-      const amountIn = fp(10);
-
-      const baseFee = await getNextBlockBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
-      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
-
-      const balancesBefore = await getBalances();
-
-      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-        gasPrice: txGasPrice,
-      });
-
-      const balancesAfter = await getBalances();
-
-      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
-    });
-
     it('MEV multiplier is 0', async () => {
       // 0 multiplier. Should return static fee.
       await hook.setPoolMevTaxMultiplier(pool, 0);
@@ -210,7 +188,7 @@ describe('MevHook', () => {
 
       // Big multiplier, the MEV fee percentage should be more than 20%. Since the Max fee is set to 20%, that's what
       // will be charged.
-      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100n)));
+      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100000000n)));
 
       const amountIn = fp(10);
 
@@ -235,8 +213,9 @@ describe('MevHook', () => {
       const amountIn = fp(10);
 
       const baseFee = await getNextBlockBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
-      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+      // "BaseFee + PriorityGas + 1" should trigger MEV Tax and pay
+      // `static swap fee percentage + fees over 9*PRIORITY_GAS_THRESHOLD`
+      const txGasPrice = baseFee + 10n * PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
 
@@ -388,7 +367,9 @@ describe('MevHook', () => {
 
     const baseFee = await getNextBlockBaseFee();
 
-    let mevSwapFeePercentage = fpMulDown(txGasPrice - baseFee, mevMultiplier);
+    let mevSwapFeePercentage =
+      STATIC_SWAP_FEE_PERCENTAGE + fpMulDown(txGasPrice - PRIORITY_GAS_THRESHOLD - baseFee, mevMultiplier);
+    console.log(mevSwapFeePercentage);
     const maxMevSwapFeePercentage = await hook.getMaxMevSwapFeePercentage();
 
     if (mevSwapFeePercentage >= maxMevSwapFeePercentage) {

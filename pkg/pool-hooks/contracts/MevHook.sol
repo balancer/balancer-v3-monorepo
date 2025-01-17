@@ -100,11 +100,13 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
         // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
         // impose the MEV tax.
-        if (priorityGasPrice < _poolMevTaxThresholds[pool]) {
+        uint256 priorityGasThreshold = _poolMevTaxThresholds[pool];
+        if (priorityGasPrice < priorityGasThreshold) {
             return (true, staticSwapFeePercentage);
         }
 
-        uint256 mevSwapFeePercentage = priorityGasPrice.mulDown(_poolMevTaxMultipliers[pool]);
+        uint256 mevSwapFeePercentage = staticSwapFeePercentage +
+            (priorityGasPrice - priorityGasThreshold).mulDown(_poolMevTaxMultipliers[pool]);
 
         // Cap the maximum fee at `_maxMevSwapFeePercentage`.
         uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
@@ -113,8 +115,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             mevSwapFeePercentage = maxMevSwapFeePercentage;
         }
 
-        // Use the greater of the static and MEV fee percentages.
-        return (true, staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage);
+        return (true, mevSwapFeePercentage);
     }
 
     /// @inheritdoc IHooks
