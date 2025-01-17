@@ -62,8 +62,8 @@ interface ICompositeLiquidityRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
-     * @return tokensIn Actual tokens added in the pool
-     * @return amountsIn Actual amounts of tokens added in the pool
+     * @return tokensIn Actual tokens added to the pool
+     * @return amountsIn Actual amounts of tokens added to the pool
      */
     function addLiquidityProportionalToERC4626Pool(
         address pool,
