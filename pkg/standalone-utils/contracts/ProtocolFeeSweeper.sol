@@ -16,55 +16,49 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
  * @notice Withdraw protocol fees, convert them to a target token, and forward to a recipient.
  * @dev This withdraws all protocol fees previously collected and allocated to the protocol by the
  * `ProtocolFeeController`, processes them with a configurable "burner" (e.g., from CowSwap) and forwards them to
- * a recipient contract.
+ * a recipient address.
  *
  * An off-chain process can call `collectAggregateFees(pool)` on the fee controller for a given pool, which will
  * collect and allocate the fees to the protocol and pool creator. `getProtocolFeeAmounts(pool)` returns the fee
  * amounts available for withdrawal. If these are great enough, `sweepProtocolFees(pool)` here will withdraw,
- * convert, and forward them to the final recipient. It is also possible to do this for a single token, using
- * `sweepProtocolFeesForToken(pool, token)`.
- *
- * This is the basic version that uses only the "fallback" method, simply forwarding all tokens collected to a
- * designated fee recipient (e.g., a multi-sig). It has some infrastructure that will be used in future versions.
+ * convert, and forward them to the final recipient.
  */
 contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
     using SafeERC20 for IERC20;
 
-    /// @notice This contract should not receive ETH.
+    /// @notice All pool tokens are ERC20, so this contract should not handle ETH.
     error CannotReceiveEth();
 
-    // Preferred token for receiving protocol fees. This does not need to be validated, since setting it to an
-    // invalid or incorrect value would just mean fees could not be converted to it, in which case the contract
-    // would fall back on forwarding the tokens as collected.
+    /// @notice The fee recipient is invalid.
+    error InvalidFeeRecipient();
+
+    // Preferred token for receiving protocol fees. Passed to the fee burner as the target of fee token swaps.
     IERC20 private _targetToken;
 
-    // Final destination of the collected protocol fees, after confirmation through the claims process.
+    // Final destination of the collected protocol fees.
     address private _feeRecipient;
 
-    // Address of the current "burn" strategy (i.e., swapping fee tokens to the target).
+    // Address of the current "burner" contract (i.e., swapping fee tokens to the target).
     IProtocolFeeBurner private _protocolFeeBurner;
 
+    // The default configuration on deployment simply forwards all fee tokens to the `feeRecipient`.
     constructor(IVault vault, address feeRecipient) SingletonAuthentication(vault) {
         _setFeeRecipient(feeRecipient);
     }
 
     /// @inheritdoc IProtocolFeeSweeper
     function sweepProtocolFees(address pool) external {
-        // Collect protocol fees - note that governance will need to grant this contract permission to call
-        // `withdrawProtocolFees` on the `ProtocolFeeController.
+        // Withdraw protocol fees to this contract. Note that governance will need to grant this contract permission
+        // to call `withdrawProtocolFees` on the `ProtocolFeeController.
         getProtocolFeeController().withdrawProtocolFees(pool, address(this));
 
-        _processProtocolFees(pool, getVault().getPoolTokens(pool));
-    }
-
-    // Convert the given tokens to the target token (if enabled), and forward to the fee recipient. This assumes we
-    // have externally validated the fee recipient.
-    function _processProtocolFees(address pool, IERC20[] memory tokens) internal {
+        // Convert the given tokens to the target token (if enabled), and forward to the fee recipient.
         IProtocolFeeBurner burner = _protocolFeeBurner;
         IERC20 targetToken = _targetToken;
         address recipient = _feeRecipient;
 
         bool canBurn = targetToken != IERC20(address(0)) && burner != IProtocolFeeBurner(address(0));
+        IERC20[] memory tokens = getVault().getPoolTokens(pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 feeToken = tokens[i];
@@ -118,6 +112,16 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
     }
 
     function _setFeeRecipient(address feeRecipient) internal {
+        // Best effort to at least ensure the fee recipient isn't the zero address (so it doesn't literally burn all
+        // protocol fees). Governance must ensure this is a valid address, as sweeping is permissionless.
+        //
+        // We could use a 2-step claim process like the `TimelockAuthorizer` here, but the consequences here are less
+        // severe, so that might be overkill. Nothing can be bricked; the worst that can happen is loss of protocol
+        // fees until the recipient is updated again.
+        if (feeRecipient == address(0)) {
+            revert InvalidFeeRecipient();
+        }
+
         _feeRecipient = feeRecipient;
 
         emit FeeRecipientSet(feeRecipient);
