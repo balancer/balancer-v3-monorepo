@@ -170,7 +170,7 @@ interface ICompositeLiquidityRouter {
      * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
      * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
      * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, sorted according to tokensIn array
+     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
      * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
