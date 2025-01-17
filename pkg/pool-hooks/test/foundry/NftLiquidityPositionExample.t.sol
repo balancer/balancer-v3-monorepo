@@ -6,11 +6,17 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    LiquidityManagement,
+    PoolRoleAccounts,
+    AddLiquidityKind,
+    RemoveLiquidityKind
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-vault/contracts/test/BasicAuthorizerMock.sol";
@@ -330,5 +336,36 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(NftLiquidityPositionExample.CannotUseExternalRouter.selector, router));
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
+    }
+
+    function testBeforeAddOnlyVault() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, admin));
+
+        nftRouter.onBeforeAddLiquidity(
+            address(nftRouter),
+            address(0),
+            AddLiquidityKind.PROPORTIONAL,
+            new uint256[](0),
+            0,
+            new uint256[](0),
+            ""
+        );
+    }
+
+    function testAfterRemoveOnlyVault() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, admin));
+
+        nftRouter.onAfterRemoveLiquidity(
+            address(nftRouter),
+            address(0),
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            new uint256[](0),
+            ""
+        );
     }
 }
