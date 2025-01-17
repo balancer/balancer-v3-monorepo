@@ -24,16 +24,15 @@ interface ICompositeLiquidityRouter {
     ***************************************************************************/
 
     /**
-     * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
+     * @notice Add arbitrary amounts of tokens to an ERC4626 pool through the buffer.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
      * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
      * the "parent" pool, and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
-     * @param useAsStandardToken An array indicating whether to use the token as standard or wrap it,
-     * sorted in token registration order of wrapped tokens in the pool
+     * @param useAsStandardToken Flags indicating whether the corresponding token should be treated as an ERC4626
+     * (unwrap and transfer the underlying asset) or as a standard ERC20 (transfer the wrapped token directly)
      * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order
-     * wrapped tokens in the pool
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
@@ -49,14 +48,14 @@ interface ICompositeLiquidityRouter {
     ) external payable returns (uint256 bptAmountOut);
 
     /**
-     * @notice Add proportional amounts of underlying tokens to an ERC4626 pool through the buffer.
+     * @notice Add proportional amounts of tokens to an ERC4626 pool through the buffer.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
      * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
      * the "parent" pool, and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
-     * @param useAsStandardToken An array indicating whether to use the token as standard or wrap it,
-     * sorted in token registration order of wrapped tokens in the pool
+     * @param useAsStandardToken Flags indicating whether the corresponding token should be treated as an ERC4626
+     * (unwrap and transfer the underlying asset) or as a standard ERC20 (transfer the wrapped token directly)
      * @param maxAmountsIn Maximum amounts of underlying/wrapped tokens in, sorted in token registration order
      * wrapped tokens in the pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
@@ -75,14 +74,13 @@ interface ICompositeLiquidityRouter {
     ) external payable returns (address[] memory tokensIn, uint256[] memory amountsIn);
 
     /**
-     * @notice Remove proportional amounts of underlying from an ERC4626 pool, burning an exact pool token amount.
+     * @notice Remove proportional amounts of tokens from an ERC4626 pool, burning an exact pool token amount.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param useAsStandardToken An array indicating whether to use the token as standard or unwrap it,
-     * sorted in token registration order of wrapped tokens in the pool
+     * @param useAsStandardToken Flags indicating whether the corresponding token should be treated as an ERC4626
+     * (unwrap and transfer the underlying asset) or as a standard ERC20 (transfer the wrapped token directly)
      * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minAmountsOut Minimum amounts of each token, sorted according to tokensIn array
-     * wrapped tokens in the pool
+     * @param minAmountsOut Minimum amounts of each token, corresponding to `tokensOut`
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
      * @return tokensOut Actual tokens received
@@ -101,10 +99,9 @@ interface ICompositeLiquidityRouter {
      * @notice Queries an `addLiquidityUnbalancedToERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param useAsStandardToken An array indicating whether to use the token as standard or wrap it,
-     * sorted in token registration order of wrapped tokens in the pool
+     * @param useAsStandardToken Flags indicating whether the corresponding token should be treated as an ERC4626
+     * (unwrap and transfer the underlying asset) or as a standard ERC20 (transfer the wrapped token directly)
      * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order
-     * wrapped tokens in the pool
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
      * @return bptAmountOut Expected amount of pool tokens to receive
@@ -121,8 +118,8 @@ interface ICompositeLiquidityRouter {
      * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param useAsStandardToken An array indicating whether to use the token as standard or wrap/unwrap it,
-     * sorted in token registration order of wrapped tokens in the pool
+     * @param useAsStandardToken Flags indicating whether the corresponding token should be treated as an ERC4626
+     * (unwrap and transfer the underlying asset) or as a standard ERC20 (transfer the wrapped token directly)
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
@@ -141,8 +138,8 @@ interface ICompositeLiquidityRouter {
      * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param useAsStandardToken An array indicating whether to use the token as standard or unwrap it,
-     * sorted in token registration order of wrapped tokens in the pool
+     * @param useAsStandardToken Flags indicating whether the corresponding token should be treated as an ERC4626
+     * (unwrap and transfer the underlying asset) or as a standard ERC20 (transfer the wrapped token directly)
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
@@ -214,7 +211,7 @@ interface ICompositeLiquidityRouter {
      * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
      * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
      * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
-     * @param minAmountsOut Minimum amounts of each token, sorted according to tokensIn array
+     * @param minAmountsOut Minimum amounts of each outgoing token, corresponding to `tokensOut`
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
      * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
