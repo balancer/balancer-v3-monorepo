@@ -108,7 +108,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             return (true, staticSwapFeePercentage);
         }
 
-        // We can only check senders of trusted routers.
+        // We can only check senders of trusted routers, and we can only apply MEV tax exemptions in that case.
         if (_registry.isTrustedRouter(params.router)) {
             address sender = IRouterCommon(params.router).getSender();
             if (_isMevTaxExempt(sender)) {
