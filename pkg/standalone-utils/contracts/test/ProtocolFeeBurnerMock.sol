@@ -13,12 +13,6 @@ import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/
 contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
     using SafeERC20 for IERC20;
 
-    IProtocolFeeSweeper private _feeSweeper;
-
-    constructor(IProtocolFeeSweeper feeSweeper) {
-        _feeSweeper = feeSweeper;
-    }
-
     /// @inheritdoc IProtocolFeeBurner
     function burn(
         address pool,
@@ -27,11 +21,10 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
         IERC20 targetToken,
         address recipient
     ) external {
-        // Just emit the event, simulating the tokens being exchanged at 1-to-1.
-        feeToken.safeTransferFrom(address(_feeSweeper), address(this), feeTokenAmount);
         // Simulate the swap by minting the same amount of target to the recipient.
         ERC20TestToken(address(targetToken)).mint(recipient, feeTokenAmount);
 
+        // Just emit the event, simulating the tokens being exchanged at 1-to-1.
         emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, feeTokenAmount, recipient);
     }
 }

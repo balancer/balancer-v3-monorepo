@@ -82,8 +82,8 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication {
 
             // If this is already the target token (or we haven't enabled burning), just forward directly.
             if (canBurn && feeToken != targetToken) {
-                // Allow the burner to withdraw tokens from this contract.
-                feeToken.forceApprove(address(feeBurner), withdrawnTokenBalance);
+                // Transfer the tokens directly to avoid "hanging approvals," in case the burn is unsuccessful.
+                feeToken.safeTransfer(address(feeBurner), withdrawnTokenBalance);
                 // This is asynchronous; the burner will complete the action and emit an event.
                 feeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, recipient);
             } else {
