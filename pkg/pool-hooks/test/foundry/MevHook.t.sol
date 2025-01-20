@@ -644,4 +644,17 @@ contract MevHookTest is BaseVaultTest {
         vm.prank(admin);
         _mevHook.removeMevTaxExemptSenders([bob].toMemoryArray());
     }
+
+    /********************************************************
+                       isMevTaxExempt
+    ********************************************************/
+    function testIsMevTaxExempt() public {
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax exempt list is not empty");
+        vm.prank(admin);
+        _mevHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
+
+        assertTrue(_mevHook.isMevTaxExempt(lp), "LP is not exempt");
+        assertFalse(_mevHook.isMevTaxExempt(bob), "Bob is exempt");
+        assertTrue(_mevHook.isMevTaxExempt(alice), "Alice is not exempt");
+    }
 }
