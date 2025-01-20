@@ -6,7 +6,8 @@ pragma solidity ^0.8.24;
 enum ContractType {
     OTHER, // a blank entry will have a 0-value type, and it's safest to return this in that case
     POOL_FACTORY,
-    ROUTER,
+    BALANCER_ROUTER,
+    COW_ROUTER,
     HOOK,
     ERC4626
 }

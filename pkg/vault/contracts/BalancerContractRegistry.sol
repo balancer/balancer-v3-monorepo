@@ -299,7 +299,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
 
     /// @inheritdoc IBalancerContractRegistry
     function isTrustedRouter(address router) external view returns (bool) {
-        return _isActiveBalancerContract(ContractType.ROUTER, router);
+        return _isActiveBalancerContract(ContractType.BALANCER_ROUTER, router);
     }
 
     function _getContractId(string memory contractName) internal pure returns (bytes32) {
