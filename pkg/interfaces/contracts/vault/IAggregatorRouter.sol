@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { SwapKind } from "./VaultTypes.sol";
 
-interface IAggregatorsRouterRouter {
+interface IAggregatorRouter {
     error OperationNotSupported(string detail);
 
     /**

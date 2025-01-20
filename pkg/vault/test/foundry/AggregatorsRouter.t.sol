@@ -16,7 +16,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
-import { AggregatorsRouter } from "../../contracts/AggregatorsRouter.sol";
+import { AggregatorRouter } from "../../contracts/AggregatorRouter.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -26,7 +26,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     string version = "test";
-    AggregatorsRouter internal aggregatorsRouter;
+    AggregatorRouter internal aggregatorsRouter;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -36,7 +36,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
-        aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), version);
+        aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), weth, permit2, version);
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {

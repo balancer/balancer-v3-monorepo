@@ -8,7 +8,7 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IAggregatorsRouterRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorsRouterRouter.sol";
+import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -19,11 +19,13 @@ import { RouterCommon } from "./RouterCommon.sol";
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  * These interact with the Vault and settle accounting.
  */
-contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
+contract AggregatorRouter is IAggregatorRouter, RouterCommon {
     constructor(
         IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
         string memory routerVersion
-    ) RouterCommon(vault, IWETH(address(0x00)), IPermit2(address(0x00)), routerVersion) {
+    ) RouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -31,7 +33,7 @@ contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
                                        Swaps
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorsRouterRouter
+    /// @inheritdoc IAggregatorRouter
     function swapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -45,7 +47,7 @@ contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        AggregatorsRouter.swapSingleTokenHook,
+                        AggregatorRouter.swapSingleTokenHook,
                         IRouter.SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -70,7 +72,7 @@ contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
     This router expects the caller to pay upfront by sending tokens to the vault directly, 
     so this call only accounts for the amount that has already been paid skipping transfers of any kind.
      * @param params Swap parameters (see IRouterSwap for struct definition)
-     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
+     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function swapSingleTokenHook(
         IRouter.SwapSingleTokenHookParams calldata params
@@ -109,7 +111,7 @@ contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
                                       Queries
     *******************************************************************************/
 
-    /// @inheritdoc IAggregatorsRouterRouter
+    /// @inheritdoc IAggregatorRouter
     function querySwapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -122,7 +124,7 @@ contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        AggregatorsRouter.querySwapHook,
+                        AggregatorRouter.querySwapHook,
                         IRouter.SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -143,9 +145,9 @@ contract AggregatorsRouter is IAggregatorsRouterRouter, RouterCommon {
 
     /**
      * @notice Hook for swap queries.
-     * @dev Can only be called by the Vault. Also handles native ETH.
+     * @dev Can only be called by the Vault.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
+     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function querySwapHook(
         IRouter.SwapSingleTokenHookParams calldata params
