@@ -17,14 +17,14 @@ interface IMevHook {
     error MevSwapFeePercentageAboveMax(uint256 feePercentage, uint256 maxFeePercentage);
 
     /**
-     * @notice The sender is already registered as MEV tax exempt.
-     * @param sender Sender that is already MEV tax exempt
+     * @notice The sender is already registered as MEV tax-exempt.
+     * @param sender Sender that is already MEV tax-exempt
      */
     error MevTaxExemptSenderAlreadyAdded(address sender);
 
     /**
-     * @notice The sender is not registered as MEV tax exempt.
-     * @param sender Sender that is not MEV tax exempt
+     * @notice The sender is not registered as MEV tax-exempt.
+     * @param sender Sender that is not MEV tax-exempt
      */
     error SenderNotRegisteredAsMevTaxExempt(address sender);
 
@@ -69,14 +69,14 @@ interface IMevHook {
     event PoolMevTaxThresholdSet(address pool, uint256 newPoolMevTaxThreshold);
 
     /**
-     * @notice The sender was registered as MEV tax exempt.
-     * @param sender The address of the sender registered as MEV tax exempt
+     * @notice The sender was registered as MEV tax-exempt.
+     * @param sender The address of the sender registered as MEV tax-exempt
      */
     event MevTaxExemptSenderAdded(address sender);
 
     /**
-     * @notice The sender was removed from list of MEV tax exempt senders.
-     * @param sender The address of the sender removed from MEV tax exempt list
+     * @notice The sender was removed from list of MEV tax-exempt senders.
+     * @param sender The address of the sender removed from MEV tax-exempt list
      */
     event MevTaxExemptSenderRemoved(address sender);
 
@@ -212,22 +212,22 @@ interface IMevHook {
     function setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) external;
 
     /**
-     * @notice Checks if sender is MEV tax exempt.
-     * @dev A MEV tax exempt sender pays only the static swap fee percentage, regardless of the paid priority fee.
-     * @param sender Sender to check if is MEV tax exempt
-     * @return mevTaxExempt true if sender is MEV tax exempt
+     * @notice Checks if sender is MEV tax-exempt.
+     * @dev A MEV tax-exempt sender pays only the static swap fee percentage, regardless of the paid priority fee.
+     * @param sender Sender to check if is MEV tax-exempt
+     * @return mevTaxExempt true if sender is MEV tax-exempt
      */
     function isMevTaxExempt(address sender) external view returns (bool mevTaxExempt);
 
     /**
-     * @notice Registers a list of senders as MEV tax exempt senders.
-     * @param senders Addresses of senders to be registered as MEV tax exempt
+     * @notice Registers a list of senders as MEV tax-exempt senders.
+     * @param senders Addresses of senders to be registered as MEV tax-exempt
      */
     function addMevTaxExemptSenders(address[] memory senders) external;
 
     /**
-     * @notice Removes a list of senders from list of MEV tax exempt senders.
-     * @param senders Addresses of senders to be removed from list of MEV tax exempt
+     * @notice Removes a list of senders from list of MEV tax-exempt senders.
+     * @param senders Addresses of senders to be removed from list of MEV tax-exempt
      */
     function removeMevTaxExemptSenders(address[] memory senders) external;
 }
