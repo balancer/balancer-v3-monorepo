@@ -12,8 +12,8 @@ contract PauseHelper is SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
-     * @notice Revert if the pool is already in the list of pools
-     * @param  pool Pool that tried to be added
+     * @notice Cannot add a pool that is already there.
+     * @param pool Address of the pool being added
      */
     error PoolExistInPausableSet(address pool);
 
