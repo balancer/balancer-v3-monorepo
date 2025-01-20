@@ -212,10 +212,10 @@ interface IMevHook {
     function setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) external;
 
     /**
-     * @notice Checks if sender is MEV tax-exempt.
+     * @notice Checks whether the sender is MEV tax-exempt.
      * @dev A MEV tax-exempt sender pays only the static swap fee percentage, regardless of the paid priority fee.
-     * @param sender Sender to check if is MEV tax-exempt
-     * @return mevTaxExempt true if sender is MEV tax-exempt
+     * @param sender The sender being checked for MEV tax-exempt status
+     * @return mevTaxExempt True if the sender is MEV tax-exempt
      */
     function isMevTaxExempt(address sender) external view returns (bool mevTaxExempt);
 
