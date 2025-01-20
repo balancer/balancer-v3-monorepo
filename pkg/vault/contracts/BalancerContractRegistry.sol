@@ -255,7 +255,7 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     }
 
     /// @inheritdoc IBalancerContractRegistry
-    function isActiveBalancerContract(ContractType contractType, address contractAddress) public view returns (bool) {
+    function isActiveBalancerContract(ContractType contractType, address contractAddress) external view returns (bool) {
         return _isActiveBalancerContract(contractType, contractAddress);
     }
 
@@ -297,12 +297,12 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
         return _contractInfo[contractAddress];
     }
 
-    function _getContractId(string memory contractName) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(contractName));
-    }
-
     /// @inheritdoc IBalancerContractRegistry
     function isTrustedRouter(address router) external view returns (bool) {
         return _isActiveBalancerContract(ContractType.ROUTER, router);
+    }
+
+    function _getContractId(string memory contractName) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(contractName));
     }
 }
