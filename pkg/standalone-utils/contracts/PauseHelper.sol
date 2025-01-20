@@ -12,14 +12,14 @@ contract PauseHelper is SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
-     * @notice Revert if the pool is already in the list of pools
-     * @param  pool Pool that tried to be added
+     * @notice Cannot add a pool that is already there.
+     * @param pool Address of the pool being added
      */
     error PoolAlreadyInPausableSet(address pool);
 
     /**
-     * @notice Revert if the pool is not in the list of pools
-     * @param  pool Pool that not found
+     * @notice Cannot remove a pool that was not added.
+     * @param pool Address of the pool being removed
      */
     error PoolNotInPausableSet(address pool);
 
@@ -27,14 +27,14 @@ contract PauseHelper is SingletonAuthentication {
     error IndexOutOfBounds();
 
     /**
-     * @notice Emitted when a pool is added to the list of pools that can be paused
-     * @param pool Pool that was added
+     * @notice Emitted when a pool is added to the list of pools that can be paused.
+     * @param pool Address of the pool that was added
      */
     event PoolAddedToPausableSet(address pool);
 
     /**
-     * @notice Emitted when a pool is removed from the list of pools that can be paused
-     * @param pool Pool that was removed
+     * @notice Emitted when a pool is removed from the list of pools that can be paused.
+     * @param pool Address of the pool that was removed
      */
     event PoolRemovedFromPausableSet(address pool);
 
@@ -52,6 +52,7 @@ contract PauseHelper is SingletonAuthentication {
      * @notice Add pools to the list of pools that can be paused.
      * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may add
      * pools to the pause list.
+     *
      * @param newPools List of pools to add
      */
     function addPools(address[] calldata newPools) external authenticate {
@@ -70,6 +71,7 @@ contract PauseHelper is SingletonAuthentication {
      * @notice Remove pools from the list of pools that can be paused.
      * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may remove
      * pools from the pause list.
+     *
      * @param pools List of pools to remove
      */
     function removePools(address[] memory pools) public authenticate {
@@ -128,7 +130,7 @@ contract PauseHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Get a range of pools
+     * @notice Get a range of pools.
      * @param from Start index
      * @param to End index
      * @return pools List of pools
