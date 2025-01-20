@@ -125,7 +125,7 @@ contract PauseHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Get a range of pools
+     * @notice Get a range of pools.
      * @param from Start index
      * @param to End index
      * @return pools List of pools
