@@ -23,7 +23,7 @@ interface IMevHook {
     error MevTaxExemptSenderAlreadyAdded(address sender);
 
     /**
-     * @notice The sender is not registered as MEV tax exempt.
+     * @notice The sender being removed is not registered as MEV tax exempt.
      * @param sender Sender that is not MEV tax exempt
      */
     error SenderNotRegisteredAsMevTaxExempt(address sender);
