@@ -348,4 +348,15 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(feeRecipient)), 0, "DAI not burned");
         assertEq(usdc.balanceOf(address(feeRecipient)), DEFAULT_AMOUNT * 2, "USDC not forwarded");
     }
+
+    function testInvalidBurnerConfiguration() public {
+        vm.startPrank(admin);
+
+        // Set the burner, but not the token.
+        feeSweeper.setProtocolFeeBurner(feeBurner);
+
+        vm.expectRevert(IProtocolFeeSweeper.InvalidTargetToken.selector);
+        feeSweeper.sweepProtocolFees(pool);
+        vm.stopPrank();
+    }
 }
