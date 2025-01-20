@@ -27,8 +27,8 @@ contract PauseHelper is SingletonAuthentication {
     error IndexOutOfBounds();
 
     /**
-     * @notice Emitted when a pool is added to the list of pools that can be paused
-     * @param pool Pool that was added
+     * @notice Emitted when a pool is added to the list of pools that can be paused.
+     * @param pool Address of the pool that was added
      */
     event PoolAddedToPausableSet(address pool);
 
