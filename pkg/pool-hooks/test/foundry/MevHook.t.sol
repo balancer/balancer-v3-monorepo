@@ -585,7 +585,7 @@ contract MevHookTest is BaseVaultTest {
     }
 
     function testAddMevTaxExemptSenders() public {
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax exempt list is not empty");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax-exempt list is not empty");
         vm.prank(admin);
         vm.expectEmit();
         emit IMevHook.MevTaxExemptSenderAdded(lp);
@@ -594,14 +594,14 @@ contract MevHookTest is BaseVaultTest {
         vm.expectEmit();
         emit IMevHook.MevTaxExemptSenderAdded(alice);
         _mevHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 3, "Senders not added as MEV tax exempt");
-        assertEq(_mevHook.getMevTaxExemptSendersAt(0), lp, "LP was not added properly as MEV tax exempt");
-        assertEq(_mevHook.getMevTaxExemptSendersAt(1), bob, "Bob was not added properly as MEV tax exempt");
-        assertEq(_mevHook.getMevTaxExemptSendersAt(2), alice, "Alice was not added properly as MEV tax exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 3, "Senders not added as MEV tax-exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersAt(0), lp, "LP was not added properly as MEV tax-exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersAt(1), bob, "Bob was not added properly as MEV tax-exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersAt(2), alice, "Alice was not added properly as MEV tax-exempt");
     }
 
     function testAddMevTaxExemptSendersRevertsWithDuplicated() public {
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax exempt list is not empty");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax-exempt list is not empty");
         vm.prank(admin);
         _mevHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
 
@@ -619,10 +619,10 @@ contract MevHookTest is BaseVaultTest {
     }
 
     function testRemoveMevTaxExemptSenders() public {
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax exempt list is not empty");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax-exempt list is not empty");
         vm.prank(admin);
         _mevHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 3, "Senders not added as MEV tax exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 3, "Senders not added as MEV tax-exempt");
 
         vm.prank(admin);
         vm.expectEmit();
@@ -631,12 +631,12 @@ contract MevHookTest is BaseVaultTest {
         emit IMevHook.MevTaxExemptSenderRemoved(alice);
         _mevHook.removeMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 1, "Senders not removed from MEV tax exempt");
-        assertEq(_mevHook.getMevTaxExemptSendersAt(0), bob, "Bob was not added properly as MEV tax exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 1, "Senders not removed from MEV tax-exempt");
+        assertEq(_mevHook.getMevTaxExemptSendersAt(0), bob, "Bob was not added properly as MEV tax-exempt");
     }
 
     function testRemoveMevTaxExemptSendersRevertsIfNotExist() public {
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax exempt list is not empty");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax-exempt list is not empty");
         vm.prank(admin);
         _mevHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
 
@@ -649,7 +649,7 @@ contract MevHookTest is BaseVaultTest {
                        isMevTaxExempt
     ********************************************************/
     function testIsMevTaxExempt() public {
-        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax exempt list is not empty");
+        assertEq(_mevHook.getMevTaxExemptSendersLength(), 0, "MEV tax-exempt list is not empty");
         vm.prank(admin);
         _mevHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
 

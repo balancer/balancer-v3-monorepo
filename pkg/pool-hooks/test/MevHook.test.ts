@@ -39,7 +39,7 @@ enum RegistryContractType {
 describe('MevHook', () => {
   const ROUTER_VERSION = 'Router V1';
   const PRIORITY_GAS_THRESHOLD = 3_000_000n;
-  const MEV_MULTIPLIER = fp(10_000_000_000_000);
+  const MEV_MULTIPLIER = fp(10_000_000_000);
 
   const STATIC_SWAP_FEE_PERCENTAGE = fp(0.01); // 1% swap fee
 
@@ -50,6 +50,7 @@ describe('MevHook', () => {
   let pool: PoolMock;
   let poolTokens: string[];
   let router: Router;
+  let untrustedRouter: Router;
   let hook: MevHook;
   let registry: BalancerContractRegistry;
 
@@ -70,6 +71,7 @@ describe('MevHook', () => {
     WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
     router = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
+    untrustedRouter = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, 'UNTRUSTED_VERSION'] });
     factory = await deploy('v3-vault/PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
     registry = await deploy('v3-vault/BalancerContractRegistry', { args: [vaultAddress] });
 
@@ -133,10 +135,12 @@ describe('MevHook', () => {
     await tokens.mint({ to: lp, amount: fp(1e12) });
     await tokens.mint({ to: sender, amount: fp(1e12) });
     await pool.connect(lp).approve(router, MAX_UINT256);
+    await pool.connect(lp).approve(untrustedRouter, MAX_UINT256);
     for (const token of [...tokens.tokens, WETH, pool]) {
       for (const from of [lp, sender]) {
         await token.connect(from).approve(permit2, MAX_UINT256);
         await permit2.connect(from).approve(token, router, MAX_UINT160, MAX_UINT48);
+        await permit2.connect(from).approve(token, untrustedRouter, MAX_UINT160, MAX_UINT48);
       }
     }
   });
@@ -206,7 +210,7 @@ describe('MevHook', () => {
       await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
     });
 
-    it('Address is MEV tax exempt', async () => {
+    it('Address is MEV tax-exempt', async () => {
       await hook.connect(admin).addMevTaxExemptSenders([sender]);
       await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
 
@@ -249,6 +253,31 @@ describe('MevHook', () => {
       await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
         gasPrice: txGasPrice,
       });
+
+      const balancesAfter = await getBalances();
+
+      await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
+    });
+
+    it.only('Address is MEV tax-exempt but router is not trusted', async () => {
+      await hook.connect(admin).addMevTaxExemptSenders([sender]);
+      await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
+
+      const amountIn = fp(10);
+
+      const baseFee = await getNextBlockBaseFee();
+      // `BaseFee + 10 * PRIORITY_GAS_THRESHOLD` should trigger MEV Tax and pay MEV tax over
+      // `9 * PRIORITY_GAS_THRESHOLD` (static fee is charged up to `baseFee + PRIORITY_GAS_THRESHOLD`). However, since
+      // "sender" is exempt, he will pay only static fee.
+      const txGasPrice = baseFee + 10n * PRIORITY_GAS_THRESHOLD;
+
+      const balancesBefore = await getBalances();
+
+      await untrustedRouter
+        .connect(sender)
+        .swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
+          gasPrice: txGasPrice,
+        });
 
       const balancesAfter = await getBalances();
 
