@@ -23,6 +23,7 @@ import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
 import { ERC20MultiTokenMock } from "../../../contracts/test/ERC20MultiTokenMock.sol";
 import { LinearBasePoolMathMock } from "../../../contracts/test/LinearBasePoolMathMock.sol";
 import { ProtocolFeeController } from "../../../contracts/ProtocolFeeController.sol";
+import { AggregatorsRouter } from "../../../contracts/AggregatorsRouter.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { VaultAdminMock } from "../../../contracts/test/VaultAdminMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
@@ -271,6 +272,23 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                 );
         } else {
             return new RouterMock(vault, weth, permit2);
+        }
+    }
+
+    function deployAggregatorsRouter(
+        IVault vault,
+        IWETH weth,
+        string memory version
+    ) internal returns (AggregatorsRouter) {
+        if (reusingArtifacts) {
+            return
+                AggregatorsRouter(
+                    payable(
+                        deployCode(_computeVaultPath(type(AggregatorsRouter).name), abi.encode(vault, weth, version))
+                    )
+                );
+        } else {
+            return new AggregatorsRouter(vault, weth, version);
         }
     }
 
