@@ -34,7 +34,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         (feeRecipient, ) = makeAddrAndKey("feeRecipient");
 
         feeSweeper = new ProtocolFeeSweeper(vault, feeRecipient);
-        feeBurner = new ProtocolFeeBurnerMock(feeSweeper);
+        feeBurner = new ProtocolFeeBurnerMock();
 
         authorizer.grantRole(
             IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.setFeeRecipient.selector),
