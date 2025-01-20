@@ -130,7 +130,7 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         );
         // Only active with the correct type.
         assertFalse(
-            registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS),
+            registry.isActiveBalancerContract(ContractType.BALANCER_ROUTER, ANY_ADDRESS),
             "Address is active as a Router"
         );
     }
@@ -159,7 +159,7 @@ contract BalancerContractRegistryTest is BaseVaultTest {
     function testStaleAliasGetter() public {
         vm.startPrank(admin);
         // Register a contract and add an alias.
-        registry.registerBalancerContract(ContractType.ROUTER, DEFAULT_NAME, ANY_ADDRESS);
+        registry.registerBalancerContract(ContractType.BALANCER_ROUTER, DEFAULT_NAME, ANY_ADDRESS);
         registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
 
         // Deregister the contract - but the alias will still be there.
@@ -167,12 +167,15 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         vm.stopPrank();
 
         // Getting it using the primary name should return 0.
-        (address contractAddress, bool active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_NAME);
+        (address contractAddress, bool active) = registry.getBalancerContract(
+            ContractType.BALANCER_ROUTER,
+            DEFAULT_NAME
+        );
         assertEq(contractAddress, ZERO_ADDRESS, "Wrong primary contract address");
         assertFalse(active, "Contract is active using primary name");
 
         // Getting it using the alias should also return 0, even though there's a record there.
-        (contractAddress, active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_ALIAS);
+        (contractAddress, active) = registry.getBalancerContract(ContractType.BALANCER_ROUTER, DEFAULT_ALIAS);
         assertEq(contractAddress, ZERO_ADDRESS, "Wrong alias contract address");
         assertFalse(active, "Contract is active using alias");
     }
@@ -184,14 +187,17 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         registry.addOrUpdateBalancerContractAlias(DEFAULT_ALIAS, ANY_ADDRESS);
 
         // Getting a valid entry with the wrong type should return 0.
-        (address contractAddress, bool active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_NAME);
+        (address contractAddress, bool active) = registry.getBalancerContract(
+            ContractType.BALANCER_ROUTER,
+            DEFAULT_NAME
+        );
         assertEq(contractAddress, ZERO_ADDRESS, "Wrong primary contract address");
         assertFalse(active, "Contract is active using primary name");
 
-        assertFalse(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS));
+        assertFalse(registry.isActiveBalancerContract(ContractType.BALANCER_ROUTER, ANY_ADDRESS));
 
         // Getting a valid entry through the alias, with the wrong type, should return 0.
-        (contractAddress, active) = registry.getBalancerContract(ContractType.ROUTER, DEFAULT_ALIAS);
+        (contractAddress, active) = registry.getBalancerContract(ContractType.BALANCER_ROUTER, DEFAULT_ALIAS);
         assertEq(contractAddress, ZERO_ADDRESS, "Wrong alias contract address");
         assertFalse(active, "Contract is active using alias");
     }
@@ -202,7 +208,10 @@ contract BalancerContractRegistryTest is BaseVaultTest {
 
         // Should return the registered contract as active.
         assertTrue(registry.isActiveBalancerContract(ContractType.ERC4626, ANY_ADDRESS), "ANY_ADDRESS is not a Buffer");
-        assertFalse(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS), "ANY_ADDRESS is a Router");
+        assertFalse(
+            registry.isActiveBalancerContract(ContractType.BALANCER_ROUTER, ANY_ADDRESS),
+            "ANY_ADDRESS is a Router"
+        );
     }
 
     function testValidRegistrationEmitsEvent() public {
@@ -215,9 +224,12 @@ contract BalancerContractRegistryTest is BaseVaultTest {
 
     function testIsTrustedRouter() public {
         vm.prank(admin);
-        registry.registerBalancerContract(ContractType.ROUTER, DEFAULT_NAME, ANY_ADDRESS);
+        registry.registerBalancerContract(ContractType.BALANCER_ROUTER, DEFAULT_NAME, ANY_ADDRESS);
 
-        assertTrue(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS), "ANY_ADDRESS is not a Router");
+        assertTrue(
+            registry.isActiveBalancerContract(ContractType.BALANCER_ROUTER, ANY_ADDRESS),
+            "ANY_ADDRESS is not a Router"
+        );
         assertTrue(registry.isTrustedRouter(ANY_ADDRESS), "ANY_ADDRESS is not a Trusted router");
     }
 
@@ -239,13 +251,19 @@ contract BalancerContractRegistryTest is BaseVaultTest {
 
     function testValidDeregistration() public {
         vm.startPrank(admin);
-        registry.registerBalancerContract(ContractType.ROUTER, DEFAULT_NAME, ANY_ADDRESS);
-        assertTrue(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS), "ANY_ADDRESS is not active");
+        registry.registerBalancerContract(ContractType.BALANCER_ROUTER, DEFAULT_NAME, ANY_ADDRESS);
+        assertTrue(
+            registry.isActiveBalancerContract(ContractType.BALANCER_ROUTER, ANY_ADDRESS),
+            "ANY_ADDRESS is not active"
+        );
 
         registry.deregisterBalancerContract(DEFAULT_NAME);
         vm.stopPrank();
 
-        assertFalse(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS), "ANY_ADDRESS is still active");
+        assertFalse(
+            registry.isActiveBalancerContract(ContractType.BALANCER_ROUTER, ANY_ADDRESS),
+            "ANY_ADDRESS is still active"
+        );
 
         IBalancerContractRegistry.ContractInfo memory info = registry.getBalancerContractInfo(ANY_ADDRESS);
         assertFalse(info.isRegistered, "Contract is still registered");
@@ -253,11 +271,18 @@ contract BalancerContractRegistryTest is BaseVaultTest {
 
     function testDeregistrationEmitsEvent() public {
         vm.startPrank(admin);
-        registry.registerBalancerContract(ContractType.ROUTER, DEFAULT_NAME, ANY_ADDRESS);
-        assertTrue(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS), "ANY_ADDRESS is not active");
+        registry.registerBalancerContract(ContractType.BALANCER_ROUTER, DEFAULT_NAME, ANY_ADDRESS);
+        assertTrue(
+            registry.isActiveBalancerContract(ContractType.BALANCER_ROUTER, ANY_ADDRESS),
+            "ANY_ADDRESS is not active"
+        );
 
         vm.expectEmit();
-        emit IBalancerContractRegistry.BalancerContractDeregistered(ContractType.ROUTER, DEFAULT_NAME, ANY_ADDRESS);
+        emit IBalancerContractRegistry.BalancerContractDeregistered(
+            ContractType.BALANCER_ROUTER,
+            DEFAULT_NAME,
+            ANY_ADDRESS
+        );
 
         registry.deregisterBalancerContract(DEFAULT_NAME);
         vm.stopPrank();
