@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { fp, fpMulDown } from '@balancer-labs/v3-helpers/src/numbers';
+import { setNextBlockBaseFeePerGas } from '@nomicfoundation/hardhat-network-helpers';
 
 import { PoolMock } from '../typechain-types/@balancer-labs/v3-vault/contracts/test/PoolMock';
 import { MevHook, Router, PoolFactoryMock, Vault, WETHTestToken, IVault } from '../typechain-types';
@@ -22,8 +23,7 @@ import { expect } from 'chai';
 describe('MevHook', () => {
   const ROUTER_VERSION = 'Router V1';
   const PRIORITY_GAS_THRESHOLD = 3_000_000n;
-  const MEV_MULTIPLIER = fp(10_000_000_000);
-  const MAX_MEV_FEE_PERCENTAGE = fp(0.999999);
+  const MEV_MULTIPLIER = fp(10_000_000_000_000);
 
   const STATIC_SWAP_FEE_PERCENTAGE = fp(0.01); // 1% swap fee
 
@@ -66,7 +66,7 @@ describe('MevHook', () => {
 
     hook = await deploy('MevHook', { args: [vaultAddress] });
 
-    await factory.registerTestPoolDisableUnbalancedLiquidity(pool, buildTokenConfig(poolTokens), hook, lp);
+    await factory.registerPoolWithHook(pool, buildTokenConfig(poolTokens), hook);
   });
 
   sharedBeforeEach('permissions', async () => {
@@ -79,6 +79,7 @@ describe('MevHook', () => {
     // MEV Hook Actions
     actions.push(await actionId(hook, 'disableMevTax'));
     actions.push(await actionId(hook, 'enableMevTax'));
+    actions.push(await actionId(hook, 'setMaxMevSwapFeePercentage'));
     actions.push(await actionId(hook, 'setDefaultMevTaxMultiplier'));
     actions.push(await actionId(hook, 'setPoolMevTaxMultiplier'));
     actions.push(await actionId(hook, 'setDefaultMevTaxThreshold'));
@@ -96,6 +97,8 @@ describe('MevHook', () => {
     await hook.connect(admin).setDefaultMevTaxThreshold(PRIORITY_GAS_THRESHOLD);
     await hook.connect(admin).setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
     await hook.connect(admin).setPoolMevTaxThreshold(pool, PRIORITY_GAS_THRESHOLD);
+
+    await hook.connect(admin).enableMevTax();
   });
 
   sharedBeforeEach('token allowances', async () => {
@@ -125,7 +128,7 @@ describe('MevHook', () => {
       expect(await hook.isMevTaxEnabled()).to.be.false;
 
       const amountIn = fp(10);
-      const baseFee = await getBaseFee();
+      const baseFee = await getNextBlockBaseFee();
       // "BaseFee + 2 * PriorityGasThreshold" should trigger MEV Tax, but static swap fee will be charged because MEV tax is
       // disabled.
       const txGasPrice = baseFee + 2n * PRIORITY_GAS_THRESHOLD;
@@ -142,9 +145,6 @@ describe('MevHook', () => {
     });
 
     it('low priority gas price', async () => {
-      await hook.connect(admin).enableMevTax();
-      expect(await hook.isMevTaxEnabled()).to.be.true;
-
       const amountIn = fp(10);
       // To trigger MEV tax, `txGasPrice` > `BaseFee + PriorityGasThreshold`.
       const txGasPrice = PRIORITY_GAS_THRESHOLD;
@@ -160,41 +160,13 @@ describe('MevHook', () => {
       await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
     });
 
-    it('MEV fee percentage smaller than static', async () => {
-      await hook.connect(admin).enableMevTax();
-      expect(await hook.isMevTaxEnabled()).to.be.true;
-
-      // Small multiplier, the MEV fee percentage will be lower than static swap fee. In this case, static swap fee
-      // should be charged.
-      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(0.0001)));
-
-      const amountIn = fp(10);
-
-      const baseFee = await getBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
-      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
-
-      const balancesBefore = await getBalances();
-
-      await router.connect(sender).swapSingleTokenExactIn(pool, token0, token1, amountIn, 0, MAX_UINT256, false, '0x', {
-        gasPrice: txGasPrice,
-      });
-
-      const balancesAfter = await getBalances();
-
-      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
-    });
-
     it('MEV multiplier is 0', async () => {
-      await hook.connect(admin).enableMevTax();
-      expect(await hook.isMevTaxEnabled()).to.be.true;
-
       // 0 multiplier. Should return static fee.
       await hook.setPoolMevTaxMultiplier(pool, 0);
 
       const amountIn = fp(10);
 
-      const baseFee = await getBaseFee();
+      const baseFee = await getNextBlockBaseFee();
       // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
@@ -211,17 +183,16 @@ describe('MevHook', () => {
   });
 
   describe('should pay MEV tax', async () => {
-    it('MEV fee percentage bigger than max value', async () => {
-      await hook.connect(admin).enableMevTax();
-      expect(await hook.isMevTaxEnabled()).to.be.true;
+    it('MEV fee percentage bigger than default max value', async () => {
+      await hook.connect(admin).setMaxMevSwapFeePercentage(fp(0.2));
 
-      // Big multiplier, the MEV fee percentage should be more than 99.9999%. Since the Max fee is 99.9999%, that's what
+      // Big multiplier, the MEV fee percentage should be more than 20%. Since the Max fee is set to 20%, that's what
       // will be charged.
-      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100n)));
+      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100000000n)));
 
       const amountIn = fp(10);
 
-      const baseFee = await getBaseFee();
+      const baseFee = await getNextBlockBaseFee();
       // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
@@ -237,16 +208,14 @@ describe('MevHook', () => {
     });
 
     it('charge MEV tax proportional to priority gas price', async () => {
-      await hook.connect(admin).enableMevTax();
-      expect(await hook.isMevTaxEnabled()).to.be.true;
-
       await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
 
       const amountIn = fp(10);
 
-      const baseFee = await getBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
-      const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+      const baseFee = await getNextBlockBaseFee();
+      // "BaseFee + PriorityGas + 1" should trigger MEV Tax and pay
+      // `static swap fee percentage + fees over 9*PRIORITY_GAS_THRESHOLD`
+      const txGasPrice = baseFee + 10n * PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
 
@@ -257,6 +226,118 @@ describe('MevHook', () => {
       const balancesAfter = await getBalances();
 
       await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
+    });
+  });
+
+  describe('add liquidity', async () => {
+    context('when there is no MEV tax', () => {
+      it('allows proportional for any gas price', async () => {
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
+
+        await expect(
+          router
+            .connect(sender)
+            .addLiquidityProportional(pool, Array(poolTokens.length).fill(fp(1000)), fp(1), false, '0x', {
+              gasPrice: txGasPrice,
+            })
+        ).to.not.be.reverted;
+      });
+
+      it('allows unbalanced for gas price below threshold', async () => {
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD;
+
+        await expect(
+          router
+            .connect(sender)
+            .addLiquidityUnbalanced(pool, Array(poolTokens.length).fill(fp(100)), fp(0), false, '0x', {
+              gasPrice: txGasPrice,
+            })
+        ).to.not.be.reverted;
+      });
+    });
+
+    context('when MEV tax has to be applied', () => {
+      it('allows unbalanced for any gas price if the hook is disabled', async () => {
+        await hook.connect(admin).disableMevTax();
+
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
+
+        await expect(
+          router
+            .connect(sender)
+            .addLiquidityUnbalanced(pool, Array(poolTokens.length).fill(fp(100)), fp(0), false, '0x', {
+              gasPrice: txGasPrice,
+            })
+        ).to.not.be.reverted;
+      });
+
+      it('blocks unbalanced for gas price above threshold', async () => {
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+
+        await expect(
+          router
+            .connect(sender)
+            .addLiquidityUnbalanced(pool, Array(poolTokens.length).fill(fp(1000)), fp(0), false, '0x', {
+              gasPrice: txGasPrice,
+            })
+        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
+      });
+    });
+  });
+
+  describe('remove liquidity', async () => {
+    context('when there is no MEV tax', () => {
+      it('allows proportional for any gas price', async () => {
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
+
+        await expect(
+          router.connect(lp).removeLiquidityProportional(pool, fp(1), Array(poolTokens.length).fill(0n), false, '0x', {
+            gasPrice: txGasPrice,
+          })
+        ).to.not.be.reverted;
+      });
+
+      it('allows unbalanced for gas price below threshold', async () => {
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD;
+
+        await expect(
+          router.connect(lp).removeLiquiditySingleTokenExactIn(pool, fp(1), token0, 1n, false, '0x', {
+            gasPrice: txGasPrice,
+          })
+        ).to.not.be.reverted;
+      });
+    });
+
+    context('when MEV tax has to be applied', () => {
+      it('allows unbalanced for any gas price if the hook is disabled', async () => {
+        await hook.connect(admin).disableMevTax();
+
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
+
+        await expect(
+          router.connect(lp).removeLiquiditySingleTokenExactIn(pool, fp(1), token0, 1n, false, '0x', {
+            gasPrice: txGasPrice,
+          })
+        ).to.not.be.reverted;
+      });
+
+      it('blocks unbalanced for gas price above threshold', async () => {
+        const baseFee = await getNextBlockBaseFee();
+        const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
+
+        await expect(
+          router.connect(lp).removeLiquiditySingleTokenExactIn(pool, fp(1), token0, 1n, false, '0x', {
+            gasPrice: txGasPrice,
+          })
+        ).to.be.revertedWithCustomError(vault, 'BeforeRemoveLiquidityHookFailed');
+      });
     });
   });
 
@@ -284,12 +365,16 @@ describe('MevHook', () => {
     const events = await vault.queryFilter(filter, -1);
     const swapEvent = events[0];
 
-    const baseFee = await getBaseFee();
+    const baseFee = await getNextBlockBaseFee();
 
-    let mevSwapFeePercentage = fpMulDown(txGasPrice - baseFee, mevMultiplier);
-    if (mevSwapFeePercentage >= MAX_MEV_FEE_PERCENTAGE) {
+    const priorityGasPrice = txGasPrice - baseFee;
+    let mevSwapFeePercentage =
+      STATIC_SWAP_FEE_PERCENTAGE + fpMulDown(priorityGasPrice - PRIORITY_GAS_THRESHOLD, mevMultiplier);
+    const maxMevSwapFeePercentage = await hook.getMaxMevSwapFeePercentage();
+
+    if (mevSwapFeePercentage >= maxMevSwapFeePercentage) {
       // If mevSwapFeePercentage > max fee percentage, charge the max value.
-      mevSwapFeePercentage = MAX_MEV_FEE_PERCENTAGE;
+      mevSwapFeePercentage = maxMevSwapFeePercentage;
     }
     const mevSwapFee = fpMulDown(mevSwapFeePercentage, amountIn);
 
@@ -316,9 +401,12 @@ describe('MevHook', () => {
     expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - staticSwapFee);
   }
 
-  async function getBaseFee() {
+  async function getNextBlockBaseFee() {
     const provider = ethers.provider;
     const block = await provider.getBlock('latest'); // Get the latest block
-    return block?.baseFeePerGas || 0n;
+    const latestBlockBaseFee = block?.baseFeePerGas || 0n;
+    await setNextBlockBaseFeePerGas(latestBlockBaseFee);
+
+    return latestBlockBaseFee;
   }
 });

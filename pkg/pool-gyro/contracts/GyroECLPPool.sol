@@ -19,11 +19,9 @@ import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
-
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import { GyroECLPMath } from "./lib/GyroECLPMath.sol";
@@ -34,7 +32,7 @@ import { GyroECLPMath } from "./lib/GyroECLPMath.sol";
  * parameterized by the pricing range [α,β], the inclination angle `phi` and stretching parameter `lambda`. For more
  * information, please refer to https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/e-clps.
  */
-contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo {
+contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -64,7 +62,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo {
     constructor(
         GyroECLPPoolParams memory params,
         IVault vault
-    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) {
+    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
         GyroECLPMath.validateParams(params.eclpParams);
         emit ECLPParamsValidated(true);
 

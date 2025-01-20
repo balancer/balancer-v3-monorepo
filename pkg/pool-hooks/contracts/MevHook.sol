@@ -2,14 +2,18 @@
 
 pragma solidity ^0.8.24;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
+    AddLiquidityKind,
     HooksConfig,
     HookFlags,
     LiquidityManagement,
     PoolSwapParams,
+    RemoveLiquidityKind,
     TokenConfig,
     MAX_FEE_PERCENTAGE
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -32,6 +36,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     uint256 internal _defaultMevTaxThreshold;
     uint256 internal _defaultMevTaxMultiplier;
 
+    // Global max dynamic swap fee percentage returned by this hook.
+    uint256 internal _maxMevSwapFeePercentage;
+
     // Pool-specific parameters.
     mapping(address => uint256) internal _poolMevTaxThresholds;
     mapping(address => uint256) internal _poolMevTaxMultipliers;
@@ -50,6 +57,8 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
         _setDefaultMevTaxThreshold(0);
+        // Default to the maximum value allowed by the Vault.
+        _setMaxMevSwapFeePercentage(_MEV_MAX_FEE_PERCENTAGE);
     }
 
     /// @inheritdoc IHooks
@@ -57,14 +66,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         address,
         address pool,
         TokenConfig[] memory,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
         _poolMevTaxMultipliers[pool] = _defaultMevTaxMultiplier;
         _poolMevTaxThresholds[pool] = _defaultMevTaxThreshold;
 
-        // Unbalanced liquidity must be disabled because the hook computes dynamic swap fees that unbalanced liquidity
-        // operations could bypass.
-        return liquidityManagement.disableUnbalancedLiquidity;
+        return true;
     }
 
     /// @inheritdoc IHooks
@@ -72,6 +79,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         HookFlags memory hookFlags;
         // The MEV Tax is charged as a swap fee. Searcher transactions pay a higher swap fee percentage.
         hookFlags.shouldCallComputeDynamicSwapFee = true;
+        hookFlags.shouldCallBeforeAddLiquidity = true;
+        hookFlags.shouldCallBeforeRemoveLiquidity = true;
+
         return hookFlags;
     }
 
@@ -85,26 +95,54 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             return (true, staticSwapFeePercentage);
         }
 
-        // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
-        // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
-        // defines the priority gas price (the part of the gas cost that will be paid to the validator).
-        uint256 priorityGasPrice = tx.gasprice - block.basefee;
+        return (
+            true,
+            _calculateSwapFeePercentage(
+                staticSwapFeePercentage,
+                _poolMevTaxMultipliers[pool],
+                _poolMevTaxThresholds[pool]
+            )
+        );
+    }
 
-        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
-        // impose the MEV tax.
-        if (priorityGasPrice < _poolMevTaxThresholds[pool]) {
-            return (true, staticSwapFeePercentage);
+    /// @inheritdoc IHooks
+    function onBeforeAddLiquidity(
+        address,
+        address pool,
+        AddLiquidityKind kind,
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) public view override returns (bool success) {
+        if (_mevTaxEnabled == false) {
+            return true;
         }
 
-        uint256 mevSwapFeePercentage = priorityGasPrice.mulDown(_poolMevTaxMultipliers[pool]);
+        uint256 priorityGasPrice = _getPriorityGasPrice();
 
-        // Cap the maximum fee at `MAX_FEE_PERCENTAGE`.
-        if (mevSwapFeePercentage > _MEV_MAX_FEE_PERCENTAGE) {
-            return (true, _MEV_MAX_FEE_PERCENTAGE);
+        // Allow proportional operations, or unbalanced operations within the threshold.
+        return kind == AddLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
+    }
+
+    /// @inheritdoc IHooks
+    function onBeforeRemoveLiquidity(
+        address,
+        address pool,
+        RemoveLiquidityKind kind,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) public view override returns (bool success) {
+        if (_mevTaxEnabled == false) {
+            return true;
         }
 
-        // Use the greater of the static and MEV fee percentages.
-        return (true, staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage);
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+
+        // Allow proportional operations, or unbalanced operations within the threshold.
+        return kind == RemoveLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
     }
 
     /// @inheritdoc IMevHook
@@ -126,6 +164,26 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _mevTaxEnabled = value;
 
         emit MevTaxEnabledSet(value);
+    }
+
+    /// @inheritdoc IMevHook
+    function getMaxMevSwapFeePercentage() external view returns (uint256) {
+        return _maxMevSwapFeePercentage;
+    }
+
+    /// @inheritdoc IMevHook
+    function setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) external authenticate {
+        _setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+    }
+
+    function _setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) internal {
+        if (maxMevSwapFeePercentage > _MEV_MAX_FEE_PERCENTAGE) {
+            revert MevSwapFeePercentageAboveMax(maxMevSwapFeePercentage, _MEV_MAX_FEE_PERCENTAGE);
+        }
+
+        _maxMevSwapFeePercentage = maxMevSwapFeePercentage;
+
+        emit MaxMevSwapFeePercentageSet(maxMevSwapFeePercentage);
     }
 
     /// @inheritdoc IMevHook
@@ -192,9 +250,53 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
+    /*******************************************************
+                        Helper functions
+    *******************************************************/
+
+    function _calculateSwapFeePercentage(
+        uint256 staticSwapFeePercentage,
+        uint256 multiplier,
+        uint256 threshold
+    ) internal view returns (uint256) {
+        // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
+        // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
+        // defines the priority gas price (the part of the gas cost that will be paid to the validator).
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+        uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
+
+        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
+        // impose the MEV tax. Also, if mev fee cap is lower than static fee percentage, returns the static.
+        if (priorityGasPrice < threshold || maxMevSwapFeePercentage < staticSwapFeePercentage) {
+            return staticSwapFeePercentage;
+        }
+
+        (bool success, uint256 feeIncrement) = Math.tryMul(priorityGasPrice - threshold, multiplier);
+
+        // If success == false, an overflow occurred, so we should return the max fee.
+        if (success == false) {
+            return maxMevSwapFeePercentage;
+        }
+
+        // Math.tryMul is not an operation with 18-decimals number, so we need to fix the result dividing by 1e18.
+        feeIncrement = feeIncrement / 1e18;
+
+        // At this point, `priorityGasPrice >= threshold` and `maxMevSwapFeePercentage >= staticSwapFeePercentage`.
+        // `staticSwapFeePercentage` cannot be greater than 1e18, so there is no need to check if
+        // `staticSwapFeePercentage + feeIncrement` overflows.
+        uint256 mevSwapFeePercentage = staticSwapFeePercentage + feeIncrement;
+
+        // Cap the maximum fee at `maxMevSwapFeePercentage`.
+        return Math.min(mevSwapFeePercentage, maxMevSwapFeePercentage);
+    }
+
     function _setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) private {
         _poolMevTaxThresholds[pool] = newPoolMevTaxThreshold;
 
         emit PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
+    }
+
+    function _getPriorityGasPrice() internal view returns (uint256) {
+        return tx.gasprice - block.basefee;
     }
 }

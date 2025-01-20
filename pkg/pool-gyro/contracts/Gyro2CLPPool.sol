@@ -17,11 +17,9 @@ import {
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
-
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import "./lib/Gyro2CLPMath.sol";
@@ -32,7 +30,7 @@ import "./lib/Gyro2CLPMath.sol";
  * by the pricing range [α,β] and the two assets in the pool. For more information, please refer to
  * https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps
  */
-contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
+contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo, Version {
     using FixedPoint for uint256;
 
     uint256 private immutable _sqrtAlpha;
@@ -41,7 +39,7 @@ contract Gyro2CLPPool is IGyro2CLPPool, BalancerPoolToken, PoolInfo {
     constructor(
         GyroParams memory params,
         IVault vault
-    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) {
+    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
         if (params.sqrtAlpha >= params.sqrtBeta) {
             revert SqrtParamsWrong();
         }
