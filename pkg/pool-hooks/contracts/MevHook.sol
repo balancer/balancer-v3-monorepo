@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -93,28 +95,14 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             return (true, staticSwapFeePercentage);
         }
 
-        // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
-        // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
-        // defines the priority gas price (the part of the gas cost that will be paid to the validator).
-        uint256 priorityGasPrice = _getPriorityGasPrice();
-
-        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
-        // impose the MEV tax.
-        if (priorityGasPrice < _poolMevTaxThresholds[pool]) {
-            return (true, staticSwapFeePercentage);
-        }
-
-        uint256 mevSwapFeePercentage = priorityGasPrice.mulDown(_poolMevTaxMultipliers[pool]);
-
-        // Cap the maximum fee at `_maxMevSwapFeePercentage`.
-        uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
-        if (mevSwapFeePercentage > maxMevSwapFeePercentage) {
-            // Don't return early. If the cap is below the static fee, we'll still use the static fee.
-            mevSwapFeePercentage = maxMevSwapFeePercentage;
-        }
-
-        // Use the greater of the static and MEV fee percentages.
-        return (true, staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage);
+        return (
+            true,
+            _calculateSwapFeePercentage(
+                staticSwapFeePercentage,
+                _poolMevTaxMultipliers[pool],
+                _poolMevTaxThresholds[pool]
+            )
+        );
     }
 
     /// @inheritdoc IHooks
@@ -260,6 +248,46 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         uint256 newPoolMevTaxThreshold
     ) external withMevTaxEnabledPool(pool) authenticate {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
+    }
+
+    /*******************************************************
+                        Helper functions
+    *******************************************************/
+
+    function _calculateSwapFeePercentage(
+        uint256 staticSwapFeePercentage,
+        uint256 multiplier,
+        uint256 threshold
+    ) internal view returns (uint256) {
+        // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
+        // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
+        // defines the priority gas price (the part of the gas cost that will be paid to the validator).
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+        uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
+
+        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
+        // impose the MEV tax. Also, if mev fee cap is lower than static fee percentage, returns the static.
+        if (priorityGasPrice < threshold || maxMevSwapFeePercentage < staticSwapFeePercentage) {
+            return staticSwapFeePercentage;
+        }
+
+        (bool success, uint256 feeIncrement) = Math.tryMul(priorityGasPrice - threshold, multiplier);
+
+        // If success == false, an overflow occurred, so we should return the max fee.
+        if (success == false) {
+            return maxMevSwapFeePercentage;
+        }
+
+        // Math.tryMul is not an operation with 18-decimals number, so we need to fix the result dividing by 1e18.
+        feeIncrement = feeIncrement / 1e18;
+
+        // At this point, `priorityGasPrice >= threshold` and `maxMevSwapFeePercentage >= staticSwapFeePercentage`.
+        // `staticSwapFeePercentage` cannot be greater than 1e18, so there is no need to check if
+        // `staticSwapFeePercentage + feeIncrement` overflows.
+        uint256 mevSwapFeePercentage = staticSwapFeePercentage + feeIncrement;
+
+        // Cap the maximum fee at `maxMevSwapFeePercentage`.
+        return Math.min(mevSwapFeePercentage, maxMevSwapFeePercentage);
     }
 
     function _setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) private {
