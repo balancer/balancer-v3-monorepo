@@ -156,17 +156,4 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
 
         return amountCalculated;
     }
-
-    /***************************************************************************
-                                       Overrides
-    ***************************************************************************/
-    function permitBatchAndCall(
-        PermitApproval[] calldata,
-        bytes[] calldata,
-        IAllowanceTransfer.PermitBatch calldata,
-        bytes calldata,
-        bytes[] calldata
-    ) external payable override returns (bytes[] memory) {
-        revert OperationNotSupported("permit2 is not supported");
-    }
 }

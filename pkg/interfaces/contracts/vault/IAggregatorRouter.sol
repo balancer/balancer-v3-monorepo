@@ -7,8 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SwapKind } from "./VaultTypes.sol";
 
 interface IAggregatorRouter {
-    error OperationNotSupported(string detail);
-
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
      * @param pool Address of the liquidity pool
