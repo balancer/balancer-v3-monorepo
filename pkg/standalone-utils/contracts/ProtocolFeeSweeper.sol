@@ -24,7 +24,8 @@ import {
  * An off-chain process can call `collectAggregateFees(pool)` on the fee controller for a given pool, which will
  * collect and allocate the fees to the protocol and pool creator. `getProtocolFeeAmounts(pool)` returns the fee
  * amounts available for withdrawal. If these are great enough, `sweepProtocolFees(pool)` here will withdraw,
- * convert, and forward them to the final recipient.
+ * convert, and forward them to the final recipient. There is also a `sweepProtocolFeesForToken` function to
+ * target a single token within a pool.
  */
 contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
@@ -49,7 +50,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     /// @inheritdoc IProtocolFeeSweeper
     function sweepProtocolFeesForToken(address pool, IERC20 feeToken) external nonReentrant authenticate {
         // There could be tokens "left over" from uncompleted burns from previous sweeps. Only process the "new"
-        // tokens from the current withdrawal.
+        // fees collected from the current withdrawal.
         uint256 existingBalance = feeToken.balanceOf(address(this));
 
         // Withdraw protocol fees to this contract. Note that governance will need to grant this contract permission
@@ -65,7 +66,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         uint256 numTokens = poolTokens.length;
 
         // There could be tokens "left over" from uncompleted burns from previous sweeps. Only process the "new"
-        // tokens from the current withdrawal.
+        // fees collected from the current withdrawal.
         uint256[] memory existingBalances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
             existingBalances[i] = poolTokens[i].balanceOf(address(this));
@@ -81,7 +82,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         }
     }
 
-    // Convert the given tokens to the target token (if enabled), and forward to the fee recipient.
+    // Convert the given token to the target token (if the fee burner is enabled), and forward to the fee recipient.
     function _sweepFeeToken(
         address pool,
         IERC20 feeToken,
