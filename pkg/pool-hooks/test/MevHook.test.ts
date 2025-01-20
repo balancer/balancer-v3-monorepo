@@ -151,7 +151,7 @@ describe('MevHook', () => {
     await pool.connect(lp).transfer(sender, fp(100));
   });
 
-  describe('do not pay MEV tax', async () => {
+  describe('when there is no MEV tax', async () => {
     it('MEV hook disabled', async () => {
       await hook.connect(admin).disableMevTax();
       expect(await hook.isMevTaxEnabled()).to.be.false;
@@ -234,7 +234,7 @@ describe('MevHook', () => {
     });
   });
 
-  describe('should pay MEV tax', async () => {
+  describe('when there is MEV tax', async () => {
     it('MEV fee percentage bigger than default max value', async () => {
       await hook.connect(admin).setMaxMevSwapFeePercentage(fp(0.2));
 
@@ -259,7 +259,7 @@ describe('MevHook', () => {
       await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
     });
 
-    it.only('Address is MEV tax-exempt but router is not trusted', async () => {
+    it('Address is MEV tax-exempt but router is not trusted', async () => {
       await hook.connect(admin).addMevTaxExemptSenders([sender]);
       await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
 

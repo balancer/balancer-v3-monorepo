@@ -220,19 +220,6 @@ interface IMevHook {
     function isMevTaxExempt(address sender) external view returns (bool mevTaxExempt);
 
     /**
-     * @notice Gets the number of MEV tax exempt senders.
-     * @return length Number of MEV tax exempt senders
-     */
-    function getMevTaxExemptSendersLength() external view returns (uint256 length);
-
-    /**
-     * @notice Gets the sender from list of MEV tax exempt senders at position `index`.
-     * @param index Index of sender
-     * @return sender Address of the MEV tax exempt sender at position `index`
-     */
-    function getMevTaxExemptSendersAt(uint256 index) external view returns (address sender);
-
-    /**
      * @notice Registers a list of senders as MEV tax exempt senders.
      * @param senders Addresses of senders to be registered as MEV tax exempt
      */

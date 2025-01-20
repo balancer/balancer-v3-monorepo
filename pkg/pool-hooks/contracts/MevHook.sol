@@ -48,7 +48,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     uint256 internal _maxMevSwapFeePercentage;
 
     // Global list of senders that bypass MEV tax and pay static fees.
-    EnumerableSet.AddressSet internal _mevTaxExemptSenders;
+    mapping(address => bool) internal _isMevTaxExemptSender;
 
     // Pool-specific parameters.
     mapping(address => uint256) internal _poolMevTaxThresholds;
@@ -277,16 +277,6 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     /// @inheritdoc IMevHook
-    function getMevTaxExemptSendersLength() external view returns (uint256) {
-        return _mevTaxExemptSenders.length();
-    }
-
-    /// @inheritdoc IMevHook
-    function getMevTaxExemptSendersAt(uint256 index) external view returns (address) {
-        return _mevTaxExemptSenders.at(index);
-    }
-
-    /// @inheritdoc IMevHook
     function addMevTaxExemptSenders(address[] memory senders) external authenticate {
         uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
@@ -353,23 +343,23 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     function _isMevTaxExempt(address sender) internal view returns (bool) {
-        return _mevTaxExemptSenders.contains(sender);
+        return _isMevTaxExemptSender[sender];
     }
 
     function _addMevTaxExemptSender(address sender) internal {
-        bool senderAdded = _mevTaxExemptSenders.add(sender);
-        if (senderAdded == false) {
+        if (_isMevTaxExemptSender[sender]) {
             revert MevTaxExemptSenderAlreadyAdded(sender);
         }
+        _isMevTaxExemptSender[sender] = true;
 
         emit MevTaxExemptSenderAdded(sender);
     }
 
     function _removeMevTaxExemptSender(address sender) internal {
-        bool senderRemoved = _mevTaxExemptSenders.remove(sender);
-        if (senderRemoved == false) {
+        if (_isMevTaxExemptSender[sender] == false) {
             revert SenderNotRegisteredAsMevTaxExempt(sender);
         }
+        _isMevTaxExemptSender[sender] = false;
 
         emit MevTaxExemptSenderRemoved(sender);
     }

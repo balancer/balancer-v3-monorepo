@@ -305,9 +305,4 @@ contract BalancerContractRegistry is IBalancerContractRegistry, SingletonAuthent
     function _getContractId(string memory contractName) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(contractName));
     }
-
-    /// @inheritdoc IBalancerContractRegistry
-    function isTrustedRouter(address router) external view returns (bool) {
-        return _isActiveBalancerContract(ContractType.ROUTER, router);
-    }
 }
