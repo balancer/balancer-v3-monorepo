@@ -114,7 +114,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function removeLiquidityProportionalFromERC4626Pool(
         address pool,
-        bool[] memory unwrapWrapper,
+        bool[] memory unwrapWrapped,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
         bool wethIsEth,
@@ -134,7 +134,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: wethIsEth,
                             userData: userData
                         }),
-                        unwrapWrapper
+                        unwrapWrapped
                     )
                 )
             ),
@@ -205,7 +205,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     /// @inheritdoc ICompositeLiquidityRouter
     function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
-        bool[] memory unwrapWrapper,
+        bool[] memory unwrapWrapped,
         uint256 exactBptAmountIn,
         address sender,
         bytes memory userData
@@ -225,7 +225,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: false,
                             userData: userData
                         }),
-                        unwrapWrapper
+                        unwrapWrapped
                     )
                 )
             ),
@@ -303,13 +303,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function removeLiquidityERC4626PoolProportionalHook(
         RemoveLiquidityHookParams calldata params,
-        bool[] calldata unwrapWrapper
+        bool[] calldata unwrapWrapped
     ) external nonReentrant onlyVault returns (address[] memory tokensOut, uint256[] memory amountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
         uint256 poolTokensLength = erc4626PoolTokens.length;
 
-        // Revert if `poolTokens` length does not match `minAmountsOut` and `unwrapWrapper`.
-        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.minAmountsOut.length, unwrapWrapper.length);
+        // Revert if `poolTokens` length does not match `minAmountsOut` and `unwrapWrapped`.
+        InputHelpers.ensureInputLengthMatch(poolTokensLength, params.minAmountsOut.length, unwrapWrapped.length);
 
         amountsOut = new uint256[](poolTokensLength);
 
@@ -331,7 +331,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            if (unwrapWrapper[i]) {
+            if (unwrapWrapped[i]) {
                 if (address(underlyingToken) == address(0)) {
                     revert IVaultErrors.BufferNotInitialized(wrappedToken);
                 }
