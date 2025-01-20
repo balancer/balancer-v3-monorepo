@@ -43,7 +43,7 @@ async function main() {
     account.address
   );
   const feeCollectorAddress = await feeCollector.getAddress();
-  await feeCollector.deploymentTransaction()!.wait();
+  await feeCollector.deploymentTransaction().wait();
 
   console.log('feeCollector deployed at: ', feeCollectorAddress);
 
@@ -54,7 +54,7 @@ async function main() {
     vaultRelayer,
     1
   );
-  await cowSwapBurner.deploymentTransaction()!.wait();
+  await cowSwapBurner.deploymentTransaction().wait();
   const cowSwapBurnerAddress = await cowSwapBurner.getAddress();
 
   console.log('cowSwapBurner deployed at: ', cowSwapBurnerAddress);
