@@ -33,8 +33,8 @@ contract PauseHelper is SingletonAuthentication {
     event PoolAddedToPausableSet(address pool);
 
     /**
-     * @notice Emitted when a pool is removed from the list of pools that can be paused
-     * @param pool Pool that was removed
+     * @notice Emitted when a pool is removed from the list of pools that can be paused.
+     * @param pool Address of the pool that was removed
      */
     event PoolRemovedFromPausableSet(address pool);
 
