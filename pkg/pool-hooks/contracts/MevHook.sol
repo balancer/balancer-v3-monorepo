@@ -4,10 +4,11 @@ pragma solidity ^0.8.24;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IBalancerContractRegistry } from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import {
     AddLiquidityKind,
     HooksConfig,
@@ -19,24 +20,19 @@ import {
     MAX_FEE_PERCENTAGE
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
-import { BalancerContractRegistry } from "@balancer-labs/v3-vault/contracts/BalancerContractRegistry.sol";
 
 contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
-    using CastingHelpers for *;
     using FixedPoint for uint256;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     // Max Fee is 99.9999% (Max supported fee by the vault).
     uint256 private constant _MEV_MAX_FEE_PERCENTAGE = MAX_FEE_PERCENTAGE;
 
-    BalancerContractRegistry internal immutable _registry;
+    IBalancerContractRegistry internal immutable _registry;
 
     bool internal _mevTaxEnabled;
 
@@ -64,7 +60,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _;
     }
 
-    constructor(IVault vault, BalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
+    constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
         _setMevTaxEnabled(false);
         _registry = registry;
 
