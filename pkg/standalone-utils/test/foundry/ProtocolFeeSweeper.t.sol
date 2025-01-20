@@ -176,6 +176,16 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         feeSweeper.recoverProtocolFees(new IERC20[](0));
     }
 
+    function testSweepNoPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeSweeper.sweepProtocolFees(pool);
+    }
+
+    function testSweepForTokenNoPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeSweeper.sweepProtocolFeesForToken(pool, usdc);
+    }
+
     function testRecoverProtocolFees() public {
         IERC20[] memory feeTokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
 
@@ -321,13 +331,13 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         emit IProtocolFeeBurner.ProtocolFeeBurned(pool, dai, DEFAULT_AMOUNT, usdc, DEFAULT_AMOUNT, feeRecipient);
 
         vm.startPrank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, IERC20(address(dai)));
+        feeSweeper.sweepProtocolFeesForToken(pool, dai);
 
         // USDC is the target token, so it should be transferred directly.
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
-        feeSweeper.sweepProtocolFeesForToken(pool, IERC20(address(usdc)));
+        feeSweeper.sweepProtocolFeesForToken(pool, usdc);
         vm.stopPrank();
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
