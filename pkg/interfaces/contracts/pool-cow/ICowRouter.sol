@@ -21,6 +21,8 @@ interface ICowRouter {
         uint256 deadline;
     }
 
+    error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 limit);
+
     event CoWSwappingAndDonation(
         address pool,
         uint256 amountInSwap,
