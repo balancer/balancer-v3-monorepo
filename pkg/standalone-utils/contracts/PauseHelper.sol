@@ -18,10 +18,10 @@ contract PauseHelper is SingletonAuthentication {
     error PoolExistInPausableSet(address pool);
 
     /**
-     * @notice Revert if the pool is not in the list of pools
-     * @param  pool Pool that not found
+     * @notice Cannot remove a pool that was not added.
+     * @param pool Address of the pool being removed
      */
-    error PoolNotFoundInPausableSet(address pool);
+    error PoolNotInPausableSet(address pool);
 
     /// @notice An index is beyond the current bounds of the set.
     error IndexOutOfBounds();
