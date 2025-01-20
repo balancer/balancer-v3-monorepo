@@ -59,11 +59,12 @@ contract PauseHelper is SingletonAuthentication {
         uint256 length = newPools.length;
 
         for (uint256 i = 0; i < length; i++) {
-            if (_pausablePools.add(newPools[i]) == false) {
-                revert PoolAlreadyInPausableSet(newPools[i]);
+            address pool = newPools[i];
+            if (_pausablePools.add(pool) == false) {
+                revert PoolAlreadyInPausableSet(pool);
             }
 
-            emit PoolAddedToPausableSet(newPools[i]);
+            emit PoolAddedToPausableSet(pool);
         }
     }
 
@@ -77,11 +78,12 @@ contract PauseHelper is SingletonAuthentication {
     function removePools(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
-            if (_pausablePools.remove(pools[i]) == false) {
-                revert PoolNotInPausableSet(pools[i]);
+            address pool = pools[i];
+            if (_pausablePools.remove(pool) == false) {
+                revert PoolNotInPausableSet(pool);
             }
 
-            emit PoolRemovedFromPausableSet(pools[i]);
+            emit PoolRemovedFromPausableSet(pool);
         }
     }
 
@@ -94,16 +96,18 @@ contract PauseHelper is SingletonAuthentication {
      * Note that there is no `unpause`. This is a helper contract designed to react quickly to emergencies. Unpausing
      * is a more deliberate action that should be performed by accounts approved by governance for this purpose, or by
      * the individual pools' pause managers.
+     *
      * @param pools List of pools to pause
      */
     function pausePools(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
-            if (_pausablePools.contains(pools[i]) == false) {
-                revert PoolNotInPausableSet(pools[i]);
+            address pool = pools[i];
+            if (_pausablePools.contains(pool) == false) {
+                revert PoolNotInPausableSet(pool);
             }
 
-            getVault().pausePool(pools[i]);
+            getVault().pausePool(pool);
         }
     }
 
