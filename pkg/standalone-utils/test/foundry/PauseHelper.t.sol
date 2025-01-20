@@ -70,7 +70,7 @@ contract PauseHelperTest is BaseVaultTest {
         pools[0] = address(0x1);
         pools[1] = address(0x1);
 
-        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolExistInPausableSet.selector, pools[1]));
+        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolAlreadyInPausableSet.selector, pools[1]));
         pauseHelper.addPools(pools);
     }
 
@@ -104,7 +104,7 @@ contract PauseHelperTest is BaseVaultTest {
     function testRemoveNotExistingPool() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolNotFoundInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolNotInPausableSet.selector, address(0x00)));
         pauseHelper.removePools(new address[](1));
     }
 
@@ -138,7 +138,7 @@ contract PauseHelperTest is BaseVaultTest {
     function testPauseIfPoolIsNotInList() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolNotFoundInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolNotInPausableSet.selector, address(0x00)));
         pauseHelper.pausePools(new address[](1));
     }
 
