@@ -4,27 +4,22 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 interface ICowRouter {
-    struct CowSwapExactInParams {
+    struct CowSwapParams {
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint256 exactAmountIn;
+        uint256 maxAmountIn;
         uint256 minAmountOut;
         uint256 deadline;
     }
 
-    struct CowSwapExactOutParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 exactAmountOut;
-        uint256 maxAmountIn;
-        uint256 deadline;
-    }
-
-    struct SwapExactInAndDonateHookParams {
+    struct SwapAndDonateHookParams {
         address pool;
         address sender;
-        CowSwapExactInParams swapParams;
+        SwapKind swapKind;
+        CowSwapParams swapParams;
         uint256[] surplusToDonate;
         bytes userData;
     }
@@ -60,14 +55,14 @@ interface ICowRouter {
 
     function swapExactInAndDonateSurplus(
         address pool,
-        CowSwapExactInParams memory params,
+        CowSwapParams memory swapParams,
         uint256[] memory surplusToDonate,
         bytes memory userData
     ) external returns (uint256 exactAmountOut);
 
     function swapExactOutAndDonateSurplus(
         address pool,
-        CowSwapExactOutParams memory params,
+        CowSwapParams memory swapParams,
         uint256[] memory surplusToDonate,
         bytes memory userData
     ) external returns (uint256 exactAmountIn);
