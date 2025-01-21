@@ -43,7 +43,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     // Global max dynamic swap fee percentage returned by this hook.
     uint256 internal _maxMevSwapFeePercentage;
 
-    // Global list of senders that bypass MEV tax and pay static fees.
+    // Global list of senders that bypass the MEV tax and always pay the static fee percentage.
     mapping(address => bool) internal _isMevTaxExemptSender;
 
     // Pool-specific parameters.
@@ -61,9 +61,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     }
 
     constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
-        _setMevTaxEnabled(false);
         _registry = registry;
 
+        _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
         _setDefaultMevTaxThreshold(0);
         // Default to the maximum value allowed by the Vault.
@@ -104,7 +104,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             return (true, staticSwapFeePercentage);
         }
 
-        // We can only check senders of trusted routers, and we can only apply MEV tax exemptions in that case.
+        // We can only check senders if the router is trusted. Apply the exemption for MEV tax-exempt senders.
         if (_registry.isTrustedRouter(params.router)) {
             address sender = IRouterCommon(params.router).getSender();
             if (_isMevTaxExempt(sender)) {

@@ -75,8 +75,8 @@ interface IMevHook {
     event MevTaxExemptSenderAdded(address sender);
 
     /**
-     * @notice The sender was removed from list of MEV tax-exempt senders.
-     * @param sender The address of the sender removed from MEV tax-exempt list
+     * @notice The sender was removed from the list of MEV tax-exempt senders.
+     * @param sender The address of the sender removed from the MEV tax-exempt list
      */
     event MevTaxExemptSenderRemoved(address sender);
 
@@ -213,7 +213,7 @@ interface IMevHook {
 
     /**
      * @notice Checks whether the sender is MEV tax-exempt.
-     * @dev A MEV tax-exempt sender pays only the static swap fee percentage, regardless of the paid priority fee.
+     * @dev A MEV tax-exempt sender pays only the static swap fee percentage, regardless of the priority fee.
      * @param sender The sender being checked for MEV tax-exempt status
      * @return mevTaxExempt True if the sender is MEV tax-exempt
      */
@@ -226,8 +226,8 @@ interface IMevHook {
     function addMevTaxExemptSenders(address[] memory senders) external;
 
     /**
-     * @notice Removes a list of senders from list of MEV tax-exempt senders.
-     * @param senders Addresses of senders to be removed from list of MEV tax-exempt
+     * @notice Removes a list of senders from the list of MEV tax-exempt senders.
+     * @param senders Addresses of senders to be removed from the MEV tax-exempt list
      */
     function removeMevTaxExemptSenders(address[] memory senders) external;
 }
