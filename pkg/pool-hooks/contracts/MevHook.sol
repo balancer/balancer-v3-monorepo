@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IBalancerContractRegistry } from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -30,6 +32,8 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     // Max Fee is 99.9999% (Max supported fee by the vault).
     uint256 private constant _MEV_MAX_FEE_PERCENTAGE = MAX_FEE_PERCENTAGE;
 
+    IBalancerContractRegistry internal immutable _registry;
+
     bool internal _mevTaxEnabled;
 
     // Global default parameter values.
@@ -38,6 +42,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     // Global max dynamic swap fee percentage returned by this hook.
     uint256 internal _maxMevSwapFeePercentage;
+
+    // Global list of senders that bypass the MEV tax and always pay the static fee percentage.
+    mapping(address => bool) internal _isMevTaxExemptSender;
 
     // Pool-specific parameters.
     mapping(address => uint256) internal _poolMevTaxThresholds;
@@ -53,7 +60,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _;
     }
 
-    constructor(IVault vault) SingletonAuthentication(vault) VaultGuard(vault) {
+    constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
+        _registry = registry;
+
         _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
         _setDefaultMevTaxThreshold(0);
@@ -87,12 +96,20 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        PoolSwapParams calldata,
+        PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override returns (bool, uint256) {
         if (_mevTaxEnabled == false) {
             return (true, staticSwapFeePercentage);
+        }
+
+        // We can only check senders if the router is trusted. Apply the exemption for MEV tax-exempt senders.
+        if (_registry.isTrustedRouter(params.router)) {
+            address sender = IRouterCommon(params.router).getSender();
+            if (_isMevTaxExempt(sender)) {
+                return (true, staticSwapFeePercentage);
+            }
         }
 
         return (
@@ -250,6 +267,27 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
+    /// @inheritdoc IMevHook
+    function isMevTaxExempt(address sender) external view returns (bool) {
+        return _isMevTaxExempt(sender);
+    }
+
+    /// @inheritdoc IMevHook
+    function addMevTaxExemptSenders(address[] memory senders) external authenticate {
+        uint256 numSenders = senders.length;
+        for (uint256 i = 0; i < numSenders; ++i) {
+            _addMevTaxExemptSender(senders[i]);
+        }
+    }
+
+    /// @inheritdoc IMevHook
+    function removeMevTaxExemptSenders(address[] memory senders) external authenticate {
+        uint256 numSenders = senders.length;
+        for (uint256 i = 0; i < numSenders; ++i) {
+            _removeMevTaxExemptSender(senders[i]);
+        }
+    }
+
     /*******************************************************
                         Helper functions
     *******************************************************/
@@ -298,5 +336,27 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     function _getPriorityGasPrice() internal view returns (uint256) {
         return tx.gasprice - block.basefee;
+    }
+
+    function _isMevTaxExempt(address sender) internal view returns (bool) {
+        return _isMevTaxExemptSender[sender];
+    }
+
+    function _addMevTaxExemptSender(address sender) internal {
+        if (_isMevTaxExemptSender[sender]) {
+            revert MevTaxExemptSenderAlreadyAdded(sender);
+        }
+        _isMevTaxExemptSender[sender] = true;
+
+        emit MevTaxExemptSenderAdded(sender);
+    }
+
+    function _removeMevTaxExemptSender(address sender) internal {
+        if (_isMevTaxExemptSender[sender] == false) {
+            revert SenderNotRegisteredAsMevTaxExempt(sender);
+        }
+        _isMevTaxExemptSender[sender] = false;
+
+        emit MevTaxExemptSenderRemoved(sender);
     }
 }

@@ -17,6 +17,18 @@ interface IMevHook {
     error MevSwapFeePercentageAboveMax(uint256 feePercentage, uint256 maxFeePercentage);
 
     /**
+     * @notice The sender is already registered as MEV tax-exempt.
+     * @param sender Sender that is already MEV tax-exempt
+     */
+    error MevTaxExemptSenderAlreadyAdded(address sender);
+
+    /**
+     * @notice The sender is not registered as MEV tax-exempt.
+     * @param sender Sender that is not MEV tax-exempt
+     */
+    error SenderNotRegisteredAsMevTaxExempt(address sender);
+
+    /**
      * @notice The MEV tax was globally enabled or disabled in the hook.
      * @param enabled The new value for mevTaxEnabled. If true, MEV tax will be charged
      */
@@ -55,6 +67,18 @@ interface IMevHook {
      * @param newPoolMevTaxThreshold The new value for the pool threshold
      */
     event PoolMevTaxThresholdSet(address pool, uint256 newPoolMevTaxThreshold);
+
+    /**
+     * @notice The sender was registered as MEV tax-exempt.
+     * @param sender The address of the sender registered as MEV tax-exempt
+     */
+    event MevTaxExemptSenderAdded(address sender);
+
+    /**
+     * @notice The sender was removed from the list of MEV tax-exempt senders.
+     * @param sender The address of the sender removed from the MEV tax-exempt list
+     */
+    event MevTaxExemptSenderRemoved(address sender);
 
     /**
      * @notice Check whether the MEV Tax is enabled in the hook.
@@ -186,4 +210,24 @@ interface IMevHook {
      * @param newPoolMevTaxThreshold The new threshold to be set in a pool
      */
     function setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) external;
+
+    /**
+     * @notice Checks whether the sender is MEV tax-exempt.
+     * @dev A MEV tax-exempt sender pays only the static swap fee percentage, regardless of the priority fee.
+     * @param sender The sender being checked for MEV tax-exempt status
+     * @return mevTaxExempt True if the sender is MEV tax-exempt
+     */
+    function isMevTaxExempt(address sender) external view returns (bool mevTaxExempt);
+
+    /**
+     * @notice Registers a list of senders as MEV tax-exempt senders.
+     * @param senders Addresses of senders to be registered as MEV tax-exempt
+     */
+    function addMevTaxExemptSenders(address[] memory senders) external;
+
+    /**
+     * @notice Removes a list of senders from the list of MEV tax-exempt senders.
+     * @param senders Addresses of senders to be removed from the MEV tax-exempt list
+     */
+    function removeMevTaxExemptSenders(address[] memory senders) external;
 }

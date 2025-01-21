@@ -5,9 +5,10 @@ pragma solidity ^0.8.24;
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { MevHook } from "../MevHook.sol";
+import { IBalancerContractRegistry } from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
 
 contract MevHookMock is MevHook {
-    constructor(IVault vault) MevHook(vault) {
+    constructor(IVault vault, IBalancerContractRegistry registry) MevHook(vault, registry) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
