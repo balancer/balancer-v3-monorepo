@@ -21,6 +21,13 @@ interface ICowRouter {
         uint256 deadline;
     }
 
+    struct DonateHookParams {
+        address pool;
+        address sender;
+        uint256[] amountsIn;
+        bytes userData;
+    }
+
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 limit);
 
     event CoWSwappingAndDonation(
