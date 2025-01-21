@@ -26,7 +26,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     using SafeCast for *;
 
     // Protocol fee percentage capped at 10%.
-    uint256 internal constant MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
+    uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
 
     uint256 internal _protocolFeePercentage;
     mapping(IERC20 => uint256) internal _protocolFees;
@@ -48,8 +48,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
-        if (newProtocolFeePercentage > MAX_PROTOCOL_FEE_PERCENTAGE) {
-            revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, MAX_PROTOCOL_FEE_PERCENTAGE);
+        if (newProtocolFeePercentage > _MAX_PROTOCOL_FEE_PERCENTAGE) {
+            revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, _MAX_PROTOCOL_FEE_PERCENTAGE);
         }
 
         _protocolFeePercentage = newProtocolFeePercentage;
