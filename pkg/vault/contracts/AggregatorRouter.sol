@@ -17,7 +17,8 @@ import { RouterCommon } from "./RouterCommon.sol";
 /**
  * @notice Entrypoint for aggregators who want make swaps without built-in payment logic.
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
- * These interact with the Vault and settle accounting.
+ * These interact with the Vault and settle accounting. This is not a full-featured Router; it only implements
+ * `swapSingleTokenExactIn` and the associated query.
  */
 contract AggregatorRouter is IAggregatorRouter, RouterCommon {
     constructor(
