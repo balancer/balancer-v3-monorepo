@@ -109,6 +109,11 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         uint256 withdrawnTokenBalance,
         IProtocolFeeBurner feeBurner
     ) internal {
+        // Short-circuit if nothing to do.
+        if (withdrawnTokenBalance == 0) {
+            return;
+        }
+
         // If no burner has been set, fall back on direct transfer of the fee token.
         if (address(feeBurner) == address(0)) {
             _transferFeeToken(pool, feeToken, withdrawnTokenBalance);
