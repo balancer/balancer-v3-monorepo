@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 
@@ -37,7 +39,15 @@ contract CowRouterTest is BaseCowTest {
         expectedProtocolFees[daiIdx] = amountDai.mulUp(protocolFeePercentage);
         expectedProtocolFees[usdcIdx] = amountUsdc.mulUp(protocolFeePercentage);
 
+        uint256[] memory donatedAmount = new uint256[](2);
+        donatedAmount[daiIdx] = amountDai - expectedProtocolFees[daiIdx];
+        donatedAmount[usdcIdx] = amountUsdc - expectedProtocolFees[usdcIdx];
+
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        vm.expectEmit();
+        emit ICowRouter.CoWDonation(pool, tokens, donatedAmount, expectedProtocolFees, bytes(""));
 
         vm.prank(lp);
         cowRouter.donate(pool, amountsIn, bytes(""));
@@ -68,10 +78,44 @@ contract CowRouterTest is BaseCowTest {
         );
 
         // Test BPT did not change
+        assertEq(balancesAfter.lpBpt, balancesBefore.lpBpt, "LP BPT has changed");
+        assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "BPT supply has changed");
+
         // Test new pool balances
+        assertEq(
+            balancesAfter.poolTokens[daiIdx],
+            balancesBefore.poolTokens[daiIdx] + amountDai - expectedProtocolFees[daiIdx],
+            "Pool DAI balance is not correct"
+        );
+        assertEq(
+            balancesAfter.poolTokens[usdcIdx],
+            balancesBefore.poolTokens[usdcIdx] + amountUsdc - expectedProtocolFees[usdcIdx],
+            "Pool USDC balance is not correct"
+        );
+
         // Test vault balances
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx],
+            balancesBefore.vaultTokens[daiIdx] + amountDai - expectedProtocolFees[daiIdx],
+            "Vault DAI balance is not correct"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[usdcIdx],
+            balancesBefore.vaultTokens[usdcIdx] + amountUsdc - expectedProtocolFees[usdcIdx],
+            "Vault USDC balance is not correct"
+        );
+
         // Test donor balances
-        // Check emitted event
+        assertEq(
+            balancesAfter.lpTokens[daiIdx],
+            balancesBefore.lpTokens[daiIdx] - amountDai,
+            "Vault DAI balance is not correct"
+        );
+        assertEq(
+            balancesAfter.lpTokens[usdcIdx],
+            balancesBefore.lpTokens[usdcIdx] - amountUsdc,
+            "Vault USDC balance is not correct"
+        );
     }
 
     // TODO Pool not accept donation

@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-//import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { AddLiquidityKind, AddLiquidityParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -17,19 +17,17 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 
 contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
     using SafeCast for *;
-    //    using SafeERC20 for IERC20;
 
     // Protocol fee percentage capped at 10%.
     uint256 internal constant MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
 
-    IPermit2 internal immutable _permit2;
-
     uint256 internal _protocolFeePercentage;
     mapping(IERC20 => uint256) internal _protocolFees;
 
-    constructor(IVault vault, IPermit2 permit2) VaultGuard(vault) SingletonAuthentication(vault) {
-        _permit2 = permit2;
+    constructor(IVault vault) VaultGuard(vault) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function swapExactInAndDonateSurplus(
@@ -61,22 +59,45 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
     function donateHook(ICowRouter.DonateHookParams memory params) external onlyVault {
         (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(params.pool);
-        uint256[] memory donatedSurplus = new uint256[](params.amountsIn.length);
-        uint256[] memory feeAmountCollectedByProtocol = new uint256[](params.amountsIn.length);
+        uint256[] memory donation = new uint256[](params.amountsIn.length);
+        uint256[] memory protocolFeesAmount = new uint256[](params.amountsIn.length);
 
         for (uint256 i = 0; i < params.amountsIn.length; i++) {
-            if (params.amountsIn[i] > 0 && _protocolFeePercentage > 0) {
-                uint256 protocolFee = params.amountsIn[i].mulUp(_protocolFeePercentage);
+            uint256 protocolFee;
+            uint256 donationAndFees = params.amountsIn[i];
+            IERC20 token = tokens[i];
+            if (donationAndFees > 0 && _protocolFeePercentage > 0) {
+                protocolFee = donationAndFees.mulUp(_protocolFeePercentage);
                 if (protocolFee > 0) {
-                    _permit2.transferFrom(params.sender, address(this), protocolFee.toUint160(), address(tokens[i]));
-                    _protocolFees[tokens[i]] += protocolFee;
-                    feeAmountCollectedByProtocol[i] = protocolFee;
-                    donatedSurplus[i] = params.amountsIn[i] - protocolFee;
+                    token.safeTransferFrom(params.sender, address(this), protocolFee);
+                    _protocolFees[token] += protocolFee;
+                    protocolFeesAmount[i] = protocolFee;
                 }
+            }
+            donation[i] = donationAndFees - protocolFee;
+        }
+
+        _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: address(this), // It's a donation, so no BPT will be transferred.
+                maxAmountsIn: donation,
+                minBptAmountOut: 0,
+                kind: AddLiquidityKind.DONATION,
+                userData: params.userData
+            })
+        );
+
+        for (uint256 i = 0; i < donation.length; i++) {
+            uint256 donationAmount = donation[i];
+            IERC20 token = tokens[i];
+            if (donationAmount > 0) {
+                token.safeTransferFrom(params.sender, address(_vault), donationAmount);
+                _vault.settle(token, donationAmount);
             }
         }
 
-        return;
+        emit CoWDonation(params.pool, tokens, donation, protocolFeesAmount, params.userData);
     }
 
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage) {
