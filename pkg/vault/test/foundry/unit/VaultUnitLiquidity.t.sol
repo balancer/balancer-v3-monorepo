@@ -54,8 +54,6 @@ contract VaultUnitLiquidityTest is BaseTest, VaultContractsDeployer {
         uint256 expectedBPTAmountIn;
     }
 
-    address internal constant ZERO_ADDRESS = address(0x00);
-
     IVaultMock internal vault;
 
     uint256 initTotalSupply = 1000e18;
