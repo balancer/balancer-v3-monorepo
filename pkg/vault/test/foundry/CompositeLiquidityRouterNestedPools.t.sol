@@ -210,12 +210,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
 
         // Check ChildPoolB balances.
-        assertApproxEqAbs(
-            vars.childPoolBAfter.dai,
-            vars.childPoolBBefore.dai + amountsIn[vars.daiIdx],
-            MAX_ROUND_ERROR,
-            "ChildPoolB Dai Balance is wrong"
-        );
+        assertEq(vars.childPoolBAfter.dai, vars.childPoolBBefore.dai, "ChildPoolB Dai Balance is wrong");
         assertEq(
             vars.childPoolBAfter.wsteth,
             vars.childPoolBBefore.wsteth + amountsIn[vars.wstethIdx],
@@ -223,8 +218,12 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
 
         // Check ParentPool balances.
-        // The ParentPool's DAI balance does not change since all DAI amount is inserted in the child pool A.
-        assertEq(vars.parentPoolAfter.dai, vars.parentPoolBefore.dai, "ParentPool Dai Balance is wrong");
+        assertApproxEqAbs(
+            vars.parentPoolAfter.dai,
+            vars.parentPoolBefore.dai + amountsIn[vars.daiIdx],
+            MAX_ROUND_ERROR,
+            "ParentPool Dai Balance is wrong"
+        );
         assertEq(
             vars.parentPoolAfter.childPoolABpt,
             vars.parentPoolBefore.childPoolABpt + mintedChildPoolABpt,
@@ -262,7 +261,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         _fillNestedPoolTestLocalsAfter(vars);
         uint256 mintedChildPoolABpt = vars.childPoolAAfter.totalSupply - vars.childPoolABefore.totalSupply;
-        uint256 mintedChildPoolBBpt = vars.childPoolBAfter.totalSupply - vars.childPoolBBefore.totalSupply;
 
         // Check exact BPT out.
         // Since all pools are linear and there's no rate, the expected BPT amount out is the sum of all amounts in.
@@ -932,7 +930,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
-            address(this),
+            lp,
             bytes("")
         );
 
@@ -1050,7 +1048,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // Check ChildPoolB balances.
         assertApproxEqAbs(
             vars.childPoolBAfter.dai,
-            vars.childPoolBBefore.dai + amountsIn[vars.daiIdx],
+            vars.childPoolBBefore.dai,
             MAX_ROUND_ERROR,
             "ChildPoolB Dai Balance is wrong"
         );
@@ -1058,7 +1056,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         // Check ParentPool balances.
         // The ParentPool's DAI balance does not change since all DAI amount is inserted in the child pool A.
-        assertEq(vars.parentPoolAfter.dai, vars.parentPoolBefore.dai, "ParentPool Dai Balance is wrong");
+        assertEq(
+            vars.parentPoolAfter.dai,
+            vars.parentPoolBefore.dai + amountsIn[vars.daiIdx],
+            "ParentPool Dai Balance is wrong"
+        );
         assertEq(
             vars.parentPoolAfter.childPoolABpt,
             vars.parentPoolBefore.childPoolABpt + mintedChildPoolABpt,

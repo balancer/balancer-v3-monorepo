@@ -212,6 +212,14 @@ contract BalancerContractRegistryTest is BaseVaultTest {
         registry.registerBalancerContract(ContractType.POOL_FACTORY, DEFAULT_NAME, ANY_ADDRESS);
     }
 
+    function testIsTrustedRouter() public {
+        vm.prank(admin);
+        registry.registerBalancerContract(ContractType.ROUTER, DEFAULT_NAME, ANY_ADDRESS);
+
+        assertTrue(registry.isActiveBalancerContract(ContractType.ROUTER, ANY_ADDRESS), "ANY_ADDRESS is not a Router");
+        assertTrue(registry.isTrustedRouter(ANY_ADDRESS), "ANY_ADDRESS is not a Trusted router");
+    }
+
     function testDeregisterNonExistentContract() public {
         vm.prank(admin);
 

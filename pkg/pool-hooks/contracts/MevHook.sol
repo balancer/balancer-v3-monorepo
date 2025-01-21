@@ -2,6 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
+import { IBalancerContractRegistry } from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -28,6 +32,8 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
     // Max Fee is 99.9999% (Max supported fee by the vault).
     uint256 private constant _MEV_MAX_FEE_PERCENTAGE = MAX_FEE_PERCENTAGE;
 
+    IBalancerContractRegistry internal immutable _registry;
+
     bool internal _mevTaxEnabled;
 
     // Global default parameter values.
@@ -36,6 +42,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     // Global max dynamic swap fee percentage returned by this hook.
     uint256 internal _maxMevSwapFeePercentage;
+
+    // Global list of senders that bypass the MEV tax and always pay the static fee percentage.
+    mapping(address => bool) internal _isMevTaxExemptSender;
 
     // Pool-specific parameters.
     mapping(address => uint256) internal _poolMevTaxThresholds;
@@ -51,7 +60,9 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _;
     }
 
-    constructor(IVault vault) SingletonAuthentication(vault) VaultGuard(vault) {
+    constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
+        _registry = registry;
+
         _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
         _setDefaultMevTaxThreshold(0);
@@ -85,7 +96,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        PoolSwapParams calldata,
+        PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override returns (bool, uint256) {
@@ -93,28 +104,22 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
             return (true, staticSwapFeePercentage);
         }
 
-        // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
-        // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
-        // defines the priority gas price (the part of the gas cost that will be paid to the validator).
-        uint256 priorityGasPrice = _getPriorityGasPrice();
-
-        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
-        // impose the MEV tax.
-        if (priorityGasPrice < _poolMevTaxThresholds[pool]) {
-            return (true, staticSwapFeePercentage);
+        // We can only check senders if the router is trusted. Apply the exemption for MEV tax-exempt senders.
+        if (_registry.isTrustedRouter(params.router)) {
+            address sender = IRouterCommon(params.router).getSender();
+            if (_isMevTaxExempt(sender)) {
+                return (true, staticSwapFeePercentage);
+            }
         }
 
-        uint256 mevSwapFeePercentage = priorityGasPrice.mulDown(_poolMevTaxMultipliers[pool]);
-
-        // Cap the maximum fee at `_maxMevSwapFeePercentage`.
-        uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
-        if (mevSwapFeePercentage > maxMevSwapFeePercentage) {
-            // Don't return early. If the cap is below the static fee, we'll still use the static fee.
-            mevSwapFeePercentage = maxMevSwapFeePercentage;
-        }
-
-        // Use the greater of the static and MEV fee percentages.
-        return (true, staticSwapFeePercentage > mevSwapFeePercentage ? staticSwapFeePercentage : mevSwapFeePercentage);
+        return (
+            true,
+            _calculateSwapFeePercentage(
+                staticSwapFeePercentage,
+                _poolMevTaxMultipliers[pool],
+                _poolMevTaxThresholds[pool]
+            )
+        );
     }
 
     /// @inheritdoc IHooks
@@ -262,6 +267,67 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
+    /// @inheritdoc IMevHook
+    function isMevTaxExempt(address sender) external view returns (bool) {
+        return _isMevTaxExempt(sender);
+    }
+
+    /// @inheritdoc IMevHook
+    function addMevTaxExemptSenders(address[] memory senders) external authenticate {
+        uint256 numSenders = senders.length;
+        for (uint256 i = 0; i < numSenders; ++i) {
+            _addMevTaxExemptSender(senders[i]);
+        }
+    }
+
+    /// @inheritdoc IMevHook
+    function removeMevTaxExemptSenders(address[] memory senders) external authenticate {
+        uint256 numSenders = senders.length;
+        for (uint256 i = 0; i < numSenders; ++i) {
+            _removeMevTaxExemptSender(senders[i]);
+        }
+    }
+
+    /*******************************************************
+                        Helper functions
+    *******************************************************/
+
+    function _calculateSwapFeePercentage(
+        uint256 staticSwapFeePercentage,
+        uint256 multiplier,
+        uint256 threshold
+    ) internal view returns (uint256) {
+        // If gasprice is lower than basefee, the transaction is invalid and won't be processed. Gasprice is set
+        // by the transaction sender, is always bigger than basefee, and the difference between gasprice and basefee
+        // defines the priority gas price (the part of the gas cost that will be paid to the validator).
+        uint256 priorityGasPrice = _getPriorityGasPrice();
+        uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
+
+        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
+        // impose the MEV tax. Also, if mev fee cap is lower than static fee percentage, returns the static.
+        if (priorityGasPrice < threshold || maxMevSwapFeePercentage < staticSwapFeePercentage) {
+            return staticSwapFeePercentage;
+        }
+
+        (bool success, uint256 feeIncrement) = Math.tryMul(priorityGasPrice - threshold, multiplier);
+
+        // If success == false, an overflow occurred, so we should return the max fee.
+        if (success == false) {
+            return maxMevSwapFeePercentage;
+        }
+
+        // Math.tryMul is not an operation with 18-decimals number, so we need to fix the result dividing by 1e18.
+        feeIncrement = feeIncrement / 1e18;
+
+        // At this point, `priorityGasPrice >= threshold` and `maxMevSwapFeePercentage >= staticSwapFeePercentage`.
+        // `staticSwapFeePercentage` cannot be greater than 1e18, so there is no need to check if
+        // `staticSwapFeePercentage + feeIncrement` overflows.
+        uint256 mevSwapFeePercentage = staticSwapFeePercentage + feeIncrement;
+
+        // Cap the maximum fee at `maxMevSwapFeePercentage`.
+        return Math.min(mevSwapFeePercentage, maxMevSwapFeePercentage);
+    }
+
     function _setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) private {
         _poolMevTaxThresholds[pool] = newPoolMevTaxThreshold;
 
@@ -270,5 +336,27 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
 
     function _getPriorityGasPrice() internal view returns (uint256) {
         return tx.gasprice - block.basefee;
+    }
+
+    function _isMevTaxExempt(address sender) internal view returns (bool) {
+        return _isMevTaxExemptSender[sender];
+    }
+
+    function _addMevTaxExemptSender(address sender) internal {
+        if (_isMevTaxExemptSender[sender]) {
+            revert MevTaxExemptSenderAlreadyAdded(sender);
+        }
+        _isMevTaxExemptSender[sender] = true;
+
+        emit MevTaxExemptSenderAdded(sender);
+    }
+
+    function _removeMevTaxExemptSender(address sender) internal {
+        if (_isMevTaxExemptSender[sender] == false) {
+            revert SenderNotRegisteredAsMevTaxExempt(sender);
+        }
+        _isMevTaxExemptSender[sender] = false;
+
+        emit MevTaxExemptSenderRemoved(sender);
     }
 }
