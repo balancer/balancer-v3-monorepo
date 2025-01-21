@@ -69,9 +69,10 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
 
     /**
      * @notice Hook for swaps.
-     * @dev Can only be called by the Vault.
-     * This router expects the caller to pay upfront by sending tokens to the vault directly,
-     * so this call only accounts for the amount that has already been paid, skipping transfers of any kind.
+     * @dev Can only be called by the Vault. This router expects the caller to pay upfront by sending tokens to the
+     * Vault directly, so this call only accounts for the amount that has already been paid, skipping transfers of
+     * any kind (specifically, the permit2 transfers triggered by the standard Router).
+     *
      * @param params Swap parameters (see IRouter for the struct definition)
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
