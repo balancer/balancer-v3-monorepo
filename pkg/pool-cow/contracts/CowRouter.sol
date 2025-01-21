@@ -59,45 +59,18 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
     function donateHook(ICowRouter.DonateHookParams memory params) external onlyVault {
         (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(params.pool);
-        uint256[] memory donation = new uint256[](params.amountsIn.length);
-        uint256[] memory protocolFeesAmount = new uint256[](params.amountsIn.length);
 
-        for (uint256 i = 0; i < params.amountsIn.length; i++) {
-            uint256 protocolFee;
-            uint256 donationAndFees = params.amountsIn[i];
-            IERC20 token = tokens[i];
-            if (donationAndFees > 0 && _protocolFeePercentage > 0) {
-                protocolFee = donationAndFees.mulUp(_protocolFeePercentage);
-                if (protocolFee > 0) {
-                    token.safeTransferFrom(params.sender, address(this), protocolFee);
-                    _protocolFees[token] += protocolFee;
-                    protocolFeesAmount[i] = protocolFee;
-                }
-            }
-            donation[i] = donationAndFees - protocolFee;
-        }
-
-        _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: address(this), // It's a donation, so no BPT will be transferred.
-                maxAmountsIn: donation,
-                minBptAmountOut: 0,
-                kind: AddLiquidityKind.DONATION,
-                userData: params.userData
-            })
+        (uint256[] memory donatedAmounts, uint256[] memory protocolFeeAmounts) = _donateToPool(
+            params.pool,
+            tokens,
+            params.amountsIn,
+            params.userData
         );
 
-        for (uint256 i = 0; i < donation.length; i++) {
-            uint256 donationAmount = donation[i];
-            IERC20 token = tokens[i];
-            if (donationAmount > 0) {
-                token.safeTransferFrom(params.sender, address(_vault), donationAmount);
-                _vault.settle(token, donationAmount);
-            }
-        }
+        // The donations must be deposited in the vault, and protocol fees must be deposited in the router.
+        _settlePoolAndRouter(params.sender, tokens, donatedAmounts, protocolFeeAmounts);
 
-        emit CoWDonation(params.pool, tokens, donation, protocolFeesAmount, params.userData);
+        emit CoWDonation(params.pool, tokens, donatedAmounts, protocolFeeAmounts, params.userData);
     }
 
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage) {
@@ -114,5 +87,61 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         }
 
         _protocolFeePercentage = newProtocolFeePercentage;
+    }
+
+    /********************************************************
+                        Helper functions
+    ********************************************************/
+    function _donateToPool(
+        address pool,
+        IERC20[] memory tokens,
+        uint256[] memory amountsToDonate,
+        bytes memory userData
+    ) private returns (uint256[] memory donatedAmounts, uint256[] memory protocolFeeAmounts) {
+        donatedAmounts = new uint256[](amountsToDonate.length);
+        protocolFeeAmounts = new uint256[](amountsToDonate.length);
+
+        for (uint256 i = 0; i < amountsToDonate.length; i++) {
+            IERC20 token = tokens[i];
+
+            uint256 donationAndFees = amountsToDonate[i];
+            uint256 protocolFee = donationAndFees.mulUp(_protocolFeePercentage);
+            _protocolFees[token] += protocolFee;
+            protocolFeeAmounts[i] = protocolFee;
+            donatedAmounts[i] = donationAndFees - protocolFee;
+        }
+
+        _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: pool,
+                to: address(this), // It's a donation, so no BPT will be transferred.
+                maxAmountsIn: donatedAmounts,
+                minBptAmountOut: 0,
+                kind: AddLiquidityKind.DONATION,
+                userData: userData
+            })
+        );
+    }
+
+    function _settlePoolAndRouter(
+        address sender,
+        IERC20[] memory tokens,
+        uint256[] memory poolAmounts,
+        uint256[] memory routerAmounts
+    ) private {
+        for (uint256 i = 0; i < poolAmounts.length; i++) {
+            IERC20 token = tokens[i];
+
+            uint256 poolAmount = poolAmounts[i];
+            if (poolAmount > 0) {
+                token.safeTransferFrom(sender, address(_vault), poolAmount);
+                _vault.settle(token, poolAmount);
+            }
+
+            uint256 routerAmount = routerAmounts[i];
+            if (routerAmount > 0) {
+                token.safeTransferFrom(sender, address(this), routerAmount);
+            }
+        }
     }
 }

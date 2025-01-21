@@ -118,8 +118,6 @@ contract CowRouterTest is BaseCowTest {
         );
     }
 
-    // TODO Pool not accept donation
-
     /********************************************************
                      setProtocolFeePercentage()
     ********************************************************/
