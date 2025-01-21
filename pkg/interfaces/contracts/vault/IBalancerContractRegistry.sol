@@ -221,4 +221,7 @@ interface IBalancerContractRegistry {
      * @return info ContractInfo struct corresponding to the address
      */
     function getBalancerContractInfo(address contractAddress) external view returns (ContractInfo memory info);
+
+    /// @notice Returns `true` if the given address is an active contract under the ROUTER type.
+    function isTrustedRouter(address router) external view returns (bool);
 }

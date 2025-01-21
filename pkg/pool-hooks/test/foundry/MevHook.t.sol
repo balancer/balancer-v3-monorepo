@@ -11,16 +11,18 @@ import { PoolSwapParams, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-import { MevHook } from "../../contracts/MevHook.sol";
+import { MevHookMock } from "../../contracts/test/MevHookMock.sol";
 
 contract MevHookTest is BaseVaultTest {
     using CastingHelpers for address[];
+    using FixedPoint for uint256;
 
-    IMevHook private _mevHook;
+    MevHookMock private _mevHook;
 
     function setUp() public override {
         super.setUp();
@@ -71,10 +73,9 @@ contract MevHookTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        address mevHook = address(new MevHook(IVault(address(vault))));
-        _mevHook = IMevHook(mevHook);
-        vm.label(mevHook, "MEV Hook");
-        return mevHook;
+        _mevHook = new MevHookMock(IVault(address(vault)));
+        vm.label(address(_mevHook), "MEV Hook");
+        return address(_mevHook);
     }
 
     /********************************************************
@@ -446,5 +447,133 @@ contract MevHookTest is BaseVaultTest {
             );
         }
         assertTrue(success, "Hook failed");
+    }
+
+    /********************************************************
+                   calculateSwapFeePercentage()
+    ********************************************************/
+    function testFeePercentageUnderThreshold__Fuzz(uint256 gasPriceDelta) public {
+        uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
+        uint256 priorityThreshold = 100e9;
+        uint256 multiplier = 1_000_000e18;
+
+        uint256 baseFee = 1e9;
+        gasPriceDelta = bound(gasPriceDelta, 1, priorityThreshold - 1);
+
+        vm.fee(baseFee);
+        vm.txGasPrice(baseFee + priorityThreshold - gasPriceDelta);
+
+        uint256 feePercentage = _mevHook.calculateSwapFeePercentageExternal(
+            staticSwapFeePercentage,
+            multiplier,
+            priorityThreshold
+        );
+        assertEq(feePercentage, staticSwapFeePercentage, "Fee percentage not equal to static fee percentage");
+    }
+
+    function testFeePercentageBetweenThresholdAndMaxFee__Fuzz(uint256 gasPriceDelta) public {
+        uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
+        uint256 priorityThreshold = 100e9;
+        uint256 multiplier = 1_000_000e18;
+
+        uint256 maxMevSwapFeePercentage = 20e16; // 20% max swap fee
+        vm.prank(admin);
+        _mevHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+
+        uint256 baseFee = 1e9;
+        uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
+        gasPriceDelta = bound(gasPriceDelta, 0, gasDeltaMaxFee);
+
+        vm.fee(baseFee);
+        vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
+
+        uint256 expectedFeePercentage = staticSwapFeePercentage + gasPriceDelta.mulDown(multiplier);
+
+        uint256 feePercentage = _mevHook.calculateSwapFeePercentageExternal(
+            staticSwapFeePercentage,
+            multiplier,
+            priorityThreshold
+        );
+        assertEq(feePercentage, expectedFeePercentage, "Fee percentage not equal to expected fee percentage");
+        assertGe(feePercentage, staticSwapFeePercentage, "Fee percentage not greater than static fee percentage");
+    }
+
+    function testFeePercentageAboveMaxFee__Fuzz(uint256 gasPriceDelta) public {
+        uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
+        uint256 priorityThreshold = 100e9;
+        uint256 multiplier = 1_000_000e18;
+
+        uint256 maxMevSwapFeePercentage = 20e16; // 20% max swap fee
+        vm.prank(admin);
+        _mevHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+
+        uint256 baseFee = 1e9;
+        uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
+        gasPriceDelta = bound(gasPriceDelta, gasDeltaMaxFee, gasDeltaMaxFee * 1e40);
+
+        vm.fee(baseFee);
+        vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
+
+        uint256 feePercentage = _mevHook.calculateSwapFeePercentageExternal(
+            staticSwapFeePercentage,
+            multiplier,
+            priorityThreshold
+        );
+        assertEq(feePercentage, maxMevSwapFeePercentage, "Fee percentage not equal to max fee percentage");
+        assertGe(feePercentage, staticSwapFeePercentage, "Fee percentage not greater than static fee percentage");
+    }
+
+    function testFeePercentageMathOverflow__Fuzz(uint256 gasPriceDelta) public {
+        uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
+        uint256 priorityThreshold = 100e9;
+        uint256 multiplier = 1_000_000e18;
+
+        uint256 maxMevSwapFeePercentage = 20e16; // 20% max swap fee
+        vm.prank(admin);
+        _mevHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+
+        uint256 baseFee = 1e9;
+        uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
+        gasPriceDelta = bound(gasPriceDelta, gasDeltaMaxFee * 1e40, type(uint256).max);
+
+        vm.fee(baseFee);
+        // Avoids an overflow in the calculation of txGasPrice.
+        if (gasPriceDelta > type(uint256).max - baseFee - priorityThreshold) {
+            vm.txGasPrice(type(uint256).max);
+        } else {
+            vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
+        }
+
+        uint256 feePercentage = _mevHook.calculateSwapFeePercentageExternal(
+            staticSwapFeePercentage,
+            multiplier,
+            priorityThreshold
+        );
+        assertEq(feePercentage, maxMevSwapFeePercentage, "Fee percentage not equal to max fee percentage");
+        assertGe(feePercentage, staticSwapFeePercentage, "Fee percentage not greater than static fee percentage");
+    }
+
+    function testFeePercentageAboveThresholdLowMaxFee__Fuzz(uint256 gasPriceDelta) public {
+        uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
+        uint256 priorityThreshold = 100e9;
+        uint256 multiplier = 1_000_000e18;
+
+        uint256 maxMevSwapFeePercentage = 5e16; // 5% max swap fee
+        vm.prank(admin);
+        _mevHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+
+        uint256 baseFee = 1e9;
+        gasPriceDelta = bound(gasPriceDelta, 0, type(uint256).max - priorityThreshold - baseFee);
+
+        vm.fee(baseFee);
+        vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
+
+        uint256 feePercentage = _mevHook.calculateSwapFeePercentageExternal(
+            staticSwapFeePercentage,
+            multiplier,
+            priorityThreshold
+        );
+        // If maxMevSwapFeePercentage < staticSwapFeePercentage, return staticSwapFeePercentage.
+        assertEq(feePercentage, staticSwapFeePercentage, "Fee percentage not equal to static fee percentage");
     }
 }
