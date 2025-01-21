@@ -31,7 +31,17 @@ contract CowRouterTest is BaseCowTest {
     /********************************************************
                   swapExactInAndDonateSurplus()
     ********************************************************/
-    // TODO Test if it's permissioned
+    function testSwapExactInAndDonateSurplusIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        ICowRouter.CowSwapExactInParams memory params = ICowRouter.CowSwapExactInParams({
+            tokenIn: dai,
+            tokenOut: usdc,
+            exactAmountIn: 1e18,
+            minAmountOut: 0,
+            deadline: type(uint32).max
+        });
+        cowRouter.swapExactInAndDonateSurplus(pool, params, new uint256[](2), bytes(""));
+    }
 
     function testSwapExactInAndDonateSurplus__Fuzz(
         uint256 daiExactAmountIn,
@@ -56,15 +66,25 @@ contract CowRouterTest is BaseCowTest {
         expectedProtocolFees[daiIdx] = surplusToDonateDai.mulUp(protocolFeePercentage);
         expectedProtocolFees[usdcIdx] = surplusToDonateUsdc.mulUp(protocolFeePercentage);
 
-        uint256[] memory donatedAmount = new uint256[](2);
-        donatedAmount[daiIdx] = surplusToDonateDai - expectedProtocolFees[daiIdx];
-        donatedAmount[usdcIdx] = surplusToDonateUsdc - expectedProtocolFees[usdcIdx];
+        uint256[] memory donatedAmounts = new uint256[](2);
+        donatedAmounts[daiIdx] = surplusToDonateDai - expectedProtocolFees[daiIdx];
+        donatedAmounts[usdcIdx] = surplusToDonateUsdc - expectedProtocolFees[usdcIdx];
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        //        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
-        //        vm.expectEmit();
-        //        emit ICowRouter.CoWDonation(pool, tokens, donatedAmount, expectedProtocolFees, bytes(""));
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        vm.expectEmit();
+        emit ICowRouter.CoWSwappingAndDonation(
+            pool,
+            daiExactAmountIn,
+            dai,
+            daiExactAmountIn, // PoolMock is linear, so amounts in == amounts out
+            usdc,
+            tokens,
+            donatedAmounts,
+            expectedProtocolFees,
+            bytes("")
+        );
 
         ICowRouter.CowSwapExactInParams memory params = ICowRouter.CowSwapExactInParams({
             tokenIn: dai,

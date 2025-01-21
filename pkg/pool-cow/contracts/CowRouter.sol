@@ -8,7 +8,12 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { AddLiquidityKind, AddLiquidityParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    AddLiquidityKind,
+    AddLiquidityParams,
+    SwapKind,
+    VaultSwapParams
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -104,8 +109,17 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     ) external onlyVault returns (uint256 exactAmountOut) {
         (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(swapAndDonateParams.pool);
 
-        // TODO Swap logic
-        exactAmountOut = 0;
+        (, , exactAmountOut) = _vault.swap(
+            VaultSwapParams({
+                kind: SwapKind.EXACT_IN,
+                pool: swapAndDonateParams.pool,
+                tokenIn: swapAndDonateParams.swapParams.tokenIn,
+                tokenOut: swapAndDonateParams.swapParams.tokenOut,
+                amountGivenRaw: swapAndDonateParams.swapParams.exactAmountIn,
+                limitRaw: swapAndDonateParams.swapParams.minAmountOut,
+                userData: swapAndDonateParams.userData
+            })
+        );
 
         (uint256[] memory donatedAmounts, uint256[] memory protocolFeeAmounts) = _donateToPool(
             swapAndDonateParams.pool,
@@ -114,14 +128,31 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             swapAndDonateParams.userData
         );
 
-        // TODO add swap results to settle
+        uint256[] memory poolAmounts = new uint256[](donatedAmounts.length);
+        uint256[] memory senderAmounts = new uint256[](donatedAmounts.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == swapAndDonateParams.swapParams.tokenIn) {
+                poolAmounts[i] = donatedAmounts[i] + swapAndDonateParams.swapParams.exactAmountIn;
+            } else if (tokens[i] == swapAndDonateParams.swapParams.tokenOut) {
+                if (donatedAmounts[i] >= exactAmountOut) {
+                    poolAmounts[i] = donatedAmounts[i] - exactAmountOut;
+                } else {
+                    senderAmounts[i] = exactAmountOut - donatedAmounts[i];
+                }
+            } else {
+                poolAmounts[i] = donatedAmounts[i];
+            }
+        }
 
-        // The donations must be deposited in the vault, and protocol fees must be deposited in the router.
-        _settlePoolAndRouter(swapAndDonateParams.sender, tokens, donatedAmounts, protocolFeeAmounts);
+        // The pool amount must be deposited in the vault, and protocol fees must be deposited in the router.
+        _settlePoolAndRouter(swapAndDonateParams.sender, tokens, poolAmounts, protocolFeeAmounts, senderAmounts);
 
-        // TODO change event
-        emit CoWDonation(
+        emit CoWSwappingAndDonation(
             swapAndDonateParams.pool,
+            swapAndDonateParams.swapParams.exactAmountIn,
+            swapAndDonateParams.swapParams.tokenIn,
+            exactAmountOut,
+            swapAndDonateParams.swapParams.tokenOut,
             tokens,
             donatedAmounts,
             protocolFeeAmounts,
@@ -140,7 +171,13 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         );
 
         // The donations must be deposited in the vault, and protocol fees must be deposited in the router.
-        _settlePoolAndRouter(params.sender, tokens, donatedAmounts, protocolFeeAmounts);
+        _settlePoolAndRouter(
+            params.sender,
+            tokens,
+            donatedAmounts,
+            protocolFeeAmounts,
+            new uint256[](donatedAmounts.length)
+        );
 
         emit CoWDonation(params.pool, tokens, donatedAmounts, protocolFeeAmounts, params.userData);
     }
@@ -183,7 +220,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         address sender,
         IERC20[] memory tokens,
         uint256[] memory poolAmounts,
-        uint256[] memory routerAmounts
+        uint256[] memory routerAmounts,
+        uint256[] memory senderAmounts
     ) private {
         for (uint256 i = 0; i < poolAmounts.length; i++) {
             IERC20 token = tokens[i];
@@ -197,6 +235,11 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             uint256 routerAmount = routerAmounts[i];
             if (routerAmount > 0) {
                 token.safeTransferFrom(sender, address(this), routerAmount);
+            }
+
+            uint256 userAmount = senderAmounts[i];
+            if (userAmount > 0) {
+                _vault.sendTo(token, sender, userAmount);
             }
         }
     }
