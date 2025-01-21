@@ -108,7 +108,8 @@ interface IProtocolFeeSweeper {
     /**
      * @notice Update the address of the protocol fee burner, used to convert protocol fees to a target token.
      * @dev This is a permissioned function. If it is not set, the contract will fall back to forwarding all fee tokens
-     * directly to the fee recipient.
+     * directly to the fee recipient. Note that if this function is called, `setTargetToken` must be called as well,
+     * or any sweep operations using the burner will revert with `InvalidTargetToken`.
      *
      * @param protocolFeeBurner The address of the current protocol fee burner
      */
