@@ -30,13 +30,52 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /********************************************************
+                      Getters and Setters
+    ********************************************************/
+
+    function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage) {
+        return _protocolFeePercentage;
+    }
+
+    function getProtocolFees(IERC20 token) external view returns (uint256 fees) {
+        return _protocolFees[token];
+    }
+
+    function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
+        if (newProtocolFeePercentage > MAX_PROTOCOL_FEE_PERCENTAGE) {
+            revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, MAX_PROTOCOL_FEE_PERCENTAGE);
+        }
+
+        _protocolFeePercentage = newProtocolFeePercentage;
+    }
+
+    /********************************************************
+                       Swaps and Donations
+    ********************************************************/
+
     function swapExactInAndDonateSurplus(
         address pool,
-        CowSwapExactInParams memory params,
+        CowSwapExactInParams memory swapParams,
         uint256[] memory surplusToDonate,
         bytes memory userData
-    ) external pure returns (uint256 exactAmountOut) {
-        return 0;
+    ) external authenticate returns (uint256 exactAmountOut) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        CowRouter.swapExactInAndDonateSurplusHook,
+                        SwapExactInAndDonateHookParams({
+                            pool: pool,
+                            sender: msg.sender,
+                            swapParams: swapParams,
+                            surplusToDonate: surplusToDonate,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     function swapExactOutAndDonateSurplus(
@@ -44,7 +83,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         CowSwapExactOutParams memory params,
         uint256[] memory surplusToDonate,
         bytes memory userData
-    ) external pure returns (uint256 exactAmountIn) {
+    ) external view authenticate returns (uint256 exactAmountIn) {
         return 0;
     }
 
@@ -54,6 +93,39 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                 CowRouter.donateHook,
                 DonateHookParams({ pool: pool, sender: msg.sender, amountsIn: amountsIn, userData: userData })
             )
+        );
+    }
+
+    /********************************************************
+                              Hooks
+    ********************************************************/
+    function swapExactInAndDonateSurplusHook(
+        ICowRouter.SwapExactInAndDonateHookParams memory swapAndDonateParams
+    ) external onlyVault returns (uint256 exactAmountOut) {
+        (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(swapAndDonateParams.pool);
+
+        // TODO Swap logic
+        exactAmountOut = 0;
+
+        (uint256[] memory donatedAmounts, uint256[] memory protocolFeeAmounts) = _donateToPool(
+            swapAndDonateParams.pool,
+            tokens,
+            swapAndDonateParams.surplusToDonate,
+            swapAndDonateParams.userData
+        );
+
+        // TODO add swap results to settle
+
+        // The donations must be deposited in the vault, and protocol fees must be deposited in the router.
+        _settlePoolAndRouter(swapAndDonateParams.sender, tokens, donatedAmounts, protocolFeeAmounts);
+
+        // TODO change event
+        emit CoWDonation(
+            swapAndDonateParams.pool,
+            tokens,
+            donatedAmounts,
+            protocolFeeAmounts,
+            swapAndDonateParams.userData
         );
     }
 
@@ -73,24 +145,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         emit CoWDonation(params.pool, tokens, donatedAmounts, protocolFeeAmounts, params.userData);
     }
 
-    function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage) {
-        return _protocolFeePercentage;
-    }
-
-    function getProtocolFees(IERC20 token) external view returns (uint256 fees) {
-        return _protocolFees[token];
-    }
-
-    function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
-        if (newProtocolFeePercentage > MAX_PROTOCOL_FEE_PERCENTAGE) {
-            revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, MAX_PROTOCOL_FEE_PERCENTAGE);
-        }
-
-        _protocolFeePercentage = newProtocolFeePercentage;
-    }
-
     /********************************************************
-                        Helper functions
+                        Private Helpers
     ********************************************************/
     function _donateToPool(
         address pool,

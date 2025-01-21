@@ -21,6 +21,14 @@ interface ICowRouter {
         uint256 deadline;
     }
 
+    struct SwapExactInAndDonateHookParams {
+        address pool;
+        address sender;
+        CowSwapExactInParams swapParams;
+        uint256[] surplusToDonate;
+        bytes userData;
+    }
+
     struct DonateHookParams {
         address pool;
         address sender;

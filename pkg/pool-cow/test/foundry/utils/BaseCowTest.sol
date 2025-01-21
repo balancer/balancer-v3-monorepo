@@ -24,7 +24,7 @@ contract BaseCowTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
