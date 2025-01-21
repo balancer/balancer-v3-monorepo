@@ -7,19 +7,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 interface ICowRouter {
-    struct CowSwapParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 maxAmountIn;
-        uint256 minAmountOut;
-        uint256 deadline;
-    }
-
     struct SwapAndDonateHookParams {
         address pool;
         address sender;
         SwapKind swapKind;
-        CowSwapParams swapParams;
+        IERC20 swapTokenIn;
+        IERC20 swapTokenOut;
+        uint256 swapMaxAmountIn;
+        uint256 swapMinAmountOut;
+        uint256 swapDeadline;
         uint256[] surplusToDonate;
         bytes userData;
     }
@@ -55,14 +51,22 @@ interface ICowRouter {
 
     function swapExactInAndDonateSurplus(
         address pool,
-        CowSwapParams memory swapParams,
+        IERC20 swapTokenIn,
+        IERC20 swapTokenOut,
+        uint256 swapExactAmountIn,
+        uint256 swapMinAmountOut,
+        uint256 swapDeadline,
         uint256[] memory surplusToDonate,
         bytes memory userData
     ) external returns (uint256 exactAmountOut);
 
     function swapExactOutAndDonateSurplus(
         address pool,
-        CowSwapParams memory swapParams,
+        IERC20 swapTokenIn,
+        IERC20 swapTokenOut,
+        uint256 swapMaxAmountIn,
+        uint256 swapExactAmountOut,
+        uint256 swapDeadline,
         uint256[] memory surplusToDonate,
         bytes memory userData
     ) external returns (uint256 exactAmountIn);

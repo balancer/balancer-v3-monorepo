@@ -37,14 +37,7 @@ contract CowRouterTest is BaseCowTest {
     ********************************************************/
     function testSwapExactInAndDonateSurplusIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        ICowRouter.CowSwapParams memory params = ICowRouter.CowSwapParams({
-            tokenIn: dai,
-            tokenOut: usdc,
-            maxAmountIn: 1e18,
-            minAmountOut: 0,
-            deadline: type(uint32).max
-        });
-        cowRouter.swapExactInAndDonateSurplus(pool, params, new uint256[](2), bytes(""));
+        cowRouter.swapExactInAndDonateSurplus(pool, dai, usdc, 1e18, 0, type(uint32).max, new uint256[](2), bytes(""));
     }
 
     function testSwapExactInAndDonateSurplus__Fuzz(
@@ -90,16 +83,17 @@ contract CowRouterTest is BaseCowTest {
             bytes("")
         );
 
-        ICowRouter.CowSwapParams memory params = ICowRouter.CowSwapParams({
-            tokenIn: dai,
-            tokenOut: usdc,
-            maxAmountIn: daiExactAmountIn,
-            minAmountOut: 0,
-            deadline: type(uint32).max
-        });
-
         vm.prank(lp);
-        cowRouter.swapExactInAndDonateSurplus(pool, params, surplusToDonate, bytes(""));
+        cowRouter.swapExactInAndDonateSurplus(
+            pool,
+            dai,
+            usdc,
+            daiExactAmountIn,
+            0,
+            type(uint32).max,
+            surplusToDonate,
+            bytes("")
+        );
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
@@ -177,14 +171,7 @@ contract CowRouterTest is BaseCowTest {
     ********************************************************/
     function testSwapExactOutAndDonateSurplusIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        ICowRouter.CowSwapParams memory params = ICowRouter.CowSwapParams({
-            tokenIn: dai,
-            tokenOut: usdc,
-            maxAmountIn: 1e18,
-            minAmountOut: 0,
-            deadline: type(uint32).max
-        });
-        cowRouter.swapExactOutAndDonateSurplus(pool, params, new uint256[](2), bytes(""));
+        cowRouter.swapExactOutAndDonateSurplus(pool, dai, usdc, 1e18, 0, type(uint32).max, new uint256[](2), bytes(""));
     }
 
     function testSwapExactOutAndDonateSurplus__Fuzz(
@@ -230,16 +217,17 @@ contract CowRouterTest is BaseCowTest {
             bytes("")
         );
 
-        ICowRouter.CowSwapParams memory params = ICowRouter.CowSwapParams({
-            tokenIn: dai,
-            tokenOut: usdc,
-            maxAmountIn: MAX_UINT128,
-            minAmountOut: usdcExactAmountOut,
-            deadline: type(uint32).max
-        });
-
         vm.prank(lp);
-        cowRouter.swapExactOutAndDonateSurplus(pool, params, surplusToDonate, bytes(""));
+        cowRouter.swapExactOutAndDonateSurplus(
+            pool,
+            dai,
+            usdc,
+            MAX_UINT128,
+            usdcExactAmountOut,
+            type(uint32).max,
+            surplusToDonate,
+            bytes("")
+        );
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
