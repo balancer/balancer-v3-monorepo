@@ -31,6 +31,8 @@ abstract contract BaseTest is Test, GasSnapshot {
     bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
+    address internal constant ZERO_ADDRESS = address(0);
+
     // Default admin.
     address payable internal admin;
     uint256 internal adminKey;
