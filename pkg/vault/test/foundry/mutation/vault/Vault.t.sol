@@ -44,8 +44,6 @@ contract VaultMutationTest is BaseVaultTest {
     uint256[] tokenRates = [uint256(1e18), 2e18];
     uint256 initTotalSupply = 1000e18;
 
-    address internal constant ZERO_ADDRESS = address(0x00);
-
     uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
 
     function setUp() public virtual override {
