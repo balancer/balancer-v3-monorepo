@@ -140,6 +140,12 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     ) external onlyVault returns (uint256 swapAmountIn, uint256 swapAmountOut) {
         (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(swapAndDonateParams.pool);
 
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > swapAndDonateParams.swapDeadline) {
+            revert SwapDeadline();
+        }
+
         if (swapAndDonateParams.swapKind == SwapKind.EXACT_IN) {
             swapAmountIn = swapAndDonateParams.swapMaxAmountIn;
             (, , swapAmountOut) = _vault.swap(

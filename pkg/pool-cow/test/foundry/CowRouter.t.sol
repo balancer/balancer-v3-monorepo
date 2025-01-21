@@ -40,6 +40,13 @@ contract CowRouterTest is BaseCowTest {
         cowRouter.swapExactInAndDonateSurplus(pool, dai, usdc, 1e18, 0, type(uint32).max, new uint256[](2), bytes(""));
     }
 
+    // TODO test limit
+    // TODO test deadline
+    // TODO test empty donation
+    // TODO test empty swap
+    // TODO test amount below min
+    //
+
     function testSwapExactInAndDonateSurplus__Fuzz(
         uint256 daiExactAmountIn,
         uint256 surplusToDonateDai,

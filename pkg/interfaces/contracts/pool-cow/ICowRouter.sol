@@ -27,6 +27,9 @@ interface ICowRouter {
         bytes userData;
     }
 
+    /// @notice The swap transaction was not validated before the specified deadline timestamp.
+    error SwapDeadline();
+
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 limit);
 
     event CoWSwappingAndDonation(
