@@ -598,10 +598,45 @@ contract CowRouterTest is BaseCowTest {
     /********************************************************
                           getFeeSweeper()
     ********************************************************/
+    function testGetFeeSweeper() public {
+        assertEq(cowRouter.getFeeSweeper(), feeSweeper, "Wrong fee sweeper");
+
+        address newFeeSweeper = address(1);
+
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(newFeeSweeper);
+
+        assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was not set properly");
+    }
 
     /********************************************************
                           setFeeSweeper()
     ********************************************************/
+    function testSetFeeSweeperIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        cowRouter.setFeeSweeper(address(1));
+    }
+
+    function testSetFeeSweeperInvalidAddress() public {
+        // Address 0 is not a valid fee sweeper.
+        vm.expectRevert(abi.encodeWithSelector(ICowRouter.InvalidFeeSweeper.selector, address(0)));
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(address(0));
+
+        // Address of the router is not a valid fee sweeper.
+        vm.expectRevert(abi.encodeWithSelector(ICowRouter.InvalidFeeSweeper.selector, address(cowRouter)));
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(address(cowRouter));
+    }
+
+    function testSetFeeSweeper() public {
+        address newFeeSweeper = address(2);
+
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(newFeeSweeper);
+
+        assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was set properly");
+    }
 
     /********************************************************
                           Private Helpers

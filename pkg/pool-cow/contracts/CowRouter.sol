@@ -29,11 +29,15 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
 
     // Address that will receive the protocol fees on withdraw.
-    uint256 internal _feeSweeper;
+    address internal _feeSweeper;
     uint256 internal _protocolFeePercentage;
     mapping(IERC20 => uint256) internal _protocolFees;
 
-    constructor(IVault vault, uint256 protocolFeePercentage, address feeSweeper) VaultGuard(vault) SingletonAuthentication(vault) {
+    constructor(
+        IVault vault,
+        uint256 protocolFeePercentage,
+        address feeSweeper
+    ) VaultGuard(vault) SingletonAuthentication(vault) {
         _protocolFeePercentage = protocolFeePercentage;
         _feeSweeper = feeSweeper;
     }
@@ -69,7 +73,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     /// @inheritdoc ICowRouter
     function setFeeSweeper(address newFeeSweeper) external authenticate {
         if (newFeeSweeper == address(0) || newFeeSweeper == address(this)) {
-            revert InvalidFeeSweeper();
+            revert InvalidFeeSweeper(newFeeSweeper);
         }
         _feeSweeper = newFeeSweeper;
     }

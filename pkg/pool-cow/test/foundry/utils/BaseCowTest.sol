@@ -39,6 +39,7 @@ contract BaseCowTest is BaseVaultTest {
             CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),
             admin
         );
+        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.setFeeSweeper.selector), admin);
 
         _approveCowRouterForAllUsers();
 
