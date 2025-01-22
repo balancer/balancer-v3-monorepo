@@ -111,7 +111,7 @@ interface IProtocolFeeController {
      * equal the current global yield fee percentage.
      *
      * @param pool The pool being registered
-     * @param aggregateYieldFeePercentage The initial aggregate swap fee percentage
+     * @param aggregateYieldFeePercentage The initial aggregate yield fee percentage
      */
     event InitialPoolAggregateYieldFeePercentage(address indexed pool, uint256 aggregateYieldFeePercentage);
 
