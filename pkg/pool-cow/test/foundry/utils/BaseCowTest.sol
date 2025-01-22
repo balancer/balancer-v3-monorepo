@@ -19,6 +19,8 @@ import { CowRouter } from "../../../contracts/CowRouter.sol";
 contract BaseCowTest is BaseVaultTest {
     using CastingHelpers for address[];
 
+    uint256 internal constant _INITIAL_PROTOCOL_FEE_PERCENTAGE = 1e16;
+
     ICowRouter internal cowRouter;
 
     uint256 internal daiIdx;
@@ -29,7 +31,7 @@ contract BaseCowTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        cowRouter = new CowRouter(vault);
+        cowRouter = new CowRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE);
 
         authorizer.grantRole(
             CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),

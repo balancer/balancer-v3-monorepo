@@ -33,7 +33,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     uint256 internal _protocolFeePercentage;
     mapping(IERC20 => uint256) internal _protocolFees;
 
-    constructor(IVault vault, address feeSweeper) VaultGuard(vault) SingletonAuthentication(vault) {
+    constructor(IVault vault, uint256 protocolFeePercentage, address feeSweeper) VaultGuard(vault) SingletonAuthentication(vault) {
+        _protocolFeePercentage = protocolFeePercentage;
         _feeSweeper = feeSweeper;
     }
 
