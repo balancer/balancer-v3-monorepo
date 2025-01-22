@@ -5,15 +5,7 @@ import { fp, fpMulDown } from '@balancer-labs/v3-helpers/src/numbers';
 import { setNextBlockBaseFeePerGas } from '@nomicfoundation/hardhat-network-helpers';
 
 import { PoolMock } from '../typechain-types/@balancer-labs/v3-vault/contracts/test/PoolMock';
-import {
-  MevHook,
-  Router,
-  PoolFactoryMock,
-  Vault,
-  WETHTestToken,
-  IVault,
-  BalancerContractRegistry,
-} from '../typechain-types';
+import { MevTaxHook, Router, PoolFactoryMock, Vault, WETHTestToken, IVault } from '../typechain-types';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
@@ -36,7 +28,7 @@ enum RegistryContractType {
   ERC4626,
 }
 
-describe('MevHook', () => {
+describe('MevTaxHook', () => {
   const ROUTER_VERSION = 'Router V1';
   const PRIORITY_GAS_THRESHOLD = 3_000_000n;
   const MEV_MULTIPLIER = fp(10_000_000_000);
@@ -51,7 +43,7 @@ describe('MevHook', () => {
   let poolTokens: string[];
   let router: Router;
   let untrustedRouter: Router;
-  let hook: MevHook;
+  let hook: MevTaxHook;
   let registry: BalancerContractRegistry;
 
   let admin: SignerWithAddress, lp: SignerWithAddress, sender: SignerWithAddress;
@@ -84,7 +76,7 @@ describe('MevHook', () => {
       args: [vaultAddress, 'Pool with MEV Hook', 'POOL-MEV'],
     });
 
-    hook = await deploy('MevHook', { args: [vaultAddress, registry] });
+    hook = await deploy('MevTaxHook', { args: [vaultAddress, registry] });
 
     await factory.registerPoolWithHook(pool, buildTokenConfig(poolTokens), hook);
   });
