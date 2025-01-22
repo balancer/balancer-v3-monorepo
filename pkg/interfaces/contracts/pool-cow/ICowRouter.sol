@@ -7,6 +7,20 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SwapKind } from "../vault/VaultTypes.sol";
 
 interface ICowRouter {
+    /**
+     * @notice Data for the swap and donate hook.
+     * @dev Swap and donate hook is used to swap on CoW AMM pools and donate surplus or fees to the same pool.
+     * @param pool Address of the CoW AMM Pool
+     * @param sender Account originating the swap and donate operation
+     * @param swapKind Type of swap (exact in or exact out)
+     * @param swapTokenIn Token to be swapped from
+     * @param swapTokenOut Token to be swapped to
+     * @param swapMaxAmountIn Exact amount in, when swap is EXACT_IN, or max amount in if swap is EXACT OUT
+     * @param swapMinAmountOut Max amount out, when swap is EXACT_IN, or exact amount out if swap is EXACT OUT
+     * @param swapDeadline Deadline for the swap, after which it will revert
+     * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param userData Additional (optional) data sent with the swap request and emitted with donation and swap events
+     */
     struct SwapAndDonateHookParams {
         address pool;
         address sender;
@@ -16,14 +30,22 @@ interface ICowRouter {
         uint256 swapMaxAmountIn;
         uint256 swapMinAmountOut;
         uint256 swapDeadline;
-        uint256[] surplusToDonate;
+        uint256[] donationAmounts;
         bytes userData;
     }
 
+    /**
+     * @notice Data for the donate hook.
+     * @dev Donate hook is used to donate surplus or fees to a CoW AMM pool.
+     * @param pool Address of the CoW AMM Pool
+     * @param sender Account originating the donate operation
+     * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param userData Additional (optional) data sent with the swap request and emitted with the donation event
+     */
     struct DonateHookParams {
         address pool;
         address sender;
-        uint256[] amountsIn;
+        uint256[] donationAmounts;
         bytes userData;
     }
 
@@ -59,7 +81,7 @@ interface ICowRouter {
         uint256 swapExactAmountIn,
         uint256 swapMinAmountOut,
         uint256 swapDeadline,
-        uint256[] memory surplusToDonate,
+        uint256[] memory donationAmounts,
         bytes memory userData
     ) external returns (uint256 exactAmountOut);
 
@@ -70,7 +92,7 @@ interface ICowRouter {
         uint256 swapMaxAmountIn,
         uint256 swapExactAmountOut,
         uint256 swapDeadline,
-        uint256[] memory surplusToDonate,
+        uint256[] memory donationAmounts,
         bytes memory userData
     ) external returns (uint256 exactAmountIn);
 

@@ -66,7 +66,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256 swapExactAmountIn,
         uint256 swapMinAmountOut,
         uint256 swapDeadline,
-        uint256[] memory surplusToDonate,
+        uint256[] memory donationAmounts,
         bytes memory userData
     ) external authenticate returns (uint256 exactAmountOut) {
         (, exactAmountOut) = abi.decode(
@@ -82,7 +82,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapMaxAmountIn: swapExactAmountIn,
                         swapMinAmountOut: swapMinAmountOut,
                         swapDeadline: swapDeadline,
-                        surplusToDonate: surplusToDonate,
+                        donationAmounts: donationAmounts,
                         userData: userData
                     })
                 )
@@ -98,7 +98,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256 swapMaxAmountIn,
         uint256 swapExactAmountOut,
         uint256 swapDeadline,
-        uint256[] memory surplusToDonate,
+        uint256[] memory donationAmounts,
         bytes memory userData
     ) external authenticate returns (uint256 exactAmountIn) {
         (exactAmountIn, ) = abi.decode(
@@ -114,7 +114,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapMaxAmountIn: swapMaxAmountIn,
                         swapMinAmountOut: swapExactAmountOut,
                         swapDeadline: swapDeadline,
-                        surplusToDonate: surplusToDonate,
+                        donationAmounts: donationAmounts,
                         userData: userData
                     })
                 )
@@ -123,11 +123,16 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         );
     }
 
-    function donate(address pool, uint256[] memory amountsIn, bytes memory userData) external {
+    function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external {
         _vault.unlock(
             abi.encodeCall(
                 CowRouter.donateHook,
-                DonateHookParams({ pool: pool, sender: msg.sender, amountsIn: amountsIn, userData: userData })
+                DonateHookParams({
+                    pool: pool,
+                    sender: msg.sender,
+                    donationAmounts: donationAmounts,
+                    userData: userData
+                })
             )
         );
     }
@@ -177,7 +182,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         (uint256[] memory donatedAmounts, uint256[] memory protocolFeeAmounts) = _donateToPool(
             swapAndDonateParams.pool,
             tokens,
-            swapAndDonateParams.surplusToDonate,
+            swapAndDonateParams.donationAmounts,
             swapAndDonateParams.userData
         );
 
@@ -212,7 +217,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         (uint256[] memory donatedAmounts, uint256[] memory protocolFeeAmounts) = _donateToPool(
             params.pool,
             tokens,
-            params.amountsIn,
+            params.donationAmounts,
             params.userData
         );
 
