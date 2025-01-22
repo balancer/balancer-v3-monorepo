@@ -48,7 +48,12 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function sweepProtocolFeesForToken(address pool, IERC20 feeToken) external nonReentrant authenticate {
+    function sweepProtocolFeesForToken(
+        address pool,
+        IERC20 feeToken,
+        uint256 minAmountOut,
+        uint256 deadline
+    ) external nonReentrant authenticate {
         IProtocolFeeBurner feeBurner = _getValidBurner();
 
         uint256 existingBalance = feeToken.balanceOf(address(this));
@@ -73,7 +78,15 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
                     // Transfer the tokens directly to avoid "hanging approvals," in case the burn is unsuccessful.
                     feeToken.safeTransfer(address(feeBurner), withdrawnBalance);
                     // This is asynchronous; the burner will complete the action and emit an event.
-                    feeBurner.burn(pool, feeToken, withdrawnBalance, targetToken, _feeRecipient);
+                    feeBurner.burn(
+                        pool,
+                        feeToken,
+                        withdrawnBalance,
+                        targetToken,
+                        minAmountOut,
+                        _feeRecipient,
+                        deadline
+                    );
                 }
             }
         }
