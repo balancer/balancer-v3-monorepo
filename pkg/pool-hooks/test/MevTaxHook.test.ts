@@ -16,6 +16,7 @@ import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20Tok
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { MAX_UINT160, MAX_UINT256, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import { ERC20 } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { BalancerContractRegistry } from '@balancer-labs/v3-standalone-utils/typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { expect } from 'chai';

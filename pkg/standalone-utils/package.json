@@ -1,5 +1,5 @@
 {
-  "name": "@balancer-labs/standalone-utils",
+  "name": "@balancer-labs/v3-standalone-utils",
   "version": "0.1.0",
   "description": "Balancer V3 Standalone Utils",
   "license": "GPL-3.0-only",
