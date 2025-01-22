@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
+    "@balancer-labs/standalone-utils": "workspace:*",
     "@balancer-labs/v3-solidity-utils": "workspace:*",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",
