@@ -66,7 +66,7 @@ describe('MevTaxHook', () => {
     router = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
     untrustedRouter = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, 'UNTRUSTED_VERSION'] });
     factory = await deploy('v3-vault/PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
-    registry = await deploy('standalone-utils/BalancerContractRegistry', { args: [vaultAddress] });
+    registry = await deploy('v3-standalone-utils/BalancerContractRegistry', { args: [vaultAddress] });
 
     tokens = await ERC20TokenList.create(2, { sorted: true });
     token0 = (await tokens.get(0)) as unknown as ERC20;
