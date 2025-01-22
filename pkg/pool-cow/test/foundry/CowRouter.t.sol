@@ -121,7 +121,6 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
@@ -237,7 +236,6 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
@@ -360,7 +358,6 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
@@ -476,7 +473,6 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
@@ -537,7 +533,6 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
         emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
 
