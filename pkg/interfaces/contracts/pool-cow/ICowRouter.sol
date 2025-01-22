@@ -59,6 +59,9 @@ interface ICowRouter {
      */
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 limit);
 
+    /// @notice The caller tried to set an invalid address as the fee sweeper.
+    error InvalidFeeSweeper(address invalidFeeSweeper);
+
     /**
      * @notice A swap and a donation have occurred.
      * @param pool The pool with the tokens being swapped
@@ -175,6 +178,12 @@ interface ICowRouter {
     function getProtocolFees(IERC20 token) external view returns (uint256 fees);
 
     /**
+     * @notice Gets the address that will receive protocol fees when withdraw is called.
+     * @param feeSweeper Address that receives protocol fees
+     */
+    function getFeeSweeper() external view returns (address feeSweeper);
+
+    /**
      * @notice Sets the protocol fee percentage.
      * @dev This is a permissioned function. Besides, it caps the protocol fee percentage to a maximum value,
      * registered as a constant in the CoW AMM Router.
@@ -182,4 +191,11 @@ interface ICowRouter {
      * @param newProtocolFeePercentage New value of the protocol fee percentage
      */
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external;
+
+    /**
+     * @notice Sets the address that will receive protocol fees when withdraw is called.
+     * @dev Fee Sweeper shall not be neither zero address nor the router address.
+     * @param newFeeSweeper New address that will receive protocol fees
+     */
+    function setFeeSweeper(address newFeeSweeper) external;
 }

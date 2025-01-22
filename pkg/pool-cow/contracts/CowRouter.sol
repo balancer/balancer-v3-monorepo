@@ -28,11 +28,13 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     // Protocol fee percentage capped at 10%.
     uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
 
+    // Address that will receive the protocol fees on withdraw.
+    uint256 internal _feeSweeper;
     uint256 internal _protocolFeePercentage;
     mapping(IERC20 => uint256) internal _protocolFees;
 
-    constructor(IVault vault) VaultGuard(vault) SingletonAuthentication(vault) {
-        // solhint-disable-previous-line no-empty-blocks
+    constructor(IVault vault, address feeSweeper) VaultGuard(vault) SingletonAuthentication(vault) {
+        _feeSweeper = feeSweeper;
     }
 
     /********************************************************
@@ -50,12 +52,25 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     /// @inheritdoc ICowRouter
+    function getFeeSweeper() external view returns (address feeSweeper) {
+        return _feeSweeper;
+    }
+
+    /// @inheritdoc ICowRouter
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
         if (newProtocolFeePercentage > _MAX_PROTOCOL_FEE_PERCENTAGE) {
             revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, _MAX_PROTOCOL_FEE_PERCENTAGE);
         }
 
         _protocolFeePercentage = newProtocolFeePercentage;
+    }
+
+    /// @inheritdoc ICowRouter
+    function setFeeSweeper(address newFeeSweeper) external authenticate {
+        if (newFeeSweeper == address(0) || newFeeSweeper == address(this)) {
+            revert InvalidFeeSweeper();
+        }
+        _feeSweeper = newFeeSweeper;
     }
 
     /********************************************************
