@@ -545,6 +545,24 @@ contract CowRouterTest is BaseCowTest {
     }
 
     /********************************************************
+                     getProtocolFeePercentage()
+    ********************************************************/
+    function testGetProtocolFeePercentage() public {
+        assertEq(
+            cowRouter.getProtocolFeePercentage(),
+            _INITIAL_PROTOCOL_FEE_PERCENTAGE,
+            "Wrong protocol fee percentage"
+        );
+
+        uint256 newProtocolFeePercentage = 5e16;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(newProtocolFeePercentage);
+
+        assertEq(cowRouter.getProtocolFeePercentage(), newProtocolFeePercentage, "Protocol fee percentage was not set");
+    }
+
+    /********************************************************
                      setProtocolFeePercentage()
     ********************************************************/
     function testSetProtocolFeePercentageIsPermissioned() public {
