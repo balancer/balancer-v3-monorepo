@@ -103,7 +103,7 @@ interface ICowRouter {
     event FeeSweeperChanged(address newFeeSweeper);
 
     /// @notice The protocol fees, accrued in token terms, were withdrawn to the feeSweeper.
-    event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountToWithdraw);
+    event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountWithdrawn);
 
     /**
      * @notice Executes a swap exact in and donate a specified amount to the same CoW AMM Pool.

@@ -673,6 +673,8 @@ contract CowRouterTest is BaseCowTest {
             "CoW Router has a wrong amount of USDC to withdraw"
         );
 
+        vm.expectEmit();
+        emit ICowRouter.ProtocolFeesWithdrawn(dai, alice, daiProtocolFeesBeforeWithdraw);
         cowRouter.withdrawProtocolFees(dai);
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
@@ -689,6 +691,9 @@ contract CowRouterTest is BaseCowTest {
         // Change fee sweeper to Bob and check if the new fee sweeper receives the protocol fees.
         vm.prank(admin);
         cowRouter.setFeeSweeper(bob);
+
+        vm.expectEmit();
+        emit ICowRouter.ProtocolFeesWithdrawn(usdc, bob, usdcProtocolFeesBeforeWithdraw);
         cowRouter.withdrawProtocolFees(usdc);
 
         BaseVaultTest.Balances memory balancesAfterUsdc = getBalances(address(cowRouter));
