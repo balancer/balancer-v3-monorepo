@@ -519,9 +519,6 @@ contract CowRouterTest is BaseCowTest {
         donationDai = _boundDonation(donationDai, protocolFeePercentage);
         donationUsdc = _boundDonation(donationUsdc, protocolFeePercentage);
 
-        console.log("donationDai ", donationDai);
-        console.log("donationUsdc", donationUsdc);
-
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
