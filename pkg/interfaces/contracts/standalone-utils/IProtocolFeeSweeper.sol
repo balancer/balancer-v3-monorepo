@@ -21,12 +21,6 @@ interface IProtocolFeeSweeper {
     event FeeRecipientSet(address indexed feeRecipient);
 
     /**
-     * @notice Emitted when the protocol fee burner contract is set or updated.
-     * @param protocolFeeBurner The contract used to "burn" protocol fees (i.e., convert them to the target token)
-     */
-    event ProtocolFeeBurnerSet(address indexed protocolFeeBurner);
-
-    /**
      * @notice Emitted when a fee token is transferred directly, vs. calling the burner.
      * @dev This can happen if no target token or burner contract was specified, or the fee token is the target token.
      * @param pool The pool on which the fee was collected
@@ -41,6 +35,13 @@ interface IProtocolFeeSweeper {
 
     /// @notice The target token is invalid.
     error InvalidTargetToken();
+
+    /// @notice
+    /**
+     * @notice The specified fee burner has not been approved.
+     * @param protocolFeeBurner The address of the unsupported fee burner
+     */
+    error UnsupportedProtocolFeeBurner(address protocolFeeBurner);
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
@@ -58,8 +59,15 @@ interface IProtocolFeeSweeper {
      * @param feeToken The fee token in the pool
      * @param minAmountOut The minimum number of target tokens to be received
      * @param deadline Deadline for the burn operation (swap), after which it will revert
+     * @param feeBurner The protocol fee burner to be used (or the zero address to fall back on direct transfer)
      */
-    function sweepProtocolFeesForToken(address pool, IERC20 feeToken, uint256 minAmountOut, uint256 deadline) external;
+    function sweepProtocolFeesForToken(
+        address pool,
+        IERC20 feeToken,
+        uint256 minAmountOut,
+        uint256 deadline,
+        IProtocolFeeBurner feeBurner
+    ) external;
 
     /**
      * @notice Return the address of the current `ProtocolFeeController` from the Vault.
@@ -83,28 +91,11 @@ interface IProtocolFeeSweeper {
     function getFeeRecipient() external view returns (address);
 
     /**
-     * @notice Getter for the current protocol fee burner.
-     * @dev Can be changed by `setProtocolFeeBurner`.
-     * @return protocolFeeBurner The currently active protocol fee burner
-     */
-    function getProtocolFeeBurner() external view returns (IProtocolFeeBurner);
-
-    /**
      * @notice Update the fee recipient address.
      * @dev This is a permissioned function.
      * @param feeRecipient The address of the new fee recipient
      */
     function setFeeRecipient(address feeRecipient) external;
-
-    /**
-     * @notice Update the address of the protocol fee burner, used to convert protocol fees to a target token.
-     * @dev This is a permissioned function. If it is not set, the contract will fall back to forwarding all fee tokens
-     * directly to the fee recipient. Note that if this function is called, `setTargetToken` must be called as well,
-     * or any sweep operations using the burner will revert with `InvalidTargetToken`.
-     *
-     * @param protocolFeeBurner The address of the current protocol fee burner
-     */
-    function setProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
 
     /**
      * @notice Update the address of the target token.
