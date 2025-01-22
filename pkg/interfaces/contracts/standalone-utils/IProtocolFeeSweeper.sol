@@ -46,8 +46,7 @@ interface IProtocolFeeSweeper {
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
      * @dev This will withdraw the fee token from the controller to this contract, and attempt to convert and forward
      * the proceeds to the fee recipient. Note that this requires governance to grant this contract permission to call
-     * `withdrawProtocolFeesForToken` on the `ProtocolFeeController`. Since the general idea is to sweep when the token
-     * value crosses a certain threshold, we expect that this might be the most commonly used sweeping function.
+     * `withdrawProtocolFeesForToken` on the `ProtocolFeeController`.
      *
      * This is a permissioned call, since it involves a swap and a permissionless sweep could be triggered at times
      * disadvantageous to the protocol (e.g., flash crashes).
@@ -56,19 +55,6 @@ interface IProtocolFeeSweeper {
      * @param feeToken The fee token in the pool
      */
     function sweepProtocolFeesForToken(address pool, IERC20 feeToken) external;
-
-    /**
-     * @notice Withdraw, convert, and forward protocol fees for a given pool.
-     * @dev This will withdraw all fee tokens from the controller to this contract, and attempt to convert and forward
-     * the proceeds to the fee recipient. Note that this requires governance to grant this contract permission to call
-     * `withdrawProtocolFees` on the `ProtocolFeeController`.
-     *
-     * This is a permissioned call, since it involves a swap and a permissionless sweep could be triggered at times
-     * disadvantageous to the protocol (e.g., flash crashes).
-     *
-     * @param pool The pool that incurred the fees we're withdrawing
-     */
-    function sweepProtocolFees(address pool) external;
 
     /**
      * @notice Return the address of the current `ProtocolFeeController` from the Vault.
