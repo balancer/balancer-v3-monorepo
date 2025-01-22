@@ -290,6 +290,12 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         feeSweeper.setTargetToken(usdc);
         vm.stopPrank();
 
+        // Put some fees in the Vault.
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
+
+        // Collect them (i.e., send from the Vault to the controller).
+        feeController.collectAggregateFees(pool);
+
         vm.expectRevert(IProtocolFeeBurner.SwapDeadline.selector);
         vm.prank(admin);
         feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, 0);
