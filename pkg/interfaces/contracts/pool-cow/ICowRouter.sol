@@ -62,6 +62,9 @@ interface ICowRouter {
     /// @notice The caller tried to set an invalid address as the fee sweeper.
     error InvalidFeeSweeper(address invalidFeeSweeper);
 
+    /// @notice The caller tried to withdraw fees from a token without accrued fees.
+    error NoProtocolFeesToWithdraw(IERC20 token);
+
     /**
      * @notice A swap and a donation have occurred.
      * @param pool The pool with the tokens being swapped
@@ -98,6 +101,9 @@ interface ICowRouter {
 
     /// @notice An admin changed the contract that receives protocol fees on withdraw.
     event FeeSweeperChanged(address newFeeSweeper);
+
+    /// @notice The protocol fees, accrued in token terms, were withdrawn to the feeSweeper.
+    event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountToWithdraw);
 
     /**
      * @notice Executes a swap exact in and donate a specified amount to the same CoW AMM Pool.
@@ -165,6 +171,15 @@ interface ICowRouter {
      * @param userData Additional (optional) data sent with the donate request
      */
     function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external;
+
+    /**
+     * @notice Withdraws protocol fees charged in token amounts to the fee sweeper.
+     * @dev Permissionless because the fee sweeper (receiver of protocol fees) is defined by a variable with a
+     * permissioned setter. Emits the event ProtocolFeesWithdrawn on success.
+     *
+     * @param token Token in which the protocol fees were charged
+     */
+    function withdrawProtocolFees(IERC20 token) external;
 
     /**
      * @notice Returns the protocol fee percentage, registered in the CoW Router.
