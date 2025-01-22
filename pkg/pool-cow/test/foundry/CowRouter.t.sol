@@ -104,72 +104,14 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        // Test collected protocol fee (router balance and state)
-        assertEq(
-            balancesAfter.userTokens[daiIdx],
-            balancesBefore.userTokens[daiIdx] + expectedProtocolFees[daiIdx],
-            "Router did not collect DAI protocol fees"
-        );
-        assertEq(
-            cowRouter.getProtocolFees(dai),
-            expectedProtocolFees[daiIdx],
-            "Collected DAI fees not registered in the router state"
-        );
-
-        assertEq(
-            balancesAfter.userTokens[usdcIdx],
-            balancesBefore.userTokens[usdcIdx] + expectedProtocolFees[usdcIdx],
-            "Router did not collect USDC protocol fees"
-        );
-        assertEq(
-            cowRouter.getProtocolFees(usdc),
-            expectedProtocolFees[usdcIdx],
-            "Collected USDC fees not registered in the router state"
-        );
-
-        // Test BPT did not change
-        assertEq(balancesAfter.lpBpt, balancesBefore.lpBpt, "LP BPT has changed");
-        assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "BPT supply has changed");
-
-        // Test new pool balances
-        assertEq(
-            balancesAfter.poolTokens[daiIdx],
-            balancesBefore.poolTokens[daiIdx] + surplusToDonateDai - expectedProtocolFees[daiIdx] + daiExactAmountIn,
-            "Pool DAI balance is not correct"
-        );
-        // Since the pool is linear, usdc amount out == dai amount in. In the swap, the pool returned usdc to the
-        // caller.
-        assertEq(
-            balancesAfter.poolTokens[usdcIdx],
-            balancesBefore.poolTokens[usdcIdx] + surplusToDonateUsdc - expectedProtocolFees[usdcIdx] - daiExactAmountIn,
-            "Pool USDC balance is not correct"
-        );
-
-        // Test vault balances
-        assertEq(
-            balancesAfter.vaultTokens[daiIdx],
-            balancesBefore.vaultTokens[daiIdx] + surplusToDonateDai - expectedProtocolFees[daiIdx] + daiExactAmountIn,
-            "Vault DAI balance is not correct"
-        );
-        assertEq(
-            balancesAfter.vaultTokens[usdcIdx],
-            balancesBefore.vaultTokens[usdcIdx] +
-                surplusToDonateUsdc -
-                expectedProtocolFees[usdcIdx] -
-                daiExactAmountIn,
-            "Vault USDC balance is not correct"
-        );
-
-        // Test donor balances
-        assertEq(
-            balancesAfter.lpTokens[daiIdx],
-            balancesBefore.lpTokens[daiIdx] - surplusToDonateDai - daiExactAmountIn,
-            "LP DAI balance is not correct"
-        );
-        assertEq(
-            balancesAfter.lpTokens[usdcIdx],
-            balancesBefore.lpTokens[usdcIdx] - surplusToDonateUsdc + daiExactAmountIn,
-            "LP USDC balance is not correct"
+        // Since the pool is linear, amount in == amount out
+        _checkBalancesAfterSwapAndDonation(
+            balancesBefore,
+            balancesAfter,
+            expectedProtocolFees,
+            surplusToDonate,
+            daiExactAmountIn,
+            daiExactAmountIn
         );
     }
 
@@ -238,75 +180,14 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        // Test collected protocol fee (router balance and state)
-        assertEq(
-            balancesAfter.userTokens[daiIdx],
-            balancesBefore.userTokens[daiIdx] + expectedProtocolFees[daiIdx],
-            "Router did not collect DAI protocol fees"
-        );
-        assertEq(
-            cowRouter.getProtocolFees(dai),
-            expectedProtocolFees[daiIdx],
-            "Collected DAI fees not registered in the router state"
-        );
-
-        assertEq(
-            balancesAfter.userTokens[usdcIdx],
-            balancesBefore.userTokens[usdcIdx] + expectedProtocolFees[usdcIdx],
-            "Router did not collect USDC protocol fees"
-        );
-        assertEq(
-            cowRouter.getProtocolFees(usdc),
-            expectedProtocolFees[usdcIdx],
-            "Collected USDC fees not registered in the router state"
-        );
-
-        // Test BPT did not change
-        assertEq(balancesAfter.lpBpt, balancesBefore.lpBpt, "LP BPT has changed");
-        assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "BPT supply has changed");
-
-        // Test new pool balances
-        assertEq(
-            balancesAfter.poolTokens[daiIdx],
-            balancesBefore.poolTokens[daiIdx] + surplusToDonateDai - expectedProtocolFees[daiIdx] + usdcExactAmountOut,
-            "Pool DAI balance is not correct"
-        );
-        // Since the pool is linear, usdc amount out == dai amount in. In the swap, the pool returned usdc to the
-        // caller.
-        assertEq(
-            balancesAfter.poolTokens[usdcIdx],
-            balancesBefore.poolTokens[usdcIdx] +
-                surplusToDonateUsdc -
-                expectedProtocolFees[usdcIdx] -
-                usdcExactAmountOut,
-            "Pool USDC balance is not correct"
-        );
-
-        // Test vault balances
-        assertEq(
-            balancesAfter.vaultTokens[daiIdx],
-            balancesBefore.vaultTokens[daiIdx] + surplusToDonateDai - expectedProtocolFees[daiIdx] + usdcExactAmountOut,
-            "Vault DAI balance is not correct"
-        );
-        assertEq(
-            balancesAfter.vaultTokens[usdcIdx],
-            balancesBefore.vaultTokens[usdcIdx] +
-                surplusToDonateUsdc -
-                expectedProtocolFees[usdcIdx] -
-                usdcExactAmountOut,
-            "Vault USDC balance is not correct"
-        );
-
-        // Test donor balances
-        assertEq(
-            balancesAfter.lpTokens[daiIdx],
-            balancesBefore.lpTokens[daiIdx] - surplusToDonateDai - usdcExactAmountOut,
-            "LP DAI balance is not correct"
-        );
-        assertEq(
-            balancesAfter.lpTokens[usdcIdx],
-            balancesBefore.lpTokens[usdcIdx] - surplusToDonateUsdc + usdcExactAmountOut,
-            "LP USDC balance is not correct"
+        // Since the pool is linear, amount in == amount out
+        _checkBalancesAfterSwapAndDonation(
+            balancesBefore,
+            balancesAfter,
+            expectedProtocolFees,
+            surplusToDonate,
+            usdcExactAmountOut,
+            usdcExactAmountOut
         );
     }
 
@@ -345,68 +226,7 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        // Test collected protocol fee (router balance and state)
-        assertEq(
-            balancesAfter.userTokens[daiIdx],
-            balancesBefore.userTokens[daiIdx] + expectedProtocolFees[daiIdx],
-            "Router did not collect DAI protocol fees"
-        );
-        assertEq(
-            cowRouter.getProtocolFees(dai),
-            expectedProtocolFees[daiIdx],
-            "Collected DAI fees not registered in the router state"
-        );
-
-        assertEq(
-            balancesAfter.userTokens[usdcIdx],
-            balancesBefore.userTokens[usdcIdx] + expectedProtocolFees[usdcIdx],
-            "Router did not collect USDC protocol fees"
-        );
-        assertEq(
-            cowRouter.getProtocolFees(usdc),
-            expectedProtocolFees[usdcIdx],
-            "Collected USDC fees not registered in the router state"
-        );
-
-        // Test BPT did not change
-        assertEq(balancesAfter.lpBpt, balancesBefore.lpBpt, "LP BPT has changed");
-        assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "BPT supply has changed");
-
-        // Test new pool balances
-        assertEq(
-            balancesAfter.poolTokens[daiIdx],
-            balancesBefore.poolTokens[daiIdx] + amountDai - expectedProtocolFees[daiIdx],
-            "Pool DAI balance is not correct"
-        );
-        assertEq(
-            balancesAfter.poolTokens[usdcIdx],
-            balancesBefore.poolTokens[usdcIdx] + amountUsdc - expectedProtocolFees[usdcIdx],
-            "Pool USDC balance is not correct"
-        );
-
-        // Test vault balances
-        assertEq(
-            balancesAfter.vaultTokens[daiIdx],
-            balancesBefore.vaultTokens[daiIdx] + amountDai - expectedProtocolFees[daiIdx],
-            "Vault DAI balance is not correct"
-        );
-        assertEq(
-            balancesAfter.vaultTokens[usdcIdx],
-            balancesBefore.vaultTokens[usdcIdx] + amountUsdc - expectedProtocolFees[usdcIdx],
-            "Vault USDC balance is not correct"
-        );
-
-        // Test donor balances
-        assertEq(
-            balancesAfter.lpTokens[daiIdx],
-            balancesBefore.lpTokens[daiIdx] - amountDai,
-            "LP DAI balance is not correct"
-        );
-        assertEq(
-            balancesAfter.lpTokens[usdcIdx],
-            balancesBefore.lpTokens[usdcIdx] - amountUsdc,
-            "LP USDC balance is not correct"
-        );
+        _checkBalancesAfterSwapAndDonation(balancesBefore, balancesAfter, expectedProtocolFees, amountsIn, 0, 0);
     }
 
     /********************************************************
@@ -441,5 +261,82 @@ contract CowRouterTest is BaseCowTest {
         cowRouter.setProtocolFeePercentage(newProtocolFeePercentage);
 
         assertEq(cowRouter.getProtocolFeePercentage(), newProtocolFeePercentage, "Protocol Fee Percentage is not set");
+    }
+
+    // HELPERS
+
+    function _checkBalancesAfterSwapAndDonation(
+        BaseVaultTest.Balances memory balancesBefore,
+        BaseVaultTest.Balances memory balancesAfter,
+        uint256[] memory expectedProtocolFees,
+        uint256[] memory donations,
+        uint256 daiSwapAmountIn,
+        uint256 usdcSwapAmountOut
+    ) private {
+        // Test collected protocol fee (router balance and state)
+        assertEq(
+            balancesAfter.userTokens[daiIdx],
+            balancesBefore.userTokens[daiIdx] + expectedProtocolFees[daiIdx],
+            "Router did not collect DAI protocol fees"
+        );
+        assertEq(
+            cowRouter.getProtocolFees(dai),
+            expectedProtocolFees[daiIdx],
+            "Collected DAI fees not registered in the router state"
+        );
+
+        assertEq(
+            balancesAfter.userTokens[usdcIdx],
+            balancesBefore.userTokens[usdcIdx] + expectedProtocolFees[usdcIdx],
+            "Router did not collect USDC protocol fees"
+        );
+        assertEq(
+            cowRouter.getProtocolFees(usdc),
+            expectedProtocolFees[usdcIdx],
+            "Collected USDC fees not registered in the router state"
+        );
+
+        // Test BPT did not change
+        assertEq(balancesAfter.lpBpt, balancesBefore.lpBpt, "LP BPT has changed");
+        assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "BPT supply has changed");
+
+        // Test new pool balances
+        assertEq(
+            balancesAfter.poolTokens[daiIdx],
+            balancesBefore.poolTokens[daiIdx] + donations[daiIdx] - expectedProtocolFees[daiIdx] + daiSwapAmountIn,
+            "Pool DAI balance is not correct"
+        );
+        assertEq(
+            balancesAfter.poolTokens[usdcIdx],
+            balancesBefore.poolTokens[usdcIdx] + donations[usdcIdx] - expectedProtocolFees[usdcIdx] - usdcSwapAmountOut,
+            "Pool USDC balance is not correct"
+        );
+
+        // Test vault balances
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx],
+            balancesBefore.vaultTokens[daiIdx] + donations[daiIdx] - expectedProtocolFees[daiIdx] + daiSwapAmountIn,
+            "Vault DAI balance is not correct"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[usdcIdx],
+            balancesBefore.vaultTokens[usdcIdx] +
+                donations[usdcIdx] -
+                expectedProtocolFees[usdcIdx] -
+                usdcSwapAmountOut,
+            "Vault USDC balance is not correct"
+        );
+
+        // Test donor balances
+        assertEq(
+            balancesAfter.lpTokens[daiIdx],
+            balancesBefore.lpTokens[daiIdx] - donations[daiIdx] - daiSwapAmountIn,
+            "LP DAI balance is not correct"
+        );
+        assertEq(
+            balancesAfter.lpTokens[usdcIdx],
+            balancesBefore.lpTokens[usdcIdx] - donations[usdcIdx] + usdcSwapAmountOut,
+            "LP USDC balance is not correct"
+        );
     }
 }
