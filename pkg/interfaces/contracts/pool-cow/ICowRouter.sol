@@ -32,7 +32,7 @@ interface ICowRouter {
 
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 limit);
 
-    event CoWSwappingAndDonation(
+    event CoWSwapAndDonation(
         address pool,
         uint256 amountInSwap,
         IERC20 tokenInSwap,

@@ -19,6 +19,9 @@ import { CowRouter } from "../../contracts/CowRouter.sol";
 contract CowRouterTest is BaseCowTest {
     using FixedPoint for uint256;
 
+    // 10% max protocol fee percentage.
+    uint256 private constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
+
     function setUp() public override {
         super.setUp();
 
@@ -45,47 +48,40 @@ contract CowRouterTest is BaseCowTest {
     // TODO test empty donation
     // TODO test empty swap
     // TODO test amount below min
-    //
 
     function testSwapExactInAndDonateSurplus__Fuzz(
-        uint256 daiExactAmountIn,
-        uint256 surplusToDonateDai,
-        uint256 surplusToDonateUsdc,
+        uint256 donationDai,
+        uint256 donationUsdc,
+        uint256 daiSwapAmountIn,
         uint256 protocolFeePercentage
     ) public {
-        // ProtocolFeePercentage between 0 and 10%.
-        protocolFeePercentage = bound(protocolFeePercentage, 0, 10e16);
-        surplusToDonateDai = bound(surplusToDonateDai, 1e6, DEFAULT_AMOUNT);
-        surplusToDonateUsdc = bound(surplusToDonateUsdc, 1e6, DEFAULT_AMOUNT);
-        daiExactAmountIn = bound(daiExactAmountIn, 1e6, DEFAULT_AMOUNT);
+        // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
+        protocolFeePercentage = bound(protocolFeePercentage, 0, _MAX_PROTOCOL_FEE_PERCENTAGE);
+        donationDai = bound(donationDai, 1e6, DEFAULT_AMOUNT);
+        donationUsdc = bound(donationUsdc, 1e6, DEFAULT_AMOUNT);
+        daiSwapAmountIn = bound(daiSwapAmountIn, 1e6, DEFAULT_AMOUNT);
 
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        uint256[] memory surplusToDonate = new uint256[](2);
-        surplusToDonate[daiIdx] = surplusToDonateDai;
-        surplusToDonate[usdcIdx] = surplusToDonateUsdc;
-
-        uint256[] memory expectedProtocolFees = new uint256[](2);
-        expectedProtocolFees[daiIdx] = surplusToDonateDai.mulUp(protocolFeePercentage);
-        expectedProtocolFees[usdcIdx] = surplusToDonateUsdc.mulUp(protocolFeePercentage);
-
-        uint256[] memory donatedAmounts = new uint256[](2);
-        donatedAmounts[daiIdx] = surplusToDonateDai - expectedProtocolFees[daiIdx];
-        donatedAmounts[usdcIdx] = surplusToDonateUsdc - expectedProtocolFees[usdcIdx];
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees
+        ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
-        emit ICowRouter.CoWSwappingAndDonation(
+        emit ICowRouter.CoWSwapAndDonation(
             pool,
-            daiExactAmountIn,
+            daiSwapAmountIn,
             dai,
-            daiExactAmountIn, // PoolMock is linear, so amounts in == amounts out
+            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
             usdc,
             tokens,
-            donatedAmounts,
+            donationAfterFees,
             expectedProtocolFees,
             bytes("")
         );
@@ -95,10 +91,10 @@ contract CowRouterTest is BaseCowTest {
             pool,
             dai,
             usdc,
-            daiExactAmountIn,
+            daiSwapAmountIn,
             0,
             type(uint32).max,
-            surplusToDonate,
+            donationAmounts,
             bytes("")
         );
 
@@ -109,9 +105,9 @@ contract CowRouterTest is BaseCowTest {
             balancesBefore,
             balancesAfter,
             expectedProtocolFees,
-            surplusToDonate,
-            daiExactAmountIn,
-            daiExactAmountIn
+            donationAmounts,
+            daiSwapAmountIn,
+            daiSwapAmountIn
         );
     }
 
@@ -124,44 +120,38 @@ contract CowRouterTest is BaseCowTest {
     }
 
     function testSwapExactOutAndDonateSurplus__Fuzz(
-        uint256 usdcExactAmountOut,
-        uint256 surplusToDonateDai,
-        uint256 surplusToDonateUsdc,
+        uint256 donationDai,
+        uint256 donationUsdc,
+        uint256 usdcSwapAmountOut,
         uint256 protocolFeePercentage
     ) public {
-        // ProtocolFeePercentage between 0 and 10%.
-        protocolFeePercentage = bound(protocolFeePercentage, 0, 10e16);
-        surplusToDonateDai = bound(surplusToDonateDai, 1e6, DEFAULT_AMOUNT);
-        surplusToDonateUsdc = bound(surplusToDonateUsdc, 1e6, DEFAULT_AMOUNT);
-        usdcExactAmountOut = bound(usdcExactAmountOut, 1e6, DEFAULT_AMOUNT);
+        // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
+        protocolFeePercentage = bound(protocolFeePercentage, 0, _MAX_PROTOCOL_FEE_PERCENTAGE);
+        donationDai = bound(donationDai, 1e6, DEFAULT_AMOUNT);
+        donationUsdc = bound(donationUsdc, 1e6, DEFAULT_AMOUNT);
+        usdcSwapAmountOut = bound(usdcSwapAmountOut, 1e6, DEFAULT_AMOUNT);
 
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        uint256[] memory surplusToDonate = new uint256[](2);
-        surplusToDonate[daiIdx] = surplusToDonateDai;
-        surplusToDonate[usdcIdx] = surplusToDonateUsdc;
-
-        uint256[] memory expectedProtocolFees = new uint256[](2);
-        expectedProtocolFees[daiIdx] = surplusToDonateDai.mulUp(protocolFeePercentage);
-        expectedProtocolFees[usdcIdx] = surplusToDonateUsdc.mulUp(protocolFeePercentage);
-
-        uint256[] memory donatedAmounts = new uint256[](2);
-        donatedAmounts[daiIdx] = surplusToDonateDai - expectedProtocolFees[daiIdx];
-        donatedAmounts[usdcIdx] = surplusToDonateUsdc - expectedProtocolFees[usdcIdx];
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees
+        ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
-        emit ICowRouter.CoWSwappingAndDonation(
+        emit ICowRouter.CoWSwapAndDonation(
             pool,
-            usdcExactAmountOut, // PoolMock is linear, so amounts in == amounts out
+            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
             dai,
-            usdcExactAmountOut,
+            usdcSwapAmountOut,
             usdc,
             tokens,
-            donatedAmounts,
+            donationAfterFees,
             expectedProtocolFees,
             bytes("")
         );
@@ -172,9 +162,9 @@ contract CowRouterTest is BaseCowTest {
             dai,
             usdc,
             MAX_UINT128,
-            usdcExactAmountOut,
+            usdcSwapAmountOut,
             type(uint32).max,
-            surplusToDonate,
+            donationAmounts,
             bytes("")
         );
 
@@ -185,48 +175,42 @@ contract CowRouterTest is BaseCowTest {
             balancesBefore,
             balancesAfter,
             expectedProtocolFees,
-            surplusToDonate,
-            usdcExactAmountOut,
-            usdcExactAmountOut
+            donationAmounts,
+            usdcSwapAmountOut,
+            usdcSwapAmountOut
         );
     }
 
     /********************************************************
                             donate()
     ********************************************************/
-    function testDonate__Fuzz(uint256 amountDai, uint256 amountUsdc, uint256 protocolFeePercentage) public {
-        // ProtocolFeePercentage between 0 and 10%.
-        protocolFeePercentage = bound(protocolFeePercentage, 0, 10e16);
-        amountDai = bound(amountDai, 1e6, DEFAULT_AMOUNT);
-        amountUsdc = bound(amountUsdc, 1e6, DEFAULT_AMOUNT);
+    function testDonate__Fuzz(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
+        // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
+        protocolFeePercentage = bound(protocolFeePercentage, 0, _MAX_PROTOCOL_FEE_PERCENTAGE);
+        donationDai = bound(donationDai, 1e6, DEFAULT_AMOUNT);
+        donationUsdc = bound(donationUsdc, 1e6, DEFAULT_AMOUNT);
 
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[daiIdx] = amountDai;
-        amountsIn[usdcIdx] = amountUsdc;
-
-        uint256[] memory expectedProtocolFees = new uint256[](2);
-        expectedProtocolFees[daiIdx] = amountDai.mulUp(protocolFeePercentage);
-        expectedProtocolFees[usdcIdx] = amountUsdc.mulUp(protocolFeePercentage);
-
-        uint256[] memory donatedAmount = new uint256[](2);
-        donatedAmount[daiIdx] = amountDai - expectedProtocolFees[daiIdx];
-        donatedAmount[usdcIdx] = amountUsdc - expectedProtocolFees[usdcIdx];
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees
+        ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
-        emit ICowRouter.CoWDonation(pool, tokens, donatedAmount, expectedProtocolFees, bytes(""));
+        emit ICowRouter.CoWDonation(pool, tokens, donationAfterFees, expectedProtocolFees, bytes(""));
 
         vm.prank(lp);
-        cowRouter.donate(pool, amountsIn, bytes(""));
+        cowRouter.donate(pool, donationAmounts, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        _checkBalancesAfterSwapAndDonation(balancesBefore, balancesAfter, expectedProtocolFees, amountsIn, 0, 0);
+        _checkBalancesAfterSwapAndDonation(balancesBefore, balancesAfter, expectedProtocolFees, donationAmounts, 0, 0);
     }
 
     /********************************************************
@@ -238,19 +222,18 @@ contract CowRouterTest is BaseCowTest {
     }
 
     function testSetProtocolFeePercentageCappedAtMax() public {
-        // 50% is above the 10% limit.
-        uint256 newProtocolFeePercentage = 50e16;
-        uint256 protocolFeePercentageLimit = 10e16;
+        // Any value above the MAX_PROTOCOL_FEE_PERCENTAGE should revert.
+        uint256 newProtocolFeePercentage = _MAX_PROTOCOL_FEE_PERCENTAGE + 1;
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICowRouter.ProtocolFeePercentageAboveLimit.selector,
                 newProtocolFeePercentage,
-                protocolFeePercentageLimit
+                _MAX_PROTOCOL_FEE_PERCENTAGE
             )
         );
         vm.prank(admin);
-        cowRouter.setProtocolFeePercentage(50e16);
+        cowRouter.setProtocolFeePercentage(newProtocolFeePercentage);
     }
 
     function testSetProtocolFeePercentage() public {
@@ -263,7 +246,34 @@ contract CowRouterTest is BaseCowTest {
         assertEq(cowRouter.getProtocolFeePercentage(), newProtocolFeePercentage, "Protocol Fee Percentage is not set");
     }
 
-    // HELPERS
+    /********************************************************
+                          Private Helpers
+    ********************************************************/
+    function _getDonationAndFees(
+        uint256 donationDai,
+        uint256 donationUsdc,
+        uint256 protocolFeePercentage
+    )
+        private
+        view
+        returns (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees
+        )
+    {
+        donationAmounts = new uint256[](2);
+        donationAmounts[daiIdx] = donationDai;
+        donationAmounts[usdcIdx] = donationUsdc;
+
+        expectedProtocolFees = new uint256[](2);
+        expectedProtocolFees[daiIdx] = donationDai.mulUp(protocolFeePercentage);
+        expectedProtocolFees[usdcIdx] = donationUsdc.mulUp(protocolFeePercentage);
+
+        donationAfterFees = new uint256[](2);
+        donationAfterFees[daiIdx] = donationDai - expectedProtocolFees[daiIdx];
+        donationAfterFees[usdcIdx] = donationUsdc - expectedProtocolFees[usdcIdx];
+    }
 
     function _checkBalancesAfterSwapAndDonation(
         BaseVaultTest.Balances memory balancesBefore,
@@ -272,7 +282,7 @@ contract CowRouterTest is BaseCowTest {
         uint256[] memory donations,
         uint256 daiSwapAmountIn,
         uint256 usdcSwapAmountOut
-    ) private {
+    ) private view {
         // Test collected protocol fee (router balance and state)
         assertEq(
             balancesAfter.userTokens[daiIdx],
