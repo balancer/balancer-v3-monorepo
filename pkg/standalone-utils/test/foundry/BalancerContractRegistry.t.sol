@@ -8,7 +8,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import {
     IBalancerContractRegistry,
     ContractType
-} from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
