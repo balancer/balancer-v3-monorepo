@@ -131,6 +131,11 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         return _feeRecipient;
     }
 
+    /// @inheritdoc IProtocolFeeSweeper
+    function isApprovedProtocolFeeBurner(address protocolFeeBurner) external view returns (bool) {
+        return _protocolFeeBurners[IProtocolFeeBurner(protocolFeeBurner)];
+    }
+
     /***************************************************************************
                                 Permissioned Functions
     ***************************************************************************/
@@ -161,6 +166,28 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         _targetToken = targetToken;
 
         emit TargetTokenSet(targetToken);
+    }
+
+    /// @inheritdoc IProtocolFeeSweeper
+    function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external {
+        if (_protocolFeeBurners[protocolFeeBurner]) {
+            revert ProtocolFeeBurnerAlreadyAdded(address(protocolFeeBurner));
+        }
+
+        _protocolFeeBurners[protocolFeeBurner] = true;
+
+        emit ProtocolFeeBurnerAdded(address(protocolFeeBurner));
+    }
+
+    /// @inheritdoc IProtocolFeeSweeper
+    function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external {
+        if (_protocolFeeBurners[protocolFeeBurner] == false) {
+            revert ProtocolFeeBurnerNotAdded(address(protocolFeeBurner));
+        }
+
+        _protocolFeeBurners[protocolFeeBurner] = false;
+
+        emit ProtocolFeeBurnerRemoved(address(protocolFeeBurner));
     }
 
     /// @inheritdoc IProtocolFeeSweeper

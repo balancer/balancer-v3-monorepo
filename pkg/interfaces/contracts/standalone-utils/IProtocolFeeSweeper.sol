@@ -30,18 +30,43 @@ interface IProtocolFeeSweeper {
      */
     event ProtocolFeeSwept(address indexed pool, IERC20 indexed feeToken, uint256 feeTokenAmount, address recipient);
 
+    /**
+     * @notice Emitted when a burner is added to the protocol fee burner allowlist.
+     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burner addresses.
+     * @param protocolFeeBurner The address of the approved protocol fee burner
+     */
+    event ProtocolFeeBurnerAdded(address indexed protocolFeeBurner);
+
+    /**
+     * @notice Emitted when a burner is removed from the protocol fee burner allowlist.
+     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burner addresses.
+     * @param protocolFeeBurner The address of the approved protocol fee burner
+     */
+    event ProtocolFeeBurnerRemoved(address indexed protocolFeeBurner);
+
     /// @notice The fee recipient is invalid.
     error InvalidFeeRecipient();
 
     /// @notice The target token is invalid.
     error InvalidTargetToken();
 
-    /// @notice
     /**
      * @notice The specified fee burner has not been approved.
      * @param protocolFeeBurner The address of the unsupported fee burner
      */
     error UnsupportedProtocolFeeBurner(address protocolFeeBurner);
+
+    /**
+     * @notice Protocol fee burners can only be added to the allowlist once.
+     * @param protocolFeeBurner The address of an approved protocol fee burner
+     */
+    error ProtocolFeeBurnerAlreadyAdded(address protocolFeeBurner);
+
+    /**
+     * @notice Protocol fee burners must be added to the allowlist before being removed.
+     * @param protocolFeeBurner The address of a protocol fee burner to be removed from the allowlist
+     */
+    error ProtocolFeeBurnerNotAdded(address protocolFeeBurner);
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
@@ -91,6 +116,13 @@ interface IProtocolFeeSweeper {
     function getFeeRecipient() external view returns (address);
 
     /**
+     * @notice Check whether a given address corresponds to an approved protocol fee burner.
+     * @param protocolFeeBurner The address to be checked
+     * @return isApproved True if the given address is on the approved protocol fee burner allowlist
+     */
+    function isApprovedProtocolFeeBurner(address protocolFeeBurner) external view returns (bool);
+
+    /**
      * @notice Update the fee recipient address.
      * @dev This is a permissioned function.
      * @param feeRecipient The address of the new fee recipient
@@ -103,6 +135,20 @@ interface IProtocolFeeSweeper {
      * @param targetToken The address of the target token
      */
     function setTargetToken(IERC20 targetToken) external;
+
+    /**
+     * @notice Add an approved fee burner to the allowlist.
+     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burners.
+     * @param protocolFeeBurner The address of an approved protocol fee burner
+     */
+    function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
+
+    /**
+     * @notice Remove a fee burner from the allowlist.
+     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burners.
+     * @param protocolFeeBurner The address of a protocol fee burner on the allowlist
+     */
+    function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
 
     /**
      * @notice Retrieve any tokens "stuck" in this contract (e.g., dust, or failed conversions).
