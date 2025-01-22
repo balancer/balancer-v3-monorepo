@@ -5,15 +5,7 @@ import { fp, fpMulDown } from '@balancer-labs/v3-helpers/src/numbers';
 import { setNextBlockBaseFeePerGas } from '@nomicfoundation/hardhat-network-helpers';
 
 import { PoolMock } from '../typechain-types/@balancer-labs/v3-vault/contracts/test/PoolMock';
-import {
-  MevHook,
-  Router,
-  PoolFactoryMock,
-  Vault,
-  WETHTestToken,
-  IVault,
-  BalancerContractRegistry,
-} from '../typechain-types';
+import { MevTaxHook, Router, PoolFactoryMock, Vault, WETHTestToken, IVault } from '../typechain-types';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
@@ -24,6 +16,7 @@ import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20Tok
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { MAX_UINT160, MAX_UINT256, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import { ERC20 } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { BalancerContractRegistry } from '@balancer-labs/v3-standalone-utils/typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { expect } from 'chai';
@@ -36,7 +29,7 @@ enum RegistryContractType {
   ERC4626,
 }
 
-describe('MevHook', () => {
+describe('MevTaxHook', () => {
   const ROUTER_VERSION = 'Router V1';
   const PRIORITY_GAS_THRESHOLD = 3_000_000n;
   const MEV_MULTIPLIER = fp(10_000_000_000);
@@ -51,7 +44,7 @@ describe('MevHook', () => {
   let poolTokens: string[];
   let router: Router;
   let untrustedRouter: Router;
-  let hook: MevHook;
+  let hook: MevTaxHook;
   let registry: BalancerContractRegistry;
 
   let admin: SignerWithAddress, lp: SignerWithAddress, sender: SignerWithAddress;
@@ -73,7 +66,7 @@ describe('MevHook', () => {
     router = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
     untrustedRouter = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, 'UNTRUSTED_VERSION'] });
     factory = await deploy('v3-vault/PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
-    registry = await deploy('standalone-utils/BalancerContractRegistry', { args: [vaultAddress] });
+    registry = await deploy('v3-standalone-utils/BalancerContractRegistry', { args: [vaultAddress] });
 
     tokens = await ERC20TokenList.create(2, { sorted: true });
     token0 = (await tokens.get(0)) as unknown as ERC20;
@@ -84,7 +77,7 @@ describe('MevHook', () => {
       args: [vaultAddress, 'Pool with MEV Hook', 'POOL-MEV'],
     });
 
-    hook = await deploy('MevHook', { args: [vaultAddress, registry] });
+    hook = await deploy('MevTaxHook', { args: [vaultAddress, registry] });
 
     await factory.registerPoolWithHook(pool, buildTokenConfig(poolTokens), hook);
   });
