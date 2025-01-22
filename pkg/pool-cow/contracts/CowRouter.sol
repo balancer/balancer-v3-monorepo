@@ -78,6 +78,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             revert InvalidFeeSweeper(newFeeSweeper);
         }
         _feeSweeper = newFeeSweeper;
+
+        emit FeeSweeperChanged(newFeeSweeper);
     }
 
     /********************************************************

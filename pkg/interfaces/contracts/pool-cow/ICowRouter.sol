@@ -96,6 +96,9 @@ interface ICowRouter {
     /// @notice An admin changed the protocol fee percentage charged over donations.
     event ProtocolFeePercentageChanged(uint256 newProtocolFeePercentage);
 
+    /// @notice An admin changed the contract that receives protocol fees on withdraw.
+    event FeeSweeperChanged(address newFeeSweeper);
+
     /**
      * @notice Executes a swap exact in and donate a specified amount to the same CoW AMM Pool.
      * @dev This is a permissioned function, supposed to be called only by a `CoW Settlement` contract. CoW AMM match

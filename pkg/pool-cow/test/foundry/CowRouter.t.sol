@@ -635,6 +635,8 @@ contract CowRouterTest is BaseCowTest {
         address newFeeSweeper = address(2);
 
         vm.prank(admin);
+        vm.expectEmit();
+        emit ICowRouter.FeeSweeperChanged(newFeeSweeper);
         cowRouter.setFeeSweeper(newFeeSweeper);
 
         assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was set properly");
