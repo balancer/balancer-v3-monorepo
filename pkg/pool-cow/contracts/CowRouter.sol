@@ -200,11 +200,10 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
         emit CoWSwapAndDonation(
             swapAndDonateParams.pool,
-            swapAmountIn,
             swapAndDonateParams.swapTokenIn,
-            swapAmountOut,
             swapAndDonateParams.swapTokenOut,
-            tokens,
+            swapAmountIn,
+            swapAmountOut,
             donatedAmounts,
             protocolFeeAmounts,
             swapAndDonateParams.userData
@@ -230,7 +229,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             new uint256[](donatedAmounts.length)
         );
 
-        emit CoWDonation(params.pool, tokens, donatedAmounts, protocolFeeAmounts, params.userData);
+        emit CoWDonation(params.pool, donatedAmounts, protocolFeeAmounts, params.userData);
     }
 
     /********************************************************

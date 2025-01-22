@@ -125,11 +125,10 @@ contract CowRouterTest is BaseCowTest {
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
-            daiSwapAmountIn,
             dai,
-            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
             usdc,
-            tokens,
+            daiSwapAmountIn,
+            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
             donationAfterFees,
             expectedProtocolFees,
             bytes("")
@@ -242,11 +241,10 @@ contract CowRouterTest is BaseCowTest {
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
-            daiSwapAmountIn,
             dai,
-            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
             usdc,
-            tokens,
+            daiSwapAmountIn,
+            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
             donationAfterFees,
             expectedProtocolFees,
             bytes("")
@@ -366,11 +364,10 @@ contract CowRouterTest is BaseCowTest {
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
-            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
             dai,
-            usdcSwapAmountOut,
             usdc,
-            tokens,
+            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
+            usdcSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
             bytes("")
@@ -483,11 +480,10 @@ contract CowRouterTest is BaseCowTest {
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
             pool,
-            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
             dai,
-            usdcSwapAmountOut,
             usdc,
-            tokens,
+            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
+            usdcSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
             bytes("")
@@ -543,7 +539,7 @@ contract CowRouterTest is BaseCowTest {
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
         vm.expectEmit();
-        emit ICowRouter.CoWDonation(pool, tokens, donationAfterFees, expectedProtocolFees, bytes(""));
+        emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
 
         vm.prank(lp);
         cowRouter.donate(pool, donationAmounts, bytes(""));

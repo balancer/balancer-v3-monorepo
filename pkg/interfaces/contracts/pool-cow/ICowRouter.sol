@@ -52,27 +52,43 @@ interface ICowRouter {
     /// @notice The swap transaction was not validated before the specified deadline timestamp.
     error SwapDeadline();
 
+    /**
+     * @notice The `newProtocolFeePercentage` is below the minimum limit.
+     * @param newProtocolFeePercentage New value of protocol fee percentage
+     * @param limit The minimum limit of the protocol fee percentage value
+     */
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 limit);
 
+    /**
+     * @notice A swap and a donation have occurred.
+     * @param pool The pool with the tokens being swapped
+     * @param swapTokenIn The token entering the Vault (balance increases)
+     * @param swapTokenOut The token leaving the Vault (balance decreases)
+     * @param swapAmountIn Number of tokenIn tokens
+     * @param swapAmountOut Number of tokenOut tokens
+     * @param donationAfterFees Amounts donated to the pool after protocol fees, sorted in token registration order
+     * @param protocolFeeAmounts Fees collected by the protocol, sorted in token registration order
+     * @param userData Additional (optional) data sent with the swap and donate request
+     */
     event CoWSwapAndDonation(
         address pool,
-        uint256 amountInSwap,
-        IERC20 tokenInSwap,
-        uint256 amnountOutSwap,
-        IERC20 tokenOutSwap,
-        IERC20[] surplusTokens,
-        uint256[] donatedSurplus,
-        uint256[] feeAmountCollectedByProtocol,
+        IERC20 swapTokenIn,
+        IERC20 swapTokenOut,
+        uint256 swapAmountIn,
+        uint256 swapAmountOut,
+        uint256[] donationAfterFees,
+        uint256[] protocolFeeAmounts,
         bytes userData
     );
 
-    event CoWDonation(
-        address pool,
-        IERC20[] surplusTokens,
-        uint256[] donatedSurplus,
-        uint256[] feeAmountCollectedByProtocol,
-        bytes userData
-    );
+    /**
+     * @notice A donation has occurred.
+     * @param pool The pool that receives the donation
+     * @param donationAfterFees Amounts donated to the pool after protocol fees, sorted in token registration order
+     * @param protocolFeeAmounts Fees collected by the protocol, sorted in token registration order
+     * @param userData Additional (optional) data sent with the donate request
+     */
+    event CoWDonation(address pool, uint256[] donationAfterFees, uint256[] protocolFeeAmounts, bytes userData);
 
     function swapExactInAndDonateSurplus(
         address pool,
