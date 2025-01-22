@@ -39,14 +39,17 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                       Getters and Setters
     ********************************************************/
 
+    /// @inheritdoc ICowRouter
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage) {
         return _protocolFeePercentage;
     }
 
+    /// @inheritdoc ICowRouter
     function getProtocolFees(IERC20 token) external view returns (uint256 fees) {
         return _protocolFees[token];
     }
 
+    /// @inheritdoc ICowRouter
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
         if (newProtocolFeePercentage > _MAX_PROTOCOL_FEE_PERCENTAGE) {
             revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, _MAX_PROTOCOL_FEE_PERCENTAGE);
@@ -59,6 +62,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                        Swaps and Donations
     ********************************************************/
 
+    /// @inheritdoc ICowRouter
     function swapExactInAndDonateSurplus(
         address pool,
         IERC20 swapTokenIn,
@@ -91,6 +95,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         );
     }
 
+    /// @inheritdoc ICowRouter
     function swapExactOutAndDonateSurplus(
         address pool,
         IERC20 swapTokenIn,
@@ -123,6 +128,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         );
     }
 
+    /// @inheritdoc ICowRouter
     function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external {
         _vault.unlock(
             abi.encodeCall(
