@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-interface IMevHook {
+interface IMevTaxHook {
     /**
      * @notice The pool was not registered with the MEV Hook contract.
-     * @param pool Address of the pool that should have been registered with MevHook
+     * @param pool Address of the pool that should have been registered with MevTaxHook
      */
-    error MevHookNotRegisteredInPool(address pool);
+    error MevTaxHookNotRegisteredInPool(address pool);
 
     /**
      * @notice The new max MEV swap fee percentage is above the allowed absolute maximum.
@@ -15,6 +15,18 @@ interface IMevHook {
      * @param maxFeePercentage Absolute maximum allowed
      */
     error MevSwapFeePercentageAboveMax(uint256 feePercentage, uint256 maxFeePercentage);
+
+    /**
+     * @notice The sender is already registered as MEV tax-exempt.
+     * @param sender Sender that is already MEV tax-exempt
+     */
+    error MevTaxExemptSenderAlreadyAdded(address sender);
+
+    /**
+     * @notice The sender is not registered as MEV tax-exempt.
+     * @param sender Sender that is not MEV tax-exempt
+     */
+    error SenderNotRegisteredAsMevTaxExempt(address sender);
 
     /**
      * @notice The MEV tax was globally enabled or disabled in the hook.
@@ -55,6 +67,18 @@ interface IMevHook {
      * @param newPoolMevTaxThreshold The new value for the pool threshold
      */
     event PoolMevTaxThresholdSet(address pool, uint256 newPoolMevTaxThreshold);
+
+    /**
+     * @notice The sender was registered as MEV tax-exempt.
+     * @param sender The address of the sender registered as MEV tax-exempt
+     */
+    event MevTaxExemptSenderAdded(address sender);
+
+    /**
+     * @notice The sender was removed from the list of MEV tax-exempt senders.
+     * @param sender The address of the sender removed from the MEV tax-exempt list
+     */
+    event MevTaxExemptSenderRemoved(address sender);
 
     /**
      * @notice Check whether the MEV Tax is enabled in the hook.
@@ -120,7 +144,7 @@ interface IMevHook {
      * @notice Fetch the priority gas price multiplier of the given pool.
      * @dev When a pool is registered with the MEV Hook in the vault, the MEV Hook initializes the multiplier of the
      * pool to the defaultMevTaxMultiplier value. If the pool is not registered with the MEV Hook, it reverts with
-     * error MevHookNotRegisteredForPool(pool).
+     * error MevTaxHookNotRegisteredForPool(pool).
      *
      * @param pool Address of the pool with the multiplier
      * @return poolMevTaxMultiplier The multiplier of the pool
@@ -132,7 +156,7 @@ interface IMevHook {
      * @dev The multiplier is not validated or limited by any value and can assume any 18-decimal number. That's
      * because the multiplier value depends on the priority gas price used by searchers in a given moment for a
      * specific chain. If the pool is not registered with the MEV Hook, it reverts with error
-     * MevHookNotRegisteredForPool(pool). However, the resulting swap fee percentage, given by
+     * MevTaxHookNotRegisteredForPool(pool). However, the resulting swap fee percentage, given by
      * `priorityGasPrice * multiplier`, is capped in the lower end by the static swap fee, and at the upper end by
      * the maximum swap fee percentage of the vault. Therefore, a multiplier with value 0 will effectively disable the
      * MEV tax, since the static swap fee will be charged. Also, a very high multiplier will make the trader pay the
@@ -167,7 +191,7 @@ interface IMevHook {
      * @notice Fetch the priority gas price threshold of the given pool.
      * @dev When a pool is registered with the MEV Hook in the vault, the MEV Hook initializes the multiplier of the
      * pool with the defaultMevTaxMultiplier value. If the pool is not registered with the MEV Hook, it reverts with
-     * error MevHookNotRegisteredForPool(pool).
+     * error MevTaxHookNotRegisteredForPool(pool).
      *
      * @param pool Address of the pool with the multiplier
      * @return poolMevTaxThreshold The threshold of the pool
@@ -179,11 +203,31 @@ interface IMevHook {
      * @dev The threshold can be any unsigned integer and represents the priority gas price, in wei. It's used to
      * check whether the priority gas price level corresponds to a retail or searcher swap. The threshold value is not
      * capped by any value, since it depends on the chain state. If the pool is not registered with the MEV Hook, it
-     * reverts with error MevHookNotRegisteredForPool(pool). A very high threshold (above the priority gas price of
+     * reverts with error MevTaxHookNotRegisteredForPool(pool). A very high threshold (above the priority gas price of
      * searchers in the chain) will disable the MEV tax and charge the static swap fee.
      *
      * @param pool Address of the pool with the threshold
      * @param newPoolMevTaxThreshold The new threshold to be set in a pool
      */
     function setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) external;
+
+    /**
+     * @notice Checks whether the sender is MEV tax-exempt.
+     * @dev A MEV tax-exempt sender pays only the static swap fee percentage, regardless of the priority fee.
+     * @param sender The sender being checked for MEV tax-exempt status
+     * @return mevTaxExempt True if the sender is MEV tax-exempt
+     */
+    function isMevTaxExempt(address sender) external view returns (bool mevTaxExempt);
+
+    /**
+     * @notice Registers a list of senders as MEV tax-exempt senders.
+     * @param senders Addresses of senders to be registered as MEV tax-exempt
+     */
+    function addMevTaxExemptSenders(address[] memory senders) external;
+
+    /**
+     * @notice Removes a list of senders from the list of MEV tax-exempt senders.
+     * @param senders Addresses of senders to be removed from the MEV tax-exempt list
+     */
+    function removeMevTaxExemptSenders(address[] memory senders) external;
 }
