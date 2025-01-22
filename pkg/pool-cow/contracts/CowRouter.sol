@@ -146,6 +146,14 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     /********************************************************
                               Hooks
     ********************************************************/
+
+    /**
+     * @notice Hook for swapping and donating values to a CoW AMM pool.
+     * @dev Can only be called by the Vault.
+     * @param swapAndDonateParams Swap and donate params (see ICowRouter for struct definition)
+     * @return swapAmountIn Exact amount of tokenIn of the swap
+     * @return swapAmountOut Exact amount of tokenOut of the swap
+     */
     function swapAndDonateSurplusHook(
         ICowRouter.SwapAndDonateHookParams memory swapAndDonateParams
     ) external onlyVault returns (uint256 swapAmountIn, uint256 swapAmountOut) {
@@ -216,6 +224,11 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         );
     }
 
+    /**
+     * @notice Hook for donating values to a CoW AMM pool.
+     * @dev Can only be called by the Vault.
+     * @param params Donate params (see ICowRouter for struct definition)
+     */
     function donateHook(ICowRouter.DonateHookParams memory params) external onlyVault {
         (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(params.pool);
 
