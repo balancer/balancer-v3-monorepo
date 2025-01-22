@@ -14,11 +14,12 @@ import {
 import {
     IBalancerContractRegistry,
     ContractType
-} from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
+
 import { ProtocolFeePercentagesProvider } from "../../contracts/ProtocolFeePercentagesProvider.sol";
-import { BalancerContractRegistry } from "../../contracts/BalancerContractRegistry.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
