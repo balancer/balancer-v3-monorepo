@@ -590,6 +590,8 @@ contract CowRouterTest is BaseCowTest {
         uint256 newProtocolFeePercentage = 5e16;
 
         vm.prank(admin);
+        vm.expectEmit();
+        emit ICowRouter.ProtocolFeePercentageChanged(newProtocolFeePercentage);
         cowRouter.setProtocolFeePercentage(newProtocolFeePercentage);
 
         assertEq(cowRouter.getProtocolFeePercentage(), newProtocolFeePercentage, "Protocol Fee Percentage is not set");
