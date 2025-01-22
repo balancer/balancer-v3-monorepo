@@ -95,9 +95,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/standalone-utils@workspace:pkg/standalone-utils":
+"@balancer-labs/v3-standalone-utils@workspace:pkg/standalone-utils":
   version: 0.0.0-use.local
-  resolution: "@balancer-labs/standalone-utils@workspace:pkg/standalone-utils"
+  resolution: "@balancer-labs/v3-standalone-utils@workspace:pkg/standalone-utils"
   dependencies:
     "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v3-interfaces": "workspace:*"
