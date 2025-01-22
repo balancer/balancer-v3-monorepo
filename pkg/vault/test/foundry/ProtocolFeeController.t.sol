@@ -1265,6 +1265,64 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
     }
 
+    function testPoolRegistrationEventsExempt() public {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[daiIdx].token = IERC20(dai);
+        tokenConfig[usdcIdx].token = IERC20(usdc);
+
+        PoolRoleAccounts memory roleAccounts;
+
+        pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, 0);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, 0);
+
+        PoolFactoryMock(poolFactory).registerGeneralTestPool(
+            pool,
+            tokenConfig,
+            0,
+            365 days,
+            true, // exempt from protocol fees
+            roleAccounts,
+            address(0)
+        );
+    }
+
+    function testPoolRegistrationEventsNonExempt() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        vm.startPrank(admin);
+        feeController.setGlobalProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE_PCT);
+        feeController.setGlobalProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE_PCT);
+        vm.stopPrank();
+
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[daiIdx].token = IERC20(dai);
+        tokenConfig[usdcIdx].token = IERC20(usdc);
+
+        PoolRoleAccounts memory roleAccounts;
+
+        pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, MAX_PROTOCOL_SWAP_FEE_PCT);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT);
+
+        PoolFactoryMock(poolFactory).registerTestPool(pool, tokenConfig);
+    }
+
     function _registerPoolWithMaxProtocolFees() internal {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
