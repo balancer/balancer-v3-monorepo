@@ -56,6 +56,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         }
 
         _protocolFeePercentage = newProtocolFeePercentage;
+
+        emit ProtocolFeePercentageChanged(newProtocolFeePercentage);
     }
 
     /********************************************************
