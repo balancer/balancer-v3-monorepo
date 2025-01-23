@@ -16,16 +16,15 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 /**
- * @notice Withdraw protocol fees, convert them to a target token, and forward to a recipient.
- * @dev This withdraws all protocol fees previously collected and allocated to the protocol by the
- * `ProtocolFeeController`, processes them with a configurable "burner" (e.g., from CowSwap) and forwards them to
- * a recipient address.
+ * @notice Convert withdrawn protocol fees to a target token, and forward to a recipient.
+ * @dev This processes fee tokens withdrawn to this contract through a given "burner" (e.g., from CowSwap) and
+ * forwards them to a recipient address.
  *
  * An off-chain process can call `collectAggregateFees(pool)` on the fee controller for a given pool, which will
  * collect and allocate the fees to the protocol and pool creator. `getProtocolFeeAmounts(pool)` returns the fee
- * amounts available for withdrawal. If these are great enough, `sweepProtocolFees(pool)` here will withdraw,
- * convert, and forward them to the final recipient. There is also a `sweepProtocolFeesForToken` function to
- * target a single token within a pool.
+ * amounts available for withdrawal. If these are great enough, the off-chain process can withdraw them to the
+ * sweeper (possibly for many pools with the same fee tokens), then call `sweepProtocolFeesForToken` to convert
+ * and forward them to the final recipient.
  */
 contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
@@ -49,46 +48,48 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
 
     /// @inheritdoc IProtocolFeeSweeper
     function sweepProtocolFeesForToken(
-        address pool,
         IERC20 feeToken,
-        uint256 minAmountOut,
+        uint256 exactFeeTokenAmountIn,
+        uint256 minTargetTokenAmountOut,
         uint256 deadline,
         IProtocolFeeBurner feeBurner
     ) external nonReentrant authenticate {
         bool feeBurnerProvided = _getValidFeeBurner(feeBurner);
 
-        uint256 existingBalance = feeToken.balanceOf(address(this));
+        uint256 feeTokenBalance = feeToken.balanceOf(address(this));
+        // This is the final amount to transfer or burn.
+        uint256 workingBalance;
 
-        // Withdraw protocol fees to this contract. Note that governance will need to grant this contract permission
-        // to call `withdrawProtocolFeesForToken` on the `ProtocolFeeController.
-        getProtocolFeeController().withdrawProtocolFeesForToken(pool, address(this), feeToken);
+        if (exactFeeTokenAmountIn > feeTokenBalance) {
+            revert InsufficientBalance(feeToken, exactFeeTokenAmountIn, feeTokenBalance);
+        } else {
+            // Burn the amount requested - or the full balance if the sentinel value of 0 is given.
+            workingBalance = exactFeeTokenAmountIn == 0 ? feeTokenBalance : exactFeeTokenAmountIn;
+        }
 
-        uint256 withdrawnBalance = feeToken.balanceOf(address(this)) - existingBalance;
-
-        if (withdrawnBalance > 0) {
+        if (workingBalance > 0) {
             if (feeBurnerProvided) {
                 IERC20 targetToken = _targetToken;
 
                 // If the fee token is already the target, there's no need to swap. Simply transfer it.
                 if (feeToken == targetToken) {
-                    _transferFeeToken(pool, feeToken, withdrawnBalance);
+                    _transferFeeToken(feeToken, workingBalance);
                 } else {
                     // Transfer the tokens directly to avoid "hanging approvals," in case the burn is unsuccessful.
-                    feeToken.safeTransfer(address(feeBurner), withdrawnBalance);
+                    feeToken.safeTransfer(address(feeBurner), workingBalance);
                     // This is asynchronous; the burner will complete the action and emit an event.
                     feeBurner.burn(
-                        pool,
                         feeToken,
-                        withdrawnBalance,
+                        workingBalance,
                         targetToken,
-                        minAmountOut,
+                        minTargetTokenAmountOut,
                         _feeRecipient,
                         deadline
                     );
                 }
             } else {
                 // If no burner has been set, fall back on direct transfer of the fee token.
-                _transferFeeToken(pool, feeToken, withdrawnBalance);
+                _transferFeeToken(feeToken, workingBalance);
             }
         }
     }
@@ -109,11 +110,11 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         }
     }
 
-    function _transferFeeToken(address pool, IERC20 feeToken, uint256 withdrawnTokenBalance) private {
+    function _transferFeeToken(IERC20 feeToken, uint256 workingBalance) private {
         address recipient = _feeRecipient;
-        feeToken.safeTransfer(recipient, withdrawnTokenBalance);
+        feeToken.safeTransfer(recipient, workingBalance);
 
-        emit ProtocolFeeSwept(pool, feeToken, withdrawnTokenBalance, recipient);
+        emit ProtocolFeeSwept(feeToken, workingBalance, recipient);
     }
 
     /// @inheritdoc IProtocolFeeSweeper

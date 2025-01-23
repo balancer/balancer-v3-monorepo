@@ -23,12 +23,11 @@ interface IProtocolFeeSweeper {
     /**
      * @notice Emitted when a fee token is transferred directly, vs. calling the burner.
      * @dev This can happen if no target token or burner contract was specified, or the fee token is the target token.
-     * @param pool The pool on which the fee was collected
      * @param feeToken The token the fee was collected in (also the target token in this case; no swap necessary)
      * @param feeTokenAmount The number of feeTokens
      * @param recipient The recipient of the fee tokens
      */
-    event ProtocolFeeSwept(address indexed pool, IERC20 indexed feeToken, uint256 feeTokenAmount, address recipient);
+    event ProtocolFeeSwept(IERC20 indexed feeToken, uint256 feeTokenAmount, address recipient);
 
     /**
      * @notice Emitted when a burner is added to the protocol fee burner allowlist.
@@ -72,27 +71,35 @@ interface IProtocolFeeSweeper {
     error ProtocolFeeBurnerNotAdded(address protocolFeeBurner);
 
     /**
-     * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
-     * @dev This will withdraw the fee token from the controller to this contract, and attempt to convert and forward
-     * the proceeds to the fee recipient. Note that this requires governance to grant this contract permission to call
-     * `withdrawProtocolFeesForToken` on the `ProtocolFeeController`.
+     * @notice Cannot request burning more than the balance of the contract.
+     * @param feeToken The feeToken being burned
+     * @param requiredBalance The exact amount to be burned
+     * @param actualBalance The actual balance of the token (will be less than the required balance)
+     */
+    error InsufficientBalance(IERC20 feeToken, uint256 requiredBalance, uint256 actualBalance);
+
+    /**
+     * @notice Convert, and forward withdrawn protocol fees for a given pool and token.
+     * @dev This presumes protocol fees have been withdrawn externally to this contract, and attempts to convert a
+     * given amount of fee tokens to the target, and forward the proceeds to the fee recipient.
      *
      * This is a permissioned call, since it involves a swap and a permissionless sweep could be triggered at times
      * disadvantageous to the protocol (e.g., flash crashes). The general design is for an off-chain process to
-     * periodically collect fees from the Vault and check the protocol fee amounts available for withdrawal. Once
-     * these are greater than a threshold, compute the expected proceeds to determine the limits (amount and deadline),
-     * then call the sweeper to put in the order with the burner.
+     * periodically collect fees from the Vault and withdraw them to this contract. This can be done for many pools,
+     * such that this contracts receives the aggregate total protocol fees from all of them. When a token balances
+     * exceeds an externally determined threshold value, the off-chain process calls the sweeper with an exact amount
+     * of tokens.
      *
-     * @param pool The pool that incurred the fees we're withdrawing
      * @param feeToken The fee token in the pool
-     * @param minAmountOut The minimum number of target tokens to be received
+     * @param exactFeeTokenAmountIn The amount of fee tokens we want to burn, or zero for the full balance
+     * @param minTargetTokenAmountOut The minimum number of target tokens to be sent to the recipient
      * @param deadline Deadline for the burn operation (swap), after which it will revert
      * @param feeBurner The protocol fee burner to be used (or the zero address to fall back on direct transfer)
      */
     function sweepProtocolFeesForToken(
-        address pool,
         IERC20 feeToken,
-        uint256 minAmountOut,
+        uint256 exactFeeTokenAmountIn,
+        uint256 minTargetTokenAmountOut,
         uint256 deadline,
         IProtocolFeeBurner feeBurner
     ) external;
