@@ -52,12 +52,12 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
     /// @inheritdoc IHooks
     function onBeforeAddLiquidity(
         address router,
-        address pool,
+        address,
         AddLiquidityKind kind,
-        uint256[] memory maxAmountsInScaled18,
-        uint256 minBptAmountOut,
-        uint256[] memory balancesScaled18,
-        bytes memory userData
+        uint256[] memory,
+        uint256,
+        uint256[] memory,
+        bytes memory
     ) external override returns (bool success) {
         // Donations from routers that are not the trusted CoW AMM Router should be blocked. Any other liquidity
         // operation is allowed from any router. However, the factory of this pool also disables unbalanced liquidity
