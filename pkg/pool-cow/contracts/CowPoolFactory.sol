@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { ICowPoolFactory } from "@balancer-labs/v3-interfaces/contracts/cow-pool/ICowPoolFactory.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -16,7 +17,7 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 
 import { CowPool } from "./CowPool.sol";
 
-contract CowPoolFactory is IPoolVersion, BasePoolFactory, Version {
+contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Version {
     string internal immutable _poolVersion;
     address internal _trustedCowRouter;
 
@@ -36,17 +37,7 @@ contract CowPoolFactory is IPoolVersion, BasePoolFactory, Version {
         return _poolVersion;
     }
 
-    /**
-     * @notice Deploys a new `CowPool`.
-     * @dev Tokens must be sorted for pool registration.
-     * @param name The name of the pool
-     * @param symbol The symbol of the pool
-     * @param tokens An array of descriptors for the tokens the pool will manage
-     * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
-     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
-     * @param swapFeePercentage Initial swap fee percentage
-     * @param salt The salt value that will be passed to create2 deployment
-     */
+    /// @inheritdoc ICowPoolFactory
     function create(
         string memory name,
         string memory symbol,
@@ -93,10 +84,12 @@ contract CowPoolFactory is IPoolVersion, BasePoolFactory, Version {
         );
     }
 
-    function getTrustedCowRouter() external returns (address) {
+    /// @inheritdoc ICowPoolFactory
+    function getTrustedCowRouter() external view returns (address) {
         return _trustedCowRouter;
     }
 
+    /// @inheritdoc ICowPoolFactory
     function setTrustedCowRouter(address newTrustedCowRouter) external authenticate {
         if (newTrustedCowRouter == address(0) || newTrustedCowRouter == address(this)) {
             revert InvalidTrustedCowRouter(newTrustedCowRouter);

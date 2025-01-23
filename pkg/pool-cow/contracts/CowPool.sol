@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { ICowPool } from "@balancer-labs/v3-interfaces/contracts/cow-pool/ICowPool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import {
     AddLiquidityKind,
@@ -15,7 +16,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { CowPoolFactory } from "./CowPoolFactory.sol";
 
-contract CowPool is BaseHooks, WeightedPool {
+contract CowPool is ICowPool, BaseHooks, WeightedPool {
     address internal _trustedCowRouter;
     CowPoolFactory internal _cowPoolFactory;
 
@@ -29,11 +30,11 @@ contract CowPool is BaseHooks, WeightedPool {
         _cowPoolFactory = cowPoolFactory;
     }
 
-    /**
-     * @notice Updates the trusted router value according to the CoW AMM Factory.
-     */
+    /// @inheritdoc ICowPool
     function refreshTrustedCowRouter() external {
         _trustedCowRouter = _cowPoolFactory.getTrustedCowRouter();
+
+        emit CowTrustedRouterRefreshed(_trustedCowRouter);
     }
 
     /// @inheritdoc IHooks
