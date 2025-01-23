@@ -33,14 +33,14 @@ interface IProtocolFeeSweeper {
     /**
      * @notice Emitted when a burner is added to the protocol fee burner allowlist.
      * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burner addresses.
-     * @param protocolFeeBurner The address of the approved protocol fee burner
+     * @param protocolFeeBurner The address of the approved protocol fee burner that was added
      */
     event ProtocolFeeBurnerAdded(address indexed protocolFeeBurner);
 
     /**
      * @notice Emitted when a burner is removed from the protocol fee burner allowlist.
      * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burner addresses.
-     * @param protocolFeeBurner The address of the approved protocol fee burner
+     * @param protocolFeeBurner The address of the approved protocol fee burner that was removed
      */
     event ProtocolFeeBurnerRemoved(address indexed protocolFeeBurner);
 
@@ -144,7 +144,7 @@ interface IProtocolFeeSweeper {
      * @dev This is a permissioned call. `sweepProtocolFeesForToken` can only be called with approved protocol
      * fee burners.
      *
-     * @param protocolFeeBurner The address of an approved protocol fee burner
+     * @param protocolFeeBurner The address of an approved protocol fee burner to be added
      */
     function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
 
@@ -153,7 +153,7 @@ interface IProtocolFeeSweeper {
      * @dev This is a permissioned call. `sweepProtocolFeesForToken` can only be called with approved protocol
      * fee burners.
      *
-     * @param protocolFeeBurner The address of a protocol fee burner on the allowlist
+     * @param protocolFeeBurner The address of a protocol fee burner on the allowlist to be removed
      */
     function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
 

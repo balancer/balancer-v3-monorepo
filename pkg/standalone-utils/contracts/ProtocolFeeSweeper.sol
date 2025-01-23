@@ -40,7 +40,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     address private _feeRecipient;
 
     // Allowlist of valid protocol fee burners.
-    mapping(IProtocolFeeBurner => bool) private _protocolFeeBurners;
+    mapping(IProtocolFeeBurner feeBurner => bool isApproved) private _protocolFeeBurners;
 
     // The default configuration on deployment simply forwards all fee tokens to the `feeRecipient`.
     constructor(IVault vault, address feeRecipient) SingletonAuthentication(vault) {
