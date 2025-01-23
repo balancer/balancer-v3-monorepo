@@ -56,10 +56,15 @@ interface IProtocolFeeSweeper {
      *
      * @param pool The pool that incurred the fees we're withdrawing
      * @param feeToken The fee token in the pool
-     * @param minAmountOut The minimum number of target tokens to be received
+     * @param minTargetTokenAmountOut The minimum number of target tokens to be received
      * @param deadline Deadline for the burn operation (swap), after which it will revert
      */
-    function sweepProtocolFeesForToken(address pool, IERC20 feeToken, uint256 minAmountOut, uint256 deadline) external;
+    function sweepProtocolFeesForToken(
+        address pool,
+        IERC20 feeToken,
+        uint256 minTargetTokenAmountOut,
+        uint256 deadline
+    ) external;
 
     /**
      * @notice Return the address of the current `ProtocolFeeController` from the Vault.
