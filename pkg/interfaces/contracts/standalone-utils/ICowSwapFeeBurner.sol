@@ -10,17 +10,34 @@ import { ICowConditionalOrder, GPv2Order } from "../solidity-utils/misc/ICowCond
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface ICowSwapFeeBurner is IERC165, IERC1271, IProtocolFeeBurner, ICowConditionalOrder {
-    error OrderIsNotExist();
+    error InvalidOrderParameters(string reason);
     error NonZeroOffchainInput();
-    error InvalidOrder();
-    error TargetTokenIsFeeToken();
-    error FeeTokenAmountIsZero();
-    error MinTargetTokenAmountIsZero();
+    error OrderIsNotExist(IERC20 sellToken);
+    error LastOrderStillActive();
+    error OrderIsFilled();
+
+    event OrderRetry(IERC20 sellToken, uint256 sellAmount, uint256 minTargetTokenAmount, uint256 deadline);
+    event OrderRevert(IERC20 sellToken, address receiver, uint256 sellAmount);
 
     /**
-     * @notice Get the order at the given index.
-     * @param orderIndex The index of the order.
-     * @return The order at the given index.
+     * @notice Get the order at the sell token.
+     * @param sellToken The token to sell in the order.
+     * @return The order at the sell token.
      */
-    function getOrder(uint256 orderIndex) external view returns (GPv2Order memory);
+    function getOrder(IERC20 sellToken) external view returns (GPv2Order memory);
+    
+    /**
+     * @notice Retry an order that has not been filled yet and expired.
+     * @param sellToken The token to sell in the order.
+     * @param minTargetTokenAmount The minimum amount of target tokens to receive.
+     * @param deadline The deadline for the order to be filled.
+     */
+    function retryOrder(IERC20 sellToken, uint256 minTargetTokenAmount, uint256 deadline) external;
+
+    /**
+     * @notice Return tokens from an order that has not been filled yet and expired.
+     * @param sellToken The token to sell in the order.
+     * @param receiver The address to receive the tokens.
+     */
+    function revertOrder(IERC20 sellToken, address receiver) external;
 }
