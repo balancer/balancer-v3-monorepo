@@ -169,9 +169,14 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external {
+    function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external authenticate {
         if (_protocolFeeBurners[protocolFeeBurner]) {
             revert ProtocolFeeBurnerAlreadyAdded(address(protocolFeeBurner));
+        }
+
+        // Since the zero address is a sentinel value indicating no burner should be used, do not allow adding it.
+        if (address(protocolFeeBurner) == address(0)) {
+            revert InvalidProtocolFeeBurner();
         }
 
         _protocolFeeBurners[protocolFeeBurner] = true;
@@ -180,7 +185,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external {
+    function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external authenticate {
         if (_protocolFeeBurners[protocolFeeBurner] == false) {
             revert ProtocolFeeBurnerNotAdded(address(protocolFeeBurner));
         }

@@ -50,6 +50,9 @@ interface IProtocolFeeSweeper {
     /// @notice The target token is invalid.
     error InvalidTargetToken();
 
+    /// @notice The protocol fee burner to be added is invalid.
+    error InvalidProtocolFeeBurner();
+
     /**
      * @notice The specified fee burner has not been approved.
      * @param protocolFeeBurner The address of the unsupported fee burner
@@ -138,14 +141,18 @@ interface IProtocolFeeSweeper {
 
     /**
      * @notice Add an approved fee burner to the allowlist.
-     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burners.
+     * @dev This is a permissioned call. `sweepProtocolFeesForToken` can only be called with approved protocol
+     * fee burners.
+     *
      * @param protocolFeeBurner The address of an approved protocol fee burner
      */
     function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
 
     /**
      * @notice Remove a fee burner from the allowlist.
-     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burners.
+     * @dev This is a permissioned call. `sweepProtocolFeesForToken` can only be called with approved protocol
+     * fee burners.
+     *
      * @param protocolFeeBurner The address of a protocol fee burner on the allowlist
      */
     function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
