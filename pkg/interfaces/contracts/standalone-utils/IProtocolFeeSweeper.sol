@@ -54,8 +54,10 @@ interface IProtocolFeeSweeper {
      *
      * @param pool The pool that incurred the fees we're withdrawing
      * @param feeToken The fee token in the pool
+     * @param price Price of 1 target token in fee tokens
+     * @param deadline The deadline for the swap
      */
-    function sweepProtocolFeesForToken(address pool, IERC20 feeToken) external;
+    function sweepProtocolFeesForToken(address pool, IERC20 feeToken, uint256 price, uint256 deadline) external;
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool.
@@ -67,8 +69,10 @@ interface IProtocolFeeSweeper {
      * disadvantageous to the protocol (e.g., flash crashes).
      *
      * @param pool The pool that incurred the fees we're withdrawing
+     * @param prices Prices of the target token in fee tokens. Sorted in the same order as the tokens in the pool.
+     * @param deadline The deadline for the swap
      */
-    function sweepProtocolFees(address pool) external;
+    function sweepProtocolFees(address pool, uint256[] memory prices, uint256 deadline) external;
 
     /**
      * @notice Return the address of the current `ProtocolFeeController` from the Vault.

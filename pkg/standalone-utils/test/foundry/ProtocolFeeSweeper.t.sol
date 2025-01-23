@@ -22,6 +22,11 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
     using Address for address payable;
     using ArrayHelpers for *;
 
+    uint256 constant DEFAULT_PRICE = 1e18;
+    uint256 constant DEFAULT_DEADLINE = 1 days;
+
+    uint256 poolTokensLength;
+
     IProtocolFeeSweeper internal feeSweeper;
 
     IProtocolFeeBurner internal feeBurner;
@@ -68,6 +73,8 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
             ),
             address(feeSweeper)
         );
+
+        poolTokensLength = vault.getPoolTokens(pool).length;
     }
 
     function testGetProtocolFeeController() public view {
@@ -178,12 +185,12 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
     function testSweepNoPermission() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        feeSweeper.sweepProtocolFees(pool);
+        feeSweeper.sweepProtocolFees(pool, _getDefaultPrices(poolTokensLength), DEFAULT_DEADLINE);
     }
 
     function testSweepForTokenNoPermission() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        feeSweeper.sweepProtocolFeesForToken(pool, usdc);
+        feeSweeper.sweepProtocolFeesForToken(pool, usdc, DEFAULT_PRICE, DEFAULT_DEADLINE);
     }
 
     function testRecoverProtocolFees() public {
@@ -232,7 +239,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
         vm.prank(admin);
-        feeSweeper.sweepProtocolFees(pool);
+        feeSweeper.sweepProtocolFees(pool, _getDefaultPrices(poolTokensLength), DEFAULT_DEADLINE);
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
         assertEq(usdc.balanceOf(address(feeController)), 0, "USDC not withdrawn");
@@ -262,12 +269,12 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, dai, DEFAULT_AMOUNT, feeRecipient);
 
-        feeSweeper.sweepProtocolFeesForToken(pool, dai);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_PRICE, DEFAULT_DEADLINE);
 
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
-        feeSweeper.sweepProtocolFeesForToken(pool, usdc);
+        feeSweeper.sweepProtocolFeesForToken(pool, usdc, DEFAULT_PRICE, DEFAULT_DEADLINE);
         vm.stopPrank();
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
@@ -294,14 +301,22 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         // DAI is NOT the target token, so it should call burn.
         vm.expectEmit();
-        emit IProtocolFeeBurner.ProtocolFeeBurned(pool, dai, DEFAULT_AMOUNT, usdc, DEFAULT_AMOUNT, feeRecipient);
+        emit IProtocolFeeBurner.ProtocolFeeBurned(
+            pool,
+            dai,
+            DEFAULT_AMOUNT,
+            usdc,
+            DEFAULT_AMOUNT,
+            DEFAULT_DEADLINE,
+            feeRecipient
+        );
 
         // USDC is the target token, so it should be transferred directly.
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
         vm.prank(admin);
-        feeSweeper.sweepProtocolFees(pool);
+        feeSweeper.sweepProtocolFees(pool, _getDefaultPrices(poolTokensLength), DEFAULT_DEADLINE);
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
         assertEq(usdc.balanceOf(address(feeController)), 0, "USDC not withdrawn");
@@ -328,16 +343,24 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         // DAI is NOT the target token, so it should call burn.
         vm.expectEmit();
-        emit IProtocolFeeBurner.ProtocolFeeBurned(pool, dai, DEFAULT_AMOUNT, usdc, DEFAULT_AMOUNT, feeRecipient);
+        emit IProtocolFeeBurner.ProtocolFeeBurned(
+            pool,
+            dai,
+            DEFAULT_AMOUNT,
+            usdc,
+            DEFAULT_AMOUNT,
+            DEFAULT_DEADLINE,
+            feeRecipient
+        );
 
         vm.startPrank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_PRICE, DEFAULT_DEADLINE);
 
         // USDC is the target token, so it should be transferred directly.
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
-        feeSweeper.sweepProtocolFeesForToken(pool, usdc);
+        feeSweeper.sweepProtocolFeesForToken(pool, usdc, DEFAULT_PRICE, DEFAULT_DEADLINE);
         vm.stopPrank();
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
@@ -356,7 +379,15 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         feeSweeper.setProtocolFeeBurner(feeBurner);
 
         vm.expectRevert(IProtocolFeeSweeper.InvalidTargetToken.selector);
-        feeSweeper.sweepProtocolFees(pool);
+        feeSweeper.sweepProtocolFees(pool, _getDefaultPrices(poolTokensLength), DEFAULT_DEADLINE);
         vm.stopPrank();
+    }
+
+    function _getDefaultPrices(uint256 length) internal pure returns (uint256[] memory) {
+        uint256[] memory prices = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            prices[i] = DEFAULT_PRICE;
+        }
+        return prices;
     }
 }

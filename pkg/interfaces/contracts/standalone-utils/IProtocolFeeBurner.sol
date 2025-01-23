@@ -11,6 +11,7 @@ interface IProtocolFeeBurner {
         uint256 feeTokenAmount,
         IERC20 indexed targetToken,
         uint256 targetTokenAmount,
+        uint256 deadline,
         address recipient
     );
 
@@ -21,6 +22,8 @@ interface IProtocolFeeBurner {
      * @param feeToken The feeToken collected from the pool
      * @param feeTokenAmount The number of fee tokens collected
      * @param targetToken The desired target token (token out of the swap)
+     * @param price Price of 1 target token in fee tokens
+     * @param deadline The deadline for the swap
      * @param recipient The recipient of the swap proceeds
      */
     function burn(
@@ -28,6 +31,8 @@ interface IProtocolFeeBurner {
         IERC20 feeToken,
         uint256 feeTokenAmount,
         IERC20 targetToken,
+        uint256 price,
+        uint256 deadline,
         address recipient
     ) external;
 }

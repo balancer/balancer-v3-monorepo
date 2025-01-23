@@ -14,6 +14,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /**
  * @notice Withdraw protocol fees, convert them to a target token, and forward to a recipient.
@@ -48,12 +49,17 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function sweepProtocolFeesForToken(address pool, IERC20 feeToken) external nonReentrant authenticate {
+    function sweepProtocolFeesForToken(
+        address pool,
+        IERC20 feeToken,
+        uint256 price,
+        uint256 deadline
+    ) external nonReentrant authenticate {
         IProtocolFeeBurner feeBurner = _getValidBurner();
 
         uint256 withdrawnBalance = _withdrawProtocolFeesForToken(pool, feeToken);
 
-        _sweepFeeToken(pool, feeToken, withdrawnBalance, feeBurner);
+        _sweepFeeToken(pool, feeToken, price, deadline, withdrawnBalance, feeBurner);
     }
 
     function _withdrawProtocolFeesForToken(address pool, IERC20 feeToken) internal returns (uint256 withdrawnBalance) {
@@ -69,13 +75,19 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function sweepProtocolFees(address pool) external nonReentrant authenticate {
+    function sweepProtocolFees(
+        address pool,
+        uint256[] memory prices,
+        uint256 deadline
+    ) external nonReentrant authenticate {
         IProtocolFeeBurner feeBurner = _getValidBurner();
 
         (IERC20[] memory poolTokens, uint256[] memory withdrawnBalances) = _withdrawProtocolFees(pool);
 
+        InputHelpers.ensureInputLengthMatch(poolTokens.length, prices.length);
+
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            _sweepFeeToken(pool, poolTokens[i], withdrawnBalances[i], feeBurner);
+            _sweepFeeToken(pool, poolTokens[i], prices[i], deadline, withdrawnBalances[i], feeBurner);
         }
     }
 
@@ -106,6 +118,8 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     function _sweepFeeToken(
         address pool,
         IERC20 feeToken,
+        uint256 price,
+        uint256 deadline,
         uint256 withdrawnTokenBalance,
         IProtocolFeeBurner feeBurner
     ) internal {
@@ -127,7 +141,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
                 // Transfer the tokens directly to avoid "hanging approvals," in case the burn is unsuccessful.
                 feeToken.safeTransfer(address(feeBurner), withdrawnTokenBalance);
                 // This is asynchronous; the burner will complete the action and emit an event.
-                feeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, _feeRecipient);
+                feeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, price, deadline, _feeRecipient);
             }
         }
     }
