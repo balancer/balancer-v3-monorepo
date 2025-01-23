@@ -27,6 +27,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
     IProtocolFeeSweeper internal feeSweeper;
 
     IProtocolFeeBurner internal feeBurner;
+    IProtocolFeeBurner internal feeBurner2;
 
     address internal feeRecipient;
 
@@ -37,6 +38,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         feeSweeper = new ProtocolFeeSweeper(vault, feeRecipient);
         feeBurner = new ProtocolFeeBurnerMock();
+        feeBurner2 = new ProtocolFeeBurnerMock();
 
         authorizer.grantRole(
             IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.setFeeRecipient.selector),
@@ -301,6 +303,78 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         );
         vm.prank(admin);
         feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, MAX_UINT256, feeBurner);
+    }
+
+    function testApprovedBurnerGetter() public view {
+        assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)), "Standard fee burner is not approved");
+        assertFalse(feeSweeper.isApprovedProtocolFeeBurner(address(0)), "Invalid fee burner is approved");
+    }
+
+    function testAddApprovedBurnerNoPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeSweeper.addProtocolFeeBurner(feeBurner2);
+    }
+
+    function testAddInvalidFeeBurner() public {
+        vm.expectRevert(IProtocolFeeSweeper.InvalidProtocolFeeBurner.selector);
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(IProtocolFeeBurner(address(0)));
+    }
+
+    function testMultipleFeeBurners() public {
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner2);
+
+        assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)), "Standard fee burner is not approved");
+        assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner2)), "Second fee burner is not approved");
+    }
+
+    function testAddDuplicateFeeBurner() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeSweeper.ProtocolFeeBurnerAlreadyAdded.selector, address(feeBurner))
+        );
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner);
+    }
+
+    function testAddFeeBurnerEmitsEvent() public {
+        vm.expectEmit();
+        emit IProtocolFeeSweeper.ProtocolFeeBurnerAdded(address(feeBurner2));
+
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner2);
+    }
+
+    function testRemoveFeeBurnerNoPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeSweeper.removeProtocolFeeBurner(feeBurner);
+    }
+
+    function testRemoveFeeBurner() public {
+        vm.prank(admin);
+        feeSweeper.removeProtocolFeeBurner(feeBurner);
+
+        assertFalse(
+            feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)),
+            "Standard fee burner is still approved"
+        );
+    }
+
+    function testRemoveFeeBurnerNotAdded() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeSweeper.ProtocolFeeBurnerNotAdded.selector, address(feeBurner2))
+        );
+
+        vm.prank(admin);
+        feeSweeper.removeProtocolFeeBurner(feeBurner2);
+    }
+
+    function testRemoveFeeBurnerEmitsEvent() public {
+        vm.expectEmit();
+        emit IProtocolFeeSweeper.ProtocolFeeBurnerRemoved(address(feeBurner));
+
+        vm.prank(admin);
+        feeSweeper.removeProtocolFeeBurner(feeBurner);
     }
 
     function _defaultSweep(address pool, IERC20 token) private {
