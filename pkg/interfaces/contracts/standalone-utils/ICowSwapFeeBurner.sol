@@ -6,11 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
-import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
-import {
-    ICowConditionalOrder,
-    GPv2Order
-} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrder.sol";
+import { ICowConditionalOrder, GPv2Order } from "../solidity-utils/misc/ICowConditionalOrder.sol";
+import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface ICowSwapFeeBurner is IERC165, IERC1271, IProtocolFeeBurner, ICowConditionalOrder {
     error OrderIsNotExist();
