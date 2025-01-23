@@ -10,6 +10,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
+import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IComposableCow.sol";
 import {
     ICowConditionalOrder,
@@ -56,6 +57,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     /***************************************************************************
                                 ICowSwapFeeBurner
     ***************************************************************************/
+
+    /// @inheritdoc ICowSwapFeeBurner
     function getOrder(uint256 orderIndex) external view returns (GPv2Order memory) {
         return _getOrder(orderIndex);
     }
@@ -64,6 +67,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
                             IProtocolFeeBurner
     ***************************************************************************/
 
+    /// @inheritdoc IProtocolFeeBurner
     function burn(
         address pool,
         IERC20 feeToken,
@@ -112,9 +116,10 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     }
 
     /***************************************************************************
-                        ICowConditionalOrder & ISwapCowGuard
+                            ICowConditionalOrder
     ***************************************************************************/
 
+    /// @inheritdoc ICowConditionalOrder
     function getTradeableOrder(
         address,
         address,
@@ -125,6 +130,32 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         uint256 orderIndex = abi.decode(staticInput, (uint256));
 
         return _getOrder(orderIndex);
+    }
+
+    /// @inheritdoc ICowConditionalOrder
+    function verify(
+        address owner,
+        address sender,
+        bytes32,
+        bytes32,
+        bytes32 ctx,
+        bytes calldata staticInput,
+        bytes calldata offchainInput,
+        GPv2Order calldata _order
+    ) external view {
+        GPv2Order memory savedOrder = getTradeableOrder(owner, sender, ctx, staticInput, offchainInput);
+
+        if (offchainInput.length != 0) {
+            revert NonZeroOffchainInput();
+        }
+
+        if (_order.buyAmount > savedOrder.buyAmount) {
+            savedOrder.buyAmount = _order.buyAmount;
+        }
+
+        if (keccak256(abi.encode(savedOrder)) != keccak256(abi.encode(_order))) {
+            revert InvalidOrder();
+        }
     }
 
     function _getOrder(uint256 orderIndex) internal view returns (GPv2Order memory) {
@@ -151,35 +182,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             });
     }
 
-    function verify(
-        address owner,
-        address sender,
-        bytes32,
-        bytes32,
-        bytes32 ctx,
-        bytes calldata staticInput,
-        bytes calldata offchainInput,
-        GPv2Order calldata _order
-    ) external view {
-        GPv2Order memory savedOrder = getTradeableOrder(owner, sender, ctx, staticInput, offchainInput);
-
-        if (offchainInput.length != 0) {
-            revert NonZeroOffchainInput();
-        }
-
-        if (_order.buyAmount > savedOrder.buyAmount) {
-            savedOrder.buyAmount = _order.buyAmount;
-        }
-
-        if (keccak256(abi.encode(savedOrder)) != keccak256(abi.encode(_order))) {
-            revert InvalidOrder();
-        }
-    }
-
     /***************************************************************************
                                     Others
     ***************************************************************************/
 
+    /// @inheritdoc IERC1271
     function isValidSignature(bytes32 _hash, bytes memory signature) external view returns (bytes4) {
         (GPv2Order memory order, IComposableCow.PayloadStruct memory payload) = abi.decode(
             signature,
@@ -199,6 +206,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             );
     }
 
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view override(ERC165, IERC165) returns (bool) {
         return
             interfaceId == type(ICowConditionalOrder).interfaceId ||

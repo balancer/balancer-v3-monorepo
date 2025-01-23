@@ -20,5 +20,10 @@ interface ICowSwapFeeBurner is IERC165, IERC1271, IProtocolFeeBurner, ICowCondit
     error FeeTokenAmountIsZero();
     error PriceIsZero();
 
+    /**
+     * @notice Get the order at the given index.
+     * @param orderIndex The index of the order.
+     * @return The order at the given index.
+     */
     function getOrder(uint256 orderIndex) external view returns (GPv2Order memory);
 }
