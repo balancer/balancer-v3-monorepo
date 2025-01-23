@@ -12,22 +12,19 @@ import {
     GPv2Order
 } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrder.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 
 import { CowSwapFeeBurner } from "../../contracts/CowSwapFeeBurner.sol";
 
 contract CowSwapFeeBurnerTest is BaseVaultTest {
-    using FixedPoint for uint256;
-
     bytes32 internal immutable SELL_KIND = keccak256("sell");
     bytes32 internal immutable TOKEN_BALANCE = keccak256("erc20");
     bytes32 immutable APP_DATA_HASH = keccak256("appData");
 
     uint256 constant DEFAULT_TEST_BURN_AMOUNT = 1e18;
     uint256 constant ORDER_DEADLINE = 1 days;
-    uint256 constant TARGET_PRICE = 1e18;
+    uint256 constant DEFAULT_MIN_TARGET_TOKEN_AMOUNT = 1e18;
 
     address composableCowMock = address(bytes20(bytes32("composableCowMock")));
     address vaultRelayerMock = address(bytes20(bytes32("vaultRelayerMock")));
@@ -61,8 +58,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             dai,
             DEFAULT_TEST_BURN_AMOUNT,
             usdc,
-            DEFAULT_TEST_BURN_AMOUNT.mulDown(TARGET_PRICE),
-            ORDER_DEADLINE,
+            DEFAULT_MIN_TARGET_TOKEN_AMOUNT,
             alice
         );
         _burn();
@@ -85,7 +81,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             buyToken: IERC20(address(usdc)),
             receiver: alice,
             sellAmount: DEFAULT_TEST_BURN_AMOUNT,
-            buyAmount: DEFAULT_TEST_BURN_AMOUNT.mulDown(TARGET_PRICE),
+            buyAmount: DEFAULT_MIN_TARGET_TOKEN_AMOUNT,
             validTo: uint32(block.timestamp + ORDER_DEADLINE),
             appData: APP_DATA_HASH,
             feeAmount: 0,
@@ -99,25 +95,33 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         assertEq(lastOrderIndex, cowSwapFeeBurner.lastOrderIndex(), "lastOrderIndex should have been updated");
     }
 
-    function testBurnWithFeeTokenAsTargetToken() public {
+    function testBurnWhenFeeTokenAsTargetToken() public {
         authorizer.grantRole(cowSwapFeeBurner.getActionId(CowSwapFeeBurner.burn.selector), address(this));
 
         vm.expectRevert(ICowSwapFeeBurner.TargetTokenIsFeeToken.selector);
-        cowSwapFeeBurner.burn(address(0), dai, DEFAULT_TEST_BURN_AMOUNT, dai, TARGET_PRICE, ORDER_DEADLINE, alice);
+        cowSwapFeeBurner.burn(
+            address(0),
+            dai,
+            DEFAULT_TEST_BURN_AMOUNT,
+            dai,
+            DEFAULT_MIN_TARGET_TOKEN_AMOUNT,
+            alice,
+            ORDER_DEADLINE
+        );
     }
 
     function testBurnWithZeroAmount() public {
         authorizer.grantRole(cowSwapFeeBurner.getActionId(CowSwapFeeBurner.burn.selector), address(this));
 
         vm.expectRevert(ICowSwapFeeBurner.FeeTokenAmountIsZero.selector);
-        cowSwapFeeBurner.burn(address(0), dai, 0, usdc, TARGET_PRICE, ORDER_DEADLINE, alice);
+        cowSwapFeeBurner.burn(address(0), dai, 0, usdc, DEFAULT_MIN_TARGET_TOKEN_AMOUNT, alice, ORDER_DEADLINE);
     }
 
-    function testBurnWithZeroPrice() public {
+    function testBurnWhenMinTargetTokenAmountIsZero() public {
         authorizer.grantRole(cowSwapFeeBurner.getActionId(CowSwapFeeBurner.burn.selector), address(this));
 
-        vm.expectRevert(ICowSwapFeeBurner.PriceIsZero.selector);
-        cowSwapFeeBurner.burn(address(0), dai, DEFAULT_TEST_BURN_AMOUNT, usdc, 0, ORDER_DEADLINE, alice);
+        vm.expectRevert(ICowSwapFeeBurner.MinTargetTokenAmountIsZero.selector);
+        cowSwapFeeBurner.burn(address(0), dai, DEFAULT_TEST_BURN_AMOUNT, usdc, 0, alice, ORDER_DEADLINE);
     }
 
     function testGetTradeableOrder() public {
@@ -139,7 +143,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             buyToken: IERC20(address(usdc)),
             receiver: alice,
             sellAmount: DEFAULT_TEST_BURN_AMOUNT,
-            buyAmount: DEFAULT_TEST_BURN_AMOUNT.mulDown(TARGET_PRICE),
+            buyAmount: DEFAULT_MIN_TARGET_TOKEN_AMOUNT,
             validTo: uint32(block.timestamp + ORDER_DEADLINE),
             appData: APP_DATA_HASH,
             feeAmount: 0,
@@ -270,7 +274,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             buyToken: IERC20(address(usdc)),
             receiver: alice,
             sellAmount: DEFAULT_TEST_BURN_AMOUNT,
-            buyAmount: DEFAULT_TEST_BURN_AMOUNT.mulDown(TARGET_PRICE),
+            buyAmount: DEFAULT_MIN_TARGET_TOKEN_AMOUNT,
             validTo: uint32(block.timestamp + ORDER_DEADLINE),
             appData: APP_DATA_HASH,
             feeAmount: 0,
@@ -363,7 +367,15 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
     function _burn() internal {
         vm.prank(alice);
-        cowSwapFeeBurner.burn(address(0), dai, DEFAULT_TEST_BURN_AMOUNT, usdc, TARGET_PRICE, ORDER_DEADLINE, alice);
+        cowSwapFeeBurner.burn(
+            address(0),
+            dai,
+            DEFAULT_TEST_BURN_AMOUNT,
+            usdc,
+            DEFAULT_MIN_TARGET_TOKEN_AMOUNT,
+            alice,
+            ORDER_DEADLINE
+        );
     }
 
     function assertEq(GPv2Order memory left, GPv2Order memory right, string memory message) internal pure {

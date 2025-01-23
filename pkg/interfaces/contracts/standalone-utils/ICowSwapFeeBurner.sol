@@ -18,7 +18,7 @@ interface ICowSwapFeeBurner is IERC165, IERC1271, IProtocolFeeBurner, ICowCondit
     error InvalidOrder();
     error TargetTokenIsFeeToken();
     error FeeTokenAmountIsZero();
-    error PriceIsZero();
+    error MinTargetTokenAmountIsZero();
 
     /**
      * @notice Get the order at the given index.

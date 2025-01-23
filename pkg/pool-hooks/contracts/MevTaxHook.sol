@@ -4,9 +4,11 @@ pragma solidity ^0.8.24;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IBalancerContractRegistry } from "@balancer-labs/v3-interfaces/contracts/vault/IBalancerContractRegistry.sol";
+import {
+    IBalancerContractRegistry
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
-import { IMevHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevHook.sol";
+import { IMevTaxHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevTaxHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -26,7 +28,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
+contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHook {
     using FixedPoint for uint256;
 
     // Max Fee is 99.9999% (Max supported fee by the vault).
@@ -54,7 +56,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         HooksConfig memory hooksConfig = _vault.getHooksConfig(pool);
 
         if (hooksConfig.hooksContract != address(this)) {
-            revert MevHookNotRegisteredInPool(pool);
+            revert MevTaxHookNotRegisteredInPool(pool);
         }
 
         _;
@@ -162,17 +164,17 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         return kind == RemoveLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function isMevTaxEnabled() external view returns (bool) {
         return _mevTaxEnabled;
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function disableMevTax() external authenticate {
         _setMevTaxEnabled(false);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function enableMevTax() external authenticate {
         _setMevTaxEnabled(true);
     }
@@ -183,12 +185,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         emit MevTaxEnabledSet(value);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function getMaxMevSwapFeePercentage() external view returns (uint256) {
         return _maxMevSwapFeePercentage;
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) external authenticate {
         _setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
     }
@@ -203,12 +205,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         emit MaxMevSwapFeePercentageSet(maxMevSwapFeePercentage);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function getDefaultMevTaxMultiplier() external view returns (uint256) {
         return _defaultMevTaxMultiplier;
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) external authenticate {
         _setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
     }
@@ -219,12 +221,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         emit DefaultMevTaxMultiplierSet(newDefaultMevTaxMultiplier);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function getPoolMevTaxMultiplier(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
         return _poolMevTaxMultipliers[pool];
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function setPoolMevTaxMultiplier(
         address pool,
         uint256 newPoolMevTaxMultiplier
@@ -238,12 +240,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         emit PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function getDefaultMevTaxThreshold() external view returns (uint256) {
         return _defaultMevTaxThreshold;
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function setDefaultMevTaxThreshold(uint256 newDefaultMevTaxThreshold) external authenticate {
         _setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
     }
@@ -254,12 +256,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         emit DefaultMevTaxThresholdSet(newDefaultMevTaxThreshold);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function getPoolMevTaxThreshold(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
         return _poolMevTaxThresholds[pool];
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function setPoolMevTaxThreshold(
         address pool,
         uint256 newPoolMevTaxThreshold
@@ -267,12 +269,12 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function isMevTaxExempt(address sender) external view returns (bool) {
         return _isMevTaxExempt(sender);
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function addMevTaxExemptSenders(address[] memory senders) external authenticate {
         uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
@@ -280,7 +282,7 @@ contract MevHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevHook {
         }
     }
 
-    /// @inheritdoc IMevHook
+    /// @inheritdoc IMevTaxHook
     function removeMevTaxExemptSenders(address[] memory senders) external authenticate {
         uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {

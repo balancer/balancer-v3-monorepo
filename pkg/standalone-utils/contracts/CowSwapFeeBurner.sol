@@ -16,13 +16,10 @@ import {
     ICowConditionalOrder,
     GPv2Order
 } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrder.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
-    using FixedPoint for uint256;
-
     struct ShortGPv2Order {
         IERC20 sellToken;
         IERC20 buyToken;
@@ -32,8 +29,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         uint32 validTo;
     }
 
-    bytes32 internal immutable SELL_KIND = keccak256("sell");
-    bytes32 internal immutable TOKEN_BALANCE = keccak256("erc20");
+    bytes32 internal immutable _sellKind = keccak256("sell");
+    bytes32 internal immutable _tokenBalance = keccak256("erc20");
 
     IComposableCow public immutable composableCow;
     address public immutable vaultRelayer;
@@ -73,16 +70,16 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         IERC20 feeToken,
         uint256 feeTokenAmount,
         IERC20 targetToken,
-        uint256 price,
-        uint256 deadline,
-        address recipient
+        uint256 minTargetTokenAmount,
+        address recipient,
+        uint256 deadline
     ) external authenticate {
         if (targetToken == feeToken) {
             revert TargetTokenIsFeeToken();
         } else if (feeTokenAmount == 0) {
             revert FeeTokenAmountIsZero();
-        } else if (price == 0) {
-            revert PriceIsZero();
+        } else if (minTargetTokenAmount == 0) {
+            revert MinTargetTokenAmountIsZero();
         }
 
         SafeERC20.safeTransferFrom(feeToken, msg.sender, address(this), feeTokenAmount);
@@ -102,17 +99,17 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
 
         feeToken.approve(vaultRelayer, type(uint256).max);
 
-        uint256 targetTokenAmount = feeTokenAmount.mulDown(price);
         _orders[orderIndex] = ShortGPv2Order({
             sellToken: feeToken,
             buyToken: targetToken,
             receiver: recipient,
             sellAmount: feeTokenAmount,
-            buyAmount: targetTokenAmount,
+            buyAmount: minTargetTokenAmount,
+            // solhint-disable-next-line not-rely-on-time
             validTo: uint32(block.timestamp + deadline)
         });
 
-        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, targetTokenAmount, deadline, recipient);
+        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmount, recipient);
     }
 
     /***************************************************************************
@@ -175,10 +172,10 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
                 validTo: shortOrder.validTo,
                 appData: appData,
                 feeAmount: 0,
-                kind: SELL_KIND,
+                kind: _sellKind,
                 partiallyFillable: true,
-                sellTokenBalance: TOKEN_BALANCE,
-                buyTokenBalance: TOKEN_BALANCE
+                sellTokenBalance: _tokenBalance,
+                buyTokenBalance: _tokenBalance
             });
     }
 

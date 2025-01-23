@@ -52,96 +52,43 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     function sweepProtocolFeesForToken(
         address pool,
         IERC20 feeToken,
-        uint256 price,
+        uint256 minAmountOut,
         uint256 deadline
     ) external nonReentrant authenticate {
         IProtocolFeeBurner feeBurner = _getValidBurner();
 
-        uint256 withdrawnBalance = _withdrawProtocolFeesForToken(pool, feeToken);
-
-        _sweepFeeToken(pool, feeToken, price, deadline, withdrawnBalance, feeBurner);
-    }
-
-    function _withdrawProtocolFeesForToken(address pool, IERC20 feeToken) internal returns (uint256 withdrawnBalance) {
-        // There could be tokens "left over" from uncompleted burns from previous sweeps. Only process the "new"
-        // fees collected from the current withdrawal.
         uint256 existingBalance = feeToken.balanceOf(address(this));
 
         // Withdraw protocol fees to this contract. Note that governance will need to grant this contract permission
         // to call `withdrawProtocolFeesForToken` on the `ProtocolFeeController.
         getProtocolFeeController().withdrawProtocolFeesForToken(pool, address(this), feeToken);
 
-        withdrawnBalance = feeToken.balanceOf(address(this)) - existingBalance;
-    }
+        uint256 withdrawnBalance = feeToken.balanceOf(address(this)) - existingBalance;
 
-    /// @inheritdoc IProtocolFeeSweeper
-    function sweepProtocolFees(
-        address pool,
-        uint256[] memory prices,
-        uint256 deadline
-    ) external nonReentrant authenticate {
-        IProtocolFeeBurner feeBurner = _getValidBurner();
-
-        (IERC20[] memory poolTokens, uint256[] memory withdrawnBalances) = _withdrawProtocolFees(pool);
-
-        InputHelpers.ensureInputLengthMatch(poolTokens.length, prices.length);
-
-        for (uint256 i = 0; i < poolTokens.length; ++i) {
-            _sweepFeeToken(pool, poolTokens[i], prices[i], deadline, withdrawnBalances[i], feeBurner);
-        }
-    }
-
-    function _withdrawProtocolFees(
-        address pool
-    ) internal returns (IERC20[] memory poolTokens, uint256[] memory withdrawnBalances) {
-        poolTokens = getVault().getPoolTokens(pool);
-        uint256 numTokens = poolTokens.length;
-
-        // There could be tokens "left over" from uncompleted burns from previous sweeps. Only process the "new"
-        // fees collected from the current withdrawal.
-        uint256[] memory existingBalances = new uint256[](numTokens);
-        for (uint256 i = 0; i < numTokens; ++i) {
-            existingBalances[i] = poolTokens[i].balanceOf(address(this));
-        }
-
-        // Withdraw protocol fees to this contract. Note that governance will need to grant this contract permission
-        // to call `withdrawProtocolFees` on the `ProtocolFeeController.
-        getProtocolFeeController().withdrawProtocolFees(pool, address(this));
-
-        withdrawnBalances = new uint256[](numTokens);
-        for (uint256 i = 0; i < numTokens; ++i) {
-            withdrawnBalances[i] = poolTokens[i].balanceOf(address(this)) - existingBalances[i];
-        }
-    }
-
-    // Convert the given token to the target token (if the fee burner is enabled), and forward to the fee recipient.
-    function _sweepFeeToken(
-        address pool,
-        IERC20 feeToken,
-        uint256 price,
-        uint256 deadline,
-        uint256 withdrawnTokenBalance,
-        IProtocolFeeBurner feeBurner
-    ) internal {
-        // Short-circuit if nothing to do.
-        if (withdrawnTokenBalance == 0) {
-            return;
-        }
-
-        // If no burner has been set, fall back on direct transfer of the fee token.
-        if (address(feeBurner) == address(0)) {
-            _transferFeeToken(pool, feeToken, withdrawnTokenBalance);
-        } else {
-            IERC20 targetToken = _targetToken;
-
-            // If the fee token is already the target, there's no need to swap. Simply transfer it.
-            if (feeToken == targetToken) {
-                _transferFeeToken(pool, feeToken, withdrawnTokenBalance);
+        if (withdrawnBalance > 0) {
+            // If no burner has been set, fall back on direct transfer of the fee token.
+            if (address(feeBurner) == address(0)) {
+                _transferFeeToken(pool, feeToken, withdrawnBalance);
             } else {
-                // Transfer the tokens directly to avoid "hanging approvals," in case the burn is unsuccessful.
-                feeToken.safeTransfer(address(feeBurner), withdrawnTokenBalance);
-                // This is asynchronous; the burner will complete the action and emit an event.
-                feeBurner.burn(pool, feeToken, withdrawnTokenBalance, targetToken, price, deadline, _feeRecipient);
+                IERC20 targetToken = _targetToken;
+
+                // If the fee token is already the target, there's no need to swap. Simply transfer it.
+                if (feeToken == targetToken) {
+                    _transferFeeToken(pool, feeToken, withdrawnBalance);
+                } else {
+                    // Transfer the tokens directly to avoid "hanging approvals," in case the burn is unsuccessful.
+                    feeToken.safeTransfer(address(feeBurner), withdrawnBalance);
+                    // This is asynchronous; the burner will complete the action and emit an event.
+                    feeBurner.burn(
+                        pool,
+                        feeToken,
+                        withdrawnBalance,
+                        targetToken,
+                        minAmountOut,
+                        _feeRecipient,
+                        deadline
+                    );
+                }
             }
         }
     }
