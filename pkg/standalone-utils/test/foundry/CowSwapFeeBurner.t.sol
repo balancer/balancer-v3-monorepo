@@ -320,7 +320,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         );
     }
 
-    function testSupportsInterface() public {
+    function testSupportsInterface() public view {
         assertEq(
             cowSwapFeeBurner.supportsInterface(type(ICowConditionalOrder).interfaceId),
             true,
