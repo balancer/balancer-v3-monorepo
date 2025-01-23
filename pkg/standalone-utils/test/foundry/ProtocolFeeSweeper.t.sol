@@ -377,6 +377,15 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         feeSweeper.removeProtocolFeeBurner(feeBurner);
     }
 
+    function testUnsupportedFeeBurner() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeSweeper.UnsupportedProtocolFeeBurner.selector, address(feeBurner2))
+        );
+
+        vm.prank(admin);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, MAX_UINT256, feeBurner2);
+    }
+
     function _defaultSweep(address pool, IERC20 token) private {
         // No limit and max deadline
         feeSweeper.sweepProtocolFeesForToken(pool, token, 0, MAX_UINT256, feeBurner);
