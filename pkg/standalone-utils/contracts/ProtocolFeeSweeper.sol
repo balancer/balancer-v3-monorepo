@@ -14,7 +14,6 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /**
  * @notice Withdraw protocol fees, convert them to a target token, and forward to a recipient.
