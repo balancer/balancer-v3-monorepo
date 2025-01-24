@@ -62,9 +62,6 @@ interface ICowRouter {
     /// @notice The caller tried to set an invalid address as the fee sweeper.
     error InvalidFeeSweeper(address invalidFeeSweeper);
 
-    /// @notice The caller tried to withdraw fees from a token without accrued fees.
-    error NoProtocolFeesToWithdraw(IERC20 token);
-
     /**
      * @notice A swap and a donation have occurred.
      * @param pool The pool with the tokens being swapped
@@ -180,7 +177,7 @@ interface ICowRouter {
      *
      * @param token Token in which the protocol fees were charged
      */
-    function withdrawProtocolFees(IERC20 token) external;
+    function withdrawCollectedProtocolFees(IERC20 token) external;
 
     /**
      * @notice Returns the protocol fee percentage, registered in the CoW Router.

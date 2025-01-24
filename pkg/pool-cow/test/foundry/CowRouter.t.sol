@@ -640,14 +640,9 @@ contract CowRouterTest is BaseCowTest {
     }
 
     /********************************************************
-                     withdrawProtocolFees()
+                 withdrawCollectedProtocolFees()
     ********************************************************/
-    function testWithdrawProtocolFeesEmptyFees() public {
-        vm.expectRevert(abi.encodeWithSelector(ICowRouter.NoProtocolFeesToWithdraw.selector, dai));
-        cowRouter.withdrawProtocolFees(dai);
-    }
-
-    function testWithdrawProtocolFees() public {
+    function testwithdrawCollectedProtocolFees() public {
         uint256 protocolFeePercentage = _INITIAL_PROTOCOL_FEE_PERCENTAGE;
         uint256 donationDai = DEFAULT_AMOUNT / 10;
         uint256 donationUsdc = DEFAULT_AMOUNT / 10;
@@ -659,8 +654,8 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        uint256 daiProtocolFeesBeforeWithdraw = cowRouter.getProtocolFees(dai);
-        uint256 usdcProtocolFeesBeforeWithdraw = cowRouter.getProtocolFees(usdc);
+        uint256 daiProtocolFeesBeforeWithdraw = cowRouter.getCollectedProtocolFees(dai);
+        uint256 usdcProtocolFeesBeforeWithdraw = cowRouter.getCollectedProtocolFees(usdc);
 
         assertEq(
             balancesBefore.userTokens[daiIdx],
@@ -675,12 +670,12 @@ contract CowRouterTest is BaseCowTest {
 
         vm.expectEmit();
         emit ICowRouter.ProtocolFeesWithdrawn(dai, alice, daiProtocolFeesBeforeWithdraw);
-        cowRouter.withdrawProtocolFees(dai);
+        cowRouter.withdrawCollectedProtocolFees(dai);
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
         assertEq(balancesAfter.userTokens[daiIdx], 0, "CoW Router has DAI tokens to withdraw");
-        assertEq(cowRouter.getProtocolFees(dai), 0, "CoW Router state of protocol fees for DAI is not 0");
+        assertEq(cowRouter.getCollectedProtocolFees(dai), 0, "CoW Router state of protocol fees for DAI is not 0");
         // Alice is the current feeSweeper, as set by BaseCowTest contract.
         assertEq(
             balancesAfter.aliceTokens[daiIdx],
@@ -694,12 +689,12 @@ contract CowRouterTest is BaseCowTest {
 
         vm.expectEmit();
         emit ICowRouter.ProtocolFeesWithdrawn(usdc, bob, usdcProtocolFeesBeforeWithdraw);
-        cowRouter.withdrawProtocolFees(usdc);
+        cowRouter.withdrawCollectedProtocolFees(usdc);
 
         BaseVaultTest.Balances memory balancesAfterUsdc = getBalances(address(cowRouter));
 
         assertEq(balancesAfterUsdc.userTokens[usdcIdx], 0, "CoW Router has USDC tokens to withdraw");
-        assertEq(cowRouter.getProtocolFees(usdc), 0, "CoW Router state of protocol fees for USDC is not 0");
+        assertEq(cowRouter.getCollectedProtocolFees(usdc), 0, "CoW Router state of protocol fees for USDC is not 0");
         // Bob now is the current feeSweeper.
         assertEq(
             balancesAfterUsdc.bobTokens[usdcIdx],
