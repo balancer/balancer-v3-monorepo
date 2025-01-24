@@ -191,10 +191,14 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
-        return (true, getSurgeSwapFeePercentage(params, pool, staticSwapFeePercentage));
+        return (true, getSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
-    function getSurgeSwapFeePercentage(PoolSwapParams calldata params, address pool, uint256 staticSwapFeePercentage) public view returns (uint256) {
+    function getSurgeFeePercentage(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) public view returns (uint256) {
         uint256 numTokens = params.balancesScaled18.length;
 
         uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
@@ -224,8 +228,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         uint256[] memory balancesScaled18,
         bytes memory
     ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
-        hookAdjustedAmountsInRaw = amountsInRaw; // don't adjust amounts in.
-
         // Proportional add is always fine.
         if (kind == AddLiquidityKind.PROPORTIONAL) {
             return (true, hookAdjustedAmountsInRaw);
@@ -240,14 +242,10 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
         uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(balancesScaled18);
 
-        bool isSurging = _isSurging(
-            surgeFeeData,
-            oldBalancesScaled18,
-            newTotalImbalance
-        );
+        bool isSurging = _isSurging(surgeFeeData, oldBalancesScaled18, newTotalImbalance);
 
         // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, hookAdjustedAmountsInRaw);
+        return (isSurging == false, amountsInRaw);
     }
 
     /// @inheritdoc IHooks
@@ -261,8 +259,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         uint256[] memory balancesScaled18,
         bytes memory
     ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
-        hookAdjustedAmountsOutRaw = amountsOutRaw; // don't adjust amounts out.
-
         // Proportional remove is always fine.
         if (kind == RemoveLiquidityKind.PROPORTIONAL) {
             return (true, hookAdjustedAmountsOutRaw);
@@ -277,14 +273,10 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
         uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(balancesScaled18);
 
-        bool isSurging = _isSurging(
-            surgeFeeData,
-            oldBalancesScaled18,
-            newTotalImbalance
-        );
+        bool isSurging = _isSurging(surgeFeeData, oldBalancesScaled18, newTotalImbalance);
 
         // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, hookAdjustedAmountsOutRaw);
+        return (isSurging == false, amountsOutRaw);
     }
 
     /**
@@ -336,19 +328,11 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         address pool,
         uint256 staticFeePercentage,
         uint256[] memory newBalances
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 surgeFeePercentage) {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
         uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(newBalances);
 
-        bool isSurging = _isSurging(
-            surgeFeeData,
-            params.balancesScaled18,
-            newTotalImbalance
-        );
-
-        if (isSurging == false) {
-            return staticFeePercentage;
-        }
+        bool isSurging = _isSurging(surgeFeeData, params.balancesScaled18, newTotalImbalance);
 
         // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
         //
@@ -358,13 +342,17 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         // This formula linearly increases the fee from 0 at the threshold up to the maximum fee.
         // At 35%, the fee would be 1% + (0.95 - 0.01) * ((0.35 - 0.3)/(0.95-0.3)) = 1% + 0.94 * 0.0769 ~ 8.2%.
         // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
-        return
-            staticFeePercentage +
-            (surgeFeeData.maxSurgeFeePercentage - staticFeePercentage).mulDown(
-                (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
-                    uint256(surgeFeeData.thresholdPercentage).complement()
-                )
-            );
+        if (isSurging) {
+            surgeFeePercentage =
+                staticFeePercentage +
+                (surgeFeeData.maxSurgeFeePercentage - staticFeePercentage).mulDown(
+                    (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
+                        uint256(surgeFeeData.thresholdPercentage).complement()
+                    )
+                );
+        } else {
+            surgeFeePercentage = staticFeePercentage;
+        }
     }
 
     function _isSurging(
@@ -379,11 +367,8 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
 
         uint256 oldTotalImbalance = StableSurgeMedianMath.calculateImbalance(currentBalances);
 
-        if (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= surgeFeeData.thresholdPercentage) {
-            return false;
-        }
-
-        return true;
+        // Surging if imbalance grows and we're currently above the threshold.
+        return (newTotalImbalance > oldTotalImbalance && newTotalImbalance > surgeFeeData.thresholdPercentage);
     }
 
     /// @dev Assumes the percentage value and sender have been externally validated.

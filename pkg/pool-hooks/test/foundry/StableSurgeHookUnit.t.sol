@@ -182,7 +182,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
     }
 
-    function testgetSurgeSwapFeePercentage__Fuzz(
+    function testGetSurgeFeePercentage__Fuzz(
         uint256 length,
         uint256 indexIn,
         uint256 indexOut,
@@ -204,7 +204,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
             rawBalances
         );
         PoolSwapParams memory swapParams = _buildSwapParams(indexIn, indexOut, amountGivenScaled18, kind, balances);
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeSwapFeePercentage(swapParams, pool, STATIC_FEE_PERCENTAGE);
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(swapParams, pool, STATIC_FEE_PERCENTAGE);
         uint256[] memory newBalances = _computeNewBalances(swapParams);
         uint256 expectedFee = _calculateFee(
             stableSurgeMedianMathMock.calculateImbalance(newBalances),
@@ -253,7 +253,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         assertEq(surgeFeePercentage, expectedFee, "Surge fee percentage should be expectedFee");
     }
 
-    function testgetSurgeSwapFeePercentageWhenNewTotalImbalanceIsZero() public {
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceIsZero() public {
         _registerPool();
 
         uint256 numTokens = 8;
@@ -266,7 +266,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         balances[indexIn] = 0;
         balances[indexOut] = 2e18;
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeSwapFeePercentage(
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
             _buildSwapParams(indexIn, indexOut, 1e18, SwapKind.EXACT_IN, balances),
             pool,
             STATIC_FEE_PERCENTAGE
@@ -275,7 +275,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
     }
 
-    function testgetSurgeSwapFeePercentageWhenNewTotalImbalanceLesOrEqOld() public {
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceLesOrEqOld() public {
         _registerPool();
 
         uint256 numTokens = 8;
@@ -285,7 +285,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         }
         balances[3] = 10000e18;
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeSwapFeePercentage(
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
             _buildSwapParams(0, MAX_TOKENS - 1, 0, SwapKind.EXACT_IN, balances),
             pool,
             STATIC_FEE_PERCENTAGE
@@ -293,7 +293,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
     }
 
-    function testgetSurgeSwapFeePercentageWhenNewTotalImbalanceLessOrEqThreshold() public {
+    function testGetSurgeFeePercentageWhenNewTotalImbalanceLessOrEqThreshold() public {
         _registerPool();
 
         uint256 numTokens = 8;
@@ -304,7 +304,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         balances[4] = 2e18;
         balances[5] = 2e18;
 
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeSwapFeePercentage(
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(
             _buildSwapParams(0, MAX_TOKENS - 1, 1, SwapKind.EXACT_IN, balances),
             pool,
             STATIC_FEE_PERCENTAGE
