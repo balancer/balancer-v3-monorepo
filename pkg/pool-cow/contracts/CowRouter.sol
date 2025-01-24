@@ -33,7 +33,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     mapping(IERC20 token => uint256 feeAmount) internal _protocolFees;
 
     constructor(IVault vault, uint256 protocolFeePercentage) VaultGuard(vault) SingletonAuthentication(vault) {
-        _protocolFeePercentage = protocolFeePercentage;
+        _setProtocolFeePercentage(protocolFeePercentage);
     }
 
     /********************************************************
@@ -52,6 +52,10 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
     /// @inheritdoc ICowRouter
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
+        _setProtocolFeePercentage(newProtocolFeePercentage);
+    }
+
+    function _setProtocolFeePercentage(uint256 newProtocolFeePercentage) private {
         if (newProtocolFeePercentage > _MAX_PROTOCOL_FEE_PERCENTAGE) {
             revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, _MAX_PROTOCOL_FEE_PERCENTAGE);
         }
