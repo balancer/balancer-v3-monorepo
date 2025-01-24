@@ -166,7 +166,7 @@ interface ICowRouter {
      * @dev The protocol fee percentage is used to calculate the amount of protocol fees to charge on a donation.
      * The fees stay in the router.
      *
-     * @return protocolFeePercentage Protocol fee percentage with 18 decimals
+     * @return protocolFeePercentage The current protocol fee percentage
      */
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage);
 
