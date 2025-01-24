@@ -31,14 +31,15 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     // Address that will receive the protocol fees on withdraw.
     address internal _feeSweeper;
     uint256 internal _protocolFeePercentage;
-    mapping(IERC20 => uint256) internal _protocolFees;
+    // Store the total amount of fees collected in each token.
+    mapping(IERC20 token => uint256 feeAmount) internal _collectedProtocolFees;
 
     constructor(
         IVault vault,
         uint256 protocolFeePercentage,
         address feeSweeper
     ) VaultGuard(vault) SingletonAuthentication(vault) {
-        _protocolFeePercentage = protocolFeePercentage;
+        _setProtocolFeePercentage(protocolFeePercentage);
         _feeSweeper = feeSweeper;
     }
 
@@ -52,8 +53,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     /// @inheritdoc ICowRouter
-    function getProtocolFees(IERC20 token) external view returns (uint256 fees) {
-        return _protocolFees[token];
+    function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees) {
+        return _collectedProtocolFees[token];
     }
 
     /// @inheritdoc ICowRouter
@@ -63,6 +64,10 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
     /// @inheritdoc ICowRouter
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
+        _setProtocolFeePercentage(newProtocolFeePercentage);
+    }
+
+    function _setProtocolFeePercentage(uint256 newProtocolFeePercentage) private {
         if (newProtocolFeePercentage > _MAX_PROTOCOL_FEE_PERCENTAGE) {
             revert ProtocolFeePercentageAboveLimit(newProtocolFeePercentage, _MAX_PROTOCOL_FEE_PERCENTAGE);
         }
@@ -309,7 +314,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
             uint256 donationAndFees = amountsToDonate[i];
             uint256 protocolFee = donationAndFees.mulUp(_protocolFeePercentage);
-            _protocolFees[token] += protocolFee;
+            _collectedProtocolFees[token] += protocolFee;
             protocolFeeAmounts[i] = protocolFee;
             donatedAmounts[i] = donationAndFees - protocolFee;
         }
@@ -378,7 +383,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                 token.safeTransferFrom(sender, address(this), routerAmount);
             }
 
-            // The swap's amount out goes to the sender, except by the part that was donated.
+            // The swap amount out goes to the sender, except for the portion that was donated.
             uint256 senderAmount = senderAmounts[i];
             if (senderAmount > 0) {
                 _vault.sendTo(token, sender, senderAmount);

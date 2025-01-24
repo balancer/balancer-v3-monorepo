@@ -752,7 +752,7 @@ contract CowRouterTest is BaseCowTest {
             "Router did not collect DAI protocol fees"
         );
         assertEq(
-            cowRouter.getProtocolFees(dai),
+            cowRouter.getCollectedProtocolFees(dai),
             expectedProtocolFees[daiIdx],
             "Collected DAI fees not registered in the router state"
         );
@@ -763,7 +763,7 @@ contract CowRouterTest is BaseCowTest {
             "Router did not collect USDC protocol fees"
         );
         assertEq(
-            cowRouter.getProtocolFees(usdc),
+            cowRouter.getCollectedProtocolFees(usdc),
             expectedProtocolFees[usdcIdx],
             "Collected USDC fees not registered in the router state"
         );

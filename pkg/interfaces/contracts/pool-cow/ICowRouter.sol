@@ -9,12 +9,12 @@ import { SwapKind } from "../vault/VaultTypes.sol";
 interface ICowRouter {
     /**
      * @notice Data for the swap and donate hook.
-     * @dev Swap and donate hook is used to swap on CoW AMM pools and donate surplus or fees to the same pool.
+     * @dev The swap and donate hook is used to swap on CoW AMM pools and donate surplus or fees to the same pool.
      * @param pool Address of the CoW AMM Pool
      * @param sender Account originating the swap and donate operation
      * @param swapKind Type of swap (exact in or exact out)
-     * @param swapTokenIn Token to be swapped from
-     * @param swapTokenOut Token to be swapped to
+     * @param swapTokenIn The token entering the Vault (balance increases)
+     * @param swapTokenOut The token leaving the Vault (balance decreases)
      * @param swapMaxAmountIn Exact amount in, when swap is EXACT_IN, or max amount in if swap is EXACT OUT
      * @param swapMinAmountOut Max amount out, when swap is EXACT_IN, or exact amount out if swap is EXACT OUT
      * @param swapDeadline Deadline for the swap, after which it will revert
@@ -36,7 +36,7 @@ interface ICowRouter {
 
     /**
      * @notice Data for the donate hook.
-     * @dev Donate hook is used to donate surplus or fees to a CoW AMM pool.
+     * @dev The donate hook is used to donate surplus or fees to a CoW AMM pool.
      * @param pool Address of the CoW AMM Pool
      * @param sender Account originating the donate operation
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
@@ -53,11 +53,11 @@ interface ICowRouter {
     error SwapDeadline();
 
     /**
-     * @notice The `newProtocolFeePercentage` is below the minimum limit.
-     * @param newProtocolFeePercentage New value of protocol fee percentage
-     * @param limit The minimum limit of the protocol fee percentage value
+     * @notice The `newProtocolFeePercentage` is above the maximum limit.
+     * @param newProtocolFeePercentage New value of the protocol fee percentage
+     * @param maxProtocolFeePercentage The maximum protocol fee percentage
      */
-    error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 limit);
+    error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
 
     /// @notice The caller tried to set an invalid address as the fee sweeper.
     error InvalidFeeSweeper(address invalidFeeSweeper);
@@ -96,7 +96,10 @@ interface ICowRouter {
      */
     event CoWDonation(address pool, uint256[] donationAfterFees, uint256[] protocolFeeAmounts, bytes userData);
 
-    /// @notice An admin changed the protocol fee percentage charged over donations.
+    /**
+     * @notice The protocol fee percentage charged on donations was changed.
+     * @param newProtocolFeePercentage The new protocol fee percentage
+     */
     event ProtocolFeePercentageChanged(uint256 newProtocolFeePercentage);
 
     /// @notice An admin changed the contract that receives protocol fees on withdraw.
@@ -106,11 +109,10 @@ interface ICowRouter {
     event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountWithdrawn);
 
     /**
-     * @notice Executes a swap exact in and donate a specified amount to the same CoW AMM Pool.
-     * @dev This is a permissioned function, supposed to be called only by a `CoW Settlement` contract. CoW AMM match
-     * transactions tokens outside of the pool and needs to donate fees (surplus) back to the pool. Therefore, the
-     * swap has no fees, and protocol fees are charged over the donation amount. On success, emits a CoWSwapAndDonation
-     * event.
+     * @notice Executes an ExactIn swap and donates a specified amount to the same CoW AMM Pool.
+     * @dev This is a permissioned function, intended to be called only by a `CoW Settlement` contract. CoW AMM matches
+     * transaction tokens outside of the pool, and donates fees (surplus) back to the pool. Therefore, the swap has no
+     * fees, but protocol fees are charged on the donation amount. On success, it emits a CoWSwapAndDonation event.
      *
      * @param pool The pool with the tokens being swapped
      * @param swapTokenIn The token entering the Vault (balance increases)
@@ -134,11 +136,10 @@ interface ICowRouter {
     ) external returns (uint256 exactAmountOut);
 
     /**
-     * @notice Executes a swap exact out and donate a specified amount to the same CoW AMM Pool.
-     * @dev This is a permissioned function, supposed to be called only by a `CoW Settlement` contract. CoW AMM match
-     * transactions tokens outside of the pool and needs to donate fees (surplus) back to the pool. Therefore, the
-     * swap has no fees, and protocol fees are charged over the donation amount. On success, emits a CoWSwapAndDonation
-     * event.
+     * @notice Executes an ExactOut swap and donates a specified amount to the same CoW AMM Pool.
+     * @dev This is a permissioned function, intended to be called only by a `CoW Settlement` contract. CoW AMM matches
+     * transaction tokens outside of the pool, and donates fees (surplus) back to the pool. Therefore, the swap has no
+     * fees, but protocol fees are charged on the donation amount. On success, it emits a CoWSwapAndDonation event.
      *
      * @param pool The pool with the tokens being swapped
      * @param swapTokenIn The token entering the Vault (balance increases)
@@ -183,20 +184,20 @@ interface ICowRouter {
 
     /**
      * @notice Returns the protocol fee percentage, registered in the CoW Router.
-     * @dev The protocol fee percentage is used to calculate the amount of protocol fees to charge from a donation.
+     * @dev The protocol fee percentage is used to calculate the amount of protocol fees to charge on a donation.
      * The fees stay in the router.
      *
-     * @return protocolFeePercentage Protocol fee percentage with 18 decimals
+     * @return protocolFeePercentage The current protocol fee percentage
      */
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage);
 
     /**
      * @notice Returns the protocol fees collected by the CoW Router for a specific token.
-     * @dev The protocol fees collected by the CoW Router stays in the CoW router contract.
-     * @param token Token to get protocol fees from
+     * @dev The protocol fees collected by the CoW Router stay in the CoW router contract.
+     * @param token Token with collected protocol fees
      * @return fees Protocol fees collected for the specific token
      */
-    function getProtocolFees(IERC20 token) external view returns (uint256 fees);
+    function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees);
 
     /**
      * @notice Gets the address that will receive protocol fees when withdraw is called.
@@ -206,8 +207,8 @@ interface ICowRouter {
 
     /**
      * @notice Sets the protocol fee percentage.
-     * @dev This is a permissioned function. Besides, it caps the protocol fee percentage to a maximum value,
-     * registered as a constant in the CoW AMM Router.
+     * @dev This is a permissioned function. The protocol fee percentage is capped at a maximum value, registered as a
+     * constant in the CoW AMM Router.
      *
      * @param newProtocolFeePercentage New value of the protocol fee percentage
      */
