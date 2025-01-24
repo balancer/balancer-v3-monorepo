@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import '@nomicfoundation/hardhat-ethers';
 import '@nomicfoundation/hardhat-toolbox';
 import '@typechain/hardhat';
@@ -11,6 +12,10 @@ export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+    },
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || '',
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
   solidity: {

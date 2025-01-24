@@ -16,10 +16,19 @@ import {
     ICowConditionalOrder,
     GPv2Order
 } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrder.sol";
+import {
+    ICowConditionalOrderGenerator
+} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrderGenerator.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 // solhint-disable not-rely-on-time
+
+/**
+ * @title CowSwapFeeBurner
+ * @notice A contract that burns protocol fees using CowSwap.
+ * To make the burner work, it is necessary to run the Cow Watch-Tower(https://github.com/cowprotocol/watch-tower)
+ */
 contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
     struct ShortGPv2Order {
         IERC20 buyToken;
@@ -28,6 +37,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         uint32 validTo;
     }
 
+    bytes4 internal constant _SIGNATURE_VERIFIER_MUXER_INTERFACE = 0x62af8dc2;
     bytes32 internal immutable _sellKind = keccak256("sell");
     bytes32 internal immutable _tokenBalance = keccak256("erc20");
 
@@ -96,6 +106,15 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         emit OrderReverted(sellToken, receiver, amount);
     }
 
+    function emergencyRevertOrder(IERC20 sellToken, address receiver) external authenticate {
+        delete _orders[sellToken];
+
+        uint256 amount = sellToken.balanceOf(address(this));
+        SafeERC20.safeTransfer(sellToken, receiver, amount);
+
+        emit OrderReverted(sellToken, receiver, amount);
+    }
+
     /***************************************************************************
                             IProtocolFeeBurner
     ***************************************************************************/
@@ -144,7 +163,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
                             ICowConditionalOrder
     ***************************************************************************/
 
-    /// @inheritdoc ICowConditionalOrder
+    /// @inheritdoc ICowConditionalOrderGenerator
     function getTradeableOrder(
         address,
         address,
@@ -209,8 +228,14 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view override(ERC165, IERC165) returns (bool) {
+        // Fails on SignatureVerifierMuxer due to compatibility issues with ComposableCow.
+        if (interfaceId == _SIGNATURE_VERIFIER_MUXER_INTERFACE) {
+            revert InterfaceIsSignatureVerifierMuxer();
+        }
+
         return
             interfaceId == type(ICowConditionalOrder).interfaceId ||
+            interfaceId == type(ICowConditionalOrderGenerator).interfaceId ||
             interfaceId == type(IERC1271).interfaceId ||
             super.supportsInterface(interfaceId);
     }

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -12,6 +13,9 @@ import {
     ICowConditionalOrder,
     GPv2Order
 } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrder.sol";
+import {
+    ICowConditionalOrderGenerator
+} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrderGenerator.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
@@ -384,11 +388,16 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         );
     }
 
-    function testSupportsInterface() public view {
+    function testSupportsInterface() public {
         assertEq(
             cowSwapFeeBurner.supportsInterface(type(ICowConditionalOrder).interfaceId),
             true,
             "supportsInterface should return true for ICowConditionalOrder"
+        );
+        assertEq(
+            cowSwapFeeBurner.supportsInterface(type(ICowConditionalOrderGenerator).interfaceId),
+            true,
+            "supportsInterface should return false for ICowConditionalOrderGenerator"
         );
         assertEq(
             cowSwapFeeBurner.supportsInterface(type(IERC1271).interfaceId),
@@ -396,10 +405,40 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             "supportsInterface should return true for IERC1271"
         );
         assertEq(
+            cowSwapFeeBurner.supportsInterface(type(IERC165).interfaceId),
+            true,
+            "supportsInterface should return false for IERC165"
+        );
+        assertEq(
             cowSwapFeeBurner.supportsInterface(type(IERC20).interfaceId),
             false,
             "supportsInterface should return false for IERC20"
         );
+
+        assertEq(
+            cowSwapFeeBurner.supportsInterface(0x01ffc9a7), // IERC165.supportsInterface(bytes4)
+            true,
+            "supportsInterface should return true for the hardcoded selector of ERC165"
+        );
+        assertEq(
+            cowSwapFeeBurner.supportsInterface(0x1626ba7e), // IERC1271.isValidSignature(bytes32,bytes)
+            true,
+            "supportsInterface should return true for the hardcoded selector of isValidSignature"
+        );
+        assertEq(
+            cowSwapFeeBurner.supportsInterface(0xb8296fc4), // ICowConditionalOrderGenerator.getTradeableOrder(address,address,bytes32,bytes,bytes)
+            true,
+            "supportsInterface should return true for the hardcoded selector of getTradeableOrder"
+        );
+
+        assertEq(
+            cowSwapFeeBurner.supportsInterface(0x00000000),
+            false,
+            "supportsInterface should return false for an unknown interface"
+        );
+
+        vm.expectRevert(ICowSwapFeeBurner.InterfaceIsSignatureVerifierMuxer.selector);
+        cowSwapFeeBurner.supportsInterface(0x62af8dc2);
     }
 
     function testRetryOrder() public {
@@ -524,6 +563,46 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.revertOrder(dai, alice);
     }
 
+    function testRevertOrderWithoutPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        cowSwapFeeBurner.revertOrder(dai, alice);
+    }
+
+    function testEmergencyRevertOrder() public {
+        _grantBurnRolesAndApproveTokens();
+
+        _mockComposableCowCreate(dai);
+        _burn();
+
+        uint256 halfAmount = TEST_BURN_AMOUNT / 2;
+
+        uint256 balanceBefore = dai.balanceOf(alice);
+
+        vm.prank(vaultRelayerMock);
+        SafeERC20.safeTransferFrom(dai, address(cowSwapFeeBurner), vaultRelayerMock, halfAmount);
+        skip(ORDER_LIFETIME + 1);
+
+        _mockComposableCowCreate(dai);
+        vm.expectEmit();
+        emit ICowSwapFeeBurner.OrderReverted(dai, alice, halfAmount);
+        cowSwapFeeBurner.emergencyRevertOrder(dai, alice);
+
+        assertEq(dai.balanceOf(alice), balanceBefore + halfAmount, "alice should have received the tokens");
+        assertEq(
+            cowSwapFeeBurner.getOrderStatus(dai),
+            ICowSwapFeeBurner.OrderStatus.NotExist,
+            "Order should be removed"
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+    }
+
+    function testEmergencyRevertWithoutPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        cowSwapFeeBurner.emergencyRevertOrder(dai, alice);
+    }
+
     function testGetOrderStatus() public {
         _grantBurnRolesAndApproveTokens();
 
@@ -579,6 +658,10 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         authorizer.grantRole(cowSwapFeeBurner.getActionId(CowSwapFeeBurner.burn.selector), alice);
         authorizer.grantRole(cowSwapFeeBurner.getActionId(CowSwapFeeBurner.retryOrder.selector), address(this));
         authorizer.grantRole(cowSwapFeeBurner.getActionId(CowSwapFeeBurner.revertOrder.selector), address(this));
+        authorizer.grantRole(
+            cowSwapFeeBurner.getActionId(CowSwapFeeBurner.emergencyRevertOrder.selector),
+            address(this)
+        );
 
         vm.prank(alice);
         dai.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);

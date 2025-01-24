@@ -77,8 +77,9 @@ __metadata:
     "@types/mocha": "npm:^10.0.0"
     "@types/node": "npm:^14.14.31"
     chai: "npm:^4.3.7"
+    dotenv: "npm:^16.4.7"
     ds-test: "https://github.com/dapphub/ds-test#e282159d5170298eb2455a6c05280ab5a73a4ef0"
-    ethers: "npm:^6.5.1"
+    ethers: "npm:6.13.5"
     forge-gas-snapshot: "https://github.com/ylv-io/forge-gas-snapshot"
     forge-std: "https://github.com/foundry-rs/forge-std.git#v1.8.1"
     hardhat-contract-sizer: "npm:^2.10.0"
@@ -1656,6 +1657,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:22.7.5":
+  version: 22.7.5
+  resolution: "@types/node@npm:22.7.5"
+  dependencies:
+    undici-types: "npm:~6.19.2"
+  checksum: e442bb5c3562677b9d4a40df99f2ac560184a746240b0c2527b25b37c250b60a8599fd4b248e823a615052b8618d793eb169144db9c55cf0c200506fae9a9078
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:^10.0.3":
   version: 10.17.60
   resolution: "@types/node@npm:10.17.60"
@@ -3085,6 +3095,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dotenv@npm:^16.4.7":
+  version: 16.4.7
+  resolution: "dotenv@npm:16.4.7"
+  checksum: 7abc0d9883e834aa4a982e7f450d4786322a63bb3c5f85aaa77e8e462780135f06e707bd3081ae53a4c52aa99ab2257266ff74e2a27388888a1ed0cb95cae13e
+  languageName: node
+  linkType: hard
+
 "ds-test@https://github.com/dapphub/ds-test#e282159d5170298eb2455a6c05280ab5a73a4ef0":
   version: 1.0.0
   resolution: "ds-test@https://github.com/dapphub/ds-test.git#commit=e282159d5170298eb2455a6c05280ab5a73a4ef0"
@@ -3575,6 +3592,21 @@ __metadata:
     ethereum-cryptography: "npm:^0.1.3"
     rlp: "npm:^2.2.4"
   checksum: 36c003459e6140996bdf79cf501ad9f49a17476d49b90b67fb37fd83b1d3e5288a831155d7483ebb4f653936c514db1003a25059a2e0c9a6840fa6d578d75a09
+  languageName: node
+  linkType: hard
+
+"ethers@npm:6.13.5":
+  version: 6.13.5
+  resolution: "ethers@npm:6.13.5"
+  dependencies:
+    "@adraffy/ens-normalize": "npm:1.10.1"
+    "@noble/curves": "npm:1.2.0"
+    "@noble/hashes": "npm:1.3.2"
+    "@types/node": "npm:22.7.5"
+    aes-js: "npm:4.0.0-beta.5"
+    tslib: "npm:2.7.0"
+    ws: "npm:8.17.1"
+  checksum: f80fe85e69e7b0ef54d1714c1e833e016ccabe56ce05ffbd865885b5f69323a8302b4d94788fd79c6762f7e8f406a975aba71e463fc966081c2dba3c5e64de1b
   languageName: node
   linkType: hard
 
@@ -7909,6 +7941,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tslib@npm:2.7.0":
+  version: 2.7.0
+  resolution: "tslib@npm:2.7.0"
+  checksum: ce449bc5c1e6962ec63ef7907d4a476378251f78df591eb7ba50f9498fb4d8ff44d0acfdee6555e0a9bbd0b6152ecba16779d2273a6e06b44279bb223accd563
+  languageName: node
+  linkType: hard
+
 "tslib@npm:^1.8.1, tslib@npm:^1.9.3":
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
@@ -8116,6 +8155,13 @@ __metadata:
   version: 2.0.5
   resolution: "undefsafe@npm:2.0.5"
   checksum: ae6c8e9192b85698bbdc7f1e2127c13b9fc6344b6d51ccd13ea98b349e8f36d9fef3f13125a50fa135d3dc14d6bd190b566f0cc515f89a76e36a6d05d5d724b6
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~6.19.2":
+  version: 6.19.8
+  resolution: "undici-types@npm:6.19.8"
+  checksum: 27c8b8f8e484976a6dd4f5f997fcbdf20ad85213575061a37306e4fb12b9963c311d383625aa6db874f8f6c4ed88d509fd007a10b90b359b04819fb239418951
   languageName: node
   linkType: hard
 
@@ -8412,6 +8458,21 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: e7845f0249f82d2b262b6e794b42a20986092f2feb34d22be75f1a0d46f4824404cb046b3815dadc526eec9f9606f2ae94986745ae136e5197a88cbee1db58a2
+  languageName: node
+  linkType: hard
+
+"ws@npm:8.17.1":
+  version: 8.17.1
+  resolution: "ws@npm:8.17.1"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 2b3b8c40e0e9156645a62b1d33ae46330730e8d303996d1cf3b68cc300e742cd44a5b9f3d7b24b9bfdfb19dfec45cc650cd39ec7ba4e36eb7363c1ced8e08f77
   languageName: node
   linkType: hard
 
