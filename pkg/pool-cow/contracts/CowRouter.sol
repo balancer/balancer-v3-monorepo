@@ -30,7 +30,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
     uint256 internal _protocolFeePercentage;
     // Store the total amount of fees collected in each token.
-    mapping(IERC20 token => uint256 feeAmount) internal _protocolFees;
+    mapping(IERC20 token => uint256 feeAmount) internal _collectedProtocolFees;
 
     constructor(IVault vault, uint256 protocolFeePercentage) VaultGuard(vault) SingletonAuthentication(vault) {
         _setProtocolFeePercentage(protocolFeePercentage);
@@ -46,8 +46,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     /// @inheritdoc ICowRouter
-    function getProtocolFees(IERC20 token) external view returns (uint256 fees) {
-        return _protocolFees[token];
+    function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees) {
+        return _collectedProtocolFees[token];
     }
 
     /// @inheritdoc ICowRouter
@@ -275,7 +275,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
             uint256 donationAndFees = amountsToDonate[i];
             uint256 protocolFee = donationAndFees.mulUp(_protocolFeePercentage);
-            _protocolFees[token] += protocolFee;
+            _collectedProtocolFees[token] += protocolFee;
             protocolFeeAmounts[i] = protocolFee;
             donatedAmounts[i] = donationAndFees - protocolFee;
         }

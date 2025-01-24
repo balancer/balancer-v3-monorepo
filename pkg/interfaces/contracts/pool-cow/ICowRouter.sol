@@ -176,7 +176,7 @@ interface ICowRouter {
      * @param token Token with collected protocol fees
      * @return fees Protocol fees collected for the specific token
      */
-    function getProtocolFees(IERC20 token) external view returns (uint256 fees);
+    function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees);
 
     /**
      * @notice Sets the protocol fee percentage.
