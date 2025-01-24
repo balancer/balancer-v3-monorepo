@@ -19,6 +19,7 @@ import {
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
+// solhint-disable not-rely-on-time
 contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
     struct ShortGPv2Order {
         IERC20 buyToken;
@@ -57,55 +58,42 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     }
 
     /// @inheritdoc ICowSwapFeeBurner
+    function getOrderStatus(IERC20 sellToken) external view returns (OrderStatus status) {
+        (status, ) = _getOrderStatusAndBalance(sellToken);
+    }
+
+    /// @inheritdoc ICowSwapFeeBurner
     function retryOrder(IERC20 sellToken, uint256 minTargetTokenAmount, uint256 deadline) external authenticate {
-        ShortGPv2Order memory shortOrder = _orders[sellToken];
+        (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(sellToken);
 
-        uint256 feeAmount = sellToken.balanceOf(address(this));
+        _checkDeadline(deadline);
+        _checkMinTargetTokenAmount(minTargetTokenAmount);
 
-        if (shortOrder.validTo == 0) {
-            revert OrderIsNotExist(sellToken);
-        } else if (shortOrder.validTo <= block.timestamp) {
-            revert LastOrderStillActive();
-        } else if (deadline < block.timestamp) {
-            revert InvalidOrderParameters("Deadline is in the past");
-        } else if (feeAmount == 0) {
-            revert OrderIsFilled();
+        if (status != OrderStatus.Failed) {
+            revert OrderHasUnexpectedStatus(status);
         }
 
-        composableCow.create(
-            ICowConditionalOrder.ConditionalOrderParams({
-                handler: ICowConditionalOrder(address(this)),
-                salt: bytes32(0),
-                staticInput: abi.encode(sellToken)
-            }),
-            true
-        );
-
-        _orders[sellToken].validTo = uint32(deadline);
         _orders[sellToken].buyAmount = minTargetTokenAmount;
+        _orders[sellToken].validTo = uint32(deadline);
 
-        emit OrderRetry(sellToken, feeAmount, minTargetTokenAmount, deadline);
+        _createCowOrder(sellToken);
+
+        emit OrderRetried(sellToken, amount, minTargetTokenAmount, deadline);
     }
 
     /// @inheritdoc ICowSwapFeeBurner
     function revertOrder(IERC20 sellToken, address receiver) external authenticate {
-        ShortGPv2Order memory shortOrder = _orders[sellToken];
+        (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(sellToken);
 
-        uint256 feeAmount = sellToken.balanceOf(address(this));
-
-        if (shortOrder.validTo == 0) {
-            revert OrderIsNotExist(sellToken);
-        } else if (shortOrder.validTo <= block.timestamp) {
-            revert LastOrderStillActive();
-        } else if (feeAmount == 0) {
-            revert OrderIsFilled();
+        if (status != OrderStatus.Failed) {
+            revert OrderHasUnexpectedStatus(status);
         }
 
         delete _orders[sellToken];
 
-        SafeERC20.safeTransfer(sellToken, receiver, feeAmount);
+        SafeERC20.safeTransfer(sellToken, receiver, amount);
 
-        emit OrderRevert(sellToken, receiver, feeAmount);
+        emit OrderReverted(sellToken, receiver, amount);
     }
 
     /***************************************************************************
@@ -126,24 +114,19 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             revert InvalidOrderParameters("Fee token and target token are the same");
         } else if (feeTokenAmount == 0) {
             revert InvalidOrderParameters("Fee token amount is zero");
-        } else if (minTargetTokenAmount == 0) {
-            revert InvalidOrderParameters("Min target token amount is zero");
-        } else if (deadline < block.timestamp) {
-            revert InvalidOrderParameters("Deadline is in the past");
-        } else if (_orders[feeToken].validTo <= block.timestamp) {
-            revert LastOrderStillActive();
+        }
+
+        _checkDeadline(deadline);
+        _checkMinTargetTokenAmount(minTargetTokenAmount);
+
+        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken);
+        if (status != OrderStatus.NotExist && status != OrderStatus.Filled) {
+            revert OrderHasUnexpectedStatus(status);
         }
 
         SafeERC20.safeTransferFrom(feeToken, msg.sender, address(this), feeTokenAmount);
 
-        composableCow.create(
-            ICowConditionalOrder.ConditionalOrderParams({
-                handler: ICowConditionalOrder(address(this)),
-                salt: bytes32(0),
-                staticInput: abi.encode(feeToken)
-            }),
-            true
-        );
+        _createCowOrder(feeToken);
 
         feeToken.approve(vaultRelayer, feeTokenAmount);
 
@@ -200,30 +183,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         }
     }
 
-    function _getOrder(IERC20 sellToken) internal view returns (GPv2Order memory) {
-        ShortGPv2Order memory shortOrder = _orders[sellToken];
-
-        if (shortOrder.validTo == 0) {
-            revert OrderIsNotExist(sellToken);
-        }
-
-        return
-            GPv2Order({
-                sellToken: sellToken,
-                buyToken: shortOrder.buyToken,
-                receiver: shortOrder.receiver,
-                sellAmount: sellToken.balanceOf(address(this)),
-                buyAmount: shortOrder.buyAmount,
-                validTo: shortOrder.validTo,
-                appData: appData,
-                feeAmount: 0,
-                kind: _sellKind,
-                partiallyFillable: true,
-                sellTokenBalance: _tokenBalance,
-                buyTokenBalance: _tokenBalance
-            });
-    }
-
     /***************************************************************************
                                     Others
     ***************************************************************************/
@@ -254,5 +213,75 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             interfaceId == type(ICowConditionalOrder).interfaceId ||
             interfaceId == type(IERC1271).interfaceId ||
             super.supportsInterface(interfaceId);
+    }
+
+    /***************************************************************************
+                                Private Functions
+    ***************************************************************************/
+
+    function _getOrder(IERC20 sellToken) private view returns (GPv2Order memory) {
+        ShortGPv2Order memory shortOrder = _orders[sellToken];
+
+        if (shortOrder.validTo == 0) {
+            revert OrderNotValid("Order does not exist");
+        }
+
+        return
+            GPv2Order({
+                sellToken: sellToken,
+                buyToken: shortOrder.buyToken,
+                receiver: shortOrder.receiver,
+                sellAmount: sellToken.balanceOf(address(this)),
+                buyAmount: shortOrder.buyAmount,
+                validTo: shortOrder.validTo,
+                appData: appData,
+                feeAmount: 0,
+                kind: _sellKind,
+                partiallyFillable: true,
+                sellTokenBalance: _tokenBalance,
+                buyTokenBalance: _tokenBalance
+            });
+    }
+
+    function _getOrderStatusAndBalance(IERC20 sellAmount) private view returns (OrderStatus, uint256) {
+        ShortGPv2Order storage shortOrder = _orders[sellAmount];
+
+        uint256 deadline = shortOrder.validTo;
+
+        if (deadline == 0) {
+            return (OrderStatus.NotExist, 0);
+        }
+
+        uint256 balance = sellAmount.balanceOf(address(this));
+        if (balance == 0) {
+            return (OrderStatus.Filled, balance);
+        } else if (deadline >= block.timestamp) {
+            return (OrderStatus.Active, balance);
+        } else {
+            return (OrderStatus.Failed, balance);
+        }
+    }
+
+    function _checkDeadline(uint256 deadline) private view {
+        if (deadline < block.timestamp) {
+            revert InvalidOrderParameters("Deadline is in the past");
+        }
+    }
+
+    function _checkMinTargetTokenAmount(uint256 minTargetTokenAmount) private pure {
+        if (minTargetTokenAmount == 0) {
+            revert InvalidOrderParameters("Min target token amount is zero");
+        }
+    }
+
+    function _createCowOrder(IERC20 sellToken) private {
+        composableCow.create(
+            ICowConditionalOrder.ConditionalOrderParams({
+                handler: ICowConditionalOrder(address(this)),
+                salt: bytes32(0),
+                staticInput: abi.encode(sellToken)
+            }),
+            true
+        );
     }
 }

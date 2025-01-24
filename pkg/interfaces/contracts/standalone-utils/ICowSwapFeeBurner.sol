@@ -10,14 +10,19 @@ import { ICowConditionalOrder, GPv2Order } from "../solidity-utils/misc/ICowCond
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface ICowSwapFeeBurner is IERC165, IERC1271, IProtocolFeeBurner, ICowConditionalOrder {
+    enum OrderStatus {
+        NotExist,
+        Active,
+        Filled,
+        Failed
+    }
+
     error InvalidOrderParameters(string reason);
     error NonZeroOffchainInput();
-    error OrderIsNotExist(IERC20 sellToken);
-    error LastOrderStillActive();
-    error OrderIsFilled();
+    error OrderHasUnexpectedStatus(OrderStatus actualStatus);
 
-    event OrderRetry(IERC20 sellToken, uint256 sellAmount, uint256 minTargetTokenAmount, uint256 deadline);
-    event OrderRevert(IERC20 sellToken, address receiver, uint256 sellAmount);
+    event OrderRetried(IERC20 sellToken, uint256 sellAmount, uint256 minTargetTokenAmount, uint256 deadline);
+    event OrderReverted(IERC20 sellToken, address receiver, uint256 sellAmount);
 
     /**
      * @notice Get the order at the sell token.
@@ -25,6 +30,13 @@ interface ICowSwapFeeBurner is IERC165, IERC1271, IProtocolFeeBurner, ICowCondit
      * @return The order at the sell token.
      */
     function getOrder(IERC20 sellToken) external view returns (GPv2Order memory);
+
+    /**
+     * @notice Get the status of the order at the sell token.
+     * @param sellToken The token to sell in the order.
+     * @return The status of the order at the sell token.
+     */
+    function getOrderStatus(IERC20 sellToken) external view returns (OrderStatus);
     
     /**
      * @notice Retry an order that has not been filled yet and expired.
