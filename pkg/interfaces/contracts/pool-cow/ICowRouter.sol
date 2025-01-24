@@ -13,8 +13,8 @@ interface ICowRouter {
      * @param pool Address of the CoW AMM Pool
      * @param sender Account originating the swap and donate operation
      * @param swapKind Type of swap (exact in or exact out)
-     * @param swapTokenIn Token to be swapped from
-     * @param swapTokenOut Token to be swapped to
+     * @param swapTokenIn The token entering the Vault (balance increases)
+     * @param swapTokenOut The token leaving the Vault (balance decreases)
      * @param swapMaxAmountIn Exact amount in, when swap is EXACT_IN, or max amount in if swap is EXACT OUT
      * @param swapMinAmountOut Max amount out, when swap is EXACT_IN, or exact amount out if swap is EXACT OUT
      * @param swapDeadline Deadline for the swap, after which it will revert
