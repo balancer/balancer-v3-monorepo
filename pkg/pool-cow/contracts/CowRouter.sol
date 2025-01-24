@@ -344,7 +344,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                 token.safeTransferFrom(sender, address(this), routerAmount);
             }
 
-            // The swap's amount out goes to the sender, except by the part that was donated.
+            // The swap amount out goes to the sender, except for the portion that was donated.
             uint256 senderAmount = senderAmounts[i];
             if (senderAmount > 0) {
                 _vault.sendTo(token, sender, senderAmount);
