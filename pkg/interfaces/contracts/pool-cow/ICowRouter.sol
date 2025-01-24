@@ -99,7 +99,11 @@ interface ICowRouter {
      */
     event ProtocolFeePercentageChanged(uint256 newProtocolFeePercentage);
 
-    /// @notice An admin changed the contract that receives protocol fees on withdraw.
+    /**
+     * @notice The fee sweeper contract was changed.
+     * @dev This is the contract that receives protocol fees on withdrawal.
+     * @param newFeeSweeper The address of the new fee sweeper
+     */
     event FeeSweeperChanged(address newFeeSweeper);
 
     /// @notice The protocol fees, accrued in token terms, were withdrawn to the feeSweeper.
@@ -171,9 +175,9 @@ interface ICowRouter {
     function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external;
 
     /**
-     * @notice Withdraws protocol fees charged in token amounts to the fee sweeper.
+     * @notice Withdraws collected protocol fees to the fee sweeper.
      * @dev Permissionless because the fee sweeper (receiver of protocol fees) is defined by a variable with a
-     * permissioned setter. Emits the event ProtocolFeesWithdrawn on success.
+     * permissioned setter. Emits the ProtocolFeesWithdrawn event on success.
      *
      * @param token Token in which the protocol fees were charged
      */
@@ -197,7 +201,7 @@ interface ICowRouter {
     function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees);
 
     /**
-     * @notice Gets the address that will receive protocol fees when withdraw is called.
+     * @notice Gets the address that will receive protocol fees on withdrawal.
      * @param feeSweeper Address that receives protocol fees
      */
     function getFeeSweeper() external view returns (address feeSweeper);
@@ -212,9 +216,9 @@ interface ICowRouter {
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external;
 
     /**
-     * @notice Sets the address that will receive protocol fees when withdraw is called.
+     * @notice Sets the address that will receive protocol fees on withdrawal.
      * @dev Fee Sweeper shall not be neither zero address nor the router address.
-     * @param newFeeSweeper New address that will receive protocol fees
+     * @param newFeeSweeper Address of the new fee sweeper
      */
     function setFeeSweeper(address newFeeSweeper) external;
 }

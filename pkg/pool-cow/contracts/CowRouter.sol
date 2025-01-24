@@ -28,7 +28,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     // Protocol fee percentage capped at 10%.
     uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
 
-    // Address that will receive the protocol fees on withdraw.
+    // Address that will receive the protocol fees on withdrawal.
     address internal _feeSweeper;
     uint256 internal _protocolFeePercentage;
     // Store the total amount of fees collected in each token.
