@@ -129,7 +129,6 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgePoolFactoryDepl
             roleAccounts,
             MAX_SWAP_FEE_PERCENTAGE,
             false,
-            false,
             ZERO_BYTES32
         );
     }
@@ -146,7 +145,6 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgePoolFactoryDepl
             roleAccounts,
             MAX_SWAP_FEE_PERCENTAGE,
             supportsDonation,
-            false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 

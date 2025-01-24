@@ -8,10 +8,12 @@ import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
+    AddLiquidityKind,
     LiquidityManagement,
     TokenConfig,
     PoolSwapParams,
     HookFlags,
+    RemoveLiquidityKind,
     SwapKind,
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -112,6 +114,8 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     /// @inheritdoc IHooks
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         hookFlags.shouldCallComputeDynamicSwapFee = true;
+        hookFlags.shouldCallAfterAddLiquidity = true;
+        hookFlags.shouldCallAfterRemoveLiquidity = true;
     }
 
     /**
@@ -187,7 +191,100 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
-        return (true, getSurgeFeePercentage(params, pool, staticSwapFeePercentage));
+        return (true, getSurgeSwapFeePercentage(params, pool, staticSwapFeePercentage));
+    }
+
+    function getSurgeSwapFeePercentage(PoolSwapParams calldata params, address pool, uint256 staticSwapFeePercentage) public view returns (uint256) {
+        uint256 numTokens = params.balancesScaled18.length;
+
+        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
+
+        uint256[] memory newBalances = new uint256[](numTokens);
+        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            newBalances[params.indexIn] += params.amountGivenScaled18;
+            newBalances[params.indexOut] -= amountCalculatedScaled18;
+        } else {
+            newBalances[params.indexIn] += amountCalculatedScaled18;
+            newBalances[params.indexOut] -= params.amountGivenScaled18;
+        }
+
+        return _getSurgeFeePercentage(params, pool, staticSwapFeePercentage, newBalances);
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterAddLiquidity(
+        address,
+        address pool,
+        AddLiquidityKind kind,
+        uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
+        uint256,
+        uint256[] memory balancesScaled18,
+        bytes memory
+    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
+        hookAdjustedAmountsInRaw = amountsInRaw; // don't adjust amounts in.
+
+        // Proportional add is always fine.
+        if (kind == AddLiquidityKind.PROPORTIONAL) {
+            return (true, hookAdjustedAmountsInRaw);
+        }
+
+        // Rebuild old balances before adding liquidity.
+        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
+        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
+            oldBalancesScaled18[i] = balancesScaled18[i] - amountsInScaled18[i];
+        }
+
+        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
+        uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(balancesScaled18);
+
+        bool isSurging = _isSurging(
+            surgeFeeData,
+            oldBalancesScaled18,
+            newTotalImbalance
+        );
+
+        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
+        return (isSurging == false, hookAdjustedAmountsInRaw);
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterRemoveLiquidity(
+        address,
+        address pool,
+        RemoveLiquidityKind kind,
+        uint256,
+        uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
+        uint256[] memory balancesScaled18,
+        bytes memory
+    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
+        hookAdjustedAmountsOutRaw = amountsOutRaw; // don't adjust amounts out.
+
+        // Proportional remove is always fine.
+        if (kind == RemoveLiquidityKind.PROPORTIONAL) {
+            return (true, hookAdjustedAmountsOutRaw);
+        }
+
+        // Rebuild old balances before removing liquidity.
+        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
+        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
+            oldBalancesScaled18[i] = balancesScaled18[i] + amountsOutScaled18[i];
+        }
+
+        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
+        uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(balancesScaled18);
+
+        bool isSurging = _isSurging(
+            surgeFeeData,
+            oldBalancesScaled18,
+            newTotalImbalance
+        );
+
+        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
+        return (isSurging == false, hookAdjustedAmountsOutRaw);
     }
 
     /**
@@ -234,37 +331,22 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
      * @param pool The pool we are computing the fee for
      * @param staticFeePercentage The static fee percentage for the pool (default if there is no surge)
      */
-    function getSurgeFeePercentage(
+    function _getSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
-        uint256 staticFeePercentage
-    ) public view returns (uint256) {
-        uint256 numTokens = params.balancesScaled18.length;
-
-        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
-
-        uint256[] memory newBalances = new uint256[](numTokens);
-        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
-
-        if (params.kind == SwapKind.EXACT_IN) {
-            newBalances[params.indexIn] += params.amountGivenScaled18;
-            newBalances[params.indexOut] -= amountCalculatedScaled18;
-        } else {
-            newBalances[params.indexIn] += amountCalculatedScaled18;
-            newBalances[params.indexOut] -= params.amountGivenScaled18;
-        }
-
+        uint256 staticFeePercentage,
+        uint256[] memory newBalances
+    ) internal view returns (uint256) {
+        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
         uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(newBalances);
 
-        // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
-        if (newTotalImbalance == 0) {
-            return staticFeePercentage;
-        }
+        bool isSurging = _isSurging(
+            surgeFeeData,
+            params.balancesScaled18,
+            newTotalImbalance
+        );
 
-        uint256 oldTotalImbalance = StableSurgeMedianMath.calculateImbalance(params.balancesScaled18);
-
-        SurgeFeeData storage surgeFeeData = _surgeFeePoolData[pool];
-        if (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= surgeFeeData.thresholdPercentage) {
+        if (isSurging == false) {
             return staticFeePercentage;
         }
 
@@ -283,6 +365,25 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
                     uint256(surgeFeeData.thresholdPercentage).complement()
                 )
             );
+    }
+
+    function _isSurging(
+        SurgeFeeData memory surgeFeeData,
+        uint256[] memory currentBalances,
+        uint256 newTotalImbalance
+    ) internal pure returns (bool isSurging) {
+        // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
+        if (newTotalImbalance == 0) {
+            return false;
+        }
+
+        uint256 oldTotalImbalance = StableSurgeMedianMath.calculateImbalance(currentBalances);
+
+        if (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= surgeFeeData.thresholdPercentage) {
+            return false;
+        }
+
+        return true;
     }
 
     /// @dev Assumes the percentage value and sender have been externally validated.
