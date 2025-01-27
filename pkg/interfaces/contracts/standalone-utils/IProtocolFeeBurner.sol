@@ -10,14 +10,14 @@ interface IProtocolFeeBurner {
      * @param feeToken The token in which the fee was originally collected
      * @param exactFeeTokenAmountIn The number of feeTokens collected
      * @param targetToken The preferred token for fee collection (e.g., USDC)
-     * @param minTargetTokenAmountOut The number of target tokens actually received
+     * @param targetTokenAmountOut The number of target tokens actually received
      * @param recipient The address where the target tokens were sent
      */
     event ProtocolFeeBurned(
         IERC20 indexed feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 indexed targetToken,
-        uint256 minTargetTokenAmountOut,
+        uint256 targetTokenAmountOut,
         address recipient
     );
 
