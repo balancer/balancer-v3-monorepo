@@ -157,7 +157,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     /// @inheritdoc ICowRouter
-    function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external {
+    function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external authenticate {
         _vault.unlock(
             abi.encodeCall(
                 CowRouter.donateHook,
