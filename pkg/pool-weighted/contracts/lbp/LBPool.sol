@@ -261,7 +261,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         uint256,
         uint256[] memory,
         uint256[] memory,
-        bytes memory 
+        bytes memory
     ) public view override onlyVault returns (bool success) {
         if (router != _trustedRouter) {
             revert RouterNotTrusted();
@@ -334,11 +334,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         return false;
     }
 
-    function _getBootstrapTokenIndex(
-        address token,
-        TokenConfig[] memory tokenConfig
-    ) internal pure returns (uint256) {
-
+    function _getBootstrapTokenIndex(address token, TokenConfig[] memory tokenConfig) internal pure returns (uint256) {
         IERC20[] memory tokens = new IERC20[](tokenConfig.length);
         for (uint256 i = 0; i < tokenConfig.length; i++) {
             tokens[i] = tokenConfig[i].token;
