@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import {
-    IBalancerContractRegistry
-} from "../standalone-utils/IBalancerContractRegistry.sol";
+import { IBalancerContractRegistry } from "../standalone-utils/IBalancerContractRegistry.sol";
 
 interface IMevTaxHook {
     /**
