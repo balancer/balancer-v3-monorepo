@@ -256,12 +256,12 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     // this function should check if a weight change is ongoing. If it is ongoing, it should revert with "removingLiquidityNOtAllowed"
     function onBeforeRemoveLiquidity(
         address router,
-        address pool,
-        RemoveLiquidityKind kind,
-        uint256 maxBptAmountIn,
-        uint256[] memory minAmountsOutScaled18,
-        uint256[] memory balancesScaled18,
-        bytes memory userData
+        address,
+        RemoveLiquidityKind,
+        uint256,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory 
     ) public view override onlyVault returns (bool success) {
         if (router != _trustedRouter) {
             revert RouterNotTrusted();
@@ -323,11 +323,11 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     }
 
     function _doesPoolContainBootstrapToken(
-        address bootstrapToken,
+        address token,
         TokenConfig[] memory tokenConfig
-    ) internal view returns (bool) {
+    ) internal pure returns (bool) {
         for (uint256 i = 0; i < tokenConfig.length; i++) {
-            if (address(tokenConfig[i].token) == bootstrapToken) {
+            if (address(tokenConfig[i].token) == token) {
                 return true;
             }
         }
@@ -335,19 +335,16 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     }
 
     function _getBootstrapTokenIndex(
-        address bootstrapToken,
+        address token,
         TokenConfig[] memory tokenConfig
-    ) internal view returns (uint256) {
-        // This functin should return 0 if the bootstrapTokenAddress is the smallest address in the TokenConfig.token array.
-        // This function return return 1 if the bootstrapTokenAddress is the largest address in the TokenConfig.token array.
-        // The TokenConfig array only has 2 addresses.
+    ) internal pure returns (uint256) {
 
         IERC20[] memory tokens = new IERC20[](tokenConfig.length);
         for (uint256 i = 0; i < tokenConfig.length; i++) {
             tokens[i] = tokenConfig[i].token;
         }
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(tokens);
-        if (bootstrapToken < address(sortedTokens[1])) {
+        if (token < address(sortedTokens[1])) {
             return 0;
         } else {
             return 1;
