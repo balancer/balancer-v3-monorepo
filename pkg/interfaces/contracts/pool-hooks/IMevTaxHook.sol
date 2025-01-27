@@ -2,6 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import {
+    IBalancerContractRegistry
+} from "../standalone-utils/IBalancerContractRegistry.sol";
+
 interface IMevTaxHook {
     /**
      * @notice The pool was not registered with the MEV Hook contract.
@@ -79,6 +83,9 @@ interface IMevTaxHook {
      * @param sender The address of the sender removed from the MEV tax-exempt list
      */
     event MevTaxExemptSenderRemoved(address sender);
+
+    /// @notice Returns `BalancerContractRegistry`.
+    function getBalancerContractRegistry() external view returns (IBalancerContractRegistry);
 
     /**
      * @notice Check whether the MEV Tax is enabled in the hook.
