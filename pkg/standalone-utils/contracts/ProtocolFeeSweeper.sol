@@ -23,9 +23,8 @@ import {
  *
  * An off-chain process can call `collectAggregateFees(pool)` on the fee controller for a given pool, which will
  * collect and allocate the fees to the protocol and pool creator. `getProtocolFeeAmounts(pool)` returns the fee
- * amounts available for withdrawal. If these are great enough, `sweepProtocolFees(pool)` here will withdraw,
- * convert, and forward them to the final recipient. There is also a `sweepProtocolFeesForToken` function to
- * target a single token within a pool.
+ * amounts available for withdrawal. If these are great enough, `sweepProtocolFeesForToken` here will withdraw,
+ * convert, and forward them to the final recipient.
  */
 contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
@@ -51,7 +50,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     function sweepProtocolFeesForToken(
         address pool,
         IERC20 feeToken,
-        uint256 minAmountOut,
+        uint256 minTargetTokenAmountOut,
         uint256 deadline
     ) external nonReentrant authenticate {
         IProtocolFeeBurner feeBurner = _getValidBurner();
@@ -83,7 +82,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
                         feeToken,
                         withdrawnBalance,
                         targetToken,
-                        minAmountOut,
+                        minTargetTokenAmountOut,
                         _feeRecipient,
                         deadline
                     );

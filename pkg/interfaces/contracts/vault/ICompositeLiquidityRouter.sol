@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 /**
- * @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
+ * @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 pools.
  * @dev This contract allow interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only underlying
  * standard tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add liquidity to an
  * ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both. If the ERC4626 buffers
@@ -153,94 +153,4 @@ interface ICompositeLiquidityRouter {
         address sender,
         bytes memory userData
     ) external returns (address[] memory tokensOut, uint256[] memory amountsOut);
-
-    /***************************************************************************
-                                   Nested pools
-    ***************************************************************************/
-
-    /**
-     * @notice Adds liquidity unbalanced to a nested pool.
-     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
-     * the token in amounts.
-     *
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
-     * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for the operation
-     * @return bptAmountOut Expected amount of parent pool tokens to receive
-     */
-    function addLiquidityUnbalancedNestedPool(
-        address parentPool,
-        address[] memory tokensIn,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256 bptAmountOut);
-
-    /**
-     * @notice Queries an `addLiquidityUnbalancedNestedPool` operation without actually executing it.
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
-     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data required for the operation
-     * @return bptAmountOut Expected amount of parent pool tokens to receive
-     */
-    function queryAddLiquidityUnbalancedNestedPool(
-        address parentPool,
-        address[] memory tokensIn,
-        uint256[] memory exactAmountsIn,
-        address sender,
-        bytes memory userData
-    ) external returns (uint256 bptAmountOut);
-
-    /**
-     * @notice Removes liquidity of a nested pool.
-     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
-     * the token out amounts.
-     *
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
-     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
-     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
-     * @param minAmountsOut Minimum amounts of each outgoing token, corresponding to `tokensOut`
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
-     */
-    function removeLiquidityProportionalNestedPool(
-        address parentPool,
-        uint256 exactBptAmountIn,
-        address[] memory tokensOut,
-        uint256[] memory minAmountsOut,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut);
-
-    /**
-     * @notice Queries an `removeLiquidityProportionalNestedPool` operation without actually executing it.
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
-     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
-     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
-     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
-     */
-    function queryRemoveLiquidityProportionalNestedPool(
-        address parentPool,
-        uint256 exactBptAmountIn,
-        address[] memory tokensOut,
-        address sender,
-        bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
 }
