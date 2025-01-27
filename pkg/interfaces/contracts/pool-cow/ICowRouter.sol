@@ -152,8 +152,8 @@ interface ICowRouter {
 
     /**
      * @notice Executes a donation of a specified amount to a CoW AMM Pool.
-     * @dev This permissionless function can be used by anyone to donate amounts to CoW AMM pools. On success, emits a
-     * CoWDonation event. userData may be used to explain the reason of the CoWDonation.
+     * @dev This is a permissioned function, intended to be used to donate amounts to CoW AMM pools. On success, emits
+     * a CoWDonation event. userData may be used to explain the reason of the CoWDonation.
      *
      * @param pool The pool that receives the donation
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order

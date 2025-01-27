@@ -10,6 +10,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -17,6 +18,7 @@ import { BaseCowTest } from "./utils/BaseCowTest.sol";
 import { CowRouter } from "../../contracts/CowRouter.sol";
 
 contract CowRouterTest is BaseCowTest {
+    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     // 10% max protocol fee percentage.
@@ -35,6 +37,7 @@ contract CowRouterTest is BaseCowTest {
             CowRouter(address(cowRouter)).getActionId(ICowRouter.swapExactOutAndDonateSurplus.selector),
             lp
         );
+        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.donate.selector), lp);
     }
 
     /********************************************************
@@ -514,6 +517,13 @@ contract CowRouterTest is BaseCowTest {
     /********************************************************
                             donate()
     ********************************************************/
+
+    function testDonateIsPermissioned() public {
+        uint256[] memory donationAmounts = [DEFAULT_AMOUNT / 10, DEFAULT_AMOUNT / 10].toMemoryArray();
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        cowRouter.donate(pool, donationAmounts, bytes(""));
+    }
 
     function testDonate__Fuzz(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
         // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
