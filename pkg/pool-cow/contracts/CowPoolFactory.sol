@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { ICowPoolFactory } from "@balancer-labs/v3-interfaces/contracts/cow-pool/ICowPoolFactory.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
+import { ICowPoolFactory } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowPoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     TokenConfig,
@@ -12,13 +12,13 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
-
+import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { CowPool } from "./CowPool.sol";
 
 contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Version {
-    string internal immutable _poolVersion;
+    string internal _poolVersion;
     address internal _trustedCowRouter;
 
     constructor(
@@ -33,7 +33,7 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
     }
 
     /// @inheritdoc IPoolVersion
-    function getPoolVersion() external view returns (string memory) {
+    function getPoolVersion() external view override returns (string memory) {
         return _poolVersion;
     }
 
@@ -46,7 +46,7 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt
-    ) external returns (address pool) {
+    ) external override returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
             revert StandardPoolWithCreator();
         }
@@ -85,7 +85,7 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
     }
 
     /// @inheritdoc ICowPoolFactory
-    function getTrustedCowRouter() external view returns (address) {
+    function getTrustedCowRouter() external view override returns (address) {
         return _trustedCowRouter;
     }
 

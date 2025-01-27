@@ -13,9 +13,10 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
+import { CowPoolContractsDeployer } from "./CowPoolContractsDeployer.sol";
 import { CowRouter } from "../../../contracts/CowRouter.sol";
 
-contract BaseCowTest is BaseVaultTest {
+contract BaseCowTest is BaseVaultTest, CowPoolContractsDeployer {
     using CastingHelpers for address[];
 
     uint256 internal constant _INITIAL_PROTOCOL_FEE_PERCENTAGE = 1e16;
@@ -30,7 +31,7 @@ contract BaseCowTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        cowRouter = new CowRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE);
+        cowRouter = deployCowPoolRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE);
 
         authorizer.grantRole(
             CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),

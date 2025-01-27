@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-contract ICowPoolFactory {
+import { PoolRoleAccounts, TokenConfig } from "../vault/VaultTypes.sol";
+
+interface ICowPoolFactory {
     /// @notice The trusted CoW router cannot be neither address zero nor the address of the factory.
     error InvalidTrustedCowRouter(address invalidTrustedCowRouter);
 
@@ -41,7 +43,7 @@ contract ICowPoolFactory {
      * @dev This permissioned function checks if the new trusted router's address is not zero or the address of the
      * factory, which are not valid addresses.
      *
-     * @return newTrustedCowRouter Address of new trusted CoW AMM Router.
+     * @param newTrustedCowRouter Address of new trusted CoW AMM Router.
      */
     function setTrustedCowRouter(address newTrustedCowRouter) external;
 }

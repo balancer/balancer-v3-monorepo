@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-contract ICowPool {
+interface ICowPool {
     /// @notice Trusted CoW Router has been refreshed with trusted router from the pool factory.
     event CowTrustedRouterRefreshed(address newTrustedCowRouter);
 
