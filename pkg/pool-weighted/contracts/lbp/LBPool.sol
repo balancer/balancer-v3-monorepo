@@ -30,10 +30,10 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     using SafeCast for *;
     address public bootstrapToken;
 
-    uint256 bootstrapTokenIndex;
-
     bool public allowRemovalOnlyAfterWeightChange;
     bool public restrictSaleOfBootstrapToken;
+
+    uint256 private _bootstrapTokenIndex;
 
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight.
     // Weights are 18 decimal floating point values, which fit in less than 64 bits. Store smaller numeric values
@@ -116,7 +116,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
             revert InvalidBootstrapToken();
         }
 
-        bootstrapTokenIndex = _getBootstrapTokenIndex(lbpparams.bootstrapToken, tokenConfig);
+        _bootstrapTokenIndex = _getBootstrapTokenIndex(lbpparams.bootstrapToken, tokenConfig);
         bootstrapToken = lbpparams.bootstrapToken;
         allowRemovalOnlyAfterWeightChange = lbpparams.allowRemovalOnlyAfterWeightChange;
         restrictSaleOfBootstrapToken = lbpparams.restrictSaleOfBootstrapToken;
@@ -253,7 +253,6 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
      * @dev If a weight change is ongoing, the function reverts with "removingLiquidityNotAllowed".
      * @param router The address of the router.
      */
-    // this function should check if a weight change is ongoing. If it is ongoing, it should revert with "removingLiquidityNOtAllowed"
     function onBeforeRemoveLiquidity(
         address router,
         address,
@@ -280,7 +279,6 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
                                   Internal Functions
     *******************************************************************************/
 
-    // This is unused in this contract, but must be overridden from WeightedPool for consistency.
     function _getNormalizedWeight(uint256 tokenIndex) internal view virtual override returns (uint256) {
         if (tokenIndex < _NUM_TOKENS) {
             return _getNormalizedWeights()[tokenIndex];
@@ -313,10 +311,10 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     function _getTokenSwapAllowed(PoolSwapParams memory params) private view returns (bool) {
         if (restrictSaleOfBootstrapToken) {
             if (params.kind == SwapKind.EXACT_IN) {
-                return params.indexIn == bootstrapTokenIndex ? false : true;
+                return params.indexIn == _bootstrapTokenIndex ? false : true;
             } else {
                 // exact out swap
-                return params.indexOut == bootstrapTokenIndex ? false : true;
+                return params.indexOut == _bootstrapTokenIndex ? false : true;
             }
         }
         return true;
