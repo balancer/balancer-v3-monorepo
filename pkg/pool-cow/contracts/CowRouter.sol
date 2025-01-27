@@ -3,8 +3,8 @@
 pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -15,10 +15,9 @@ import {
     VaultSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 
 contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     using FixedPoint for uint256;
@@ -190,7 +189,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     ********************************************************/
 
     /**
-     * @notice Hook for swapping and donating values to a CoW AMM pool.
+     * @notice Hook for swapping and donating to a CoW AMM pool.
      * @dev Can only be called by the Vault.
      * @param swapAndDonateParams Swap and donate params (see ICowRouter for struct definition)
      * @return swapAmountIn Exact amount of tokenIn of the swap
@@ -296,6 +295,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     /********************************************************
                         Private Helpers
     ********************************************************/
+
     function _donateToPool(
         address pool,
         IERC20[] memory tokens,
@@ -318,7 +318,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         _vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
-                to: address(this), // It's a donation, so no BPT will be transferred.
+                to: address(this), // It's a donation, so no BPT will be transferred
                 maxAmountsIn: donatedAmounts,
                 minBptAmountOut: 0,
                 kind: AddLiquidityKind.DONATION,
