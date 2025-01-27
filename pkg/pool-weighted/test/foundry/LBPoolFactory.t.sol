@@ -15,7 +15,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
+import { LBPoolFactory, LBPParams } from "../../contracts/lbp/LBPoolFactory.sol";
 
 contract LBPoolFactoryTest is BaseVaultTest {
     using CastingHelpers for address[];
@@ -26,6 +26,8 @@ contract LBPoolFactoryTest is BaseVaultTest {
     LBPoolFactory internal lbPoolFactory;
 
     string public constant poolVersion = "Pool v1";
+
+    uint256[] internal endWeights = [uint256(30e16), uint256(70e16)];
 
     function setUp() public override {
         super.setUp();
@@ -47,6 +49,15 @@ contract LBPoolFactoryTest is BaseVaultTest {
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
         uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
+        LBPParams memory lbpParams = LBPParams({
+            startTime: uint32(block.timestamp + 100),
+            endTime: uint32(block.timestamp + 200),
+            endWeights: endWeights,
+            bootstrapToken: address(dai),
+            allowRemovalOnlyAfterWeightChange: false,
+            restrictSaleOfBootstrapToken: false
+        });
+
         address lbPool = lbPoolFactory.create(
             "LB Pool",
             "LBP",
@@ -54,8 +65,8 @@ contract LBPoolFactoryTest is BaseVaultTest {
             weights,
             swapFee,
             bob, // owner
-            true, // swapEnabledOnStart
-            ZERO_BYTES32
+            ZERO_BYTES32,
+            lbpParams
         );
 
         vm.expectRevert(IVaultErrors.BeforeInitializeHookFailed.selector);
@@ -64,7 +75,13 @@ contract LBPoolFactoryTest is BaseVaultTest {
     }
 
     function testCreatePool() public {
-        address lbPool = _deployAndInitializeLBPool();
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            address(dai),
+            false,
+            false
+        );
 
         // Verify pool was created and initialized correctly
         assertTrue(vault.isPoolRegistered(lbPool), "Pool not registered in the vault");
@@ -75,7 +92,13 @@ contract LBPoolFactoryTest is BaseVaultTest {
     }
 
     function testDonationNotAllowed() public {
-        address lbPool = _deployAndInitializeLBPool();
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            address(dai),
+            false,
+            false
+        );
 
         // Try to donate to the pool
         vm.startPrank(bob);
@@ -84,9 +107,25 @@ contract LBPoolFactoryTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function _deployAndInitializeLBPool() private returns (address) {
+    function _deployAndInitializeLBPool(
+        uint32 startTime,
+        uint32 endTime,
+        address collateralToken,
+        bool allowRemovalOnlyAfterWeightChange,
+        bool restrictSaleOfBootstrapToken
+        ) private returns (address) {
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
         uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
+
+
+        LBPParams memory lbpParams = LBPParams({
+            startTime: startTime,
+            endTime: endTime,
+            endWeights: endWeights,
+            bootstrapToken: address(collateralToken),
+            allowRemovalOnlyAfterWeightChange: allowRemovalOnlyAfterWeightChange,
+            restrictSaleOfBootstrapToken: restrictSaleOfBootstrapToken
+        });
 
         address lbPool = lbPoolFactory.create(
             "LB Pool",
@@ -95,8 +134,8 @@ contract LBPoolFactoryTest is BaseVaultTest {
             weights,
             swapFee,
             bob, // owner
-            true, // swapEnabledOnStart
-            ZERO_BYTES32
+            ZERO_BYTES32,
+            lbpParams
         );
 
         // Initialize pool.

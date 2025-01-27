@@ -17,6 +17,18 @@ import {
 import { WeightedPool } from "../WeightedPool.sol";
 import { LBPool } from "./LBPool.sol";
 
+import {console} from "forge-std/console.sol";
+
+
+struct LBPParams {
+    uint256 startTime;
+    uint256 endTime;
+    uint256[] endWeights;
+    address bootstrapToken;
+    bool allowRemovalOnlyAfterWeightChange;
+    bool restrictSaleOfBootstrapToken;
+}
+
 /**
  * @notice LBPool Factory.
  * @dev This is a factory specific to LBPools, allowing only 2 tokens.
@@ -71,15 +83,13 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         uint256[] memory normalizedWeights,
         uint256 swapFeePercentage,
         address owner,
-        bool swapEnabledOnStart,
-        bytes32 salt
+        bytes32 salt,
+        LBPParams memory lbpParams
     ) external nonReentrant returns (address pool) {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, tokenConfig.length);
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, normalizedWeights.length);
 
         PoolRoleAccounts memory roleAccounts;
-        // It's not necessary to set the pauseManager, as the owner can already effectively pause the pool by disabling
-        // swaps. There is also no poolCreator, as the owner is already using this to earn revenue directly.
         roleAccounts.swapFeeManager = owner;
 
         pool = _create(
@@ -93,8 +103,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
                 }),
                 getVault(),
                 owner,
-                swapEnabledOnStart,
-                _trustedRouter
+                _trustedRouter,
+                lbpParams,
+                tokenConfig
             ),
             salt
         );
