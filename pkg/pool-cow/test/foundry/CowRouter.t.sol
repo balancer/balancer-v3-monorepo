@@ -10,14 +10,15 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseCowTest } from "./utils/BaseCowTest.sol";
 import { CowRouter } from "../../contracts/CowRouter.sol";
 
 contract CowRouterTest is BaseCowTest {
+    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     // 10% max protocol fee percentage.
@@ -36,11 +37,13 @@ contract CowRouterTest is BaseCowTest {
             CowRouter(address(cowRouter)).getActionId(ICowRouter.swapExactOutAndDonateSurplus.selector),
             lp
         );
+        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.donate.selector), lp);
     }
 
     /********************************************************
                   swapExactInAndDonateSurplus()
     ********************************************************/
+
     function testSwapExactInAndDonateSurplusIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         cowRouter.swapExactInAndDonateSurplus(pool, dai, usdc, 1e18, 0, type(uint32).max, new uint256[](2), bytes(""));
@@ -276,6 +279,7 @@ contract CowRouterTest is BaseCowTest {
     /********************************************************
                   swapExactOutAndDonateSurplus()
     ********************************************************/
+
     function testSwapExactOutAndDonateSurplusIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         cowRouter.swapExactOutAndDonateSurplus(pool, dai, usdc, 1e18, 0, type(uint32).max, new uint256[](2), bytes(""));
@@ -513,6 +517,14 @@ contract CowRouterTest is BaseCowTest {
     /********************************************************
                             donate()
     ********************************************************/
+
+    function testDonateIsPermissioned() public {
+        uint256[] memory donationAmounts = [DEFAULT_AMOUNT / 10, DEFAULT_AMOUNT / 10].toMemoryArray();
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        cowRouter.donate(pool, donationAmounts, bytes(""));
+    }
+
     function testDonate__Fuzz(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
         // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
         protocolFeePercentage = bound(protocolFeePercentage, 0, _MAX_PROTOCOL_FEE_PERCENTAGE);
@@ -542,8 +554,9 @@ contract CowRouterTest is BaseCowTest {
     }
 
     /********************************************************
-                     getProtocolFeePercentage()
+                               ProtocolFeePercentage
     ********************************************************/
+
     function testGetProtocolFeePercentage() public {
         assertEq(
             cowRouter.getProtocolFeePercentage(),
@@ -559,9 +572,6 @@ contract CowRouterTest is BaseCowTest {
         assertEq(cowRouter.getProtocolFeePercentage(), newProtocolFeePercentage, "Protocol fee percentage was not set");
     }
 
-    /********************************************************
-                     setProtocolFeePercentage()
-    ********************************************************/
     function testSetProtocolFeePercentageIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         cowRouter.setProtocolFeePercentage(50e16);
@@ -597,6 +607,7 @@ contract CowRouterTest is BaseCowTest {
     /********************************************************
                           Private Helpers
     ********************************************************/
+
     function _getDonationAndFees(
         uint256 donationDai,
         uint256 donationUsdc,
@@ -638,7 +649,7 @@ contract CowRouterTest is BaseCowTest {
             "Router did not collect DAI protocol fees"
         );
         assertEq(
-            cowRouter.getProtocolFees(dai),
+            cowRouter.getCollectedProtocolFees(dai),
             expectedProtocolFees[daiIdx],
             "Collected DAI fees not registered in the router state"
         );
@@ -649,7 +660,7 @@ contract CowRouterTest is BaseCowTest {
             "Router did not collect USDC protocol fees"
         );
         assertEq(
-            cowRouter.getProtocolFees(usdc),
+            cowRouter.getCollectedProtocolFees(usdc),
             expectedProtocolFees[usdcIdx],
             "Collected USDC fees not registered in the router state"
         );
