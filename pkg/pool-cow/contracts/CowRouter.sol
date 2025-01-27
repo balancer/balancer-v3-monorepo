@@ -154,7 +154,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     ********************************************************/
 
     /**
-     * @notice Hook for swapping and donating values to a CoW AMM pool.
+     * @notice Hook for swapping and donating to a CoW AMM pool.
      * @dev Can only be called by the Vault.
      * @param swapAndDonateParams Swap and donate params (see ICowRouter for struct definition)
      * @return swapAmountIn Exact amount of tokenIn of the swap
@@ -260,6 +260,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     /********************************************************
                         Private Helpers
     ********************************************************/
+
     function _donateToPool(
         address pool,
         IERC20[] memory tokens,
@@ -282,7 +283,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         _vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
-                to: address(this), // It's a donation, so no BPT will be transferred.
+                to: address(this), // It's a donation, so no BPT will be transferred
                 maxAmountsIn: donatedAmounts,
                 minBptAmountOut: 0,
                 kind: AddLiquidityKind.DONATION,
