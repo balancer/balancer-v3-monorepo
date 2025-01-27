@@ -164,8 +164,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai),
-            new bytes(0)
+            abi.encode(dai)
         );
         GPv2Order memory expectedOrder = GPv2Order({
             sellToken: IERC20(address(dai)),
@@ -187,7 +186,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
     function testGetTradeableOrderWhenOrderNotExist() public {
         vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
-        cowSwapFeeBurner.getTradeableOrder(address(0), address(0), bytes32(0), abi.encode(dai), new bytes(0));
+        cowSwapFeeBurner.getTradeableOrder(address(0), address(0), bytes32(0), abi.encode(dai));
     }
 
     function testVerify() public {
@@ -200,8 +199,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai),
-            new bytes(0)
+            abi.encode(dai)
         );
 
         cowSwapFeeBurner.verify(
@@ -211,7 +209,6 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
-            new bytes(0),
             order
         );
     }
@@ -227,7 +224,6 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
-            new bytes(0),
             GPv2Order({
                 sellToken: IERC20(address(dai)),
                 buyToken: IERC20(address(usdc)),
@@ -255,8 +251,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai),
-            new bytes(0)
+            abi.encode(dai)
         );
 
         order.buyAmount = order.buyAmount + 1;
@@ -267,34 +262,6 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
-            new bytes(0),
-            order
-        );
-    }
-
-    function testVerifyWithNonZeroOffchainInput() public {
-        _grantBurnRolesAndApproveTokens();
-
-        _mockComposableCowCreate(dai);
-        _burn();
-
-        GPv2Order memory order = cowSwapFeeBurner.getTradeableOrder(
-            address(0),
-            address(0),
-            bytes32(0),
-            abi.encode(dai),
-            new bytes(0)
-        );
-
-        vm.expectRevert(ICowSwapFeeBurner.NonZeroOffchainInput.selector);
-        cowSwapFeeBurner.verify(
-            address(this),
-            address(this),
-            bytes32(0),
-            bytes32(0),
-            bytes32(0),
-            abi.encode(dai),
-            new bytes(1),
             order
         );
     }
@@ -309,8 +276,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai),
-            new bytes(0)
+            abi.encode(dai)
         );
 
         order.buyAmount = order.buyAmount - 1;
@@ -327,7 +293,6 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
-            new bytes(0),
             order
         );
     }
@@ -348,14 +313,13 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             buyTokenBalance: TOKEN_BALANCE
         });
 
-        IComposableCow.PayloadStruct memory payload = IComposableCow.PayloadStruct({
+        IComposableCow.Payload memory payload = IComposableCow.Payload({
             proof: new bytes32[](12),
             params: ICowConditionalOrder.ConditionalOrderParams({
                 handler: ICowConditionalOrder(cowSwapFeeBurner),
                 salt: bytes32(0),
                 staticInput: abi.encode(1)
-            }),
-            offchainInput: abi.encode("offchainInput")
+            })
         });
 
         bytes memory signature = abi.encode(order, payload);

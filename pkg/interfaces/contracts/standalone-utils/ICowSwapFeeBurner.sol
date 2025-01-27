@@ -18,7 +18,6 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
     }
 
     error InvalidOrderParameters(string reason);
-    error NonZeroOffchainInput();
     error OrderHasUnexpectedStatus(OrderStatus actualStatus);
     error InterfaceIsSignatureVerifierMuxer();
 

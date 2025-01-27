@@ -27,7 +27,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 /**
  * @title CowSwapFeeBurner
  * @notice A contract that burns protocol fees using CowSwap.
- * To make the burner work, it is necessary to run the Cow Watch-Tower(https://github.com/cowprotocol/watch-tower)
+ * To make the burner work, it is necessary to run the Cow Watch-Tower (https://github.com/cowprotocol/watch-tower)
  */
 contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
     struct ShortGPv2Order {
@@ -168,8 +168,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         address,
         address,
         bytes32,
-        bytes calldata staticInput,
-        bytes calldata
+        bytes calldata staticInput
     ) public view returns (GPv2Order memory) {
         IERC20 sellToken = IERC20(abi.decode(staticInput, (address)));
 
@@ -184,14 +183,9 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         bytes32,
         bytes32 ctx,
         bytes calldata staticInput,
-        bytes calldata offchainInput,
         GPv2Order calldata _order
     ) external view {
-        GPv2Order memory savedOrder = getTradeableOrder(owner, sender, ctx, staticInput, offchainInput);
-
-        if (offchainInput.length != 0) {
-            revert NonZeroOffchainInput();
-        }
+        GPv2Order memory savedOrder = getTradeableOrder(owner, sender, ctx, staticInput);
 
         if (_order.buyAmount > savedOrder.buyAmount) {
             savedOrder.buyAmount = _order.buyAmount;
@@ -208,9 +202,9 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
 
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 _hash, bytes memory signature) external view returns (bytes4) {
-        (GPv2Order memory order, IComposableCow.PayloadStruct memory payload) = abi.decode(
+        (GPv2Order memory order, IComposableCow.Payload memory payload) = abi.decode(
             signature,
-            (GPv2Order, IComposableCow.PayloadStruct)
+            (GPv2Order, IComposableCow.Payload)
         );
 
         // Forward the query to ComposableCow

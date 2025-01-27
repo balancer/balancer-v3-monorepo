@@ -19,22 +19,42 @@ struct GPv2Order {
 }
 
 /**
- * @title Conditional Order Interface
+ * @notice Conditional Order Interface - verify a Cow order.
  * @author CoW Protocol Developers + mfw78 <mfw78@rndlabs.xyz>
  */
-interface ICowConditionalOrder {
-    /// @dev This error is returned by the `getTradeableOrder` function if the order condition is not met.
-    ///      A parameter of `string` type is included to allow the caller to specify the reason for the failure.
-    error OrderNotValid(string);
+interface ICowConditionalOrder { 
+    /**
+     * @notice This error is returned by the `getTradeableOrder` function if the order conditions are not met.
+     * @param reason Text explaining the reason the order is invalid
+     */
+    error OrderNotValid(string reason);
 
-    // --- errors specific for polling
-    // Signal to a watch tower that polling should be attempted again.
+    // Errors specific to polling (interpreted by the off-chain Watchtower).
+
+    /**
+     * @notice Polling should be retried at the next block.
+     * @param reason Text description of the reason it should be retried
+     */
     error PollTryNextBlock(string reason);
-    // Signal to a watch tower that polling should be attempted again at a specific block number.
+
+    /**
+     * @notice Polling should be retried at a specific block number.
+     * @param blockNumber The block number when polling should resume
+     * @param reason Text description of the reason it should be retried
+     */
     error PollTryAtBlock(uint256 blockNumber, string reason);
-    // Signal to a watch tower that polling should be attempted again at a specific epoch (unix timestamp).
+
+    /**
+     * @notice Polling should be retried at a specific epoch (unix timestamp).
+     * @param timestamp The unix timestamp when polling should resume
+     * @param reason Text description of the reason it should be retried
+     */
     error PollTryAtEpoch(uint256 timestamp, string reason);
-    // Signal to a watch tower that the conditional order should not be polled again (delete).
+
+    /**
+     * @notice The conditional order should not be polled again (i.e., deleted).
+     * @param reason Text description of the reason it should be deleted
+     */
     error PollNever(string reason);
 
     /**
@@ -60,7 +80,6 @@ interface ICowConditionalOrder {
      * @param domainSeparator the domain separator used to sign the order
      * @param ctx the context key of the order (bytes32(0) if a merkle tree is used, otherwise H(params)) with which to lookup the cabinet
      * @param staticInput the static input for all discrete orders cut from this conditional order
-     * @param offchainInput dynamic off-chain input for a discrete order cut from this conditional order
      * @param order `GPv2Order` of a discrete order to be verified (if *not* an `ICowConditionalOrderGenerator`).
      */
     function verify(
@@ -70,7 +89,6 @@ interface ICowConditionalOrder {
         bytes32 domainSeparator,
         bytes32 ctx,
         bytes calldata staticInput,
-        bytes calldata offchainInput,
         GPv2Order calldata order
     ) external view;
 }
