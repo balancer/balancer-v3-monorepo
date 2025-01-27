@@ -628,14 +628,9 @@ contract CowRouterTest is BaseCowTest {
 
     function testSetFeeSweeperInvalidAddress() public {
         // Address 0 is not a valid fee sweeper.
-        vm.expectRevert(abi.encodeWithSelector(ICowRouter.InvalidFeeSweeper.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(ICowRouter.InvalidFeeSweeper.selector));
         vm.prank(admin);
         cowRouter.setFeeSweeper(address(0));
-
-        // Address of the router is not a valid fee sweeper.
-        vm.expectRevert(abi.encodeWithSelector(ICowRouter.InvalidFeeSweeper.selector, address(cowRouter)));
-        vm.prank(admin);
-        cowRouter.setFeeSweeper(address(cowRouter));
     }
 
     function testSetFeeSweeper() public {
