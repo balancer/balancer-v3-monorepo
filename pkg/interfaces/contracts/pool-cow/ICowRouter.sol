@@ -106,7 +106,12 @@ interface ICowRouter {
      */
     event FeeSweeperChanged(address newFeeSweeper);
 
-    /// @notice Protocol fees collected in the given token were withdrawn to the fee sweeper contract.
+    /**
+     * @notice Protocol fees collected in the given token were withdrawn to the fee sweeper contract.
+     * @param token Token in which the protocol fees were charged
+     * @param feeSweeper Address that received protocol fees
+     * @param amountWithdrawn Amount of tokens withdawn from CowRouter
+     */
     event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountWithdrawn);
 
     /**
