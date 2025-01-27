@@ -113,10 +113,9 @@ contract LBPoolFactoryTest is BaseVaultTest {
         address collateralToken,
         bool allowRemovalOnlyAfterWeightChange,
         bool restrictSaleOfBootstrapToken
-        ) private returns (address) {
+    ) private returns (address) {
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
         uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
-
 
         LBPParams memory lbpParams = LBPParams({
             startTime: startTime,

@@ -64,7 +64,6 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
 
     PoolState private _poolState;
 
-
     /**
      * @notice Emitted when the owner initiates a gradual weight change (e.g., at the start of the sale).
      * @dev Also emitted on deployment, recording the initial state.
@@ -113,7 +112,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         // Ensure startTime >= now.
         uint256 startTime = GradualValueChange.resolveStartTime(lbpparams.startTime, lbpparams.endTime);
 
-        if(!_doesPoolContainBootstrapToken(lbpparams.bootstrapToken, tokenConfig)) {
+        if (!_doesPoolContainBootstrapToken(lbpparams.bootstrapToken, tokenConfig)) {
             revert InvalidBootstrapToken();
         }
 
@@ -122,7 +121,12 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         allowRemovalOnlyAfterWeightChange = lbpparams.allowRemovalOnlyAfterWeightChange;
         restrictSaleOfBootstrapToken = lbpparams.restrictSaleOfBootstrapToken;
 
-        _startGradualWeightChange(startTime.toUint32(), lbpparams.endTime.toUint32(), params.normalizedWeights, lbpparams.endWeights);
+        _startGradualWeightChange(
+            startTime.toUint32(),
+            lbpparams.endTime.toUint32(),
+            params.normalizedWeights,
+            lbpparams.endWeights
+        );
     }
 
     /// @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
@@ -309,17 +313,19 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     function _getTokenSwapAllowed(PoolSwapParams memory params) private view returns (bool) {
         if (restrictSaleOfBootstrapToken) {
             if (params.kind == SwapKind.EXACT_IN) {
-                return params.indexIn == bootstrapTokenIndex? false: true;
+                return params.indexIn == bootstrapTokenIndex ? false : true;
             } else {
                 // exact out swap
-                return params.indexOut == bootstrapTokenIndex? false: true;
+                return params.indexOut == bootstrapTokenIndex ? false : true;
             }
         }
         return true;
     }
 
-    function _doesPoolContainBootstrapToken(address bootstrapToken, TokenConfig[] memory tokenConfig) internal view returns (bool) {
-        
+    function _doesPoolContainBootstrapToken(
+        address bootstrapToken,
+        TokenConfig[] memory tokenConfig
+    ) internal view returns (bool) {
         for (uint256 i = 0; i < tokenConfig.length; i++) {
             if (address(tokenConfig[i].token) == bootstrapToken) {
                 return true;
@@ -328,7 +334,10 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         return false;
     }
 
-    function _getBootstrapTokenIndex(address bootstrapToken, TokenConfig[] memory tokenConfig) internal view returns (uint256) {
+    function _getBootstrapTokenIndex(
+        address bootstrapToken,
+        TokenConfig[] memory tokenConfig
+    ) internal view returns (uint256) {
         // This functin should return 0 if the bootstrapTokenAddress is the smallest address in the TokenConfig.token array.
         // This function return return 1 if the bootstrapTokenAddress is the largest address in the TokenConfig.token array.
         // The TokenConfig array only has 2 addresses.
@@ -343,10 +352,7 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         } else {
             return 1;
         }
-
     }
-    
-
 
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
@@ -358,10 +364,8 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory startWeights,
         uint256[] memory endWeights
     ) internal virtual {
-
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, startWeights.length);
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, endWeights.length);
-
 
         if (endWeights[0] < _MIN_WEIGHT || endWeights[1] < _MIN_WEIGHT) {
             revert MinWeight();

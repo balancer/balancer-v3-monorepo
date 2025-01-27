@@ -17,8 +17,7 @@ import {
 import { WeightedPool } from "../WeightedPool.sol";
 import { LBPool } from "./LBPool.sol";
 
-import {console} from "forge-std/console.sol";
-
+import { console } from "forge-std/console.sol";
 
 struct LBPParams {
     uint256 startTime;

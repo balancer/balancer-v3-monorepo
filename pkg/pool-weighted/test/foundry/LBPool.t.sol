@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import {stdStorage, StdStorage} from "forge-std/Test.sol";              
+import { stdStorage, StdStorage } from "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
@@ -192,11 +192,7 @@ contract LBPoolTest is BasePoolTest {
 
         // start & stop prank to ensure sender is the owner (bob)
         vm.startPrank(bob);
-        _initPool(
-            newPool,
-            initAmounts,
-            0
-        );
+        _initPool(newPool, initAmounts, 0);
         vm.stopPrank();
 
         return newPool;
@@ -207,15 +203,13 @@ contract LBPoolTest is BasePoolTest {
     }
 
     function testPoolAddress() public view override {
-
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        ); 
+        );
 
         uint256[] memory startWeights = new uint256[](2);
         startWeights[0] = 50e16;
         startWeights[1] = 50e16;
-
 
         string memory name = "LB Pool";
         string memory symbol = "LB_POOL";
@@ -226,7 +220,6 @@ contract LBPoolTest is BasePoolTest {
 
         uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
         uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
 
         bool allowRemovalOnlyAfterWeightChange = false;
         bool restrictSaleOfBootstrapToken = false;
@@ -383,13 +376,7 @@ contract LBPoolTest is BasePoolTest {
         }
 
         vm.expectRevert(LBPool.RouterNotTrusted.selector);
-        IRouter(fakeRouter).removeLiquidityProportional(
-            pool,
-            bptAmountIn,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
+        IRouter(fakeRouter).removeLiquidityProportional(pool, bptAmountIn, minAmountsOut, false, bytes(""));
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             pool,
@@ -466,36 +453,23 @@ contract LBPoolTest is BasePoolTest {
 
         // scenario 1: Before weight change has started
         // removing liq should not be allowed
-        (uint256 returnedStartTime, uint256 returnedEndTime, ) = LBPool(
-            address(myPool)
-        ).getGradualWeightUpdateParams();
+        (uint256 returnedStartTime, uint256 returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
         assertTrue(returnedStartTime > block.timestamp, "Weight change should not have started yet");
         assertTrue(LBPool(myPool).allowRemovalOnlyAfterWeightChange());
 
         vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
-        router.removeLiquidityProportional(
-            myPool,
-            bptAmountIn,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
 
         // scenario 2: During weight change
         skip(2 days);
-        (returnedStartTime, returnedEndTime, ) = LBPool(
-            address(myPool)
-        ).getGradualWeightUpdateParams();
-        assertTrue(returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime, "Weight change should be ongoing");
+        (returnedStartTime, returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
+        assertTrue(
+            returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime,
+            "Weight change should be ongoing"
+        );
 
         vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
-        router.removeLiquidityProportional(
-            myPool,
-            bptAmountIn,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
 
         // scenario 3: Weight change has ended
         // call should succeed
@@ -503,19 +477,11 @@ contract LBPoolTest is BasePoolTest {
         IERC20(myPool).approve(address(router), MAX_UINT256);
 
         skip(7 days);
-        (returnedStartTime, returnedEndTime, ) = LBPool(
-            address(myPool)
-        ).getGradualWeightUpdateParams();
+        (returnedStartTime, returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
         assertTrue(returnedEndTime <= block.timestamp, "Weight change should have finished");
 
         vm.prank(bob);
-        router.removeLiquidityProportional(
-            myPool,
-            bptAmountIn,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
+        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
     }
 
     function testSwap() public override {
@@ -531,7 +497,7 @@ contract LBPoolTest is BasePoolTest {
 
         vm.prank(bob);
         // enable swapping for default pool
-        skip (1 days);
+        skip(1 days);
         uint256 amountCalculated = router.swapSingleTokenExactIn(
             pool,
             tokenIn,
@@ -582,7 +548,6 @@ contract LBPoolTest is BasePoolTest {
         vm.stopPrank();
     }
 
-
     function testSwapsBasedOnWeightChangeProcess() public {
         // the deployed pool has weight change started scheduled to be in the future. Swaps are only allowed when weight change has started
 
@@ -609,7 +574,10 @@ contract LBPoolTest is BasePoolTest {
         ).getGradualWeightUpdateParams();
 
         assertTrue(LBPool(pool).getSwapEnabled(), "Swaps should be enabled during weight change has started");
-        assertTrue(returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime, "Start time should be in the past");
+        assertTrue(
+            returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime,
+            "Start time should be in the past"
+        );
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
@@ -643,7 +611,6 @@ contract LBPoolTest is BasePoolTest {
     }
 
     function testTokenSwapAllowedGivenIn() public {
-
         uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
         uint32 endTime = uint32(startTime + END_TIME_OFFSET);
 
@@ -701,7 +668,6 @@ contract LBPoolTest is BasePoolTest {
     }
 
     function testTokenSwapAllowedGivenOut() public {
-
         uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
         uint32 endTime = uint32(startTime + END_TIME_OFFSET);
 
@@ -759,7 +725,6 @@ contract LBPoolTest is BasePoolTest {
     }
 
     function testInvalidBootstrapToken() public {
-
         // prepare pool creation data
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
@@ -827,10 +792,7 @@ contract LBPoolTest is BasePoolTest {
             false, //allow removal only after weight change
             true // restrict sale of bootstrap token
         );
-
-
     }
-
 
     function testEnsureNoTimeOverflow() public {
         uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
@@ -897,15 +859,11 @@ contract LBPoolTest is BasePoolTest {
             amountOut = _executeAndUndoSwap(amountIn, myPool);
             assertTrue(amountOut > prevAmountOut, "Amount out should remain constant before weight update");
             prevAmountOut = amountOut;
-
         }
-
 
         // ensure weight change has ended
         skip(1 days);
-        (, uint256 returnedEndTime,) = LBPool(
-            address(myPool)
-        ).getGradualWeightUpdateParams();
+        (, uint256 returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
         assertTrue(returnedEndTime <= block.timestamp, "Weight change should have ended");
 
         prevAmountOut = _executeAndUndoSwap(amountIn, myPool);
@@ -923,7 +881,6 @@ contract LBPoolTest is BasePoolTest {
         uint256[] memory endWeights = new uint256[](2);
         endWeights[0] = 0.3e18; // 30%
         endWeights[1] = 0.7e18; // 70%
-
 
         (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPool(
             address(pool)
@@ -1126,7 +1083,7 @@ contract LBPoolTest is BasePoolTest {
     function testInitializedWithSwapsDisabled() public {
         // swaps are disabled if the weight change has not started yet. The start time for the pool
         // is in the future, therefor swaps should be disabled
-        
+
         assertFalse(LBPool(pool).getSwapEnabled(), "Swaps should be disabled on initialization");
 
         vm.startPrank(alice);
@@ -1254,7 +1211,7 @@ contract LBPoolTest is BasePoolTest {
         vm.prank(address(vault));
 
         // skip forward to enable swaps
-        skip (2 days);
+        skip(2 days);
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: 1e18,
