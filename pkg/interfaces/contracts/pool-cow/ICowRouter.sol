@@ -217,6 +217,8 @@ interface ICowRouter {
 
     /**
      * @notice Sets the address that will receive protocol fees on withdrawal.
+     * @dev Fee Sweeper cannot be the zero address.
+     * @param newFeeSweeper Address of the new fee sweeper
      */
-    function setFeeSweeper() external;
+    function setFeeSweeper(address newFeeSweeper) external;
 }
