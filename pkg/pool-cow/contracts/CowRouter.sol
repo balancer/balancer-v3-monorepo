@@ -39,7 +39,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         address feeSweeper
     ) VaultGuard(vault) SingletonAuthentication(vault) {
         _setProtocolFeePercentage(protocolFeePercentage);
-        _feeSweeper = feeSweeper;
+        _setFeeSweeper(feeSweeper);
     }
 
     /********************************************************
@@ -78,8 +78,12 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
     /// @inheritdoc ICowRouter
     function setFeeSweeper(address newFeeSweeper) external authenticate {
-        if (newFeeSweeper == address(0) || newFeeSweeper == address(this)) {
-            revert InvalidFeeSweeper(newFeeSweeper);
+        _setFeeSweeper(newFeeSweeper);
+    }
+
+    function _setFeeSweeper(address newFeeSweeper) private {
+        if (newFeeSweeper == address(0)) {
+            revert InvalidFeeSweeper();
         }
         _feeSweeper = newFeeSweeper;
 

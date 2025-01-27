@@ -59,8 +59,8 @@ interface ICowRouter {
      */
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
 
-    /// @notice The caller tried to set an invalid address as the fee sweeper.
-    error InvalidFeeSweeper(address invalidFeeSweeper);
+    /// @notice The caller tried to set the zero address as the fee sweeper.
+    error InvalidFeeSweeper();
 
     /**
      * @notice A swap and a donation have occurred.
@@ -217,8 +217,6 @@ interface ICowRouter {
 
     /**
      * @notice Sets the address that will receive protocol fees on withdrawal.
-     * @dev Fee Sweeper shall not be neither zero address nor the router address.
-     * @param newFeeSweeper Address of the new fee sweeper
      */
-    function setFeeSweeper(address newFeeSweeper) external;
+    function setFeeSweeper() external;
 }
