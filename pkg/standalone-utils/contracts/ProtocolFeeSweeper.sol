@@ -59,7 +59,14 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
 
         // Withdraw protocol fees to this contract. Note that governance will need to grant this contract permission
         // to call `withdrawProtocolFeesForToken` on the `ProtocolFeeController.
-        getProtocolFeeController().withdrawProtocolFeesForToken(pool, address(this), feeToken);
+        IProtocolFeeController feeController = getProtocolFeeController();
+
+        // Transfer any pending fees from the Vault to the ProtocolFeeController, and allocate the protocol and pool
+        // creator portions.
+        feeController.collectAggregateFees(pool);
+
+        // Withdraw the protocol portion of the fees to this contract (requires permission).
+        feeController.withdrawProtocolFeesForToken(pool, address(this), feeToken);
 
         uint256 withdrawnBalance = feeToken.balanceOf(address(this)) - existingBalance;
 
