@@ -19,6 +19,7 @@ interface ICowRouter {
      * @param swapMinAmountOut Max amount out, when swap is EXACT_IN, or exact amount out if swap is EXACT OUT
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferHint Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap request and emitted with donation and swap events
      */
     struct SwapAndDonateHookParams {
@@ -31,6 +32,7 @@ interface ICowRouter {
         uint256 swapMinAmountOut;
         uint256 swapDeadline;
         uint256[] donationAmounts;
+        uint256[] transferHint;
         bytes userData;
     }
 
@@ -109,6 +111,7 @@ interface ICowRouter {
      * @param swapMinAmountOut Minimum number of tokenOut tokens
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferHint Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountOut Number of tokenOut tokens returned from the swap
      */
@@ -120,6 +123,7 @@ interface ICowRouter {
         uint256 swapMinAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferHint,
         bytes memory userData
     ) external returns (uint256 exactAmountOut);
 
@@ -136,6 +140,7 @@ interface ICowRouter {
      * @param swapExactAmountOut Number of tokenOut tokens
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferHint Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountIn Number of tokenIn tokens charged in the swap
      */
@@ -147,6 +152,7 @@ interface ICowRouter {
         uint256 swapExactAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferHint,
         bytes memory userData
     ) external returns (uint256 exactAmountIn);
 
