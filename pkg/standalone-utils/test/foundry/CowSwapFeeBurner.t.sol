@@ -2,23 +2,24 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
-import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IComposableCow.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
+import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
+import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IComposableCow.sol";
+import {
+    ICowConditionalOrderGenerator
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrderGenerator.sol";
 import {
     ICowConditionalOrder,
     GPv2Order
-} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrder.sol";
-import {
-    ICowConditionalOrderGenerator
-} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrderGenerator.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
-import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
+
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { CowSwapFeeBurner } from "../../contracts/CowSwapFeeBurner.sol";
 
@@ -60,6 +61,11 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.getOrder(dai);
 
         _mockComposableCowCreate(dai);
+
+        // Must transfer before burning.
+        vm.prank(alice);
+        dai.transfer(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
         vm.expectEmit();
         emit IProtocolFeeBurner.ProtocolFeeBurned(
             address(0),
@@ -69,6 +75,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             MIN_TARGET_TOKEN_AMOUNT,
             alice
         );
+        
         _burn();
 
         assertEq(
@@ -184,7 +191,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         assertEq(order, expectedOrder, "Order have incorrect values");
     }
 
-    function testGetTradeableOrderWhenOrderNotExist() public {
+    function testGetTradeableOrderWhenOrderNonexistent() public {
         vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
         cowSwapFeeBurner.getTradeableOrder(address(0), address(0), bytes32(0), abi.encode(dai));
     }
@@ -209,6 +216,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
+            bytes(""),
             order
         );
     }
@@ -224,6 +232,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
+            bytes(""),
             GPv2Order({
                 sellToken: IERC20(address(dai)),
                 buyToken: IERC20(address(usdc)),
@@ -262,6 +271,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
+            bytes(""),
             order
         );
     }
@@ -293,6 +303,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes32(0),
             bytes32(0),
             abi.encode(dai),
+            bytes(""),
             order
         );
     }
@@ -318,8 +329,9 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             params: ICowConditionalOrder.ConditionalOrderParams({
                 handler: ICowConditionalOrder(cowSwapFeeBurner),
                 salt: bytes32(0),
-                staticInput: abi.encode(1)
-            })
+                staticData: abi.encode(1)
+            }),
+            offchainInput: abi.encode("offchainInput")
         });
 
         bytes memory signature = abi.encode(order, payload);
@@ -450,7 +462,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICowSwapFeeBurner.OrderHasUnexpectedStatus.selector,
-                ICowSwapFeeBurner.OrderStatus.NotExist
+                ICowSwapFeeBurner.OrderStatus.Nonexistent
             )
         );
         cowSwapFeeBurner.retryOrder(dai, MIN_TARGET_TOKEN_AMOUNT, orderDeadline);
@@ -501,13 +513,13 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
         _mockComposableCowCreate(dai);
         vm.expectEmit();
-        emit ICowSwapFeeBurner.OrderReverted(dai, alice, halfAmount);
+        emit ICowSwapFeeBurner.OrderReverted(dai, halfAmount, alice);
         cowSwapFeeBurner.revertOrder(dai, alice);
 
         assertEq(dai.balanceOf(alice), balanceBefore + halfAmount, "alice should have received the tokens");
         assertEq(
             cowSwapFeeBurner.getOrderStatus(dai),
-            ICowSwapFeeBurner.OrderStatus.NotExist,
+            ICowSwapFeeBurner.OrderStatus.Nonexistent,
             "Order should be removed"
         );
 
@@ -521,7 +533,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICowSwapFeeBurner.OrderHasUnexpectedStatus.selector,
-                ICowSwapFeeBurner.OrderStatus.NotExist
+                ICowSwapFeeBurner.OrderStatus.Nonexistent
             )
         );
         cowSwapFeeBurner.revertOrder(dai, alice);
@@ -548,13 +560,13 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
         _mockComposableCowCreate(dai);
         vm.expectEmit();
-        emit ICowSwapFeeBurner.OrderReverted(dai, alice, halfAmount);
+        emit ICowSwapFeeBurner.OrderReverted(dai, halfAmount, alice);
         cowSwapFeeBurner.emergencyRevertOrder(dai, alice);
 
         assertEq(dai.balanceOf(alice), balanceBefore + halfAmount, "alice should have received the tokens");
         assertEq(
             cowSwapFeeBurner.getOrderStatus(dai),
-            ICowSwapFeeBurner.OrderStatus.NotExist,
+            ICowSwapFeeBurner.OrderStatus.Nonexistent,
             "Order should be removed"
         );
 
@@ -576,10 +588,10 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         assertEq(cowSwapFeeBurner.getOrderStatus(dai), ICowSwapFeeBurner.OrderStatus.Active, "Order should be active");
     }
 
-    function testGetOrderStatusWhenOrderNotExist() public view {
+    function testGetOrderStatusWhenOrderNonexistent() public view {
         assertEq(
             cowSwapFeeBurner.getOrderStatus(dai),
-            ICowSwapFeeBurner.OrderStatus.NotExist,
+            ICowSwapFeeBurner.OrderStatus.Nonexistent,
             "Order should be active"
         );
     }
@@ -639,7 +651,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
                 ICowConditionalOrder.ConditionalOrderParams({
                     handler: ICowConditionalOrder(cowSwapFeeBurner),
                     salt: bytes32(0),
-                    staticInput: abi.encode(sellToken)
+                    staticData: abi.encode(sellToken)
                 }),
                 true
             ),
