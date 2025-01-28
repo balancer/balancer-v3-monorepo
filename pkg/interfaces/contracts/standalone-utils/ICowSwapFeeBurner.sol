@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ICowConditionalOrder, GPv2Order } from "../solidity-utils/misc/ICowConditionalOrder.sol";
-import { ICowConditionalOrderGenerator } from "../solidity-utils/misc/ICowConditionalOrderGenerator.sol";
+import { ICowConditionalOrderGenerator } from "./ICowConditionalOrderGenerator.sol";
+import { ICowConditionalOrder, GPv2Order } from "./ICowConditionalOrder.sol";
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrder, ICowConditionalOrderGenerator {

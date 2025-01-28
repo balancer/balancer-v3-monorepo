@@ -8,19 +8,19 @@ import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
-import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IComposableCow.sol";
+import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IComposableCow.sol";
+
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import {
+    ICowConditionalOrderGenerator
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrderGenerator.sol";
 import {
     ICowConditionalOrder,
     GPv2Order
-} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrder.sol";
-import {
-    ICowConditionalOrderGenerator
-} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/ICowConditionalOrderGenerator.sol";
-
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -298,7 +298,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             ICowConditionalOrder.ConditionalOrderParams({
                 handler: ICowConditionalOrder(address(this)),
                 salt: bytes32(0),
-                staticInput: abi.encode(sellToken)
+                staticData: abi.encode(sellToken)
             }),
             true
         );
