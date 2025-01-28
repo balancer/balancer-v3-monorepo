@@ -126,7 +126,10 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         // Add USDC --> more unbalanced.
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(expectedBalancesAfterAdd);
-        assertTrue(stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance), "Not surging after add");
+        assertTrue(
+            stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance),
+            "Not surging after add"
+        );
 
         vm.expectRevert(IVaultErrors.AfterAddLiquidityHookFailed.selector);
         vm.prank(alice);
@@ -134,13 +137,7 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         // Proportional is always fine
         vm.prank(alice);
-        router.addLiquidityProportional(
-            pool,
-            initialBalances,
-            1e18,
-            false,
-            bytes("")
-        );
+        router.addLiquidityProportional(pool, initialBalances, 1e18, false, bytes(""));
     }
 
     function testUnbalancedAddLiquidityWhenNotSurging() public {
@@ -188,20 +185,16 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         // Remove DAI --> more unbalanced.
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(expectedBalancesAfterRemove);
-        assertTrue(stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance), "Not surging after remove");
+        assertTrue(
+            stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance),
+            "Not surging after remove"
+        );
 
         uint256 bptBalance = IERC20(pool).balanceOf(lp);
 
         vm.expectRevert(IVaultErrors.AfterRemoveLiquidityHookFailed.selector);
         vm.prank(lp);
-        router.removeLiquiditySingleTokenExactOut(
-            address(pool),
-            bptBalance,
-            dai,
-            amountsOut[daiIdx],
-            false,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactOut(address(pool), bptBalance, dai, amountsOut[daiIdx], false, bytes(""));
 
         uint256[] memory minAmountsOut = new uint256[](2);
         // Proportional is always fine
@@ -228,19 +221,15 @@ contract StableSurgeHookTest is BaseVaultTest {
 
         // Should not surge, close to balance
         uint256 newTotalImbalance = stableSurgeMedianMathMock.calculateImbalance(expectedBalancesAfterRemove);
-        assertFalse(stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance), "Surging after remove");
+        assertFalse(
+            stableSurgeHook.isSurging(surgeFeeData, initialBalances, newTotalImbalance),
+            "Surging after remove"
+        );
 
         uint256 bptBalance = IERC20(pool).balanceOf(lp);
         // Does not revert
         vm.prank(lp);
-        router.removeLiquiditySingleTokenExactOut(
-            address(pool),
-            bptBalance,
-            dai,
-            amountsOut[daiIdx],
-            false,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactOut(address(pool), bptBalance, dai, amountsOut[daiIdx], false, bytes(""));
     }
 
     function testSwap__Fuzz(uint256 amountGivenScaled18, uint256 swapFeePercentageRaw, uint256 kindRaw) public {

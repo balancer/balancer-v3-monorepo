@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -13,8 +12,7 @@ contract StableSurgeHookMock is StableSurgeHook {
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
         uint256 defaultSurgeThresholdPercentage
-    ) StableSurgeHook(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage) {
-    }
+    ) StableSurgeHook(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage) {}
 
     function getSurgeFeePercentage(
         PoolSwapParams calldata params,
