@@ -8,11 +8,9 @@ import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
+import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
 import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IComposableCow.sol";
-
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import {
     ICowConditionalOrderGenerator
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrderGenerator.sol";
@@ -22,12 +20,14 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+
 // solhint-disable not-rely-on-time
 
 /**
  * @title CowSwapFeeBurner
  * @notice A contract that burns protocol fees using CowSwap.
- * To make the burner work, it is necessary to run the Cow Watch-Tower (https://github.com/cowprotocol/watch-tower)
+ * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  */
 contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
     struct ShortGPv2Order {
@@ -45,7 +45,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     address public immutable vaultRelayer;
     bytes32 public immutable appData;
 
-    mapping(IERC20 => ShortGPv2Order) internal _orders;
+    // Orders are identified by the tokenIn (often called the sellToken).
+    mapping(IERC20 token => ShortGPv2Order order) internal _orders;
 
     constructor(
         IVault _vault,
@@ -76,12 +77,12 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     function retryOrder(IERC20 sellToken, uint256 minTargetTokenAmount, uint256 deadline) external authenticate {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(sellToken);
 
-        _checkDeadline(deadline);
-        _checkMinTargetTokenAmount(minTargetTokenAmount);
-
         if (status != OrderStatus.Failed) {
             revert OrderHasUnexpectedStatus(status);
         }
+
+        _checkMinTargetTokenAmount(minTargetTokenAmount);
+        _checkDeadline(deadline);
 
         _orders[sellToken].buyAmount = minTargetTokenAmount;
         _orders[sellToken].validTo = uint32(deadline);
@@ -103,7 +104,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
 
         SafeERC20.safeTransfer(sellToken, receiver, amount);
 
-        emit OrderReverted(sellToken, receiver, amount);
+        emit OrderReverted(sellToken, amount, receiver);
     }
 
     function emergencyRevertOrder(IERC20 sellToken, address receiver) external authenticate {
@@ -112,11 +113,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         uint256 amount = sellToken.balanceOf(address(this));
         SafeERC20.safeTransfer(sellToken, receiver, amount);
 
-        emit OrderReverted(sellToken, receiver, amount);
+        emit OrderReverted(sellToken, amount, receiver);
     }
 
     /***************************************************************************
-                            IProtocolFeeBurner
+                                IProtocolFeeBurner
     ***************************************************************************/
 
     /// @inheritdoc IProtocolFeeBurner
@@ -135,15 +136,13 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             revert InvalidOrderParameters("Fee token amount is zero");
         }
 
-        _checkDeadline(deadline);
         _checkMinTargetTokenAmount(minTargetTokenAmount);
+        _checkDeadline(deadline);
 
         (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken);
-        if (status != OrderStatus.NotExist && status != OrderStatus.Filled) {
+        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
             revert OrderHasUnexpectedStatus(status);
         }
-
-        SafeERC20.safeTransferFrom(feeToken, msg.sender, address(this), feeTokenAmount);
 
         _createCowOrder(feeToken);
 
@@ -160,7 +159,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     }
 
     /***************************************************************************
-                            ICowConditionalOrder
+                                ICowConditionalOrder
     ***************************************************************************/
 
     /// @inheritdoc ICowConditionalOrderGenerator
@@ -183,6 +182,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         bytes32,
         bytes32 ctx,
         bytes calldata staticInput,
+        bytes calldata,
         GPv2Order calldata _order
     ) external view {
         GPv2Order memory savedOrder = getTradeableOrder(owner, sender, ctx, staticInput);
@@ -197,7 +197,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     }
 
     /***************************************************************************
-                                    Others
+                                    Miscellaneous
     ***************************************************************************/
 
     /// @inheritdoc IERC1271
@@ -268,21 +268,21 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         uint256 deadline = shortOrder.validTo;
 
         if (deadline == 0) {
-            return (OrderStatus.NotExist, 0);
+            return (OrderStatus.Nonexistent, 0);
         }
 
         uint256 balance = sellAmount.balanceOf(address(this));
         if (balance == 0) {
             return (OrderStatus.Filled, balance);
-        } else if (deadline >= block.timestamp) {
-            return (OrderStatus.Active, balance);
-        } else {
+        } else if (block.timestamp > deadline) {
             return (OrderStatus.Failed, balance);
         }
+
+        return (OrderStatus.Active, balance);
     }
 
     function _checkDeadline(uint256 deadline) private view {
-        if (deadline < block.timestamp) {
+        if (block.timestamp > deadline) {
             revert InvalidOrderParameters("Deadline is in the past");
         }
     }
