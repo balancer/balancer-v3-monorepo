@@ -230,7 +230,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
         // Proportional add is always fine.
         if (kind == AddLiquidityKind.PROPORTIONAL) {
-            return (true, hookAdjustedAmountsInRaw);
+            return (true, amountsInRaw);
         }
 
         // Rebuild old balances before adding liquidity.
@@ -261,7 +261,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
         // Proportional remove is always fine.
         if (kind == RemoveLiquidityKind.PROPORTIONAL) {
-            return (true, hookAdjustedAmountsOutRaw);
+            return (true, amountsOutRaw);
         }
 
         // Rebuild old balances before removing liquidity.
