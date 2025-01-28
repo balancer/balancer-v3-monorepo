@@ -250,7 +250,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             params.userData
         );
 
-        // The donations must be deposited in the vault, and protocol fees must be deposited in the router.
+        // This hook assumes that transferHint = donationAmounts. It means, the sender transferred the exact amount
+        // of tokens to the Vault, no leftovers.
         _settleDonation(
             params.sender,
             tokens,
@@ -310,14 +311,20 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     ) private {
         uint256[] memory senderAmounts = new uint256[](donatedAmounts.length);
         for (uint256 i = 0; i < tokens.length; i++) {
+            // The token leftover is the amount transferred from the sender to the Vault (transferHint), minus the
+            // amount of tokens donated ton the pool and paid on fees. The leftover should be returned to the sender.
             senderAmounts[i] = transferHint[i] - donatedAmounts[i] - feeAmounts[i];
+
             if (tokens[i] == swapTokenIn) {
+                // The tokenIn amount of the swap is discounted from the leftover that will return to the sender.
                 senderAmounts[i] -= swapAmountIn;
             } else if (tokens[i] == swapTokenOut) {
+                // The tokenOut amount of the swap is added to the leftover that will return to the sender.
                 senderAmounts[i] += swapAmountOut;
             }
         }
 
+        // Transfer tokens from the Vault to the sender and to the router, and settle the vault reserves.
         _settleDonation(sender, tokens, transferHint, feeAmounts, senderAmounts);
     }
 
