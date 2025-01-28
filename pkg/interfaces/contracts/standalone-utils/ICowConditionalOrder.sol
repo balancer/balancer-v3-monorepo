@@ -3,6 +3,7 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// See https://github.com/curvefi/curve-burners/blob/main/contracts/burners/CowSwapBurner.vy#L44:L56
 struct GPv2Order {
     IERC20 sellToken;
     IERC20 buyToken;
@@ -21,8 +22,22 @@ struct GPv2Order {
 /**
  * @notice Conditional Order Interface - verify a Cow order.
  * @author CoW Protocol Developers + mfw78 <mfw78@rndlabs.xyz>
+ * @dev See 
  */
 interface ICowConditionalOrder { 
+    /**
+     * @notice This struct is used to uniquely identify a conditional order for an owner.
+     * @dev H(handler || salt || staticData) **MUST** be unique for an owner.
+     * @param handler The contract implementing the conditional order logic
+     * @param salt Allows for multiple conditional orders of the same type and data (currently unused)
+     * @param staticData Data available to ALL discrete orders created by the conditional order
+     */
+    struct ConditionalOrderParams {
+        ICowConditionalOrder handler;
+        bytes32 salt;
+        bytes staticData;
+    }
+
     /**
      * @notice This error is returned by the `getTradeableOrder` function if the order conditions are not met.
      * @param reason Text explaining the reason the order is invalid
@@ -56,16 +71,6 @@ interface ICowConditionalOrder {
      * @param reason Text description of the reason it should be deleted
      */
     error PollNever(string reason);
-
-    /**
-     * @dev This struct is used to uniquely identify a conditional order for an owner.
-     *      H(handler || salt || staticInput) **MUST** be unique for an owner.
-     */
-    struct ConditionalOrderParams {
-        ICowConditionalOrder handler;
-        bytes32 salt;
-        bytes staticInput;
-    }
 
     /**
      * Verify if a given discrete order is valid.
