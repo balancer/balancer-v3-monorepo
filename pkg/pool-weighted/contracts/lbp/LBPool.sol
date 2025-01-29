@@ -6,6 +6,16 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
+import {
+    ILBPool,
+    LBPoolImmutableData,
+    LBPoolDynamicData
+} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import {
+    WeightedPoolDynamicData,
+    WeightedPoolImmutableData
+} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -18,7 +28,6 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { WeightedPool } from "../WeightedPool.sol";
-import { LBPParams } from "./LBPoolFactory.sol";
 
 /**
  * @notice Weighted Pool with mutable weights, designed to support v3 Liquidity Bootstrapping.
@@ -26,14 +35,17 @@ import { LBPParams } from "./LBPoolFactory.sol";
  * which will not be used later), and it is tremendously helpful for pool validation and any potential future
  * base contract changes.
  */
-contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
+contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     using SafeCast for *;
-    address public bootstrapToken;
 
-    bool public allowRemovalOnlyAfterWeightChange;
-    bool public restrictSaleOfBootstrapToken;
-
-    uint256 private _bootstrapTokenIndex;
+    struct LBPParams {
+        uint256 startTime;
+        uint256 endTime;
+        uint256[] endWeights;
+        IERC20 projectToken;
+        bool enableLiquidityOperationsDuringWeightUpdate;
+        bool enableProjectTokenSwapsIn;
+    }
 
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight.
     // Weights are 18 decimal floating point values, which fit in less than 64 bits. Store smaller numeric values
@@ -62,6 +74,14 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _trustedRouter;
 
+    IERC20 private immutable _projectToken;
+    IERC20 private immutable _reserveToken;
+
+    bool private immutable _enableLiquidityOperationsDuringWeightUpdate;
+    bool private immutable _enableProjectTokenSwapsIn;
+
+    uint256 private _projectTokenIndex;
+
     PoolState private _poolState;
 
     /**
@@ -88,18 +108,24 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     /// @dev Indicates that removing liquidity is not allowed.
     error RemovingLiquidityNotAllowed();
 
-    /// @dev Indicates that swapping the bootstrap token is not allowed.
-    error SwapOfBootstrapToken();
+    /// @dev The pool does not allow adding liquidity while the token weights are being updated.
+    error AddingLiquidityNotAllowed();
 
-    /// @dev Indicates a wrongfully set bootstrap token.
-    error InvalidBootstrapToken();
+    /// @dev Indicates that swapping the project token is not allowed.
+    error SwapOfProjectTokenIn();
+
+    /// @dev Indicates a wrongfully set project token.
+    error InvalidProjectToken(IERC20 projectToken);
+
+    /// @dev Function is inherited but not implemented.
+    error NotImplemented();
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
         address owner,
         address trustedRouter,
-        LBPParams memory lbpparams,
+        LBPParams memory lbpParams,
         TokenConfig[] memory tokenConfig
     ) WeightedPool(params, vault) Ownable(owner) {
         // WeightedPool validates `numTokens == normalizedWeights.length`, and ensures valid weights.
@@ -110,22 +136,28 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         _trustedRouter = trustedRouter;
 
         // Ensure startTime >= now.
-        uint256 startTime = GradualValueChange.resolveStartTime(lbpparams.startTime, lbpparams.endTime);
+        uint256 startTime = GradualValueChange.resolveStartTime(lbpParams.startTime, lbpParams.endTime);
 
-        if (!_doesPoolContainBootstrapToken(lbpparams.bootstrapToken, tokenConfig)) {
-            revert InvalidBootstrapToken();
+        if (lbpParams.projectToken == tokenConfig[0].token) {
+            _projectTokenIndex = 0;
+            _projectToken = tokenConfig[0].token;
+            _reserveToken = tokenConfig[1].token;
+        } else if (lbpParams.projectToken == tokenConfig[1].token) {
+            _projectTokenIndex = 1;
+            _projectToken = tokenConfig[1].token;
+            _reserveToken = tokenConfig[0].token;
+        } else {
+            revert InvalidProjectToken(lbpParams.projectToken);
         }
 
-        _bootstrapTokenIndex = _getBootstrapTokenIndex(lbpparams.bootstrapToken, tokenConfig);
-        bootstrapToken = lbpparams.bootstrapToken;
-        allowRemovalOnlyAfterWeightChange = lbpparams.allowRemovalOnlyAfterWeightChange;
-        restrictSaleOfBootstrapToken = lbpparams.restrictSaleOfBootstrapToken;
+        _enableLiquidityOperationsDuringWeightUpdate = lbpParams.enableLiquidityOperationsDuringWeightUpdate;
+        _enableProjectTokenSwapsIn = lbpParams.enableProjectTokenSwapsIn;
 
         _startGradualWeightChange(
             startTime.toUint32(),
-            lbpparams.endTime.toUint32(),
+            lbpParams.endTime.toUint32(),
             params.normalizedWeights,
-            lbpparams.endWeights
+            lbpParams.endWeights
         );
     }
 
@@ -160,12 +192,12 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
      * @notice Indicate whether swaps are enabled or not for the given pool.
      * @return swapEnabled True if trading is enabled
      */
-    function getSwapEnabled() external view returns (bool) {
-        return _getPoolSwapEnabled();
+    function isSwapEnabled() external view returns (bool) {
+        return _isSwapEnabled();
     }
 
-    function getTokenSwapEnabled(PoolSwapParams memory request) external view returns (bool) {
-        return _getTokenSwapAllowed(request);
+    function isProjectTokenSwapInEnabled() external view returns (bool) {
+        return _enableProjectTokenSwapsIn;
     }
 
     /*******************************************************************************
@@ -173,12 +205,14 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
     *******************************************************************************/
 
     /// @inheritdoc WeightedPool
-    function onSwap(PoolSwapParams memory request) public view override onlyVault returns (uint256) {
-        if (!_getPoolSwapEnabled()) {
+    function onSwap(
+        PoolSwapParams memory request
+    ) public view override(IBasePool, WeightedPool) onlyVault returns (uint256) {
+        if (_isSwapEnabled() == false) {
             revert SwapsDisabled();
         }
-        if (!_getTokenSwapAllowed(request)) {
-            revert SwapOfBootstrapToken();
+        if (_isSwapRequestAllowed(request) == false) {
+            revert SwapOfProjectTokenIn();
         }
 
         return super.onSwap(request);
@@ -245,6 +279,12 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         if (router != _trustedRouter) {
             revert RouterNotTrusted();
         }
+
+        (, uint256 endTime, ) = getGradualWeightUpdateParams();
+        if (_enableLiquidityOperationsDuringWeightUpdate == false && block.timestamp < endTime) {
+            revert AddingLiquidityNotAllowed();
+        }
+
         return IRouterCommon(router).getSender() == owner();
     }
 
@@ -268,11 +308,21 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
 
         // Checks to see if removal of liquidity is only allowed after the weight change has ended.
         (, uint256 endTime, ) = getGradualWeightUpdateParams();
-        if (allowRemovalOnlyAfterWeightChange && block.timestamp < endTime) {
+        if (_enableLiquidityOperationsDuringWeightUpdate == false && block.timestamp < endTime) {
             revert RemovingLiquidityNotAllowed();
         }
 
         return true;
+    }
+
+    /// @notice Not implemented; reverts unconditionally.
+    function getWeightedPoolDynamicData() external pure override returns (WeightedPoolDynamicData memory) {
+        revert NotImplemented();
+    }
+
+    /// @notice Not implemented; reverts unconditionally.
+    function getWeightedPoolImmutableData() external pure override returns (WeightedPoolImmutableData memory) {
+        revert NotImplemented();
     }
 
     /*******************************************************************************
@@ -302,47 +352,16 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
         return GradualValueChange.interpolateValue(poolState.startWeight0, poolState.endWeight0, pctProgress);
     }
 
-    function _getPoolSwapEnabled() private view returns (bool) {
+    function _isSwapEnabled() private view returns (bool) {
         // Swaps are only enabled, once the weight change has started.
         (uint256 startTime, , ) = getGradualWeightUpdateParams();
         return block.timestamp >= startTime;
     }
 
-    function _getTokenSwapAllowed(PoolSwapParams memory params) private view returns (bool) {
-        if (restrictSaleOfBootstrapToken) {
-            if (params.kind == SwapKind.EXACT_IN) {
-                return params.indexIn == _bootstrapTokenIndex ? false : true;
-            } else {
-                // exact out swap
-                return params.indexOut == _bootstrapTokenIndex ? false : true;
-            }
-        }
-        return true;
-    }
-
-    function _doesPoolContainBootstrapToken(
-        address token,
-        TokenConfig[] memory tokenConfig
-    ) internal pure returns (bool) {
-        for (uint256 i = 0; i < tokenConfig.length; i++) {
-            if (address(tokenConfig[i].token) == token) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function _getBootstrapTokenIndex(address token, TokenConfig[] memory tokenConfig) internal pure returns (uint256) {
-        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
-        for (uint256 i = 0; i < tokenConfig.length; i++) {
-            tokens[i] = tokenConfig[i].token;
-        }
-        IERC20[] memory sortedTokens = InputHelpers.sortTokens(tokens);
-        if (token < address(sortedTokens[1])) {
-            return 0;
-        } else {
-            return 1;
-        }
+    function _isSwapRequestAllowed(PoolSwapParams memory params) private view returns (bool) {
+        // If project token swaps are enabled, the request is always valid.
+        // If not, project token must be be token out (i.e. _not_ token in).
+        return _enableProjectTokenSwapsIn || params.indexIn != _projectTokenIndex;
     }
 
     /**
@@ -378,4 +397,8 @@ contract LBPool is WeightedPool, Ownable2Step, BaseHooks {
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
+
+    function getLBPoolDynamicData() external view override returns (LBPoolDynamicData memory data) {}
+
+    function getLBPoolImmutableData() external view override returns (LBPoolImmutableData memory data) {}
 }

@@ -17,15 +17,6 @@ import {
 import { WeightedPool } from "../WeightedPool.sol";
 import { LBPool } from "./LBPool.sol";
 
-struct LBPParams {
-    uint256 startTime;
-    uint256 endTime;
-    uint256[] endWeights;
-    address bootstrapToken;
-    bool allowRemovalOnlyAfterWeightChange;
-    bool restrictSaleOfBootstrapToken;
-}
-
 /**
  * @notice LBPool Factory.
  * @dev This is a factory specific to LBPools, allowing only 2 tokens.
@@ -81,7 +72,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         uint256 swapFeePercentage,
         address owner,
         bytes32 salt,
-        LBPParams memory lbpParams
+        LBPool.LBPParams memory lbpParams
     ) external nonReentrant returns (address pool) {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, tokenConfig.length);
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, normalizedWeights.length);
