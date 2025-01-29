@@ -15,8 +15,8 @@ interface ICowRouter {
      * @param swapKind Type of swap (exact in or exact out)
      * @param swapTokenIn The token entering the Vault (balance increases)
      * @param swapTokenOut The token leaving the Vault (balance decreases)
-     * @param swapMaxAmountIn Exact amount in, when swap is EXACT_IN, or max amount in if swap is EXACT OUT
-     * @param swapMinAmountOut Max amount out, when swap is EXACT_IN, or exact amount out if swap is EXACT OUT
+     * @param swapAmountGiven Amount specified for tokenIn or tokenOut (depending on the type of swap)
+     * @param swapLimit Minimum or maximum value of the calculated amount (depending on the type of swap)
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap request and emitted with donation and swap events
@@ -27,8 +27,8 @@ interface ICowRouter {
         SwapKind swapKind;
         IERC20 swapTokenIn;
         IERC20 swapTokenOut;
-        uint256 swapMaxAmountIn;
-        uint256 swapMinAmountOut;
+        uint256 swapAmountGiven;
+        uint256 swapLimit;
         uint256 swapDeadline;
         uint256[] donationAmounts;
         bytes userData;
@@ -169,6 +169,12 @@ interface ICowRouter {
      * @return protocolFeePercentage The current protocol fee percentage
      */
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage);
+
+    /**
+     * @notice Returns the maximum protocol fee percentage.
+     * @return maxProtocolFeePercentage The maximum value of protocol fee percentage
+     */
+    function getMaxProtocolFeePercentage() external pure returns (uint256 maxProtocolFeePercentage);
 
     /**
      * @notice Returns the protocol fees collected by the CoW Router for a specific token.
