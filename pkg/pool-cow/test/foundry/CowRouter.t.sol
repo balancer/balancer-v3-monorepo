@@ -69,7 +69,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -88,7 +88,7 @@ contract CowRouterTest is BaseCowTest {
             daiSwapAmountIn + 1,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -103,7 +103,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -123,7 +123,7 @@ contract CowRouterTest is BaseCowTest {
             0,
             deadline,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -142,14 +142,14 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
-            uint256[] memory transferHint
+            uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, daiSwapAmountIn, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         // Should not revert, since there's no minimum limit in the donation.
         vm.startPrank(lp);
-        dai.transfer(address(vault), transferHint[daiIdx]);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
         // Does not transfer USDC, since donation is 0 and the swap only requires DAI.
 
         vm.expectEmit();
@@ -171,7 +171,7 @@ contract CowRouterTest is BaseCowTest {
             0,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
         vm.stopPrank();
@@ -199,7 +199,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -217,7 +217,7 @@ contract CowRouterTest is BaseCowTest {
             0,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -232,7 +232,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -250,7 +250,7 @@ contract CowRouterTest is BaseCowTest {
             0,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -270,14 +270,14 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
-            uint256[] memory transferHint
+            uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, 2 * daiSwapAmountIn, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.startPrank(lp);
-        dai.transfer(address(vault), transferHint[daiIdx]);
-        usdc.transfer(address(vault), transferHint[usdcIdx]);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
@@ -298,7 +298,7 @@ contract CowRouterTest is BaseCowTest {
             0,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
         vm.stopPrank();
@@ -327,7 +327,7 @@ contract CowRouterTest is BaseCowTest {
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
         // Giving less dai tokens as hint will cause operation to revert.
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             daiSwapAmountIn - 1,
@@ -335,14 +335,14 @@ contract CowRouterTest is BaseCowTest {
         );
 
         vm.startPrank(lp);
-        dai.transfer(address(vault), transferHint[daiIdx]);
-        usdc.transfer(address(vault), transferHint[usdcIdx]);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
         // Since there's not enough funds to pay the operation, it'll revert.
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICowRouter.InsufficientFunds.selector,
-                transferHint[daiIdx],
+                transferAmountHints[daiIdx],
                 donationDai + daiSwapAmountIn
             )
         );
@@ -354,7 +354,7 @@ contract CowRouterTest is BaseCowTest {
             0,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
         vm.stopPrank();
@@ -379,14 +379,14 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
-            uint256[] memory transferHint
+            uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, daiSwapAmountIn, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.startPrank(lp);
-        dai.transfer(address(vault), transferHint[daiIdx]);
-        usdc.transfer(address(vault), transferHint[usdcIdx]);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
@@ -407,7 +407,7 @@ contract CowRouterTest is BaseCowTest {
             0,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
         vm.stopPrank();
@@ -454,7 +454,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -475,7 +475,7 @@ contract CowRouterTest is BaseCowTest {
             usdcSwapAmountOut,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -490,7 +490,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -510,7 +510,7 @@ contract CowRouterTest is BaseCowTest {
             usdcSwapAmountOut,
             deadline,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -529,14 +529,14 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
-            uint256[] memory transferHint
+            uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, usdcSwapAmountOut, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         // Should not revert, since there's no minimum limit in the donation.
         vm.startPrank(lp);
-        dai.transfer(address(vault), transferHint[daiIdx]);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
         // Does not transfer USDC, since donation is 0 and the swap only requires DAI.
 
         vm.expectEmit();
@@ -558,7 +558,7 @@ contract CowRouterTest is BaseCowTest {
             usdcSwapAmountOut,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
         vm.stopPrank();
@@ -586,7 +586,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -604,7 +604,7 @@ contract CowRouterTest is BaseCowTest {
             usdcSwapAmountOut,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -619,7 +619,7 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
-        (uint256[] memory donationAmounts, , , uint256[] memory transferHint) = _getDonationAndFees(
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
             0,
@@ -637,7 +637,7 @@ contract CowRouterTest is BaseCowTest {
             usdcSwapAmountOut,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
     }
@@ -661,14 +661,14 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
-            uint256[] memory transferHint
+            uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, usdcSwapAmountOut, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.startPrank(lp);
-        dai.transfer(address(vault), transferHint[daiIdx]);
-        usdc.transfer(address(vault), transferHint[usdcIdx]);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
         vm.expectEmit();
         emit ICowRouter.CoWSwapAndDonation(
@@ -689,7 +689,7 @@ contract CowRouterTest is BaseCowTest {
             usdcSwapAmountOut,
             type(uint32).max,
             donationAmounts,
-            transferHint,
+            transferAmountHints,
             bytes("")
         );
         vm.stopPrank();
@@ -731,14 +731,14 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
-            uint256[] memory transferHint
+            uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, 0, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.startPrank(lp);
-        dai.transfer(address(vault), transferHint[daiIdx]);
-        usdc.transfer(address(vault), transferHint[usdcIdx]);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
         vm.expectEmit();
         emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
@@ -817,7 +817,7 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
-            uint256[] memory transferHint
+            uint256[] memory transferAmountHints
         )
     {
         donationAmounts = new uint256[](2);
@@ -832,9 +832,9 @@ contract CowRouterTest is BaseCowTest {
         donationAfterFees[daiIdx] = donationDai - expectedProtocolFees[daiIdx];
         donationAfterFees[usdcIdx] = donationUsdc - expectedProtocolFees[usdcIdx];
 
-        transferHint = new uint256[](2);
-        transferHint[daiIdx] = donationDai + swapDaiExactIn;
-        transferHint[usdcIdx] = donationUsdc;
+        transferAmountHints = new uint256[](2);
+        transferAmountHints[daiIdx] = donationDai + swapDaiExactIn;
+        transferAmountHints[usdcIdx] = donationUsdc;
     }
 
     function _checkBalancesAfterSwapAndDonation(
