@@ -65,10 +65,11 @@ interface ICowRouter {
      * @notice The funds transferred to the Vault and the swap tokenOut amount were not enough to pay for the Swap and
      * Donate operation.
      *
-     * @param availableFunds Funds transferred by the sender to the Vault and amount of tokenOut of the swap
-     * @param requiredFunds Funds donated to the pool, paid in fees and amount of tokenIn of the swap
+     * @param token The address of the token in which credits and debits were accumulated
+     * @param senderCredits Funds transferred by the sender to the Vault and amount of tokenOut of the swap
+     * @param senderDebits Funds donated to the pool, paid in fees and amount of tokenIn of the swap
      */
-    error InsufficientFunds(uint256 availableFunds, uint256 requiredFunds);
+    error InsufficientFunds(IERC20 token, uint256 senderCredits, uint256 senderDebits);
 
     /**
      * @notice A swap and a donation have occurred.

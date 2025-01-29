@@ -342,6 +342,7 @@ contract CowRouterTest is BaseCowTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICowRouter.InsufficientFunds.selector,
+                dai,
                 transferAmountHints[daiIdx],
                 donationDai + daiSwapAmountIn
             )
@@ -731,6 +732,7 @@ contract CowRouterTest is BaseCowTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICowRouter.InsufficientFunds.selector,
+                dai,
                 transferAmountHints[daiIdx],
                 donationDai + usdcSwapAmountOut // Since the pool is linear, amount in == amount out
             )

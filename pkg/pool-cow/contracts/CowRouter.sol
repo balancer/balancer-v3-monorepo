@@ -334,24 +334,24 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256[] memory returnToSenderAmounts = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             // Credit the sender for tokens received upfront.
-            uint256 senderCredit = transferAmountHints[i];
+            uint256 senderCredits = transferAmountHints[i];
             // Debit the sender for tokens transferred in for the donation and protocol fees, so that they are not
             // returned to the sender.
-            uint256 senderDebt = donatedAmounts[i] + feeAmounts[i];
+            uint256 senderDebits = donatedAmounts[i] + feeAmounts[i];
 
             if (tokens[i] == swapTokenIn) {
                 // Debit the sender for tokens charged in the swap operation.
-                senderDebt += swapAmountIn;
+                senderDebits += swapAmountIn;
             } else if (tokens[i] == swapTokenOut) {
                 // Credit the sender for tokens received in the swap operation.
-                senderCredit += swapAmountOut;
+                senderCredits += swapAmountOut;
             }
 
-            if (senderCredit < senderDebt) {
-                revert InsufficientFunds(senderCredit, senderDebt);
+            if (senderCredits < senderDebits) {
+                revert InsufficientFunds(tokens[i], senderCredits, senderDebits);
             }
 
-            returnToSenderAmounts[i] = senderCredit - senderDebt;
+            returnToSenderAmounts[i] = senderCredits - senderDebits;
         }
 
         // Transfer tokens from the Vault to the sender and to the router, and settle the vault reserves.
