@@ -57,6 +57,14 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
             admin
         );
         authorizer.grantRole(
+            IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.addProtocolFeeBurner.selector),
+            admin
+        );
+        authorizer.grantRole(
+            IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.removeProtocolFeeBurner.selector),
+            admin
+        );
+        authorizer.grantRole(
             IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.sweepProtocolFeesForToken.selector),
             admin
         );
@@ -312,7 +320,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
             )
         );
         vm.prank(admin);
-        feeSweeper.sweepProtocolFeesForToken(dai, 0, DEFAULT_AMOUNT, MAX_UINT256, feeBurner);
+        feeSweeper.sweepProtocolFeesForToken(dai, DEFAULT_AMOUNT, DEFAULT_AMOUNT, MAX_UINT256, feeBurner);
     }
 
     function testApprovedBurnerGetter() public view {
