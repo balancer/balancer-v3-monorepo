@@ -21,12 +21,6 @@ interface IProtocolFeeSweeper {
     event FeeRecipientSet(address indexed feeRecipient);
 
     /**
-     * @notice Emitted when the protocol fee burner contract is set or updated.
-     * @param protocolFeeBurner The contract used to "burn" protocol fees (i.e., convert them to the target token)
-     */
-    event ProtocolFeeBurnerSet(address indexed protocolFeeBurner);
-
-    /**
      * @notice Emitted when a fee token is transferred directly, vs. calling the burner.
      * @dev This can happen if no target token or burner contract was specified, or the fee token is the target token.
      * @param pool The pool on which the fee was collected
@@ -36,11 +30,46 @@ interface IProtocolFeeSweeper {
      */
     event ProtocolFeeSwept(address indexed pool, IERC20 indexed feeToken, uint256 feeTokenAmount, address recipient);
 
+    /**
+     * @notice Emitted when a burner is added to the protocol fee burner allowlist.
+     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burner addresses.
+     * @param protocolFeeBurner The address of the approved protocol fee burner that was added
+     */
+    event ProtocolFeeBurnerAdded(address indexed protocolFeeBurner);
+
+    /**
+     * @notice Emitted when a burner is removed from the protocol fee burner allowlist.
+     * @dev `sweepProtocolFeesForToken` can only be called with approved protocol fee burner addresses.
+     * @param protocolFeeBurner The address of the approved protocol fee burner that was removed
+     */
+    event ProtocolFeeBurnerRemoved(address indexed protocolFeeBurner);
+
     /// @notice The fee recipient is invalid.
     error InvalidFeeRecipient();
 
     /// @notice The target token is invalid.
     error InvalidTargetToken();
+
+    /// @notice The protocol fee burner to be added is invalid.
+    error InvalidProtocolFeeBurner();
+
+    /**
+     * @notice The specified fee burner has not been approved.
+     * @param protocolFeeBurner The address of the unsupported fee burner
+     */
+    error UnsupportedProtocolFeeBurner(address protocolFeeBurner);
+
+    /**
+     * @notice Protocol fee burners can only be added to the allowlist once.
+     * @param protocolFeeBurner The address of an approved protocol fee burner
+     */
+    error ProtocolFeeBurnerAlreadyAdded(address protocolFeeBurner);
+
+    /**
+     * @notice Protocol fee burners must be added to the allowlist before being removed.
+     * @param protocolFeeBurner The address of a protocol fee burner to be removed from the allowlist
+     */
+    error ProtocolFeeBurnerNotAdded(address protocolFeeBurner);
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
@@ -58,12 +87,14 @@ interface IProtocolFeeSweeper {
      * @param feeToken The fee token in the pool
      * @param minTargetTokenAmountOut The minimum number of target tokens to be received
      * @param deadline Deadline for the burn operation (swap), after which it will revert
+     * @param feeBurner The protocol fee burner to be used (or the zero address to fall back on direct transfer)
      */
     function sweepProtocolFeesForToken(
         address pool,
         IERC20 feeToken,
         uint256 minTargetTokenAmountOut,
-        uint256 deadline
+        uint256 deadline,
+        IProtocolFeeBurner feeBurner
     ) external;
 
     /**
@@ -88,11 +119,11 @@ interface IProtocolFeeSweeper {
     function getFeeRecipient() external view returns (address);
 
     /**
-     * @notice Getter for the current protocol fee burner.
-     * @dev Can be changed by `setProtocolFeeBurner`.
-     * @return protocolFeeBurner The currently active protocol fee burner
+     * @notice Check whether a given address corresponds to an approved protocol fee burner.
+     * @param protocolFeeBurner The address to be checked
+     * @return isApproved True if the given address is on the approved protocol fee burner allowlist
      */
-    function getProtocolFeeBurner() external view returns (IProtocolFeeBurner);
+    function isApprovedProtocolFeeBurner(address protocolFeeBurner) external view returns (bool);
 
     /**
      * @notice Update the fee recipient address.
@@ -102,21 +133,29 @@ interface IProtocolFeeSweeper {
     function setFeeRecipient(address feeRecipient) external;
 
     /**
-     * @notice Update the address of the protocol fee burner, used to convert protocol fees to a target token.
-     * @dev This is a permissioned function. If it is not set, the contract will fall back to forwarding all fee tokens
-     * directly to the fee recipient. Note that if this function is called, `setTargetToken` must be called as well,
-     * or any sweep operations using the burner will revert with `InvalidTargetToken`.
-     *
-     * @param protocolFeeBurner The address of the current protocol fee burner
-     */
-    function setProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
-
-    /**
      * @notice Update the address of the target token.
      * @dev This is the token for which the burner will attempt to swap all collected fee tokens.
      * @param targetToken The address of the target token
      */
     function setTargetToken(IERC20 targetToken) external;
+
+    /**
+     * @notice Add an approved fee burner to the allowlist.
+     * @dev This is a permissioned call. `sweepProtocolFeesForToken` can only be called with approved protocol
+     * fee burners.
+     *
+     * @param protocolFeeBurner The address of an approved protocol fee burner to be added
+     */
+    function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
+
+    /**
+     * @notice Remove a fee burner from the allowlist.
+     * @dev This is a permissioned call. `sweepProtocolFeesForToken` can only be called with approved protocol
+     * fee burners.
+     *
+     * @param protocolFeeBurner The address of a protocol fee burner on the allowlist to be removed
+     */
+    function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external;
 
     /**
      * @notice Retrieve any tokens "stuck" in this contract (e.g., dust, or failed conversions).
