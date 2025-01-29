@@ -639,10 +639,7 @@ contract CowRouterTest is BaseCowTest {
         assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was set properly");
     }
 
-    /********************************************************
-                 withdrawCollectedProtocolFees()
-    ********************************************************/
-    function testwithdrawCollectedProtocolFees() public {
+    function testWithdrawCollectedProtocolFees() public {
         uint256 protocolFeePercentage = _INITIAL_PROTOCOL_FEE_PERCENTAGE;
         uint256 donationDai = DEFAULT_AMOUNT / 10;
         uint256 donationUsdc = DEFAULT_AMOUNT / 10;
