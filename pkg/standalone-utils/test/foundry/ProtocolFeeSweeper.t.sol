@@ -189,12 +189,6 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
         vault.manualSetAggregateYieldFeeAmount(pool, usdc, DEFAULT_AMOUNT);
 
-        // Collect them (i.e., send from the Vault to the controller).
-        feeController.collectAggregateFees(pool);
-
-        // Initial state has balances in the fee controller and none in the sweeper.
-        assertEq(dai.balanceOf(address(feeController)), DEFAULT_AMOUNT, "DAI not collected");
-        assertEq(usdc.balanceOf(address(feeController)), DEFAULT_AMOUNT, "USDC not collected");
         assertEq(dai.balanceOf(address(feeSweeper)), 0, "Initial sweeper DAI balance non-zero");
         assertEq(usdc.balanceOf(address(feeSweeper)), 0, "Initial sweeper USDC balance non-zero");
         assertEq(dai.balanceOf(address(feeRecipient)), 0, "Initial recipient DAI balance non-zero");
@@ -228,9 +222,6 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
         vault.manualSetAggregateYieldFeeAmount(pool, usdc, DEFAULT_AMOUNT);
-
-        // Collect them (i.e., send from the Vault to the controller).
-        feeController.collectAggregateFees(pool);
 
         // DAI is NOT the target token, so it should call burn.
         vm.expectEmit();
@@ -269,9 +260,6 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
 
-        // Collect them (i.e., send from the Vault to the controller).
-        feeController.collectAggregateFees(pool);
-
         vm.expectRevert(IProtocolFeeBurner.SwapDeadline.selector);
         vm.prank(admin);
         feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, 0, feeBurner);
@@ -284,9 +272,6 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
-
-        // Collect them (i.e., send from the Vault to the controller).
-        feeController.collectAggregateFees(pool);
 
         uint256 tokenRatio = 0.9e18;
         ProtocolFeeBurnerMock(address(feeBurner)).setTokenRatio(tokenRatio);
