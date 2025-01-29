@@ -62,6 +62,15 @@ interface ICowRouter {
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
 
     /**
+     * @notice The funds transferred to the Vault and the swap tokenOut amount were not enough to pay for the Swap and
+     * Donate operation.
+     *
+     * @param availableFunds Funds transferred by the sender to the Vault and amount of tokenOut of the swap
+     * @param requiredFunds Funds donated to the pool, paid in fees and amount of tokenIn of the swap
+     */
+    error InsufficientFunds(uint256 availableFunds, uint256 requiredFunds);
+
+    /**
      * @notice A swap and a donation have occurred.
      * @param pool The pool with the tokens being swapped
      * @param swapTokenIn The token entering the Vault (balance increases)

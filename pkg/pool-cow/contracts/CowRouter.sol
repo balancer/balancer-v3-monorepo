@@ -311,17 +311,27 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     ) private {
         uint256[] memory senderAmounts = new uint256[](donatedAmounts.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            // The token leftover is the amount transferred from the sender to the Vault (transferHint), minus the
-            // amount of tokens donated ton the pool and paid on fees. The leftover should be returned to the sender.
-            senderAmounts[i] = transferHint[i] - donatedAmounts[i] - feeAmounts[i];
+            // The sender sent transferHint in advance, so this is the amount available to spend.
+            uint256 availableFunds = transferHint[i];
+            // The donation will spend part of the available funds.
+            uint256 requiredFunds = donatedAmounts[i] + feeAmounts[i];
 
             if (tokens[i] == swapTokenIn) {
-                // The tokenIn amount of the swap is discounted from the leftover that will return to the sender.
-                senderAmounts[i] -= swapAmountIn;
+                // The tokenIn amount of the swap is a fund required to fulfill the swap.
+                requiredFunds += swapAmountIn;
             } else if (tokens[i] == swapTokenOut) {
-                // The tokenOut amount of the swap is added to the leftover that will return to the sender.
-                senderAmounts[i] += swapAmountOut;
+                // The tokenOut amount of the swap is added to the available funds and may be spent as a donation, or
+                // return to the sender.
+                availableFunds += swapAmountOut;
             }
+
+            if (availableFunds < requiredFunds) {
+                revert InsufficientFunds(availableFunds, requiredFunds);
+            }
+
+            // The token leftover is the amount transferred from the sender to the Vault (transferHint), minus the
+            // amount of tokens donated ton the pool and paid on fees. The leftover should be returned to the sender.
+            senderAmounts[i] = availableFunds - requiredFunds;
         }
 
         // Transfer tokens from the Vault to the sender and to the router, and settle the vault reserves.
