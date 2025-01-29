@@ -183,7 +183,8 @@ contract CowRouterTest is BaseCowTest {
             expectedProtocolFees,
             donationAmounts,
             daiSwapAmountIn,
-            daiSwapAmountIn
+            daiSwapAmountIn,
+            0
         );
     }
 
@@ -310,7 +311,8 @@ contract CowRouterTest is BaseCowTest {
             expectedProtocolFees,
             donationAmounts,
             daiSwapAmountIn,
-            daiSwapAmountIn // Since the pool is linear, amount in == amount out
+            daiSwapAmountIn, // Since the pool is linear, amount in == amount out
+            0
         );
     }
 
@@ -419,7 +421,8 @@ contract CowRouterTest is BaseCowTest {
             expectedProtocolFees,
             donationAmounts,
             daiSwapAmountIn,
-            daiSwapAmountIn
+            daiSwapAmountIn,
+            0
         );
     }
 
@@ -570,7 +573,8 @@ contract CowRouterTest is BaseCowTest {
             expectedProtocolFees,
             donationAmounts,
             usdcSwapAmountOut,
-            usdcSwapAmountOut
+            usdcSwapAmountOut,
+            0
         );
     }
 
@@ -696,7 +700,8 @@ contract CowRouterTest is BaseCowTest {
             expectedProtocolFees,
             donationAmounts,
             usdcSwapAmountOut, // Since the pool is linear, amount in == amount out
-            usdcSwapAmountOut
+            usdcSwapAmountOut,
+            0
         );
     }
 
@@ -805,7 +810,8 @@ contract CowRouterTest is BaseCowTest {
             expectedProtocolFees,
             donationAmounts,
             usdcSwapAmountOut,
-            usdcSwapAmountOut
+            usdcSwapAmountOut,
+            0
         );
     }
 
@@ -818,6 +824,80 @@ contract CowRouterTest is BaseCowTest {
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         cowRouter.donate(pool, donationAmounts, bytes(""));
+    }
+
+    function testDonateExtraTokens(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
+        // 1% Protocol Fee Percentage.
+        protocolFeePercentage = 1e16;
+        donationDai = DEFAULT_AMOUNT / 10;
+        donationUsdc = DEFAULT_AMOUNT / 10;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(protocolFeePercentage);
+
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees,
+            uint256[] memory transferAmountHints
+        ) = _getDonationAndFees(donationDai, donationUsdc, 0, protocolFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
+
+        uint256 daiExcess = transferAmountHints[daiIdx];
+
+        vm.startPrank(lp);
+        // In the case of a donation, extra tokens are lost. It happens because the donate() function does not receive
+        // a hint and assumes the donation amounts were correctly transferred by the sender (since they're exact
+        // amounts).
+        dai.transfer(address(vault), transferAmountHints[daiIdx] + daiExcess);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
+
+        vm.expectEmit();
+        emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
+        cowRouter.donate(pool, donationAmounts, bytes(""));
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
+
+        // The sender lost the excess of tokens sent to the Vault during the settle operation.
+        _checkBalancesAfterSwapAndDonation(
+            balancesBefore,
+            balancesAfter,
+            expectedProtocolFees,
+            donationAmounts,
+            0,
+            0,
+            daiExcess
+        );
+    }
+
+    function testDonateMissingToken(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
+        // 1% Protocol Fee Percentage.
+        protocolFeePercentage = 1e16;
+        donationDai = DEFAULT_AMOUNT / 10;
+        donationUsdc = DEFAULT_AMOUNT / 10;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(protocolFeePercentage);
+
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
+            donationDai,
+            donationUsdc,
+            0,
+            protocolFeePercentage
+        );
+
+        uint256 daiMissing = 1;
+
+        vm.startPrank(lp);
+        dai.transfer(address(vault), transferAmountHints[daiIdx] - daiMissing);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
+
+        // The operation should revert, since the user did not transfer the amount of tokens required to settle.
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        cowRouter.donate(pool, donationAmounts, bytes(""));
+        vm.stopPrank();
     }
 
     function testDonate__Fuzz(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
@@ -849,7 +929,15 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        _checkBalancesAfterSwapAndDonation(balancesBefore, balancesAfter, expectedProtocolFees, donationAmounts, 0, 0);
+        _checkBalancesAfterSwapAndDonation(
+            balancesBefore,
+            balancesAfter,
+            expectedProtocolFees,
+            donationAmounts,
+            0,
+            0,
+            0
+        );
     }
 
     /********************************************************
@@ -945,7 +1033,8 @@ contract CowRouterTest is BaseCowTest {
         uint256[] memory expectedProtocolFees,
         uint256[] memory donations,
         uint256 daiSwapAmountIn,
-        uint256 usdcSwapAmountOut
+        uint256 usdcSwapAmountOut,
+        uint256 lostDaiTokens
     ) private view {
         // Test collected protocol fee (router balance and state). Notice that userTokens refer to CoWRouter tokens,
         // since CoWRouter address was passed as the input of getBalances() function.
@@ -990,7 +1079,11 @@ contract CowRouterTest is BaseCowTest {
         // Test vault balances
         assertEq(
             balancesAfter.vaultTokens[daiIdx],
-            balancesBefore.vaultTokens[daiIdx] + donations[daiIdx] - expectedProtocolFees[daiIdx] + daiSwapAmountIn,
+            balancesBefore.vaultTokens[daiIdx] +
+                donations[daiIdx] -
+                expectedProtocolFees[daiIdx] +
+                daiSwapAmountIn +
+                lostDaiTokens,
             "Vault DAI balance is not correct"
         );
         assertEq(
@@ -1005,7 +1098,7 @@ contract CowRouterTest is BaseCowTest {
         // Test donor balances
         assertEq(
             balancesAfter.lpTokens[daiIdx],
-            balancesBefore.lpTokens[daiIdx] - donations[daiIdx] - daiSwapAmountIn,
+            balancesBefore.lpTokens[daiIdx] - donations[daiIdx] - daiSwapAmountIn - lostDaiTokens,
             "LP DAI balance is not correct"
         );
         assertEq(
