@@ -640,7 +640,8 @@ contract CowRouterTest is BaseCowTest {
         uint256 daiSwapAmountIn,
         uint256 usdcSwapAmountOut
     ) private view {
-        // Test collected protocol fee (router balance and state)
+        // Test collected protocol fee (router balance and state). Notice that userTokens refer to CoWRouter tokens,
+        // since CoWRouter address was passed as the input of getBalances() function.
         assertEq(
             balancesAfter.userTokens[daiIdx],
             balancesBefore.userTokens[daiIdx] + expectedProtocolFees[daiIdx],
