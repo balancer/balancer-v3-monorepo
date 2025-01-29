@@ -552,7 +552,7 @@ contract CowRouterTest is BaseCowTest {
     }
 
     /********************************************************
-                               ProtocolFeePercentage
+                       ProtocolFeePercentage
     ********************************************************/
 
     function testGetProtocolFeePercentage() public {
