@@ -130,56 +130,6 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
         );
     }
 
-    function createGyro2ClpPoolMock(
-        address[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        string memory label,
-        IVaultMock vault,
-        address poolCreator
-    ) internal returns (address newPool, bytes memory poolArgs) {
-        LiquidityManagement memory liquidityManagement;
-        PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = poolCreator;
-
-        IGyro2CLPPool.GyroParams memory params = IGyro2CLPPool.GyroParams({
-            name: "Gyro 2CLP Pool Mock",
-            symbol: "GRP-Mock",
-            sqrtAlpha: _sqrtAlpha,
-            sqrtBeta: _sqrtBeta
-        });
-
-        if (reusingArtifacts) {
-            newPool = address(
-                deployCode(_computeGyro2CLPPathTest(type(Gyro2CLPPoolMock).name), abi.encode(params, vault))
-            );
-        } else {
-            newPool = address(new Gyro2CLPPoolMock(params, vault));
-        }
-
-        vm.label(newPool, label);
-
-        vault.registerPool(
-            newPool,
-            vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
-            DEFAULT_SWAP_FEE,
-            0,
-            false,
-            roleAccounts,
-            address(0),
-            liquidityManagement
-        );
-
-        poolArgs = abi.encode(
-            IGyro2CLPPool.GyroParams({
-                name: "Gyro 2CLP Pool Mock",
-                symbol: "GRP-Mock",
-                sqrtAlpha: _sqrtAlpha,
-                sqrtBeta: _sqrtBeta
-            }),
-            vault
-        );
-    }
-
     function deployGyro2CLPPoolFactory(IVault vault) internal returns (Gyro2CLPPoolFactory) {
         if (reusingArtifacts) {
             return
