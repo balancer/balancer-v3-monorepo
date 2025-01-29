@@ -303,7 +303,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     /**
-     * @notice
+     * @notice Checks if upfront transfers were enough to pay for the swap and donation operation and settles.
      * @dev This function uses the concept of available funds (credits) and required funds (debt) to check if the
      * sender transferred enough funds to fulfill the swap and donation. This concept avoids math underflow, since it
      * works only with sums, and allows to revert with the right reason in case the upfront transfer was not enough to
