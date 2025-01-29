@@ -11,7 +11,7 @@ interface IProtocolFeeBurner {
      * @param feeToken The token in which the fee was originally collected
      * @param exactFeeTokenAmountIn The number of feeTokens collected
      * @param targetToken The preferred token for fee collection (e.g., USDC)
-     * @param targetTokenAmountOut The number of target tokens actually received
+     * @param actualTargetTokenAmountOut The number of target tokens actually received
      * @param recipient The address where the target tokens were sent
      */
     event ProtocolFeeBurned(
@@ -19,7 +19,7 @@ interface IProtocolFeeBurner {
         IERC20 indexed feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 indexed targetToken,
-        uint256 targetTokenAmountOut,
+        uint256 actualTargetTokenAmountOut,
         address recipient
     );
 
@@ -38,7 +38,7 @@ interface IProtocolFeeBurner {
      * @notice Swap an exact amount of `feeToken` for the `targetToken`, and send proceeds to the `recipient`.
      * @dev Assumes the sweeper has transferred the tokens to the burner prior to the call.
      * @param pool The pool the fees came from (only used for documentation in the event)
-     * @param feeToken The feeToken collected from the pool
+     * @param feeToken The token collected from the pool
      * @param exactFeeTokenAmountIn The number of fee tokens collected
      * @param targetToken The desired target token (token out of the swap)
      * @param minTargetTokenAmountOut The minimum amount out for the swap
