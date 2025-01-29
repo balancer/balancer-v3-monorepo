@@ -24,8 +24,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     using SafeERC20 for IERC20;
     using SafeCast for *;
 
-    // Protocol fee percentage capped at 10%.
-    uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
+    // Protocol fee percentage capped at 50%.
+    uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 50e16;
 
     uint256 internal _protocolFeePercentage;
     // Store the total amount of fees collected in each token.
