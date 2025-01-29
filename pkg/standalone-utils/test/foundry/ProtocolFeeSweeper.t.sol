@@ -27,6 +27,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
     IProtocolFeeSweeper internal feeSweeper;
 
     IProtocolFeeBurner internal feeBurner;
+    IProtocolFeeBurner internal feeBurner2;
 
     address internal feeRecipient;
 
@@ -37,17 +38,22 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         feeSweeper = new ProtocolFeeSweeper(vault, feeRecipient);
         feeBurner = new ProtocolFeeBurnerMock();
+        feeBurner2 = new ProtocolFeeBurnerMock();
 
         authorizer.grantRole(
             IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.setFeeRecipient.selector),
             admin
         );
         authorizer.grantRole(
-            IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.setProtocolFeeBurner.selector),
+            IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.setTargetToken.selector),
             admin
         );
         authorizer.grantRole(
-            IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.setTargetToken.selector),
+            IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.addProtocolFeeBurner.selector),
+            admin
+        );
+        authorizer.grantRole(
+            IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.removeProtocolFeeBurner.selector),
             admin
         );
         authorizer.grantRole(
@@ -62,6 +68,9 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
             ),
             address(feeSweeper)
         );
+
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner);
     }
 
     function testGetProtocolFeeController() public view {
@@ -74,10 +83,6 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
     function testGetFeeRecipient() public view {
         assertEq(feeSweeper.getFeeRecipient(), feeRecipient, "Wrong fee recipient");
-    }
-
-    function testGetProtocolFeeBurner() public view {
-        assertEq(address(feeSweeper.getProtocolFeeBurner()), ZERO_ADDRESS, "Initial fee burner non-zero");
     }
 
     function testSetFeeRecipientNoPermission() public {
@@ -105,26 +110,6 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         vm.prank(admin);
         feeSweeper.setFeeRecipient(alice);
-    }
-
-    function testSetFeeBurnerNoPermission() public {
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        feeSweeper.setProtocolFeeBurner(feeBurner);
-    }
-
-    function testSetFeeBurner() public {
-        vm.prank(admin);
-        feeSweeper.setProtocolFeeBurner(feeBurner);
-
-        assertEq(address(feeSweeper.getProtocolFeeBurner()), address(feeBurner), "Wrong fee burner");
-    }
-
-    function testSetFeeBurnerEmitsEvent() public {
-        vm.expectEmit();
-        emit IProtocolFeeSweeper.ProtocolFeeBurnerSet(address(feeBurner));
-
-        vm.prank(admin);
-        feeSweeper.setProtocolFeeBurner(feeBurner);
     }
 
     function testSetTargetTokenNoPermission() public {
@@ -213,12 +198,12 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, dai, DEFAULT_AMOUNT, feeRecipient);
 
-        _defaultSweep(pool, dai);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, MAX_UINT256, IProtocolFeeBurner(address(0)));
 
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
-        _defaultSweep(pool, usdc);
+        feeSweeper.sweepProtocolFeesForToken(pool, usdc, 0, MAX_UINT256, IProtocolFeeBurner(address(0)));
         vm.stopPrank();
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
@@ -231,10 +216,8 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
     function testSweepProtocolFeesForTokenBurner() public {
         // Set up the sweeper to be able to burn.
-        vm.startPrank(admin);
-        feeSweeper.setProtocolFeeBurner(feeBurner);
+        vm.prank(admin);
         feeSweeper.setTargetToken(usdc);
-        vm.stopPrank();
 
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
@@ -264,37 +247,28 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
     }
 
     function testInvalidBurnerConfiguration() public {
-        vm.startPrank(admin);
-
-        // Set the burner, but not the token.
-        feeSweeper.setProtocolFeeBurner(feeBurner);
-
         vm.expectRevert(IProtocolFeeSweeper.InvalidTargetToken.selector);
+        vm.prank(admin);
         _defaultSweep(pool, dai);
-        vm.stopPrank();
     }
 
     function testDeadline() public {
         // Set up the sweeper to be able to burn.
-        vm.startPrank(admin);
-        feeSweeper.setProtocolFeeBurner(feeBurner);
+        vm.prank(admin);
         feeSweeper.setTargetToken(usdc);
-        vm.stopPrank();
 
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
 
         vm.expectRevert(IProtocolFeeBurner.SwapDeadline.selector);
         vm.prank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, 0);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, 0, feeBurner);
     }
 
     function testSwapLimits() public {
         // Set up the sweeper to be able to burn.
-        vm.startPrank(admin);
-        feeSweeper.setProtocolFeeBurner(feeBurner);
+        vm.prank(admin);
         feeSweeper.setTargetToken(usdc);
-        vm.stopPrank();
 
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
@@ -313,11 +287,92 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
             )
         );
         vm.prank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, MAX_UINT256);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, MAX_UINT256, feeBurner);
+    }
+
+    function testApprovedBurnerGetter() public view {
+        assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)), "Standard fee burner is not approved");
+        assertFalse(feeSweeper.isApprovedProtocolFeeBurner(address(0)), "Invalid fee burner is approved");
+    }
+
+    function testAddApprovedBurnerNoPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeSweeper.addProtocolFeeBurner(feeBurner2);
+    }
+
+    function testAddInvalidFeeBurner() public {
+        vm.expectRevert(IProtocolFeeSweeper.InvalidProtocolFeeBurner.selector);
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(IProtocolFeeBurner(address(0)));
+    }
+
+    function testMultipleFeeBurners() public {
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner2);
+
+        assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)), "Standard fee burner is not approved");
+        assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner2)), "Second fee burner is not approved");
+    }
+
+    function testAddDuplicateFeeBurner() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeSweeper.ProtocolFeeBurnerAlreadyAdded.selector, address(feeBurner))
+        );
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner);
+    }
+
+    function testAddFeeBurnerEmitsEvent() public {
+        vm.expectEmit();
+        emit IProtocolFeeSweeper.ProtocolFeeBurnerAdded(address(feeBurner2));
+
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner2);
+    }
+
+    function testRemoveFeeBurnerNoPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeSweeper.removeProtocolFeeBurner(feeBurner);
+    }
+
+    function testRemoveFeeBurner() public {
+        vm.prank(admin);
+        feeSweeper.removeProtocolFeeBurner(feeBurner);
+
+        assertFalse(
+            feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)),
+            "Standard fee burner is still approved"
+        );
+    }
+
+    function testRemoveFeeBurnerNotAdded() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeSweeper.ProtocolFeeBurnerNotAdded.selector, address(feeBurner2))
+        );
+
+        vm.prank(admin);
+        feeSweeper.removeProtocolFeeBurner(feeBurner2);
+    }
+
+    function testRemoveFeeBurnerEmitsEvent() public {
+        vm.expectEmit();
+        emit IProtocolFeeSweeper.ProtocolFeeBurnerRemoved(address(feeBurner));
+
+        vm.prank(admin);
+        feeSweeper.removeProtocolFeeBurner(feeBurner);
+    }
+
+    function testUnsupportedFeeBurner() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeSweeper.UnsupportedProtocolFeeBurner.selector, address(feeBurner2))
+        );
+
+        vm.prank(admin);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, MAX_UINT256, feeBurner2);
     }
 
     function _defaultSweep(address pool, IERC20 token) private {
         // No limit and max deadline
-        feeSweeper.sweepProtocolFeesForToken(pool, token, 0, MAX_UINT256);
+        feeSweeper.sweepProtocolFeesForToken(pool, token, 0, MAX_UINT256, feeBurner);
     }
 }
