@@ -52,6 +52,12 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         orderDeadline = block.timestamp + ORDER_LIFETIME;
     }
 
+    function _transferToBurner(IERC20 token, uint256 amount) private {
+        // Must transfer before burning.
+        vm.prank(alice);
+        token.transfer(address(cowSwapFeeBurner), amount);
+    }
+
     function testBurn() public {
         _grantBurnRolesAndApproveTokens();
 
@@ -61,10 +67,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.getOrder(dai);
 
         _mockComposableCowCreate(dai);
-
-        // Must transfer before burning.
-        vm.prank(alice);
-        dai.transfer(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
 
         vm.expectEmit();
         emit IProtocolFeeBurner.ProtocolFeeBurned(
@@ -75,7 +78,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             MIN_TARGET_TOKEN_AMOUNT,
             alice
         );
-        
+
         _burn();
 
         assertEq(
@@ -165,13 +168,16 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         GPv2Order memory order = cowSwapFeeBurner.getTradeableOrder(
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai)
+            abi.encode(dai),
+            bytes("")
         );
         GPv2Order memory expectedOrder = GPv2Order({
             sellToken: IERC20(address(dai)),
@@ -193,20 +199,23 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
     function testGetTradeableOrderWhenOrderNonexistent() public {
         vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
-        cowSwapFeeBurner.getTradeableOrder(address(0), address(0), bytes32(0), abi.encode(dai));
+        cowSwapFeeBurner.getTradeableOrder(address(0), address(0), bytes32(0), abi.encode(dai), bytes(""));
     }
 
     function testVerify() public {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         GPv2Order memory order = cowSwapFeeBurner.getTradeableOrder(
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai)
+            abi.encode(dai),
+            bytes("")
         );
 
         cowSwapFeeBurner.verify(
@@ -254,13 +263,16 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         GPv2Order memory order = cowSwapFeeBurner.getTradeableOrder(
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai)
+            abi.encode(dai),
+            bytes("")
         );
 
         order.buyAmount = order.buyAmount + 1;
@@ -280,13 +292,16 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         GPv2Order memory order = cowSwapFeeBurner.getTradeableOrder(
             address(0),
             address(0),
             bytes32(0),
-            abi.encode(dai)
+            abi.encode(dai),
+            bytes("")
         );
 
         order.buyAmount = order.buyAmount - 1;
@@ -421,6 +436,8 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         uint256 halfAmount = TEST_BURN_AMOUNT / 2;
@@ -474,6 +491,11 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _mockComposableCowCreate(dai);
         _burn();
 
+        // Non-zero balance and timeout so that the status will be "Failed".
+        vm.prank(alice);
+        dai.transfer(address(cowSwapFeeBurner), 1);
+        skip(ORDER_LIFETIME + 1);
+
         vm.expectRevert(
             abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Min target token amount is zero")
         );
@@ -485,6 +507,11 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
         _mockComposableCowCreate(dai);
         _burn();
+
+        // Non-zero balance and timeout so that the status will be "Failed".
+        vm.prank(alice);
+        dai.transfer(address(cowSwapFeeBurner), 1);
+        skip(ORDER_LIFETIME + 1);
 
         vm.expectRevert(
             abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Deadline is in the past")
@@ -501,6 +528,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
         _burn();
 
         uint256 halfAmount = TEST_BURN_AMOUNT / 2;
@@ -548,6 +576,8 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         uint256 halfAmount = TEST_BURN_AMOUNT / 2;
@@ -583,6 +613,8 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         assertEq(cowSwapFeeBurner.getOrderStatus(dai), ICowSwapFeeBurner.OrderStatus.Active, "Order should be active");
@@ -600,6 +632,8 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         skip(ORDER_LIFETIME + 1);
@@ -610,6 +644,8 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
+        _transferToBurner(dai, TEST_BURN_AMOUNT);
+
         _burn();
 
         vm.prank(vaultRelayerMock);
