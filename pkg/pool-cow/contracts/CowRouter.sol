@@ -254,8 +254,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             params.userData
         );
 
-        // This hook assumes that transferAmountHints = donationAmounts. It means, the sender transferred the exact amount
-        // of tokens to the Vault, no leftovers.
+        // This hook assumes that transferAmountHints = donationAmounts. It means, the sender transferred the exact
+        // amount of tokens to the Vault, no leftovers.
         _settleDonation(
             params.sender,
             tokens,
