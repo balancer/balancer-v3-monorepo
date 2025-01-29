@@ -171,6 +171,12 @@ interface ICowRouter {
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage);
 
     /**
+     * @notice Returns the maximum protocol fee percentage.
+     * @return maxProtocolFeePercentage The maximum value of protocol fee percentage
+     */
+    function getMaxProtocolFeePercentage() external pure returns (uint256 maxProtocolFeePercentage);
+
+    /**
      * @notice Returns the protocol fees collected by the CoW Router for a specific token.
      * @dev The protocol fees collected by the CoW Router stay in the CoW router contract.
      * @param token Token with collected protocol fees

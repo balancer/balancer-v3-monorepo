@@ -44,6 +44,10 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         return _protocolFeePercentage;
     }
 
+    function getMaxProtocolFeePercentage() external pure returns (uint256) {
+        return _MAX_PROTOCOL_FEE_PERCENTAGE;
+    }
+
     /// @inheritdoc ICowRouter
     function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees) {
         return _collectedProtocolFees[token];
