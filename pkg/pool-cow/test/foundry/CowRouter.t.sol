@@ -21,8 +21,6 @@ contract CowRouterTest is BaseCowTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    // 10% max protocol fee percentage.
-    uint256 private constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
     uint256 private constant _MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public override {
@@ -367,7 +365,7 @@ contract CowRouterTest is BaseCowTest {
         uint256 protocolFeePercentage
     ) public {
         // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
-        protocolFeePercentage = bound(protocolFeePercentage, 0, _MAX_PROTOCOL_FEE_PERCENTAGE);
+        protocolFeePercentage = bound(protocolFeePercentage, 0, cowRouter.getMaxProtocolFeePercentage());
         donationDai = _boundDonation(donationDai, protocolFeePercentage);
         donationUsdc = _boundDonation(donationUsdc, protocolFeePercentage);
         daiSwapAmountIn = bound(daiSwapAmountIn, _MIN_TRADE_AMOUNT, DEFAULT_AMOUNT);
@@ -649,7 +647,7 @@ contract CowRouterTest is BaseCowTest {
         uint256 protocolFeePercentage
     ) public {
         // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
-        protocolFeePercentage = bound(protocolFeePercentage, 0, _MAX_PROTOCOL_FEE_PERCENTAGE);
+        protocolFeePercentage = bound(protocolFeePercentage, 0, cowRouter.getMaxProtocolFeePercentage());
         donationDai = _boundDonation(donationDai, protocolFeePercentage);
         donationUsdc = _boundDonation(donationUsdc, protocolFeePercentage);
         usdcSwapAmountOut = bound(usdcSwapAmountOut, _MIN_TRADE_AMOUNT, DEFAULT_AMOUNT);
@@ -720,7 +718,7 @@ contract CowRouterTest is BaseCowTest {
 
     function testDonate__Fuzz(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
         // ProtocolFeePercentage between 0 and MAX PROTOCOL FEE PERCENTAGE.
-        protocolFeePercentage = bound(protocolFeePercentage, 0, _MAX_PROTOCOL_FEE_PERCENTAGE);
+        protocolFeePercentage = bound(protocolFeePercentage, 0, cowRouter.getMaxProtocolFeePercentage());
         donationDai = _boundDonation(donationDai, protocolFeePercentage);
         donationUsdc = _boundDonation(donationUsdc, protocolFeePercentage);
 
@@ -751,7 +749,7 @@ contract CowRouterTest is BaseCowTest {
     }
 
     /********************************************************
-                               ProtocolFeePercentage
+                       ProtocolFeePercentage
     ********************************************************/
 
     function testGetProtocolFeePercentage() public {
@@ -776,13 +774,13 @@ contract CowRouterTest is BaseCowTest {
 
     function testSetProtocolFeePercentageCappedAtMax() public {
         // Any value above the MAX_PROTOCOL_FEE_PERCENTAGE should revert.
-        uint256 newProtocolFeePercentage = _MAX_PROTOCOL_FEE_PERCENTAGE + 1;
+        uint256 newProtocolFeePercentage = cowRouter.getMaxProtocolFeePercentage() + 1;
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 ICowRouter.ProtocolFeePercentageAboveLimit.selector,
                 newProtocolFeePercentage,
-                _MAX_PROTOCOL_FEE_PERCENTAGE
+                cowRouter.getMaxProtocolFeePercentage()
             )
         );
         vm.prank(admin);
@@ -845,7 +843,8 @@ contract CowRouterTest is BaseCowTest {
         uint256 daiSwapAmountIn,
         uint256 usdcSwapAmountOut
     ) private view {
-        // Test collected protocol fee (router balance and state)
+        // Test collected protocol fee (router balance and state). Notice that userTokens refer to CoWRouter tokens,
+        // since CoWRouter address was passed as the input of getBalances() function.
         assertEq(
             balancesAfter.userTokens[daiIdx],
             balancesBefore.userTokens[daiIdx] + expectedProtocolFees[daiIdx],
