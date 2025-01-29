@@ -24,8 +24,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     using SafeERC20 for IERC20;
     using SafeCast for *;
 
-    // Protocol fee percentage capped at 10%.
-    uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 10e16;
+    // Protocol fee percentage capped at 50%.
+    uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 50e16;
 
     // Address that will receive the protocol fees on withdrawal.
     address internal _feeSweeper;
@@ -49,6 +49,10 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     /// @inheritdoc ICowRouter
     function getProtocolFeePercentage() external view returns (uint256 protocolFeePercentage) {
         return _protocolFeePercentage;
+    }
+
+    function getMaxProtocolFeePercentage() external pure returns (uint256) {
+        return _MAX_PROTOCOL_FEE_PERCENTAGE;
     }
 
     /// @inheritdoc ICowRouter
@@ -115,8 +119,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapKind: SwapKind.EXACT_IN,
                         swapTokenIn: swapTokenIn,
                         swapTokenOut: swapTokenOut,
-                        swapMaxAmountIn: swapExactAmountIn,
-                        swapMinAmountOut: swapMinAmountOut,
+                        swapAmountGiven: swapExactAmountIn,
+                        swapLimit: swapMinAmountOut,
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
                         userData: userData
@@ -148,8 +152,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapKind: SwapKind.EXACT_OUT,
                         swapTokenIn: swapTokenIn,
                         swapTokenOut: swapTokenOut,
-                        swapMaxAmountIn: swapMaxAmountIn,
-                        swapMinAmountOut: swapExactAmountOut,
+                        swapAmountGiven: swapExactAmountOut,
+                        swapLimit: swapMaxAmountIn,
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
                         userData: userData
@@ -211,28 +215,28 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         }
 
         if (swapAndDonateParams.swapKind == SwapKind.EXACT_IN) {
-            swapAmountIn = swapAndDonateParams.swapMaxAmountIn;
+            swapAmountIn = swapAndDonateParams.swapAmountGiven;
             (, , swapAmountOut) = _vault.swap(
                 VaultSwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: swapAndDonateParams.pool,
                     tokenIn: swapAndDonateParams.swapTokenIn,
                     tokenOut: swapAndDonateParams.swapTokenOut,
-                    amountGivenRaw: swapAndDonateParams.swapMaxAmountIn,
-                    limitRaw: swapAndDonateParams.swapMinAmountOut,
+                    amountGivenRaw: swapAndDonateParams.swapAmountGiven,
+                    limitRaw: swapAndDonateParams.swapLimit,
                     userData: swapAndDonateParams.userData
                 })
             );
         } else {
-            swapAmountOut = swapAndDonateParams.swapMinAmountOut;
+            swapAmountOut = swapAndDonateParams.swapAmountGiven;
             (, swapAmountIn, ) = _vault.swap(
                 VaultSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     pool: swapAndDonateParams.pool,
                     tokenIn: swapAndDonateParams.swapTokenIn,
                     tokenOut: swapAndDonateParams.swapTokenOut,
-                    amountGivenRaw: swapAndDonateParams.swapMinAmountOut,
-                    limitRaw: swapAndDonateParams.swapMaxAmountIn,
+                    amountGivenRaw: swapAndDonateParams.swapAmountGiven,
+                    limitRaw: swapAndDonateParams.swapLimit,
                     userData: swapAndDonateParams.userData
                 })
             );
