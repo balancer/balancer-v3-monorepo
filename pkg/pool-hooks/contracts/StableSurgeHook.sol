@@ -199,11 +199,9 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         address pool,
         uint256 staticSwapFeePercentage
     ) public view returns (uint256) {
-        uint256 numTokens = params.balancesScaled18.length;
-
         uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
 
-        uint256[] memory newBalances = new uint256[](numTokens);
+        uint256[] memory newBalances = new uint256[](params.balancesScaled18.length);
         ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
 
         if (params.kind == SwapKind.EXACT_IN) {
