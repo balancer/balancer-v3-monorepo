@@ -360,8 +360,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
     function _isSwapRequestAllowed(PoolSwapParams memory params) private view returns (bool) {
         // If project token swaps are enabled, the request is always valid.
-        // If not, project token must be be token out (i.e. _not_ token in).
-        return _enableProjectTokenSwapsIn || params.indexIn != _projectTokenIndex;
+        // If not, project token must be the token out.
+        return _enableProjectTokenSwapsIn || params.indexOut == _projectTokenIndex;
     }
 
     /**
