@@ -182,6 +182,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     /********************************************************
                      Withdraw Protocol Fees
     ********************************************************/
+
     /// @inheritdoc ICowRouter
     function withdrawCollectedProtocolFees(IERC20 token) external {
         uint256 amountToWithdraw = _collectedProtocolFees[token];

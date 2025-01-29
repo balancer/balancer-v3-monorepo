@@ -603,7 +603,7 @@ contract CowRouterTest is BaseCowTest {
     }
 
     /********************************************************
-                          getFeeSweeper()
+                          Fee Sweeper
     ********************************************************/
     function testGetFeeSweeper() public {
         assertEq(cowRouter.getFeeSweeper(), feeSweeper, "Wrong fee sweeper");
@@ -616,9 +616,6 @@ contract CowRouterTest is BaseCowTest {
         assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was not set properly");
     }
 
-    /********************************************************
-                          setFeeSweeper()
-    ********************************************************/
     function testSetFeeSweeperIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         cowRouter.setFeeSweeper(address(1));
