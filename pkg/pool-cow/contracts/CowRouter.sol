@@ -93,8 +93,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapKind: SwapKind.EXACT_IN,
                         swapTokenIn: swapTokenIn,
                         swapTokenOut: swapTokenOut,
-                        swapMaxAmountIn: swapExactAmountIn,
-                        swapMinAmountOut: swapMinAmountOut,
+                        swapAmountGiven: swapExactAmountIn,
+                        swapLimit: swapMinAmountOut,
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
                         userData: userData
@@ -126,8 +126,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapKind: SwapKind.EXACT_OUT,
                         swapTokenIn: swapTokenIn,
                         swapTokenOut: swapTokenOut,
-                        swapMaxAmountIn: swapMaxAmountIn,
-                        swapMinAmountOut: swapExactAmountOut,
+                        swapAmountGiven: swapExactAmountOut,
+                        swapLimit: swapMaxAmountIn,
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
                         userData: userData
@@ -176,28 +176,28 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         }
 
         if (swapAndDonateParams.swapKind == SwapKind.EXACT_IN) {
-            swapAmountIn = swapAndDonateParams.swapMaxAmountIn;
+            swapAmountIn = swapAndDonateParams.swapAmountGiven;
             (, , swapAmountOut) = _vault.swap(
                 VaultSwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: swapAndDonateParams.pool,
                     tokenIn: swapAndDonateParams.swapTokenIn,
                     tokenOut: swapAndDonateParams.swapTokenOut,
-                    amountGivenRaw: swapAndDonateParams.swapMaxAmountIn,
-                    limitRaw: swapAndDonateParams.swapMinAmountOut,
+                    amountGivenRaw: swapAndDonateParams.swapAmountGiven,
+                    limitRaw: swapAndDonateParams.swapLimit,
                     userData: swapAndDonateParams.userData
                 })
             );
         } else {
-            swapAmountOut = swapAndDonateParams.swapMinAmountOut;
+            swapAmountOut = swapAndDonateParams.swapAmountGiven;
             (, swapAmountIn, ) = _vault.swap(
                 VaultSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     pool: swapAndDonateParams.pool,
                     tokenIn: swapAndDonateParams.swapTokenIn,
                     tokenOut: swapAndDonateParams.swapTokenOut,
-                    amountGivenRaw: swapAndDonateParams.swapMinAmountOut,
-                    limitRaw: swapAndDonateParams.swapMaxAmountIn,
+                    amountGivenRaw: swapAndDonateParams.swapAmountGiven,
+                    limitRaw: swapAndDonateParams.swapLimit,
                     userData: swapAndDonateParams.userData
                 })
             );
