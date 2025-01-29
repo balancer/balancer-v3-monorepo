@@ -640,6 +640,110 @@ contract CowRouterTest is BaseCowTest {
         );
     }
 
+    function testSwapExactOutAndDonateExtraTokens() public {
+        // 1% protocol fee percentage.
+        uint256 protocolFeePercentage = 1e16;
+        uint256 donationDai = DEFAULT_AMOUNT / 10;
+        uint256 donationUsdc = DEFAULT_AMOUNT / 10;
+        uint256 usdcSwapAmountOut = DEFAULT_AMOUNT / 10;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(protocolFeePercentage);
+
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees,
+            uint256[] memory transferAmountHints
+        ) = _getDonationAndFees(donationDai, donationUsdc, 2 * usdcSwapAmountOut, protocolFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
+
+        vm.startPrank(lp);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
+
+        vm.expectEmit();
+        emit ICowRouter.CoWSwapAndDonation(
+            pool,
+            dai,
+            usdc,
+            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
+            usdcSwapAmountOut,
+            donationAfterFees,
+            expectedProtocolFees,
+            bytes("")
+        );
+        cowRouter.swapExactOutAndDonateSurplus(
+            pool,
+            dai,
+            usdc,
+            MAX_UINT128,
+            usdcSwapAmountOut,
+            type(uint32).max,
+            donationAmounts,
+            transferAmountHints,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
+
+        // The extra tokens should return to the sender.
+        _checkBalancesAfterSwapAndDonation(
+            balancesBefore,
+            balancesAfter,
+            expectedProtocolFees,
+            donationAmounts,
+            usdcSwapAmountOut, // Since the pool is linear, amount in == amount out
+            usdcSwapAmountOut
+        );
+    }
+
+    function testSwapExactOutAndDonateSurplusMissingToken() public {
+        // 1% protocol fee percentage.
+        uint256 protocolFeePercentage = 1e16;
+        uint256 donationDai = DEFAULT_AMOUNT / 10;
+        uint256 donationUsdc = DEFAULT_AMOUNT / 10;
+        uint256 usdcSwapAmountOut = DEFAULT_AMOUNT / 10;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(protocolFeePercentage);
+
+        // Giving less dai tokens as hint will cause operation to revert.
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
+            donationDai,
+            donationUsdc,
+            usdcSwapAmountOut - 1,
+            protocolFeePercentage
+        );
+
+        vm.startPrank(lp);
+        dai.transfer(address(vault), transferAmountHints[daiIdx]);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
+
+        // Since there's not enough funds to pay the operation, it'll revert.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ICowRouter.InsufficientFunds.selector,
+                transferAmountHints[daiIdx],
+                donationDai + usdcSwapAmountOut // Since the pool is linear, amount in == amount out
+            )
+        );
+        cowRouter.swapExactOutAndDonateSurplus(
+            pool,
+            dai,
+            usdc,
+            MAX_UINT128,
+            usdcSwapAmountOut,
+            type(uint32).max,
+            donationAmounts,
+            transferAmountHints,
+            bytes("")
+        );
+        vm.stopPrank();
+    }
+
     function testSwapExactOutAndDonateSurplus__Fuzz(
         uint256 donationDai,
         uint256 donationUsdc,
