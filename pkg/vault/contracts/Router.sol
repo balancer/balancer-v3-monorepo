@@ -630,7 +630,7 @@ contract Router is IRouter, RouterCommon {
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
+     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
@@ -1071,7 +1071,7 @@ contract Router is IRouter, RouterCommon {
      * @notice Hook for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
+     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function querySwapHook(
         SwapSingleTokenHookParams calldata params

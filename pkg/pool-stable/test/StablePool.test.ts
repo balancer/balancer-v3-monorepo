@@ -163,6 +163,11 @@ describe('StablePool', () => {
             .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')
             .withArgs(await pool.getAddress());
         });
+
+        it('is registered in the factory', async () => {
+          expect(await factory.getPoolCount()).to.be.eq(1);
+          expect(await factory.getPools()).to.be.deep.eq([await pool.getAddress()]);
+        });
       });
     });
   }

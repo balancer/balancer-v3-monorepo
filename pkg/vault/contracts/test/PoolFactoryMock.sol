@@ -50,7 +50,7 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
         );
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract) external {
+    function registerPoolWithHook(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract) external {
         PoolRoleAccounts memory roleAccounts;
 
         _vault.registerPool(

@@ -1,5 +1,5 @@
 import { ethers, network } from 'hardhat';
-import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+import { IPermit2 } from 'typechain-types/permit2/src/interfaces/IPermit2';
 
 const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 

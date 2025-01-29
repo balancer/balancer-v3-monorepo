@@ -93,6 +93,8 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
                         roleAccounts,
                         MIN_SWAP_FEE_PERCENTAGE,
                         address(0),
+                        false,
+                        false,
                         bytes32("")
                     )
                 )
@@ -103,7 +105,8 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
                     name: label,
                     symbol: label,
                     eclpParams: params,
-                    derivedEclpParams: derivedParams
+                    derivedEclpParams: derivedParams,
+                    version: ""
                 }),
                 vault
             );
@@ -121,10 +124,13 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 GyroECLPPoolFactory(
-                    deployCode(_computeGyroECLPPath(type(GyroECLPPoolFactory).name), abi.encode(vault, 365 days))
+                    deployCode(
+                        _computeGyroECLPPath(type(GyroECLPPoolFactory).name),
+                        abi.encode(vault, 365 days, "", "")
+                    )
                 );
         } else {
-            return new GyroECLPPoolFactory(vault, 365 days);
+            return new GyroECLPPoolFactory(vault, 365 days, "", "");
         }
     }
 

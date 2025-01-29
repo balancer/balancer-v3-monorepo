@@ -903,7 +903,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         PoolMock newPool = deployPoolMock(IVault(address(vault)), "Yield-Bearing Pool", "YBPOOL");
 
-        PoolFactoryMock(poolFactory).registerTestPool(address(newPool), tokenConfig, poolHooksContract);
+        PoolFactoryMock(poolFactory).registerPoolWithHook(address(newPool), tokenConfig, poolHooksContract);
 
         vm.label(address(newPool), "yield-bearing pool");
         yieldBearingPool = address(newPool);
