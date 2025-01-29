@@ -69,6 +69,13 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgePoolFactoryDepl
         assertEq(IVersion(stablePool).version(), POOL_VERSION, "Wrong pool version in pool");
     }
 
+    function testFactoryRegistration() public {
+        address stablePool = _deployAndInitializeStablePool(false);
+
+        assertEq(stablePoolFactory.getPoolCount(), 1, "Wrong pool count");
+        assertEq(stablePoolFactory.getPools()[0], address(stablePool), "Wrong pool");
+    }
+
     function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = stablePoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);

@@ -98,7 +98,5 @@ contract GyroECLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
             poolHooksContract,
             liquidityManagement
         );
-
-        _registerPoolWithFactory(pool);
     }
 }

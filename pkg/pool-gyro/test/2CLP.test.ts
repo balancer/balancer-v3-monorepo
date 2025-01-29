@@ -165,6 +165,11 @@ describe('2-CLP', function () {
     expect(sqrtBeta).to.be.eq(SQRT_BETA);
   });
 
+  it('is registered in the factory', async () => {
+    expect(await factory.getPoolCount()).to.be.eq(1);
+    expect(await factory.getPools()).to.be.deep.eq([await pool.getAddress()]);
+  });
+
   describe('LM flags', () => {
     let newPool: Gyro2CLPPool;
 
