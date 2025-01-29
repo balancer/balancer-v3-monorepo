@@ -100,7 +100,5 @@ contract Gyro2CLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
             poolHooksContract,
             liquidityManagement
         );
-
-        _registerPoolWithFactory(pool);
     }
 }

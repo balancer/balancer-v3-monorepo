@@ -72,6 +72,10 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         _setMaxMevSwapFeePercentage(_MEV_MAX_FEE_PERCENTAGE);
     }
 
+    function getBalancerContractRegistry() external view returns (IBalancerContractRegistry) {
+        return _registry;
+    }
+
     /// @inheritdoc IHooks
     function onRegister(
         address,

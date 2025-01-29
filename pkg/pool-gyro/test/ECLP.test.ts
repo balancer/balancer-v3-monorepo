@@ -217,6 +217,11 @@ describe('E-CLP', function () {
     expect(dSq).to.be.eq(DSQ);
   });
 
+  it('is registered in the factory', async () => {
+    expect(await factory.getPoolCount()).to.be.eq(1);
+    expect(await factory.getPools()).to.be.deep.eq([await pool.getAddress()]);
+  });
+
   describe('LM flags', () => {
     let newPool: GyroECLPPool;
 

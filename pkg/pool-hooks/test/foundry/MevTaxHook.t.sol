@@ -76,6 +76,10 @@ contract MevTaxHookTest is BaseVaultTest {
         return address(_mevTaxHook);
     }
 
+    function testGetBalancerContractRegistry() public view {
+        assertEq(address(_mevTaxHook.getBalancerContractRegistry()), address(registry), "Wrong registry");
+    }
+
     /********************************************************
                        isMevTaxEnabled()
     ********************************************************/
