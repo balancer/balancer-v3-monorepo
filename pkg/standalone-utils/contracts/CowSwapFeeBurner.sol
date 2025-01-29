@@ -167,7 +167,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         address,
         address,
         bytes32,
-        bytes calldata staticInput
+        bytes calldata staticInput,
+        bytes calldata
     ) public view returns (GPv2Order memory) {
         IERC20 sellToken = IERC20(abi.decode(staticInput, (address)));
 
@@ -182,10 +183,10 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         bytes32,
         bytes32 ctx,
         bytes calldata staticInput,
-        bytes calldata,
+        bytes calldata offchainInput,
         GPv2Order calldata _order
     ) external view {
-        GPv2Order memory savedOrder = getTradeableOrder(owner, sender, ctx, staticInput);
+        GPv2Order memory savedOrder = getTradeableOrder(owner, sender, ctx, staticInput, offchainInput);
 
         if (_order.buyAmount > savedOrder.buyAmount) {
             savedOrder.buyAmount = _order.buyAmount;

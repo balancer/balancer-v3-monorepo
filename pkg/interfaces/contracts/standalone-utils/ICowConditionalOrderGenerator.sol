@@ -24,12 +24,14 @@ interface ICowConditionalOrderGenerator is IERC165 {
      * @param sender The `msg.sender` of the parent `isValidSignature` call
      * @param ctx The context of the order (bytes32(0) if Merkle tree is used, otherwise the H(params))
      * @param staticInput Conditional order type-specific data known at time of creation for all discrete orders
+     * @param offchainInput Off-chain input (similar to Balancer `userData`); currently unused
      * @return order Tradeable order for submission to the CoW Protocol API
      */
     function getTradeableOrder(
         address owner,
         address sender,
         bytes32 ctx,
-        bytes calldata staticInput
+        bytes calldata staticInput,
+        bytes calldata offchainInput
     ) external view returns (GPv2Order memory);
 }
