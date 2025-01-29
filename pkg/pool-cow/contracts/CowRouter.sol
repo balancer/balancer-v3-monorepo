@@ -348,9 +348,10 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                 revert InsufficientFunds(availableFunds, requiredFunds);
             }
 
-            // The token leftover is the amount transferred from the sender to the Vault (transferAmountHints), minus
-            // the amount of tokens donated ton the pool and paid on fees. The leftover should be returned to the
-            // sender.
+            // `senderAmounts` will contain the number of "leftover" tokens that should be returned to the sender.
+            // This is given by the `availableFunds` (amount the sender transferred upfront to the Vault plus the
+            // tokens resulted from the swap), minus the `requiredFunds` (amount donated to the pool plus any fee
+            // amounts due and tokens charged in the swap).
             senderAmounts[i] = availableFunds - requiredFunds;
         }
 
