@@ -61,7 +61,6 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param enableDonation If true, the pool will support the donation add liquidity mechanism
-     * @param disableUnbalancedLiquidity If true, only proportional add and remove liquidity are accepted
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -72,7 +71,6 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bool enableDonation,
-        bool disableUnbalancedLiquidity,
         bytes32 salt
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
@@ -87,7 +85,6 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
 
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         liquidityManagement.enableDonation = enableDonation;
-        liquidityManagement.disableUnbalancedLiquidity = disableUnbalancedLiquidity;
 
         pool = _create(
             abi.encode(
