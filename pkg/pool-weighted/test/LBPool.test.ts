@@ -415,7 +415,7 @@ describe('LBPool', function () {
                 false,
                 '0x'
               )
-          ).to.not.be.reverted;
+          ).to.be.revertedWithCustomError(globalPool, 'SwapsDisabled');
         });
       });
     });

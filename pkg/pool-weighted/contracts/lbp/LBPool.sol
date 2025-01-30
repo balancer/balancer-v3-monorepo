@@ -28,6 +28,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { WeightedPool } from "../WeightedPool.sol";
+import { LBPoolLib } from "../lib/LBPoolLib.sol";
 
 /**
  * @notice Weighted Pool with mutable weights, designed to support v3 Liquidity Bootstrapping.
@@ -48,20 +49,6 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         bool enableProjectTokenSwapsIn;
     }
 
-    // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight.
-    // Weights are 18 decimal floating point values, which fit in less than 64 bits. Store smaller numeric values
-    // to ensure the PoolState fits in a single slot. All timestamps in the system are uint32, enforced through
-    // SafeCast.
-    struct PoolState {
-        uint32 startTime;
-        uint32 endTime;
-        uint64 startWeight0;
-        uint64 endWeight0;
-    }
-
-    // LBPs are constrained to two tokens.
-    uint256 private constant _NUM_TOKENS = 2;
-
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true
     // originating account on operations. This is important for liquidity operations, as these are permissioned
     // operations that can only be performed by the owner of the pool. Without this check, a malicious router
@@ -80,14 +67,14 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
     bool private immutable _enableProjectTokenSwapsIn;
 
-    uint256 private _projectTokenIndex;
+    uint256 private immutable _projectTokenIndex;
 
-    uint256 private _startTime;
-    uint256 private _endTime;
-    uint256 private _startWeight0;
-    uint256 private _startWeight1;
-    uint256 private _endWeight0;
-    uint256 private _endWeight1;
+    uint256 private immutable _startTime;
+    uint256 private immutable _endTime;
+    uint256 private immutable _startWeight0;
+    uint256 private immutable _startWeight1;
+    uint256 private immutable _endWeight0;
+    uint256 private immutable _endWeight1;
 
     /**
      * @notice Emitted when the owner initiates a gradual weight change (e.g., at the start of the sale).
@@ -134,13 +121,10 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     ) WeightedPool(params, vault) Ownable(lbpParams.owner) {
         // WeightedPool validates `numTokens == normalizedWeights.length`, and ensures valid weights.
         // Here we additionally enforce that LBPs must be two-token pools.
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
+        InputHelpers.ensureInputLengthMatch(LBPoolLib.NUM_TOKENS, params.numTokens);
 
         // Set the trusted router (passed down from the factory).
         _trustedRouter = trustedRouter;
-
-        // Ensure startTime >= now.
-        uint256 startTime = GradualValueChange.resolveStartTime(lbpParams.startTime, lbpParams.endTime);
 
         if (lbpParams.projectToken == tokenConfig[0].token) {
             _projectTokenIndex = 0;
@@ -156,12 +140,24 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
         _enableProjectTokenSwapsIn = lbpParams.enableProjectTokenSwapsIn;
 
-        _startGradualWeightChange(
-            startTime.toUint32(),
-            lbpParams.endTime.toUint32(),
-            params.normalizedWeights,
+        // Ensure weight normalization, and endTime > startTime.
+        uint256 startTime = LBPoolLib.verifyWeightUpdateParameters(
+            lbpParams.startTime,
+            lbpParams.endTime,
+            lbpParams.startWeights,
             lbpParams.endWeights
         );
+
+        _startTime = startTime;
+        _endTime = lbpParams.endTime;
+
+        _startWeight0 = lbpParams.startWeights[0];
+        _startWeight1 = lbpParams.startWeights[1];
+
+        _endWeight0 = lbpParams.endWeights[0];
+        _endWeight1 = lbpParams.endWeights[1];
+
+        emit GradualWeightUpdateScheduled(startTime, lbpParams.endTime, lbpParams.startWeights, lbpParams.endWeights);
     }
 
     /// @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
@@ -185,11 +181,11 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         startTime = _startTime;
         endTime = _endTime;
 
-        startWeights = new uint256[](_NUM_TOKENS);
+        startWeights = new uint256[](LBPoolLib.NUM_TOKENS);
         startWeights[0] = _startWeight0;
         startWeights[1] = _startWeight1;
 
-        endWeights = new uint256[](_NUM_TOKENS);
+        endWeights = new uint256[](LBPoolLib.NUM_TOKENS);
         endWeights[0] = _endWeight0;
         endWeights[1] = _endWeight1;
     }
@@ -240,7 +236,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata
     ) public view override onlyVault returns (bool) {
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, tokenConfig.length);
+        InputHelpers.ensureInputLengthMatch(LBPoolLib.NUM_TOKENS, tokenConfig.length);
 
         return pool == address(this);
     }
@@ -328,7 +324,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     *******************************************************************************/
 
     function _getNormalizedWeight(uint256 tokenIndex) internal view virtual override returns (uint256) {
-        if (tokenIndex < _NUM_TOKENS) {
+        if (tokenIndex < LBPoolLib.NUM_TOKENS) {
             return _getNormalizedWeights()[tokenIndex];
         }
 
@@ -336,7 +332,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
-        uint256[] memory normalizedWeights = new uint256[](_NUM_TOKENS);
+        uint256[] memory normalizedWeights = new uint256[](LBPoolLib.NUM_TOKENS);
         normalizedWeights[0] = _getNormalizedWeight0();
         normalizedWeights[1] = FixedPoint.ONE - normalizedWeights[0];
 
@@ -350,46 +346,14 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     }
 
     function _isSwapEnabled() private view returns (bool) {
-        // Swaps are only enabled, once the weight change has started.
-        return block.timestamp >= _startTime;
+        // Swaps are only enabled while the weight is changing.
+        return block.timestamp >= _startTime && block.timestamp <= _endTime;
     }
 
     function _isSwapRequestAllowed(PoolSwapParams memory params) private view returns (bool) {
         // If project token swaps are enabled, the request is always valid.
         // If not, project token must be the token out.
         return _enableProjectTokenSwapsIn || params.indexOut == _projectTokenIndex;
-    }
-
-    /**
-     * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
-     * if necessary.
-     */
-    function _startGradualWeightChange(
-        uint32 startTime,
-        uint32 endTime,
-        uint256[] memory startWeights,
-        uint256[] memory endWeights
-    ) internal virtual {
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, startWeights.length);
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, endWeights.length);
-
-        if (endWeights[0] < _MIN_WEIGHT || endWeights[1] < _MIN_WEIGHT) {
-            revert MinWeight();
-        }
-        if (endWeights[0] + endWeights[1] != FixedPoint.ONE) {
-            revert NormalizedWeightInvariant();
-        }
-
-        _startTime = startTime;
-        _endTime = endTime;
-
-        _startWeight0 = startWeights[0];
-        _startWeight1 = startWeights[1];
-
-        _endWeight0 = endWeights[0];
-        _endWeight1 = endWeights[1];
-
-        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
     function getLBPoolDynamicData() external view override returns (LBPoolDynamicData memory data) {}
