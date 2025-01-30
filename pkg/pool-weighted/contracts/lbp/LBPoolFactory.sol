@@ -22,6 +22,9 @@ import { LBPool } from "./LBPool.sol";
  * @dev This is a factory specific to LBPools, allowing only 2 tokens.
  */
 contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactory, Version {
+    /// @notice Trusted router is address(0).
+    error InvalidTrustedRouter();
+
     // LBPs are constrained to two tokens.
     uint256 private constant _NUM_TOKENS = 2;
 
@@ -37,6 +40,10 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         address trustedRouter
     ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
+
+        if (trustedRouter == address(0)) {
+            revert InvalidTrustedRouter();
+        }
 
         // LBPools are deployed with a router known to reliably report the originating address on operations.
         // This is used to ensure that only the owner can add liquidity to an LBP (including on initialization).
@@ -59,26 +66,21 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
-     * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
      * @param swapFeePercentage Initial swap fee percentage
-     * @param owner The owner address for pool; sole LP with swapEnable/swapFee change permissions
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokenConfig,
-        uint256[] memory normalizedWeights,
         uint256 swapFeePercentage,
-        address owner,
-        bytes32 salt,
-        LBPool.LBPParams memory lbpParams
+        LBPool.LBPParams memory lbpParams,
+        bytes32 salt
     ) external nonReentrant returns (address pool) {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, tokenConfig.length);
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, normalizedWeights.length);
 
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.swapFeeManager = owner;
+        roleAccounts.swapFeeManager = lbpParams.owner;
 
         pool = _create(
             abi.encode(
@@ -86,11 +88,10 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
                     name: name,
                     symbol: symbol,
                     numTokens: tokenConfig.length,
-                    normalizedWeights: normalizedWeights,
+                    normalizedWeights: lbpParams.startWeights,
                     version: _poolVersion
                 }),
                 getVault(),
-                owner,
                 _trustedRouter,
                 lbpParams,
                 tokenConfig
