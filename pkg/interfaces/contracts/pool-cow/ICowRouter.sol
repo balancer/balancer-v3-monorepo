@@ -59,6 +59,9 @@ interface ICowRouter {
      */
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
 
+    /// @notice The caller tried to set the zero address as the fee sweeper.
+    error InvalidFeeSweeper();
+
     /**
      * @notice A swap and a donation have occurred.
      * @param pool The pool with the tokens being swapped
@@ -95,6 +98,21 @@ interface ICowRouter {
      * @param newProtocolFeePercentage The new protocol fee percentage
      */
     event ProtocolFeePercentageChanged(uint256 newProtocolFeePercentage);
+
+    /**
+     * @notice The fee sweeper contract was changed.
+     * @dev This is the contract that receives protocol fees on withdrawal.
+     * @param newFeeSweeper The address of the new fee sweeper
+     */
+    event FeeSweeperChanged(address newFeeSweeper);
+
+    /**
+     * @notice Protocol fees collected in the given token were withdrawn to the fee sweeper contract.
+     * @param token Token in which the protocol fees were charged
+     * @param feeSweeper Address that received protocol fees
+     * @param amountWithdrawn Amount of tokens withdawn from CowRouter
+     */
+    event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountWithdrawn);
 
     /**
      * @notice Executes an ExactIn swap and donates a specified amount to the same CoW AMM Pool.
@@ -162,6 +180,15 @@ interface ICowRouter {
     function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external;
 
     /**
+     * @notice Withdraws collected protocol fees to the fee sweeper.
+     * @dev Permissionless because the fee sweeper (receiver of protocol fees) is defined by a variable with a
+     * permissioned setter. Emits the ProtocolFeesWithdrawn event on success.
+     *
+     * @param token Token in which the protocol fees were charged
+     */
+    function withdrawCollectedProtocolFees(IERC20 token) external;
+
+    /**
      * @notice Returns the protocol fee percentage, registered in the CoW Router.
      * @dev The protocol fee percentage is used to calculate the amount of protocol fees to charge on a donation.
      * The fees stay in the router.
@@ -185,6 +212,12 @@ interface ICowRouter {
     function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees);
 
     /**
+     * @notice Gets the address that will receive protocol fees on withdrawal.
+     * @param feeSweeper Address that receives protocol fees
+     */
+    function getFeeSweeper() external view returns (address feeSweeper);
+
+    /**
      * @notice Sets the protocol fee percentage.
      * @dev This is a permissioned function. The protocol fee percentage is capped at a maximum value, registered as a
      * constant in the CoW AMM Router.
@@ -192,4 +225,11 @@ interface ICowRouter {
      * @param newProtocolFeePercentage New value of the protocol fee percentage
      */
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external;
+
+    /**
+     * @notice Sets the address that will receive protocol fees on withdrawal.
+     * @dev Fee Sweeper cannot be the zero address.
+     * @param newFeeSweeper Address of the new fee sweeper
+     */
+    function setFeeSweeper(address newFeeSweeper) external;
 }

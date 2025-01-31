@@ -21,6 +21,7 @@ contract BaseCowTest is BaseVaultTest {
     uint256 internal constant _INITIAL_PROTOCOL_FEE_PERCENTAGE = 1e16;
 
     ICowRouter internal cowRouter;
+    address internal feeSweeper;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -30,12 +31,14 @@ contract BaseCowTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        cowRouter = new CowRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE);
+        feeSweeper = alice;
+        cowRouter = new CowRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper);
 
         authorizer.grantRole(
             CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),
             admin
         );
+        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.setFeeSweeper.selector), admin);
 
         _approveCowRouterForAllUsers();
 
