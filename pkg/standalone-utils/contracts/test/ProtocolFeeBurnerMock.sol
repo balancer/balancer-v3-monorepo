@@ -16,7 +16,6 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
 
     /// @inheritdoc IProtocolFeeBurner
     function burn(
-        address pool,
         IERC20 feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,
@@ -37,7 +36,7 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
         }
 
         // Just emit the event, simulating the tokens being exchanged at 1-to-1.
-        emit ProtocolFeeBurned(pool, feeToken, exactFeeTokenAmountIn, targetToken, targetTokenAmount, recipient);
+        emit ProtocolFeeBurned(feeToken, exactFeeTokenAmountIn, targetToken, targetTokenAmount, recipient);
     }
 
     function setTokenRatio(uint256 ratio) external {
