@@ -105,7 +105,10 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
 
         roleAccounts.swapFeeManager = lbpParams.owner;
 
-        pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
+        pool = _create(
+            abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, address(this), _poolVersion),
+            salt
+        );
 
         _registerPoolWithVault(
             pool,

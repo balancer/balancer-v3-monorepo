@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -36,7 +34,7 @@ import { WeightedPool } from "../WeightedPool.sol";
  * which will not be used later), and it is tremendously helpful for pool validation and any potential future
  * base contract changes.
  */
-contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
+contract LBPool is ILBPool, WeightedPool, BaseHooks {
     // The sale parameters are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
@@ -55,6 +53,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _trustedRouter;
+    address private immutable _trustedFactory;
 
     // The project token is the one being launched; the reserve token is the token used to buy them (usually
     // a stablecoin or WETH).
@@ -114,8 +113,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         LBPParams memory lbpParams,
         IVault vault,
         address trustedRouter,
+        address trustedFactory,
         string memory version
-    ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) Ownable(lbpParams.owner) {
+    ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) {
         // WeightedPool has already validated the starting weights; we still need to validate the ending weights.
         if (lbpParams.projectTokenEndWeight < _MIN_WEIGHT || lbpParams.reserveTokenEndWeight < _MIN_WEIGHT) {
             revert IWeightedPool.MinWeight();
@@ -127,6 +127,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
         // Set the trusted router (passed down from the factory), and the rest of the immutable variables.
         _trustedRouter = trustedRouter;
+
+        // Allow initialization from this factory, as part of `createAndInitialize`.
+        _trustedFactory = trustedFactory;
 
         _projectToken = lbpParams.projectToken;
         _reserveToken = lbpParams.reserveToken;
@@ -165,6 +168,14 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
      */
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
+    }
+
+    /**
+     * @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
+     * @return trustedFactory Address of the trusted factory (i.e., the deployer contract empowered to initialize)
+     */
+    function getTrustedFactory() external view returns (address) {
+        return _trustedFactory;
     }
 
     /**
@@ -333,22 +344,12 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     }
 
     /**
-     * @notice Block initialization if the sender is not the owner of the LBP.
-     * @dev We don't have the router argument here, but with only one trusted router this should be enough considering
-     * `initialize` can only happen once.
-     *
-     * If the sender is correct in the trusted router, either everything is fine, or the owner is doing something else
-     * with the trusted router while at the same time giving away the execution to a frontrunner, which is highly
-     * unlikely.
-     *
-     * In any case, this is just an extra guardrail to start the pool with the correct proportions, and for that the
-     * sender needs liquidity for the token being launched. For a token that is not fully public, the owner should have
-     * the required liquidity, and frontrunning the pool initialization is no different from just creating another
-     * pool.
-     *
-     * The start time must be set far enough in the future to allow the initialization / initial funding to occur.
-     * Otherwise, the sale will proceed with whatever liquidity is present at the start (possibly none), and any
-     * liquidity added cannot be withdrawn until after the end time (unless the pool is placed in Recovery Mode).
+     * @notice Block initialization if the sender is not the trusted factory.
+     * @dev To match the UI flow, and prevent any possible front-running, deployment and initialization are done
+     * together in the factory's `createAndInitialize`. Since the factory is calling `initialize`, that will be
+     * the ultimate sender. The `LBPoolFactory` sends its own address when deploying the pool, so all an external
+     * user needs to check is that the pool was deployed by the canonical factory (e.g., using the Balancer
+     * contract registry).
      *
      * @return success If true, the sender matches (so the Vault will allow the initialization to proceed)
      */
@@ -358,7 +359,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
             revert AddingLiquidityNotAllowed();
         }
 
-        return IRouterCommon(_trustedRouter).getSender() == owner();
+        return IRouterCommon(_trustedRouter).getSender() == _trustedFactory;
     }
 
     /// @notice Revert unconditionally; we require all liquidity to be added on initialization.

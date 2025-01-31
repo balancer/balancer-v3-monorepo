@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -17,12 +17,13 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
+import { LBPool } from "../../contracts/lbp/LBPool.sol";
 
 contract LBPoolFactoryTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
-    uint64 public constant swapFee = 1e16; //1%
+    uint256 public constant swapFee = 1e16; // 1%
 
     string public constant factoryVersion = "Factory v1";
     string public constant poolVersion = "Pool v1";
@@ -56,7 +57,14 @@ contract LBPoolFactoryTest is BaseVaultTest {
         endWeights[projectIdx] = LOW_WEIGHT;
         endWeights[reserveIdx] = HIGH_WEIGHT;
 
-        lbPoolFactory = new LBPoolFactory(IVault(address(vault)), 365 days, factoryVersion, poolVersion, address(router), permit2);
+        lbPoolFactory = new LBPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            factoryVersion,
+            poolVersion,
+            address(router),
+            permit2
+        );
         vm.label(address(lbPoolFactory), "LB pool factory");
 
         vm.startPrank(bob);
@@ -67,6 +75,16 @@ contract LBPoolFactoryTest is BaseVaultTest {
 
     function testGetTrustedRouter() public view {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
+    }
+
+    function testGetTrustedFactory() public {
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        assertEq(LBPool(lbPool).getTrustedFactory(), address(lbPoolFactory), "Wrong trusted factory");
     }
 
     function testFactoryPausedState() public view {
@@ -90,6 +108,24 @@ contract LBPoolFactoryTest is BaseVaultTest {
         assert(keccak256(abi.encodePacked(lbPoolFactory.getPoolVersion())) == keccak256(abi.encodePacked(poolVersion)));
     }
 
+    function testAddingLiquidityNotAllowed() public {
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        // Try to add liquidity to the pool
+        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
+        router.addLiquidityProportional(
+            lbPool,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            1e18,
+            false,
+            bytes("")
+        );
+    }
+
     function testDonationNotAllowed() public {
         address lbPool = _deployAndInitializeLBPool(
             uint32(block.timestamp + 100),
@@ -98,10 +134,37 @@ contract LBPoolFactoryTest is BaseVaultTest {
         );
 
         // Try to donate to the pool
-        vm.startPrank(bob);
-        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
+        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
         router.donate(lbPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
-        vm.stopPrank();
+    }
+
+    function testSetSwapFeeNoPermission() public {
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        vault.setStaticSwapFeePercentage(lbPool, 2.5e16);
+    }
+
+    function testSetSwapFee() public {
+        uint256 newSwapFee = 2.5e16; // 2.5%
+
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        // Starts out at the default
+        assertEq(vault.getStaticSwapFeePercentage(lbPool), swapFee);
+
+        vm.prank(bob);
+        vault.setStaticSwapFeePercentage(lbPool, newSwapFee);
+
+        assertEq(vault.getStaticSwapFeePercentage(lbPool), newSwapFee);
     }
 
     function _deployAndInitializeLBPool(
@@ -122,7 +185,7 @@ contract LBPoolFactoryTest is BaseVaultTest {
             enableProjectTokenSwapsIn: enableProjectTokenSwapsIn
         });
 
-        vm.startPrank(bob);
+        vm.prank(bob);
         newPool = lbPoolFactory.createAndInitialize(
             "LB Pool",
             "LBP",
