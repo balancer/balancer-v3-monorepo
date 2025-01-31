@@ -2,24 +2,25 @@
 
 pragma solidity ^0.8.24;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
-    ILBPool,
-    LBPoolImmutableData,
-    LBPoolDynamicData
-} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
-import {
+    IWeightedPool,
     WeightedPoolDynamicData,
     WeightedPoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    ILBPool,
+    LBPoolImmutableData,
+    LBPoolDynamicData,
+    LBPParams
+} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -28,7 +29,6 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { WeightedPool } from "../WeightedPool.sol";
-import { LBPoolLib } from "../lib/LBPoolLib.sol";
 
 /**
  * @notice Weighted Pool with mutable weights, designed to support v3 Liquidity Bootstrapping.
@@ -37,17 +37,8 @@ import { LBPoolLib } from "../lib/LBPoolLib.sol";
  * base contract changes.
  */
 contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
-    using SafeCast for *;
-
-    struct LBPParams {
-        address owner;
-        uint256 startTime;
-        uint256 endTime;
-        uint256[] startWeights;
-        uint256[] endWeights;
-        IERC20 projectToken;
-        bool enableProjectTokenSwapsIn;
-    }
+    // LBPs are constrained to two tokens: project and reserve.
+    uint256 private constant _TWO_TOKENS = 2;
 
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true
     // originating account on operations. This is important for liquidity operations, as these are permissioned
@@ -62,19 +53,24 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     // solhint-disable-next-line var-name-mixedcase
     address private immutable _trustedRouter;
 
+    // The project token is the one being launched; the reserve token is the token used to buy them (usually
+    // a stablecoin or WETH).
     IERC20 private immutable _projectToken;
     IERC20 private immutable _reserveToken;
 
-    bool private immutable _enableProjectTokenSwapsIn;
-
     uint256 private immutable _projectTokenIndex;
+    uint256 private immutable _reserveTokenIndex;
 
     uint256 private immutable _startTime;
     uint256 private immutable _endTime;
-    uint256 private immutable _startWeight0;
-    uint256 private immutable _startWeight1;
-    uint256 private immutable _endWeight0;
-    uint256 private immutable _endWeight1;
+
+    uint256 private immutable _projectTokenStartWeight;
+    uint256 private immutable _reserveTokenStartWeight;
+    uint256 private immutable _projectTokenEndWeight;
+    uint256 private immutable _reserveTokenEndWeight;
+
+    // If false, project tokens can only be bought, not sold back into the pool.
+    bool private immutable _enableProjectTokenSwapsIn;
 
     /**
      * @notice Emitted when the owner initiates a gradual weight change (e.g., at the start of the sale).
@@ -106,61 +102,64 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     /// @dev Indicates that swapping the project token is not allowed.
     error SwapOfProjectTokenIn();
 
-    /// @dev Indicates a wrongfully set project token.
-    error InvalidProjectToken(IERC20 projectToken);
-
     /// @dev Function is inherited but not implemented.
     error NotImplemented();
 
     constructor(
-        NewPoolParams memory params,
+        string memory name,
+        string memory symbol,
+        LBPParams memory lbpParams,
         IVault vault,
         address trustedRouter,
-        LBPParams memory lbpParams,
-        TokenConfig[] memory tokenConfig
-    ) WeightedPool(params, vault) Ownable(lbpParams.owner) {
-        // WeightedPool validates `numTokens == normalizedWeights.length`, and ensures valid weights.
-        // Here we additionally enforce that LBPs must be two-token pools.
-        InputHelpers.ensureInputLengthMatch(LBPoolLib.NUM_TOKENS, params.numTokens);
+        string memory version
+    ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) Ownable(lbpParams.owner) {
+        // WeightedPool has already validated the starting weights; we still need to validate the ending weights.
+        if (lbpParams.projectTokenEndWeight < _MIN_WEIGHT || lbpParams.reserveTokenEndWeight < _MIN_WEIGHT) {
+            revert IWeightedPool.MinWeight();
+        }
 
-        // Set the trusted router (passed down from the factory).
+        if (lbpParams.projectTokenEndWeight + lbpParams.reserveTokenEndWeight != FixedPoint.ONE) {
+            revert IWeightedPool.NormalizedWeightInvariant();
+        }
+
+        // Set the trusted router (passed down from the factory), and the rest of the immutable variables.
         _trustedRouter = trustedRouter;
 
-        if (lbpParams.projectToken == tokenConfig[0].token) {
-            _projectTokenIndex = 0;
-            _projectToken = tokenConfig[0].token;
-            _reserveToken = tokenConfig[1].token;
-        } else if (lbpParams.projectToken == tokenConfig[1].token) {
-            _projectTokenIndex = 1;
-            _projectToken = tokenConfig[1].token;
-            _reserveToken = tokenConfig[0].token;
-        } else {
-            revert InvalidProjectToken(lbpParams.projectToken);
-        }
+        _projectToken = lbpParams.projectToken;
+        _reserveToken = lbpParams.reserveToken;
 
         _enableProjectTokenSwapsIn = lbpParams.enableProjectTokenSwapsIn;
 
-        // Ensure weight normalization, and endTime > startTime.
-        uint256 startTime = LBPoolLib.verifyWeightUpdateParameters(
-            lbpParams.startTime,
-            lbpParams.endTime,
-            lbpParams.startWeights,
-            lbpParams.endWeights
-        );
-
-        _startTime = startTime;
+        _startTime = GradualValueChange.resolveStartTime(lbpParams.startTime, lbpParams.endTime);
         _endTime = lbpParams.endTime;
 
-        _startWeight0 = lbpParams.startWeights[0];
-        _startWeight1 = lbpParams.startWeights[1];
+        _projectTokenStartWeight = lbpParams.projectTokenStartWeight;
+        _reserveTokenStartWeight = lbpParams.reserveTokenStartWeight;
 
-        _endWeight0 = lbpParams.endWeights[0];
-        _endWeight1 = lbpParams.endWeights[1];
+        _projectTokenEndWeight = lbpParams.projectTokenEndWeight;
+        _reserveTokenEndWeight = lbpParams.reserveTokenEndWeight;
 
-        emit GradualWeightUpdateScheduled(startTime, lbpParams.endTime, lbpParams.startWeights, lbpParams.endWeights);
+        (_projectTokenIndex, _reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken ? (0, 1) : (1, 0);
+
+        // Preserve event compatibility with previous LBP versions.
+        uint256[] memory startWeights = new uint256[](_TWO_TOKENS);
+        uint256[] memory endWeights = new uint256[](_TWO_TOKENS);
+        (startWeights[_projectTokenIndex], startWeights[_reserveTokenIndex]) = (
+            lbpParams.projectTokenStartWeight,
+            lbpParams.reserveTokenStartWeight
+        );
+        (endWeights[_projectTokenIndex], endWeights[_reserveTokenIndex]) = (
+            lbpParams.projectTokenEndWeight,
+            lbpParams.reserveTokenEndWeight
+        );
+
+        emit GradualWeightUpdateScheduled(lbpParams.startTime, lbpParams.endTime, startWeights, endWeights);
     }
 
-    /// @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
+    /**
+     * @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
+     * @return trustedRouter Address of the trusted router (i.e., one that reliably reports the sender)
+     */
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
     }
@@ -181,29 +180,97 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         startTime = _startTime;
         endTime = _endTime;
 
-        startWeights = new uint256[](LBPoolLib.NUM_TOKENS);
-        startWeights[0] = _startWeight0;
-        startWeights[1] = _startWeight1;
+        startWeights = new uint256[](_TWO_TOKENS);
+        (startWeights[_projectTokenIndex], startWeights[_reserveTokenIndex]) = (
+            _projectTokenStartWeight,
+            _reserveTokenStartWeight
+        );
 
-        endWeights = new uint256[](LBPoolLib.NUM_TOKENS);
-        endWeights[0] = _endWeight0;
-        endWeights[1] = _endWeight1;
+        endWeights = new uint256[](_TWO_TOKENS);
+        (endWeights[_projectTokenIndex], endWeights[_reserveTokenIndex]) = (
+            _projectTokenEndWeight,
+            _reserveTokenEndWeight
+        );
     }
 
     /**
-     * @notice Indicate whether swaps are enabled or not for the given pool.
-     * @return swapEnabled True if trading is enabled
+     * @notice Indicate whether or not swaps are enabled for this pool.
+     * @dev For LBPs, swaps are enabled during the token sale, between the start and end times. Note that this does
+     * not check whether the pool or Vault is paused, which can only happen through governance action. This can be
+     * checked using `getPoolConfig` on the Vault, or by calling `getLBPoolDynamicData` here.
+     *
+     * @return swapEnabled True if the sale is in progress
      */
     function isSwapEnabled() external view returns (bool) {
         return _isSwapEnabled();
     }
 
+    function _isSwapEnabled() internal view returns (bool) {
+        return block.timestamp >= _startTime && block.timestamp <= _endTime;
+    }
+
+    /**
+     * @notice Indicate whether project tokens can be sold back into the pool.
+     * @dev Note that theoretically, anyone holding project tokens could create a new pool alongside the LBP that did
+     * allow "selling" project tokens. This restriction only applies to the primary LBP.
+     *
+     * @return projectTokenSwapInEnabled True if acquired project tokens can be traded for the reserve in this pool
+     */
     function isProjectTokenSwapInEnabled() external view returns (bool) {
         return _enableProjectTokenSwapsIn;
     }
 
+    /**
+     * @notice Not implemented; reverts unconditionally.
+     * @dev This is because the LBP dynamic data also includes the weights, so overriding this would be incomplete
+     * and potentially misleading.
+     */
+    function getWeightedPoolDynamicData() external pure override returns (WeightedPoolDynamicData memory) {
+        revert NotImplemented();
+    }
+
+    /**
+     * @notice Not implemented; reverts unconditionally.
+     * @dev This is because in the standard Weighted Pool, weights are included in the immutable data. In the LBP,
+     * weights can change, so they are instead part of the dynamic data.
+     */
+    function getWeightedPoolImmutableData() external pure override returns (WeightedPoolImmutableData memory) {
+        revert NotImplemented();
+    }
+
+    /// @inheritdoc ILBPool
+    function getLBPoolDynamicData() external view override returns (LBPoolDynamicData memory data) {
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
+        data.normalizedWeights = _getNormalizedWeights();
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
+        data.totalSupply = totalSupply();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
+        data.isSwapEnabled = _isSwapEnabled();
+    }
+
+    /// @inheritdoc ILBPool
+    function getLBPoolImmutableData() external view override returns (LBPoolImmutableData memory data) {
+        data.tokens = _vault.getPoolTokens(address(this));
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.isProjectTokenSwapInEnabled = _enableProjectTokenSwapsIn;
+        data.startTime = _startTime;
+        data.endTime = _endTime;
+
+        data.startWeights = new uint256[](_TWO_TOKENS);
+        data.startWeights[_projectTokenIndex] = _projectTokenStartWeight;
+        data.startWeights[_reserveTokenIndex] = _reserveTokenStartWeight;
+
+        data.endWeights = new uint256[](_TWO_TOKENS);
+        data.endWeights[_projectTokenIndex] = _projectTokenEndWeight;
+        data.endWeights[_reserveTokenIndex] = _reserveTokenEndWeight;
+    }
+
     /*******************************************************************************
-                                Permissioned Functions
+                                    Base Pool Hooks
     *******************************************************************************/
 
     /// @inheritdoc WeightedPool
@@ -213,7 +280,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         if (_isSwapEnabled() == false) {
             revert SwapsDisabled();
         }
-        if (_isSwapRequestAllowed(request) == false) {
+
+        // If project token swaps are not enabled, project token must be the token out.
+        if (_enableProjectTokenSwapsIn == false && request.indexOut != _projectTokenIndex) {
             revert SwapOfProjectTokenIn();
         }
 
@@ -221,13 +290,14 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     }
 
     /*******************************************************************************
-                                    Hook Functions
+                                      Pool Hooks
     *******************************************************************************/
 
     /**
-     * @notice Hook to be executed when pool is registered.
-     * @dev Returns true if registration was successful, and false to revert the registration of the pool.
-     * @param pool Address of the pool
+     * @notice Hook to be executed when the pool is registered.
+     * @dev Returns true if registration was successful; false will revert with `HookRegistrationFailed`.
+     * @param pool Address of the pool (must be this contract for LBPs: the pool is also the hook)
+     * @param tokenConfig The token configuration of the pool being registered (e.g., type)
      * @return success True if the hook allowed the registration, false otherwise
      */
     function onRegister(
@@ -236,39 +306,66 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata
     ) public view override onlyVault returns (bool) {
-        InputHelpers.ensureInputLengthMatch(LBPoolLib.NUM_TOKENS, tokenConfig.length);
+        // These preconditions are guaranteed by the standard LBPoolFactory, but check anyway.
+        InputHelpers.ensureInputLengthMatch(_TWO_TOKENS, tokenConfig.length);
+
+        // Ensure there are no "WITH_RATE" tokens. We don't need to check anything else, as the Vault has already
+        // ensured we don't have a STANDARD token with a rate provider.
+        if (tokenConfig[0].tokenType != TokenType.STANDARD || tokenConfig[1].tokenType != TokenType.STANDARD) {
+            revert IVaultErrors.InvalidTokenConfiguration();
+        }
 
         return pool == address(this);
     }
 
-    // Return HookFlags struct that indicates which hooks this contract supports
+    /**
+     * @notice Return the HookFlags struct, which indicates which hooks this contract supports.
+     * @dev For each flag set to true, the Vault will call the corresponding hook.
+     * @return hookFlags Flags indicating which hooks are supported for LBPs
+     */
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
-        // Ensure the caller is the owner, as only the owner can add liquidity.
         hookFlags.shouldCallBeforeInitialize = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
         hookFlags.shouldCallBeforeRemoveLiquidity = true;
     }
 
-    function onBeforeInitialize(uint256[] memory, bytes memory) public view override onlyVault returns (bool success) {
-        // We don't have the router argument here, but with only one trusted router this should be enough considering
-        // `initialize` can only happen once.
-        // If the sender is correct in the trusted router, either everything is fine, or the owner is doing something
-        // else with the trusted router while at the same time giving away the execution to a frontrunner, which
-        // is highly unlikely.
-        // In any case, this is just an extra guardrail to start the pool with the correct proportions, and for that
-        // the sender needs liquidity for the token being launched. For a token that is not fully public, the owner
-        // should have the required liquidity, and frontrunning the pool initialization is no different from
-        // just creating another pool.
+    /**
+     * @notice Block initialization if the sender is not the owner of the LBP.
+     * @dev We don't have the router argument here, but with only one trusted router this should be enough considering
+     * `initialize` can only happen once.
+     *
+     * If the sender is correct in the trusted router, either everything is fine, or the owner is doing something else
+     * with the trusted router while at the same time giving away the execution to a frontrunner, which is highly
+     * unlikely.
+     *
+     * In any case, this is just an extra guardrail to start the pool with the correct proportions, and for that the
+     * sender needs liquidity for the token being launched. For a token that is not fully public, the owner should have
+     * the required liquidity, and frontrunning the pool initialization is no different from just creating another
+     * pool.
+     *
+     * The start time must be set far enough in the future to allow the initialization / initial funding to occur.
+     * Otherwise, the sale will proceed with whatever liquidity is present at the start (possibly none), and any
+     * liquidity added cannot be withdrawn until after the end time (unless the pool is placed in Recovery Mode).
+     *
+     * @return success If true, the sender matches (so the Vault will allow the initialization to proceed)
+     */
+    function onBeforeInitialize(uint256[] memory, bytes memory) public view override onlyVault returns (bool) {
+        // Only allow initialization up to the start time.
+        if (block.timestamp > _startTime) {
+            revert AddingLiquidityNotAllowed();
+        }
+
         return IRouterCommon(_trustedRouter).getSender() == owner();
     }
 
     /**
-     * @notice Check that the caller who initiated the add liquidity operation is the owner, and only allows
-     * operations before `startTime`.
+     * @notice Check that the caller is the owner, and that the sale hasn't started yet.
      * @dev We first ensure the caller is the standard router, so that we know we can trust the value it returns
-     * from `getSender`.
+     * from `getSender`. To ensure a fully funded sale, and avoid any temporarily locked liquidity, ensure the start
+     * time is far enough in the future after deployment to allow for all planned funding operations.
      *
      * @param router The address (usually a router contract) that initiated the add liquidity operation
+     * @return success If true, the Vault will allow the add liquidity operation to proceed)
      */
     function onBeforeAddLiquidity(
         address router,
@@ -283,7 +380,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
             revert RouterNotTrusted();
         }
 
-        // Only allow adding liquidity up to start time.
+        // Only allow adding liquidity up to the start time.
         if (block.timestamp > _startTime) {
             revert AddingLiquidityNotAllowed();
         }
@@ -291,7 +388,10 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         return IRouterCommon(router).getSender() == owner();
     }
 
-    /// @notice Only allows requests after the weight update is finished.
+    /**
+     * @notice Only allow requests after the weight update is finished, and the sale is complete.
+     * @return success Always true; if removing liquidity is not allowed, revert here with a more specific error
+     */
     function onBeforeRemoveLiquidity(
         address,
         address,
@@ -300,7 +400,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) public view override onlyVault returns (bool success) {
+    ) public view override onlyVault returns (bool) {
         // Only allow removing liquidity after end time.
         if (block.timestamp < _endTime) {
             revert RemovingLiquidityNotAllowed();
@@ -309,22 +409,12 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         return true;
     }
 
-    /// @notice Not implemented; reverts unconditionally.
-    function getWeightedPoolDynamicData() external pure override returns (WeightedPoolDynamicData memory) {
-        revert NotImplemented();
-    }
-
-    /// @notice Not implemented; reverts unconditionally.
-    function getWeightedPoolImmutableData() external pure override returns (WeightedPoolImmutableData memory) {
-        revert NotImplemented();
-    }
-
     /*******************************************************************************
                                   Internal Functions
     *******************************************************************************/
 
-    function _getNormalizedWeight(uint256 tokenIndex) internal view virtual override returns (uint256) {
-        if (tokenIndex < LBPoolLib.NUM_TOKENS) {
+    function _getNormalizedWeight(uint256 tokenIndex) internal view override returns (uint256) {
+        if (tokenIndex < _TWO_TOKENS) {
             return _getNormalizedWeights()[tokenIndex];
         }
 
@@ -332,31 +422,41 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
-        uint256[] memory normalizedWeights = new uint256[](LBPoolLib.NUM_TOKENS);
-        normalizedWeights[0] = _getNormalizedWeight0();
-        normalizedWeights[1] = FixedPoint.ONE - normalizedWeights[0];
+        uint256[] memory normalizedWeights = new uint256[](_TWO_TOKENS);
+        normalizedWeights[_projectTokenIndex] = _getProjectTokenNormalizedWeight();
+        normalizedWeights[_reserveTokenIndex] = FixedPoint.ONE - normalizedWeights[_projectTokenIndex];
 
         return normalizedWeights;
     }
 
-    function _getNormalizedWeight0() internal view virtual returns (uint256) {
+    function _getProjectTokenNormalizedWeight() internal view returns (uint256) {
         uint256 pctProgress = GradualValueChange.calculateValueChangeProgress(_startTime, _endTime);
 
-        return GradualValueChange.interpolateValue(_startWeight0, _endWeight0, pctProgress);
+        return GradualValueChange.interpolateValue(_projectTokenStartWeight, _projectTokenEndWeight, pctProgress);
     }
 
-    function _isSwapEnabled() private view returns (bool) {
-        // Swaps are only enabled while the weight is changing.
-        return block.timestamp >= _startTime && block.timestamp <= _endTime;
+    function _buildWeightedPoolParams(
+        string memory name,
+        string memory symbol,
+        string memory version,
+        LBPParams memory lbpParams
+    ) private pure returns (NewPoolParams memory) {
+        (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken
+            ? (0, 1)
+            : (1, 0);
+
+        uint256[] memory normalizedWeights = new uint256[](_TWO_TOKENS);
+        normalizedWeights[projectTokenIndex] = lbpParams.projectTokenStartWeight;
+        normalizedWeights[reserveTokenIndex] = lbpParams.reserveTokenStartWeight;
+
+        // The WeightedPool will validate the starting weights (i.e., ensure they respect the minimum and sum to ONE).
+        return
+            NewPoolParams({
+                name: name,
+                symbol: symbol,
+                numTokens: _TWO_TOKENS,
+                normalizedWeights: normalizedWeights,
+                version: version
+            });
     }
-
-    function _isSwapRequestAllowed(PoolSwapParams memory params) private view returns (bool) {
-        // If project token swaps are enabled, the request is always valid.
-        // If not, project token must be the token out.
-        return _enableProjectTokenSwapsIn || params.indexOut == _projectTokenIndex;
-    }
-
-    function getLBPoolDynamicData() external view override returns (LBPoolDynamicData memory data) {}
-
-    function getLBPoolImmutableData() external view override returns (LBPoolImmutableData memory data) {}
 }
