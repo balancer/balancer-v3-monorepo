@@ -7,10 +7,10 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { MevTaxHook } from "../MevTaxHook.sol";
+import { MevCaptureHook } from "../MevCaptureHook.sol";
 
-contract MevTaxHookMock is MevTaxHook {
-    constructor(IVault vault, IBalancerContractRegistry registry) MevTaxHook(vault, registry) {
+contract MevCaptureHookMock is MevCaptureHook {
+    constructor(IVault vault, IBalancerContractRegistry registry) MevCaptureHook(vault, registry) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
