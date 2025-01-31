@@ -7,7 +7,9 @@ import { FixedPoint } from "./FixedPoint.sol";
 /**
  * @notice Implementation of Balancer Weighted Math, essentially unchanged since v1.
  * @dev It is a generalization of the x * y = k constant product formula, accounting for cases with more than two
- * tokens, and weights that are not 50/50. See https://docs.qr68.com/tech-implementations/weighted-math.
+ * tokens, and weights that are not 50/50.
+ *
+ * See https://docs.balancer.fi/concepts/explore-available-balancer-pools/weighted-pool/weighted-math.html
  *
  * For security reasons, to help ensure that for all possible "round trip" paths the caller always receives the same
  * or fewer tokens than supplied, we have chosen the rounding direction to favor the protocol in all cases.
