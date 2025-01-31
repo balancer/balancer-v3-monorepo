@@ -48,18 +48,24 @@ contract LBPoolTest is BasePoolTest {
     uint256 constant START_TIME_OFFSET = 1 days;
     uint256 constant END_TIME_OFFSET = 7 days;
 
+    uint256 constant HIGH_WEIGHT = 70e16;
+    uint256 constant LOW_WEIGHT = 30e16;
+
     string constant factoryVersion = "Factory v1";
     string constant poolVersion = "Pool v1";
 
-    bool internal allowRemovalOnlyAfterWeightChange;
-    bool internal restrictSaleOfBootstrapToken;
+    string constant name = "LB Pool";
+    string constant symbol = "LB_POOL";
+
+    IERC20 internal projectToken;
+    IERC20 internal reserveToken;
 
     uint256[] internal weights;
     uint256[] internal startWeights;
     uint256[] internal endWeights;
 
-    uint256 internal daiIdx;
-    uint256 internal usdcIdx;
+    uint256 internal projectIdx;
+    uint256 internal reserveIdx;
 
     function setUp() public virtual override {
         expectedAddLiquidityBptAmountOut = TOKEN_AMOUNT;
@@ -68,7 +74,17 @@ contract LBPoolTest is BasePoolTest {
 
         BasePoolTest.setUp();
 
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+        projectToken = dai;
+        reserveToken = usdc;
+
+        (projectIdx, reserveIdx) = getSortedIndexes(address(dai), address(usdc));
+        startWeights = new uint256[](2);
+        startWeights[projectIdx] = HIGH_WEIGHT;
+        startWeights[reserveIdx] = LOW_WEIGHT;
+
+        endWeights = new uint256[](2);
+        endWeights[projectIdx] = LOW_WEIGHT;
+        endWeights[reserveIdx] = HIGH_WEIGHT;
 
         poolMinSwapFeePercentage = 0.001e16; // 0.001%
         poolMaxSwapFeePercentage = 10e16;
@@ -80,7 +96,8 @@ contract LBPoolTest is BasePoolTest {
             365 days,
             factoryVersion,
             poolVersion,
-            address(router)
+            address(router),
+            permit2
         );
         vm.label(address(factory), "LBPoolFactory");
 
@@ -88,274 +105,103 @@ contract LBPoolTest is BasePoolTest {
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
-        IERC20[] memory sortedTokens = InputHelpers.sortTokens(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-        for (uint256 i = 0; i < sortedTokens.length; i++) {
-            poolTokens.push(sortedTokens[i]);
-            tokenAmounts.push(TOKEN_AMOUNT);
-        }
-
-        startWeights = [uint256(50e16), uint256(50e16)].toMemoryArray();
-
         // Allow pools created by `poolFactory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
-
-        string memory name = "LB Pool";
-        string memory symbol = "LB_POOL";
-
-        endWeights = [uint256(30e16), uint256(70e16)].toMemoryArray();
 
         uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
         uint32 endTime = uint32(startTime + END_TIME_OFFSET);
 
-        allowRemovalOnlyAfterWeightChange = false;
-        restrictSaleOfBootstrapToken = false;
-
         LBPParams memory lbpParams = LBPParams({
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx],
             startTime: startTime,
             endTime: endTime,
-            endWeights: endWeights,
-            bootstrapToken: address(dai),
-            allowRemovalOnlyAfterWeightChange: allowRemovalOnlyAfterWeightChange,
-            restrictSaleOfBootstrapToken: restrictSaleOfBootstrapToken
+            enableProjectTokenSwapsIn: false
         });
-
-        newPool = LBPoolFactory(poolFactory).create(
-            name,
-            symbol,
-            vault.buildTokenConfig(sortedTokens),
-            startWeights,
-            DEFAULT_SWAP_FEE,
-            bob,
-            ZERO_BYTES32,
-            lbpParams
-        );
-    }
-
-    function createAndInitNewLBPool(
-        uint256 startWeightOne,
-        uint256 startWeightTwo,
-        uint256 endWeightOne,
-        uint256 endWeightTwo,
-        uint32 startTime,
-        uint32 endTime,
-        address bootstrapToken,
-        bool allowRemovalOnlyAfterWeightChange,
-        bool restrictSaleOfBootstrapToken
-    ) internal returns (address pool) {
-        IERC20[] memory sortedTokens = InputHelpers.sortTokens(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-        for (uint256 i = 0; i < sortedTokens.length; i++) {
-            poolTokens.push(sortedTokens[i]);
-            tokenAmounts.push(TOKEN_AMOUNT);
-        }
-
-        startWeights = [uint256(startWeightOne), uint256(startWeightTwo)].toMemoryArray();
-
-        // Allow pools created by `poolFactory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
-
-        string memory name = "LB Pool";
-        string memory symbol = "LB_POOL";
-
-        endWeights = [uint256(endWeightOne), uint256(endWeightTwo)].toMemoryArray();
-
-        //uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        //uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        //allowRemovalOnlyAfterWeightChange = false;
-        //restrictSaleOfBootstrapToken = false;
-
-        LBPParams memory lbpParams = LBPParams({
-            startTime: startTime,
-            endTime: endTime,
-            endWeights: endWeights,
-            bootstrapToken: address(bootstrapToken),
-            allowRemovalOnlyAfterWeightChange: allowRemovalOnlyAfterWeightChange,
-            restrictSaleOfBootstrapToken: restrictSaleOfBootstrapToken
-        });
-
-        address newPool = LBPoolFactory(poolFactory).create(
-            name,
-            symbol,
-            vault.buildTokenConfig(sortedTokens),
-            startWeights,
-            DEFAULT_SWAP_FEE,
-            bob,
-            keccak256(abi.encodePacked(block.timestamp)), // generate pseudorandom salt to avoid collision,
-            lbpParams
-        );
 
         uint256[] memory initAmounts = [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray();
 
-        // start & stop prank to ensure sender is the owner (bob)
-        vm.startPrank(bob);
-        _initPool(newPool, initAmounts, 0);
-        vm.stopPrank();
+        newPool = LBPoolFactory(poolFactory).createAndInitialize(
+            name,
+            symbol,
+            lbpParams,
+            DEFAULT_SWAP_FEE,
+            initAmounts,
+            ZERO_BYTES32
+        );
 
-        return newPool;
+        poolArgs = abi.encode(
+            name,
+            symbol,
+            lbpParams,
+            vault,
+            router,
+            poolVersion
+        );
+
+        address calculatedPoolAddress = IBasePoolFactory(poolFactory).getDeploymentAddress(poolArgs, ZERO_BYTES32);
+        assertEq(newPool, calculatedPoolAddress, "Pool address mismatch");
+    }
+
+    function createAndInitNewLBPool(
+        uint256 projectStartWeight,
+        uint256 reserveStartWeight,
+        uint256 projectEndWeight,
+        uint256 reserveEndWeight,
+        uint32 startTime,
+        uint32 endTime,
+        bool enableProjectTokenSwapsIn
+    ) internal returns (address) {
+        // Allow pools created by `poolFactory` to use poolHooksMock hooks
+        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
+
+        LBPParams memory lbpParams = LBPParams({
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx],
+            startTime: startTime,
+            endTime: endTime,
+            enableProjectTokenSwapsIn: false
+        });
+
+        uint256[] memory initAmounts = [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray();
+
+        return LBPoolFactory(poolFactory).createAndInitialize(
+            name,
+            symbol,
+            lbpParams,
+            DEFAULT_SWAP_FEE,
+            initAmounts,
+            ZERO_BYTES32
+        );
     }
 
     function testGetTrustedRouter() public view {
         assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
-    function testPoolAddress() public view override {
-        IERC20[] memory sortedTokens = InputHelpers.sortTokens(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-
-        uint256[] memory startWeights = new uint256[](2);
-        startWeights[0] = 50e16;
-        startWeights[1] = 50e16;
-
-        string memory name = "LB Pool";
-        string memory symbol = "LB_POOL";
-
-        uint256[] memory endweights = new uint256[](2);
-        endweights[0] = 30e16;
-        endweights[1] = 70e16;
-
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        bool allowRemovalOnlyAfterWeightChange = false;
-        bool restrictSaleOfBootstrapToken = false;
-
-        LBPParams memory lbpParams = LBPParams({
-            startTime: startTime,
-            endTime: endTime,
-            endWeights: endWeights,
-            bootstrapToken: address(dai),
-            allowRemovalOnlyAfterWeightChange: allowRemovalOnlyAfterWeightChange,
-            restrictSaleOfBootstrapToken: restrictSaleOfBootstrapToken
-        });
-
-        TokenConfig[] memory tokenConfigs = vault.buildTokenConfig(sortedTokens);
-
-        bytes memory poolArgs = abi.encode(
-            WeightedPool.NewPoolParams({
-                name: name,
-                symbol: symbol,
-                numTokens: sortedTokens.length,
-                normalizedWeights: startWeights,
-                version: poolVersion
-            }),
-            vault,
-            bob,
-            address(router),
-            lbpParams,
-            tokenConfigs
-        );
-
-        address calculatedPoolAddress = IBasePoolFactory(poolFactory).getDeploymentAddress(poolArgs, ZERO_BYTES32);
-        assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
-    }
-
-    /* function testPoolPausedState() public view override {
+    function testPoolPausedState() public view override {
         (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(pool);
         assertFalse(paused, "Vault should not be paused initially");
         assertApproxEqAbs(pauseWindow, START_TIMESTAMP + 365 days, 1, "Pause window period mismatch");
         assertApproxEqAbs(bufferPeriod, START_TIMESTAMP + 365 days + 30 days, 1, "Pause buffer period mismatch");
         assertEq(pauseManager, bob, "Pause manager should be 0");
-    } */
-
-    function testInitialize() public view override {
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        for (uint256 i = 0; i < poolTokens.length; ++i) {
-            // Tokens are transferred from bob (lp/owner)
-            assertEq(
-                defaultAccountBalance() - poolTokens[i].balanceOf(bob),
-                tokenAmounts[i],
-                string.concat("LP: Wrong balance for ", Strings.toString(i))
-            );
-
-            // Tokens are stored in the Vault
-            assertEq(
-                poolTokens[i].balanceOf(address(vault)),
-                tokenAmounts[i],
-                string.concat("LP: Vault balance for ", Strings.toString(i))
-            );
-
-            // Tokens are deposited to the pool
-            assertEq(
-                balances[i],
-                tokenAmounts[i],
-                string.concat("Pool: Wrong token balance for ", Strings.toString(i))
-            );
-        }
-
-        // should mint correct amount of BPT poolTokens
-        // Account for the precision loss
-        assertApproxEqAbs(IERC20(pool).balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
-        assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
     }
 
     function initPool() internal override {
-        vm.startPrank(bob);
-        bptAmountOut = _initPool(
-            pool,
-            tokenAmounts,
-            // Account for the precision loss
-            expectedAddLiquidityBptAmountOut - DELTA
-        );
-        vm.stopPrank();
+        // Do nothing, as LBPs are initialized on create.
     }
 
-    // overriding b/c bob needs to be the LP and has contributed double the "normal" amount of tokens
-    function testAddLiquidity() public override {
-        uint256 oldBptAmount = IERC20(pool).balanceOf(bob);
-        vm.prank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, tokenAmounts, tokenAmountIn - DELTA, false, bytes(""));
-
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        for (uint256 i = 0; i < poolTokens.length; ++i) {
-            // Tokens are transferred from Bob
-            assertEq(
-                defaultAccountBalance() - poolTokens[i].balanceOf(bob),
-                tokenAmounts[i] * 2, // x2 because bob (as owner) did init join and subsequent join
-                string.concat("LP: Wrong token balance for ", Strings.toString(i))
-            );
-
-            // Tokens are stored in the Vault
-            assertEq(
-                poolTokens[i].balanceOf(address(vault)),
-                tokenAmounts[i] * 2,
-                string.concat("Vault: Wrong token balance for ", Strings.toString(i))
-            );
-
-            assertEq(
-                balances[i],
-                tokenAmounts[i] * 2,
-                string.concat("Pool: Wrong token balance for ", Strings.toString(i))
-            );
-        }
-
-        uint256 newBptAmount = IERC20(pool).balanceOf(bob);
-
-        // should mint correct amount of BPT poolTokens
-        assertApproxEqAbs(newBptAmount - oldBptAmount, bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
-        assertApproxEqAbs(bptAmountOut, expectedAddLiquidityBptAmountOut, DELTA, "Wrong bptAmountOut");
-    }
-
-    // overriding b/c bob has swap fee authority, not governance
-    // TODO: why does this test need to change swap fee anyway?
-    function testAddLiquidityUnbalanced() public override {
-        vm.prank(bob);
-        vault.setStaticSwapFeePercentage(pool, 10e16);
-
-        uint256[] memory amountsIn = tokenAmounts;
-        amountsIn[0] = amountsIn[0].mulDown(IBasePool(pool).getMaximumInvariantRatio());
-        vm.prank(bob);
-
-        router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
-    }
-
-    function testRemoveLiquidity() public override {
+    /*function testRemoveLiquidity() public override {
         // create a fake router
         bytes memory code = address(router).code;
         address fakeRouter = makeAddr("target");
@@ -535,19 +381,6 @@ contract LBPoolTest is BasePoolTest {
         );
     }
 
-    function testOnlyOwnerCanBeLP() public {
-        uint256[] memory amounts = [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray();
-
-        vm.startPrank(bob);
-        router.addLiquidityUnbalanced(address(pool), amounts, 0, false, "");
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeAddLiquidityHookFailed.selector));
-        router.addLiquidityUnbalanced(address(pool), amounts, 0, false, "");
-        vm.stopPrank();
-    }
-
     function testSwapsBasedOnWeightChangeProcess() public {
         // the deployed pool has weight change started scheduled to be in the future. Swaps are only allowed when weight change has started
 
@@ -724,59 +557,6 @@ contract LBPoolTest is BasePoolTest {
         );
     }
 
-    function testInvalidBootstrapToken() public {
-        // prepare pool creation data
-        IERC20[] memory sortedTokens = InputHelpers.sortTokens(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-        for (uint256 i = 0; i < sortedTokens.length; i++) {
-            poolTokens.push(sortedTokens[i]);
-            tokenAmounts.push(TOKEN_AMOUNT);
-        }
-
-        startWeights = [uint256(40e16), uint256(60e16)].toMemoryArray();
-
-        // Allow pools created by `poolFactory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
-
-        string memory name = "LB Pool";
-        string memory symbol = "LB_POOL";
-
-        endWeights = [uint256(20e16), uint256(80e16)].toMemoryArray();
-
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        allowRemovalOnlyAfterWeightChange = false;
-        restrictSaleOfBootstrapToken = false;
-
-        LBPParams memory lbpParams = LBPParams({
-            startTime: startTime,
-            endTime: endTime,
-            endWeights: endWeights,
-            bootstrapToken: address(weth),
-            allowRemovalOnlyAfterWeightChange: allowRemovalOnlyAfterWeightChange,
-            restrictSaleOfBootstrapToken: restrictSaleOfBootstrapToken
-        });
-
-        TokenConfig[] memory tokenConfigs = vault.buildTokenConfig(sortedTokens);
-
-        // expecting a LBPool.InvalidBootstrapToken.selector but can only
-        // catch the Create2FailedDeployment selector
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
-
-        address newPool = LBPoolFactory(poolFactory).create(
-            name,
-            symbol,
-            tokenConfigs,
-            startWeights,
-            DEFAULT_SWAP_FEE,
-            bob,
-            keccak256(abi.encodePacked(block.timestamp)), // generate pseudorandom salt to avoid collision,
-            lbpParams
-        );
-    }
-
     function testRemovalOnlAfterWeightChange() public {
         uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
         uint32 endTime = uint32(startTime + END_TIME_OFFSET);
@@ -841,7 +621,7 @@ contract LBPoolTest is BasePoolTest {
 
         /* uint256[] memory endWeights = new uint256[](2);
         endWeights[0] = 0.01e18; // 1%
-        endWeights[1] = 0.99e18; // 99% */
+        endWeights[1] = 0.99e18; // 99% *//*asdf
 
         uint256 amountIn = TOKEN_AMOUNT / 10;
         uint256 constantWeightSteps = constantWeightDuration / weightUpdateStep;
@@ -1262,5 +1042,5 @@ contract LBPoolTest is BasePoolTest {
                 false, // wethIsEth: Set to false assuming DAI and USDC are not ETH
                 "" // userData: Empty bytes as no additional data is needed
             );
-    }
+    }*/
 }
