@@ -19,6 +19,7 @@ interface ICowRouter {
      * @param swapLimit Minimum or maximum value of the calculated amount (depending on the type of swap)
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap request and emitted with donation and swap events
      */
     struct SwapAndDonateHookParams {
@@ -31,6 +32,7 @@ interface ICowRouter {
         uint256 swapLimit;
         uint256 swapDeadline;
         uint256[] donationAmounts;
+        uint256[] transferAmountHints;
         bytes userData;
     }
 
@@ -58,6 +60,16 @@ interface ICowRouter {
      * @param maxProtocolFeePercentage The maximum protocol fee percentage
      */
     error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
+
+    /**
+     * @notice The funds transferred to the Vault and the swap tokenOut amount were not enough to pay for the Swap and
+     * Donate operation.
+     *
+     * @param token The address of the token in which credits and debits were accumulated
+     * @param senderCredits Funds transferred by the sender to the Vault and amount of tokenOut of the swap
+     * @param senderDebits Funds donated to the pool, paid in fees and amount of tokenIn of the swap
+     */
+    error InsufficientFunds(IERC20 token, uint256 senderCredits, uint256 senderDebits);
 
     /**
      * @notice A swap and a donation have occurred.
@@ -109,6 +121,7 @@ interface ICowRouter {
      * @param swapMinAmountOut Minimum number of tokenOut tokens
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountOut Number of tokenOut tokens returned from the swap
      */
@@ -120,6 +133,7 @@ interface ICowRouter {
         uint256 swapMinAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferAmountHints,
         bytes memory userData
     ) external returns (uint256 exactAmountOut);
 
@@ -136,6 +150,7 @@ interface ICowRouter {
      * @param swapExactAmountOut Number of tokenOut tokens
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountIn Number of tokenIn tokens charged in the swap
      */
@@ -147,6 +162,7 @@ interface ICowRouter {
         uint256 swapExactAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferAmountHints,
         bytes memory userData
     ) external returns (uint256 exactAmountIn);
 

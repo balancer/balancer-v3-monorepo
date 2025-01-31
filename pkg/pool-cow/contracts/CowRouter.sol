@@ -81,6 +81,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256 swapMinAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferAmountHints,
         bytes memory userData
     ) external authenticate returns (uint256 exactAmountOut) {
         (, exactAmountOut) = abi.decode(
@@ -97,6 +98,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapLimit: swapMinAmountOut,
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
+                        transferAmountHints: transferAmountHints,
                         userData: userData
                     })
                 )
@@ -114,6 +116,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256 swapExactAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferAmountHints,
         bytes memory userData
     ) external authenticate returns (uint256 exactAmountIn) {
         (exactAmountIn, ) = abi.decode(
@@ -130,6 +133,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapLimit: swapMaxAmountIn,
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
+                        transferAmountHints: transferAmountHints,
                         userData: userData
                     })
                 )
@@ -218,6 +222,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             swapAndDonateParams.swapTokenOut,
             swapAmountIn,
             swapAmountOut,
+            swapAndDonateParams.transferAmountHints,
             donatedAmounts,
             protocolFeeAmounts
         );
@@ -248,14 +253,15 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             params.donationAmounts,
             params.userData
         );
-
-        // The donations must be deposited in the vault, and protocol fees must be deposited in the router.
+        // This hook assumes that the sender transferred an exact amount of tokens corresponding to
+        // `transferAmountHints`, such that `donationAmounts` == `transferAmountHints` and
+        // `returnToSenderAmounts` == 0.
         _settleDonation(
             params.sender,
             tokens,
-            donatedAmounts,
+            params.donationAmounts,
             protocolFeeAmounts,
-            new uint256[](donatedAmounts.length)
+            new uint256[](params.donationAmounts.length)
         );
 
         emit CoWDonation(params.pool, donatedAmounts, protocolFeeAmounts, params.userData);
@@ -296,6 +302,23 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         );
     }
 
+    /**
+     * @notice Checks if upfront transfers were enough to pay for the swap and donation operation and settles.
+     * @dev This function uses the concept of available funds (credits) and required funds (debt) to check if the
+     * sender transferred enough funds to fulfill the swap and donation. This concept avoids math underflow, since it
+     * works only with sums, and allows to revert with the right reason in case the upfront transfer was not enough to
+     * cover the operation.
+     *
+     * @param sender Account originating the swap and donate operation
+     * @param tokens Tokens of the pool
+     * @param swapTokenIn The token entering the Vault (balance increases)
+     * @param swapTokenOut The token leaving the Vault (balance decreases)
+     * @param swapAmountIn The amount of tokenIn entering the Vault
+     * @param swapAmountOut The amount of tokenOut leaving the Vault
+     * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
+     * @param donatedAmounts Amount of tokens deposited in the pool as a donation, sorted in token registration order
+     * @param feeAmounts Amount of tokens charged as protocol fees by the router, sorted in token registration order
+     */
     function _settleSwapAndDonation(
         address sender,
         IERC20[] memory tokens,
@@ -303,55 +326,66 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         IERC20 swapTokenOut,
         uint256 swapAmountIn,
         uint256 swapAmountOut,
+        uint256[] memory transferAmountHints,
         uint256[] memory donatedAmounts,
         uint256[] memory feeAmounts
     ) private {
-        uint256[] memory poolAmounts = new uint256[](donatedAmounts.length);
-        uint256[] memory senderAmounts = new uint256[](donatedAmounts.length);
+        // `returnToSenderAmounts` will contain the number of "leftover" tokens that should be returned to the sender.
+        uint256[] memory returnToSenderAmounts = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
+            // Credit the sender for tokens received upfront.
+            uint256 senderCredits = transferAmountHints[i];
+            // Debit the sender for tokens transferred in for the donation and protocol fees, so that they are not
+            // returned to the sender.
+            uint256 senderDebits = donatedAmounts[i] + feeAmounts[i];
+
             if (tokens[i] == swapTokenIn) {
-                poolAmounts[i] = donatedAmounts[i] + swapAmountIn;
+                // Debit the sender for tokens charged in the swap operation.
+                senderDebits += swapAmountIn;
             } else if (tokens[i] == swapTokenOut) {
-                if (donatedAmounts[i] >= swapAmountOut) {
-                    poolAmounts[i] = donatedAmounts[i] - swapAmountOut;
-                } else {
-                    senderAmounts[i] = swapAmountOut - donatedAmounts[i];
-                }
-            } else {
-                poolAmounts[i] = donatedAmounts[i];
+                // Credit the sender for tokens received in the swap operation.
+                senderCredits += swapAmountOut;
             }
+
+            if (senderCredits < senderDebits) {
+                revert InsufficientFunds(tokens[i], senderCredits, senderDebits);
+            }
+
+            returnToSenderAmounts[i] = senderCredits - senderDebits;
         }
 
-        _settleDonation(sender, tokens, poolAmounts, feeAmounts, senderAmounts);
+        // Transfer tokens from the Vault to the sender and to the router, and settle the vault reserves.
+        _settleDonation(sender, tokens, transferAmountHints, feeAmounts, returnToSenderAmounts);
     }
 
     function _settleDonation(
         address sender,
         IERC20[] memory tokens,
-        uint256[] memory poolAmounts,
-        uint256[] memory routerAmounts,
-        uint256[] memory senderAmounts
+        uint256[] memory transferAmountHints,
+        uint256[] memory sendToRouterAmounts,
+        uint256[] memory returnToSenderAmounts
     ) private {
-        for (uint256 i = 0; i < poolAmounts.length; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
 
-            // Donations are deposited in the vault and go to the pool balance.
-            uint256 poolAmount = poolAmounts[i];
-            if (poolAmount > 0) {
-                token.safeTransferFrom(sender, address(_vault), poolAmount);
-                _vault.settle(token, poolAmount);
+            // Tokens sent by the sender to the vault must be settled to generate credits. These credits are spent to
+            // pay debts generated by the swap and donation operations, and to pay protocol fees to the router.
+            // The proceeds from the swap, along with any leftover tokens, will be returned to the sender.
+            uint256 transferAmountHint = transferAmountHints[i];
+            if (transferAmountHint > 0) {
+                _vault.settle(token, transferAmountHint);
             }
 
-            // Protocol fees are deposited in the router.
-            uint256 routerAmount = routerAmounts[i];
-            if (routerAmount > 0) {
-                token.safeTransferFrom(sender, address(this), routerAmount);
+            // Protocol fees are charged on the sender's upfront transfers to the vault, and sent to the router.
+            uint256 sendToRouterAmount = sendToRouterAmounts[i];
+            if (sendToRouterAmount > 0) {
+                _vault.sendTo(token, address(this), sendToRouterAmount);
             }
 
-            // The swap amount out goes to the sender, except for the portion that was donated.
-            uint256 senderAmount = senderAmounts[i];
-            if (senderAmount > 0) {
-                _vault.sendTo(token, sender, senderAmount);
+            // The swap `amountOut`, and any leftover tokens, are returned to the sender.
+            uint256 returnToSenderAmount = returnToSenderAmounts[i];
+            if (returnToSenderAmount > 0) {
+                _vault.sendTo(token, sender, returnToSenderAmount);
             }
         }
     }
