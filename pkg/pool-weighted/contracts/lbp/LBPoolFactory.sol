@@ -140,7 +140,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
 
         pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
 
-        (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken ? (0, 1) : (1, 0);
+        (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken
+            ? (0, 1)
+            : (1, 0);
         IERC20[] memory tokens = new IERC20[](_TWO_TOKENS);
         tokens[projectTokenIndex] = lbpParams.projectToken;
         tokens[reserveTokenIndex] = lbpParams.reserveToken;

@@ -45,7 +45,6 @@ struct WeightedPoolDynamicData {
 
 /// @notice Full Weighted pool interface.
 interface IWeightedPool is IBasePool {
-
     /// @notice Indicates that one of the pool tokens' weight is below the minimum allowed.
     error MinWeight();
 
