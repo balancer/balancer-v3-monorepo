@@ -8,7 +8,7 @@ import {
     IBalancerContractRegistry
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
-import { IMevTaxHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevTaxHook.sol";
+import { IMevCaptureHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevCaptureHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -28,7 +28,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHook {
+contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevCaptureHook {
     using FixedPoint for uint256;
 
     // Max Fee is 99.9999% (Max supported fee by the vault).
@@ -56,7 +56,7 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         HooksConfig memory hooksConfig = _vault.getHooksConfig(pool);
 
         if (hooksConfig.hooksContract != address(this)) {
-            revert MevTaxHookNotRegisteredInPool(pool);
+            revert MevCaptureHookNotRegisteredInPool(pool);
         }
 
         _;
@@ -168,17 +168,17 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         return kind == RemoveLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function isMevTaxEnabled() external view returns (bool) {
         return _mevTaxEnabled;
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function disableMevTax() external authenticate {
         _setMevTaxEnabled(false);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function enableMevTax() external authenticate {
         _setMevTaxEnabled(true);
     }
@@ -189,12 +189,12 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         emit MevTaxEnabledSet(value);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function getMaxMevSwapFeePercentage() external view returns (uint256) {
         return _maxMevSwapFeePercentage;
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function setMaxMevSwapFeePercentage(uint256 maxMevSwapFeePercentage) external authenticate {
         _setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
     }
@@ -209,12 +209,12 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         emit MaxMevSwapFeePercentageSet(maxMevSwapFeePercentage);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function getDefaultMevTaxMultiplier() external view returns (uint256) {
         return _defaultMevTaxMultiplier;
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) external authenticate {
         _setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
     }
@@ -225,12 +225,12 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         emit DefaultMevTaxMultiplierSet(newDefaultMevTaxMultiplier);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function getPoolMevTaxMultiplier(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
         return _poolMevTaxMultipliers[pool];
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function setPoolMevTaxMultiplier(
         address pool,
         uint256 newPoolMevTaxMultiplier
@@ -244,12 +244,12 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         emit PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function getDefaultMevTaxThreshold() external view returns (uint256) {
         return _defaultMevTaxThreshold;
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function setDefaultMevTaxThreshold(uint256 newDefaultMevTaxThreshold) external authenticate {
         _setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
     }
@@ -260,12 +260,12 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         emit DefaultMevTaxThresholdSet(newDefaultMevTaxThreshold);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function getPoolMevTaxThreshold(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
         return _poolMevTaxThresholds[pool];
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function setPoolMevTaxThreshold(
         address pool,
         uint256 newPoolMevTaxThreshold
@@ -273,12 +273,12 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function isMevTaxExempt(address sender) external view returns (bool) {
         return _isMevTaxExempt(sender);
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function addMevTaxExemptSenders(address[] memory senders) external authenticate {
         uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
@@ -286,7 +286,7 @@ contract MevTaxHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevTaxHo
         }
     }
 
-    /// @inheritdoc IMevTaxHook
+    /// @inheritdoc IMevCaptureHook
     function removeMevTaxExemptSenders(address[] memory senders) external authenticate {
         uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
