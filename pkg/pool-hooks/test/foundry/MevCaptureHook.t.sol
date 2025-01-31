@@ -33,15 +33,15 @@ contract MevCaptureHookTest is BaseVaultTest {
 
         bytes4[] memory mevCaptureHookSelectors = new bytes4[](9);
 
-        mevCaptureHookSelectors[0] = IMevCaptureHook.disableMevTax.selector;
-        mevCaptureHookSelectors[1] = IMevCaptureHook.enableMevTax.selector;
+        mevCaptureHookSelectors[0] = IMevCaptureHook.disableMevCapture.selector;
+        mevCaptureHookSelectors[1] = IMevCaptureHook.enableMevCapture.selector;
         mevCaptureHookSelectors[2] = IMevCaptureHook.setMaxMevSwapFeePercentage.selector;
-        mevCaptureHookSelectors[3] = IMevCaptureHook.setDefaultMevTaxMultiplier.selector;
-        mevCaptureHookSelectors[4] = IMevCaptureHook.setPoolMevTaxMultiplier.selector;
-        mevCaptureHookSelectors[5] = IMevCaptureHook.setDefaultMevTaxThreshold.selector;
-        mevCaptureHookSelectors[6] = IMevCaptureHook.setPoolMevTaxThreshold.selector;
-        mevCaptureHookSelectors[7] = IMevCaptureHook.addMevTaxExemptSenders.selector;
-        mevCaptureHookSelectors[8] = IMevCaptureHook.removeMevTaxExemptSenders.selector;
+        mevCaptureHookSelectors[3] = IMevCaptureHook.setDefaultMevCaptureMultiplier.selector;
+        mevCaptureHookSelectors[4] = IMevCaptureHook.setPoolMevCaptureMultiplier.selector;
+        mevCaptureHookSelectors[5] = IMevCaptureHook.setDefaultMevCaptureThreshold.selector;
+        mevCaptureHookSelectors[6] = IMevCaptureHook.setPoolMevCaptureThreshold.selector;
+        mevCaptureHookSelectors[7] = IMevCaptureHook.addMevCaptureExemptSenders.selector;
+        mevCaptureHookSelectors[8] = IMevCaptureHook.removeMevCaptureExemptSenders.selector;
 
         for (uint256 i = 0; i < mevCaptureHookSelectors.length; i++) {
             authorizer.grantRole(
@@ -84,42 +84,45 @@ contract MevCaptureHookTest is BaseVaultTest {
     }
 
     /********************************************************
-                       isMevTaxEnabled()
+                      isMevCaptureEnabled()
     ********************************************************/
-    function testIsMevTaxEnabledStartingState() public view {
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled after hook creation.");
+
+    function testIsMevCaptureEnabledStartingState() public view {
+        assertFalse(_mevCaptureHook.isMevCaptureEnabled(), "MEV capture is enabled after hook creation.");
     }
 
     /********************************************************
-                         enableMevTax()
+                       enableMevCapture()
     ********************************************************/
-    function testEnableMevTaxIsPermissioned() public {
+
+    function testEnableMevCaptureIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.enableMevTax();
+        _mevCaptureHook.enableMevCapture();
     }
 
-    function testEnableMevTax() public {
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
+    function testEnableMevCapture() public {
+        assertFalse(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is enabled");
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.MevTaxEnabledSet(true);
-        _mevCaptureHook.enableMevTax();
-        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        emit IMevCaptureHook.MevCaptureEnabledSet(true);
+        _mevCaptureHook.enableMevCapture();
+        assertTrue(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is not enabled");
     }
 
-    function testMultipleEnableMevTax() public {
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
+    function testMultipleEnableMevCapture() public {
+        assertFalse(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is enabled");
         vm.prank(admin);
-        _mevCaptureHook.enableMevTax();
-        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevCapture();
+        assertTrue(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is not enabled");
         vm.prank(admin);
-        _mevCaptureHook.enableMevTax();
-        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevCapture();
+        assertTrue(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is not enabled");
     }
 
     /********************************************************
                     getMaxMevSwapFeePercentage()
     ********************************************************/
+
     function getMaxMevSwapFeePercentage() public view {
         assertEq(
             _mevCaptureHook.getMaxMevSwapFeePercentage(),
@@ -131,6 +134,7 @@ contract MevCaptureHookTest is BaseVaultTest {
     /********************************************************
                    setMaxMevSwapFeePercentage()
     ********************************************************/
+
     function testSetMaxMevSwapFeePercentageIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         _mevCaptureHook.setMaxMevSwapFeePercentage(50e16);
@@ -167,265 +171,277 @@ contract MevCaptureHookTest is BaseVaultTest {
     }
 
     /********************************************************
-                         disableMevTax()
+                      disableMevCapture()
     ********************************************************/
-    function testDisableMevTaxIsPermissioned() public {
+
+    function testDisableMevCaptureIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.disableMevTax();
+        _mevCaptureHook.disableMevCapture();
     }
 
-    function testDisableMevTax() public {
+    function testDisableMevCapture() public {
         vm.prank(admin);
-        _mevCaptureHook.enableMevTax();
-        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevCapture();
+        assertTrue(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is not enabled");
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.MevTaxEnabledSet(false);
-        _mevCaptureHook.disableMevTax();
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
+        emit IMevCaptureHook.MevCaptureEnabledSet(false);
+        _mevCaptureHook.disableMevCapture();
+        assertFalse(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is enabled");
     }
 
-    function testMultipleDisableMevTax() public {
+    function testMultipleDisableMevCapture() public {
         vm.prank(admin);
-        _mevCaptureHook.enableMevTax();
-        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevCapture();
+        assertTrue(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is not enabled");
         vm.prank(admin);
-        _mevCaptureHook.disableMevTax();
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
+        _mevCaptureHook.disableMevCapture();
+        assertFalse(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is enabled");
         vm.prank(admin);
-        _mevCaptureHook.disableMevTax();
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
+        _mevCaptureHook.disableMevCapture();
+        assertFalse(_mevCaptureHook.isMevCaptureEnabled(), "MEV Capture is enabled");
     }
 
     /********************************************************
-                   getDefaultMevTaxMultiplier()
+                   getDefaultMevCaptureMultiplier()
     ********************************************************/
-    function testGetDefaultMevTaxMultiplierStartingState() public view {
+    function testGetDefaultMevCaptureMultiplierStartingState() public view {
         assertEq(
-            _mevCaptureHook.getDefaultMevTaxMultiplier(),
+            _mevCaptureHook.getDefaultMevCaptureMultiplier(),
             0,
-            "Default MEV Tax Multiplier is not 0 after hook creation."
+            "Default MEV Capture Multiplier is not 0 after hook creation."
         );
     }
 
     /********************************************************
-                   setDefaultMevTaxMultiplier()
+                   setDefaultMevCaptureMultiplier()
     ********************************************************/
-    function testSetDefaultMevTaxMultiplierIsPermissioned() public {
+
+    function testSetDefaultMevCaptureMultiplierIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.setDefaultMevTaxMultiplier(1e18);
+        _mevCaptureHook.setDefaultMevCaptureMultiplier(1e18);
     }
 
-    function testSetDefaultMevTaxMultiplier() public {
-        uint256 firstDefaultMevTaxMultiplier = _mevCaptureHook.getDefaultMevTaxMultiplier();
+    function testSetDefaultMevCaptureMultiplier() public {
+        uint256 firstDefaultMevCaptureMultiplier = _mevCaptureHook.getDefaultMevCaptureMultiplier();
 
-        uint256 newDefaultMevTaxMultiplier = 1e18;
+        uint256 newDefaultMevCaptureMultiplier = 1e18;
 
         assertNotEq(
-            firstDefaultMevTaxMultiplier,
-            newDefaultMevTaxMultiplier,
-            "New defaultMevTaxMultiplier cannot be equal to current value"
+            firstDefaultMevCaptureMultiplier,
+            newDefaultMevCaptureMultiplier,
+            "New defaultMevCaptureMultiplier cannot be equal to current value"
         );
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.DefaultMevTaxMultiplierSet(newDefaultMevTaxMultiplier);
-        _mevCaptureHook.setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
+        emit IMevCaptureHook.DefaultMevCaptureMultiplierSet(newDefaultMevCaptureMultiplier);
+        _mevCaptureHook.setDefaultMevCaptureMultiplier(newDefaultMevCaptureMultiplier);
         assertEq(
-            _mevCaptureHook.getDefaultMevTaxMultiplier(),
-            newDefaultMevTaxMultiplier,
-            "defaultMevTaxMultiplier is not correct"
+            _mevCaptureHook.getDefaultMevCaptureMultiplier(),
+            newDefaultMevCaptureMultiplier,
+            "defaultMevCaptureMultiplier is not correct"
         );
     }
 
-    function testSetDefaultMevTaxMultiplierRegisteredPool() public {
+    function testSetDefaultMevCaptureMultiplierRegisteredPool() public {
         vm.prank(admin);
-        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
+        _mevCaptureHook.setPoolMevCaptureMultiplier(pool, 5e18);
 
         vm.prank(admin);
-        _mevCaptureHook.setDefaultMevTaxMultiplier(1e18);
+        _mevCaptureHook.setDefaultMevCaptureMultiplier(1e18);
 
         assertNotEq(
-            _mevCaptureHook.getDefaultMevTaxMultiplier(),
-            _mevCaptureHook.getPoolMevTaxMultiplier(pool),
-            "setDefaultMevTaxMultiplier changed pool multiplier."
+            _mevCaptureHook.getDefaultMevCaptureMultiplier(),
+            _mevCaptureHook.getPoolMevCaptureMultiplier(pool),
+            "setDefaultMevCaptureMultiplier changed pool multiplier."
         );
     }
 
     /********************************************************
-                   getDefaultMevTaxThreshold()
+                   getDefaultMevCaptureThreshold()
     ********************************************************/
-    function testGetDefaultMevTaxThresholdStartingState() public view {
+
+    function testGetDefaultMevCaptureThresholdStartingState() public view {
         assertEq(
-            _mevCaptureHook.getDefaultMevTaxThreshold(),
+            _mevCaptureHook.getDefaultMevCaptureThreshold(),
             0,
-            "Default MEV Tax Threshold is not 0 after hook creation."
+            "Default MEV Capture Threshold is not 0 after hook creation."
         );
     }
 
     /********************************************************
-                   setDefaultMevTaxThreshold()
+                   setDefaultMevCaptureThreshold()
     ********************************************************/
-    function testSetDefaultMevTaxThresholdIsPermissioned() public {
+
+    function testSetDefaultMevCaptureThresholdIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.setDefaultMevTaxThreshold(1e18);
+        _mevCaptureHook.setDefaultMevCaptureThreshold(1e18);
     }
 
-    function testSetDefaultMevTaxThreshold() public {
-        uint256 firstDefaultMevTaxThreshold = _mevCaptureHook.getDefaultMevTaxThreshold();
+    function testSetDefaultMevCaptureThreshold() public {
+        uint256 firstDefaultMevCaptureThreshold = _mevCaptureHook.getDefaultMevCaptureThreshold();
 
-        uint256 newDefaultMevTaxThreshold = 1e18;
+        uint256 newDefaultMevCaptureThreshold = 1e18;
 
         assertNotEq(
-            firstDefaultMevTaxThreshold,
-            newDefaultMevTaxThreshold,
-            "New defaultMevTaxThreshold cannot be equal to current value"
+            firstDefaultMevCaptureThreshold,
+            newDefaultMevCaptureThreshold,
+            "New defaultMevCaptureThreshold cannot be equal to current value"
         );
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.DefaultMevTaxThresholdSet(newDefaultMevTaxThreshold);
-        _mevCaptureHook.setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
+        emit IMevCaptureHook.DefaultMevCaptureThresholdSet(newDefaultMevCaptureThreshold);
+        _mevCaptureHook.setDefaultMevCaptureThreshold(newDefaultMevCaptureThreshold);
         assertEq(
-            _mevCaptureHook.getDefaultMevTaxThreshold(),
-            newDefaultMevTaxThreshold,
-            "defaultMevTaxThreshold is not correct"
+            _mevCaptureHook.getDefaultMevCaptureThreshold(),
+            newDefaultMevCaptureThreshold,
+            "defaultMevCaptureThreshold is not correct"
         );
     }
 
-    function testSetDefaultMevTaxThresholdRegisteredPool() public {
+    function testSetDefaultMevCaptureThresholdRegisteredPool() public {
         vm.prank(admin);
-        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
+        _mevCaptureHook.setPoolMevCaptureThreshold(pool, 5e18);
 
         vm.prank(admin);
-        _mevCaptureHook.setDefaultMevTaxThreshold(1e18);
+        _mevCaptureHook.setDefaultMevCaptureThreshold(1e18);
 
         assertNotEq(
-            _mevCaptureHook.getDefaultMevTaxThreshold(),
-            _mevCaptureHook.getPoolMevTaxThreshold(pool),
-            "setDefaultMevTaxThreshold changed pool threshold."
+            _mevCaptureHook.getDefaultMevCaptureThreshold(),
+            _mevCaptureHook.getPoolMevCaptureThreshold(pool),
+            "setDefaultMevCaptureThreshold changed pool threshold."
         );
     }
 
     /********************************************************
-                   getPoolMevTaxMultiplier()
+                   getPoolMevCaptureMultiplier()
     ********************************************************/
-    function testGetPoolMevTaxMultiplierPoolNotRegistered() public {
+
+    function testGetPoolMevCaptureMultiplierPoolNotRegistered() public {
         // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         createHook();
 
         vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
-        _mevCaptureHook.getPoolMevTaxMultiplier(pool);
+        _mevCaptureHook.getPoolMevCaptureMultiplier(pool);
     }
 
     /********************************************************
-                   setPoolMevTaxMultiplier()
+                   setPoolMevCaptureMultiplier()
     ********************************************************/
-    function testSetPoolMevTaxMultiplierPoolNotRegistered() public {
+
+    function testSetPoolMevCaptureMultiplierPoolNotRegistered() public {
         // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         address newHook = createHook();
 
         authorizer.grantRole(
-            IAuthentication(newHook).getActionId(IMevCaptureHook.setPoolMevTaxMultiplier.selector),
+            IAuthentication(newHook).getActionId(IMevCaptureHook.setPoolMevCaptureMultiplier.selector),
             admin
         );
 
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
-        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
+        _mevCaptureHook.setPoolMevCaptureMultiplier(pool, 5e18);
     }
 
-    function testSetPoolMevTaxMultiplierIsPermissioned() public {
+    function testSetPoolMevCaptureMultiplierIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
+        _mevCaptureHook.setPoolMevCaptureMultiplier(pool, 5e18);
     }
 
-    function testSetPoolMevTaxMultiplier() public {
-        uint256 firstPoolMevTaxMultiplier = _mevCaptureHook.getPoolMevTaxMultiplier(pool);
-        uint256 firstDefaultMevTaxMultiplier = _mevCaptureHook.getDefaultMevTaxMultiplier();
+    function testSetPoolMevCaptureMultiplier() public {
+        uint256 firstPoolMevCaptureMultiplier = _mevCaptureHook.getPoolMevCaptureMultiplier(pool);
+        uint256 firstDefaultMevCaptureMultiplier = _mevCaptureHook.getDefaultMevCaptureMultiplier();
 
-        uint256 newPoolMevTaxMultiplier = 5e18;
+        uint256 newPoolMevCaptureMultiplier = 5e18;
 
         assertNotEq(
-            firstPoolMevTaxMultiplier,
-            newPoolMevTaxMultiplier,
-            "New defaultMevTaxMultiplier cannot be equal to current value"
+            firstPoolMevCaptureMultiplier,
+            newPoolMevCaptureMultiplier,
+            "New defaultMevCaptureMultiplier cannot be equal to current value"
         );
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
-        _mevCaptureHook.setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
+        emit IMevCaptureHook.PoolMevCaptureMultiplierSet(pool, newPoolMevCaptureMultiplier);
+        _mevCaptureHook.setPoolMevCaptureMultiplier(pool, newPoolMevCaptureMultiplier);
         assertEq(
-            _mevCaptureHook.getPoolMevTaxMultiplier(pool),
-            newPoolMevTaxMultiplier,
-            "poolMevTaxMultiplier is not correct"
+            _mevCaptureHook.getPoolMevCaptureMultiplier(pool),
+            newPoolMevCaptureMultiplier,
+            "poolMevCaptureMultiplier is not correct"
         );
 
         assertEq(
-            _mevCaptureHook.getDefaultMevTaxMultiplier(),
-            firstDefaultMevTaxMultiplier,
+            _mevCaptureHook.getDefaultMevCaptureMultiplier(),
+            firstDefaultMevCaptureMultiplier,
             "Default multiplier changed"
         );
     }
 
     /********************************************************
-                   getPoolMevTaxThreshold()
+                   getPoolMevCaptureThreshold()
     ********************************************************/
-    function testGetPoolMevTaxThresholdPoolNotRegistered() public {
+
+    function testGetPoolMevCaptureThresholdPoolNotRegistered() public {
         // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         createHook();
 
         vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
-        _mevCaptureHook.getPoolMevTaxThreshold(pool);
+        _mevCaptureHook.getPoolMevCaptureThreshold(pool);
     }
 
     /********************************************************
-                   setPoolMevTaxThreshold()
+                   setPoolMevCaptureThreshold()
     ********************************************************/
-    function testSetPoolMevTaxThresholdPoolNotRegistered() public {
+
+    function testSetPoolMevCaptureThresholdPoolNotRegistered() public {
         // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         address newHook = createHook();
 
         authorizer.grantRole(
-            IAuthentication(newHook).getActionId(IMevCaptureHook.setPoolMevTaxThreshold.selector),
+            IAuthentication(newHook).getActionId(IMevCaptureHook.setPoolMevCaptureThreshold.selector),
             admin
         );
 
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
-        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
+        _mevCaptureHook.setPoolMevCaptureThreshold(pool, 5e18);
     }
 
-    function testSetPoolMevTaxThresholdIsPermissioned() public {
+    function testSetPoolMevCaptureThresholdIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
+        _mevCaptureHook.setPoolMevCaptureThreshold(pool, 5e18);
     }
 
-    function testSetPoolMevTaxThreshold() public {
-        uint256 firstPoolMevTaxThreshold = _mevCaptureHook.getPoolMevTaxThreshold(pool);
-        uint256 firstDefaultMevTaxThreshold = _mevCaptureHook.getDefaultMevTaxThreshold();
+    function testSetPoolMevCaptureThreshold() public {
+        uint256 firstPoolMevCaptureThreshold = _mevCaptureHook.getPoolMevCaptureThreshold(pool);
+        uint256 firstDefaultMevCaptureThreshold = _mevCaptureHook.getDefaultMevCaptureThreshold();
 
-        uint256 newPoolMevTaxThreshold = 5e18;
+        uint256 newPoolMevCaptureThreshold = 5e18;
 
         assertNotEq(
-            firstPoolMevTaxThreshold,
-            newPoolMevTaxThreshold,
-            "New defaultMevTaxThreshold cannot be equal to current value"
+            firstPoolMevCaptureThreshold,
+            newPoolMevCaptureThreshold,
+            "New defaultMevCaptureThreshold cannot be equal to current value"
         );
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
-        _mevCaptureHook.setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
+        emit IMevCaptureHook.PoolMevCaptureThresholdSet(pool, newPoolMevCaptureThreshold);
+        _mevCaptureHook.setPoolMevCaptureThreshold(pool, newPoolMevCaptureThreshold);
         assertEq(
-            _mevCaptureHook.getPoolMevTaxThreshold(pool),
-            newPoolMevTaxThreshold,
-            "poolMevTaxThreshold is not correct"
+            _mevCaptureHook.getPoolMevCaptureThreshold(pool),
+            newPoolMevCaptureThreshold,
+            "poolMevCaptureThreshold is not correct"
         );
 
-        assertEq(_mevCaptureHook.getDefaultMevTaxThreshold(), firstDefaultMevTaxThreshold, "Default threshold changed");
+        assertEq(
+            _mevCaptureHook.getDefaultMevCaptureThreshold(),
+            firstDefaultMevCaptureThreshold,
+            "Default threshold changed"
+        );
     }
 
     /**
@@ -451,8 +467,8 @@ contract MevCaptureHookTest is BaseVaultTest {
         vm.txGasPrice(txGasPrice);
         vm.fee(txBaseFee);
         vm.startPrank(admin);
-        _mevCaptureHook.setPoolMevTaxThreshold(pool, threshold);
-        _mevCaptureHook.setPoolMevTaxMultiplier(pool, multiplier);
+        _mevCaptureHook.setPoolMevCaptureThreshold(pool, threshold);
+        _mevCaptureHook.setPoolMevCaptureMultiplier(pool, multiplier);
         _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
         vm.stopPrank();
 
@@ -484,6 +500,7 @@ contract MevCaptureHookTest is BaseVaultTest {
     /********************************************************
                    calculateSwapFeePercentage()
     ********************************************************/
+
     function testFeePercentageUnderThreshold__Fuzz(uint256 gasPriceDelta) public {
         uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
         uint256 priorityThreshold = 100e9;
@@ -610,78 +627,81 @@ contract MevCaptureHookTest is BaseVaultTest {
     }
 
     /********************************************************
-                   addMevTaxExemptSenders
+                   addMevCaptureExemptSenders
     ********************************************************/
-    function testAddMevTaxExemptSendersIsPermissioned() public {
+
+    function testAddMevCaptureExemptSendersIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.addMevTaxExemptSenders([address(1), address(2)].toMemoryArray());
+        _mevCaptureHook.addMevCaptureExemptSenders([address(1), address(2)].toMemoryArray());
     }
 
-    function testAddMevTaxExemptSenders() public {
+    function testAddMevCaptureExemptSenders() public {
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.MevTaxExemptSenderAdded(lp);
+        emit IMevCaptureHook.MevCaptureExemptSenderAdded(lp);
         vm.expectEmit();
-        emit IMevCaptureHook.MevTaxExemptSenderAdded(bob);
+        emit IMevCaptureHook.MevCaptureExemptSenderAdded(bob);
         vm.expectEmit();
-        emit IMevCaptureHook.MevTaxExemptSenderAdded(alice);
-        _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
-        assertTrue(_mevCaptureHook.isMevTaxExempt(lp), "LP was not added properly as MEV tax-exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(alice), "Alice was not added properly as MEV tax-exempt");
+        emit IMevCaptureHook.MevCaptureExemptSenderAdded(alice);
+        _mevCaptureHook.addMevCaptureExemptSenders([lp, bob, alice].toMemoryArray());
+        assertTrue(_mevCaptureHook.isMevCaptureExempt(lp), "LP was not added properly as MEV capture-exempt");
+        assertTrue(_mevCaptureHook.isMevCaptureExempt(bob), "Bob was not added properly as MEV capture-exempt");
+        assertTrue(_mevCaptureHook.isMevCaptureExempt(alice), "Alice was not added properly as MEV capture-exempt");
     }
 
-    function testAddMevTaxExemptSendersRevertsWithDuplicated() public {
+    function testAddMevCaptureExemptSendersRevertsWithDuplicated() public {
         vm.prank(admin);
-        _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
+        _mevCaptureHook.addMevCaptureExemptSenders([lp, bob, alice].toMemoryArray());
 
-        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevTaxExemptSenderAlreadyAdded.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureExemptSenderAlreadyAdded.selector, bob));
         vm.prank(admin);
-        _mevCaptureHook.addMevTaxExemptSenders([bob].toMemoryArray());
+        _mevCaptureHook.addMevCaptureExemptSenders([bob].toMemoryArray());
     }
 
     /********************************************************
-                   removeMevTaxExemptSenders
+                   removeMevCaptureExemptSenders
     ********************************************************/
-    function testRemoveMevTaxExemptSendersIsPermissioned() public {
+
+    function testRemoveMevCaptureExemptSendersIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevCaptureHook.removeMevTaxExemptSenders([alice, bob].toMemoryArray());
+        _mevCaptureHook.removeMevCaptureExemptSenders([alice, bob].toMemoryArray());
     }
 
-    function testRemoveMevTaxExemptSenders() public {
+    function testRemoveMevCaptureExemptSenders() public {
         vm.prank(admin);
-        _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
+        _mevCaptureHook.addMevCaptureExemptSenders([lp, bob, alice].toMemoryArray());
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevCaptureHook.MevTaxExemptSenderRemoved(lp);
+        emit IMevCaptureHook.MevCaptureExemptSenderRemoved(lp);
         vm.expectEmit();
-        emit IMevCaptureHook.MevTaxExemptSenderRemoved(alice);
-        _mevCaptureHook.removeMevTaxExemptSenders([lp, alice].toMemoryArray());
+        emit IMevCaptureHook.MevCaptureExemptSenderRemoved(alice);
+        _mevCaptureHook.removeMevCaptureExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevCaptureHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(lp), "LP was not removed properly as MEV tax-exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(alice), "Alice was not removed properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevCaptureExempt(bob), "Bob was not added properly as MEV capture-exempt");
+        assertFalse(_mevCaptureHook.isMevCaptureExempt(lp), "LP was not removed properly as MEV capture-exempt");
+        assertFalse(_mevCaptureHook.isMevCaptureExempt(alice), "Alice was not removed properly as MEV capture-exempt");
     }
 
-    function testRemoveMevTaxExemptSendersRevertsIfNotExist() public {
+    function testRemoveMevCaptureExemptSendersRevertsIfNotExist() public {
         vm.prank(admin);
-        _mevCaptureHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
+        _mevCaptureHook.addMevCaptureExemptSenders([lp, alice].toMemoryArray());
 
-        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.SenderNotRegisteredAsMevTaxExempt.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.SenderNotRegisteredAsMevCaptureExempt.selector, bob));
         vm.prank(admin);
-        _mevCaptureHook.removeMevTaxExemptSenders([bob].toMemoryArray());
+        _mevCaptureHook.removeMevCaptureExemptSenders([bob].toMemoryArray());
     }
 
     /********************************************************
-                       isMevTaxExempt
+                       isMevCaptureExempt
     ********************************************************/
-    function testIsMevTaxExempt() public {
+    
+    function testIsMevCaptureExempt() public {
         vm.prank(admin);
-        _mevCaptureHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
+        _mevCaptureHook.addMevCaptureExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevCaptureHook.isMevTaxExempt(lp), "LP is not exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(bob), "Bob is exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(alice), "Alice is not exempt");
+        assertTrue(_mevCaptureHook.isMevCaptureExempt(lp), "LP is not exempt");
+        assertFalse(_mevCaptureHook.isMevCaptureExempt(bob), "Bob is exempt");
+        assertTrue(_mevCaptureHook.isMevCaptureExempt(alice), "Alice is not exempt");
     }
 }

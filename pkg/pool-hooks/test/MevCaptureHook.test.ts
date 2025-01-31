@@ -92,14 +92,14 @@ describe('MevCaptureHook', () => {
     // Registry Actions
     actions.push(await actionId(registry, 'registerBalancerContract'));
     // MEV Hook Actions
-    actions.push(await actionId(hook, 'addMevTaxExemptSenders'));
-    actions.push(await actionId(hook, 'disableMevTax'));
-    actions.push(await actionId(hook, 'enableMevTax'));
-    actions.push(await actionId(hook, 'setDefaultMevTaxMultiplier'));
-    actions.push(await actionId(hook, 'setDefaultMevTaxThreshold'));
+    actions.push(await actionId(hook, 'addMevCaptureExemptSenders'));
+    actions.push(await actionId(hook, 'disableMevCapture'));
+    actions.push(await actionId(hook, 'enableMevCapture'));
+    actions.push(await actionId(hook, 'setDefaultMevCaptureMultiplier'));
+    actions.push(await actionId(hook, 'setDefaultMevCaptureThreshold'));
     actions.push(await actionId(hook, 'setMaxMevSwapFeePercentage'));
-    actions.push(await actionId(hook, 'setPoolMevTaxMultiplier'));
-    actions.push(await actionId(hook, 'setPoolMevTaxThreshold'));
+    actions.push(await actionId(hook, 'setPoolMevCaptureMultiplier'));
+    actions.push(await actionId(hook, 'setPoolMevCaptureThreshold'));
 
     await Promise.all(actions.map(async (action) => authorizer.grantRole(action, admin.address)));
   });
@@ -113,12 +113,12 @@ describe('MevCaptureHook', () => {
   });
 
   sharedBeforeEach('hook configuration', async () => {
-    await hook.connect(admin).setDefaultMevTaxMultiplier(MEV_MULTIPLIER);
-    await hook.connect(admin).setDefaultMevTaxThreshold(PRIORITY_GAS_THRESHOLD);
-    await hook.connect(admin).setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
-    await hook.connect(admin).setPoolMevTaxThreshold(pool, PRIORITY_GAS_THRESHOLD);
+    await hook.connect(admin).setDefaultMevCaptureMultiplier(MEV_MULTIPLIER);
+    await hook.connect(admin).setDefaultMevCaptureThreshold(PRIORITY_GAS_THRESHOLD);
+    await hook.connect(admin).setPoolMevCaptureMultiplier(pool, MEV_MULTIPLIER);
+    await hook.connect(admin).setPoolMevCaptureThreshold(pool, PRIORITY_GAS_THRESHOLD);
 
-    await hook.connect(admin).enableMevTax();
+    await hook.connect(admin).enableMevCapture();
   });
 
   sharedBeforeEach('token allowances', async () => {
@@ -144,15 +144,15 @@ describe('MevCaptureHook', () => {
     await pool.connect(lp).transfer(sender, fp(100));
   });
 
-  describe('when there is no MEV tax', async () => {
+  describe('when there is no MEV capture', async () => {
     it('MEV hook disabled', async () => {
-      await hook.connect(admin).disableMevTax();
-      expect(await hook.isMevTaxEnabled()).to.be.false;
+      await hook.connect(admin).disableMevCapture();
+      expect(await hook.isMevCaptureEnabled()).to.be.false;
 
       const amountIn = fp(10);
       const baseFee = await getNextBlockBaseFee();
-      // "BaseFee + 2 * PriorityGasThreshold" should trigger MEV Tax, but static swap fee will be charged because MEV tax is
-      // disabled.
+      // "BaseFee + 2 * PriorityGasThreshold" should trigger MEV capture, but static swap fee will be charged because
+      // MEV capture is disabled.
       const txGasPrice = baseFee + 2n * PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
@@ -163,12 +163,12 @@ describe('MevCaptureHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
+      await checkSwapFeeExactInWithoutMevCapture(balancesBefore, balancesAfter, amountIn);
     });
 
     it('low priority gas price', async () => {
       const amountIn = fp(10);
-      // To trigger MEV tax, `txGasPrice` > `BaseFee + PriorityGasThreshold`.
+      // To trigger MEV capture, `txGasPrice` > `BaseFee + PriorityGasThreshold`.
       const txGasPrice = PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
@@ -179,17 +179,17 @@ describe('MevCaptureHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
+      await checkSwapFeeExactInWithoutMevCapture(balancesBefore, balancesAfter, amountIn);
     });
 
     it('MEV multiplier is 0', async () => {
       // 0 multiplier. Should return static fee.
-      await hook.setPoolMevTaxMultiplier(pool, 0);
+      await hook.setPoolMevCaptureMultiplier(pool, 0);
 
       const amountIn = fp(10);
 
       const baseFee = await getNextBlockBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
+      // "BaseFee + PriorityGas + 1" should trigger MEV capture.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
       const balancesBefore = await getBalances();
@@ -200,19 +200,19 @@ describe('MevCaptureHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
+      await checkSwapFeeExactInWithoutMevCapture(balancesBefore, balancesAfter, amountIn);
     });
 
-    it('Address is MEV tax-exempt', async () => {
-      await hook.connect(admin).addMevTaxExemptSenders([sender]);
-      await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
+    it('Address is MEV capture-exempt', async () => {
+      await hook.connect(admin).addMevCaptureExemptSenders([sender]);
+      await hook.setPoolMevCaptureMultiplier(pool, MEV_MULTIPLIER);
 
       const amountIn = fp(10);
 
       const baseFee = await getNextBlockBaseFee();
-      // `BaseFee + 10 * PRIORITY_GAS_THRESHOLD` should trigger MEV Tax and pay MEV tax over
+      // `BaseFee + 10 * PRIORITY_GAS_THRESHOLD` should trigger MEV capture and increase the fee to
       // `9 * PRIORITY_GAS_THRESHOLD` (static fee is charged up to `baseFee + PRIORITY_GAS_THRESHOLD`). However, since
-      // "sender" is exempt, he will pay only static fee.
+      // "sender" is exempt, he will pay only the static fee.
       const txGasPrice = baseFee + 10n * PRIORITY_GAS_THRESHOLD;
 
       const balancesBefore = await getBalances();
@@ -223,22 +223,22 @@ describe('MevCaptureHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactInWithoutMevTax(balancesBefore, balancesAfter, amountIn);
+      await checkSwapFeeExactInWithoutMevCapture(balancesBefore, balancesAfter, amountIn);
     });
   });
 
-  describe('when there is MEV tax', async () => {
+  describe('when there is MEV capture', async () => {
     it('MEV fee percentage bigger than default max value', async () => {
       await hook.connect(admin).setMaxMevSwapFeePercentage(fp(0.2));
 
       // Big multiplier, the MEV fee percentage should be more than 20%. Since the Max fee is set to 20%, that's what
       // will be charged.
-      await hook.setPoolMevTaxMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100000000n)));
+      await hook.setPoolMevCaptureMultiplier(pool, fpMulDown(MEV_MULTIPLIER, fp(100000000n)));
 
       const amountIn = fp(10);
 
       const baseFee = await getNextBlockBaseFee();
-      // "BaseFee + PriorityGas + 1" should trigger MEV Tax.
+      // "BaseFee + PriorityGas + 1" should trigger MEV capture.
       const txGasPrice = baseFee + PRIORITY_GAS_THRESHOLD + 1n;
 
       const balancesBefore = await getBalances();
@@ -249,17 +249,17 @@ describe('MevCaptureHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
+      await checkSwapFeeExactInMevCapture(balancesBefore, balancesAfter, txGasPrice, amountIn);
     });
 
-    it('Address is MEV tax-exempt but router is not trusted', async () => {
-      await hook.connect(admin).addMevTaxExemptSenders([sender]);
-      await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
+    it('Address is MEV capture-exempt but router is not trusted', async () => {
+      await hook.connect(admin).addMevCaptureExemptSenders([sender]);
+      await hook.setPoolMevCaptureMultiplier(pool, MEV_MULTIPLIER);
 
       const amountIn = fp(10);
 
       const baseFee = await getNextBlockBaseFee();
-      // `BaseFee + 10 * PRIORITY_GAS_THRESHOLD` should trigger MEV Tax and pay MEV tax over
+      // `BaseFee + 10 * PRIORITY_GAS_THRESHOLD` should trigger MEV capture and increase the fee to
       // `9 * PRIORITY_GAS_THRESHOLD` (static fee is charged up to `baseFee + PRIORITY_GAS_THRESHOLD`). However, since
       // "sender" is exempt, he will pay only static fee.
       const txGasPrice = baseFee + 10n * PRIORITY_GAS_THRESHOLD;
@@ -274,16 +274,16 @@ describe('MevCaptureHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
+      await checkSwapFeeExactInMevCapture(balancesBefore, balancesAfter, txGasPrice, amountIn);
     });
 
-    it('charge MEV tax proportional to priority gas price', async () => {
-      await hook.setPoolMevTaxMultiplier(pool, MEV_MULTIPLIER);
+    it('Capture MEV proportional to the priority gas price', async () => {
+      await hook.setPoolMevCaptureMultiplier(pool, MEV_MULTIPLIER);
 
       const amountIn = fp(10);
 
       const baseFee = await getNextBlockBaseFee();
-      // `BaseFee + 10 * PRIORITY_GAS_THRESHOLD` should trigger MEV Tax and pay MEV tax over
+      // `BaseFee + 10 * PRIORITY_GAS_THRESHOLD` should trigger MEV capture and increase the fee to
       // `9 * PRIORITY_GAS_THRESHOLD` (static fee is charged up to `baseFee + PRIORITY_GAS_THRESHOLD`).
       const txGasPrice = baseFee + 10n * PRIORITY_GAS_THRESHOLD;
 
@@ -295,12 +295,12 @@ describe('MevCaptureHook', () => {
 
       const balancesAfter = await getBalances();
 
-      await checkSwapFeeExactInChargingMevTax(balancesBefore, balancesAfter, txGasPrice, amountIn);
+      await checkSwapFeeExactInMevCapture(balancesBefore, balancesAfter, txGasPrice, amountIn);
     });
   });
 
   describe('add liquidity', async () => {
-    context('when there is no MEV tax', () => {
+    context('when there is no MEV capture', () => {
       it('allows proportional for any gas price', async () => {
         const baseFee = await getNextBlockBaseFee();
         const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
@@ -328,9 +328,9 @@ describe('MevCaptureHook', () => {
       });
     });
 
-    context('when MEV tax has to be applied', () => {
+    context('when MEV capture is triggered', () => {
       it('allows unbalanced for any gas price if the hook is disabled', async () => {
-        await hook.connect(admin).disableMevTax();
+        await hook.connect(admin).disableMevCapture();
 
         const baseFee = await getNextBlockBaseFee();
         const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
@@ -360,7 +360,7 @@ describe('MevCaptureHook', () => {
   });
 
   describe('remove liquidity', async () => {
-    context('when there is no MEV tax', () => {
+    context('when there is no MEV capture', () => {
       it('allows proportional for any gas price', async () => {
         const baseFee = await getNextBlockBaseFee();
         const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
@@ -384,9 +384,9 @@ describe('MevCaptureHook', () => {
       });
     });
 
-    context('when MEV tax has to be applied', () => {
+    context('when MEV capture is triggered', () => {
       it('allows unbalanced for any gas price if the hook is disabled', async () => {
-        await hook.connect(admin).disableMevTax();
+        await hook.connect(admin).disableMevCapture();
 
         const baseFee = await getNextBlockBaseFee();
         const txGasPrice = (baseFee + PRIORITY_GAS_THRESHOLD) * 100n;
@@ -423,13 +423,13 @@ describe('MevCaptureHook', () => {
     };
   }
 
-  async function checkSwapFeeExactInChargingMevTax(
+  async function checkSwapFeeExactInMevCapture(
     balancesBefore: Balances,
     balancesAfter: Balances,
     txGasPrice: bigint,
     amountIn: bigint
   ) {
-    const mevMultiplier = await hook.getPoolMevTaxMultiplier(pool);
+    const mevMultiplier = await hook.getPoolMevCaptureMultiplier(pool);
 
     const filter = vault.filters.Swap;
     const events = await vault.queryFilter(filter, -1);
@@ -458,7 +458,7 @@ describe('MevCaptureHook', () => {
     expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - mevSwapFee);
   }
 
-  async function checkSwapFeeExactInWithoutMevTax(balancesBefore: Balances, balancesAfter: Balances, amountIn: bigint) {
+  async function checkSwapFeeExactInWithoutMevCapture(balancesBefore: Balances, balancesAfter: Balances, amountIn: bigint) {
     const filter = vault.filters.Swap;
     const events = await vault.queryFilter(filter, -1);
     const swapEvent = events[0];

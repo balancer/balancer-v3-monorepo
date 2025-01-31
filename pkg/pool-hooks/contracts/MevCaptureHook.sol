@@ -36,23 +36,23 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
 
     IBalancerContractRegistry internal immutable _registry;
 
-    bool internal _mevTaxEnabled;
+    bool internal _mevCaptureEnabled;
 
     // Global default parameter values.
-    uint256 internal _defaultMevTaxThreshold;
-    uint256 internal _defaultMevTaxMultiplier;
+    uint256 internal _defaultMevCaptureThreshold;
+    uint256 internal _defaultMevCaptureMultiplier;
 
     // Global max dynamic swap fee percentage returned by this hook.
     uint256 internal _maxMevSwapFeePercentage;
 
-    // Global list of senders that bypass the MEV tax and always pay the static fee percentage.
-    mapping(address => bool) internal _isMevTaxExemptSender;
+    // Global list of senders that bypass MEV capture, and always pay the static fee percentage.
+    mapping(address => bool) internal _isMevCaptureExemptSender;
 
     // Pool-specific parameters.
-    mapping(address => uint256) internal _poolMevTaxThresholds;
-    mapping(address => uint256) internal _poolMevTaxMultipliers;
+    mapping(address => uint256) internal _poolMevCaptureThresholds;
+    mapping(address => uint256) internal _poolMevCaptureMultipliers;
 
-    modifier withMevTaxEnabledPool(address pool) {
+    modifier withMevCaptureEnabledPool(address pool) {
         HooksConfig memory hooksConfig = _vault.getHooksConfig(pool);
 
         if (hooksConfig.hooksContract != address(this)) {
@@ -65,9 +65,9 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
 
-        _setMevTaxEnabled(false);
-        _setDefaultMevTaxMultiplier(0);
-        _setDefaultMevTaxThreshold(0);
+        _setMevCaptureEnabled(false);
+        _setDefaultMevCaptureMultiplier(0);
+        _setDefaultMevCaptureThreshold(0);
         // Default to the maximum value allowed by the Vault.
         _setMaxMevSwapFeePercentage(_MEV_MAX_FEE_PERCENTAGE);
     }
@@ -83,8 +83,8 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
-        _poolMevTaxMultipliers[pool] = _defaultMevTaxMultiplier;
-        _poolMevTaxThresholds[pool] = _defaultMevTaxThreshold;
+        _poolMevCaptureMultipliers[pool] = _defaultMevCaptureMultiplier;
+        _poolMevCaptureThresholds[pool] = _defaultMevCaptureThreshold;
 
         return true;
     }
@@ -92,7 +92,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     /// @inheritdoc IHooks
     function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
-        // The MEV Tax is charged as a swap fee. Searcher transactions pay a higher swap fee percentage.
+        // MEV capture uses the dynamic swap fee. Searcher transactions pay a higher swap fee percentage.
         hookFlags.shouldCallComputeDynamicSwapFee = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
         hookFlags.shouldCallBeforeRemoveLiquidity = true;
@@ -106,14 +106,14 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override returns (bool, uint256) {
-        if (_mevTaxEnabled == false) {
+        if (_mevCaptureEnabled == false) {
             return (true, staticSwapFeePercentage);
         }
 
-        // We can only check senders if the router is trusted. Apply the exemption for MEV tax-exempt senders.
+        // We can only check senders if the router is trusted. Apply the exemption for MEV capture-exempt senders.
         if (_registry.isTrustedRouter(params.router)) {
             address sender = IRouterCommon(params.router).getSender();
-            if (_isMevTaxExempt(sender)) {
+            if (_isMevCaptureExempt(sender)) {
                 return (true, staticSwapFeePercentage);
             }
         }
@@ -122,8 +122,8 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
             true,
             _calculateSwapFeePercentage(
                 staticSwapFeePercentage,
-                _poolMevTaxMultipliers[pool],
-                _poolMevTaxThresholds[pool]
+                _poolMevCaptureMultipliers[pool],
+                _poolMevCaptureThresholds[pool]
             )
         );
     }
@@ -138,14 +138,14 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         uint256[] memory,
         bytes memory
     ) public view override returns (bool success) {
-        if (_mevTaxEnabled == false) {
+        if (_mevCaptureEnabled == false) {
             return true;
         }
 
         uint256 priorityGasPrice = _getPriorityGasPrice();
 
         // Allow proportional operations, or unbalanced operations within the threshold.
-        return kind == AddLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
+        return kind == AddLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevCaptureThresholds[pool];
     }
 
     /// @inheritdoc IHooks
@@ -158,35 +158,35 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         uint256[] memory,
         bytes memory
     ) public view override returns (bool success) {
-        if (_mevTaxEnabled == false) {
+        if (_mevCaptureEnabled == false) {
             return true;
         }
 
         uint256 priorityGasPrice = _getPriorityGasPrice();
 
         // Allow proportional operations, or unbalanced operations within the threshold.
-        return kind == RemoveLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevTaxThresholds[pool];
+        return kind == RemoveLiquidityKind.PROPORTIONAL || priorityGasPrice <= _poolMevCaptureThresholds[pool];
     }
 
     /// @inheritdoc IMevCaptureHook
-    function isMevTaxEnabled() external view returns (bool) {
-        return _mevTaxEnabled;
+    function isMevCaptureEnabled() external view returns (bool) {
+        return _mevCaptureEnabled;
     }
 
     /// @inheritdoc IMevCaptureHook
-    function disableMevTax() external authenticate {
-        _setMevTaxEnabled(false);
+    function disableMevCapture() external authenticate {
+        _setMevCaptureEnabled(false);
     }
 
     /// @inheritdoc IMevCaptureHook
-    function enableMevTax() external authenticate {
-        _setMevTaxEnabled(true);
+    function enableMevCapture() external authenticate {
+        _setMevCaptureEnabled(true);
     }
 
-    function _setMevTaxEnabled(bool value) private {
-        _mevTaxEnabled = value;
+    function _setMevCaptureEnabled(bool value) private {
+        _mevCaptureEnabled = value;
 
-        emit MevTaxEnabledSet(value);
+        emit MevCaptureEnabledSet(value);
     }
 
     /// @inheritdoc IMevCaptureHook
@@ -210,87 +210,87 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     }
 
     /// @inheritdoc IMevCaptureHook
-    function getDefaultMevTaxMultiplier() external view returns (uint256) {
-        return _defaultMevTaxMultiplier;
+    function getDefaultMevCaptureMultiplier() external view returns (uint256) {
+        return _defaultMevCaptureMultiplier;
     }
 
     /// @inheritdoc IMevCaptureHook
-    function setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) external authenticate {
-        _setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
+    function setDefaultMevCaptureMultiplier(uint256 newDefaultMevCaptureMultiplier) external authenticate {
+        _setDefaultMevCaptureMultiplier(newDefaultMevCaptureMultiplier);
     }
 
-    function _setDefaultMevTaxMultiplier(uint256 newDefaultMevTaxMultiplier) private {
-        _defaultMevTaxMultiplier = newDefaultMevTaxMultiplier;
+    function _setDefaultMevCaptureMultiplier(uint256 newDefaultMevCaptureMultiplier) private {
+        _defaultMevCaptureMultiplier = newDefaultMevCaptureMultiplier;
 
-        emit DefaultMevTaxMultiplierSet(newDefaultMevTaxMultiplier);
-    }
-
-    /// @inheritdoc IMevCaptureHook
-    function getPoolMevTaxMultiplier(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
-        return _poolMevTaxMultipliers[pool];
+        emit DefaultMevCaptureMultiplierSet(newDefaultMevCaptureMultiplier);
     }
 
     /// @inheritdoc IMevCaptureHook
-    function setPoolMevTaxMultiplier(
+    function getPoolMevCaptureMultiplier(address pool) external view withMevCaptureEnabledPool(pool) returns (uint256) {
+        return _poolMevCaptureMultipliers[pool];
+    }
+
+    /// @inheritdoc IMevCaptureHook
+    function setPoolMevCaptureMultiplier(
         address pool,
-        uint256 newPoolMevTaxMultiplier
-    ) external withMevTaxEnabledPool(pool) authenticate {
-        _setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
+        uint256 newPoolMevCaptureMultiplier
+    ) external withMevCaptureEnabledPool(pool) authenticate {
+        _setPoolMevCaptureMultiplier(pool, newPoolMevCaptureMultiplier);
     }
 
-    function _setPoolMevTaxMultiplier(address pool, uint256 newPoolMevTaxMultiplier) private {
-        _poolMevTaxMultipliers[pool] = newPoolMevTaxMultiplier;
+    function _setPoolMevCaptureMultiplier(address pool, uint256 newPoolMevCaptureMultiplier) private {
+        _poolMevCaptureMultipliers[pool] = newPoolMevCaptureMultiplier;
 
-        emit PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
-    }
-
-    /// @inheritdoc IMevCaptureHook
-    function getDefaultMevTaxThreshold() external view returns (uint256) {
-        return _defaultMevTaxThreshold;
+        emit PoolMevCaptureMultiplierSet(pool, newPoolMevCaptureMultiplier);
     }
 
     /// @inheritdoc IMevCaptureHook
-    function setDefaultMevTaxThreshold(uint256 newDefaultMevTaxThreshold) external authenticate {
-        _setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
-    }
-
-    function _setDefaultMevTaxThreshold(uint256 newDefaultMevTaxThreshold) private {
-        _defaultMevTaxThreshold = newDefaultMevTaxThreshold;
-
-        emit DefaultMevTaxThresholdSet(newDefaultMevTaxThreshold);
+    function getDefaultMevCaptureThreshold() external view returns (uint256) {
+        return _defaultMevCaptureThreshold;
     }
 
     /// @inheritdoc IMevCaptureHook
-    function getPoolMevTaxThreshold(address pool) external view withMevTaxEnabledPool(pool) returns (uint256) {
-        return _poolMevTaxThresholds[pool];
+    function setDefaultMevCaptureThreshold(uint256 newDefaultMevCaptureThreshold) external authenticate {
+        _setDefaultMevCaptureThreshold(newDefaultMevCaptureThreshold);
+    }
+
+    function _setDefaultMevCaptureThreshold(uint256 newDefaultMevCaptureThreshold) private {
+        _defaultMevCaptureThreshold = newDefaultMevCaptureThreshold;
+
+        emit DefaultMevCaptureThresholdSet(newDefaultMevCaptureThreshold);
     }
 
     /// @inheritdoc IMevCaptureHook
-    function setPoolMevTaxThreshold(
+    function getPoolMevCaptureThreshold(address pool) external view withMevCaptureEnabledPool(pool) returns (uint256) {
+        return _poolMevCaptureThresholds[pool];
+    }
+
+    /// @inheritdoc IMevCaptureHook
+    function setPoolMevCaptureThreshold(
         address pool,
-        uint256 newPoolMevTaxThreshold
-    ) external withMevTaxEnabledPool(pool) authenticate {
-        _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
+        uint256 newPoolMevCaptureThreshold
+    ) external withMevCaptureEnabledPool(pool) authenticate {
+        _setPoolMevCaptureThreshold(pool, newPoolMevCaptureThreshold);
     }
 
     /// @inheritdoc IMevCaptureHook
-    function isMevTaxExempt(address sender) external view returns (bool) {
-        return _isMevTaxExempt(sender);
+    function isMevCaptureExempt(address sender) external view returns (bool) {
+        return _isMevCaptureExempt(sender);
     }
 
     /// @inheritdoc IMevCaptureHook
-    function addMevTaxExemptSenders(address[] memory senders) external authenticate {
+    function addMevCaptureExemptSenders(address[] memory senders) external authenticate {
         uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
-            _addMevTaxExemptSender(senders[i]);
+            _addMevCaptureExemptSender(senders[i]);
         }
     }
 
     /// @inheritdoc IMevCaptureHook
-    function removeMevTaxExemptSenders(address[] memory senders) external authenticate {
+    function removeMevCaptureExemptSenders(address[] memory senders) external authenticate {
         uint256 numSenders = senders.length;
         for (uint256 i = 0; i < numSenders; ++i) {
-            _removeMevTaxExemptSender(senders[i]);
+            _removeMevCaptureExemptSender(senders[i]);
         }
     }
 
@@ -310,7 +310,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
 
         // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
-        // impose the MEV tax. Also, if mev fee cap is lower than static fee percentage, returns the static.
+        // try to capture MEV. Also, if mev fee cap is lower than static fee percentage, returns the static.
         if (priorityGasPrice < threshold || maxMevSwapFeePercentage < staticSwapFeePercentage) {
             return staticSwapFeePercentage;
         }
@@ -334,35 +334,35 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         return Math.min(mevSwapFeePercentage, maxMevSwapFeePercentage);
     }
 
-    function _setPoolMevTaxThreshold(address pool, uint256 newPoolMevTaxThreshold) private {
-        _poolMevTaxThresholds[pool] = newPoolMevTaxThreshold;
+    function _setPoolMevCaptureThreshold(address pool, uint256 newPoolMevCaptureThreshold) private {
+        _poolMevCaptureThresholds[pool] = newPoolMevCaptureThreshold;
 
-        emit PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
+        emit PoolMevCaptureThresholdSet(pool, newPoolMevCaptureThreshold);
     }
 
     function _getPriorityGasPrice() internal view returns (uint256) {
         return tx.gasprice - block.basefee;
     }
 
-    function _isMevTaxExempt(address sender) internal view returns (bool) {
-        return _isMevTaxExemptSender[sender];
+    function _isMevCaptureExempt(address sender) internal view returns (bool) {
+        return _isMevCaptureExemptSender[sender];
     }
 
-    function _addMevTaxExemptSender(address sender) internal {
-        if (_isMevTaxExemptSender[sender]) {
-            revert MevTaxExemptSenderAlreadyAdded(sender);
+    function _addMevCaptureExemptSender(address sender) internal {
+        if (_isMevCaptureExemptSender[sender]) {
+            revert MevCaptureExemptSenderAlreadyAdded(sender);
         }
-        _isMevTaxExemptSender[sender] = true;
+        _isMevCaptureExemptSender[sender] = true;
 
-        emit MevTaxExemptSenderAdded(sender);
+        emit MevCaptureExemptSenderAdded(sender);
     }
 
-    function _removeMevTaxExemptSender(address sender) internal {
-        if (_isMevTaxExemptSender[sender] == false) {
-            revert SenderNotRegisteredAsMevTaxExempt(sender);
+    function _removeMevCaptureExemptSender(address sender) internal {
+        if (_isMevCaptureExemptSender[sender] == false) {
+            revert SenderNotRegisteredAsMevCaptureExempt(sender);
         }
-        _isMevTaxExemptSender[sender] = false;
+        _isMevCaptureExemptSender[sender] = false;
 
-        emit MevTaxExemptSenderRemoved(sender);
+        emit MevCaptureExemptSenderRemoved(sender);
     }
 }
