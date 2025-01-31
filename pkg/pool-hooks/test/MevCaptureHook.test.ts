@@ -458,7 +458,11 @@ describe('MevCaptureHook', () => {
     expect(balancesAfter.token1).to.be.eq(balancesBefore.token1 + amountIn - mevSwapFee);
   }
 
-  async function checkSwapFeeExactInWithoutMevCapture(balancesBefore: Balances, balancesAfter: Balances, amountIn: bigint) {
+  async function checkSwapFeeExactInWithoutMevCapture(
+    balancesBefore: Balances,
+    balancesAfter: Balances,
+    amountIn: bigint
+  ) {
     const filter = vault.filters.Swap;
     const events = await vault.queryFilter(filter, -1);
     const swapEvent = events[0];

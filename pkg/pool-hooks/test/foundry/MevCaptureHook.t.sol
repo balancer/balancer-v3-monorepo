@@ -695,7 +695,7 @@ contract MevCaptureHookTest is BaseVaultTest {
     /********************************************************
                        isMevCaptureExempt
     ********************************************************/
-    
+
     function testIsMevCaptureExempt() public {
         vm.prank(admin);
         _mevCaptureHook.addMevCaptureExemptSenders([lp, alice].toMemoryArray());
