@@ -46,8 +46,8 @@ describe('LBPool', function () {
   let projectTokenAddress: string;
   let reserveTokenAddress: string;
 
-  let startWeights: bigint[] = [];
-  let endWeights: bigint[] = [];
+  const startWeights: bigint[] = [];
+  const endWeights: bigint[] = [];
 
   const FACTORY_VERSION = 'LBPool Factory v1';
   const POOL_VERSION = 'LBPool v1';

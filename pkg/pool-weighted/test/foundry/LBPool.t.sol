@@ -135,14 +135,7 @@ contract LBPoolTest is BasePoolTest {
             ZERO_BYTES32
         );
 
-        poolArgs = abi.encode(
-            name,
-            symbol,
-            lbpParams,
-            vault,
-            router,
-            poolVersion
-        );
+        poolArgs = abi.encode(name, symbol, lbpParams, vault, router, poolVersion);
 
         address calculatedPoolAddress = IBasePoolFactory(poolFactory).getDeploymentAddress(poolArgs, ZERO_BYTES32);
         assertEq(newPool, calculatedPoolAddress, "Pool address mismatch");
@@ -175,14 +168,15 @@ contract LBPoolTest is BasePoolTest {
 
         uint256[] memory initAmounts = [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray();
 
-        return LBPoolFactory(poolFactory).createAndInitialize(
-            name,
-            symbol,
-            lbpParams,
-            DEFAULT_SWAP_FEE,
-            initAmounts,
-            ZERO_BYTES32
-        );
+        return
+            LBPoolFactory(poolFactory).createAndInitialize(
+                name,
+                symbol,
+                lbpParams,
+                DEFAULT_SWAP_FEE,
+                initAmounts,
+                ZERO_BYTES32
+            );
     }
 
     function testGetTrustedRouter() public view {
@@ -199,429 +193,7 @@ contract LBPoolTest is BasePoolTest {
 
     function initPool() internal override {
         // Do nothing, as LBPs are initialized on create.
-    }
-
-    /*function testRemoveLiquidity() public override {
-        // create a fake router
-        bytes memory code = address(router).code;
-        address fakeRouter = makeAddr("target");
-        vm.etch(fakeRouter, code);
-
-        vm.startPrank(bob);
-        uint256 oldBptAmount = IERC20(pool).balanceOf(bob);
-        router.addLiquidityUnbalanced(pool, tokenAmounts, tokenAmountIn - DELTA, false, bytes(""));
-        uint256 newBptAmount = IERC20(pool).balanceOf(bob);
-
-        IERC20(pool).approve(address(vault), MAX_UINT256);
-
-        uint256 bptAmountIn = newBptAmount - oldBptAmount;
-
-        uint256[] memory minAmountsOut = new uint256[](poolTokens.length);
-        for (uint256 i = 0; i < poolTokens.length; ++i) {
-            minAmountsOut[i] = less(tokenAmounts[i], 1e4);
-        }
-
-        vm.expectRevert(LBPool.RouterNotTrusted.selector);
-        IRouter(fakeRouter).removeLiquidityProportional(pool, bptAmountIn, minAmountsOut, false, bytes(""));
-
-        uint256[] memory amountsOut = router.removeLiquidityProportional(
-            pool,
-            bptAmountIn,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
-
-        vm.stopPrank();
-
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        for (uint256 i = 0; i < poolTokens.length; ++i) {
-            // Tokens are transferred to Bob
-            assertApproxEqAbs(
-                poolTokens[i].balanceOf(bob) + TOKEN_AMOUNT, // add TOKEN_AMOUNT to account for init join
-                defaultAccountBalance(),
-                DELTA,
-                string.concat("LP: Wrong token balance for ", Strings.toString(i))
-            );
-
-            // Tokens are stored in the Vault
-            assertApproxEqAbs(
-                poolTokens[i].balanceOf(address(vault)),
-                tokenAmounts[i],
-                DELTA,
-                string.concat("Vault: Wrong token balance for ", Strings.toString(i))
-            );
-
-            // Tokens are deposited to the pool
-            assertApproxEqAbs(
-                balances[i],
-                tokenAmounts[i],
-                DELTA,
-                string.concat("Pool: Wrong token balance for ", Strings.toString(i))
-            );
-
-            // amountsOut are correct
-            assertApproxEqAbs(
-                amountsOut[i],
-                tokenAmounts[i],
-                DELTA,
-                string.concat("Wrong token amountOut for ", Strings.toString(i))
-            );
-        }
-
-        // should return to correct amount of BPT poolTokens
-        assertEq(IERC20(pool).balanceOf(bob), oldBptAmount, "LP: Wrong BPT balance");
-    }
-
-    function testRemoveLiquidityDuringWeightChange() public {
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        address myPool = createAndInitNewLBPool(
-            50e16,
-            50e16,
-            30e16,
-            70e16,
-            startTime,
-            endTime,
-            address(dai), // bootstrap token
-            true, // allow removal only after weight change
-            false // restrict sale of bootstrap token
-        );
-
-        uint256 bptAmountIn = IERC20(myPool).balanceOf(bob) / 2;
-
-        uint256[] memory minAmountsOut = new uint256[](2);
-        for (uint256 i = 0; i < 2; ++i) {
-            minAmountsOut[i] = 0;
-        }
-
-        // scenario 1: Before weight change has started
-        // removing liq should not be allowed
-        (uint256 returnedStartTime, uint256 returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
-        assertTrue(returnedStartTime > block.timestamp, "Weight change should not have started yet");
-        assertTrue(LBPool(myPool).allowRemovalOnlyAfterWeightChange());
-
-        vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
-        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
-
-        // scenario 2: During weight change
-        skip(2 days);
-        (returnedStartTime, returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
-        assertTrue(
-            returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime,
-            "Weight change should be ongoing"
-        );
-
-        vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
-        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
-
-        // scenario 3: Weight change has ended
-        // call should succeed
-        vm.prank(bob);
-        IERC20(myPool).approve(address(router), MAX_UINT256);
-
-        skip(7 days);
-        (returnedStartTime, returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
-        assertTrue(returnedEndTime <= block.timestamp, "Weight change should have finished");
-
-        vm.prank(bob);
-        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
-    }
-
-    function testSwap() public override {
-        if (!isTestSwapFeeEnabled) {
-            vault.manuallySetSwapFee(pool, 0);
-        }
-
-        IERC20 tokenIn = poolTokens[tokenIndexIn];
-        IERC20 tokenOut = poolTokens[tokenIndexOut];
-
-        uint256 bobBeforeBalanceTokenOut = tokenOut.balanceOf(bob);
-        uint256 bobBeforeBalanceTokenIn = tokenIn.balanceOf(bob);
-
-        vm.prank(bob);
-        // enable swapping for default pool
-        skip(1 days);
-        uint256 amountCalculated = router.swapSingleTokenExactIn(
-            pool,
-            tokenIn,
-            tokenOut,
-            tokenAmountIn,
-            less(tokenAmountOut, 1e3),
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
-        // Tokens are transferred from Bob
-        assertEq(tokenOut.balanceOf(bob), bobBeforeBalanceTokenOut + amountCalculated, "LP: Wrong tokenOut balance");
-        assertEq(tokenIn.balanceOf(bob), bobBeforeBalanceTokenIn - tokenAmountIn, "LP: Wrong tokenIn balance");
-
-        // Tokens are stored in the Vault
-        assertEq(
-            tokenOut.balanceOf(address(vault)),
-            tokenAmounts[tokenIndexOut] - amountCalculated,
-            "Vault: Wrong tokenOut balance"
-        );
-        assertEq(
-            tokenIn.balanceOf(address(vault)),
-            tokenAmounts[tokenIndexIn] + tokenAmountIn,
-            "Vault: Wrong tokenIn balance"
-        );
-
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
-
-        assertEq(balances[tokenIndexIn], tokenAmounts[tokenIndexIn] + tokenAmountIn, "Pool: Wrong tokenIn balance");
-        assertEq(
-            balances[tokenIndexOut],
-            tokenAmounts[tokenIndexOut] - amountCalculated,
-            "Pool: Wrong tokenOut balance"
-        );
-    }
-
-    function testSwapsBasedOnWeightChangeProcess() public {
-        // the deployed pool has weight change started scheduled to be in the future. Swaps are only allowed when weight change has started
-
-        // 1 case: Try to swap before weight change has started
-        assertFalse(LBPool(pool).getSwapEnabled(), "Swaps should be disabled before weight change has started");
-
-        vm.prank(alice);
-        vm.expectRevert(LBPool.SwapsDisabled.selector);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            IERC20(dai),
-            IERC20(usdc),
-            TOKEN_AMOUNT / 10,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-
-        // 2 case: Try to swap after weight change has started
-        skip(1 days);
-        (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPool(
-            address(pool)
-        ).getGradualWeightUpdateParams();
-
-        assertTrue(LBPool(pool).getSwapEnabled(), "Swaps should be enabled during weight change has started");
-        assertTrue(
-            returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime,
-            "Start time should be in the past"
-        );
-
-        vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            IERC20(dai),
-            IERC20(usdc),
-            TOKEN_AMOUNT / 10,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-
-        // 3 case: Weight change has ended
-        // swapping is still be possible
-        skip(8 days);
-        assertTrue(LBPool(pool).getSwapEnabled(), "Swaps should be enabled after weight change has ended");
-        assertTrue(returnedEndTime <= block.timestamp, "Weight change should have ended");
-
-        vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            IERC20(dai),
-            IERC20(usdc),
-            TOKEN_AMOUNT / 10,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-    }
-
-    function testTokenSwapAllowedGivenIn() public {
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        address myPool = createAndInitNewLBPool(
-            50e16,
-            50e16,
-            30e16,
-            70e16,
-            startTime,
-            endTime,
-            address(dai), // bootstrap token
-            false, //allow removal only after weight change
-            true // restrict sale of bootstrap token
-        );
-
-        // ensure swaps are enabled (weight change has ended already) to pass the first check
-        skip(8 days);
-        vm.prank(alice);
-        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
-        router.swapSingleTokenExactIn(
-            address(myPool),
-            IERC20(dai),
-            IERC20(usdc),
-            TOKEN_AMOUNT / 10,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-
-        vm.prank(alice);
-        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
-        router.swapSingleTokenExactOut(
-            address(myPool),
-            IERC20(usdc),
-            IERC20(dai),
-            TOKEN_AMOUNT / 10,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-
-        vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(myPool),
-            IERC20(usdc),
-            IERC20(dai),
-            TOKEN_AMOUNT / 5,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-    }
-
-    function testTokenSwapAllowedGivenOut() public {
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        address myPool = createAndInitNewLBPool(
-            50e16,
-            50e16,
-            30e16,
-            70e16,
-            startTime,
-            endTime,
-            address(dai), // bootstrap token
-            false, //allow removal only after weight change
-            true // restrict sale of bootstrap token
-        );
-
-        // ensure swaps are enabled (weight change has ended already) to pass the first check
-        skip(8 days);
-        vm.prank(alice);
-        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
-        router.swapSingleTokenExactIn(
-            address(myPool),
-            IERC20(dai),
-            IERC20(usdc),
-            TOKEN_AMOUNT / 10,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-
-        vm.prank(alice);
-        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
-        router.swapSingleTokenExactOut(
-            address(myPool),
-            IERC20(usdc),
-            IERC20(dai),
-            TOKEN_AMOUNT / 10,
-            0,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-
-        vm.prank(alice);
-        router.swapSingleTokenExactOut(
-            address(myPool),
-            IERC20(dai),
-            IERC20(usdc),
-            100e6,
-            type(uint256).max,
-            block.timestamp + 1 hours,
-            false,
-            ""
-        );
-    }
-
-    function testRemovalOnlAfterWeightChange() public {
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        address myPool = createAndInitNewLBPool(
-            50e16,
-            50e16,
-            30e16,
-            70e16,
-            startTime,
-            endTime,
-            address(dai), // bootstrap token
-            false, //allow removal only after weight change
-            true // restrict sale of bootstrap token
-        );
-    }
-
-    function testEnsureNoTimeOverflow() public {
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        address myPool = createAndInitNewLBPool(
-            50e16,
-            50e16,
-            30e16,
-            70e16,
-            startTime,
-            endTime,
-            address(dai), // bootstrap token
-            false, //allow removal only after weight change
-            true // restrict sale of bootstrap token
-        );
-
-        //vm.prank(bob);
-        //vm.expectRevert(stdError.arithmeticError);
-        //LBPool(address(pool)).updateWeightsGradually(blockDotTimestampTestStart, type(uint32).max + 1, endWeights);
-    }
-
-    function testQuerySwapDuringWeightUpdate() public {
-        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
-        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
-
-        address myPool = createAndInitNewLBPool(
-            50e16, // dai
-            50e16, // usdc
-            30e16, // dai
-            70e16, // usdc
-            startTime,
-            endTime,
-            address(dai), // bootstrap token
-            false, //allow removal only after weight change
-            false // restrict sale of bootstrap token
-        );
-
-        // Cache original time to avoid issues from `block.timestamp` during `vm.warp`
-        uint256 blockDotTimestampTestStart = block.timestamp;
-
-        uint256 testDuration = 1 days;
-        uint256 weightUpdateStep = 1 hours;
-        uint256 constantWeightDuration = 6 hours;
-        // uint256 startTime = blockDotTimestampTestStart + constantWeightDuration;
-
-        /* uint256[] memory endWeights = new uint256[](2);
-        endWeights[0] = 0.01e18; // 1%
-        endWeights[1] = 0.99e18; // 99% *//*asdf
+    } /*asdf
 
         uint256 amountIn = TOKEN_AMOUNT / 10;
         uint256 constantWeightSteps = constantWeightDuration / weightUpdateStep;
@@ -1043,4 +615,426 @@ contract LBPoolTest is BasePoolTest {
                 "" // userData: Empty bytes as no additional data is needed
             );
     }*/
+
+    /*function testRemoveLiquidity() public override {
+        // create a fake router
+        bytes memory code = address(router).code;
+        address fakeRouter = makeAddr("target");
+        vm.etch(fakeRouter, code);
+
+        vm.startPrank(bob);
+        uint256 oldBptAmount = IERC20(pool).balanceOf(bob);
+        router.addLiquidityUnbalanced(pool, tokenAmounts, tokenAmountIn - DELTA, false, bytes(""));
+        uint256 newBptAmount = IERC20(pool).balanceOf(bob);
+
+        IERC20(pool).approve(address(vault), MAX_UINT256);
+
+        uint256 bptAmountIn = newBptAmount - oldBptAmount;
+
+        uint256[] memory minAmountsOut = new uint256[](poolTokens.length);
+        for (uint256 i = 0; i < poolTokens.length; ++i) {
+            minAmountsOut[i] = less(tokenAmounts[i], 1e4);
+        }
+
+        vm.expectRevert(LBPool.RouterNotTrusted.selector);
+        IRouter(fakeRouter).removeLiquidityProportional(pool, bptAmountIn, minAmountsOut, false, bytes(""));
+
+        uint256[] memory amountsOut = router.removeLiquidityProportional(
+            pool,
+            bptAmountIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+
+        for (uint256 i = 0; i < poolTokens.length; ++i) {
+            // Tokens are transferred to Bob
+            assertApproxEqAbs(
+                poolTokens[i].balanceOf(bob) + TOKEN_AMOUNT, // add TOKEN_AMOUNT to account for init join
+                defaultAccountBalance(),
+                DELTA,
+                string.concat("LP: Wrong token balance for ", Strings.toString(i))
+            );
+
+            // Tokens are stored in the Vault
+            assertApproxEqAbs(
+                poolTokens[i].balanceOf(address(vault)),
+                tokenAmounts[i],
+                DELTA,
+                string.concat("Vault: Wrong token balance for ", Strings.toString(i))
+            );
+
+            // Tokens are deposited to the pool
+            assertApproxEqAbs(
+                balances[i],
+                tokenAmounts[i],
+                DELTA,
+                string.concat("Pool: Wrong token balance for ", Strings.toString(i))
+            );
+
+            // amountsOut are correct
+            assertApproxEqAbs(
+                amountsOut[i],
+                tokenAmounts[i],
+                DELTA,
+                string.concat("Wrong token amountOut for ", Strings.toString(i))
+            );
+        }
+
+        // should return to correct amount of BPT poolTokens
+        assertEq(IERC20(pool).balanceOf(bob), oldBptAmount, "LP: Wrong BPT balance");
+    }
+
+    function testRemoveLiquidityDuringWeightChange() public {
+        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
+        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
+
+        address myPool = createAndInitNewLBPool(
+            50e16,
+            50e16,
+            30e16,
+            70e16,
+            startTime,
+            endTime,
+            address(dai), // bootstrap token
+            true, // allow removal only after weight change
+            false // restrict sale of bootstrap token
+        );
+
+        uint256 bptAmountIn = IERC20(myPool).balanceOf(bob) / 2;
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        for (uint256 i = 0; i < 2; ++i) {
+            minAmountsOut[i] = 0;
+        }
+
+        // scenario 1: Before weight change has started
+        // removing liq should not be allowed
+        (uint256 returnedStartTime, uint256 returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
+        assertTrue(returnedStartTime > block.timestamp, "Weight change should not have started yet");
+        assertTrue(LBPool(myPool).allowRemovalOnlyAfterWeightChange());
+
+        vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
+        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
+
+        // scenario 2: During weight change
+        skip(2 days);
+        (returnedStartTime, returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
+        assertTrue(
+            returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime,
+            "Weight change should be ongoing"
+        );
+
+        vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
+        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
+
+        // scenario 3: Weight change has ended
+        // call should succeed
+        vm.prank(bob);
+        IERC20(myPool).approve(address(router), MAX_UINT256);
+
+        skip(7 days);
+        (returnedStartTime, returnedEndTime, ) = LBPool(address(myPool)).getGradualWeightUpdateParams();
+        assertTrue(returnedEndTime <= block.timestamp, "Weight change should have finished");
+
+        vm.prank(bob);
+        router.removeLiquidityProportional(myPool, bptAmountIn, minAmountsOut, false, bytes(""));
+    }
+
+    function testSwap() public override {
+        if (!isTestSwapFeeEnabled) {
+            vault.manuallySetSwapFee(pool, 0);
+        }
+
+        IERC20 tokenIn = poolTokens[tokenIndexIn];
+        IERC20 tokenOut = poolTokens[tokenIndexOut];
+
+        uint256 bobBeforeBalanceTokenOut = tokenOut.balanceOf(bob);
+        uint256 bobBeforeBalanceTokenIn = tokenIn.balanceOf(bob);
+
+        vm.prank(bob);
+        // enable swapping for default pool
+        skip(1 days);
+        uint256 amountCalculated = router.swapSingleTokenExactIn(
+            pool,
+            tokenIn,
+            tokenOut,
+            tokenAmountIn,
+            less(tokenAmountOut, 1e3),
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        // Tokens are transferred from Bob
+        assertEq(tokenOut.balanceOf(bob), bobBeforeBalanceTokenOut + amountCalculated, "LP: Wrong tokenOut balance");
+        assertEq(tokenIn.balanceOf(bob), bobBeforeBalanceTokenIn - tokenAmountIn, "LP: Wrong tokenIn balance");
+
+        // Tokens are stored in the Vault
+        assertEq(
+            tokenOut.balanceOf(address(vault)),
+            tokenAmounts[tokenIndexOut] - amountCalculated,
+            "Vault: Wrong tokenOut balance"
+        );
+        assertEq(
+            tokenIn.balanceOf(address(vault)),
+            tokenAmounts[tokenIndexIn] + tokenAmountIn,
+            "Vault: Wrong tokenIn balance"
+        );
+
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
+
+        assertEq(balances[tokenIndexIn], tokenAmounts[tokenIndexIn] + tokenAmountIn, "Pool: Wrong tokenIn balance");
+        assertEq(
+            balances[tokenIndexOut],
+            tokenAmounts[tokenIndexOut] - amountCalculated,
+            "Pool: Wrong tokenOut balance"
+        );
+    }
+
+    function testSwapsBasedOnWeightChangeProcess() public {
+        // the deployed pool has weight change started scheduled to be in the future. Swaps are only allowed when weight change has started
+
+        // 1 case: Try to swap before weight change has started
+        assertFalse(LBPool(pool).getSwapEnabled(), "Swaps should be disabled before weight change has started");
+
+        vm.prank(alice);
+        vm.expectRevert(LBPool.SwapsDisabled.selector);
+        router.swapSingleTokenExactIn(
+            address(pool),
+            IERC20(dai),
+            IERC20(usdc),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+
+        // 2 case: Try to swap after weight change has started
+        skip(1 days);
+        (uint256 returnedStartTime, uint256 returnedEndTime, uint256[] memory returnedEndWeights) = LBPool(
+            address(pool)
+        ).getGradualWeightUpdateParams();
+
+        assertTrue(LBPool(pool).getSwapEnabled(), "Swaps should be enabled during weight change has started");
+        assertTrue(
+            returnedStartTime <= block.timestamp && block.timestamp <= returnedEndTime,
+            "Start time should be in the past"
+        );
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            address(pool),
+            IERC20(dai),
+            IERC20(usdc),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+
+        // 3 case: Weight change has ended
+        // swapping is still be possible
+        skip(8 days);
+        assertTrue(LBPool(pool).getSwapEnabled(), "Swaps should be enabled after weight change has ended");
+        assertTrue(returnedEndTime <= block.timestamp, "Weight change should have ended");
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            address(pool),
+            IERC20(dai),
+            IERC20(usdc),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+    }
+
+    function testTokenSwapAllowedGivenIn() public {
+        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
+        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
+
+        address myPool = createAndInitNewLBPool(
+            50e16,
+            50e16,
+            30e16,
+            70e16,
+            startTime,
+            endTime,
+            address(dai), // bootstrap token
+            false, //allow removal only after weight change
+            true // restrict sale of bootstrap token
+        );
+
+        // ensure swaps are enabled (weight change has ended already) to pass the first check
+        skip(8 days);
+        vm.prank(alice);
+        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
+        router.swapSingleTokenExactIn(
+            address(myPool),
+            IERC20(dai),
+            IERC20(usdc),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+
+        vm.prank(alice);
+        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
+        router.swapSingleTokenExactOut(
+            address(myPool),
+            IERC20(usdc),
+            IERC20(dai),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(
+            address(myPool),
+            IERC20(usdc),
+            IERC20(dai),
+            TOKEN_AMOUNT / 5,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+    }
+
+    function testTokenSwapAllowedGivenOut() public {
+        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
+        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
+
+        address myPool = createAndInitNewLBPool(
+            50e16,
+            50e16,
+            30e16,
+            70e16,
+            startTime,
+            endTime,
+            address(dai), // bootstrap token
+            false, //allow removal only after weight change
+            true // restrict sale of bootstrap token
+        );
+
+        // ensure swaps are enabled (weight change has ended already) to pass the first check
+        skip(8 days);
+        vm.prank(alice);
+        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
+        router.swapSingleTokenExactIn(
+            address(myPool),
+            IERC20(dai),
+            IERC20(usdc),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+
+        vm.prank(alice);
+        vm.expectRevert(LBPool.SwapOfBootstrapToken.selector);
+        router.swapSingleTokenExactOut(
+            address(myPool),
+            IERC20(usdc),
+            IERC20(dai),
+            TOKEN_AMOUNT / 10,
+            0,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+
+        vm.prank(alice);
+        router.swapSingleTokenExactOut(
+            address(myPool),
+            IERC20(dai),
+            IERC20(usdc),
+            100e6,
+            type(uint256).max,
+            block.timestamp + 1 hours,
+            false,
+            ""
+        );
+    }
+
+    function testRemovalOnlAfterWeightChange() public {
+        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
+        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
+
+        address myPool = createAndInitNewLBPool(
+            50e16,
+            50e16,
+            30e16,
+            70e16,
+            startTime,
+            endTime,
+            address(dai), // bootstrap token
+            false, //allow removal only after weight change
+            true // restrict sale of bootstrap token
+        );
+    }
+
+    function testEnsureNoTimeOverflow() public {
+        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
+        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
+
+        address myPool = createAndInitNewLBPool(
+            50e16,
+            50e16,
+            30e16,
+            70e16,
+            startTime,
+            endTime,
+            address(dai), // bootstrap token
+            false, //allow removal only after weight change
+            true // restrict sale of bootstrap token
+        );
+
+        //vm.prank(bob);
+        //vm.expectRevert(stdError.arithmeticError);
+        //LBPool(address(pool)).updateWeightsGradually(blockDotTimestampTestStart, type(uint32).max + 1, endWeights);
+    }
+
+    function testQuerySwapDuringWeightUpdate() public {
+        uint32 startTime = uint32(block.timestamp + START_TIME_OFFSET);
+        uint32 endTime = uint32(startTime + END_TIME_OFFSET);
+
+        address myPool = createAndInitNewLBPool(
+            50e16, // dai
+            50e16, // usdc
+            30e16, // dai
+            70e16, // usdc
+            startTime,
+            endTime,
+            address(dai), // bootstrap token
+            false, //allow removal only after weight change
+            false // restrict sale of bootstrap token
+        );
+
+        // Cache original time to avoid issues from `block.timestamp` during `vm.warp`
+        uint256 blockDotTimestampTestStart = block.timestamp;
+
+        uint256 testDuration = 1 days;
+        uint256 weightUpdateStep = 1 hours;
+        uint256 constantWeightDuration = 6 hours;
+        // uint256 startTime = blockDotTimestampTestStart + constantWeightDuration;
+
+        /* uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.01e18; // 1%
+        endWeights[1] = 0.99e18; // 99% */
 }
