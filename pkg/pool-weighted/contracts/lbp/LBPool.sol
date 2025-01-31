@@ -351,24 +351,16 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
      */
     function onBeforeInitialize(uint256[] memory, bytes memory) public view override onlyVault returns (bool) {
         // Only allow initialization up to the start time.
-        if (block.timestamp > _startTime) {
+        if (block.timestamp >= _startTime) {
             revert AddingLiquidityNotAllowed();
         }
 
         return IRouterCommon(_trustedRouter).getSender() == owner();
     }
 
-    /**
-     * @notice Check that the caller is the owner, and that the sale hasn't started yet.
-     * @dev We first ensure the caller is the standard router, so that we know we can trust the value it returns
-     * from `getSender`. To ensure a fully funded sale, and avoid any temporarily locked liquidity, ensure the start
-     * time is far enough in the future after deployment to allow for all planned funding operations.
-     *
-     * @param router The address (usually a router contract) that initiated the add liquidity operation
-     * @return success If true, the Vault will allow the add liquidity operation to proceed)
-     */
+    /// @notice Revert unconditionally; we require all liquidity to be added on initialization.
     function onBeforeAddLiquidity(
-        address router,
+        address,
         address,
         AddLiquidityKind,
         uint256[] memory,
@@ -376,16 +368,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault returns (bool) {
-        if (router != _trustedRouter) {
-            revert RouterNotTrusted();
-        }
-
-        // Only allow adding liquidity up to the start time.
-        if (block.timestamp > _startTime) {
-            revert AddingLiquidityNotAllowed();
-        }
-
-        return IRouterCommon(router).getSender() == owner();
+        revert AddingLiquidityNotAllowed();
     }
 
     /**
@@ -402,7 +385,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         bytes memory
     ) public view override onlyVault returns (bool) {
         // Only allow removing liquidity after end time.
-        if (block.timestamp < _endTime) {
+        if (block.timestamp <= _endTime) {
             revert RemovingLiquidityNotAllowed();
         }
 

@@ -81,39 +81,6 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     }
 
     /**
-     * @notice Deploys a new `LBPool`.
-     * @dev Tokens must be sorted for pool registration.
-     * @param name The name of the pool
-     * @param symbol The symbol of the pool
-     * @param lbpParams The LBP configuration (see LBPool)
-     * @param swapFeePercentage Initial swap fee percentage
-     * @param salt The salt value that will be passed to create3 deployment
-     */
-    function create(
-        string memory name,
-        string memory symbol,
-        LBPParams memory lbpParams,
-        uint256 swapFeePercentage,
-        bytes32 salt
-    ) external nonReentrant returns (address pool) {
-        PoolRoleAccounts memory roleAccounts;
-
-        roleAccounts.swapFeeManager = lbpParams.owner;
-
-        pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
-
-        _registerPoolWithVault(
-            pool,
-            _buildTokenConfig(lbpParams.projectToken, lbpParams.reserveToken),
-            swapFeePercentage,
-            false, // not exempt from protocol fees
-            roleAccounts,
-            pool, // register the pool itself as the hook contract
-            getDefaultLiquidityManagement()
-        );
-    }
-
-    /**
      * @notice Deploys a new `LBPool` and seeds it with initial liquidity in the same tx.
      * @dev Tokens must be sorted for pool registration. Use this method in case pool initialization frontrunning
      * is an issue. If the owner is the only address with liquidity of one of the tokens, this should not be necessary.
