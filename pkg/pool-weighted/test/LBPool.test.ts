@@ -10,17 +10,15 @@ import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ONES_BYTES32 } from '@balancer-la
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { LBPool, LBPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { MONTH, MINUTE, currentTimestamp, advanceToTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
-import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { PoolConfigStructOutput } from '@balancer-labs/v3-solidity-utils/typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
-import { TokenConfigStruct } from '../typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
+import { LBPParamsStruct } from '../typechain-types/contracts/lbp/LBPool';
 
 describe('LBPool', function () {
   const POOL_SWAP_FEE = fp(0.01);
@@ -38,21 +36,26 @@ describe('LBPool', function () {
 
   let router: Router;
   let alice: SignerWithAddress, bob: SignerWithAddress, admin: SignerWithAddress;
-  let tokenA: ERC20TestToken;
-  let tokenB: ERC20TestToken;
-  let poolTokens: string[];
+  let projectToken: ERC20TestToken;
+  let reserveToken: ERC20TestToken;
+  const poolTokens: string[] = [];
 
-  let tokenAIdx: number;
-  let tokenBIdx: number;
+  let projectTokenIdx: number;
+  let reserveTokenIdx: number;
 
-  let tokenAAddress: string;
-  let tokenBAddress: string;
+  let projectTokenAddress: string;
+  let reserveTokenAddress: string;
+
+  let startWeights: bigint[] = [];
+  let endWeights: bigint[] = [];
 
   const FACTORY_VERSION = 'LBPool Factory v1';
   const POOL_VERSION = 'LBPool v1';
   const ROUTER_VERSION = 'Router v11';
 
-  const WEIGHTS = [fp(0.5), fp(0.5)];
+  const HIGH_WEIGHT = fp(0.9);
+  const LOW_WEIGHT = fp(0.1);
+
   const INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT];
   const SWAP_AMOUNT = fp(20);
 
@@ -64,14 +67,16 @@ describe('LBPool', function () {
     startWeights: bigint[],
     endWeights: bigint[],
     projectToken: string,
+    reserveToken: string,
     enableProjectTokenSwapsIn: boolean
   ): Promise<LBPool> {
     const tx = await deployPoolTx(
       startTime,
       endTime,
+      projectToken,
+      reserveToken,
       startWeights,
       endWeights,
-      projectToken,
       enableProjectTokenSwapsIn
     );
 
@@ -84,24 +89,26 @@ describe('LBPool', function () {
   async function deployPoolTx(
     startTime: bigint,
     endTime: bigint,
+    projectToken: string,
+    reserveToken: string,
     startWeights: bigint[],
     endWeights: bigint[],
-    projectToken: string,
     enableProjectTokenSwapsIn: boolean
   ): Promise<ContractTransactionResponse> {
-    const tokenConfig: TokenConfigStruct[] = buildTokenConfig(poolTokens);
-
-    const lbpParams: LBPool.LBPParamsStruct = {
+    const lbpParams: LBPParamsStruct = {
       owner: admin.address,
-      startTime,
-      endTime,
-      startWeights,
-      endWeights,
-      projectToken,
-      enableProjectTokenSwapsIn,
+      projectToken: projectToken,
+      reserveToken: reserveToken,
+      projectTokenStartWeight: startWeights[projectTokenIdx],
+      reserveTokenStartWeight: startWeights[reserveTokenIdx],
+      projectTokenEndWeight: endWeights[projectTokenIdx],
+      reserveTokenEndWeight: endWeights[reserveTokenIdx],
+      startTime: startTime,
+      endTime: endTime,
+      enableProjectTokenSwapsIn: enableProjectTokenSwapsIn,
     };
 
-    return factory.create('LBPool', 'Test', tokenConfig, SWAP_FEE, lbpParams, ONES_BYTES32);
+    return factory.createAndInitialize('LBPool', 'Test', lbpParams, SWAP_FEE, INITIAL_BALANCES, ONES_BYTES32);
   }
 
   before('setup signers', async () => {
@@ -115,34 +122,50 @@ describe('LBPool', function () {
     permit2 = await deployPermit2();
     router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
 
-    tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
-    tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
+    projectToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Project', 'PRJ', 18] });
+    reserveToken = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Reserve', 'RES', 6] });
 
-    tokenAAddress = await tokenA.getAddress();
-    tokenBAddress = await tokenB.getAddress();
+    projectTokenAddress = await projectToken.getAddress();
+    reserveTokenAddress = await reserveToken.getAddress();
 
-    tokenAIdx = tokenAAddress < tokenBAddress ? 0 : 1;
-    tokenBIdx = tokenAAddress < tokenBAddress ? 1 : 0;
+    projectTokenIdx = projectTokenAddress < reserveTokenAddress ? 0 : 1;
+    reserveTokenIdx = projectTokenAddress < reserveTokenAddress ? 1 : 0;
+
+    poolTokens[projectTokenIdx] = projectTokenAddress;
+    poolTokens[reserveTokenIdx] = reserveTokenAddress;
   });
 
   sharedBeforeEach('create pool and grant approvals', async () => {
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router],
+      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, permit2],
     });
-    poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
     // Leave a gap to test operations before start time.
     globalPoolStartTime = (await currentTimestamp()) + bn(MONTH);
     globalPoolEndTime = globalPoolStartTime + bn(MONTH);
 
-    globalPool = await deployPool(globalPoolStartTime, globalPoolEndTime, WEIGHTS, WEIGHTS, tokenAAddress, true);
+    startWeights[projectTokenIdx] = HIGH_WEIGHT;
+    startWeights[reserveTokenIdx] = LOW_WEIGHT;
+
+    startWeights[projectTokenIdx] = LOW_WEIGHT;
+    startWeights[reserveTokenIdx] = HIGH_WEIGHT;
+
+    globalPool = await deployPool(
+      globalPoolStartTime,
+      globalPoolEndTime,
+      startWeights,
+      endWeights,
+      projectTokenAddress,
+      reserveTokenAddress,
+      true
+    );
 
     for (const user of [alice, bob, admin]) {
-      await tokenA.mint(user, TOKEN_AMOUNT + SWAP_AMOUNT);
-      await tokenB.mint(user, TOKEN_AMOUNT);
+      await projectToken.mint(user, TOKEN_AMOUNT + SWAP_AMOUNT);
+      await reserveToken.mint(user, TOKEN_AMOUNT);
 
       await globalPool.connect(user).approve(router, MAX_UINT256);
-      for (const token of [tokenA, tokenB]) {
+      for (const token of [projectToken, reserveToken]) {
         await token.connect(user).approve(permit2, MAX_UINT256);
         await permit2.connect(user).approve(token, router, MAX_UINT160, MAX_UINT48);
       }
@@ -168,26 +191,10 @@ describe('LBPool', function () {
 
   it('returns starting weights', async () => {
     const weights = await globalPool.getNormalizedWeights();
-    expect(weights).to.be.deep.eq(WEIGHTS);
-  });
-
-  it('cannot be initialized by non-owners', async () => {
-    await expect(
-      router.connect(alice).initialize(globalPool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x')
-    ).to.be.revertedWithCustomError(vault, 'BeforeInitializeHookFailed');
-  });
-
-  it('can be initialized by the owner', async () => {
-    await expect(await router.connect(admin).initialize(globalPool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
-      .to.emit(vault, 'PoolInitialized')
-      .withArgs(globalPool);
+    expect(weights).to.be.deep.eq(startWeights);
   });
 
   context('with initialized pool', () => {
-    sharedBeforeEach(async () => {
-      await router.connect(admin).initialize(globalPool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x');
-    });
-
     it('pool and protocol fee preconditions', async () => {
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(globalPool);
 
@@ -219,7 +226,15 @@ describe('LBPool', function () {
         const endTime = startTime + bn(bn(MONTH));
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const tx = await deployPoolTx(startTime, endTime, WEIGHTS, endWeights, tokenAAddress, true);
+        const tx = await deployPoolTx(
+          startTime,
+          endTime,
+          startWeights,
+          endWeights,
+          projectTokenAddress,
+          reserveTokenAddress,
+          true
+        );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
@@ -229,14 +244,14 @@ describe('LBPool', function () {
 
         await expect(tx)
           .to.emit(pool, 'GradualWeightUpdateScheduled')
-          .withArgs(actualStartTime, endTime, WEIGHTS, endWeights);
+          .withArgs(actualStartTime, endTime, startWeights, endWeights);
       });
 
       it('should only allow owner to be the LP', async () => {
         await advanceToTimestamp(globalPoolStartTime - bn(MINUTE));
 
         const amounts: bigint[] = [FP_ZERO, FP_ZERO];
-        amounts[tokenAIdx] = SWAP_AMOUNT;
+        amounts[projectTokenIdx] = SWAP_AMOUNT;
 
         await expect(
           router.addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
@@ -252,10 +267,18 @@ describe('LBPool', function () {
         const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const pool = await deployPool(startTime, endTime, WEIGHTS, endWeights, tokenAAddress, true);
+        const pool = await deployPool(
+          startTime,
+          endTime,
+          startWeights,
+          endWeights,
+          projectTokenAddress,
+          reserveTokenAddress,
+          true
+        );
 
         // Check weights at start
-        expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
+        expect(await pool.getNormalizedWeights()).to.deep.equal(startWeights);
 
         // Check weights halfway through
         await advanceToTimestamp(startTime + bn(MONTH) / 2n);
@@ -274,27 +297,68 @@ describe('LBPool', function () {
 
         // Try to set start weight below 1%
         await expect(
-          deployPoolTx(startTime, endTime, [fp(0.009), fp(0.991)], WEIGHTS, tokenAAddress, true)
+          deployPoolTx(
+            startTime,
+            endTime,
+            [fp(0.009), fp(0.991)],
+            endWeights,
+            projectTokenAddress,
+            reserveTokenAddress,
+            true
+          )
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Try to set start weight above 99%
         await expect(
-          deployPoolTx(startTime, endTime, [fp(0.991), fp(0.009)], WEIGHTS, tokenAAddress, true)
+          deployPoolTx(
+            startTime,
+            endTime,
+            [fp(0.991), fp(0.009)],
+            endWeights,
+            projectTokenAddress,
+            reserveTokenAddress,
+            true
+          )
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Try to set end weight below 1%
         await expect(
-          deployPoolTx(startTime, endTime, WEIGHTS, [fp(0.009), fp(0.991)], tokenAAddress, true)
+          deployPoolTx(
+            startTime,
+            endTime,
+            startWeights,
+            [fp(0.009), fp(0.991)],
+            projectTokenAddress,
+            reserveTokenAddress,
+            true
+          )
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Try to set end weight above 99%
         await expect(
-          deployPoolTx(startTime, endTime, WEIGHTS, [fp(0.991), fp(0.009)], tokenAAddress, true)
+          deployPoolTx(
+            startTime,
+            endTime,
+            startWeights,
+            [fp(0.991), fp(0.009)],
+            projectTokenAddress,
+            reserveTokenAddress,
+            true
+          )
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Valid weight update
-        await expect(deployPoolTx(startTime, endTime, WEIGHTS, [fp(0.01), fp(0.99)], tokenAAddress, true)).to.not.be
-          .reverted;
+        await expect(
+          deployPoolTx(
+            startTime,
+            endTime,
+            startWeights,
+            [fp(0.01), fp(0.99)],
+            projectTokenAddress,
+            reserveTokenAddress,
+            true
+          )
+        ).to.not.be.reverted;
       });
 
       it('should not allow endTime before startTime', async () => {
@@ -303,12 +367,29 @@ describe('LBPool', function () {
 
         // Try to set endTime before startTime
         await expect(
-          deployPoolTx(startTime, endTime, WEIGHTS, [fp(0.4), fp(0.6)], tokenAAddress, true)
+          deployPoolTx(
+            startTime,
+            endTime,
+            startWeights,
+            [fp(0.4), fp(0.6)],
+            projectTokenAddress,
+            reserveTokenAddress,
+            true
+          )
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Valid time update
-        await expect(deployPoolTx(startTime, startTime + bn(MONTH), WEIGHTS, [fp(0.4), fp(0.6)], tokenAAddress, true))
-          .to.not.be.reverted;
+        await expect(
+          deployPoolTx(
+            startTime,
+            startTime + bn(MONTH),
+            startWeights,
+            [fp(0.4), fp(0.6)],
+            projectTokenAddress,
+            reserveTokenAddress,
+            true
+          )
+        ).to.not.be.reverted;
       });
 
       it('should always sum weights to 1', async () => {
@@ -322,7 +403,15 @@ describe('LBPool', function () {
         await advanceToTimestamp(startTime - 1n);
 
         // Start at 50/50, schedule gradual shift to 70/30
-        const pool = await deployPool(startTime, endTime, startWeights, endWeights, tokenAAddress, true);
+        const pool = await deployPool(
+          startTime,
+          endTime,
+          startWeights,
+          endWeights,
+          projectTokenAddress,
+          reserveTokenAddress,
+          true
+        );
 
         // Check weights at various points during the transition
         for (let i = 0; i <= 100; i++) {
@@ -349,7 +438,15 @@ describe('LBPool', function () {
         const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const pool = await deployPool(startTime, endTime, WEIGHTS, endWeights, tokenAAddress, true);
+        const pool = await deployPool(
+          startTime,
+          endTime,
+          startWeights,
+          endWeights,
+          projectTokenAddress,
+          reserveTokenAddress,
+          true
+        );
         const actualStartTime = await currentTimestamp();
 
         const params = await pool.getGradualWeightUpdateParams();
@@ -369,8 +466,8 @@ describe('LBPool', function () {
               .connect(alice)
               .swapSingleTokenExactIn(
                 globalPool,
-                poolTokens[tokenAIdx],
-                poolTokens[tokenBIdx],
+                poolTokens[projectTokenIdx],
+                poolTokens[reserveTokenIdx],
                 SWAP_AMOUNT,
                 0,
                 MAX_UINT256,
@@ -388,8 +485,8 @@ describe('LBPool', function () {
               .connect(bob)
               .swapSingleTokenExactIn(
                 globalPool,
-                poolTokens[tokenAIdx],
-                poolTokens[tokenBIdx],
+                poolTokens[projectTokenIdx],
+                poolTokens[reserveTokenIdx],
                 SWAP_AMOUNT,
                 0,
                 MAX_UINT256,
@@ -407,8 +504,8 @@ describe('LBPool', function () {
               .connect(bob)
               .swapSingleTokenExactIn(
                 globalPool,
-                poolTokens[tokenAIdx],
-                poolTokens[tokenBIdx],
+                poolTokens[projectTokenIdx],
+                poolTokens[reserveTokenIdx],
                 SWAP_AMOUNT,
                 0,
                 MAX_UINT256,
