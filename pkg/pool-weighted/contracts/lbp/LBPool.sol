@@ -37,6 +37,9 @@ import { WeightedPool } from "../WeightedPool.sol";
  * base contract changes.
  */
 contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
+    // The sale parameters are timestamp-based: they should not be relied upon for sub-minute accuracy.
+    // solhint-disable not-rely-on-time
+
     // LBPs are constrained to two tokens: project and reserve.
     uint256 private constant _TWO_TOKENS = 2;
 

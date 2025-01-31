@@ -107,6 +107,16 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
 
         pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
 
+        _registerPoolWithVault(
+            pool,
+            _buildTokenConfig(lbpParams.projectToken, lbpParams.reserveToken),
+            swapFeePercentage,
+            false, // not exempt from protocol fees
+            roleAccounts,
+            pool, // register the pool itself as the hook contract
+            getDefaultLiquidityManagement()
+        );
+
         (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken
             ? (0, 1)
             : (1, 0);
