@@ -90,9 +90,9 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
             shouldCallBeforeSwap: false,
             shouldCallAfterSwap: false,
             shouldCallBeforeAddLiquidity: false,
-            shouldCallAfterAddLiquidity: false,
+            shouldCallAfterAddLiquidity: true,
             shouldCallBeforeRemoveLiquidity: false,
-            shouldCallAfterRemoveLiquidity: false
+            shouldCallAfterRemoveLiquidity: true
         });
         assertEq(abi.encode(stableSurgeHook.getHookFlags()), abi.encode(hookFlags), "Hook flags should be correct");
     }
