@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import { BigNumberish } from 'ethers';
+import { ethers, BigNumberish, toUtf8String, BytesLike } from 'ethers';
 
 import _BN from 'bn.js';
 
@@ -143,4 +143,8 @@ export function randomFromInterval(min: number, max: number): number {
 
 export function isBn(n: unknown): boolean {
   return typeof n === 'bigint';
+}
+
+export function randomBytes32(): BytesLike {
+  return toUtf8String(ethers.randomBytes(32));
 }
