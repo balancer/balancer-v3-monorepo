@@ -41,17 +41,10 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     // LBPs are constrained to two tokens: project and reserve.
     uint256 private constant _TWO_TOKENS = 2;
 
-    // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true
-    // originating account on operations. This is important for liquidity operations, as these are permissioned
-    // operations that can only be performed by the owner of the pool. Without this check, a malicious router
-    // could spoof the address of the owner, allowing anyone to call permissioned functions.
-    //
-    // Since the initialization mechanism does not allow verification of the router, it is technically possible
-    // to front-run `initialize`. This should not be a concern in the typical LBP use case of a new token launch,
-    // where there is no existing liquidity. In the unlikely event it is a concern, `LBPoolFactory` provides the
-    // `createAndInitialize` function, which does both operations in a single step.
+    // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true sender.
+    // Since creation and initialization/funding are done in a single call to `createAndInitialize`, they also store
+    // the standard factory (passed on create), and only accept initialization from this address.
 
-    // solhint-disable-next-line var-name-mixedcase
     address private immutable _trustedRouter;
     address private immutable _trustedFactory;
 
@@ -75,8 +68,7 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     bool private immutable _enableProjectTokenSwapsIn;
 
     /**
-     * @notice Emitted when the owner initiates a gradual weight change (e.g., at the start of the sale).
-     * @dev Also emitted on deployment, recording the initial state.
+     * @notice Emitted on deployment to record the sale parameters.
      * @param startTime The starting timestamp of the update
      * @param endTime  The ending timestamp of the update
      * @param startWeights The weights at the start of the update
@@ -92,19 +84,19 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     /// @dev Indicates that the router that called the Vault is not trusted, so liquidity operations should revert.
     error RouterNotTrusted();
 
-    /// @dev Indicates that the `owner` has disabled swaps.
+    /// @dev Swaps are disabled except during the sale (i.e., between and start and end times).
     error SwapsDisabled();
 
-    /// @dev Indicates that removing liquidity is not allowed.
+    /// @dev Removing liquidity is not allowed before the end of the sale.
     error RemovingLiquidityNotAllowed();
 
-    /// @dev The pool does not allow adding liquidity while the token weights are being updated.
+    /// @dev The pool does not allow adding liquidity except during initialization.
     error AddingLiquidityNotAllowed();
 
-    /// @dev Indicates that swapping the project token is not allowed.
+    /// @dev THe LBP configuration prohibits selling the project token back into the pool.
     error SwapOfProjectTokenIn();
 
-    /// @dev Function is inherited but not implemented.
+    /// @dev LBPs are WeightedPools by inheritance, but WeightedPool immutable/dynamic getters are wrong for LBPs.
     error NotImplemented();
 
     constructor(
@@ -163,7 +155,7 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     }
 
     /**
-     * @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
+     * @notice Returns the trusted router, which is used to initialize and seed the pool.
      * @return trustedRouter Address of the trusted router (i.e., one that reliably reports the sender)
      */
     function getTrustedRouter() external view returns (address) {
@@ -171,8 +163,8 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     }
 
     /**
-     * @notice Returns the trusted router, which is the gateway to add liquidity to the pool.
-     * @return trustedFactory Address of the trusted factory (i.e., the deployer contract empowered to initialize)
+     * @notice Returns the trusted factory that deployed the pool, allowed to initialize it with seed funds.
+     * @return trustedFactory Address of the trusted factory
      */
     function getTrustedFactory() external view returns (address) {
         return _trustedFactory;
@@ -291,6 +283,7 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     function onSwap(
         PoolSwapParams memory request
     ) public view override(IBasePool, WeightedPool) onlyVault returns (uint256) {
+        // Block if the sale has not started or has ended.
         if (_isSwapEnabled() == false) {
             revert SwapsDisabled();
         }
@@ -338,18 +331,24 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
      * @return hookFlags Flags indicating which hooks are supported for LBPs
      */
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
+        // Required to ensure only the factory can initialize and seed the pool, which must be done before the start.
         hookFlags.shouldCallBeforeInitialize = true;
+        // Required to block adding liquidity after initialization.
         hookFlags.shouldCallBeforeAddLiquidity = true;
+        // Required to enforce the liquidity can only be withdrawn after the end of the sale.
         hookFlags.shouldCallBeforeRemoveLiquidity = true;
     }
 
     /**
-     * @notice Block initialization if the sender is not the trusted factory.
+     * @notice Block initialization if the sender is not the trusted factory, or the sale has already started.
      * @dev To match the UI flow, and prevent any possible front-running, deployment and initialization are done
      * together in the factory's `createAndInitialize`. Since the factory is calling `initialize`, that will be
      * the ultimate sender. The `LBPoolFactory` sends its own address when deploying the pool, so all an external
      * user needs to check is that the pool was deployed by the canonical factory (e.g., using the Balancer
      * contract registry).
+     *
+     * Take care to set the start time far enough in advance to allow for funding; otherwise the pool will remain
+     * unfunded and need to be redeployed.
      *
      * @return success If true, the sender matches (so the Vault will allow the initialization to proceed)
      */
@@ -422,6 +421,7 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
         return GradualValueChange.interpolateValue(_projectTokenStartWeight, _projectTokenEndWeight, pctProgress);
     }
 
+    // Build the required struct for initializing the underlying WeightedPool. Called on construction.
     function _buildWeightedPoolParams(
         string memory name,
         string memory symbol,

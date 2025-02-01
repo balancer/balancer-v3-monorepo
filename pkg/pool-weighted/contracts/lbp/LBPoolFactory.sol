@@ -13,7 +13,6 @@ import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -22,17 +21,16 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 
 import { LBPool } from "./LBPool.sol";
 
-//import { WeightedPool } from "../WeightedPool.sol";
-
 /**
  * @notice LBPool Factory.
- * @dev This is a factory specific to LBPools, allowing only 2 tokens.
+ * @dev This is a factory specific to LBPools, allowing only 2 tokens, requiring creation, initialization, and funding
+ * in a single operation, and restricting the LBP to a single token sale, with parameters specified on deployment.
  */
 contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactory, Version {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    // LBPs are constrained to two tokens: project and reserve.
+    // LBPs are constrained to two tokens: project (the token being sold), and reserve (e.g., USDC or WETH).
     uint256 private constant _TWO_TOKENS = 2;
 
     string private _poolVersion;
@@ -51,15 +49,15 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         address trustedRouter,
         IPermit2 permit2
     ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
-        _poolVersion = poolVersion;
-
         if (trustedRouter == address(0)) {
             revert InvalidTrustedRouter();
         }
 
         // LBPools are deployed with a router known to reliably report the originating address on operations.
-        // This is used to ensure that only the owner can add liquidity to an LBP (including on initialization).
+        // This is used to ensure that only the trusted factory can add liquidity to an LBP on initialization.
         _trustedRouter = trustedRouter;
+
+        _poolVersion = poolVersion;
 
         // Allow one-step creation and initialization.
         _permit2 = permit2;
@@ -81,15 +79,17 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     }
 
     /**
-     * @notice Deploys a new `LBPool` and seeds it with initial liquidity in the same tx.
-     * @dev Tokens must be sorted for pool registration. Use this method in case pool initialization frontrunning
-     * is an issue. If the owner is the only address with liquidity of one of the tokens, this should not be necessary.
+     * @notice Deploys a new `LBPool` and seeds it with initial liquidity in the same transaction.
+     * @dev Tokens must be sorted for pool registration. This method prevents pool initialization frontrunning. If the
+     * deployer is the only address with liquidity of one of the tokens, this should not be necessary, but is done out
+     * of an abundance of caution, and to keep things simple for the front end and aggregators.
+     *
      * This method does not support native ETH management; WETH needs to be used instead.
      *
      * @param name The name of the pool
      * @param symbol The symbol of the pool
-     * @param lbpParams The LBP configuration (see LBPool)
-     * @param swapFeePercentage Initial swap fee percentage
+     * @param lbpParams The LBP configuration (see ILBPool for the struct definition)
+     * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param exactAmountsIn Token amounts in, sorted in token registration order
      * @param salt The salt value that will be passed to create3 deployment
      */
@@ -103,6 +103,8 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     ) external nonReentrant returns (address pool) {
         PoolRoleAccounts memory roleAccounts;
 
+        // This is the only effect of specifying the owner. This account can change the static swap fee for the pool.
+        // If the owner is the zero address, the swap fee will be fixed at the initial value.
         roleAccounts.swapFeeManager = lbpParams.owner;
 
         pool = _create(
@@ -123,13 +125,17 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken
             ? (0, 1)
             : (1, 0);
+
         IERC20[] memory tokens = new IERC20[](_TWO_TOKENS);
         tokens[projectTokenIndex] = lbpParams.projectToken;
         tokens[reserveTokenIndex] = lbpParams.reserveToken;
 
+        // Pull initial funds from the user, and approve them for transfer into the Vault.
         _prepareTokenInitialization(lbpParams.projectToken, exactAmountsIn[projectTokenIndex]);
         _prepareTokenInitialization(lbpParams.reserveToken, exactAmountsIn[reserveTokenIndex]);
 
+        // Initialize using the trusted router (which records this contract as the sender).
+        // The LBP ensures that only this contract may call initialize.
         IRouter(_trustedRouter).initialize(pool, tokens, exactAmountsIn, 0, false, "");
     }
 

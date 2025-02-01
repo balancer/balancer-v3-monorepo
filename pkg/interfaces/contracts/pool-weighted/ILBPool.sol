@@ -6,10 +6,23 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "../vault/IBasePool.sol";
 
-// Structure containing LBP-specific parameters. The project token is the one being launched; the sale proceeds will be
-// withdrawn in the reserve token. The sale parameters are fixed at deployment: it runs from `startTime` to `endTime`,
-// and the weights change from start to end values. If `enableProjectTokenSwapsIn` is set, selling the project token
-// "back" into the pool is allowed. Otherwise, users can only purchase project tokens with the reserve currency.
+/**
+ * @notice Structure containing LBP-specific parameters.
+ * @dev These parameters are immutable, representing the configuration of a single token sale, running from `startTime`
+ * to `endTime`. Swaps may only occur while the sale is active. If `enableProjectTokenSwapsIn` is false, users may only
+ * purchase project tokens with the reserve currency.
+ *
+ * @param owner The account with permission to change the static swap fee percentage
+ * @param projectToken The token being sold
+ * @param reserveToken The token used to buy the project token (e.g., USDC or WETH)
+ * @param projectTokenStartWeight The project token weight at the start of the sale (normally higher than the reserve)
+ * @param reserveTokenStartWeight The reserve token weight at the start of the sale (normally lower than the project)
+ * @param projectTokenEndWeight The project token weight at the end of the sale (should go down over time)
+ * @param reserveTokenEndWeight The reserve token weight at the end of the sale (should go up over time)
+ * @param startTime The timestamp at the beginning of the sale - initialization/funding must occur before this time
+ * @param endTime the timestamp at the end of the sale - withdrawal of proceeds becomes possible after this time
+ * @param enableProjectTokenSwapsIn If set, selling the project token "back" into the pool is allowed
+ */
 struct LBPParams {
     address owner;
     IERC20 projectToken;
