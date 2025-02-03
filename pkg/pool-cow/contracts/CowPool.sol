@@ -8,7 +8,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import {
     AddLiquidityKind,
     HookFlags,
-    PoolSwapParams
+    LiquidityManagement,
+    PoolSwapParams,
+    TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
@@ -36,6 +38,20 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
         _trustedCowRouter = _cowPoolFactory.getTrustedCowRouter();
 
         emit CowTrustedRouterRefreshed(_trustedCowRouter);
+    }
+
+    /// @inheritdoc IHooks
+    function onRegister(
+        address factory,
+        address pool,
+        TokenConfig[] memory,
+        LiquidityManagement calldata liquidityManagement
+    ) public view override returns (bool) {
+        return
+            pool == address(this) &&
+            factory == address(_cowPoolFactory) &&
+            liquidityManagement.enableDonation == true &&
+            liquidityManagement.disableUnbalancedLiquidity == true;
     }
 
     /// @inheritdoc IHooks
