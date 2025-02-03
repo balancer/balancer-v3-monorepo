@@ -45,6 +45,10 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
             CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),
             admin
         );
+        authorizer.grantRole(
+            CowPoolFactory(address(cowFactory)).getActionId(ICowPoolFactory.setTrustedCowRouter.selector),
+            admin
+        );
 
         _approveCowRouterForAllUsers();
 
