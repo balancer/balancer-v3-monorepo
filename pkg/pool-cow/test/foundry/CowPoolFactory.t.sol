@@ -6,9 +6,10 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { PoolConfig, PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
-import { PoolConfig, PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { ICowPoolFactory } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowPoolFactory.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -40,10 +41,18 @@ contract CowPoolFactoryTest is BaseCowTest {
         cowFactory.setTrustedCowRouter(address(1));
     }
 
+    function testSetTrustedRouterInvalidAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(ICowPoolFactory.InvalidTrustedCowRouter.selector));
+        cowFactory.setTrustedCowRouter(ZERO_ADDRESS);
+    }
+
     function testSetTrustedRouter() public {
         assertEq(cowFactory.getTrustedCowRouter(), address(cowRouter), "Trusted Router is not CoW Router");
 
         vm.prank(admin);
+        vm.expectEmit();
+        emit ICowPoolFactory.CowTrustedRouterChanged(address(1));
         cowFactory.setTrustedCowRouter(address(1));
 
         assertEq(cowFactory.getTrustedCowRouter(), address(1), "Trusted Router is not set properly");

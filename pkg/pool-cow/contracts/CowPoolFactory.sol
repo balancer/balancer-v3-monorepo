@@ -91,8 +91,8 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
 
     /// @inheritdoc ICowPoolFactory
     function setTrustedCowRouter(address newTrustedCowRouter) external authenticate {
-        if (newTrustedCowRouter == address(0) || newTrustedCowRouter == address(this)) {
-            revert InvalidTrustedCowRouter(newTrustedCowRouter);
+        if (newTrustedCowRouter == address(0)) {
+            revert InvalidTrustedCowRouter();
         }
 
         _trustedCowRouter = newTrustedCowRouter;

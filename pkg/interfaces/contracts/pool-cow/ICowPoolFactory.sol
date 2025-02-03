@@ -5,8 +5,8 @@ pragma solidity ^0.8.24;
 import { PoolRoleAccounts, TokenConfig } from "../vault/VaultTypes.sol";
 
 interface ICowPoolFactory {
-    /// @notice The trusted CoW router cannot be neither address zero nor the address of the factory.
-    error InvalidTrustedCowRouter(address invalidTrustedCowRouter);
+    /// @notice The trusted CoW router cannot be address zero.
+    error InvalidTrustedCowRouter();
 
     /// @notice Trusted CoW Router has changed.
     event CowTrustedRouterChanged(address newTrustedCowRouter);
