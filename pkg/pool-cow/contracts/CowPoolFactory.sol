@@ -29,7 +29,7 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
         address trustedCowRouter
     ) BasePoolFactory(vault, pauseWindowDuration, type(CowPool).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
-        _trustedCowRouter = trustedCowRouter;
+        _setTrustedCowRouter(trustedCowRouter);
     }
 
     /// @inheritdoc IPoolVersion
@@ -91,6 +91,10 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
 
     /// @inheritdoc ICowPoolFactory
     function setTrustedCowRouter(address newTrustedCowRouter) external authenticate {
+        _setTrustedCowRouter(newTrustedCowRouter);
+    }
+
+    function _setTrustedCowRouter(address newTrustedCowRouter) private {
         if (newTrustedCowRouter == address(0)) {
             revert InvalidTrustedCowRouter();
         }

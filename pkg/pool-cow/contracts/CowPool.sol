@@ -29,13 +29,22 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
         CowPoolFactory cowPoolFactory,
         address trustedCowRouter
     ) WeightedPool(params, vault) {
-        _trustedCowRouter = trustedCowRouter;
         _cowPoolFactory = cowPoolFactory;
+        _setTrustedCowRouter(trustedCowRouter);
+    }
+
+    /// @inheritdoc ICowPool
+    function getTrustedCowRouter() external view returns (address) {
+        return _trustedCowRouter;
     }
 
     /// @inheritdoc ICowPool
     function refreshTrustedCowRouter() external {
-        _trustedCowRouter = _cowPoolFactory.getTrustedCowRouter();
+        _setTrustedCowRouter(_cowPoolFactory.getTrustedCowRouter());
+    }
+
+    function _setTrustedCowRouter(address trustedCowRouter) private {
+        _trustedCowRouter = trustedCowRouter;
 
         emit CowTrustedRouterRefreshed(_trustedCowRouter);
     }

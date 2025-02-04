@@ -17,12 +17,20 @@ import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePool
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import { CowPoolFactory } from "../../contracts/CowPoolFactory.sol";
+import { CowRouter } from "../../contracts/CowRouter.sol";
 import { CowPool } from "../../contracts/CowPool.sol";
 import { BaseCowTest } from "./utils/BaseCowTest.sol";
 
 contract CowPoolFactoryTest is BaseCowTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
+
+    address private _otherCowRouter;
+
+    function setUp() public override {
+        super.setUp();
+        _otherCowRouter = address(deployCowPoolRouter(vault, 2e16));
+    }
 
     function testGetPoolVersion() public view {
         assertEq(IPoolVersion(address(cowFactory)).getPoolVersion(), POOL_VERSION, "Pool version does not match");
@@ -38,7 +46,7 @@ contract CowPoolFactoryTest is BaseCowTest {
 
     function testSetTrustedRouterIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        cowFactory.setTrustedCowRouter(address(1));
+        cowFactory.setTrustedCowRouter(_otherCowRouter);
     }
 
     function testSetTrustedRouterInvalidAddress() public {
@@ -52,10 +60,10 @@ contract CowPoolFactoryTest is BaseCowTest {
 
         vm.prank(admin);
         vm.expectEmit();
-        emit ICowPoolFactory.CowTrustedRouterChanged(address(1));
-        cowFactory.setTrustedCowRouter(address(1));
+        emit ICowPoolFactory.CowTrustedRouterChanged(_otherCowRouter);
+        cowFactory.setTrustedCowRouter(_otherCowRouter);
 
-        assertEq(cowFactory.getTrustedCowRouter(), address(1), "Trusted Router is not set properly");
+        assertEq(cowFactory.getTrustedCowRouter(), _otherCowRouter, "Trusted Router is not set properly");
     }
 
     /********************************************************
@@ -101,5 +109,29 @@ contract CowPoolFactoryTest is BaseCowTest {
             poolConfig.liquidityManagement.disableUnbalancedLiquidity,
             "Unbalanced liquidity operations are not disabled"
         );
+    }
+
+    function testCreateTrustedCowRouter() public {
+        vm.prank(admin);
+        cowFactory.setTrustedCowRouter(_otherCowRouter);
+
+        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
+
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
+
+        PoolRoleAccounts memory roleAccounts;
+
+        address newPool = cowFactory.create(
+            "test",
+            "test",
+            tokenConfig,
+            weights,
+            roleAccounts,
+            DEFAULT_SWAP_FEE_PERCENTAGE,
+            bytes32("")
+        );
+
+        assertEq(CowPool(newPool).getTrustedCowRouter(), _otherCowRouter, "Wrong trusted CoW Router");
     }
 }
