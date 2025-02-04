@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -16,8 +18,23 @@ import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
 contract LBPoolFactoryTest is BaseLBPTest {
     using ArrayHelpers for *;
 
-    function testPoolRegisteredInFactory() public {
+    function testPoolRegistrationOnCreate() public view {
+        // Verify pool was registered in the factory.
         assertTrue(lbPoolFactory.isPoolFromFactory(pool), "Pool is not from LBP factory");
+
+        // Verify pool was created and initialized correctly in the vault by the factory.
+        assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
+        assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
+    }
+
+    function testPoolInitialization() public view {
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(pool);
+
+        assertEq(address(tokens[projectIdx]), address(projectToken), "Project token mismatch");
+        assertEq(address(tokens[reserveIdx]), address(reserveToken), "Reserve token mismatch");
+
+        assertEq(balancesRaw[projectIdx], poolInitAmount, "Balances of project token mismatch");
+        assertEq(balancesRaw[reserveIdx], poolInitAmount, "Balances of reserve token mismatch");
     }
 
     function testGetPoolVersion() public view {
@@ -28,15 +45,13 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
+    function testGetPermit2() public view {
+        assertEq(address(lbPoolFactory.getPermit2()), address(permit2), "Wrong Permit2");
+    }
+
     function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = lbPoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
-    }
-
-    function testCreatePool() public view {
-        // Verify pool was created and initialized correctly in the vault by the factory.
-        assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
-        assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
     }
 
     function testSetSwapFeeNoPermission() public {
