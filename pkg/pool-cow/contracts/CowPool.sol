@@ -5,13 +5,7 @@ pragma solidity ^0.8.24;
 import { ICowPool } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowPool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    AddLiquidityKind,
-    HookFlags,
-    LiquidityManagement,
-    PoolSwapParams,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 
@@ -33,6 +27,10 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
         _setTrustedCowRouter(trustedCowRouter);
     }
 
+    /********************************************************
+                          Trusted Router
+    ********************************************************/
+
     /// @inheritdoc ICowPool
     function getTrustedCowRouter() external view returns (address) {
         return _trustedCowRouter;
@@ -43,11 +41,34 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
         _setTrustedCowRouter(_cowPoolFactory.getTrustedCowRouter());
     }
 
-    function _setTrustedCowRouter(address trustedCowRouter) private {
-        _trustedCowRouter = trustedCowRouter;
+    /********************************************************
+                     Dynamic and Immutable Data
+    ********************************************************/
 
-        emit CowTrustedRouterRefreshed(_trustedCowRouter);
+    /// @inheritdoc ICowPool
+    function getCowPoolDynamicData() external view returns (CoWPoolDynamicData memory data) {
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
+        (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
+        data.totalSupply = totalSupply();
+        data.trustedCowRouter = _trustedCowRouter;
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
     }
+
+    /// @inheritdoc ICowPool
+    function getCowPoolImmutableData() external view returns (CoWPoolImmutableData memory data) {
+        data.tokens = _vault.getPoolTokens(address(this));
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.normalizedWeights = _getNormalizedWeights();
+    }
+
+    /********************************************************
+                              Hooks
+    ********************************************************/
 
     /// @inheritdoc IHooks
     function onRegister(
@@ -89,5 +110,15 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
         // operation is allowed from any router. However, the factory of this pool also disables unbalanced liquidity
         // operations.
         return kind != AddLiquidityKind.DONATION || router == _trustedCowRouter;
+    }
+
+    /********************************************************
+                        Private Helpers
+    ********************************************************/
+
+    function _setTrustedCowRouter(address trustedCowRouter) private {
+        _trustedCowRouter = trustedCowRouter;
+
+        emit CowTrustedRouterRefreshed(_trustedCowRouter);
     }
 }

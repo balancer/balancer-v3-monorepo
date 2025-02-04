@@ -156,12 +156,6 @@ describe('CoWPool', function () {
       .withArgs(await pool.getAddress());
   });
 
-  // it('returns immutable data', async () => {
-  //   const { sqrtAlpha, sqrtBeta } = await pool.getGyro2CLPPoolImmutableData();
-  //   expect(sqrtAlpha).to.be.eq(SQRT_ALPHA);
-  //   expect(sqrtBeta).to.be.eq(SQRT_BETA);
-  // });
-
   it('is registered in the factory', async () => {
     expect(await factory.getPoolCount()).to.be.eq(1);
     expect(await factory.getPools()).to.be.deep.eq([await pool.getAddress()]);
