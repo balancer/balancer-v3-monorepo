@@ -37,6 +37,8 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     uint256 internal projectIdx;
     uint256 internal reserveIdx;
 
+    uint256 private _saltCounter;
+
     LBPoolFactory internal lbPoolFactory;
 
     function onAfterDeployMainContracts() internal override {
@@ -67,8 +69,8 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
 
         // Approve dai and usdc for factory, so it can initialize the LBPool.
         vm.startPrank(bob);
-        dai.approve(address(lbPoolFactory), poolInitAmount);
-        usdc.approve(address(lbPoolFactory), poolInitAmount);
+        dai.approve(address(lbPoolFactory), 10 * poolInitAmount);
+        usdc.approve(address(lbPoolFactory), 10 * poolInitAmount);
         vm.stopPrank();
 
         return address(lbPoolFactory);
@@ -93,6 +95,27 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
         uint32 endTime,
         bool enableProjectTokenSwapsIn
     ) internal returns (address newPool, bytes memory poolArgs) {
+        return
+            _deployAndInitializeWithCustomWeights(
+                startWeights[projectIdx],
+                startWeights[reserveIdx],
+                endWeights[projectIdx],
+                endWeights[reserveIdx],
+                startTime,
+                endTime,
+                enableProjectTokenSwapsIn
+            );
+    }
+
+    function _deployAndInitializeWithCustomWeights(
+        uint256 projectTokenStartWeight,
+        uint256 reserveTokenStartWeight,
+        uint256 projectTokenEndWeight,
+        uint256 reserveTokenEndWeight,
+        uint32 startTime,
+        uint32 endTime,
+        bool enableProjectTokenSwapsIn
+    ) internal returns (address newPool, bytes memory poolArgs) {
         string memory name = "LBPool";
         string memory symbol = "LBP";
 
@@ -100,10 +123,10 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
             owner: bob,
             projectToken: projectToken,
             reserveToken: reserveToken,
-            projectTokenStartWeight: startWeights[projectIdx],
-            reserveTokenStartWeight: startWeights[reserveIdx],
-            projectTokenEndWeight: endWeights[projectIdx],
-            reserveTokenEndWeight: endWeights[reserveIdx],
+            projectTokenStartWeight: projectTokenStartWeight,
+            reserveTokenStartWeight: reserveTokenStartWeight,
+            projectTokenEndWeight: projectTokenEndWeight,
+            reserveTokenEndWeight: reserveTokenEndWeight,
             startTime: startTime,
             endTime: endTime,
             enableProjectTokenSwapsIn: enableProjectTokenSwapsIn
@@ -116,7 +139,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
             lbpParams,
             swapFee,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            ZERO_BYTES32
+            bytes32(_saltCounter++)
         );
 
         poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(lbPoolFactory), poolVersion);
