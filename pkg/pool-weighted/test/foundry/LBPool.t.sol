@@ -8,17 +8,16 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     LBPoolImmutableData,
     LBPoolDynamicData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
-import {
-    PoolConfig,
-    PoolRoleAccounts,
-    PoolSwapParams,
-    SwapKind
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -28,6 +27,7 @@ import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
 
 contract LBPoolTest is BaseLBPTest {
     using ArrayHelpers for *;
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
 
     /********************************************************
@@ -484,6 +484,180 @@ contract LBPoolTest is BaseLBPTest {
 
         // Verify amount calculated is non-zero
         assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
+    }
+
+    /*******************************************************************************
+                                      Pool Hooks
+    *******************************************************************************/
+
+    function testOnRegisterMoreThanTwoTokens() public {
+        // Create token config array with 3 tokens
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc), address(wsteth)].toMemoryArray().asIERC20()
+        );
+
+        // Mock vault call to onRegister
+        vm.prank(address(vault));
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
+        LBPool(pool).onRegister(
+            poolFactory,
+            pool,
+            tokenConfig,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            })
+        );
+    }
+
+    function testOnRegisterNonStandardToken() public {
+        // Create token config array with one STANDARD and one WITH_RATE token
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+
+        // Mock vault call to onRegister
+        vm.prank(address(vault));
+        vm.expectRevert(IVaultErrors.InvalidTokenConfiguration.selector);
+        LBPool(pool).onRegister(
+            poolFactory,
+            pool,
+            tokenConfig,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            })
+        );
+    }
+
+    function testOnRegisterWrongPool() public {
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        // Mock vault call to onRegister with wrong pool address
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onRegister(
+            poolFactory,
+            address(1), // Wrong pool address
+            tokenConfig,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            })
+        );
+
+        assertFalse(success, "onRegister should return false when pool address doesn't match");
+    }
+
+    function testOnRegisterWrongFactory() public {
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        // Mock vault call to onRegister with wrong pool address
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onRegister(
+            address(1), // Wrong factory address
+            pool,
+            tokenConfig,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            })
+        );
+
+        assertFalse(success, "onRegister should return false when factory address doesn't match");
+    }
+
+    function testOnRegisterSuccess() public {
+        // Create token config array with 2 standard tokens
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        // Mock vault call to onRegister with correct parameters
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onRegister(
+            poolFactory, // Correct factory address
+            pool, // Correct pool address
+            tokenConfig,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: false,
+                enableRemoveLiquidityCustom: false,
+                enableDonation: false
+            })
+        );
+
+        assertTrue(success, "onRegister should return true when parameters are valid");
+    }
+
+    function testGetHookFlags() public view {
+        HookFlags memory flags = LBPool(pool).getHookFlags();
+
+        // These should be true
+        assertTrue(flags.shouldCallBeforeInitialize, "shouldCallBeforeInitialize should be true");
+        assertTrue(flags.shouldCallBeforeAddLiquidity, "shouldCallBeforeAddLiquidity should be true");
+        assertTrue(flags.shouldCallBeforeRemoveLiquidity, "shouldCallBeforeRemoveLiquidity should be true");
+
+        // These should be false
+        assertFalse(flags.enableHookAdjustedAmounts, "enableHookAdjustedAmounts should be false");
+        assertFalse(flags.shouldCallAfterInitialize, "shouldCallAfterInitialize should be false");
+        assertFalse(flags.shouldCallComputeDynamicSwapFee, "shouldCallComputeDynamicSwapFee should be false");
+        assertFalse(flags.shouldCallBeforeSwap, "shouldCallBeforeSwap should be false");
+        assertFalse(flags.shouldCallAfterSwap, "shouldCallAfterSwap should be false");
+        assertFalse(flags.shouldCallAfterAddLiquidity, "shouldCallAfterAddLiquidity should be false");
+        assertFalse(flags.shouldCallAfterRemoveLiquidity, "shouldCallAfterRemoveLiquidity should be false");
+    }
+
+    function testOnBeforeInitializeAfterStartTime() public {
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        vm.prank(address(vault));
+        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
+        LBPool(pool).onBeforeInitialize(new uint256[](0), "");
+    }
+
+    function testOnBeforeInitializeWrongSender() public {
+        // Warp to before start time (initialization is allowed before start time)
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
+
+        vm.prank(address(vault));
+        // Mock router to return wrong factory address as sender
+        vm.mockCall(address(router), abi.encodeWithSelector(IRouterCommon.getSender.selector), abi.encode(address(1)));
+
+        assertFalse(
+            LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
+            "onBeforeInitialize should return false when sender is not factory"
+        );
+    }
+
+    function testOnBeforeInitialize() public {
+        // Warp to before start time (initialization is allowed before start time)
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
+
+        vm.prank(address(vault));
+        // Mock router to return wrong factory address as sender
+        vm.mockCall(
+            address(router),
+            abi.encodeWithSelector(IRouterCommon.getSender.selector),
+            abi.encode(address(poolFactory))
+        );
+
+        assertTrue(
+            LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
+            "onBeforeInitialize should return true with correct sender and before startTime"
+        );
     }
 
     function testAddingLiquidityNotAllowed() public {

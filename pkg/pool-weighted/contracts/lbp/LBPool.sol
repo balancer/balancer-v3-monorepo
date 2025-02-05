@@ -303,12 +303,13 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     /**
      * @notice Hook to be executed when the pool is registered.
      * @dev Returns true if registration was successful; false will revert with `HookRegistrationFailed`.
+     * @param factory Address of the factory registering the pool in the Vault
      * @param pool Address of the pool (must be this contract for LBPs: the pool is also the hook)
      * @param tokenConfig The token configuration of the pool being registered (e.g., type)
      * @return success True if the hook allowed the registration, false otherwise
      */
     function onRegister(
-        address,
+        address factory,
         address pool,
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata
@@ -322,7 +323,7 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
             revert IVaultErrors.InvalidTokenConfiguration();
         }
 
-        return pool == address(this);
+        return pool == address(this) && factory == _trustedFactory;
     }
 
     /**
