@@ -12,7 +12,12 @@ import {
     LBPoolImmutableData,
     LBPoolDynamicData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
-import { PoolConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    PoolConfig,
+    PoolRoleAccounts,
+    PoolSwapParams,
+    SwapKind
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -371,6 +376,114 @@ contract LBPoolTest is BaseLBPTest {
         assertEq(data.endWeights.length, endWeights.length, "End weights length mismatch");
         assertEq(data.endWeights[projectIdx], endWeights[projectIdx], "Project end weight mismatch");
         assertEq(data.endWeights[reserveIdx], endWeights[reserveIdx], "Reserve end weight mismatch");
+    }
+
+    /*******************************************************************************
+                                    Base Pool Hooks
+    *******************************************************************************/
+
+    function testOnSwapDisabled() public {
+        // Create swap request params
+        PoolSwapParams memory request = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: 1e18,
+            balancesScaled18: vault.getCurrentLiveBalances(pool),
+            indexIn: reserveIdx,
+            indexOut: projectIdx,
+            router: address(router),
+            userData: bytes("")
+        });
+
+        // Before start time, swaps should be disabled
+        vm.expectRevert(LBPool.SwapsDisabled.selector);
+        vm.prank(address(vault));
+        LBPool(pool).onSwap(request);
+
+        // Warp to after end time
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        // After end time, swaps should also be disabled
+        vm.expectRevert(LBPool.SwapsDisabled.selector);
+        vm.prank(address(vault));
+        LBPool(pool).onSwap(request);
+    }
+
+    function testOnSwapProjectTokenInNotAllowed() public {
+        // Warp to when swaps are enabled
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        // Create swap request params - trying to swap project token for reserve token
+        PoolSwapParams memory request = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: 1e18,
+            balancesScaled18: vault.getCurrentLiveBalances(pool),
+            indexIn: projectIdx, // Project token as input
+            indexOut: reserveIdx, // Reserve token as output
+            router: address(router),
+            userData: bytes("")
+        });
+
+        // Should revert when trying to swap project token in
+        vm.expectRevert(LBPool.SwapOfProjectTokenIn.selector);
+        vm.prank(address(vault));
+        LBPool(pool).onSwap(request);
+    }
+
+    function testOnSwapProjectTokenInAllowed() public {
+        // Deploy a new pool with project token swaps enabled
+        (address newPool, ) = _deployAndInitializeWithCustomWeights(
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            true // Enable project token swaps in
+        );
+
+        // Warp to when swaps are enabled
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        // Create swap request params - swapping project token for reserve token
+        PoolSwapParams memory request = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: 1e18,
+            balancesScaled18: vault.getCurrentLiveBalances(newPool),
+            indexIn: projectIdx,
+            indexOut: reserveIdx,
+            router: address(router),
+            userData: bytes("")
+        });
+
+        // Mock vault call to onSwap
+        vm.prank(address(vault));
+        uint256 amountCalculated = LBPool(newPool).onSwap(request);
+
+        // Verify amount calculated is non-zero
+        assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
+    }
+
+    function testOnSwap() public {
+        // Warp to when swaps are enabled
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        // Create swap request params - swapping reserve token for project token
+        PoolSwapParams memory request = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: 1e18,
+            balancesScaled18: vault.getCurrentLiveBalances(pool),
+            indexIn: reserveIdx,
+            indexOut: projectIdx,
+            router: address(router),
+            userData: bytes("")
+        });
+
+        // Mock vault call to onSwap
+        vm.prank(address(vault));
+        uint256 amountCalculated = LBPool(pool).onSwap(request);
+
+        // Verify amount calculated is non-zero
+        assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
     }
 
     function testAddingLiquidityNotAllowed() public {
