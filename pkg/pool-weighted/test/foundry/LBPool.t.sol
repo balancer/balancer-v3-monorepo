@@ -4,10 +4,15 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    LBPoolImmutableData,
+    LBPoolDynamicData
+} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { PoolConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -207,6 +212,165 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.warp(endTime + 1);
         assertFalse(LBPool(pool).isSwapEnabled(), "Swap should be disabled after end time");
+    }
+
+    function testIsProjectTokenSwapInEnabled() public {
+        (address newPoolSwapDisabled, ) = _deployAndInitializeWithCustomWeights(
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            false
+        );
+
+        assertFalse(LBPool(newPoolSwapDisabled).isProjectTokenSwapInEnabled(), "Swap of Project Token in is enabled");
+
+        (address newPoolSwapEnabled, ) = _deployAndInitializeWithCustomWeights(
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            uint32(block.timestamp + DEFAULT_START_OFFSET),
+            uint32(block.timestamp + DEFAULT_END_OFFSET),
+            true
+        );
+
+        assertTrue(LBPool(newPoolSwapEnabled).isProjectTokenSwapInEnabled(), "Swap of Project Token in is disabled");
+    }
+
+    function testGetWeightedPoolDynamicData() public {
+        // This function is not implemented, since the weights are not immutable. So, it should revert.
+        vm.expectRevert(LBPool.NotImplemented.selector);
+        LBPool(pool).getWeightedPoolDynamicData();
+    }
+
+    function testGetWeightedPoolImmutableData() public {
+        // This function is not implemented, since the weights are not immutable. So, it should revert.
+        vm.expectRevert(LBPool.NotImplemented.selector);
+        LBPool(pool).getWeightedPoolImmutableData();
+    }
+
+    function testGetLBPoolDynamicData() public view {
+        LBPoolDynamicData memory data = LBPool(pool).getLBPoolDynamicData();
+
+        uint256[] memory balancesLiveScaled18 = vault.getCurrentLiveBalances(pool);
+        assertEq(data.balancesLiveScaled18.length, balancesLiveScaled18.length, "balancesLiveScaled18 length mismatch");
+        assertEq(
+            data.balancesLiveScaled18[projectIdx],
+            balancesLiveScaled18[projectIdx],
+            "Project token's balancesLiveScaled18 mismatch"
+        );
+        assertEq(
+            data.balancesLiveScaled18[reserveIdx],
+            balancesLiveScaled18[reserveIdx],
+            "Reserve token's balancesLiveScaled18 mismatch"
+        );
+
+        assertEq(
+            data.staticSwapFeePercentage,
+            vault.getStaticSwapFeePercentage(pool),
+            "staticSwapFeePercentage mismatch"
+        );
+        assertEq(data.totalSupply, LBPool(pool).totalSupply(), "TotalSupply mismatch");
+
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        assertEq(data.isPoolInitialized, poolConfig.isPoolInitialized, "isPoolInitialized mismatch");
+        assertEq(data.isPoolPaused, poolConfig.isPoolPaused, "isPoolInitialized mismatch");
+        assertEq(data.isPoolInRecoveryMode, poolConfig.isPoolInRecoveryMode, "isPoolInitialized mismatch");
+
+        assertEq(data.isSwapEnabled, LBPool(pool).isSwapEnabled(), "isSwapEnabled mismatch");
+
+        assertEq(data.normalizedWeights.length, startWeights.length, "normalizedWeights length mismatch");
+        assertEq(data.normalizedWeights[projectIdx], startWeights[projectIdx], "project weight mismatch");
+        assertEq(data.normalizedWeights[reserveIdx], startWeights[reserveIdx], "reserve weight mismatch");
+    }
+
+    function testGetLBPoolDynamicDataWeightInterpolation() public {
+        // Check initial weights
+        LBPoolDynamicData memory initialData = LBPool(pool).getLBPoolDynamicData();
+        assertEq(
+            initialData.normalizedWeights[projectIdx],
+            startWeights[projectIdx],
+            "Initial project weight mismatch"
+        );
+        assertEq(
+            initialData.normalizedWeights[reserveIdx],
+            startWeights[reserveIdx],
+            "Initial reserve weight mismatch"
+        );
+
+        // Warp to middle of weight update period
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 50);
+
+        // Check interpolated weights
+        LBPoolDynamicData memory midData = LBPool(pool).getLBPoolDynamicData();
+
+        // Calculate expected weights (average between start and end weights)
+        uint256 expectedProjectWeight = (startWeights[projectIdx] + endWeights[projectIdx]) / 2;
+        uint256 expectedReserveWeight = (startWeights[reserveIdx] + endWeights[reserveIdx]) / 2;
+
+        // Allow for small rounding differences
+        assertEq(midData.normalizedWeights[projectIdx], expectedProjectWeight, "Interpolated project weight mismatch");
+        assertEq(midData.normalizedWeights[reserveIdx], expectedReserveWeight, "Interpolated reserve weight mismatch");
+
+        // Warp to end of weight update period
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET);
+
+        // Check final weights
+        LBPoolDynamicData memory finalData = LBPool(pool).getLBPoolDynamicData();
+        assertEq(finalData.normalizedWeights[projectIdx], endWeights[projectIdx], "Final project weight mismatch");
+        assertEq(finalData.normalizedWeights[reserveIdx], endWeights[reserveIdx], "Final reserve weight mismatch");
+    }
+
+    function testGetLBPoolImmutableData() public view {
+        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+
+        // Check tokens array matches pool tokens
+        IERC20[] memory poolTokens = vault.getPoolTokens(pool);
+        assertEq(data.tokens.length, poolTokens.length, "tokens length mismatch");
+        assertEq(address(data.tokens[projectIdx]), address(poolTokens[projectIdx]), "Project token mismatch");
+        assertEq(address(data.tokens[reserveIdx]), address(poolTokens[reserveIdx]), "Reserve token mismatch");
+
+        // Check decimal scaling factors
+        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
+        assertEq(
+            data.decimalScalingFactors.length,
+            decimalScalingFactors.length,
+            "decimalScalingFactors length mismatch"
+        );
+        assertEq(
+            data.decimalScalingFactors[projectIdx],
+            decimalScalingFactors[projectIdx],
+            "Project scaling factor mismatch"
+        );
+        assertEq(
+            data.decimalScalingFactors[reserveIdx],
+            decimalScalingFactors[reserveIdx],
+            "Reserve scaling factor mismatch"
+        );
+
+        // Check project token swap in setting
+        assertEq(
+            data.isProjectTokenSwapInEnabled,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN,
+            "Project token swap in setting mismatch"
+        );
+
+        // Check start and end times
+        assertEq(data.startTime, block.timestamp + DEFAULT_START_OFFSET, "Start time mismatch");
+        assertEq(data.endTime, block.timestamp + DEFAULT_END_OFFSET, "End time mismatch");
+
+        // Check start weights
+        assertEq(data.startWeights.length, startWeights.length, "Start weights length mismatch");
+        assertEq(data.startWeights[projectIdx], startWeights[projectIdx], "Project start weight mismatch");
+        assertEq(data.startWeights[reserveIdx], startWeights[reserveIdx], "Reserve start weight mismatch");
+
+        // Check end weights
+        assertEq(data.endWeights.length, endWeights.length, "End weights length mismatch");
+        assertEq(data.endWeights[projectIdx], endWeights[projectIdx], "Project end weight mismatch");
+        assertEq(data.endWeights[reserveIdx], endWeights[reserveIdx], "Reserve end weight mismatch");
     }
 
     function testAddingLiquidityNotAllowed() public {
