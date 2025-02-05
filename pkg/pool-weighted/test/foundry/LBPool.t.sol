@@ -634,7 +634,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.prank(address(vault));
         // Mock router to return wrong factory address as sender
-        vm.mockCall(address(router), abi.encodeWithSelector(IRouterCommon.getSender.selector), abi.encode(address(1)));
+        _mockGetSender(address(1));
 
         assertFalse(
             LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
@@ -648,16 +648,60 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.prank(address(vault));
         // Mock router to return wrong factory address as sender
-        vm.mockCall(
-            address(router),
-            abi.encodeWithSelector(IRouterCommon.getSender.selector),
-            abi.encode(address(poolFactory))
-        );
+        _mockGetSender(address(poolFactory));
 
         assertTrue(
             LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
             "onBeforeInitialize should return true with correct sender and before startTime"
         );
+    }
+
+    function testOnBeforeAddLiquidity() public {
+        // Add liquidity should always revert, no matter the input parameters.
+        vm.prank(address(vault));
+        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
+        LBPool(pool).onBeforeAddLiquidity(
+            address(0),
+            address(0),
+            AddLiquidityKind.PROPORTIONAL,
+            new uint256[](0),
+            0,
+            new uint256[](0),
+            bytes("")
+        );
+    }
+
+    function testOnBeforeRemoveLiquidityBeforeEndTime() public {
+        // Try to remove liquidity before end time.
+        vm.prank(address(vault));
+        vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
+        LBPool(pool).onBeforeRemoveLiquidity(
+            address(0),
+            address(0),
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+    }
+
+    function testOnBeforeRemoveLiquidityAfterEndTime() public {
+        // Warp to after end time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(0),
+            address(0),
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
     }
 
     function testAddingLiquidityNotAllowed() public {
@@ -670,5 +714,13 @@ contract LBPoolTest is BaseLBPTest {
         // Try to donate to the pool.
         vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
         router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
+    }
+
+    /*******************************************************************************
+                                   Private Helpers
+    *******************************************************************************/
+
+    function _mockGetSender(address sender) private {
+        vm.mockCall(address(router), abi.encodeWithSelector(IRouterCommon.getSender.selector), abi.encode(sender));
     }
 }
