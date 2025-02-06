@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -36,7 +35,6 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     string private _poolVersion;
 
     address internal immutable _trustedRouter;
-    IPermit2 internal immutable _permit2;
 
     /// @notice The zero address was given for the trusted router.
     error InvalidTrustedRouter();
@@ -46,8 +44,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address trustedRouter,
-        IPermit2 permit2
+        address trustedRouter
     ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
         if (trustedRouter == address(0)) {
             revert InvalidTrustedRouter();
@@ -58,9 +55,6 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         _trustedRouter = trustedRouter;
 
         _poolVersion = poolVersion;
-
-        // Allow one-step creation and initialization.
-        _permit2 = permit2;
     }
 
     /// @inheritdoc IPoolVersion
@@ -71,11 +65,6 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     /// @notice Returns trusted router, which is the gateway to add liquidity to the pool.
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
-    }
-
-    /// @notice Returns permit2 address, used to initialize pools.
-    function getPermit2() external view returns (IPermit2) {
-        return _permit2;
     }
 
     /**

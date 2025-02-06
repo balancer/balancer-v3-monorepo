@@ -63,8 +63,7 @@ contract LBPoolFactoryTest is BaseVaultTest {
             365 days,
             factoryVersion,
             poolVersion,
-            address(router),
-            permit2
+            address(router)
         );
         vm.label(address(lbPoolFactory), "LB pool factory");
     }
