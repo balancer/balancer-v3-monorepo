@@ -193,9 +193,9 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         vm.prank(admin);
         stableSurgeHook.setMaxSurgeFeePercentage(pool, smallMaxSurgeFee);
 
-        // Set a larger static fee.
-        uint256 largerStaticFee = 2e16; // 2%
-        vault.manuallySetSwapFee(pool, largerStaticFee);
+        // Set a larger static fee percentage.
+        uint256 staticFeePercentage = 2e16; // 2%
+        vault.manuallySetSwapFee(pool, staticFeePercentage);
 
         // Create an unbalanced state to trigger surge pricing
         uint256[] memory balances = new uint256[](2);
@@ -216,8 +216,8 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
         // Even though we're in a surging state, we should get back the static fee since it's larger than the max
         // surge fee.
-        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(params, pool, largerStaticFee);
-        assertEq(surgeFeePercentage, largerStaticFee, "Should return static fee when max surge is smaller");
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(params, pool, staticFeePercentage);
+        assertEq(surgeFeePercentage, staticFeePercentage, "Should return static fee percentage");
     }
 
     function testGetSurgeFeePercentage__Fuzz(
