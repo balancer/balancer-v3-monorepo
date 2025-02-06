@@ -349,7 +349,11 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         return IRouterCommon(_trustedRouter).getSender() == owner();
     }
 
-    /// @notice Allow the owner to add liquidity before the start of the sale.
+    /**
+     * @notice Allow the owner to add liquidity before the start of the sale.
+     * @param router The router used for the operation
+     * @return success True (allowing the operation to proceed) if the owner is calling through the trusted router
+     */
     function onBeforeAddLiquidity(
         address router,
         address,

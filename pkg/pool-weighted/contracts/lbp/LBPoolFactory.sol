@@ -19,8 +19,8 @@ import { LBPool } from "./LBPool.sol";
 
 /**
  * @notice LBPool Factory.
- * @dev This is a factory specific to LBPools, allowing only 2 tokens, requiring creation, initialization, and funding
- * in a single operation, and restricting the LBP to a single token sale, with parameters specified on deployment.
+ * @dev This is a factory specific to LBPools, allowing only 2 tokens and restricting the LBP to a single token sale,
+ * with parameters specified on deployment.
  */
 contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactory, Version {
     // LBPs are constrained to two tokens: project (the token being sold), and reserve (e.g., USDC or WETH).
@@ -45,7 +45,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         }
 
         // LBPools are deployed with a router known to reliably report the originating address on operations.
-        // This is used to ensure that only the trusted factory can add liquidity to an LBP on initialization.
+        // This is used to ensure that only the owner can add liquidity to an LBP.
         _trustedRouter = trustedRouter;
 
         _poolVersion = poolVersion;
