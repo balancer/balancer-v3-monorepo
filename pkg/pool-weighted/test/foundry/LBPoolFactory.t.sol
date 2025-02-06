@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -66,25 +67,10 @@ contract LBPoolFactoryTest is BaseVaultTest {
             permit2
         );
         vm.label(address(lbPoolFactory), "LB pool factory");
-
-        vm.startPrank(bob);
-        dai.approve(address(lbPoolFactory), poolInitAmount);
-        usdc.approve(address(lbPoolFactory), poolInitAmount);
-        vm.stopPrank();
     }
 
     function testGetTrustedRouter() public view {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
-    }
-
-    function testGetTrustedFactory() public {
-        address lbPool = _deployAndInitializeLBPool(
-            uint32(block.timestamp + 100),
-            uint32(block.timestamp + 200),
-            false
-        );
-
-        assertEq(LBPool(lbPool).getTrustedFactory(), address(lbPoolFactory), "Wrong trusted factory");
     }
 
     function testFactoryPausedState() public view {
@@ -108,24 +94,6 @@ contract LBPoolFactoryTest is BaseVaultTest {
         assert(keccak256(abi.encodePacked(lbPoolFactory.getPoolVersion())) == keccak256(abi.encodePacked(poolVersion)));
     }
 
-    function testAddingLiquidityNotAllowed() public {
-        address lbPool = _deployAndInitializeLBPool(
-            uint32(block.timestamp + 100),
-            uint32(block.timestamp + 200),
-            false
-        );
-
-        // Try to add liquidity to the pool
-        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
-        router.addLiquidityProportional(
-            lbPool,
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            1e18,
-            false,
-            bytes("")
-        );
-    }
-
     function testDonationNotAllowed() public {
         address lbPool = _deployAndInitializeLBPool(
             uint32(block.timestamp + 100),
@@ -134,7 +102,7 @@ contract LBPoolFactoryTest is BaseVaultTest {
         );
 
         // Try to donate to the pool
-        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
         router.donate(lbPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
     }
 
@@ -185,14 +153,17 @@ contract LBPoolFactoryTest is BaseVaultTest {
             enableProjectTokenSwapsIn: enableProjectTokenSwapsIn
         });
 
-        vm.prank(bob);
-        newPool = lbPoolFactory.createAndInitialize(
-            "LB Pool",
-            "LBP",
-            lbpParams,
-            swapFee,
+        vm.startPrank(bob);
+        newPool = lbPoolFactory.create("LB Pool", "LBP", lbpParams, swapFee, ZERO_BYTES32);
+
+        router.initialize(
+            newPool,
+            vault.getPoolTokens(newPool),
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            ZERO_BYTES32
+            0,
+            false,
+            bytes("")
         );
+        vm.stopPrank();
     }
 }

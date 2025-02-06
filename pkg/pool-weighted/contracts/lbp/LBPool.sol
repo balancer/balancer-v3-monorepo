@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.24;
 
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -34,7 +36,7 @@ import { WeightedPool } from "../WeightedPool.sol";
  * which will not be used later), and it is tremendously helpful for pool validation and any potential future
  * base contract changes.
  */
-contract LBPool is ILBPool, WeightedPool, BaseHooks {
+contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     // The sale parameters are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
@@ -42,11 +44,7 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
     uint256 private constant _TWO_TOKENS = 2;
 
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true sender.
-    // Since creation and initialization/funding are done in a single call to `createAndInitialize`, they also store
-    // the standard factory (passed on create), and only accept initialization from this address.
-
     address private immutable _trustedRouter;
-    address private immutable _trustedFactory;
 
     // The project token is the one being launched; the reserve token is the token used to buy them (usually
     // a stablecoin or WETH).
@@ -81,23 +79,31 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
         uint256[] endWeights
     );
 
-    /// @dev Indicates that the router that called the Vault is not trusted, so liquidity operations should revert.
+    /// @notice Indicates that the router that called the Vault is not trusted, so liquidity operations should revert.
     error RouterNotTrusted();
 
-    /// @dev Swaps are disabled except during the sale (i.e., between and start and end times).
+    /// @notice Swaps are disabled except during the sale (i.e., between and start and end times).
     error SwapsDisabled();
 
-    /// @dev Removing liquidity is not allowed before the end of the sale.
+    /// @notice Removing liquidity is not allowed before the end of the sale.
     error RemovingLiquidityNotAllowed();
 
-    /// @dev The pool does not allow adding liquidity except during initialization.
+    /// @notice The pool does not allow adding liquidity except during initialization.
     error AddingLiquidityNotAllowed();
 
-    /// @dev THe LBP configuration prohibits selling the project token back into the pool.
+    /// @notice THe LBP configuration prohibits selling the project token back into the pool.
     error SwapOfProjectTokenIn();
 
-    /// @dev LBPs are WeightedPools by inheritance, but WeightedPool immutable/dynamic getters are wrong for LBPs.
+    /// @notice LBPs are WeightedPools by inheritance, but WeightedPool immutable/dynamic getters are wrong for LBPs.
     error NotImplemented();
+
+    /// @notice Only allow adding liquidity (including initialization) before the sale.
+    modifier onlyBeforeSale() {
+        if (block.timestamp >= _startTime) {
+            revert AddingLiquidityNotAllowed();
+        }
+        _;
+    }
 
     constructor(
         string memory name,
@@ -105,9 +111,8 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
         LBPParams memory lbpParams,
         IVault vault,
         address trustedRouter,
-        address trustedFactory,
         string memory version
-    ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) {
+    ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) Ownable(lbpParams.owner) {
         // WeightedPool has already validated the starting weights; we still need to validate the ending weights.
         if (lbpParams.projectTokenEndWeight < _MIN_WEIGHT || lbpParams.reserveTokenEndWeight < _MIN_WEIGHT) {
             revert IWeightedPool.MinWeight();
@@ -119,9 +124,6 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
 
         // Set the trusted router (passed down from the factory), and the rest of the immutable variables.
         _trustedRouter = trustedRouter;
-
-        // Allow initialization from this factory, as part of `createAndInitialize`.
-        _trustedFactory = trustedFactory;
 
         _projectToken = lbpParams.projectToken;
         _reserveToken = lbpParams.reserveToken;
@@ -160,14 +162,6 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
      */
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
-    }
-
-    /**
-     * @notice Returns the trusted factory that deployed the pool, allowed to initialize it with seed funds.
-     * @return trustedFactory Address of the trusted factory
-     */
-    function getTrustedFactory() external view returns (address) {
-        return _trustedFactory;
     }
 
     /**
@@ -331,47 +325,41 @@ contract LBPool is ILBPool, WeightedPool, BaseHooks {
      * @return hookFlags Flags indicating which hooks are supported for LBPs
      */
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
-        // Required to ensure only the factory can initialize and seed the pool, which must be done before the start.
+        // Required to enforce single-LP liquidity provision, and ensure all funding occurs before the sale.
         hookFlags.shouldCallBeforeInitialize = true;
-        // Required to block adding liquidity after initialization.
         hookFlags.shouldCallBeforeAddLiquidity = true;
+
         // Required to enforce the liquidity can only be withdrawn after the end of the sale.
         hookFlags.shouldCallBeforeRemoveLiquidity = true;
     }
 
     /**
-     * @notice Block initialization if the sender is not the trusted factory, or the sale has already started.
-     * @dev To match the UI flow, and prevent any possible front-running, deployment and initialization are done
-     * together in the factory's `createAndInitialize`. Since the factory is calling `initialize`, that will be
-     * the ultimate sender. The `LBPoolFactory` sends its own address when deploying the pool, so all an external
-     * user needs to check is that the pool was deployed by the canonical factory (e.g., using the Balancer
-     * contract registry).
+     * @notice Block initialization if the sale has already started.
+     * @dev Take care to set the start time far enough in advance to allow for funding; otherwise the pool will remain
+     * unfunded and need to be redeployed. Note that initialization does not pass the router address, so we cannot
+     * directly check that here, though there has to be a call on the trusted router for its `getSender` to be
+     * non-zero.
      *
-     * Take care to set the start time far enough in advance to allow for funding; otherwise the pool will remain
-     * unfunded and need to be redeployed.
-     *
-     * @return success If true, the sender matches (so the Vault will allow the initialization to proceed)
+     * @return success Always true: allow the initialization to proceed if the time condition has been met
      */
-    function onBeforeInitialize(uint256[] memory, bytes memory) public view override onlyVault returns (bool) {
-        // Only allow initialization up to the start time.
-        if (block.timestamp >= _startTime) {
-            revert AddingLiquidityNotAllowed();
-        }
-
-        return IRouterCommon(_trustedRouter).getSender() == _trustedFactory;
+    function onBeforeInitialize(
+        uint256[] memory,
+        bytes memory
+    ) public view override onlyVault onlyBeforeSale returns (bool) {
+        return IRouterCommon(_trustedRouter).getSender() == owner();
     }
 
-    /// @notice Revert unconditionally; we require all liquidity to be added on initialization.
+    /// @notice Allow the owner to add liquidity before the start of the sale.
     function onBeforeAddLiquidity(
-        address,
+        address router,
         address,
         AddLiquidityKind,
         uint256[] memory,
         uint256,
         uint256[] memory,
         bytes memory
-    ) public view override onlyVault returns (bool) {
-        revert AddingLiquidityNotAllowed();
+    ) public view override onlyVault onlyBeforeSale returns (bool) {
+        return router == _trustedRouter && IRouterCommon(router).getSender() == owner();
     }
 
     /**

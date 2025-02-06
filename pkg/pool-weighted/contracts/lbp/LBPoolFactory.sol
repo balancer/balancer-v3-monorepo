@@ -79,38 +79,28 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     }
 
     /**
-     * @notice Deploys a new `LBPool` and seeds it with initial liquidity in the same transaction.
-     * @dev Tokens must be sorted for pool registration. This method prevents pool initialization frontrunning. If the
-     * deployer is the only address with liquidity of one of the tokens, this should not be necessary, but is done out
-     * of an abundance of caution, and to keep things simple for the front end and aggregators.
-     *
-     * This method does not support native ETH management; WETH needs to be used instead.
-     *
+     * @notice Deploys a new `LBPool`.
+     * @dev This method does not support native ETH management; WETH needs to be used instead.
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param lbpParams The LBP configuration (see ILBPool for the struct definition)
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
-     * @param exactAmountsIn Token amounts in, sorted in token registration order
      * @param salt The salt value that will be passed to create3 deployment
      */
-    function createAndInitialize(
+    function create(
         string memory name,
         string memory symbol,
         LBPParams memory lbpParams,
         uint256 swapFeePercentage,
-        uint256[] memory exactAmountsIn,
         bytes32 salt
     ) external nonReentrant returns (address pool) {
         PoolRoleAccounts memory roleAccounts;
 
-        // This is the only effect of specifying the owner. This account can change the static swap fee for the pool.
+        // This account can change the static swap fee for the pool.
         // If the owner is the zero address, the swap fee will be fixed at the initial value.
         roleAccounts.swapFeeManager = lbpParams.owner;
 
-        pool = _create(
-            abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, address(this), _poolVersion),
-            salt
-        );
+        pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
 
         _registerPoolWithVault(
             pool,
@@ -121,28 +111,6 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             pool, // register the pool itself as the hook contract
             getDefaultLiquidityManagement()
         );
-
-        (uint256 projectTokenIndex, uint256 reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken
-            ? (0, 1)
-            : (1, 0);
-
-        IERC20[] memory tokens = new IERC20[](_TWO_TOKENS);
-        tokens[projectTokenIndex] = lbpParams.projectToken;
-        tokens[reserveTokenIndex] = lbpParams.reserveToken;
-
-        // Pull initial funds from the user, and approve them for transfer into the Vault.
-        _prepareTokenInitialization(lbpParams.projectToken, exactAmountsIn[projectTokenIndex]);
-        _prepareTokenInitialization(lbpParams.reserveToken, exactAmountsIn[reserveTokenIndex]);
-
-        // Initialize using the trusted router (which records this contract as the sender).
-        // The LBP ensures that only this contract may call initialize.
-        IRouter(_trustedRouter).initialize(pool, tokens, exactAmountsIn, 0, false, "");
-    }
-
-    function _prepareTokenInitialization(IERC20 token, uint256 exactAmountIn) private {
-        token.safeTransferFrom(msg.sender, address(this), exactAmountIn);
-        token.forceApprove(address(_permit2), exactAmountIn);
-        _permit2.approve(address(token), address(_trustedRouter), exactAmountIn.toUint160(), type(uint48).max);
     }
 
     function _buildTokenConfig(
