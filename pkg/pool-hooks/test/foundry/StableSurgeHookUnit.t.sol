@@ -197,11 +197,12 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         uint256 staticFeePercentage = 2e16; // 2%
         vault.manuallySetSwapFee(pool, staticFeePercentage);
 
-        // Create an unbalanced state to trigger surge pricing
+        // Create an unbalanced state to mock an imbalance in the pool. This would normally trigger surge pricing and
+        // revert due to a math underflow, but the surge logic is currently blocked because maxSurgeFeePercentage <
+        // staticFeePercentage.
         uint256[] memory balances = new uint256[](2);
         balances[0] = poolInitAmount / 10;
         balances[1] = poolInitAmount;
-        vault.manualSetPoolBalances(pool, balances, balances);
 
         // Create swap params that would normally trigger surge pricing.
         PoolSwapParams memory params = PoolSwapParams({
