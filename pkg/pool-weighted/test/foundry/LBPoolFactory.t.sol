@@ -93,6 +93,22 @@ contract LBPoolFactoryTest is BaseVaultTest {
         assert(keccak256(abi.encodePacked(lbPoolFactory.getPoolVersion())) == keccak256(abi.encodePacked(poolVersion)));
     }
 
+    function testAddLiquidityPermission() public {
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        // Try to add to the pool without permission.
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
+        router.addLiquidityProportional(lbPool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
+
+        // The owner is allowed to add.
+        vm.prank(bob);
+        router.addLiquidityProportional(lbPool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
+    }
+
     function testDonationNotAllowed() public {
         address lbPool = _deployAndInitializeLBPool(
             uint32(block.timestamp + 100),
