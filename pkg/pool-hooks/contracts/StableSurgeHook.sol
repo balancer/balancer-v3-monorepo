@@ -328,6 +328,13 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         uint256[] memory newBalances
     ) internal view returns (uint256 surgeFeePercentage) {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
+
+        // If the max surge fee percentage is less than the static fee percentage, return the static fee percentage.
+        // No matter where the imbalance is, the fee can never be smaller than the static fee.
+        if (surgeFeeData.maxSurgeFeePercentage < staticFeePercentage) {
+            return staticFeePercentage;
+        }
+
         uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(newBalances);
 
         bool isSurging = _isSurging(surgeFeeData, params.balancesScaled18, newTotalImbalance);
