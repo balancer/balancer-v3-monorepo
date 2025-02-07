@@ -410,8 +410,8 @@ contract ProtocolFeeController is
         });
 
         // Allow tracking pool fee percentages in all cases (e.g., when the pool is protocol-fee exempt).
-        emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage);
-        emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
+        emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
+        emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
     }
 
     /// @inheritdoc IProtocolFeeController

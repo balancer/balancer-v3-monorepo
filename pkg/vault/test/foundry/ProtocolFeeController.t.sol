@@ -1275,10 +1275,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
 
         vm.expectEmit();
-        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, 0);
+        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, 0, true);
 
         vm.expectEmit();
-        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, 0);
+        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, 0, true);
 
         PoolFactoryMock(poolFactory).registerGeneralTestPool(
             pool,
@@ -1315,10 +1315,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
 
         vm.expectEmit();
-        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, MAX_PROTOCOL_SWAP_FEE_PCT);
+        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, MAX_PROTOCOL_SWAP_FEE_PCT, false);
 
         vm.expectEmit();
-        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT);
+        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT, false);
 
         PoolFactoryMock(poolFactory).registerTestPool(pool, tokenConfig);
     }
