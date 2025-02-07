@@ -10,23 +10,14 @@ import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ONES_BYTES32 } from '@balancer-la
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
-import { ILBPool, LBPool, LBPoolFactory } from '../typechain-types';
+import { LBPool, LBPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
-import {
-  MONTH,
-  MINUTE,
-  currentTimestamp,
-  advanceToTimestamp,
-  DAY,
-  setNextBlockTimestamp,
-} from '@balancer-labs/v3-helpers/src/time';
+import { MONTH, MINUTE, currentTimestamp, advanceToTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { PoolConfigStructOutput } from '@balancer-labs/v3-solidity-utils/typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
-import { TokenConfigStruct } from '../typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
 
 describe('LBPool', function () {
@@ -72,7 +63,7 @@ describe('LBPool', function () {
     reserveTokenEndWeight: bigint,
     startTime: bigint,
     endTime: bigint,
-    enableProjectTokenSwapsIn: boolean
+    blockProjectTokenSwapsIn: boolean
   ): Promise<LBPool> {
     const tx = await deployPoolTx(
       projectTokenStartWeight,
@@ -81,7 +72,7 @@ describe('LBPool', function () {
       reserveTokenEndWeight,
       startTime,
       endTime,
-      enableProjectTokenSwapsIn
+      blockProjectTokenSwapsIn
     );
 
     const receipt = await tx.wait();
@@ -97,11 +88,11 @@ describe('LBPool', function () {
     reserveTokenEndWeight: bigint,
     startTime: bigint,
     endTime: bigint,
-    enableProjectTokenSwapsIn: boolean
+    blockProjectTokenSwapsIn: boolean
   ): Promise<ContractTransactionResponse> {
     const tokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
-    const lbpParams: ILBPool.LBPParamsStruct = {
+    const lbpParams = {
       owner: admin.address,
       projectToken: tokens[0],
       reserveToken: tokens[1],
@@ -111,7 +102,7 @@ describe('LBPool', function () {
       reserveTokenEndWeight,
       startTime,
       endTime,
-      enableProjectTokenSwapsIn,
+      blockProjectTokenSwapsIn,
     };
 
     return factory.create('LBPool', 'Test', lbpParams, SWAP_FEE, ONES_BYTES32);
@@ -155,7 +146,7 @@ describe('LBPool', function () {
       WEIGHTS[0],
       globalPoolStartTime,
       globalPoolEndTime,
-      true
+      false
     );
 
     for (const user of [alice, bob, admin]) {
@@ -240,7 +231,7 @@ describe('LBPool', function () {
         const endTime = startTime + bn(bn(MONTH));
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const tx = await deployPoolTx(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, true);
+        const tx = await deployPoolTx(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
@@ -273,7 +264,7 @@ describe('LBPool', function () {
         const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const pool = await deployPool(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, true);
+        const pool = await deployPool(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
 
         // Check weights at start
         expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
@@ -295,26 +286,26 @@ describe('LBPool', function () {
 
         // Try to set start weight below 1%
         await expect(
-          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, true)
+          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Try to set start weight above 99%
         await expect(
-          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, true)
+          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Try to set end weight below 1%
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, true)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false)
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Try to set end weight above 99%
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, true)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false)
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Valid weight update
-        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, true)).to.not.be
+        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)).to.not.be
           .reverted;
       });
 
@@ -324,11 +315,11 @@ describe('LBPool', function () {
 
         // Try to set endTime before startTime
         await expect(
-          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, true)
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)
         ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
 
         // Valid time update
-        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), true))
+        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false))
           .to.not.be.reverted;
       });
 
@@ -378,7 +369,7 @@ describe('LBPool', function () {
         const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const pool = await deployPool(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, true);
+        const pool = await deployPool(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
         const actualStartTime = await currentTimestamp();
 
         const params = await pool.getGradualWeightUpdateParams();
