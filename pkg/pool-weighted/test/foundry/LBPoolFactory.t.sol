@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
@@ -45,17 +46,13 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
-    function testGetPermit2() public view {
-        assertEq(address(lbPoolFactory.getPermit2()), address(permit2), "Wrong Permit2");
-    }
-
     function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = lbPoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
     }
 
     function testCreatePool() public {
-        address lbPool = _deployAndInitializeLBPool(
+        (address lbPool, ) = _deployAndInitializeLBPool(
             uint32(block.timestamp + 100),
             uint32(block.timestamp + 200),
             false
@@ -66,12 +63,8 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertTrue(vault.isPoolInitialized(lbPool), "Pool not initialized");
     }
 
-    function testGetPoolVersion() public view {
-        assert(keccak256(abi.encodePacked(lbPoolFactory.getPoolVersion())) == keccak256(abi.encodePacked(poolVersion)));
-    }
-
     function testAddLiquidityPermission() public {
-        address lbPool = _deployAndInitializeLBPool(
+        (address lbPool, ) = _deployAndInitializeLBPool(
             uint32(block.timestamp + 100),
             uint32(block.timestamp + 200),
             false
@@ -87,7 +80,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
     }
 
     function testDonationNotAllowed() public {
-        address lbPool = _deployAndInitializeLBPool(
+        (address lbPool, ) = _deployAndInitializeLBPool(
             uint32(block.timestamp + 100),
             uint32(block.timestamp + 200),
             false

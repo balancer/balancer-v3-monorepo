@@ -317,7 +317,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
             revert IVaultErrors.InvalidTokenConfiguration();
         }
 
-        return pool == address(this) && factory == _trustedFactory;
+        return pool == address(this);
     }
 
     /**

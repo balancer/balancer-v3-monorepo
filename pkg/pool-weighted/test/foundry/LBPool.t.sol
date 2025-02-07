@@ -168,10 +168,6 @@ contract LBPoolTest is BaseLBPTest {
         assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
-    function testGetTrustedFactory() public view {
-        assertEq(LBPool(pool).getTrustedFactory(), address(lbPoolFactory), "Wrong trusted factory");
-    }
-
     function testGradualWeightUpdateParams() public {
         uint32 customStartTime = uint32(block.timestamp + 1);
         uint32 customEndTime = uint32(block.timestamp + 300);
@@ -219,7 +215,7 @@ contract LBPoolTest is BaseLBPTest {
         assertFalse(LBPool(pool).isSwapEnabled(), "Swap should be disabled after end time");
     }
 
-    function testIsProjectTokenSwapInEnabled() public {
+    function testIsProjectTokenSwapInBlocked() public {
         (address newPoolSwapDisabled, ) = _deployAndInitializeWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
@@ -230,7 +226,7 @@ contract LBPoolTest is BaseLBPTest {
             false
         );
 
-        assertFalse(LBPool(newPoolSwapDisabled).isProjectTokenSwapInEnabled(), "Swap of Project Token in is enabled");
+        assertFalse(LBPool(newPoolSwapDisabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is blocked");
 
         (address newPoolSwapEnabled, ) = _deployAndInitializeWithCustomWeights(
             startWeights[projectIdx],
@@ -242,7 +238,7 @@ contract LBPoolTest is BaseLBPTest {
             true
         );
 
-        assertTrue(LBPool(newPoolSwapEnabled).isProjectTokenSwapInEnabled(), "Swap of Project Token in is disabled");
+        assertTrue(LBPool(newPoolSwapEnabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is not blocked");
     }
 
     function testGetWeightedPoolDynamicData() public {
@@ -358,7 +354,7 @@ contract LBPoolTest is BaseLBPTest {
 
         // Check project token swap in setting
         assertEq(
-            data.isProjectTokenSwapInEnabled,
+            data.isProjectTokenSwapInBlocked,
             DEFAULT_PROJECT_TOKENS_SWAP_IN,
             "Project token swap in setting mismatch"
         );

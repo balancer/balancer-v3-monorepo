@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { Test } from "forge-std/Test.sol";
-
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -30,19 +28,18 @@ contract LBPoolContractsDeployer is BaseContractsDeployer {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address router,
-        IPermit2 permit2
+        address router
     ) internal returns (LBPoolFactory) {
         if (reusingArtifacts) {
             return
                 LBPoolFactory(
                     deployCode(
                         _computeLBPoolPath(type(LBPoolFactory).name),
-                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router, permit2)
+                        abi.encode(vault, pauseWindowDuration, factoryVersion, poolVersion, router)
                     )
                 );
         } else {
-            return new LBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router, permit2);
+            return new LBPoolFactory(vault, pauseWindowDuration, factoryVersion, poolVersion, router);
         }
     }
 

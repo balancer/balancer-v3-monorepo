@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -17,6 +18,7 @@ import { LBPoolContractsDeployer } from "./LBPoolContractsDeployer.sol";
 
 contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     using ArrayHelpers for *;
+    using CastingHelpers for *;
 
     uint256 public constant swapFee = 1e16; // 1%
 
@@ -27,7 +29,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     uint256 internal constant LOW_WEIGHT = uint256(30e16);
     uint32 internal constant DEFAULT_START_OFFSET = 100;
     uint32 internal constant DEFAULT_END_OFFSET = 200;
-    bool internal constant DEFAULT_PROJECT_TOKENS_SWAP_IN = false;
+    bool internal constant DEFAULT_PROJECT_TOKENS_SWAP_IN = true;
 
     IERC20 internal projectToken;
     IERC20 internal reserveToken;
@@ -62,8 +64,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
             365 days,
             factoryVersion,
             poolVersion,
-            address(router),
-            permit2
+            address(router)
         );
         vm.label(address(lbPoolFactory), "LB pool factory");
 
@@ -93,7 +94,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     function _deployAndInitializeLBPool(
         uint32 startTime,
         uint32 endTime,
-        bool enableProjectTokenSwapsIn
+        bool blockProjectTokenSwapsIn
     ) internal returns (address newPool, bytes memory poolArgs) {
         return
             _deployAndInitializeWithCustomWeights(
@@ -103,7 +104,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
                 endWeights[reserveIdx],
                 startTime,
                 endTime,
-                enableProjectTokenSwapsIn
+                blockProjectTokenSwapsIn
             );
     }
 
@@ -114,7 +115,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
         uint256 reserveTokenEndWeight,
         uint32 startTime,
         uint32 endTime,
-        bool enableProjectTokenSwapsIn
+        bool blockProjectTokenSwapsIn
     ) internal returns (address newPool, bytes memory poolArgs) {
         string memory name = "LBPool";
         string memory symbol = "LBP";
@@ -129,17 +130,19 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
             reserveTokenEndWeight: reserveTokenEndWeight,
             startTime: startTime,
             endTime: endTime,
-            enableProjectTokenSwapsIn: enableProjectTokenSwapsIn
+            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
         });
 
+        newPool = lbPoolFactory.create(name, symbol, lbpParams, swapFee, bytes32(_saltCounter++));
+
         vm.prank(bob);
-        newPool = lbPoolFactory.createAndInitialize(
-            name,
-            symbol,
-            lbpParams,
-            swapFee,
+        router.initialize(
+            newPool,
+            [address(projectToken), address(reserveToken)].toMemoryArray().asIERC20(),
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            bytes32(_saltCounter++)
+            0,
+            false,
+            ""
         );
 
         poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(lbPoolFactory), poolVersion);
