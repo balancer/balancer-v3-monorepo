@@ -62,8 +62,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     uint256 private immutable _projectTokenEndWeight;
     uint256 private immutable _reserveTokenEndWeight;
 
-    // If false, project tokens can only be bought, not sold back into the pool.
-    bool private immutable _enableProjectTokenSwapsIn;
+    // If true, project tokens can only be bought, not sold back into the pool.
+    bool private immutable _blockProjectTokenSwapsIn;
 
     /**
      * @notice Emitted on deployment to record the sale parameters.
@@ -128,7 +128,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         _projectToken = lbpParams.projectToken;
         _reserveToken = lbpParams.reserveToken;
 
-        _enableProjectTokenSwapsIn = lbpParams.enableProjectTokenSwapsIn;
+        _blockProjectTokenSwapsIn = lbpParams.blockProjectTokenSwapsIn;
 
         _startTime = GradualValueChange.resolveStartTime(lbpParams.startTime, lbpParams.endTime);
         _endTime = lbpParams.endTime;
@@ -214,10 +214,10 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
      * @dev Note that theoretically, anyone holding project tokens could create a new pool alongside the LBP that did
      * allow "selling" project tokens. This restriction only applies to the primary LBP.
      *
-     * @return projectTokenSwapInEnabled True if acquired project tokens can be traded for the reserve in this pool
+     * @return isProjectTokenSwapInBlocked If true, acquired project tokens cannot be traded for the reserve in this pool
      */
-    function isProjectTokenSwapInEnabled() external view returns (bool) {
-        return _enableProjectTokenSwapsIn;
+    function isProjectTokenSwapInBlocked() external view returns (bool) {
+        return _blockProjectTokenSwapsIn;
     }
 
     /**
@@ -256,7 +256,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     function getLBPoolImmutableData() external view override returns (LBPoolImmutableData memory data) {
         data.tokens = _vault.getPoolTokens(address(this));
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
-        data.isProjectTokenSwapInEnabled = _enableProjectTokenSwapsIn;
+        data.isProjectTokenSwapInBlocked = _blockProjectTokenSwapsIn;
         data.startTime = _startTime;
         data.endTime = _endTime;
 
@@ -282,8 +282,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
             revert SwapsDisabled();
         }
 
-        // If project token swaps are not enabled, project token must be the token out.
-        if (_enableProjectTokenSwapsIn == false && request.indexOut != _projectTokenIndex) {
+        // If project token swaps are blocked, project token must be the token out.
+        if (_blockProjectTokenSwapsIn && request.indexOut != _projectTokenIndex) {
             revert SwapOfProjectTokenIn();
         }
 

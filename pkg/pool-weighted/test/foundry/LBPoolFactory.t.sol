@@ -153,7 +153,7 @@ contract LBPoolFactoryTest is BaseVaultTest {
     function _deployAndInitializeLBPool(
         uint32 startTime,
         uint32 endTime,
-        bool enableProjectTokenSwapsIn
+        bool blockProjectTokenSwapsIn
     ) private returns (address newPool) {
         LBPParams memory lbpParams = LBPParams({
             owner: bob,
@@ -165,7 +165,7 @@ contract LBPoolFactoryTest is BaseVaultTest {
             reserveTokenEndWeight: endWeights[reserveIdx],
             startTime: startTime,
             endTime: endTime,
-            enableProjectTokenSwapsIn: enableProjectTokenSwapsIn
+            blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
         });
 
         vm.startPrank(bob);
