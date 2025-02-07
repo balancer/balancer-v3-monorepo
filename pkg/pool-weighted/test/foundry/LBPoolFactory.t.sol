@@ -42,6 +42,17 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertEq(lbPoolFactory.getPoolVersion(), poolVersion, "Pool version mismatch");
     }
 
+    function testInvalidTrustedRouter() public {
+        vm.expectRevert(LBPoolFactory.InvalidTrustedRouter.selector);
+        new LBPoolFactory(
+            vault,
+            365 days,
+            factoryVersion,
+            poolVersion,
+            address(0) // invalid trusted router address
+        );
+    }
+
     function testGetTrustedRouter() public view {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
     }
