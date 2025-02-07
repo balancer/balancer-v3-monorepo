@@ -52,43 +52,34 @@ contract LBPoolFactoryTest is BaseLBPTest {
     }
 
     function testCreatePool() public {
-        (address lbPool, ) = _deployAndInitializeLBPool(
-            uint32(block.timestamp + 100),
-            uint32(block.timestamp + 200),
-            false
-        );
+        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        initPool();
 
         // Verify pool was created and initialized correctly
-        assertTrue(vault.isPoolRegistered(lbPool), "Pool not registered in the vault");
-        assertTrue(vault.isPoolInitialized(lbPool), "Pool not initialized");
+        assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
+        assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
     }
 
     function testAddLiquidityPermission() public {
-        (address lbPool, ) = _deployAndInitializeLBPool(
-            uint32(block.timestamp + 100),
-            uint32(block.timestamp + 200),
-            false
-        );
+        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        initPool();
 
         // Try to add to the pool without permission.
         vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
-        router.addLiquidityProportional(lbPool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
+        router.addLiquidityProportional(pool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
 
         // The owner is allowed to add.
         vm.prank(bob);
-        router.addLiquidityProportional(lbPool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
+        router.addLiquidityProportional(pool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
     }
 
     function testDonationNotAllowed() public {
-        (address lbPool, ) = _deployAndInitializeLBPool(
-            uint32(block.timestamp + 100),
-            uint32(block.timestamp + 200),
-            false
-        );
+        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        initPool();
 
         // Try to donate to the pool
         vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
-        router.donate(lbPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
+        router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
     }
 
     function testSetSwapFeeNoPermission() public {

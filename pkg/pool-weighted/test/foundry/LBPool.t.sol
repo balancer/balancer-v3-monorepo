@@ -40,7 +40,7 @@ contract LBPoolTest is BaseLBPTest {
 
         // The MinWeight error thrown by the weighted pool is shadowed by the Create2 deployment error.
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             wrongWeight,
             wrongWeight.complement(),
             endWeights[projectIdx],
@@ -57,7 +57,7 @@ contract LBPoolTest is BaseLBPTest {
 
         // The MinWeight error thrown by the weighted pool is shadowed by the Create2 deployment error.
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             wrongWeight.complement(),
             wrongWeight,
             endWeights[projectIdx],
@@ -74,7 +74,7 @@ contract LBPoolTest is BaseLBPTest {
 
         // The MinWeight error thrown by the LBP is shadowed by the Create2 deployment error.
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             wrongWeight,
@@ -91,7 +91,7 @@ contract LBPoolTest is BaseLBPTest {
 
         // The MinWeight error thrown by the LBP is shadowed by the Create2 deployment error.
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             wrongWeight.complement(),
@@ -105,7 +105,7 @@ contract LBPoolTest is BaseLBPTest {
     function testCreatePoolNotNormalizedStartWeights() public {
         // The NormalizedWeightInvariant error thrown by the weighted pool is shadowed by the Create2 deployment error.
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx] - 1,
             endWeights[projectIdx],
@@ -119,7 +119,7 @@ contract LBPoolTest is BaseLBPTest {
     function testCreatePoolNotNormalizedEndWeights() public {
         // The NormalizedWeightInvariant error thrown by the LBP is shadowed by the Create2 deployment error.
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -132,7 +132,7 @@ contract LBPoolTest is BaseLBPTest {
 
     function testCreatePoolTimeTravel() public {
         vm.expectRevert(Create2.Create2FailedDeployment.selector);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -149,7 +149,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.expectEmit();
         emit LBPool.GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
-        _deployAndInitializeWithCustomWeights(
+        _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -174,7 +174,7 @@ contract LBPoolTest is BaseLBPTest {
         uint256[] memory customStartWeights = [uint256(22e16), uint256(78e16)].toMemoryArray();
         uint256[] memory customEndWeights = [uint256(65e16), uint256(35e16)].toMemoryArray();
 
-        (address newPool, ) = _deployAndInitializeWithCustomWeights(
+        (address newPool, ) = _createLBPoolWithCustomWeights(
             customStartWeights[projectIdx],
             customStartWeights[reserveIdx],
             customEndWeights[projectIdx],
@@ -216,7 +216,7 @@ contract LBPoolTest is BaseLBPTest {
     }
 
     function testIsProjectTokenSwapInBlocked() public {
-        (address newPoolSwapDisabled, ) = _deployAndInitializeWithCustomWeights(
+        (address newPoolSwapDisabled, ) = _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -228,7 +228,7 @@ contract LBPoolTest is BaseLBPTest {
 
         assertFalse(LBPool(newPoolSwapDisabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is blocked");
 
-        (address newPoolSwapEnabled, ) = _deployAndInitializeWithCustomWeights(
+        (address newPoolSwapEnabled, ) = _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -427,15 +427,16 @@ contract LBPoolTest is BaseLBPTest {
 
     function testOnSwapProjectTokenInAllowed() public {
         // Deploy a new pool with project token swaps enabled
-        (address newPool, ) = _deployAndInitializeWithCustomWeights(
+        (pool, ) = _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
             endWeights[reserveIdx],
             uint32(block.timestamp + DEFAULT_START_OFFSET),
             uint32(block.timestamp + DEFAULT_END_OFFSET),
-            true // Enable project token swaps in
+            false // Do not block project token swaps in
         );
+        initPool();
 
         // Warp to when swaps are enabled
         vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
@@ -444,7 +445,7 @@ contract LBPoolTest is BaseLBPTest {
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: 1e18,
-            balancesScaled18: vault.getCurrentLiveBalances(newPool),
+            balancesScaled18: vault.getCurrentLiveBalances(pool),
             indexIn: projectIdx,
             indexOut: reserveIdx,
             router: address(router),
@@ -453,7 +454,7 @@ contract LBPoolTest is BaseLBPTest {
 
         // Mock vault call to onSwap
         vm.prank(address(vault));
-        uint256 amountCalculated = LBPool(newPool).onSwap(request);
+        uint256 amountCalculated = LBPool(pool).onSwap(request);
 
         // Verify amount calculated is non-zero
         assertGt(amountCalculated, 0, "Swap amount should be greater than zero");
@@ -553,28 +554,6 @@ contract LBPoolTest is BaseLBPTest {
         assertFalse(success, "onRegister should return false when pool address doesn't match");
     }
 
-    function testOnRegisterWrongFactory() public {
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-
-        // Mock vault call to onRegister with wrong pool address
-        vm.prank(address(vault));
-        bool success = LBPool(pool).onRegister(
-            address(1), // Wrong factory address
-            pool,
-            tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
-        );
-
-        assertFalse(success, "onRegister should return false when factory address doesn't match");
-    }
-
     function testOnRegisterSuccess() public {
         // Create token config array with 2 standard tokens
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
@@ -643,27 +622,11 @@ contract LBPoolTest is BaseLBPTest {
         vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
 
         vm.prank(address(vault));
-        // Mock router to return wrong factory address as sender
-        _mockGetSender(address(poolFactory));
+        _mockGetSender(bob);
 
         assertTrue(
             LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
             "onBeforeInitialize should return true with correct sender and before startTime"
-        );
-    }
-
-    function testOnBeforeAddLiquidity() public {
-        // Add liquidity should always revert, no matter the input parameters.
-        vm.prank(address(vault));
-        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
-        LBPool(pool).onBeforeAddLiquidity(
-            address(0),
-            address(0),
-            AddLiquidityKind.PROPORTIONAL,
-            new uint256[](0),
-            0,
-            new uint256[](0),
-            bytes("")
         );
     }
 
@@ -700,15 +663,35 @@ contract LBPoolTest is BaseLBPTest {
         assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
     }
 
-    function testAddingLiquidityNotAllowed() public {
+    function testAddingLiquidityNotOwner() public {
         // Try to add liquidity to the pool.
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
+        router.addLiquidityProportional(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 1e18, false, bytes(""));
+    }
+
+    function testAddingLiquidityOwnerAfterStartTime() public {
+        // Warp to after start time, where adding liquidity is forbidden.
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET + 1);
+
+        // Try to add liquidity to the pool.
+        vm.prank(bob);
         vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
         router.addLiquidityProportional(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 1e18, false, bytes(""));
     }
 
-    function testDonationNotAllowed() public {
+    function testAddingLiquidityOwnerBeforeStartTime() public {
+        // Warp to before start time, where adding liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
+
+        // Try to add liquidity to the pool.
+        vm.prank(bob);
+        router.addLiquidityProportional(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 1e18, false, bytes(""));
+    }
+
+    function testDonationOwnerNotAllowed() public {
         // Try to donate to the pool.
-        vm.expectRevert(LBPool.AddingLiquidityNotAllowed.selector);
+        vm.prank(bob);
+        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
         router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
     }
 

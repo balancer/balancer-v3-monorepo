@@ -68,36 +68,31 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
         );
         vm.label(address(lbPoolFactory), "LB pool factory");
 
-        // Approve dai and usdc for factory, so it can initialize the LBPool.
-        vm.startPrank(bob);
-        dai.approve(address(lbPoolFactory), 10 * poolInitAmount);
-        usdc.approve(address(lbPoolFactory), 10 * poolInitAmount);
-        vm.stopPrank();
-
         return address(lbPoolFactory);
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         return
-            _deployAndInitializeLBPool(
+            _createLBPool(
                 uint32(block.timestamp + DEFAULT_START_OFFSET),
                 uint32(block.timestamp + DEFAULT_END_OFFSET),
                 DEFAULT_PROJECT_TOKENS_SWAP_IN
             );
     }
 
-    function initPool() internal pure override {
-        // Init is not used because LBPool factory creates and initializes the pool in the same function.
-        return;
+    function initPool() internal override {
+        vm.startPrank(bob); // Bob is the owner of the pool.
+        _initPool(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
     }
 
-    function _deployAndInitializeLBPool(
+    function _createLBPool(
         uint32 startTime,
         uint32 endTime,
         bool blockProjectTokenSwapsIn
     ) internal returns (address newPool, bytes memory poolArgs) {
         return
-            _deployAndInitializeWithCustomWeights(
+            _createLBPoolWithCustomWeights(
                 startWeights[projectIdx],
                 startWeights[reserveIdx],
                 endWeights[projectIdx],
@@ -108,7 +103,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
             );
     }
 
-    function _deployAndInitializeWithCustomWeights(
+    function _createLBPoolWithCustomWeights(
         uint256 projectTokenStartWeight,
         uint256 reserveTokenStartWeight,
         uint256 projectTokenEndWeight,
@@ -134,16 +129,6 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
         });
 
         newPool = lbPoolFactory.create(name, symbol, lbpParams, swapFee, bytes32(_saltCounter++));
-
-        vm.prank(bob);
-        router.initialize(
-            newPool,
-            [address(projectToken), address(reserveToken)].toMemoryArray().asIERC20(),
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            0,
-            false,
-            ""
-        );
 
         poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(lbPoolFactory), poolVersion);
     }
