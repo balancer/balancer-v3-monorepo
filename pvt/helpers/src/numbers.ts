@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import { ethers, BigNumberish, toUtf8String, BytesLike } from 'ethers';
+import { BigNumberish } from 'ethers';
 
 import _BN from 'bn.js';
 
