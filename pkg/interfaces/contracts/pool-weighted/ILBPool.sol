@@ -9,7 +9,7 @@ import { IBasePool } from "../vault/IBasePool.sol";
 /**
  * @notice Structure containing LBP-specific parameters.
  * @dev These parameters are immutable, representing the configuration of a single token sale, running from `startTime`
- * to `endTime`. Swaps may only occur while the sale is active. If `enableProjectTokenSwapsIn` is false, users may only
+ * to `endTime`. Swaps may only occur while the sale is active. If `blockProjectTokenSwapsIn` is true, users may only
  * purchase project tokens with the reserve currency.
  *
  * @param owner The account with permission to change the static swap fee percentage
@@ -21,7 +21,7 @@ import { IBasePool } from "../vault/IBasePool.sol";
  * @param reserveTokenEndWeight The reserve token weight at the end of the sale (should go up over time)
  * @param startTime The timestamp at the beginning of the sale - initialization/funding must occur before this time
  * @param endTime the timestamp at the end of the sale - withdrawal of proceeds becomes possible after this time
- * @param enableProjectTokenSwapsIn If set, selling the project token "back" into the pool is allowed
+ * @param blockProjectTokenSwapsIn If set, the pool only supports one-way "token distribution"
  */
 struct LBPParams {
     address owner;
@@ -33,7 +33,7 @@ struct LBPParams {
     uint256 reserveTokenEndWeight;
     uint256 startTime;
     uint256 endTime;
-    bool enableProjectTokenSwapsIn;
+    bool blockProjectTokenSwapsIn;
 }
 
 /**
@@ -45,7 +45,7 @@ struct LBPParams {
  * @param endWeights Ending weights for the LBP, sorted in token registration order
  * @param startTime Timestamp of the start of the sale, when all liquidity is present and swaps are enabled
  * @param endTime Timestamp of the end of the sale, when swaps are disabled, and liquidity can be removed
- * @param isProjectTokenSwapInEnabled If true, it is possible to sell the project token back into the pool
+ * @param isProjectTokenSwapInBlocked If true, it is impossible to sell the project token back into the pool
  */
 struct LBPoolImmutableData {
     IERC20[] tokens;
@@ -54,7 +54,7 @@ struct LBPoolImmutableData {
     uint256[] endWeights;
     uint256 startTime;
     uint256 endTime;
-    bool isProjectTokenSwapInEnabled;
+    bool isProjectTokenSwapInBlocked;
 }
 
 /**

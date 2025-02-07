@@ -54,6 +54,50 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertEq(pauseWindowDuration, 365 days);
     }
 
+    function testCreatePool() public {
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        // Verify pool was created and initialized correctly
+        assertTrue(vault.isPoolRegistered(lbPool), "Pool not registered in the vault");
+        assertTrue(vault.isPoolInitialized(lbPool), "Pool not initialized");
+    }
+
+    function testGetPoolVersion() public view {
+        assert(keccak256(abi.encodePacked(lbPoolFactory.getPoolVersion())) == keccak256(abi.encodePacked(poolVersion)));
+    }
+
+    function testAddLiquidityPermission() public {
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        // Try to add to the pool without permission.
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
+        router.addLiquidityProportional(lbPool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
+
+        // The owner is allowed to add.
+        vm.prank(bob);
+        router.addLiquidityProportional(lbPool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
+    }
+
+    function testDonationNotAllowed() public {
+        address lbPool = _deployAndInitializeLBPool(
+            uint32(block.timestamp + 100),
+            uint32(block.timestamp + 200),
+            false
+        );
+
+        // Try to donate to the pool
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
+        router.donate(lbPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
+    }
+
     function testSetSwapFeeNoPermission() public {
         // The LBP Factory only allows the owner (a.k.a. bob) to set the static swap fee percentage of the pool.
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
