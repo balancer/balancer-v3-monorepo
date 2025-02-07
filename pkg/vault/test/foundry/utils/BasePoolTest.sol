@@ -51,7 +51,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         poolMaxSwapFeePercentage = 1e18;
     }
 
-    function testPoolAddress() public view virtual {
+    function testPoolAddress() public view {
         address calculatedPoolAddress = IBasePoolFactory(poolFactory).getDeploymentAddress(poolArguments, ZERO_BYTES32);
         assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
     }
