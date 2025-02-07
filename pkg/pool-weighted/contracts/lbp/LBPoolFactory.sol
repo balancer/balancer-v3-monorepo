@@ -15,6 +15,7 @@ import {
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
+import { LBPoolLib } from "../lib/LBPoolLib.sol";
 import { LBPool } from "./LBPool.sol";
 
 /**
@@ -82,6 +83,15 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         // This account can change the static swap fee for the pool.
         // If the owner is the zero address, the swap fee will be fixed at the initial value.
         roleAccounts.swapFeeManager = lbpParams.owner;
+
+        LBPoolLib.verifyWeightUpdateParameters(
+            lbpParams.startTime,
+            lbpParams.endTime,
+            lbpParams.projectTokenStartWeight,
+            lbpParams.reserveTokenStartWeight,
+            lbpParams.projectTokenEndWeight,
+            lbpParams.reserveTokenEndWeight
+        );
 
         pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
 

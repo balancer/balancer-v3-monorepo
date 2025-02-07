@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
@@ -21,6 +22,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
 import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
@@ -38,8 +40,7 @@ contract LBPoolTest is BaseLBPTest {
         // Min weight is 1e16 (1%).
         uint256 wrongWeight = 0.5e16;
 
-        // The MinWeight error thrown by the weighted pool is shadowed by the Create2 deployment error.
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
             wrongWeight,
             wrongWeight.complement(),
@@ -55,8 +56,7 @@ contract LBPoolTest is BaseLBPTest {
         // Min weight is 1e16 (1%).
         uint256 wrongWeight = 0.5e16;
 
-        // The MinWeight error thrown by the weighted pool is shadowed by the Create2 deployment error.
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
             wrongWeight.complement(),
             wrongWeight,
@@ -72,8 +72,7 @@ contract LBPoolTest is BaseLBPTest {
         // Min weight is 1e16 (1%).
         uint256 wrongWeight = 0.5e16;
 
-        // The MinWeight error thrown by the LBP is shadowed by the Create2 deployment error.
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
@@ -89,8 +88,7 @@ contract LBPoolTest is BaseLBPTest {
         // Min weight is 1e16 (1%).
         uint256 wrongWeight = 0.5e16;
 
-        // The MinWeight error thrown by the LBP is shadowed by the Create2 deployment error.
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
@@ -103,8 +101,7 @@ contract LBPoolTest is BaseLBPTest {
     }
 
     function testCreatePoolNotNormalizedStartWeights() public {
-        // The NormalizedWeightInvariant error thrown by the weighted pool is shadowed by the Create2 deployment error.
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(IWeightedPool.NormalizedWeightInvariant.selector);
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx] - 1,
@@ -117,8 +114,7 @@ contract LBPoolTest is BaseLBPTest {
     }
 
     function testCreatePoolNotNormalizedEndWeights() public {
-        // The NormalizedWeightInvariant error thrown by the LBP is shadowed by the Create2 deployment error.
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(IWeightedPool.NormalizedWeightInvariant.selector);
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
@@ -131,7 +127,7 @@ contract LBPoolTest is BaseLBPTest {
     }
 
     function testCreatePoolTimeTravel() public {
-        vm.expectRevert(Create2.Create2FailedDeployment.selector);
+        vm.expectRevert(GradualValueChange.GradualUpdateTimeTravel.selector);
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
