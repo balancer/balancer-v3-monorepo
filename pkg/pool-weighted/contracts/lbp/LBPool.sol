@@ -214,7 +214,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
      * @dev Note that theoretically, anyone holding project tokens could create a new pool alongside the LBP that did
      * allow "selling" project tokens. This restriction only applies to the primary LBP.
      *
-     * @return isProjectTokenSwapInBlocked If true, acquired project tokens cannot be traded for the reserve in this pool
+     * @return isProjectTokenSwapInBlocked If true, acquired project tokens cannot be traded for reserve in this pool
      */
     function isProjectTokenSwapInBlocked() external view returns (bool) {
         return _blockProjectTokenSwapsIn;
