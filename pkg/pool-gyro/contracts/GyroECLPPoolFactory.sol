@@ -68,7 +68,6 @@ contract GyroECLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
         bytes32 salt
     ) external returns (address pool) {
         require(tokens.length == 2, SupportsOnlyTwoTokens());
-        require(roleAccounts.poolCreator == address(0), StandardPoolWithCreator());
 
         pool = _create(
             abi.encode(

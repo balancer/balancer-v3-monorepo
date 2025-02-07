@@ -51,6 +51,7 @@ describe('2-CLP', function () {
   let router: Router;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
+  let admin: SignerWithAddress;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let poolTokens: string[];
@@ -60,7 +61,7 @@ describe('2-CLP', function () {
   let tokenConfig: TokenConfigStruct[];
 
   before('setup signers', async () => {
-    [, alice, bob] = await ethers.getSigners();
+    [, alice, bob, admin] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
@@ -202,6 +203,46 @@ describe('2-CLP', function () {
     it('does not allow unbalanced liquidity', async () => {
       const { liquidityManagement } = await vault.getPoolConfig(newPool);
       expect(liquidityManagement.disableUnbalancedLiquidity).to.be.true;
+    });
+  });
+
+  describe('pool roles', () => {
+    let newPool: Gyro2CLPPool;
+
+    sharedBeforeEach('create new pool with roles', async () => {
+      const tx = await factory.create(
+        '2-CLP',
+        'Test',
+        tokenConfig,
+        SQRT_ALPHA,
+        SQRT_BETA,
+        { pauseManager: alice, swapFeeManager: bob, poolCreator: admin },
+        SWAP_FEE,
+        ZERO_ADDRESS,
+        true, // donations
+        true, // disable support to unbalanced add/remove liquidity
+        ONES_BYTES32
+      );
+
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+      newPool = (await deployedAt('Gyro2CLPPool', event.args.pool)) as unknown as Gyro2CLPPool;
+    });
+
+    it('returns correct pause manager', async () => {
+      const { pauseManager } = await vault.getPoolRoleAccounts(newPool);
+      expect(pauseManager).to.be.eq(alice);
+    });
+
+    it('returns correct swap fee manager', async () => {
+      const { swapFeeManager } = await vault.getPoolRoleAccounts(newPool);
+      expect(swapFeeManager).to.be.eq(bob);
+    });
+
+    it('returns correct pool creator', async () => {
+      const { poolCreator } = await vault.getPoolRoleAccounts(newPool);
+      expect(poolCreator).to.be.eq(admin);
     });
   });
 });

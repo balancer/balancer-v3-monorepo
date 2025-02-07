@@ -68,10 +68,6 @@ contract Gyro2CLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
             revert SupportsOnlyTwoTokens();
         }
 
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
-
         pool = _create(
             abi.encode(
                 IGyro2CLPPool.GyroParams({
