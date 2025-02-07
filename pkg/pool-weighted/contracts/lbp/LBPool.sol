@@ -79,9 +79,6 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] endWeights
     );
 
-    /// @notice Indicates that the router that called the Vault is not trusted, so liquidity operations should revert.
-    error RouterNotTrusted();
-
     /// @notice Swaps are disabled except during the sale (i.e., between and start and end times).
     error SwapsDisabled();
 
