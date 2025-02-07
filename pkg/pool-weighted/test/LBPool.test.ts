@@ -287,22 +287,22 @@ describe('LBPool', function () {
         // Try to set start weight below 1%
         await expect(
           deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
-        ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set start weight above 99%
         await expect(
           deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
-        ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set end weight below 1%
         await expect(
           deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false)
-        ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Try to set end weight above 99%
         await expect(
           deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false)
-        ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Valid weight update
         await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)).to.not.be
@@ -316,7 +316,7 @@ describe('LBPool', function () {
         // Try to set endTime before startTime
         await expect(
           deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)
-        ).to.be.revertedWithCustomError(factory, 'Create2FailedDeployment');
+        ).to.be.revertedWithCustomError(factory, 'GradualUpdateTimeTravel');
 
         // Valid time update
         await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false))
