@@ -46,8 +46,4 @@ contract LBPoolContractsDeployer is BaseContractsDeployer {
     function _computeLBPoolPath(string memory name) private view returns (string memory) {
         return string(abi.encodePacked(artifactsRootDir, "contracts/lbp/", name, ".sol/", name, ".json"));
     }
-
-    function _computeLBPoolPathTest(string memory name) private view returns (string memory) {
-        return string(abi.encodePacked(artifactsRootDir, "contracts/lbp/test/", name, ".sol/", name, ".json"));
-    }
 }
