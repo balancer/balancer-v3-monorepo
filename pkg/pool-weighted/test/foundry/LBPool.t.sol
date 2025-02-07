@@ -127,14 +127,19 @@ contract LBPoolTest is BaseLBPTest {
     }
 
     function testCreatePoolTimeTravel() public {
-        vm.expectRevert(GradualValueChange.GradualUpdateTimeTravel.selector);
+        uint32 startTime = uint32(block.timestamp + 200);
+        uint32 endTime = uint32(block.timestamp + 100);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(GradualValueChange.GradualUpdateTimeTravel.selector, startTime, endTime)
+        );
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
             endWeights[reserveIdx],
-            uint32(block.timestamp + 200),
-            uint32(block.timestamp + 100), // EndTime after StartTime, it should revert.
+            startTime,
+            endTime, // EndTime after StartTime, it should revert.
             DEFAULT_PROJECT_TOKENS_SWAP_IN
         );
     }
