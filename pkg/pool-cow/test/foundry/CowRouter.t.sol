@@ -994,6 +994,104 @@ contract CowRouterTest is BaseCowTest {
     }
 
     /********************************************************
+                          Fee Sweeper
+    ********************************************************/
+    function testGetFeeSweeper() public {
+        assertEq(cowRouter.getFeeSweeper(), feeSweeper, "Wrong fee sweeper");
+
+        address newFeeSweeper = address(1);
+
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(newFeeSweeper);
+
+        assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was not set properly");
+    }
+
+    function testSetFeeSweeperIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        cowRouter.setFeeSweeper(address(1));
+    }
+
+    function testSetFeeSweeperInvalidAddress() public {
+        // Address 0 is not a valid fee sweeper.
+        vm.expectRevert(abi.encodeWithSelector(ICowRouter.InvalidFeeSweeper.selector));
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(address(0));
+    }
+
+    function testSetFeeSweeper() public {
+        address newFeeSweeper = address(2);
+
+        vm.prank(admin);
+        vm.expectEmit();
+        emit ICowRouter.FeeSweeperChanged(newFeeSweeper);
+        cowRouter.setFeeSweeper(newFeeSweeper);
+
+        assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was set properly");
+    }
+
+    function testWithdrawCollectedProtocolFees() public {
+        uint256 protocolFeePercentage = _INITIAL_PROTOCOL_FEE_PERCENTAGE;
+        uint256 donationDai = DEFAULT_AMOUNT / 10;
+        uint256 donationUsdc = DEFAULT_AMOUNT / 10;
+
+        (uint256[] memory donationAmounts, , ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
+
+        vm.prank(lp);
+        cowRouter.donate(pool, donationAmounts, bytes(""));
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
+
+        uint256 daiProtocolFeesBeforeWithdraw = cowRouter.getCollectedProtocolFees(dai);
+        uint256 usdcProtocolFeesBeforeWithdraw = cowRouter.getCollectedProtocolFees(usdc);
+
+        assertEq(
+            balancesBefore.userTokens[daiIdx],
+            daiProtocolFeesBeforeWithdraw,
+            "CoW Router has a wrong amount of DAI to withdraw"
+        );
+        assertEq(
+            balancesBefore.userTokens[usdcIdx],
+            usdcProtocolFeesBeforeWithdraw,
+            "CoW Router has a wrong amount of USDC to withdraw"
+        );
+
+        vm.expectEmit();
+        emit ICowRouter.ProtocolFeesWithdrawn(dai, alice, daiProtocolFeesBeforeWithdraw);
+        cowRouter.withdrawCollectedProtocolFees(dai);
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
+
+        assertEq(balancesAfter.userTokens[daiIdx], 0, "CoW Router has DAI tokens to withdraw");
+        assertEq(cowRouter.getCollectedProtocolFees(dai), 0, "CoW Router state of protocol fees for DAI is not 0");
+        // Alice is the current feeSweeper, as set by BaseCowTest contract.
+        assertEq(
+            balancesAfter.aliceTokens[daiIdx],
+            balancesBefore.aliceTokens[daiIdx] + daiProtocolFeesBeforeWithdraw,
+            "DAI tokens were not transferred to the fee sweeper"
+        );
+
+        // Change fee sweeper to Bob and check if the new fee sweeper receives the protocol fees.
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(bob);
+
+        vm.expectEmit();
+        emit ICowRouter.ProtocolFeesWithdrawn(usdc, bob, usdcProtocolFeesBeforeWithdraw);
+        cowRouter.withdrawCollectedProtocolFees(usdc);
+
+        BaseVaultTest.Balances memory balancesAfterUsdc = getBalances(address(cowRouter));
+
+        assertEq(balancesAfterUsdc.userTokens[usdcIdx], 0, "CoW Router has USDC tokens to withdraw");
+        assertEq(cowRouter.getCollectedProtocolFees(usdc), 0, "CoW Router state of protocol fees for USDC is not 0");
+        // Bob now is the current feeSweeper.
+        assertEq(
+            balancesAfterUsdc.bobTokens[usdcIdx],
+            balancesBefore.bobTokens[usdcIdx] + usdcProtocolFeesBeforeWithdraw,
+            "USDC tokens were not transferred to the fee sweeper"
+        );
+    }
+
+    /********************************************************
                           Private Helpers
     ********************************************************/
 
