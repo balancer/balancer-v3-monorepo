@@ -6,12 +6,13 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IPausePoolHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPausePoolHelper.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
-import { PauseHelper } from "../../contracts/PauseHelper.sol";
+import { PausePoolHelper } from "../../contracts/PausePoolHelper.sol";
 
-contract PauseHelperTest is BaseVaultTest {
-    PauseHelper pauseHelper;
+contract PausePoolHelperTest is BaseVaultTest {
+    PausePoolHelper pauseHelper;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -19,7 +20,7 @@ contract PauseHelperTest is BaseVaultTest {
         address[] memory owners = new address[](1);
         owners[0] = address(this);
 
-        pauseHelper = new PauseHelper(vault);
+        pauseHelper = new PausePoolHelper(vault);
 
         authorizer.grantRole(pauseHelper.getActionId(pauseHelper.addPools.selector), address(this));
         authorizer.grantRole(pauseHelper.getActionId(pauseHelper.removePools.selector), address(this));
@@ -35,7 +36,7 @@ contract PauseHelperTest is BaseVaultTest {
         address[] memory firstPools = _generatePools(10);
         for (uint256 i = 0; i < firstPools.length; i++) {
             vm.expectEmit();
-            emit PauseHelper.PoolAddedToPausableSet(firstPools[i]);
+            emit IPausePoolHelper.PoolAddedToPausableSet(firstPools[i]);
         }
 
         pauseHelper.addPools(firstPools);
@@ -49,7 +50,7 @@ contract PauseHelperTest is BaseVaultTest {
         address[] memory secondPools = _generatePools(10);
         for (uint256 i = 0; i < secondPools.length; i++) {
             vm.expectEmit();
-            emit PauseHelper.PoolAddedToPausableSet(secondPools[i]);
+            emit IPausePoolHelper.PoolAddedToPausableSet(secondPools[i]);
         }
 
         pauseHelper.addPools(secondPools);
@@ -70,7 +71,7 @@ contract PauseHelperTest is BaseVaultTest {
         pools[0] = address(0x1);
         pools[1] = address(0x1);
 
-        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolAlreadyInPausableSet.selector, pools[1]));
+        vm.expectRevert(abi.encodeWithSelector(IPausePoolHelper.PoolAlreadyInPausableSet.selector, pools[1]));
         pauseHelper.addPools(pools);
     }
 
@@ -89,7 +90,7 @@ contract PauseHelperTest is BaseVaultTest {
 
         for (uint256 i = 0; i < pools.length; i++) {
             vm.expectEmit();
-            emit PauseHelper.PoolRemovedFromPausableSet(pools[i]);
+            emit IPausePoolHelper.PoolRemovedFromPausableSet(pools[i]);
         }
 
         pauseHelper.removePools(pools);
@@ -104,7 +105,7 @@ contract PauseHelperTest is BaseVaultTest {
     function testRemoveNotExistingPool() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolNotInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPausePoolHelper.PoolNotInPausableSet.selector, address(0x00)));
         pauseHelper.removePools(new address[](1));
     }
 
@@ -138,7 +139,7 @@ contract PauseHelperTest is BaseVaultTest {
     function testPauseIfPoolIsNotInList() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(PauseHelper.PoolNotInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPausePoolHelper.PoolNotInPausableSet.selector, address(0x00)));
         pauseHelper.pausePools(new address[](1));
     }
 

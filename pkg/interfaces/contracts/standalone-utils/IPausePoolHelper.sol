@@ -2,15 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
-
-contract PauseHelper is SingletonAuthentication {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
+interface IPausePoolHelper {
     /**
      * @notice Cannot add a pool that is already there.
      * @param pool Address of the pool being added
@@ -38,14 +30,8 @@ contract PauseHelper is SingletonAuthentication {
      */
     event PoolRemovedFromPausableSet(address pool);
 
-    EnumerableSet.AddressSet private _pausablePools;
-
-    constructor(IVault vault) SingletonAuthentication(vault) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     /***************************************************************************
-                                                      Manage Pools
+                                    Manage Pools
     ***************************************************************************/
 
     /**
@@ -55,18 +41,7 @@ contract PauseHelper is SingletonAuthentication {
      *
      * @param newPools List of pools to add
      */
-    function addPools(address[] calldata newPools) external authenticate {
-        uint256 length = newPools.length;
-
-        for (uint256 i = 0; i < length; i++) {
-            address pool = newPools[i];
-            if (_pausablePools.add(pool) == false) {
-                revert PoolAlreadyInPausableSet(pool);
-            }
-
-            emit PoolAddedToPausableSet(pool);
-        }
-    }
+    function addPools(address[] calldata newPools) external;
 
     /**
      * @notice Remove pools from the list of pools that can be paused.
@@ -75,17 +50,7 @@ contract PauseHelper is SingletonAuthentication {
      *
      * @param pools List of pools to remove
      */
-    function removePools(address[] memory pools) public authenticate {
-        uint256 length = pools.length;
-        for (uint256 i = 0; i < length; i++) {
-            address pool = pools[i];
-            if (_pausablePools.remove(pool) == false) {
-                revert PoolNotInPausableSet(pool);
-            }
-
-            emit PoolRemovedFromPausableSet(pool);
-        }
-    }
+    function removePools(address[] memory pools) external;
 
     /**
      * @notice Pause a set of pools.
@@ -99,20 +64,10 @@ contract PauseHelper is SingletonAuthentication {
      *
      * @param pools List of pools to pause
      */
-    function pausePools(address[] memory pools) public authenticate {
-        uint256 length = pools.length;
-        for (uint256 i = 0; i < length; i++) {
-            address pool = pools[i];
-            if (_pausablePools.contains(pool) == false) {
-                revert PoolNotInPausableSet(pool);
-            }
-
-            getVault().pausePool(pool);
-        }
-    }
+    function pausePools(address[] memory pools) external;
 
     /***************************************************************************
-                               Getters
+                                    Getters                                
     ***************************************************************************/
 
     /**
@@ -120,34 +75,21 @@ contract PauseHelper is SingletonAuthentication {
      * @dev Needed to support pagination in case the list is too long to process in a single transaction.
      * @return poolCount The current number of pools in the pausable list
      */
-    function getPoolsCount() external view returns (uint256) {
-        return _pausablePools.length();
-    }
+    function getPoolsCount() external view returns (uint256);
 
     /**
      * @notice Check whether a pool is in the list of pausable pools.
      * @param pool Pool to check
      * @return isPausable True if the pool is in the list, false otherwise
      */
-    function hasPool(address pool) external view returns (bool) {
-        return _pausablePools.contains(pool);
-    }
+    function hasPool(address pool) external view returns (bool);
 
     /**
      * @notice Get a range of pools.
+     * @dev Indexes are 0-based and [start, end) (i.e., inclusive of `start`; exclusive of `end`).
      * @param from Start index
      * @param to End index
      * @return pools List of pools
      */
-    function getPools(uint256 from, uint256 to) public view returns (address[] memory pools) {
-        uint256 poolLength = _pausablePools.length();
-        if (from > to || to > poolLength || from >= poolLength) {
-            revert IndexOutOfBounds();
-        }
-
-        pools = new address[](to - from);
-        for (uint256 i = from; i < to; i++) {
-            pools[i - from] = _pausablePools.at(i);
-        }
-    }
+    function getPools(uint256 from, uint256 to) external view returns (address[] memory pools);
 }
