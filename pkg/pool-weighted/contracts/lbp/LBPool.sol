@@ -29,6 +29,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { GradualValueChange } from "../lib/GradualValueChange.sol";
 import { WeightedPool } from "../WeightedPool.sol";
+import { LBPoolLib } from "../lib/LBPoolLib.sol";
 
 /**
  * @notice Weighted Pool with mutable weights, designed to support v3 Liquidity Bootstrapping.
@@ -110,14 +111,17 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         address trustedRouter,
         string memory version
     ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) Ownable(lbpParams.owner) {
-        // WeightedPool has already validated the starting weights; we still need to validate the ending weights.
-        if (lbpParams.projectTokenEndWeight < _MIN_WEIGHT || lbpParams.reserveTokenEndWeight < _MIN_WEIGHT) {
-            revert IWeightedPool.MinWeight();
-        }
-
-        if (lbpParams.projectTokenEndWeight + lbpParams.reserveTokenEndWeight != FixedPoint.ONE) {
-            revert IWeightedPool.NormalizedWeightInvariant();
-        }
+        // Checks that weights are valid and that end time is after start time. If start time is in the past,
+        // updates with current block time.
+        _startTime = LBPoolLib.verifyWeightUpdateParameters(
+            lbpParams.startTime,
+            lbpParams.endTime,
+            lbpParams.projectTokenStartWeight,
+            lbpParams.reserveTokenStartWeight,
+            lbpParams.projectTokenEndWeight,
+            lbpParams.reserveTokenEndWeight
+        );
+        _endTime = lbpParams.endTime;
 
         // Set the trusted router (passed down from the factory), and the rest of the immutable variables.
         _trustedRouter = trustedRouter;
@@ -126,9 +130,6 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         _reserveToken = lbpParams.reserveToken;
 
         _blockProjectTokenSwapsIn = lbpParams.blockProjectTokenSwapsIn;
-
-        _startTime = GradualValueChange.resolveStartTime(lbpParams.startTime, lbpParams.endTime);
-        _endTime = lbpParams.endTime;
 
         _projectTokenStartWeight = lbpParams.projectTokenStartWeight;
         _reserveTokenStartWeight = lbpParams.reserveTokenStartWeight;
