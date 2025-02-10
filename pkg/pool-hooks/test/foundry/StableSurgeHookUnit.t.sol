@@ -45,6 +45,11 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
             DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE
         );
+
+        authorizer.grantRole(
+            IAuthentication(address(stableSurgeHook)).getActionId(StableSurgeHook.setMaxSurgeFeePercentage.selector),
+            admin
+        );
     }
 
     function testOnRegister() public {
@@ -90,9 +95,9 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
             shouldCallBeforeSwap: false,
             shouldCallAfterSwap: false,
             shouldCallBeforeAddLiquidity: false,
-            shouldCallAfterAddLiquidity: false,
+            shouldCallAfterAddLiquidity: true,
             shouldCallBeforeRemoveLiquidity: false,
-            shouldCallAfterRemoveLiquidity: false
+            shouldCallAfterRemoveLiquidity: true
         });
         assertEq(abi.encode(stableSurgeHook.getHookFlags()), abi.encode(hookFlags), "Hook flags should be correct");
     }
@@ -180,6 +185,40 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         stableSurgeHook.setSurgeThresholdPercentage(pool, 1e18);
+    }
+
+    function testGetSurgeFeePercentage_MaxSurgeSmallerThanStatic() public {
+        // Set a small max surge fee percentage.
+        uint256 smallMaxSurgeFee = 1e16; // 1%
+        vm.prank(admin);
+        stableSurgeHook.setMaxSurgeFeePercentage(pool, smallMaxSurgeFee);
+
+        // Set a larger static fee percentage.
+        uint256 staticFeePercentage = 2e16; // 2%
+        vault.manuallySetSwapFee(pool, staticFeePercentage);
+
+        // Create an unbalanced state to mock an imbalance in the pool. This would normally trigger surge pricing and
+        // revert due to a math underflow, but the surge logic is currently blocked because maxSurgeFeePercentage <
+        // staticFeePercentage.
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = poolInitAmount / 10;
+        balances[1] = poolInitAmount;
+
+        // Create swap params that would normally trigger surge pricing.
+        PoolSwapParams memory params = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            indexIn: 0,
+            indexOut: 1,
+            amountGivenScaled18: poolInitAmount / 2,
+            balancesScaled18: balances,
+            router: address(0),
+            userData: bytes("")
+        });
+
+        // Even though we're in a surging state, we should get back the static fee since it's larger than the max
+        // surge fee.
+        uint256 surgeFeePercentage = stableSurgeHook.getSurgeFeePercentage(params, pool, staticFeePercentage);
+        assertEq(surgeFeePercentage, staticFeePercentage, "Should return static fee percentage");
     }
 
     function testGetSurgeFeePercentage__Fuzz(
