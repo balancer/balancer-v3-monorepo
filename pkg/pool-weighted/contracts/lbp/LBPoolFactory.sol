@@ -84,6 +84,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         // If the owner is the zero address, the swap fee will be fixed at the initial value.
         roleAccounts.swapFeeManager = lbpParams.owner;
 
+        // Validate weight parameters and temporal constraints prior to deployment.
+        // This validation is duplicated in the pool contract but performed here to surface precise error messages,
+        // as create2 would otherwise mask the underlying revert reason.
         LBPoolLib.verifyWeightUpdateParameters(
             lbpParams.startTime,
             lbpParams.endTime,
