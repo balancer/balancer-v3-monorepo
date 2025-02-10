@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
@@ -18,6 +19,8 @@ import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
 
 contract LBPoolFactoryTest is BaseLBPTest {
     using ArrayHelpers for *;
+
+    uint256 private constant _DEFAULT_WEIGHT = 50e16;
 
     function testPoolRegistrationOnCreate() public view {
         // Verify pool was registered in the factory.
@@ -60,6 +63,25 @@ contract LBPoolFactoryTest is BaseLBPTest {
     function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = lbPoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
+    }
+
+    function testCreatePoolWithInvalidOwner() public {
+        // Create LBP params with owner set to zero address
+        LBPParams memory params = LBPParams({
+            owner: address(0),
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            projectTokenStartWeight: _DEFAULT_WEIGHT,
+            projectTokenEndWeight: _DEFAULT_WEIGHT,
+            reserveTokenStartWeight: _DEFAULT_WEIGHT,
+            reserveTokenEndWeight: _DEFAULT_WEIGHT,
+            blockProjectTokenSwapsIn: true
+        });
+
+        vm.expectRevert(LBPoolFactory.InvalidOwner.selector);
+        lbPoolFactory.create("LBPool", "LBP", params, swapFee, bytes32(0));
     }
 
     function testCreatePool() public {

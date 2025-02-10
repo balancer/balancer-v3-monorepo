@@ -34,6 +34,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     /// @notice The zero address was given for the trusted router.
     error InvalidTrustedRouter();
 
+    /// @notice The owner is the zero address.
+    error InvalidOwner();
+
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
@@ -78,6 +81,10 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         uint256 swapFeePercentage,
         bytes32 salt
     ) external nonReentrant returns (address pool) {
+        if (lbpParams.owner == address(0)) {
+            revert InvalidOwner();
+        }
+
         PoolRoleAccounts memory roleAccounts;
 
         // This account can change the static swap fee for the pool.
