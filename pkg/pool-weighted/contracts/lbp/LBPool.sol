@@ -63,7 +63,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     uint256 private immutable _projectTokenEndWeight;
     uint256 private immutable _reserveTokenEndWeight;
 
-    // If true, project tokens can only be the token out in the context of a swap.
+    // If true, project tokens can only be bought, not sold back to the pool (i.e., they cannot be the `tokenIn`
+    // of a swap)
     bool private immutable _blockProjectTokenSwapsIn;
 
     /**
