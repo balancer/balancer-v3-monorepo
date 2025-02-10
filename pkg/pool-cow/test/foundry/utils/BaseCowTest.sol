@@ -32,6 +32,7 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
 
     ICowRouter internal cowRouter;
     ICowPoolFactory internal cowFactory;
+    address internal feeSweeper;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -41,14 +42,15 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
+        feeSweeper = alice;
+        cowRouter = new CowRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper);
+
         authorizer.grantRole(
             CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),
             admin
         );
-        authorizer.grantRole(
             CowPoolFactory(address(cowFactory)).getActionId(ICowPoolFactory.setTrustedCowRouter.selector),
-            admin
-        );
+        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.setFeeSweeper.selector), admin);
 
         _approveCowRouterForAllUsers();
 
