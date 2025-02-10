@@ -20,7 +20,7 @@ import { LBPool } from "./LBPool.sol";
 
 /**
  * @notice LBPool Factory.
- * @dev This is a factory specific to LBPools, allowing only 2 tokens and restricting the LBP to a single token sale,
+ * @dev This is a factory specific to LBPools, allowing only two tokens and restricting the LBP to a single token sale,
  * with parameters specified on deployment.
  */
 contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactory, Version {
@@ -88,7 +88,6 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         PoolRoleAccounts memory roleAccounts;
 
         // This account can change the static swap fee for the pool.
-        // If the owner is the zero address, the swap fee will be fixed at the initial value.
         roleAccounts.swapFeeManager = lbpParams.owner;
 
         // Validate weight parameters and temporal constraints prior to deployment.
