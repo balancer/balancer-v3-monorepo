@@ -96,6 +96,36 @@ interface IProtocolFeeController {
     );
 
     /**
+     * @notice Emitted on pool registration with the initial aggregate swap fee percentage, for off-chain processes.
+     * @dev If the pool is registered as protocol fee exempt, this will be zero (until changed). Otherwise, it will
+     * equal the current global swap fee percentage.
+     *
+     * @param pool The pool being registered
+     * @param aggregateSwapFeePercentage The initial aggregate swap fee percentage
+     * @param isProtocolFeeExempt True if the pool is exempt from taking protocol fees initially
+     */
+    event InitialPoolAggregateSwapFeePercentage(
+        address indexed pool,
+        uint256 aggregateSwapFeePercentage,
+        bool isProtocolFeeExempt
+    );
+
+    /**
+     * @notice Emitted on pool registration with the initial aggregate yield fee percentage, for off-chain processes.
+     * @dev If the pool is registered as protocol fee exempt, this will be zero (until changed). Otherwise, it will
+     * equal the current global yield fee percentage.
+     *
+     * @param pool The pool being registered
+     * @param aggregateYieldFeePercentage The initial aggregate yield fee percentage
+     * @param isProtocolFeeExempt True if the pool is exempt from taking protocol fees initially
+     */
+    event InitialPoolAggregateYieldFeePercentage(
+        address indexed pool,
+        uint256 aggregateYieldFeePercentage,
+        bool isProtocolFeeExempt
+    );
+
+    /**
      * @notice Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
      * @dev Note that this is checked for both the global and pool-specific protocol swap fee percentages.
      */
