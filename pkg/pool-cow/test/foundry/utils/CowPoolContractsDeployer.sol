@@ -46,22 +46,25 @@ contract CowPoolContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployCowPoolRouter(IVault vault, uint256 initialProtocolFeePercentage) internal returns (CowRouter) {
+    function deployCowPoolRouter(
+        IVault vault,
+        uint256 initialProtocolFeePercentage,
+        address feeSweeper
+    ) internal returns (CowRouter) {
         if (reusingArtifacts) {
             return
                 CowRouter(
-                    deployCode(_computeCowPath(type(CowRouter).name), abi.encode(vault, initialProtocolFeePercentage))
+                    deployCode(
+                        _computeCowPath(type(CowRouter).name),
+                        abi.encode(vault, initialProtocolFeePercentage, feeSweeper)
+                    )
                 );
         } else {
-            return new CowRouter(vault, initialProtocolFeePercentage);
+            return new CowRouter(vault, initialProtocolFeePercentage, feeSweeper);
         }
     }
 
     function _computeCowPath(string memory name) private view returns (string memory) {
         return string(abi.encodePacked(artifactsRootDir, "contracts/", name, ".sol/", name, ".json"));
-    }
-
-    function _computeCowPathTest(string memory name) private view returns (string memory) {
-        return string(abi.encodePacked(artifactsRootDir, "contracts/test/", name, ".sol/", name, ".json"));
     }
 }

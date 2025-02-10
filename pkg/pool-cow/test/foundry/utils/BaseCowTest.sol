@@ -42,15 +42,18 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        feeSweeper = alice;
-        cowRouter = new CowRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper);
-
+        // Set router permissions.
         authorizer.grantRole(
             CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),
             admin
         );
-            CowPoolFactory(address(cowFactory)).getActionId(ICowPoolFactory.setTrustedCowRouter.selector),
         authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.setFeeSweeper.selector), admin);
+
+        // Set factory permissions.
+        authorizer.grantRole(
+            CowPoolFactory(address(cowFactory)).getActionId(ICowPoolFactory.setTrustedCowRouter.selector),
+            admin
+        );
 
         _approveCowRouterForAllUsers();
 
@@ -60,8 +63,11 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
     }
 
     function createPoolFactory() internal override returns (address) {
+        // Set fee sweeper before the router is created.
+        feeSweeper = alice;
+
         // Creates cowRouter before the factory, so we have an address to set as trusted router.
-        cowRouter = deployCowPoolRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE);
+        cowRouter = deployCowPoolRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper);
 
         cowFactory = deployCowPoolFactory(
             IVault(address(vault)),

@@ -29,7 +29,7 @@ contract CowPoolFactoryTest is BaseCowTest {
 
     function setUp() public override {
         super.setUp();
-        _otherCowRouter = address(deployCowPoolRouter(vault, 2e16));
+        _otherCowRouter = address(deployCowPoolRouter(vault, 2e16, feeSweeper));
     }
 
     function testGetPoolVersion() public view {
