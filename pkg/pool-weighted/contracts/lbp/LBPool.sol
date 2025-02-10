@@ -111,8 +111,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         address trustedRouter,
         string memory version
     ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) Ownable(lbpParams.owner) {
-        // Checks that weights are valid and that end time is after start time. If start time is in the past,
-        // updates with current block time.
+        // Checks that the weights are valid and `endTime` is after `startTime`. If `startTime` is in the past,
+        // avoid abrupt weight changes by overriding it with the current block time.
         _startTime = LBPoolLib.verifyWeightUpdateParameters(
             lbpParams.startTime,
             lbpParams.endTime,
