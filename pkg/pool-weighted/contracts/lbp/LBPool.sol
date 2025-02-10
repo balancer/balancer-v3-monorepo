@@ -63,7 +63,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     uint256 private immutable _projectTokenEndWeight;
     uint256 private immutable _reserveTokenEndWeight;
 
-    // If true, project tokens can only be bought, not sold back into the pool.
+    // If true, project tokens can only be the token out in the context of a swap.
     bool private immutable _blockProjectTokenSwapsIn;
 
     /**
@@ -86,7 +86,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     /// @notice Removing liquidity is not allowed before the end of the sale.
     error RemovingLiquidityNotAllowed();
 
-    /// @notice The pool does not allow adding liquidity except during initialization.
+    /// @notice The pool does not allow adding liquidity except during initialization and before the weight update.
     error AddingLiquidityNotAllowed();
 
     /// @notice THe LBP configuration prohibits selling the project token back into the pool.
