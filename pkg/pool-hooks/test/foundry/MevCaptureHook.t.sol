@@ -96,9 +96,7 @@ contract MevCaptureHookTest is BaseVaultTest {
             abi.encodeWithSelector(BalancerContractRegistry.isTrustedRouter.selector, address(0)),
             abi.encode(true)
         );
-        vm.expectRevert(
-            abi.encodeWithSelector(IMevCaptureHook.InvalidBalancerContractRegistry.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.InvalidBalancerContractRegistry.selector));
         new MevCaptureHookMock(IVault(address(vault)), mockRegistry);
     }
 
