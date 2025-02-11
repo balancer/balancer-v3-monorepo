@@ -61,6 +61,10 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
 
+        if (registry.isTrustedRouter(address(0))) {
+            revert InvalidBalancerContractRegistry();
+        }
+
         _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
         _setDefaultMevTaxThreshold(0);

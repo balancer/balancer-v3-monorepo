@@ -6,6 +6,11 @@ import { IBalancerContractRegistry } from "../standalone-utils/IBalancerContract
 
 interface IMevCaptureHook {
     /**
+     * @notice The `BalancerContractRegistry` set in the constructor is invalid.
+     */
+    error InvalidBalancerContractRegistry();
+
+    /**
      * @notice The pool was not registered with the MEV Hook contract.
      * @param pool Address of the pool that should have been registered with MevCaptureHook
      */
