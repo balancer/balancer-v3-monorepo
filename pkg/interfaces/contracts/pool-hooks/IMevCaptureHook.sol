@@ -222,7 +222,7 @@ interface IMevCaptureHook {
      * @param sender The sender being checked for MEV tax-exempt status
      * @return mevTaxExempt True if the sender is MEV tax-exempt
      */
-    function isMevTaxExempt(address sender) external view returns (bool mevTaxExempt);
+    function isMevTaxExemptSender(address sender) external view returns (bool mevTaxExempt);
 
     /**
      * @notice Registers a list of senders as MEV tax-exempt senders.

@@ -113,7 +113,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         // We can only check senders if the router is trusted. Apply the exemption for MEV tax-exempt senders.
         if (_registry.isTrustedRouter(params.router)) {
             address sender = IRouterCommon(params.router).getSender();
-            if (_isMevTaxExempt(sender)) {
+            if (_isMevTaxExemptSender[sender]) {
                 return (true, staticSwapFeePercentage);
             }
         }
@@ -274,8 +274,8 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     }
 
     /// @inheritdoc IMevCaptureHook
-    function isMevTaxExempt(address sender) external view returns (bool) {
-        return _isMevTaxExempt(sender);
+    function isMevTaxExemptSender(address sender) external view returns (bool) {
+        return _isMevTaxExemptSender[sender];
     }
 
     /// @inheritdoc IMevCaptureHook
@@ -309,9 +309,9 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         uint256 priorityGasPrice = _getPriorityGasPrice();
         uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
 
-        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
-        // impose the MEV tax. Also, if mev fee cap is lower than static fee percentage, returns the static.
-        if (priorityGasPrice < threshold || maxMevSwapFeePercentage < staticSwapFeePercentage) {
+        // If `priorityGasPrice` <= threshold, this indicates the transaction is from a retail user, so we should not
+        // impose the MEV tax. Also, if mev fee cap is <= static fee percentage, returns the static fee percentage.
+        if (priorityGasPrice <= threshold || maxMevSwapFeePercentage <= staticSwapFeePercentage) {
             return staticSwapFeePercentage;
         }
 
@@ -342,10 +342,6 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
 
     function _getPriorityGasPrice() internal view returns (uint256) {
         return tx.gasprice - block.basefee;
-    }
-
-    function _isMevTaxExempt(address sender) internal view returns (bool) {
-        return _isMevTaxExemptSender[sender];
     }
 
     function _addMevTaxExemptSender(address sender) internal {

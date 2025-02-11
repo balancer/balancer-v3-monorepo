@@ -626,9 +626,9 @@ contract MevCaptureHookTest is BaseVaultTest {
         vm.expectEmit();
         emit IMevCaptureHook.MevTaxExemptSenderAdded(alice);
         _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
-        assertTrue(_mevCaptureHook.isMevTaxExempt(lp), "LP was not added properly as MEV tax-exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(alice), "Alice was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(lp), "LP was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice was not added properly as MEV tax-exempt");
     }
 
     function testAddMevTaxExemptSendersRevertsWithDuplicated() public {
@@ -659,9 +659,9 @@ contract MevCaptureHookTest is BaseVaultTest {
         emit IMevCaptureHook.MevTaxExemptSenderRemoved(alice);
         _mevCaptureHook.removeMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevCaptureHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(lp), "LP was not removed properly as MEV tax-exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(alice), "Alice was not removed properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob was not added properly as MEV tax-exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(lp), "LP was not removed properly as MEV tax-exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice was not removed properly as MEV tax-exempt");
     }
 
     function testRemoveMevTaxExemptSendersRevertsIfNotExist() public {
@@ -676,12 +676,12 @@ contract MevCaptureHookTest is BaseVaultTest {
     /********************************************************
                        isMevTaxExempt
     ********************************************************/
-    function testIsMevTaxExempt() public {
+    function testIsMevTaxExemptSender() public {
         vm.prank(admin);
         _mevCaptureHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevCaptureHook.isMevTaxExempt(lp), "LP is not exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(bob), "Bob is exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(alice), "Alice is not exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(lp), "LP is not exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob is exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice is not exempt");
     }
 }
