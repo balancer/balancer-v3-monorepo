@@ -163,6 +163,16 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         return _trustedRouter;
     }
 
+    /// @inheritdoc ILBPool
+    function getProjectToken() external view returns (IERC20) {
+        return _projectToken;
+    }
+
+    /// @inheritdoc ILBPool
+    function getReserveToken() external view returns (IERC20) {
+        return _reserveToken;
+    }
+
     /**
      * @notice Return start time, end time, and endWeights as an array.
      * @dev Current weights should be retrieved via `getNormalizedWeights()`.
@@ -254,18 +264,21 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     /// @inheritdoc ILBPool
     function getLBPoolImmutableData() external view override returns (LBPoolImmutableData memory data) {
         data.tokens = _vault.getPoolTokens(address(this));
+        data.projectTokenIndex = _projectTokenIndex;
+        data.reserveTokenIndex = _reserveTokenIndex;
+
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
         data.isProjectTokenSwapInBlocked = _blockProjectTokenSwapsIn;
         data.startTime = _startTime;
         data.endTime = _endTime;
 
         data.startWeights = new uint256[](_TWO_TOKENS);
-        data.startWeights[_projectTokenIndex] = _projectTokenStartWeight;
-        data.startWeights[_reserveTokenIndex] = _reserveTokenStartWeight;
+        data.startWeights[data.projectTokenIndex] = _projectTokenStartWeight;
+        data.startWeights[data.reserveTokenIndex] = _reserveTokenStartWeight;
 
         data.endWeights = new uint256[](_TWO_TOKENS);
-        data.endWeights[_projectTokenIndex] = _projectTokenEndWeight;
-        data.endWeights[_reserveTokenIndex] = _reserveTokenEndWeight;
+        data.endWeights[data.projectTokenIndex] = _projectTokenEndWeight;
+        data.endWeights[data.reserveTokenIndex] = _reserveTokenEndWeight;
     }
 
     /*******************************************************************************

@@ -45,6 +45,8 @@ struct LBPParams {
  * @param endWeights Ending weights for the LBP, sorted in token registration order
  * @param startTime Timestamp of the start of the sale, when all liquidity is present and swaps are enabled
  * @param endTime Timestamp of the end of the sale, when swaps are disabled, and liquidity can be removed
+ * @param projectTokenIndex The index of token (in `tokens`) being distributed through the sale
+ * @param reserveTokenIndex The index of the token (in `tokens`) used to purchase project tokens
  * @param isProjectTokenSwapInBlocked If true, it is impossible to sell the project token back into the pool
  */
 struct LBPoolImmutableData {
@@ -54,6 +56,8 @@ struct LBPoolImmutableData {
     uint256[] endWeights;
     uint256 startTime;
     uint256 endTime;
+    uint256 projectTokenIndex;
+    uint256 reserveTokenIndex;
     bool isProjectTokenSwapInBlocked;
 }
 
@@ -83,7 +87,12 @@ struct LBPoolDynamicData {
     bool isSwapEnabled;
 }
 
-/// @notice Full LBP interface - base pool plus immutable/dynamic field getters.
+/**
+ * @notice Full LBP interface - base pool plus immutable/dynamic field getters.
+ * @dev There is some redundancy here to cover all use cases. Project and reserve tokens can be read directly, if that
+ * is all that's needed. Those who already need the more complete data in `LBPoolImmutableData` can recover these
+ * values without further calls by indexing into the `tokens` array with `projectTokenIndex` and `reserveTokenIndex`.
+ */
 interface ILBPool is IBasePool {
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
@@ -96,4 +105,23 @@ interface ILBPool is IBasePool {
      * @return data A struct containing all immutable LBP parameters
      */
     function getLBPoolImmutableData() external view returns (LBPoolImmutableData memory data);
+
+    /**
+     * @notice Get the project token for this LBP.
+     * @dev This is the token being distributed through the sale. It is also available in the immutable data, but this
+     * getter is provided as a convenience for those who only need the project token address.
+     *
+     * @return projectToken The address of the project token
+     */
+    function getProjectToken() external view returns (IERC20);
+
+    /**
+     * @notice Get the reserve token for this LBP.
+     * @dev This is the token exchanged for the project token (usually a stablecoin or WETH). It is also available in
+     * the immutable data, but this getter is provided as a convenience for those who only need the reserve token
+     * address.
+     *
+     * @return reserveToken The address of the reserve token
+     */
+    function getReserveToken() external view returns (IERC20);
 }
