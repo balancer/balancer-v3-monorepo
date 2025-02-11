@@ -20,6 +20,7 @@ interface ICowRouter {
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
      * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the swap request and emitted with donation and swap events
      */
     struct SwapAndDonateHookParams {
@@ -33,6 +34,7 @@ interface ICowRouter {
         uint256 swapDeadline;
         uint256[] donationAmounts;
         uint256[] transferAmountHints;
+        bool wethIsEth;
         bytes userData;
     }
 
@@ -42,12 +44,14 @@ interface ICowRouter {
      * @param pool Address of the CoW AMM Pool
      * @param sender Account originating the donate operation
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the swap request and emitted with the donation event
      */
     struct DonateHookParams {
         address pool;
         address sender;
         uint256[] donationAmounts;
+        bool wethIsEth;
         bytes userData;
     }
 
@@ -140,6 +144,7 @@ interface ICowRouter {
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
      * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountOut Number of tokenOut tokens returned from the swap
      */
@@ -152,8 +157,9 @@ interface ICowRouter {
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
         uint256[] memory transferAmountHints,
+        bool wethIsEth,
         bytes memory userData
-    ) external returns (uint256 exactAmountOut);
+    ) external payable returns (uint256 exactAmountOut);
 
     /**
      * @notice Executes an ExactOut swap and donates a specified amount to the same CoW AMM Pool.
@@ -169,6 +175,7 @@ interface ICowRouter {
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
      * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountIn Number of tokenIn tokens charged in the swap
      */
@@ -181,8 +188,9 @@ interface ICowRouter {
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
         uint256[] memory transferAmountHints,
+        bool wethIsEth,
         bytes memory userData
-    ) external returns (uint256 exactAmountIn);
+    ) external payable returns (uint256 exactAmountIn);
 
     /**
      * @notice Executes a donation of a specified amount to a CoW AMM Pool.
@@ -191,9 +199,15 @@ interface ICowRouter {
      *
      * @param pool The pool that receives the donation
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the donate request
      */
-    function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external;
+    function donate(
+        address pool,
+        uint256[] memory donationAmounts,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable;
 
     /**
      * @notice Withdraws collected protocol fees to the fee sweeper.

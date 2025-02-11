@@ -5,9 +5,11 @@ pragma solidity ^0.8.24;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import {
     AddLiquidityKind,
     AddLiquidityParams,
@@ -17,15 +19,20 @@ import {
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 
-contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
+contract CowRouter is SingletonAuthentication, VaultGuard, Version, ICowRouter {
+    using Address for address payable;
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
+    using SafeERC20 for IWETH;
     using SafeCast for *;
 
     // Protocol fee percentage capped at 50%.
     uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 50e16;
+
+    IWETH internal immutable _weth;
 
     // Address that will receive the protocol fees on withdrawal.
     address internal _feeSweeper;
@@ -35,9 +42,12 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
 
     constructor(
         IVault vault,
+        IWETH weth,
         uint256 protocolFeePercentage,
-        address feeSweeper
-    ) VaultGuard(vault) SingletonAuthentication(vault) {
+        address feeSweeper,
+        string memory routerVersion
+    ) VaultGuard(vault) SingletonAuthentication(vault) Version(routerVersion) {
+        _weth = weth;
         _setProtocolFeePercentage(protocolFeePercentage);
         _setFeeSweeper(feeSweeper);
     }
@@ -108,8 +118,9 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
         uint256[] memory transferAmountHints,
+        bool wethIsEth,
         bytes memory userData
-    ) external authenticate returns (uint256 exactAmountOut) {
+    ) external payable authenticate returns (uint256 exactAmountOut) {
         (, exactAmountOut) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -125,6 +136,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
                         transferAmountHints: transferAmountHints,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -143,8 +155,9 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
         uint256[] memory transferAmountHints,
+        bool wethIsEth,
         bytes memory userData
-    ) external authenticate returns (uint256 exactAmountIn) {
+    ) external payable authenticate returns (uint256 exactAmountIn) {
         (exactAmountIn, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -160,6 +173,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                         swapDeadline: swapDeadline,
                         donationAmounts: donationAmounts,
                         transferAmountHints: transferAmountHints,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -169,7 +183,12 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     /// @inheritdoc ICowRouter
-    function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external authenticate {
+    function donate(
+        address pool,
+        uint256[] memory donationAmounts,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable authenticate {
         _vault.unlock(
             abi.encodeCall(
                 CowRouter.donateHook,
@@ -177,6 +196,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                     pool: pool,
                     sender: msg.sender,
                     donationAmounts: donationAmounts,
+                    wethIsEth: wethIsEth,
                     userData: userData
                 })
             )
@@ -264,7 +284,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             swapAmountOut,
             swapAndDonateParams.transferAmountHints,
             donatedAmounts,
-            protocolFeeAmounts
+            protocolFeeAmounts,
+            swapAndDonateParams.wethIsEth
         );
 
         emit CoWSwapAndDonation(
@@ -301,7 +322,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             tokens,
             params.donationAmounts,
             protocolFeeAmounts,
-            new uint256[](params.donationAmounts.length)
+            new uint256[](params.donationAmounts.length),
+            params.wethIsEth
         );
 
         emit CoWDonation(params.pool, donatedAmounts, protocolFeeAmounts, params.userData);
@@ -368,7 +390,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         uint256 swapAmountOut,
         uint256[] memory transferAmountHints,
         uint256[] memory donatedAmounts,
-        uint256[] memory feeAmounts
+        uint256[] memory feeAmounts,
+        bool wethIsEth
     ) private {
         // `returnToSenderAmounts` will contain the number of "leftover" tokens that should be returned to the sender.
         uint256[] memory returnToSenderAmounts = new uint256[](tokens.length);
@@ -395,7 +418,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         }
 
         // Transfer tokens from the Vault to the sender and to the router, and settle the vault reserves.
-        _settleDonation(sender, tokens, transferAmountHints, feeAmounts, returnToSenderAmounts);
+        _settleDonation(sender, tokens, transferAmountHints, feeAmounts, returnToSenderAmounts, wethIsEth);
     }
 
     function _settleDonation(
@@ -403,7 +426,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         IERC20[] memory tokens,
         uint256[] memory transferAmountHints,
         uint256[] memory sendToRouterAmounts,
-        uint256[] memory returnToSenderAmounts
+        uint256[] memory returnToSenderAmounts,
+        bool wethIsEth
     ) private {
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
@@ -413,20 +437,57 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             // The proceeds from the swap, along with any leftover tokens, will be returned to the sender.
             uint256 transferAmountHint = transferAmountHints[i];
             if (transferAmountHint > 0) {
+                if (wethIsEth && address(token) == address(_weth)) {
+                    // If weth is eth, the sender sent ETH to the router, so we should wrap and send to the vault
+                    // before settling.
+                    _weth.deposit{ value: transferAmountHint }();
+                    _weth.safeTransfer(address(_vault), transferAmountHint);
+                }
                 _vault.settle(token, transferAmountHint);
             }
 
             // Protocol fees are charged on the sender's upfront transfers to the vault, and sent to the router.
             uint256 sendToRouterAmount = sendToRouterAmounts[i];
             if (sendToRouterAmount > 0) {
+                // Even if wethIsEth is true, the fees are collected in Weth, so we don't need to check that.
                 _vault.sendTo(token, address(this), sendToRouterAmount);
             }
 
             // The swap `amountOut`, and any leftover tokens, are returned to the sender.
             uint256 returnToSenderAmount = returnToSenderAmounts[i];
             if (returnToSenderAmount > 0) {
-                _vault.sendTo(token, sender, returnToSenderAmount);
+                if (wethIsEth && address(token) == address(_weth)) {
+                    // Receive the WETH amountOut.
+                    _vault.sendTo(token, address(this), returnToSenderAmount);
+                    // Withdraw WETH to ETH.
+                    _weth.withdraw(returnToSenderAmount);
+                    // We don't need to return the ETH to the sender, because it is returned in the `_returnEth` call.
+                } else {
+                    _vault.sendTo(token, sender, returnToSenderAmount);
+                }
             }
         }
+
+        // Return any leftover ETH to the sender.
+        _returnEth(sender);
+    }
+
+    /**
+     * @dev Returns excess ETH back to the contract caller. Checks for sufficient ETH balance are made right before
+     * each deposit, ensuring it will revert with a friendly custom error. If there is any balance remaining when
+     * `_returnEth` is called, return it to the sender.
+     *
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender
+     * are not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
+     */
+    function _returnEth(address sender) internal {
+        uint256 excess = address(this).balance;
+        if (excess == 0) {
+            return;
+        }
+
+        payable(sender).sendValue(excess);
     }
 }

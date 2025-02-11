@@ -53,6 +53,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             new uint256[](2),
             new uint256[](2),
+            false,
             bytes("")
         );
     }
@@ -87,6 +88,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -122,6 +124,7 @@ contract CowRouterTest is BaseCowTest {
             deadline,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -170,6 +173,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -217,6 +221,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -250,6 +255,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -298,6 +304,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -356,6 +363,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -409,6 +417,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -442,6 +451,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             new uint256[](2),
             new uint256[](2),
+            false,
             bytes("")
         );
     }
@@ -478,6 +488,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -513,6 +524,7 @@ contract CowRouterTest is BaseCowTest {
             deadline,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -561,6 +573,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -608,6 +621,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -641,6 +655,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
     }
@@ -688,6 +703,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -746,6 +762,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -799,6 +816,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -825,7 +843,7 @@ contract CowRouterTest is BaseCowTest {
         uint256[] memory donationAmounts = [DEFAULT_AMOUNT / 10, DEFAULT_AMOUNT / 10].toMemoryArray();
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        cowRouter.donate(pool, donationAmounts, bytes(""));
+        cowRouter.donate(pool, donationAmounts, false, bytes(""));
     }
 
     function testDonateExtraTokens(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
@@ -857,7 +875,7 @@ contract CowRouterTest is BaseCowTest {
 
         vm.expectEmit();
         emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
-        cowRouter.donate(pool, donationAmounts, bytes(""));
+        cowRouter.donate(pool, donationAmounts, false, bytes(""));
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
@@ -898,7 +916,7 @@ contract CowRouterTest is BaseCowTest {
 
         // The operation should revert, since the user did not transfer the amount of tokens required to settle.
         vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        cowRouter.donate(pool, donationAmounts, bytes(""));
+        cowRouter.donate(pool, donationAmounts, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -926,7 +944,7 @@ contract CowRouterTest is BaseCowTest {
 
         vm.expectEmit();
         emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
-        cowRouter.donate(pool, donationAmounts, bytes(""));
+        cowRouter.donate(pool, donationAmounts, false, bytes(""));
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
@@ -1035,10 +1053,15 @@ contract CowRouterTest is BaseCowTest {
         uint256 donationDai = DEFAULT_AMOUNT / 10;
         uint256 donationUsdc = DEFAULT_AMOUNT / 10;
 
-        (uint256[] memory donationAmounts, , ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
+        (uint256[] memory donationAmounts, , , ) = _getDonationAndFees(
+            donationDai,
+            donationUsdc,
+            0,
+            protocolFeePercentage
+        );
 
         vm.prank(lp);
-        cowRouter.donate(pool, donationAmounts, bytes(""));
+        cowRouter.donate(pool, donationAmounts, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
