@@ -1060,8 +1060,12 @@ contract CowRouterTest is BaseCowTest {
             protocolFeePercentage
         );
 
-        vm.prank(lp);
+        vm.startPrank(lp);
+        dai.transfer(address(vault), donationAmounts[daiIdx]);
+        usdc.transfer(address(vault), donationAmounts[usdcIdx]);
+
         cowRouter.donate(pool, donationAmounts, false, bytes(""));
+        vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
