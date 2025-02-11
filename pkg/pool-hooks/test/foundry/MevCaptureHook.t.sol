@@ -24,6 +24,8 @@ contract MevCaptureHookTest is BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
+    error MockRegistryRevert();
+
     MevCaptureHookMock private _mevCaptureHook;
 
     BalancerContractRegistry private registry;
@@ -81,6 +83,33 @@ contract MevCaptureHookTest is BaseVaultTest {
 
     function testGetBalancerContractRegistry() public view {
         assertEq(address(_mevCaptureHook.getBalancerContractRegistry()), address(registry), "Wrong registry");
+    }
+
+    /********************************************************
+                         constructor()
+    ********************************************************/
+
+    function testInvalidRegistry() public {
+        BalancerContractRegistry mockRegistry = BalancerContractRegistry(address(1));
+        vm.mockCall(
+            address(mockRegistry),
+            abi.encodeWithSelector(BalancerContractRegistry.isTrustedRouter.selector, address(0)),
+            abi.encode(true)
+        );
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.InvalidBalancerContractRegistry.selector));
+        new MevCaptureHookMock(IVault(address(vault)), mockRegistry);
+    }
+
+    function testRevertingRegistry() public {
+        BalancerContractRegistry mockRegistry = BalancerContractRegistry(address(1));
+        vm.mockCallRevert(
+            address(mockRegistry),
+            abi.encodeWithSelector(BalancerContractRegistry.isTrustedRouter.selector, address(0)),
+            abi.encodePacked(MockRegistryRevert.selector)
+        );
+
+        vm.expectRevert(MockRegistryRevert.selector);
+        new MevCaptureHookMock(IVault(address(vault)), mockRegistry);
     }
 
     /********************************************************
