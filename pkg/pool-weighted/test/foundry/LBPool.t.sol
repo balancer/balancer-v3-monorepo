@@ -13,7 +13,8 @@ import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRou
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     LBPoolImmutableData,
-    LBPoolDynamicData
+    LBPoolDynamicData,
+    ILBPool
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -167,6 +168,18 @@ contract LBPoolTest is BaseLBPTest {
 
     function testGetTrustedRouter() public view {
         assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
+    }
+
+    function testGetProjectToken() public view {
+        IERC20[] memory poolTokens = vault.getPoolTokens(pool);
+
+        assertEq(address(ILBPool(pool).getProjectToken()), address(poolTokens[projectIdx]), "Wrong project token");
+    }
+
+    function testGetReserveToken() public view {
+        IERC20[] memory poolTokens = vault.getPoolTokens(pool);
+
+        assertEq(address(ILBPool(pool).getReserveToken()), address(poolTokens[reserveIdx]), "Wrong reserve token");
     }
 
     function testGradualWeightUpdateParams() public {
@@ -334,6 +347,8 @@ contract LBPoolTest is BaseLBPTest {
         assertEq(data.tokens.length, poolTokens.length, "tokens length mismatch");
         assertEq(address(data.tokens[projectIdx]), address(poolTokens[projectIdx]), "Project token mismatch");
         assertEq(address(data.tokens[reserveIdx]), address(poolTokens[reserveIdx]), "Reserve token mismatch");
+        assertEq(data.projectTokenIndex, projectIdx, "Project token index mismatch");
+        assertEq(data.reserveTokenIndex, reserveIdx, "Reserve token index mismatch");
 
         // Check decimal scaling factors
         (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
