@@ -109,7 +109,7 @@ contract MevCaptureHookTest is BaseVaultTest {
         );
 
         vm.expectRevert(MockRegistryRevert.selector);
-        new MevCaptureHookMock(IVault(address(vault)), BalancerContractRegistry(mockRegistry));
+        new MevCaptureHookMock(IVault(address(vault)), mockRegistry);
     }
 
     /********************************************************

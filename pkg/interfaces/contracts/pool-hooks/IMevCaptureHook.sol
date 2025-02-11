@@ -5,9 +5,7 @@ pragma solidity ^0.8.24;
 import { IBalancerContractRegistry } from "../standalone-utils/IBalancerContractRegistry.sol";
 
 interface IMevCaptureHook {
-    /**
-     * @notice The `BalancerContractRegistry` set in the constructor is invalid.
-     */
+     /// @notice The `BalancerContractRegistry` set in the constructor is invalid.
     error InvalidBalancerContractRegistry();
 
     /**

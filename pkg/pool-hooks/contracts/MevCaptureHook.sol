@@ -61,6 +61,8 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
 
+        // Smoke test to ensure the given registry is a contract and isn't hard-coded to trust everything.
+        // For certainty, users can call `getBalancerContractRegistry` and compare the result to the published address.
         if (registry.isTrustedRouter(address(0))) {
             revert InvalidBalancerContractRegistry();
         }
