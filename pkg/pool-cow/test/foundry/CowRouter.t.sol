@@ -7,8 +7,10 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { PoolSwapParams, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ICowRouter } from "@balancer-labs/v3-interfaces/contracts/pool-cow/ICowRouter.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -59,16 +61,19 @@ contract CowRouterTest is BaseCowTest {
 
         (uint256[] memory donationAmounts, , ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, daiSwapAmountIn, daiSwapAmountIn + 1));
+        uint256 expectedSwapAmountOut = _calculateAmountOutSwapExactIn(daiSwapAmountIn);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, expectedSwapAmountOut, expectedSwapAmountOut + 1)
+        );
         vm.prank(lp);
-        // Since the pool is linear, the expected amount out is `daiSwapAmountIn`. If the limit is bigger than that,
-        // the swap should revert.
+        // The swap reverts because the swap limit is 1 wei higher than `expectedSwapAmountOut`.
         cowRouter.swapExactInAndDonateSurplus(
             pool,
             dai,
             usdc,
             daiSwapAmountIn,
-            daiSwapAmountIn + 1,
+            expectedSwapAmountOut + 1,
             type(uint32).max,
             donationAmounts,
             bytes("")
@@ -120,6 +125,8 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAfterFees
         ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
+        uint256 expectedSwapAmountOut = _calculateAmountOutSwapExactIn(daiSwapAmountIn);
+
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.expectEmit();
@@ -128,7 +135,7 @@ contract CowRouterTest is BaseCowTest {
             dai,
             usdc,
             daiSwapAmountIn,
-            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
+            expectedSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
             bytes("")
@@ -149,14 +156,13 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        // Since the pool is linear, amount in == amount out
         _checkBalancesAfterSwapAndDonation(
             balancesBefore,
             balancesAfter,
             expectedProtocolFees,
             donationAmounts,
             daiSwapAmountIn,
-            daiSwapAmountIn
+            expectedSwapAmountOut
         );
     }
 
@@ -224,7 +230,9 @@ contract CowRouterTest is BaseCowTest {
         protocolFeePercentage = bound(protocolFeePercentage, 0, cowRouter.getMaxProtocolFeePercentage());
         donationDai = _boundDonation(donationDai, protocolFeePercentage);
         donationUsdc = _boundDonation(donationUsdc, protocolFeePercentage);
-        daiSwapAmountIn = bound(daiSwapAmountIn, _MIN_TRADE_AMOUNT, DEFAULT_AMOUNT);
+        // A weighted swap cannot pass 30% of pool liquidity. Also, since the amount out cannot be lower than
+        // _MIN_TRADE_AMOUNT, we set amount in to be at least 2x _MIN_TRADE_AMOUNT.
+        daiSwapAmountIn = bound(daiSwapAmountIn, 2 * _MIN_TRADE_AMOUNT, DEFAULT_AMOUNT.mulDown(30e16));
 
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
@@ -235,6 +243,8 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAfterFees
         ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
+        uint256 expectedSwapAmountOut = _calculateAmountOutSwapExactIn(daiSwapAmountIn);
+
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.expectEmit();
@@ -243,7 +253,7 @@ contract CowRouterTest is BaseCowTest {
             dai,
             usdc,
             daiSwapAmountIn,
-            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
+            expectedSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
             bytes("")
@@ -263,14 +273,13 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        // Since the pool is linear, amount in == amount out
         _checkBalancesAfterSwapAndDonation(
             balancesBefore,
             balancesAfter,
             expectedProtocolFees,
             donationAmounts,
             daiSwapAmountIn,
-            daiSwapAmountIn
+            expectedSwapAmountOut
         );
     }
 
@@ -295,17 +304,15 @@ contract CowRouterTest is BaseCowTest {
 
         (uint256[] memory donationAmounts, , ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, usdcSwapAmountOut, usdcSwapAmountOut - 1)
-        );
+        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, daiSwapAmountIn, daiSwapAmountIn - 1));
         vm.prank(lp);
-        // Since the pool is linear, the expected amount in is `usdcSwapAmountOut`. If the limit is smaller than that,
-        // the swap should revert.
         cowRouter.swapExactOutAndDonateSurplus(
             pool,
             dai,
             usdc,
-            usdcSwapAmountOut - 1,
+            daiSwapAmountIn - 1,
             usdcSwapAmountOut,
             type(uint32).max,
             donationAmounts,
@@ -358,6 +365,8 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAfterFees
         ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
+        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.expectEmit();
@@ -365,7 +374,7 @@ contract CowRouterTest is BaseCowTest {
             pool,
             dai,
             usdc,
-            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
+            daiSwapAmountIn,
             usdcSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
@@ -387,13 +396,12 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        // Since the pool is linear, amount in == amount out
         _checkBalancesAfterSwapAndDonation(
             balancesBefore,
             balancesAfter,
             expectedProtocolFees,
             donationAmounts,
-            usdcSwapAmountOut,
+            daiSwapAmountIn,
             usdcSwapAmountOut
         );
     }
@@ -462,7 +470,9 @@ contract CowRouterTest is BaseCowTest {
         protocolFeePercentage = bound(protocolFeePercentage, 0, cowRouter.getMaxProtocolFeePercentage());
         donationDai = _boundDonation(donationDai, protocolFeePercentage);
         donationUsdc = _boundDonation(donationUsdc, protocolFeePercentage);
-        usdcSwapAmountOut = bound(usdcSwapAmountOut, _MIN_TRADE_AMOUNT, DEFAULT_AMOUNT);
+        // A weighted swap cannot pass 30% of pool liquidity. Using 25% of pool liquidity to give some margin in the
+        // calculation of amount in.
+        usdcSwapAmountOut = bound(usdcSwapAmountOut, _MIN_TRADE_AMOUNT, DEFAULT_AMOUNT.mulDown(25e16));
 
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
@@ -473,6 +483,8 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory donationAfterFees
         ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
 
+        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         vm.expectEmit();
@@ -480,7 +492,7 @@ contract CowRouterTest is BaseCowTest {
             pool,
             dai,
             usdc,
-            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
+            daiSwapAmountIn,
             usdcSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
@@ -501,13 +513,12 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
-        // Since the pool is linear, amount in == amount out
         _checkBalancesAfterSwapAndDonation(
             balancesBefore,
             balancesAfter,
             expectedProtocolFees,
             donationAmounts,
-            usdcSwapAmountOut,
+            daiSwapAmountIn,
             usdcSwapAmountOut
         );
     }
@@ -600,6 +611,104 @@ contract CowRouterTest is BaseCowTest {
         cowRouter.setProtocolFeePercentage(newProtocolFeePercentage);
 
         assertEq(cowRouter.getProtocolFeePercentage(), newProtocolFeePercentage, "Protocol Fee Percentage is not set");
+    }
+
+    /********************************************************
+                          Fee Sweeper
+    ********************************************************/
+    function testGetFeeSweeper() public {
+        assertEq(cowRouter.getFeeSweeper(), feeSweeper, "Wrong fee sweeper");
+
+        address newFeeSweeper = address(1);
+
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(newFeeSweeper);
+
+        assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was not set properly");
+    }
+
+    function testSetFeeSweeperIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        cowRouter.setFeeSweeper(address(1));
+    }
+
+    function testSetFeeSweeperInvalidAddress() public {
+        // Address 0 is not a valid fee sweeper.
+        vm.expectRevert(abi.encodeWithSelector(ICowRouter.InvalidFeeSweeper.selector));
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(address(0));
+    }
+
+    function testSetFeeSweeper() public {
+        address newFeeSweeper = address(2);
+
+        vm.prank(admin);
+        vm.expectEmit();
+        emit ICowRouter.FeeSweeperChanged(newFeeSweeper);
+        cowRouter.setFeeSweeper(newFeeSweeper);
+
+        assertEq(cowRouter.getFeeSweeper(), newFeeSweeper, "Fee sweeper was set properly");
+    }
+
+    function testWithdrawCollectedProtocolFees() public {
+        uint256 protocolFeePercentage = _INITIAL_PROTOCOL_FEE_PERCENTAGE;
+        uint256 donationDai = DEFAULT_AMOUNT / 10;
+        uint256 donationUsdc = DEFAULT_AMOUNT / 10;
+
+        (uint256[] memory donationAmounts, , ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
+
+        vm.prank(lp);
+        cowRouter.donate(pool, donationAmounts, bytes(""));
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
+
+        uint256 daiProtocolFeesBeforeWithdraw = cowRouter.getCollectedProtocolFees(dai);
+        uint256 usdcProtocolFeesBeforeWithdraw = cowRouter.getCollectedProtocolFees(usdc);
+
+        assertEq(
+            balancesBefore.userTokens[daiIdx],
+            daiProtocolFeesBeforeWithdraw,
+            "CoW Router has a wrong amount of DAI to withdraw"
+        );
+        assertEq(
+            balancesBefore.userTokens[usdcIdx],
+            usdcProtocolFeesBeforeWithdraw,
+            "CoW Router has a wrong amount of USDC to withdraw"
+        );
+
+        vm.expectEmit();
+        emit ICowRouter.ProtocolFeesWithdrawn(dai, alice, daiProtocolFeesBeforeWithdraw);
+        cowRouter.withdrawCollectedProtocolFees(dai);
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
+
+        assertEq(balancesAfter.userTokens[daiIdx], 0, "CoW Router has DAI tokens to withdraw");
+        assertEq(cowRouter.getCollectedProtocolFees(dai), 0, "CoW Router state of protocol fees for DAI is not 0");
+        // Alice is the current feeSweeper, as set by BaseCowTest contract.
+        assertEq(
+            balancesAfter.aliceTokens[daiIdx],
+            balancesBefore.aliceTokens[daiIdx] + daiProtocolFeesBeforeWithdraw,
+            "DAI tokens were not transferred to the fee sweeper"
+        );
+
+        // Change fee sweeper to Bob and check if the new fee sweeper receives the protocol fees.
+        vm.prank(admin);
+        cowRouter.setFeeSweeper(bob);
+
+        vm.expectEmit();
+        emit ICowRouter.ProtocolFeesWithdrawn(usdc, bob, usdcProtocolFeesBeforeWithdraw);
+        cowRouter.withdrawCollectedProtocolFees(usdc);
+
+        BaseVaultTest.Balances memory balancesAfterUsdc = getBalances(address(cowRouter));
+
+        assertEq(balancesAfterUsdc.userTokens[usdcIdx], 0, "CoW Router has USDC tokens to withdraw");
+        assertEq(cowRouter.getCollectedProtocolFees(usdc), 0, "CoW Router state of protocol fees for USDC is not 0");
+        // Bob now is the current feeSweeper.
+        assertEq(
+            balancesAfterUsdc.bobTokens[usdcIdx],
+            balancesBefore.bobTokens[usdcIdx] + usdcProtocolFeesBeforeWithdraw,
+            "USDC tokens were not transferred to the fee sweeper"
+        );
     }
 
     /********************************************************
@@ -713,5 +822,46 @@ contract CowRouterTest is BaseCowTest {
         // without reverting is `MinimumTradeAmount/(1 - fee%)`. This value comes from the formula
         // `MinimumTradeAmount = donation - Fees`, where fees is `fee% * donation`.
         return bound(donation, _MIN_TRADE_AMOUNT.divUp(FixedPoint.ONE - protocolFeePercentage), DEFAULT_AMOUNT);
+    }
+
+    function _calculateAmountOutSwapExactIn(uint256 daiSwapAmountIn) private returns (uint256 amountOut) {
+        // The pool static fee percentage is independent from the protocol fee percentage charged on donations by the
+        // CoW Router.
+        uint256 staticSwapFeePercentage = vault.getStaticSwapFeePercentage(pool);
+
+        vm.prank(address(vault));
+        return
+            IBasePool(pool).onSwap(
+                PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: daiSwapAmountIn - daiSwapAmountIn.mulUp(staticSwapFeePercentage),
+                    balancesScaled18: [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                    indexIn: daiIdx,
+                    indexOut: usdcIdx,
+                    router: address(cowRouter),
+                    userData: bytes("")
+                })
+            );
+    }
+
+    function _calculateAmountInSwapExactOut(uint256 usdcSwapAmountOut) private returns (uint256) {
+        // The pool static fee percentage is independent from the protocol fee percentage charged on donations by the
+        // CoW Router.
+        uint256 staticSwapFeePercentage = vault.getStaticSwapFeePercentage(pool);
+
+        vm.prank(address(vault));
+        uint256 amountInNoFees = IBasePool(pool).onSwap(
+            PoolSwapParams({
+                kind: SwapKind.EXACT_OUT,
+                amountGivenScaled18: usdcSwapAmountOut,
+                balancesScaled18: [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(),
+                indexIn: daiIdx,
+                indexOut: usdcIdx,
+                router: address(cowRouter),
+                userData: bytes("")
+            })
+        );
+
+        return amountInNoFees + amountInNoFees.mulDivUp(staticSwapFeePercentage, staticSwapFeePercentage.complement());
     }
 }

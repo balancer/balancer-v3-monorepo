@@ -27,12 +27,19 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     // Protocol fee percentage capped at 50%.
     uint256 internal constant _MAX_PROTOCOL_FEE_PERCENTAGE = 50e16;
 
+    // Address that will receive the protocol fees on withdrawal.
+    address internal _feeSweeper;
     uint256 internal _protocolFeePercentage;
     // Store the total amount of fees collected in each token.
     mapping(IERC20 token => uint256 feeAmount) internal _collectedProtocolFees;
 
-    constructor(IVault vault, uint256 protocolFeePercentage) VaultGuard(vault) SingletonAuthentication(vault) {
+    constructor(
+        IVault vault,
+        uint256 protocolFeePercentage,
+        address feeSweeper
+    ) VaultGuard(vault) SingletonAuthentication(vault) {
         _setProtocolFeePercentage(protocolFeePercentage);
+        _setFeeSweeper(feeSweeper);
     }
 
     /********************************************************
@@ -54,6 +61,11 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
     }
 
     /// @inheritdoc ICowRouter
+    function getFeeSweeper() external view returns (address feeSweeper) {
+        return _feeSweeper;
+    }
+
+    /// @inheritdoc ICowRouter
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external authenticate {
         _setProtocolFeePercentage(newProtocolFeePercentage);
     }
@@ -66,6 +78,20 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         _protocolFeePercentage = newProtocolFeePercentage;
 
         emit ProtocolFeePercentageChanged(newProtocolFeePercentage);
+    }
+
+    /// @inheritdoc ICowRouter
+    function setFeeSweeper(address newFeeSweeper) external authenticate {
+        _setFeeSweeper(newFeeSweeper);
+    }
+
+    function _setFeeSweeper(address newFeeSweeper) private {
+        if (newFeeSweeper == address(0)) {
+            revert InvalidFeeSweeper();
+        }
+        _feeSweeper = newFeeSweeper;
+
+        emit FeeSweeperChanged(newFeeSweeper);
     }
 
     /********************************************************
@@ -151,6 +177,20 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
                 })
             )
         );
+    }
+
+    /********************************************************
+                     Withdraw Protocol Fees
+    ********************************************************/
+
+    /// @inheritdoc ICowRouter
+    function withdrawCollectedProtocolFees(IERC20 token) external {
+        uint256 amountToWithdraw = _collectedProtocolFees[token];
+        if (amountToWithdraw > 0) {
+            _collectedProtocolFees[token] = 0;
+            token.safeTransfer(_feeSweeper, amountToWithdraw);
+            emit ProtocolFeesWithdrawn(token, _feeSweeper, amountToWithdraw);
+        }
     }
 
     /********************************************************

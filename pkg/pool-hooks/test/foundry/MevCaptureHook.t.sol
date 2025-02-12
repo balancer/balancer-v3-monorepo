@@ -24,6 +24,8 @@ contract MevCaptureHookTest is BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
+    error MockRegistryRevert();
+
     MevCaptureHookMock private _mevCaptureHook;
 
     BalancerContractRegistry private registry;
@@ -81,6 +83,33 @@ contract MevCaptureHookTest is BaseVaultTest {
 
     function testGetBalancerContractRegistry() public view {
         assertEq(address(_mevCaptureHook.getBalancerContractRegistry()), address(registry), "Wrong registry");
+    }
+
+    /********************************************************
+                         constructor()
+    ********************************************************/
+
+    function testInvalidRegistry() public {
+        BalancerContractRegistry mockRegistry = BalancerContractRegistry(address(1));
+        vm.mockCall(
+            address(mockRegistry),
+            abi.encodeWithSelector(BalancerContractRegistry.isTrustedRouter.selector, address(0)),
+            abi.encode(true)
+        );
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.InvalidBalancerContractRegistry.selector));
+        new MevCaptureHookMock(IVault(address(vault)), mockRegistry);
+    }
+
+    function testRevertingRegistry() public {
+        BalancerContractRegistry mockRegistry = BalancerContractRegistry(address(1));
+        vm.mockCallRevert(
+            address(mockRegistry),
+            abi.encodeWithSelector(BalancerContractRegistry.isTrustedRouter.selector, address(0)),
+            abi.encodePacked(MockRegistryRevert.selector)
+        );
+
+        vm.expectRevert(MockRegistryRevert.selector);
+        new MevCaptureHookMock(IVault(address(vault)), mockRegistry);
     }
 
     /********************************************************
@@ -626,9 +655,9 @@ contract MevCaptureHookTest is BaseVaultTest {
         vm.expectEmit();
         emit IMevCaptureHook.MevTaxExemptSenderAdded(alice);
         _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
-        assertTrue(_mevCaptureHook.isMevTaxExempt(lp), "LP was not added properly as MEV tax-exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(alice), "Alice was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(lp), "LP was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice was not added properly as MEV tax-exempt");
     }
 
     function testAddMevTaxExemptSendersRevertsWithDuplicated() public {
@@ -659,9 +688,9 @@ contract MevCaptureHookTest is BaseVaultTest {
         emit IMevCaptureHook.MevTaxExemptSenderRemoved(alice);
         _mevCaptureHook.removeMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevCaptureHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(lp), "LP was not removed properly as MEV tax-exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(alice), "Alice was not removed properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob was not added properly as MEV tax-exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(lp), "LP was not removed properly as MEV tax-exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice was not removed properly as MEV tax-exempt");
     }
 
     function testRemoveMevTaxExemptSendersRevertsIfNotExist() public {
@@ -676,12 +705,12 @@ contract MevCaptureHookTest is BaseVaultTest {
     /********************************************************
                        isMevTaxExempt
     ********************************************************/
-    function testIsMevTaxExempt() public {
+    function testIsMevTaxExemptSender() public {
         vm.prank(admin);
         _mevCaptureHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevCaptureHook.isMevTaxExempt(lp), "LP is not exempt");
-        assertFalse(_mevCaptureHook.isMevTaxExempt(bob), "Bob is exempt");
-        assertTrue(_mevCaptureHook.isMevTaxExempt(alice), "Alice is not exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(lp), "LP is not exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob is exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice is not exempt");
     }
 }
