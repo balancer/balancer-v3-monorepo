@@ -95,14 +95,6 @@ struct LBPoolDynamicData {
  */
 interface ILBPool is IBasePool {
     /**
-     * @notice Emitted on deployment so that offchain processes know which token is which from the beginning.
-     * @dev This information is also available onchain through immutable data and explicit getters.
-     * @param projectToken The address of the project token (being distributed in the sale)
-     * @param reserveToken The address of the reserve token (used to purchase the project token)
-     */
-    event LBPoolCreated(IERC20 indexed projectToken, IERC20 indexed reserveToken);
-
-    /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all dynamic LBP parameters
      */

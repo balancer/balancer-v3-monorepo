@@ -149,11 +149,27 @@ contract LBPoolTest is BaseLBPTest {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
-        vm.expectEmit();
-        emit ILBPool.LBPoolCreated(projectToken, reserveToken);
+        uint256 preCreateSnapshotId = vm.snapshot();
 
         vm.expectEmit();
         emit LBPool.GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+
+        (address newPool, ) = _createLBPoolWithCustomWeights(
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            startTime,
+            endTime,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+
+        vm.revertTo(preCreateSnapshotId);
+
+        vm.expectEmit();
+        emit LBPoolFactory.LBPoolCreated(newPool, projectToken, reserveToken);
+
+        // Should create the same pool address again.
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
