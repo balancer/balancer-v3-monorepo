@@ -7,7 +7,6 @@ import {
 } from '../typechain-types';
 import { task } from 'hardhat/config';
 
-const CONDITIONAL_ORDER_PARAMS_ABI = ['tuple(address handler, bytes32 salt, bytes staticInput)'];
 const DEFAULT_ORDER_LIFETIME = 60 * 10; // 10 minutes
 const APP_DATA_HASH = '0xc990bae86208bfdfba8879b64ab68da5905e8bb97aa3da5c701ec1183317a6f6';
 
