@@ -273,12 +273,12 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         data.endTime = _endTime;
 
         data.startWeights = new uint256[](_TWO_TOKENS);
-        data.startWeights[data.projectTokenIndex] = _projectTokenStartWeight;
-        data.startWeights[data.reserveTokenIndex] = _reserveTokenStartWeight;
+        data.startWeights[_projectTokenIndex] = _projectTokenStartWeight;
+        data.startWeights[_reserveTokenIndex] = _reserveTokenStartWeight;
 
         data.endWeights = new uint256[](_TWO_TOKENS);
-        data.endWeights[data.projectTokenIndex] = _projectTokenEndWeight;
-        data.endWeights[data.reserveTokenIndex] = _reserveTokenEndWeight;
+        data.endWeights[_projectTokenIndex] = _projectTokenEndWeight;
+        data.endWeights[_reserveTokenIndex] = _reserveTokenEndWeight;
     }
 
     /*******************************************************************************
