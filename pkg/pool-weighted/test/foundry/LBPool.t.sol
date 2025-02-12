@@ -145,9 +145,12 @@ contract LBPoolTest is BaseLBPTest {
         );
     }
 
-    function testCreatePoolEvent() public {
+    function testCreatePoolEvents() public {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        vm.expectEmit();
+        emit ILBPool.LBPoolCreated(projectToken, reserveToken);
 
         vm.expectEmit();
         emit LBPool.GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
@@ -171,15 +174,11 @@ contract LBPoolTest is BaseLBPTest {
     }
 
     function testGetProjectToken() public view {
-        IERC20[] memory poolTokens = vault.getPoolTokens(pool);
-
-        assertEq(address(ILBPool(pool).getProjectToken()), address(poolTokens[projectIdx]), "Wrong project token");
+        assertEq(address(ILBPool(pool).getProjectToken()), address(projectToken), "Wrong project token");
     }
 
     function testGetReserveToken() public view {
-        IERC20[] memory poolTokens = vault.getPoolTokens(pool);
-
-        assertEq(address(ILBPool(pool).getReserveToken()), address(poolTokens[reserveIdx]), "Wrong reserve token");
+        assertEq(address(ILBPool(pool).getReserveToken()), address(reserveToken), "Wrong reserve token");
     }
 
     function testGradualWeightUpdateParams() public {
