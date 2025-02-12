@@ -38,7 +38,7 @@ contract CowPoolTest is BaseCowTest {
         CowPoolFactory(poolFactory).setTrustedCowRouter(_otherCowRouter);
 
         vm.expectEmit();
-        emit ICowPool.CowTrustedRouterRefreshed(address(_otherCowRouter));
+        emit ICowPool.CowTrustedRouterChanged(address(_otherCowRouter));
         CowPool(pool).refreshTrustedCowRouter();
         assertEq(
             CowPool(pool).getTrustedCowRouter(),

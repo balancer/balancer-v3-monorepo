@@ -120,6 +120,6 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
     function _setTrustedCowRouter(address trustedCowRouter) private {
         _trustedCowRouter = trustedCowRouter;
 
-        emit CowTrustedRouterRefreshed(_trustedCowRouter);
+        emit CowTrustedRouterChanged(_trustedCowRouter);
     }
 }

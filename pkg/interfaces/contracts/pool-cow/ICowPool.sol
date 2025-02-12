@@ -48,7 +48,7 @@ interface ICowPool {
      * @notice Trusted CoW Router has been refreshed from the pool factory.
      * @param newTrustedCowRouter The current trusted router address in the CoW pool factory
      */
-    event CowTrustedRouterRefreshed(address newTrustedCowRouter);
+    event CowTrustedRouterChanged(address newTrustedCowRouter);
 
     /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
