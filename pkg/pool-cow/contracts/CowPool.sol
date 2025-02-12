@@ -116,6 +116,7 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
                         Private Helpers
     ********************************************************/
 
+    // This assumes the trusted CoW Router address has been validated externally (e.g., in the factory).
     function _setTrustedCowRouter(address trustedCowRouter) private {
         _trustedCowRouter = trustedCowRouter;
 

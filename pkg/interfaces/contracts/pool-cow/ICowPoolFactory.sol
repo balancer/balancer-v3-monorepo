@@ -8,7 +8,10 @@ interface ICowPoolFactory {
     /// @notice The trusted CoW router cannot be address zero.
     error InvalidTrustedCowRouter();
 
-    /// @notice Trusted CoW Router has changed.
+    /**
+      * @notice The address of the trusted CoW Router has changed.
+      * @param newTrustedCowRouter The current trusted CoW Router address
+      */
     event CowTrustedRouterChanged(address newTrustedCowRouter);
 
     /**
@@ -17,7 +20,7 @@ interface ICowPoolFactory {
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
-     * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
+     * @param normalizedWeights The pool weights (must sum to FixedPoint.ONE)
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to create2 deployment
@@ -34,14 +37,13 @@ interface ICowPoolFactory {
 
     /**
      * @notice Gets the current trusted CoW Router in the factory.
-     * @return trustedCowRouter Address of trusted CoW AMM Router.
+     * @return trustedCowRouter Address of the trusted CoW AMM Router.
      */
     function getTrustedCowRouter() external view returns (address trustedCowRouter);
 
     /**
      * @notice Sets the current trusted CoW Router in the factory.
-     * @dev This permissioned function checks if the new trusted router's address is not zero or the address of the
-     * factory, which are not valid addresses.
+     * @dev This permissioned function ensures that the new trusted router address is non-zero.
      *
      * @param newTrustedCowRouter Address of new trusted CoW AMM Router.
      */

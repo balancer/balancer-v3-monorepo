@@ -71,8 +71,6 @@ interface ICowPool {
      */
     function getTrustedCowRouter() external view returns (address cowRouter);
 
-    /**
-     * @notice Updates the trusted router value according to the CoW AMM Factory.
-     */
+     /// @notice Updates this pool's trusted router address to the current value in the CoW AMM Factory.
     function refreshTrustedCowRouter() external;
 }
