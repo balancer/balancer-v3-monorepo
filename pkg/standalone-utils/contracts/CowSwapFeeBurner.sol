@@ -30,6 +30,8 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  */
 contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
+    using SafeERC20 for IERC20;
+
     struct ShortGPv2Order {
         IERC20 buyToken;
         address receiver;
@@ -144,9 +146,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             revert OrderHasUnexpectedStatus(status);
         }
 
+        feeToken.safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+
         _createCowOrder(feeToken);
 
-        feeToken.approve(vaultRelayer, feeTokenAmount);
+        feeToken.forceApprove(vaultRelayer, feeTokenAmount);
 
         _orders[feeToken] = ShortGPv2Order({
             buyToken: targetToken,

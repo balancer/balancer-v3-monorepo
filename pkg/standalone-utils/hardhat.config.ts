@@ -7,7 +7,12 @@ import 'hardhat-ignore-warnings';
 import 'hardhat-gas-reporter';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
-import './tasks/smokeTestFeeSweeper';
+import { setupSmokeTestFeeSweeperContracts } from './tasks/cowBurnerSmokeTest';
+import { task } from 'hardhat/config';
+
+task('setup-smoke-test-fee-sweeper-contracts', 'Setup contracts for smoke testing fee sweeper').setAction(
+  setupSmokeTestFeeSweeperContracts
+);
 
 export default {
   networks: {

@@ -10,10 +10,15 @@ import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/v
 contract VaultMockForFeeSweeper is IAuthorizer {
     using SafeERC20 for IERC20;
 
-    address public immutable owner;
+    mapping(address => bool) public owners;
 
     constructor() {
-        owner = msg.sender;
+        owners[msg.sender] = true;
+    }
+
+    modifier onlyOwner() {
+        require(owners[msg.sender], "VaultMockForFeeSweeper: Not an owner");
+        _;
     }
 
     function getAuthorizer() external view returns (IAuthorizer authorizer) {
@@ -21,11 +26,19 @@ contract VaultMockForFeeSweeper is IAuthorizer {
     }
 
     function canPerform(bytes32, address account, address) external view returns (bool) {
-        return owner == account;
+        return owners[account];
     }
 
     function canPerform(bytes32, address account) external view returns (bool) {
-        return owner == account;
+        return owners[account];
+    }
+
+    function addOwner(address owner_) external onlyOwner {
+        owners[owner_] = true;
+    }
+
+    function removeOwner(address owner_) external onlyOwner {
+        owners[owner_] = false;
     }
 
     function getProtocolFeeController() external view returns (IProtocolFeeController protocolFeeController) {
@@ -34,7 +47,7 @@ contract VaultMockForFeeSweeper is IAuthorizer {
 
     function collectAggregateFees(address) external {}
 
-    function withdrawProtocolFeesForToken(address, address recipient, IERC20 token) external {
+    function withdrawProtocolFeesForToken(address, address recipient, IERC20 token) external onlyOwner {
         token.safeTransfer(recipient, token.balanceOf(address(this)));
     }
 }
