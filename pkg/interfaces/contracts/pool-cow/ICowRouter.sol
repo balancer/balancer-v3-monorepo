@@ -51,19 +51,6 @@ interface ICowRouter {
         bytes userData;
     }
 
-    /// @notice The swap transaction was not validated before the specified deadline timestamp.
-    error SwapDeadline();
-
-    /**
-     * @notice The `newProtocolFeePercentage` is above the maximum limit.
-     * @param newProtocolFeePercentage New value of the protocol fee percentage
-     * @param maxProtocolFeePercentage The maximum protocol fee percentage
-     */
-    error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
-
-    /// @notice The caller tried to set the zero address as the fee sweeper.
-    error InvalidFeeSweeper();
-
     /**
      * @notice The funds transferred to the Vault and the swap tokenOut amount were not enough to pay for the Swap and
      * Donate operation.
@@ -125,6 +112,19 @@ interface ICowRouter {
      * @param amountWithdrawn Amount of tokens withdawn from CowRouter
      */
     event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountWithdrawn);
+
+    /// @notice The swap transaction was not validated before the specified deadline timestamp.
+    error SwapDeadline();
+
+    /**
+     * @notice The `newProtocolFeePercentage` is above the maximum limit.
+     * @param newProtocolFeePercentage New value of the protocol fee percentage
+     * @param maxProtocolFeePercentage The maximum protocol fee percentage
+     */
+    error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
+
+    /// @notice The caller tried to set the zero address as the fee sweeper.
+    error InvalidFeeSweeper();
 
     /**
      * @notice Executes an ExactIn swap and donates a specified amount to the same CoW AMM Pool.
