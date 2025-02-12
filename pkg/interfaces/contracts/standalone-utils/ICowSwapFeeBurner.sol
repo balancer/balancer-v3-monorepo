@@ -19,20 +19,20 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
 
     /**
      * @notice An order was retried after failing.
-     * @param sellToken The token used to identify the order (tokenIn)
-     * @param sellAmount The number of tokens in the order (tokenIn)
-     * @param minTargetTokenAmount The minimum number of target tokens required (tokenOut)
+     * @param tokenIn The token used to identify the order
+     * @param exactAmountIn The number of tokens in the order
+     * @param minAmountOut The minimum number of target tokens required
      * @param deadline The deadline for the new order to be filled
      */
-    event OrderRetried(IERC20 sellToken, uint256 sellAmount, uint256 minTargetTokenAmount, uint256 deadline);
+    event OrderRetried(IERC20 tokenIn, uint256 exactAmountIn, uint256 minAmountOut, uint256 deadline);
 
     /**
      * @notice An order was canceled after failure.
-     * @param sellToken The token used to identify the order (tokenIn)
-     * @param sellAmount The number of tokens in the order (tokenIn)
+     * @param tokenIn The token used to identify the order
+     * @param exactAmountIn The number of tokens in the order
      * @param receiver The account that received the tokens from the unfilled order
      */
-    event OrderReverted(IERC20 sellToken, uint256 sellAmount, address receiver);
+    event OrderReverted(IERC20 tokenIn, uint256 exactAmountIn, address receiver);
 
     /**
      * @notice The order parameters were invalid.
@@ -52,37 +52,37 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
 
     /**
      * @notice Get the order at the sell token.
-     * @param sellToken The token used to identify the order (tokenIn)
+     * @param tokenIn The token used to identify the order
      * @return The order data for the given token
      */
-    function getOrder(IERC20 sellToken) external view returns (GPv2Order memory);
+    function getOrder(IERC20 tokenIn) external view returns (GPv2Order memory);
 
     /**
      * @notice Get the status of the order at the sell token.
-     * @param sellToken The token used to identify the order (tokenIn)
+     * @param tokenIn The token used to identify the order 
      * @return The status of the order for the given token
      */
-    function getOrderStatus(IERC20 sellToken) external view returns (OrderStatus);
+    function getOrderStatus(IERC20 tokenIn) external view returns (OrderStatus);
 
     /**
      * @notice Retry an order that has not been filled yet and expired.
-     * @param sellToken The token used to identify the order (tokenIn)
-     * @param minTargetTokenAmount The minimum number of target tokens to receive (tokenOut)
+     * @param tokenIn The token used to identify the order
+     * @param minAmountOut The minimum number of target tokens to receive (tokenOut)
      * @param deadline The deadline for the order to be filled.
      */
-    function retryOrder(IERC20 sellToken, uint256 minTargetTokenAmount, uint256 deadline) external;
+    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external;
 
     /**
      * @notice Return tokens from an order that has failed.
-     * @param sellToken The token used to identify the order (tokenIn)
+     * @param tokenIn The token used to identify the order
      * @param receiver The address to receive the tokens from the unfilled order
      */
-    function revertOrder(IERC20 sellToken, address receiver) external;
+    function cancelOrder(IERC20 tokenIn, address receiver) external;
 
     /**
      * @notice Emergency return tokens from an order regardless of status.
-     * @param sellToken The token used to identify the order (tokenIn)
+     * @param tokenIn The token used to identify the order
      * @param receiver The address to receive the from the unfilled order
      */
-    function emergencyRevertOrder(IERC20 sellToken, address receiver) external;
+    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external;
 }

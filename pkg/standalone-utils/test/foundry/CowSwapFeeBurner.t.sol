@@ -360,6 +360,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             bytes("")
         );
 
+        // In this case, the buy price is more than the target price. It is good for the burner because it will get more tokens.
         order.buyAmount = order.buyAmount + 1;
         cowSwapFeeBurner.verify(
             address(this),
@@ -609,7 +610,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.retryOrder(dai, MIN_TARGET_TOKEN_AMOUNT, orderDeadline);
     }
 
-    function testRevertOrder() public {
+    function testCancelOrder() public {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
@@ -627,7 +628,13 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _mockComposableCowCreate(dai);
         vm.expectEmit();
         emit ICowSwapFeeBurner.OrderReverted(dai, halfAmount, alice);
-        cowSwapFeeBurner.revertOrder(dai, alice);
+        cowSwapFeeBurner.cancelOrder(dai, alice);
+
+        assertEq(
+            dai.allowance(address(cowSwapFeeBurner), vaultRelayerMock),
+            0,
+            "vaultRelayer should have been unapproved"
+        );
 
         assertEq(dai.balanceOf(alice), balanceBefore + halfAmount, "alice should have received the tokens");
         assertEq(
@@ -640,7 +647,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.getOrder(dai);
     }
 
-    function testRevertOrderWithInvalidOrderStatus() public {
+    function testCancelOrderWithInvalidOrderStatus() public {
         _grantBurnRolesAndApproveTokens();
 
         vm.expectRevert(
@@ -649,12 +656,12 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
                 ICowSwapFeeBurner.OrderStatus.Nonexistent
             )
         );
-        cowSwapFeeBurner.revertOrder(dai, alice);
+        cowSwapFeeBurner.cancelOrder(dai, alice);
     }
 
-    function testRevertOrderWithoutPermission() public {
+    function testCancelOrderWithoutPermission() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        cowSwapFeeBurner.revertOrder(dai, alice);
+        cowSwapFeeBurner.cancelOrder(dai, alice);
     }
 
     function testEmergencyRevertOrder() public {
@@ -676,7 +683,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _mockComposableCowCreate(dai);
         vm.expectEmit();
         emit ICowSwapFeeBurner.OrderReverted(dai, halfAmount, alice);
-        cowSwapFeeBurner.emergencyRevertOrder(dai, alice);
+        cowSwapFeeBurner.emergencyCancelOrder(dai, alice);
 
         assertEq(dai.balanceOf(alice), balanceBefore + halfAmount, "alice should have received the tokens");
         assertEq(
@@ -689,9 +696,9 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.getOrder(dai);
     }
 
-    function testEmergencyRevertWithoutPermission() public {
+    function testEmergencyCancelWithoutPermission() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        cowSwapFeeBurner.emergencyRevertOrder(dai, alice);
+        cowSwapFeeBurner.emergencyCancelOrder(dai, alice);
     }
 
     function testGetOrderStatus() public {
@@ -754,9 +761,9 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
     function _grantBurnRolesAndApproveTokens() internal {
         authorizer.grantRole(cowSwapFeeBurnerAuth.getActionId(IProtocolFeeBurner.burn.selector), alice);
         authorizer.grantRole(cowSwapFeeBurnerAuth.getActionId(ICowSwapFeeBurner.retryOrder.selector), address(this));
-        authorizer.grantRole(cowSwapFeeBurnerAuth.getActionId(ICowSwapFeeBurner.revertOrder.selector), address(this));
+        authorizer.grantRole(cowSwapFeeBurnerAuth.getActionId(ICowSwapFeeBurner.cancelOrder.selector), address(this));
         authorizer.grantRole(
-            cowSwapFeeBurnerAuth.getActionId(ICowSwapFeeBurner.emergencyRevertOrder.selector),
+            cowSwapFeeBurnerAuth.getActionId(ICowSwapFeeBurner.emergencyCancelOrder.selector),
             address(this)
         );
 

@@ -28,15 +28,16 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @title CowSwapFeeBurner
  * @notice A contract that burns protocol fees using CowSwap.
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
+ * Only one order per token is allowed at a time.
  */
 contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
     using SafeERC20 for IERC20;
 
-    struct ShortGPv2Order {
-        IERC20 buyToken;
+    struct ShortOrder {
+        IERC20 tokenOut;
         address receiver;
-        uint256 buyAmount;
-        uint32 validTo;
+        uint256 minAmountOut;
+        uint32 deadline;
     }
 
     bytes4 internal constant _SIGNATURE_VERIFIER_MUXER_INTERFACE = 0x62af8dc2;
@@ -47,8 +48,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     address public immutable vaultRelayer;
     bytes32 public immutable appData;
 
-    // Orders are identified by the tokenIn (often called the sellToken).
-    mapping(IERC20 token => ShortGPv2Order order) internal _orders;
+    // Orders are identified by the tokenIn (often called the tokenIn).
+    mapping(IERC20 token => ShortOrder order) internal _orders;
 
     constructor(
         IVault _vault,
@@ -66,18 +67,18 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     ***************************************************************************/
 
     /// @inheritdoc ICowSwapFeeBurner
-    function getOrder(IERC20 sellToken) external view returns (GPv2Order memory) {
-        return _getOrder(sellToken);
+    function getOrder(IERC20 tokenIn) external view returns (GPv2Order memory) {
+        return _getOrder(tokenIn);
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function getOrderStatus(IERC20 sellToken) external view returns (OrderStatus status) {
-        (status, ) = _getOrderStatusAndBalance(sellToken);
+    function getOrderStatus(IERC20 tokenIn) external view returns (OrderStatus status) {
+        (status, ) = _getOrderStatusAndBalance(tokenIn);
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function retryOrder(IERC20 sellToken, uint256 minTargetTokenAmount, uint256 deadline) external authenticate {
-        (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(sellToken);
+    function retryOrder(IERC20 tokenIn, uint256 minTargetTokenAmount, uint256 deadline) external authenticate {
+        (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
             revert OrderHasUnexpectedStatus(status);
@@ -86,36 +87,38 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         _checkMinTargetTokenAmount(minTargetTokenAmount);
         _checkDeadline(deadline);
 
-        _orders[sellToken].buyAmount = minTargetTokenAmount;
-        _orders[sellToken].validTo = uint32(deadline);
+        _orders[tokenIn].minAmountOut = minTargetTokenAmount;
+        _orders[tokenIn].deadline = uint32(deadline);
 
-        _createCowOrder(sellToken);
+        _createCowOrder(tokenIn);
 
-        emit OrderRetried(sellToken, amount, minTargetTokenAmount, deadline);
+        emit OrderRetried(tokenIn, amount, minTargetTokenAmount, deadline);
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function revertOrder(IERC20 sellToken, address receiver) external authenticate {
-        (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(sellToken);
+    function cancelOrder(IERC20 tokenIn, address receiver) external authenticate {
+        (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
             revert OrderHasUnexpectedStatus(status);
         }
 
-        delete _orders[sellToken];
+        tokenIn.forceApprove(vaultRelayer, 0);
+        delete _orders[tokenIn];
 
-        SafeERC20.safeTransfer(sellToken, receiver, amount);
+        SafeERC20.safeTransfer(tokenIn, receiver, amount);
 
-        emit OrderReverted(sellToken, amount, receiver);
+        emit OrderReverted(tokenIn, amount, receiver);
     }
 
-    function emergencyRevertOrder(IERC20 sellToken, address receiver) external authenticate {
-        delete _orders[sellToken];
+    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external authenticate {
+        tokenIn.forceApprove(vaultRelayer, 0);
+        delete _orders[tokenIn];
 
-        uint256 amount = sellToken.balanceOf(address(this));
-        SafeERC20.safeTransfer(sellToken, receiver, amount);
+        uint256 amount = tokenIn.balanceOf(address(this));
+        SafeERC20.safeTransfer(tokenIn, receiver, amount);
 
-        emit OrderReverted(sellToken, amount, receiver);
+        emit OrderReverted(tokenIn, amount, receiver);
     }
 
     /***************************************************************************
@@ -152,11 +155,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
 
         feeToken.forceApprove(vaultRelayer, feeTokenAmount);
 
-        _orders[feeToken] = ShortGPv2Order({
-            buyToken: targetToken,
+        _orders[feeToken] = ShortOrder({
+            tokenOut: targetToken,
             receiver: recipient,
-            buyAmount: minTargetTokenAmount,
-            validTo: uint32(deadline)
+            minAmountOut: minTargetTokenAmount,
+            deadline: uint32(deadline)
         });
 
         emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmount, recipient);
@@ -174,9 +177,9 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         bytes calldata staticInput,
         bytes calldata
     ) public view returns (GPv2Order memory) {
-        IERC20 sellToken = IERC20(abi.decode(staticInput, (address)));
+        IERC20 tokenIn = IERC20(abi.decode(staticInput, (address)));
 
-        return _getOrder(sellToken);
+        return _getOrder(tokenIn);
     }
 
     /// @inheritdoc ICowConditionalOrder
@@ -243,21 +246,21 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
                                 Private Functions
     ***************************************************************************/
 
-    function _getOrder(IERC20 sellToken) private view returns (GPv2Order memory) {
-        ShortGPv2Order memory shortOrder = _orders[sellToken];
+    function _getOrder(IERC20 tokenIn) private view returns (GPv2Order memory) {
+        ShortOrder memory shortOrder = _orders[tokenIn];
 
-        if (shortOrder.validTo == 0) {
+        if (shortOrder.deadline == 0) {
             revert OrderNotValid("Order does not exist");
         }
 
         return
             GPv2Order({
-                sellToken: sellToken,
-                buyToken: shortOrder.buyToken,
+                sellToken: tokenIn,
+                buyToken: shortOrder.tokenOut,
                 receiver: shortOrder.receiver,
-                sellAmount: sellToken.balanceOf(address(this)),
-                buyAmount: shortOrder.buyAmount,
-                validTo: shortOrder.validTo,
+                sellAmount: tokenIn.balanceOf(address(this)),
+                buyAmount: shortOrder.minAmountOut,
+                validTo: shortOrder.deadline,
                 appData: appData,
                 feeAmount: 0,
                 kind: _sellKind,
@@ -267,16 +270,16 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             });
     }
 
-    function _getOrderStatusAndBalance(IERC20 sellAmount) private view returns (OrderStatus, uint256) {
-        ShortGPv2Order storage shortOrder = _orders[sellAmount];
+    function _getOrderStatusAndBalance(IERC20 tokenIn) private view returns (OrderStatus, uint256) {
+        ShortOrder storage shortOrder = _orders[tokenIn];
 
-        uint256 deadline = shortOrder.validTo;
+        uint256 deadline = shortOrder.deadline;
 
         if (deadline == 0) {
             return (OrderStatus.Nonexistent, 0);
         }
 
-        uint256 balance = sellAmount.balanceOf(address(this));
+        uint256 balance = tokenIn.balanceOf(address(this));
         if (balance == 0) {
             return (OrderStatus.Filled, balance);
         } else if (block.timestamp > deadline) {
@@ -298,12 +301,12 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         }
     }
 
-    function _createCowOrder(IERC20 sellToken) private {
+    function _createCowOrder(IERC20 tokenIn) private {
         composableCow.create(
             ICowConditionalOrder.ConditionalOrderParams({
                 handler: ICowConditionalOrder(address(this)),
                 salt: bytes32(0),
-                staticData: abi.encode(sellToken)
+                staticData: abi.encode(tokenIn)
             }),
             true
         );
