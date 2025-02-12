@@ -7,6 +7,7 @@ import 'hardhat-ignore-warnings';
 import 'hardhat-gas-reporter';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
+import './tasks/smokeTestFeeSweeper';
 
 export default {
   networks: {
