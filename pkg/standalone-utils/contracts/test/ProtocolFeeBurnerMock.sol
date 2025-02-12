@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 
@@ -11,8 +12,11 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
 
     uint256 private _tokenRatio = FixedPoint.ONE;
+
+    bool tokenTakingEnabled = true;
 
     /// @inheritdoc IProtocolFeeBurner
     function burn(
@@ -26,6 +30,10 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
     ) external {
         if (block.timestamp > deadline) {
             revert SwapDeadline();
+        }
+
+        if (tokenTakingEnabled) {
+            feeToken.safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);
         }
 
         // Simulate the swap by minting the same amount of target to the recipient.
@@ -42,5 +50,9 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
 
     function setTokenRatio(uint256 ratio) external {
         _tokenRatio = ratio;
+    }
+
+    function setTokenTakingEnabled(bool enabled) external {
+        tokenTakingEnabled = enabled;
     }
 }

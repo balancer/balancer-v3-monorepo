@@ -17,11 +17,6 @@ export type ConditionalOrderParams = {
   staticInput: string;
 };
 
-const calculateOrderId = async (params: ConditionalOrderParams) => {
-  const { ethers } = await import('hardhat');
-  return ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(CONDITIONAL_ORDER_PARAMS_ABI, [params]));
-};
-
 task('setup-smoke-test-cow-burner-contracts', 'Setup contracts for smoke testing cow burner')
   .addParam('target', 'Target token address')
   .setAction(async (args: { target: string }) => {

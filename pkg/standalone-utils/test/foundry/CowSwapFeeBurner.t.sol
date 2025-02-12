@@ -27,6 +27,8 @@ import { ProtocolFeeSweeper } from "../../contracts/ProtocolFeeSweeper.sol";
 import { CowSwapFeeBurner } from "../../contracts/CowSwapFeeBurner.sol";
 
 contract CowSwapFeeBurnerTest is BaseVaultTest {
+    using SafeERC20 for IERC20;
+
     bytes32 internal immutable SELL_KIND = keccak256("sell");
     bytes32 internal immutable TOKEN_BALANCE = keccak256("erc20");
     bytes32 immutable APP_DATA_HASH = keccak256("appData");
@@ -86,10 +88,10 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         feeSweeper.addProtocolFeeBurner(cowSwapFeeBurner);
     }
 
-    function _transferToBurner(IERC20 token, uint256 amount) private {
+    function _approveForBurner(IERC20 token, uint256 amount) private {
         // Must transfer before burning.
         vm.prank(alice);
-        token.transfer(address(cowSwapFeeBurner), amount);
+        token.forceApprove(address(cowSwapFeeBurner), amount);
     }
 
     function testSweepAndBurn() public {
@@ -150,7 +152,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.getOrder(dai);
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         vm.expectEmit();
         emit IProtocolFeeBurner.ProtocolFeeBurned(
@@ -251,7 +253,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -289,7 +291,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -346,7 +348,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -375,7 +377,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -519,7 +521,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -611,7 +613,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
         _burn();
 
         uint256 halfAmount = TEST_BURN_AMOUNT / 2;
@@ -659,7 +661,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -696,7 +698,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -715,7 +717,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
@@ -727,7 +729,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
-        _transferToBurner(dai, TEST_BURN_AMOUNT);
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
 
         _burn();
 
