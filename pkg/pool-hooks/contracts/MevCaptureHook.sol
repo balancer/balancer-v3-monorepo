@@ -22,15 +22,11 @@ import {
     MAX_FEE_PERCENTAGE
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevCaptureHook {
-    using FixedPoint for uint256;
-
     // Max Fee is 99.9999% (Max supported fee by the vault).
     uint256 private constant _MEV_MAX_FEE_PERCENTAGE = MAX_FEE_PERCENTAGE;
 
@@ -64,6 +60,12 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
 
     constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
+
+        // Smoke test to ensure the given registry is a contract and isn't hard-coded to trust everything.
+        // For certainty, users can call `getBalancerContractRegistry` and compare the result to the published address.
+        if (registry.isTrustedRouter(address(0))) {
+            revert InvalidBalancerContractRegistry();
+        }
 
         _setMevTaxEnabled(false);
         _setDefaultMevTaxMultiplier(0);
@@ -113,7 +115,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         // We can only check senders if the router is trusted. Apply the exemption for MEV tax-exempt senders.
         if (_registry.isTrustedRouter(params.router)) {
             address sender = IRouterCommon(params.router).getSender();
-            if (_isMevTaxExempt(sender)) {
+            if (_isMevTaxExemptSender[sender]) {
                 return (true, staticSwapFeePercentage);
             }
         }
@@ -274,8 +276,8 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     }
 
     /// @inheritdoc IMevCaptureHook
-    function isMevTaxExempt(address sender) external view returns (bool) {
-        return _isMevTaxExempt(sender);
+    function isMevTaxExemptSender(address sender) external view returns (bool) {
+        return _isMevTaxExemptSender[sender];
     }
 
     /// @inheritdoc IMevCaptureHook
@@ -309,9 +311,9 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         uint256 priorityGasPrice = _getPriorityGasPrice();
         uint256 maxMevSwapFeePercentage = _maxMevSwapFeePercentage;
 
-        // If `priorityGasPrice` < threshold, this indicates the transaction is from a retail user, so we should not
-        // impose the MEV tax. Also, if mev fee cap is lower than static fee percentage, returns the static.
-        if (priorityGasPrice < threshold || maxMevSwapFeePercentage < staticSwapFeePercentage) {
+        // If `priorityGasPrice` <= threshold, this indicates the transaction is from a retail user, so we should not
+        // impose the MEV tax. Also, if mev fee cap is <= static fee percentage, returns the static fee percentage.
+        if (priorityGasPrice <= threshold || maxMevSwapFeePercentage <= staticSwapFeePercentage) {
             return staticSwapFeePercentage;
         }
 
@@ -342,10 +344,6 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
 
     function _getPriorityGasPrice() internal view returns (uint256) {
         return tx.gasprice - block.basefee;
-    }
-
-    function _isMevTaxExempt(address sender) internal view returns (bool) {
-        return _isMevTaxExemptSender[sender];
     }
 
     function _addMevTaxExemptSender(address sender) internal {
