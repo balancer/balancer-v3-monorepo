@@ -201,7 +201,6 @@ contract CowPoolTest is BaseCowTest {
 
     function testOnBeforeSwap() public {
         // CoW Pool's onBeforeSwap ignores the numeric inputs, so any number works.
-
         assertTrue(
             IHooks(pool).onBeforeSwap(
                 PoolSwapParams({
@@ -221,7 +220,6 @@ contract CowPoolTest is BaseCowTest {
 
     function testOnBeforeAddLiquidityDonationWrongRouter() public {
         // CoW Pool's onBeforeAddLiquidity ignores the numeric inputs, so any number works.
-
         address wrongCowRouter = address(1);
         assertFalse(
             IHooks(pool).onBeforeAddLiquidity(
@@ -239,7 +237,6 @@ contract CowPoolTest is BaseCowTest {
 
     function testOnBeforeAddLiquidityNotDonationWrongRouter() public {
         // CoW Pool's onBeforeAddLiquidity ignores the numeric inputs, so any number works.
-
         address wrongCowRouter = address(1);
         assertTrue(
             IHooks(pool).onBeforeAddLiquidity(
@@ -257,7 +254,6 @@ contract CowPoolTest is BaseCowTest {
 
     function testOnBeforeAddLiquidity() public {
         // CoW Pool's onBeforeAddLiquidity ignores the numeric inputs, so any number works.
-
         address wrongCowRouter = address(1);
         assertTrue(
             IHooks(pool).onBeforeAddLiquidity(
