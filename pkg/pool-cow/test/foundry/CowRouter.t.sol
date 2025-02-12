@@ -864,13 +864,13 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        uint256 daiExcess = transferAmountHints[daiIdx];
+        uint256 incorrectlySettledDaiTokens = transferAmountHints[daiIdx];
 
         vm.startPrank(alice);
         // In the case of a donation, extra tokens are lost. It happens because the donate() function does not receive
         // a hint and assumes the donation amounts were correctly transferred by the sender (since they're exact
         // amounts).
-        dai.transfer(address(vault), transferAmountHints[daiIdx] + daiExcess);
+        dai.transfer(address(vault), transferAmountHints[daiIdx] + incorrectlySettledDaiTokens);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
         vm.expectEmit();
@@ -888,7 +888,7 @@ contract CowRouterTest is BaseCowTest {
             donationAmounts,
             0,
             0,
-            daiExcess
+            incorrectlySettledDaiTokens
         );
     }
 
@@ -1161,7 +1161,7 @@ contract CowRouterTest is BaseCowTest {
         uint256[] memory donations,
         uint256 daiSwapAmountIn,
         uint256 usdcSwapAmountOut,
-        uint256 lostDaiTokens
+        uint256 incorrectlySettledDaiTokens
     ) private view {
         // Test collected protocol fee (router balance and state). Notice that userTokens refer to CoWRouter tokens,
         // since CoWRouter address was passed as the input of getBalances() function.
@@ -1210,7 +1210,7 @@ contract CowRouterTest is BaseCowTest {
                 donations[daiIdx] -
                 expectedProtocolFees[daiIdx] +
                 daiSwapAmountIn +
-                lostDaiTokens,
+                incorrectlySettledDaiTokens,
             "Vault DAI balance is not correct"
         );
         assertEq(
@@ -1225,7 +1225,7 @@ contract CowRouterTest is BaseCowTest {
         // Test donor balances
         assertEq(
             balancesAfter.aliceTokens[daiIdx],
-            balancesBefore.aliceTokens[daiIdx] - donations[daiIdx] - daiSwapAmountIn - lostDaiTokens,
+            balancesBefore.aliceTokens[daiIdx] - donations[daiIdx] - daiSwapAmountIn - incorrectlySettledDaiTokens,
             "Alice DAI balance is not correct"
         );
         assertEq(
