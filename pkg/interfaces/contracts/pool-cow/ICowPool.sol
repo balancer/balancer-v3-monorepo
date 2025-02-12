@@ -6,12 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ICowPool {
     /**
-      * @notice Trusted CoW Router has been refreshed from the pool factory.
-      * @param newTrustedCowRouter The current trusted router address in the CoW pool factory
-      */
-    event CowTrustedRouterRefreshed(address newTrustedCowRouter);
-
-    /**
      * @notice CoW Pool data that cannot change after deployment.
      * @param tokens Pool tokens, sorted in token registration order
      * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
@@ -51,6 +45,12 @@ interface ICowPool {
     }
 
     /**
+     * @notice Trusted CoW Router has been refreshed from the pool factory.
+     * @param newTrustedCowRouter The current trusted router address in the CoW pool factory
+     */
+    event CowTrustedRouterRefreshed(address newTrustedCowRouter);
+
+    /**
      * @notice Get dynamic pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all dynamic CoW pool parameters
      */
@@ -71,6 +71,6 @@ interface ICowPool {
      */
     function getTrustedCowRouter() external view returns (address cowRouter);
 
-     /// @notice Updates this pool's trusted router address to the current value in the CoW AMM Factory.
+    /// @notice Updates this pool's trusted router address to the current value in the CoW AMM Factory.
     function refreshTrustedCowRouter() external;
 }
