@@ -1140,36 +1140,36 @@ contract CowRouterTest is BaseCowTest {
         );
 
         vm.expectEmit();
-        emit ICowRouter.ProtocolFeesWithdrawn(dai, alice, daiProtocolFeesBeforeWithdraw);
+        emit ICowRouter.ProtocolFeesWithdrawn(dai, bob, daiProtocolFeesBeforeWithdraw);
         cowRouter.withdrawCollectedProtocolFees(dai);
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
 
         assertEq(balancesAfter.userTokens[daiIdx], 0, "CoW Router has DAI tokens to withdraw");
         assertEq(cowRouter.getCollectedProtocolFees(dai), 0, "CoW Router state of protocol fees for DAI is not 0");
-        // Alice is the current feeSweeper, as set by BaseCowTest contract.
+        // Bob is the current feeSweeper, as set by BaseCowTest contract.
         assertEq(
-            balancesAfter.aliceTokens[daiIdx],
-            balancesBefore.aliceTokens[daiIdx] + daiProtocolFeesBeforeWithdraw,
+            balancesAfter.bobTokens[daiIdx],
+            balancesBefore.bobTokens[daiIdx] + daiProtocolFeesBeforeWithdraw,
             "DAI tokens were not transferred to the fee sweeper"
         );
 
-        // Change fee sweeper to Bob and check if the new fee sweeper receives the protocol fees.
+        // Change fee sweeper to Alice and check if the new fee sweeper receives the protocol fees.
         vm.prank(admin);
-        cowRouter.setFeeSweeper(bob);
+        cowRouter.setFeeSweeper(alice);
 
         vm.expectEmit();
-        emit ICowRouter.ProtocolFeesWithdrawn(usdc, bob, usdcProtocolFeesBeforeWithdraw);
+        emit ICowRouter.ProtocolFeesWithdrawn(usdc, alice, usdcProtocolFeesBeforeWithdraw);
         cowRouter.withdrawCollectedProtocolFees(usdc);
 
         BaseVaultTest.Balances memory balancesAfterUsdc = getBalances(address(cowRouter));
 
         assertEq(balancesAfterUsdc.userTokens[usdcIdx], 0, "CoW Router has USDC tokens to withdraw");
         assertEq(cowRouter.getCollectedProtocolFees(usdc), 0, "CoW Router state of protocol fees for USDC is not 0");
-        // Bob now is the current feeSweeper.
+        // Alice now is the current feeSweeper.
         assertEq(
-            balancesAfterUsdc.bobTokens[usdcIdx],
-            balancesBefore.bobTokens[usdcIdx] + usdcProtocolFeesBeforeWithdraw,
+            balancesAfterUsdc.aliceTokens[usdcIdx],
+            balancesBefore.aliceTokens[usdcIdx] + usdcProtocolFeesBeforeWithdraw,
             "USDC tokens were not transferred to the fee sweeper"
         );
     }
