@@ -867,9 +867,9 @@ contract CowRouterTest is BaseCowTest {
         uint256 incorrectlySettledDaiTokens = transferAmountHints[daiIdx];
 
         vm.startPrank(alice);
-        // In the case of a donation, extra tokens are lost. It happens because the donate() function does not receive
-        // a hint and assumes the donation amounts were correctly transferred by the sender (since they're exact
-        // amounts).
+        // In the case of a donation, any incorrect surplus in the transferAmountHints are locked in the vault. It
+        // happens because the donate() function does not receive a hint and assumes the donation amounts were
+        // correctly transferred by the sender (since they're exact amounts).
         dai.transfer(address(vault), transferAmountHints[daiIdx] + incorrectlySettledDaiTokens);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
