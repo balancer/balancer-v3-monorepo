@@ -5,7 +5,10 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ICowPool {
-    /// @notice Trusted CoW Router has been refreshed with trusted router from the pool factory.
+    /**
+      * @notice Trusted CoW Router has been refreshed from the pool factory.
+      * @param newTrustedCowRouter The current trusted router address in the CoW pool factory
+      */
     event CowTrustedRouterRefreshed(address newTrustedCowRouter);
 
     /**
