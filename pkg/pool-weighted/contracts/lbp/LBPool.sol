@@ -140,6 +140,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
         (_projectTokenIndex, _reserveTokenIndex) = lbpParams.projectToken < lbpParams.reserveToken ? (0, 1) : (1, 0);
 
+        emit LBPoolCreated(lbpParams.projectToken, lbpParams.reserveToken);
+
         // Preserve event compatibility with previous LBP versions.
         uint256[] memory startWeights = new uint256[](_TWO_TOKENS);
         uint256[] memory endWeights = new uint256[](_TWO_TOKENS);
