@@ -261,7 +261,7 @@ contract CowRouterTest is BaseCowTest {
         );
     }
 
-    function testSwapExactInAndDonateSurplusExtraTokens() public {
+    function testSwapExactInAndDonateSurplusTransferAmountHintSurplus() public {
         // 1% protocol fee percentage.
         uint256 protocolFeePercentage = 1e16;
         uint256 donationDai = DEFAULT_AMOUNT / 10;
@@ -656,7 +656,7 @@ contract CowRouterTest is BaseCowTest {
         );
     }
 
-    function testSwapExactOutAndDonateExtraTokens() public {
+    function testSwapExactOutAndDonateTransferAmountHintSurplus() public {
         // 1% protocol fee percentage.
         uint256 protocolFeePercentage = 1e16;
         uint256 donationDai = DEFAULT_AMOUNT / 10;
@@ -846,7 +846,11 @@ contract CowRouterTest is BaseCowTest {
         cowRouter.donate(pool, donationAmounts, bytes(""));
     }
 
-    function testDonateExtraTokens(uint256 donationDai, uint256 donationUsdc, uint256 protocolFeePercentage) public {
+    function testDonateTransferAmountHintSurplus(
+        uint256 donationDai,
+        uint256 donationUsdc,
+        uint256 protocolFeePercentage
+    ) public {
         // 1% Protocol Fee Percentage.
         protocolFeePercentage = 1e16;
         donationDai = DEFAULT_AMOUNT / 10;
@@ -889,6 +893,58 @@ contract CowRouterTest is BaseCowTest {
             0,
             0,
             incorrectlySettledDaiTokens
+        );
+    }
+
+    function testDonateHintBiggerThanTransfer(
+        uint256 donationDai,
+        uint256 donationUsdc,
+        uint256 protocolFeePercentage
+    ) public {
+        // A bigger hint creates more credits than the transferred amount, so the router does not revert with
+        // InsufficientFunds. However, if the transferred tokens is not enough to cover the transaction, the Vault
+        // will revert with BalanceNotSettled (as demonstrated in testDonateMissingToken()).
+
+        // 1% Protocol Fee Percentage.
+        protocolFeePercentage = 1e16;
+        donationDai = DEFAULT_AMOUNT / 10;
+        donationUsdc = DEFAULT_AMOUNT / 10;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(protocolFeePercentage);
+
+        // Send a bigger hint than the donated amount.
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees,
+            uint256[] memory transferAmountHints
+        ) = _getDonationAndFees(donationDai, donationUsdc, donationDai, protocolFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
+
+        vm.startPrank(alice);
+        // Transfer exactly the amount of tokens that were donated, which would be the expected value for
+        // transferAmountHints[daiIdx].
+        dai.transfer(address(vault), donationDai);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
+
+        vm.expectEmit();
+        emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
+        cowRouter.donate(pool, donationAmounts, bytes(""));
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));
+
+        // The sender lost the excess of tokens sent to the Vault during the settle operation.
+        _checkBalancesAfterSwapAndDonation(
+            balancesBefore,
+            balancesAfter,
+            expectedProtocolFees,
+            donationAmounts,
+            0,
+            0,
+            0
         );
     }
 
