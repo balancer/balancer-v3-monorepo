@@ -1260,13 +1260,22 @@ contract CowRouterTest is BaseCowTest {
         );
 
         // Test vault balances
+
+        // Tokens going into the Vault:
+        // - Donation
+        // - Swap DAI exact in
+        // - Incorrectly settled DAI tokens
+        //
+        // Tokens coming out of the Vault:
+        // - Swap USDC exact out
+        // - Protocol fees
         assertEq(
             balancesAfter.vaultTokens[daiIdx],
             balancesBefore.vaultTokens[daiIdx] +
-                donations[daiIdx] -
-                expectedProtocolFees[daiIdx] +
+                donations[daiIdx] +
                 daiSwapAmountIn +
-                incorrectlySettledDaiTokens,
+                incorrectlySettledDaiTokens -
+                expectedProtocolFees[daiIdx],
             "Vault DAI balance is not correct"
         );
         assertEq(
