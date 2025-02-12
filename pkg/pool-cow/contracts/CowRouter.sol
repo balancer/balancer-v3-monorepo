@@ -320,6 +320,8 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
         donatedAmounts = new uint256[](amountsToDonate.length);
         protocolFeeAmounts = new uint256[](amountsToDonate.length);
 
+        uint256 totalAmountToDonate;
+
         for (uint256 i = 0; i < amountsToDonate.length; i++) {
             IERC20 token = tokens[i];
 
@@ -328,18 +330,22 @@ contract CowRouter is SingletonAuthentication, VaultGuard, ICowRouter {
             _collectedProtocolFees[token] += protocolFee;
             protocolFeeAmounts[i] = protocolFee;
             donatedAmounts[i] = donationAndFees - protocolFee;
+
+            totalAmountToDonate += donatedAmounts[i];
         }
 
-        _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: pool,
-                to: address(this), // It's a donation, so no BPT will be transferred
-                maxAmountsIn: donatedAmounts,
-                minBptAmountOut: 0,
-                kind: AddLiquidityKind.DONATION,
-                userData: userData
-            })
-        );
+        if (totalAmountToDonate > 0) {
+            _vault.addLiquidity(
+                AddLiquidityParams({
+                    pool: pool,
+                    to: address(this), // It's a donation, so no BPT will be transferred
+                    maxAmountsIn: donatedAmounts,
+                    minBptAmountOut: 0,
+                    kind: AddLiquidityKind.DONATION,
+                    userData: userData
+                })
+            );
+        }
     }
 
     /**

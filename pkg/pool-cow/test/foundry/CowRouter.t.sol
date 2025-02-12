@@ -29,15 +29,16 @@ contract CowRouterTest is BaseCowTest {
         vaultMockMinTradeAmount = _MIN_TRADE_AMOUNT;
         super.setUp();
 
+        // Alice representes CoW Settlement.
         authorizer.grantRole(
             CowRouter(address(cowRouter)).getActionId(ICowRouter.swapExactInAndDonateSurplus.selector),
-            lp
+            alice
         );
         authorizer.grantRole(
             CowRouter(address(cowRouter)).getActionId(ICowRouter.swapExactOutAndDonateSurplus.selector),
-            lp
+            alice
         );
-        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.donate.selector), lp);
+        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.donate.selector), alice);
     }
 
     /********************************************************
@@ -81,7 +82,7 @@ contract CowRouterTest is BaseCowTest {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, expectedSwapAmountOut, expectedSwapAmountOut + 1)
         );
-        vm.prank(lp);
+        vm.prank(alice);
         // The swap reverts because the swap limit is 1 wei higher than `expectedSwapAmountOut`.
         cowRouter.swapExactInAndDonateSurplus(
             pool,
@@ -114,7 +115,7 @@ contract CowRouterTest is BaseCowTest {
         );
 
         vm.expectRevert(ICowRouter.SwapDeadline.selector);
-        vm.prank(lp);
+        vm.prank(alice);
         // Since the blocknumber is bigger than the deadline, it should revert.
         uint256 deadline = block.number + 100;
         vm.warp(deadline + 1);
@@ -153,7 +154,7 @@ contract CowRouterTest is BaseCowTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         // Should not revert, since there's no minimum limit in the donation.
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         // Does not transfer USDC, since donation is 0 and the swap only requires DAI.
 
@@ -213,7 +214,7 @@ contract CowRouterTest is BaseCowTest {
 
         // Should revert, since swap amount cannot be zero.
         vm.expectRevert(IVaultErrors.AmountGivenZero.selector);
-        vm.prank(lp);
+        vm.prank(alice);
         cowRouter.swapExactInAndDonateSurplus(
             pool,
             dai,
@@ -246,7 +247,7 @@ contract CowRouterTest is BaseCowTest {
 
         // Should revert since the swap amount is below min.
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vm.prank(lp);
+        vm.prank(alice);
         cowRouter.swapExactInAndDonateSurplus(
             pool,
             dai,
@@ -278,9 +279,11 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, 2 * daiSwapAmountIn, protocolFeePercentage);
 
+        uint256 expectedSwapAmountOut = _calculateAmountOutSwapExactIn(daiSwapAmountIn);
+
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -290,7 +293,7 @@ contract CowRouterTest is BaseCowTest {
             dai,
             usdc,
             daiSwapAmountIn,
-            daiSwapAmountIn, // PoolMock is linear, so amounts in == amounts out
+            expectedSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
             bytes("")
@@ -317,7 +320,7 @@ contract CowRouterTest is BaseCowTest {
             expectedProtocolFees,
             donationAmounts,
             daiSwapAmountIn,
-            daiSwapAmountIn, // Since the pool is linear, amount in == amount out
+            expectedSwapAmountOut,
             0
         );
     }
@@ -340,7 +343,7 @@ contract CowRouterTest is BaseCowTest {
             protocolFeePercentage
         );
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -395,7 +398,7 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -475,7 +478,7 @@ contract CowRouterTest is BaseCowTest {
         uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, daiSwapAmountIn, daiSwapAmountIn - 1));
-        vm.prank(lp);
+        vm.prank(alice);
         cowRouter.swapExactOutAndDonateSurplus(
             pool,
             dai,
@@ -507,7 +510,7 @@ contract CowRouterTest is BaseCowTest {
         );
 
         vm.expectRevert(ICowRouter.SwapDeadline.selector);
-        vm.prank(lp);
+        vm.prank(alice);
         // Since the blocknumber is bigger than the deadline, it should revert.
         uint256 deadline = block.number + 100;
         vm.warp(deadline + 1);
@@ -534,19 +537,19 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
+        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
         (
             uint256[] memory donationAmounts,
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
             uint256[] memory transferAmountHints
-        ) = _getDonationAndFees(donationDai, donationUsdc, usdcSwapAmountOut, protocolFeePercentage);
-
-        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+        ) = _getDonationAndFees(donationDai, donationUsdc, daiSwapAmountIn, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
         // Should not revert, since there's no minimum limit in the donation.
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         // Does not transfer USDC, since donation is 0 and the swap only requires DAI.
 
@@ -606,7 +609,7 @@ contract CowRouterTest is BaseCowTest {
 
         // Should revert, since swap amount cannot be zero.
         vm.expectRevert(IVaultErrors.AmountGivenZero.selector);
-        vm.prank(lp);
+        vm.prank(alice);
         cowRouter.swapExactOutAndDonateSurplus(
             pool,
             dai,
@@ -639,7 +642,7 @@ contract CowRouterTest is BaseCowTest {
 
         // Should revert since the swap amount is below min.
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        vm.prank(lp);
+        vm.prank(alice);
         cowRouter.swapExactOutAndDonateSurplus(
             pool,
             dai,
@@ -670,9 +673,11 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory transferAmountHints
         ) = _getDonationAndFees(donationDai, donationUsdc, 2 * usdcSwapAmountOut, protocolFeePercentage);
 
+        uint256 expectedSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -681,7 +686,7 @@ contract CowRouterTest is BaseCowTest {
             pool,
             dai,
             usdc,
-            usdcSwapAmountOut, // PoolMock is linear, so amounts in == amounts out
+            expectedSwapAmountIn,
             usdcSwapAmountOut,
             donationAfterFees,
             expectedProtocolFees,
@@ -708,7 +713,7 @@ contract CowRouterTest is BaseCowTest {
             balancesAfter,
             expectedProtocolFees,
             donationAmounts,
-            usdcSwapAmountOut, // Since the pool is linear, amount in == amount out
+            expectedSwapAmountIn,
             usdcSwapAmountOut,
             0
         );
@@ -724,15 +729,17 @@ contract CowRouterTest is BaseCowTest {
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
+        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
         // Giving less dai tokens as hint will cause operation to revert.
         (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
             donationDai,
             donationUsdc,
-            usdcSwapAmountOut - 1,
+            daiSwapAmountIn - 1,
             protocolFeePercentage
         );
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -742,7 +749,7 @@ contract CowRouterTest is BaseCowTest {
                 ICowRouter.InsufficientFunds.selector,
                 dai,
                 transferAmountHints[daiIdx],
-                donationDai + usdcSwapAmountOut // Since the pool is linear, amount in == amount out
+                donationDai + daiSwapAmountIn // Since the pool is linear, amount in == amount out
             )
         );
         cowRouter.swapExactOutAndDonateSurplus(
@@ -773,6 +780,8 @@ contract CowRouterTest is BaseCowTest {
         // calculation of amount in.
         usdcSwapAmountOut = bound(usdcSwapAmountOut, _MIN_TRADE_AMOUNT, DEFAULT_AMOUNT.mulDown(25e16));
 
+        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
         vm.prank(admin);
         cowRouter.setProtocolFeePercentage(protocolFeePercentage);
 
@@ -781,13 +790,11 @@ contract CowRouterTest is BaseCowTest {
             uint256[] memory expectedProtocolFees,
             uint256[] memory donationAfterFees,
             uint256[] memory transferAmountHints
-        ) = _getDonationAndFees(donationDai, donationUsdc, usdcSwapAmountOut, protocolFeePercentage);
-
-        uint256 daiSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+        ) = _getDonationAndFees(donationDai, donationUsdc, daiSwapAmountIn, protocolFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -859,7 +866,7 @@ contract CowRouterTest is BaseCowTest {
 
         uint256 daiExcess = transferAmountHints[daiIdx];
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         // In the case of a donation, extra tokens are lost. It happens because the donate() function does not receive
         // a hint and assumes the donation amounts were correctly transferred by the sender (since they're exact
         // amounts).
@@ -903,7 +910,7 @@ contract CowRouterTest is BaseCowTest {
 
         uint256 daiMissing = 1;
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx] - daiMissing);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -931,7 +938,7 @@ contract CowRouterTest is BaseCowTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
-        vm.startPrank(lp);
+        vm.startPrank(alice);
         dai.transfer(address(vault), transferAmountHints[daiIdx]);
         usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
 
@@ -1046,10 +1053,19 @@ contract CowRouterTest is BaseCowTest {
         uint256 donationDai = DEFAULT_AMOUNT / 10;
         uint256 donationUsdc = DEFAULT_AMOUNT / 10;
 
-        (uint256[] memory donationAmounts, , ) = _getDonationAndFees(donationDai, donationUsdc, protocolFeePercentage);
+        (uint256[] memory donationAmounts, , , ) = _getDonationAndFees(
+            donationDai,
+            donationUsdc,
+            0,
+            protocolFeePercentage
+        );
 
-        vm.prank(lp);
+        vm.startPrank(alice);
+        dai.transfer(address(vault), donationAmounts[daiIdx]);
+        usdc.transfer(address(vault), donationAmounts[usdcIdx]);
+
         cowRouter.donate(pool, donationAmounts, bytes(""));
+        vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(cowRouter));
 
@@ -1172,7 +1188,7 @@ contract CowRouterTest is BaseCowTest {
         );
 
         // Test BPT did not change
-        assertEq(balancesAfter.lpBpt, balancesBefore.lpBpt, "LP BPT has changed");
+        assertEq(balancesAfter.aliceBpt, balancesBefore.aliceBpt, "Alice BPT has changed");
         assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "BPT supply has changed");
 
         // Test new pool balances
@@ -1208,14 +1224,14 @@ contract CowRouterTest is BaseCowTest {
 
         // Test donor balances
         assertEq(
-            balancesAfter.lpTokens[daiIdx],
-            balancesBefore.lpTokens[daiIdx] - donations[daiIdx] - daiSwapAmountIn - lostDaiTokens,
-            "LP DAI balance is not correct"
+            balancesAfter.aliceTokens[daiIdx],
+            balancesBefore.aliceTokens[daiIdx] - donations[daiIdx] - daiSwapAmountIn - lostDaiTokens,
+            "Alice DAI balance is not correct"
         );
         assertEq(
-            balancesAfter.lpTokens[usdcIdx],
-            balancesBefore.lpTokens[usdcIdx] - donations[usdcIdx] + usdcSwapAmountOut,
-            "LP USDC balance is not correct"
+            balancesAfter.aliceTokens[usdcIdx],
+            balancesBefore.aliceTokens[usdcIdx] - donations[usdcIdx] + usdcSwapAmountOut,
+            "Alice USDC balance is not correct"
         );
     }
 
