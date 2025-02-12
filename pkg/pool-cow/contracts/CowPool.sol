@@ -20,10 +20,9 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
     constructor(
         WeightedPool.NewPoolParams memory params,
         IVault vault,
-        CowPoolFactory cowPoolFactory,
         address trustedCowRouter
     ) WeightedPool(params, vault) {
-        _cowPoolFactory = cowPoolFactory;
+        _cowPoolFactory = CowPoolFactory(msg.sender);
         _setTrustedCowRouter(trustedCowRouter);
     }
 

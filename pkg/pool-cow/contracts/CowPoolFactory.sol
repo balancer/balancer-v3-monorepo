@@ -67,7 +67,6 @@ contract CowPoolFactory is ICowPoolFactory, IPoolVersion, BasePoolFactory, Versi
                     version: _poolVersion
                 }),
                 getVault(),
-                this,
                 _trustedCowRouter
             ),
             salt
