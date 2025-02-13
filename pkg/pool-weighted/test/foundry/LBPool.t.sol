@@ -13,7 +13,8 @@ import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRou
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     LBPoolImmutableData,
-    LBPoolDynamicData
+    LBPoolDynamicData,
+    ILBPool
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -144,12 +145,31 @@ contract LBPoolTest is BaseLBPTest {
         );
     }
 
-    function testCreatePoolEvent() public {
+    function testCreatePoolEvents() public {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
+        uint256 preCreateSnapshotId = vm.snapshot();
+
         vm.expectEmit();
         emit LBPool.GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+
+        (address newPool, ) = _createLBPoolWithCustomWeights(
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            startTime,
+            endTime,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+
+        vm.revertTo(preCreateSnapshotId);
+
+        vm.expectEmit();
+        emit LBPoolFactory.LBPoolCreated(newPool, projectToken, reserveToken);
+
+        // Should create the same pool address again.
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
             startWeights[reserveIdx],
@@ -167,6 +187,14 @@ contract LBPoolTest is BaseLBPTest {
 
     function testGetTrustedRouter() public view {
         assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
+    }
+
+    function testGetProjectToken() public view {
+        assertEq(address(ILBPool(pool).getProjectToken()), address(projectToken), "Wrong project token");
+    }
+
+    function testGetReserveToken() public view {
+        assertEq(address(ILBPool(pool).getReserveToken()), address(reserveToken), "Wrong reserve token");
     }
 
     function testGradualWeightUpdateParams() public {
@@ -334,6 +362,8 @@ contract LBPoolTest is BaseLBPTest {
         assertEq(data.tokens.length, poolTokens.length, "tokens length mismatch");
         assertEq(address(data.tokens[projectIdx]), address(poolTokens[projectIdx]), "Project token mismatch");
         assertEq(address(data.tokens[reserveIdx]), address(poolTokens[reserveIdx]), "Reserve token mismatch");
+        assertEq(data.projectTokenIndex, projectIdx, "Project token index mismatch");
+        assertEq(data.reserveTokenIndex, reserveIdx, "Reserve token index mismatch");
 
         // Check decimal scaling factors
         (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
