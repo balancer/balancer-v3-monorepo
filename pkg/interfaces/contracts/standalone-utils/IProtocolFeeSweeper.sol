@@ -74,7 +74,7 @@ interface IProtocolFeeSweeper {
     /**
      * @notice The burner does not used approve.
      */
-    error BurnerDidNotUseApprove();
+    error BurnerDidNotConsumeAllowance();
 
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.

@@ -246,7 +246,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(feeRecipient)), DEFAULT_AMOUNT * 2, "USDC not forwarded");
     }
 
-    function testSweepProtocolFeesIfBurnerDoesNotTakeTokens() public {
+    function testSweepProtocolFeesIfBurnerDoesNotPullTokens() public {
         // Set up the sweeper to be able to burn.
         vm.prank(admin);
         feeSweeper.setTargetToken(usdc);
@@ -255,10 +255,10 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
         vault.manualSetAggregateYieldFeeAmount(pool, usdc, DEFAULT_AMOUNT);
 
-        ProtocolFeeBurnerMock(address(feeBurner)).setTokenTakingEnabled(false);
+        ProtocolFeeBurnerMock(address(feeBurner)).setTransferFromEnabled(false);
 
         vm.startPrank(admin);
-        vm.expectRevert(IProtocolFeeSweeper.BurnerDidNotUseApprove.selector);
+        vm.expectRevert(IProtocolFeeSweeper.BurnerDidNotConsumeAllowance.selector);
         _defaultSweep(pool, dai);
     }
 

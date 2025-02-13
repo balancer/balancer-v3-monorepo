@@ -93,7 +93,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
                     );
 
                     if (feeToken.allowance(address(this), address(feeBurner)) > 0) {
-                        revert BurnerDidNotUseApprove();
+                        revert BurnerDidNotConsumeAllowance();
                     }
                 }
             } else {

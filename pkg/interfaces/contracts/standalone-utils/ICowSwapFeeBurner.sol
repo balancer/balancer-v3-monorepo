@@ -32,7 +32,7 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
      * @param exactAmountIn The number of tokens in the order
      * @param receiver The account that received the tokens from the unfilled order
      */
-    event OrderReverted(IERC20 tokenIn, uint256 exactAmountIn, address receiver);
+    event OrderCanceled(IERC20 tokenIn, uint256 exactAmountIn, address receiver);
 
     /**
      * @notice The order parameters were invalid.

@@ -16,7 +16,7 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
 
     uint256 private _tokenRatio = FixedPoint.ONE;
 
-    bool tokenTakingEnabled = true;
+    bool transferFromEnabled = true;
 
     /// @inheritdoc IProtocolFeeBurner
     function burn(
@@ -24,7 +24,7 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
         IERC20 feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,
-        uint256 minTargetTokenAmountOut,
+        uint256 minAmountOut,
         address recipient,
         uint256 deadline
     ) external {
@@ -32,7 +32,7 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
             revert SwapDeadline();
         }
 
-        if (tokenTakingEnabled) {
+        if (transferFromEnabled) {
             feeToken.safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);
         }
 
@@ -40,8 +40,8 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
         ERC20TestToken(address(targetToken)).mint(recipient, exactFeeTokenAmountIn);
 
         uint256 targetTokenAmount = exactFeeTokenAmountIn.mulDown(_tokenRatio);
-        if (targetTokenAmount < minTargetTokenAmountOut) {
-            revert AmountOutBelowMin(targetToken, targetTokenAmount, minTargetTokenAmountOut);
+        if (targetTokenAmount < minAmountOut) {
+            revert AmountOutBelowMin(targetToken, targetTokenAmount, minAmountOut);
         }
 
         // Just emit the event, simulating the tokens being exchanged at 1-to-1.
@@ -52,7 +52,7 @@ contract ProtocolFeeBurnerMock is IProtocolFeeBurner {
         _tokenRatio = ratio;
     }
 
-    function setTokenTakingEnabled(bool enabled) external {
-        tokenTakingEnabled = enabled;
+    function setTransferFromEnabled(bool enabled) external {
+        transferFromEnabled = enabled;
     }
 }

@@ -218,11 +218,11 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.burn(address(0), dai, 0, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
     }
 
-    function testBurnWhenMinTargetTokenAmountIsZero() public {
+    function testBurnWhenMinAmountOutIsZero() public {
         authorizer.grantRole(cowSwapFeeBurnerAuth.getActionId(CowSwapFeeBurner.burn.selector), address(this));
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Min target token amount is zero")
+            abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Min amount out is zero")
         );
         cowSwapFeeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, 0, alice, orderDeadline);
     }
@@ -533,12 +533,12 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         skip(ORDER_LIFETIME + 1);
 
         uint256 newOrderDeadline = block.timestamp + ORDER_LIFETIME;
-        uint256 newMinTargetTokenAmount = MIN_TARGET_TOKEN_AMOUNT + 1;
+        uint256 newMinAmountOut = MIN_TARGET_TOKEN_AMOUNT + 1;
 
         _mockComposableCowCreate(dai);
         vm.expectEmit();
-        emit ICowSwapFeeBurner.OrderRetried(dai, halfAmount, newMinTargetTokenAmount, newOrderDeadline);
-        cowSwapFeeBurner.retryOrder(dai, newMinTargetTokenAmount, newOrderDeadline);
+        emit ICowSwapFeeBurner.OrderRetried(dai, halfAmount, newMinAmountOut, newOrderDeadline);
+        cowSwapFeeBurner.retryOrder(dai, newMinAmountOut, newOrderDeadline);
 
         GPv2Order memory order = cowSwapFeeBurner.getOrder(dai);
         GPv2Order memory expectedOrder = GPv2Order({
@@ -546,7 +546,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             buyToken: IERC20(address(usdc)),
             receiver: alice,
             sellAmount: halfAmount,
-            buyAmount: newMinTargetTokenAmount,
+            buyAmount: newMinAmountOut,
             validTo: uint32(newOrderDeadline),
             appData: APP_DATA_HASH,
             feeAmount: 0,
@@ -571,7 +571,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.retryOrder(dai, MIN_TARGET_TOKEN_AMOUNT, orderDeadline);
     }
 
-    function testRetryOrderWithInvalidMinTargetTokenAmount() public {
+    function testRetryOrderWithInvalidMinAmountOut() public {
         _grantBurnRolesAndApproveTokens();
 
         _mockComposableCowCreate(dai);
@@ -583,7 +583,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         skip(ORDER_LIFETIME + 1);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Min target token amount is zero")
+            abi.encodeWithSelector(ICowSwapFeeBurner.InvalidOrderParameters.selector, "Min amount out is zero")
         );
         cowSwapFeeBurner.retryOrder(dai, 0, orderDeadline);
     }
@@ -627,7 +627,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
         _mockComposableCowCreate(dai);
         vm.expectEmit();
-        emit ICowSwapFeeBurner.OrderReverted(dai, halfAmount, alice);
+        emit ICowSwapFeeBurner.OrderCanceled(dai, halfAmount, alice);
         cowSwapFeeBurner.cancelOrder(dai, alice);
 
         assertEq(
@@ -682,7 +682,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
 
         _mockComposableCowCreate(dai);
         vm.expectEmit();
-        emit ICowSwapFeeBurner.OrderReverted(dai, halfAmount, alice);
+        emit ICowSwapFeeBurner.OrderCanceled(dai, halfAmount, alice);
         cowSwapFeeBurner.emergencyCancelOrder(dai, alice);
 
         assertEq(dai.balanceOf(alice), balanceBefore + halfAmount, "alice should have received the tokens");

@@ -77,22 +77,22 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function retryOrder(IERC20 tokenIn, uint256 minTargetTokenAmount, uint256 deadline) external authenticate {
+    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external authenticate {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
             revert OrderHasUnexpectedStatus(status);
         }
 
-        _checkMinTargetTokenAmount(minTargetTokenAmount);
+        _checkMinAmountOut(minAmountOut);
         _checkDeadline(deadline);
 
-        _orders[tokenIn].minAmountOut = minTargetTokenAmount;
+        _orders[tokenIn].minAmountOut = minAmountOut;
         _orders[tokenIn].deadline = uint32(deadline);
 
         _createCowOrder(tokenIn);
 
-        emit OrderRetried(tokenIn, amount, minTargetTokenAmount, deadline);
+        emit OrderRetried(tokenIn, amount, minAmountOut, deadline);
     }
 
     /// @inheritdoc ICowSwapFeeBurner
@@ -103,22 +103,21 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             revert OrderHasUnexpectedStatus(status);
         }
 
-        tokenIn.forceApprove(vaultRelayer, 0);
-        delete _orders[tokenIn];
-
-        SafeERC20.safeTransfer(tokenIn, receiver, amount);
-
-        emit OrderReverted(tokenIn, amount, receiver);
+        _cancelOrder(tokenIn, receiver, amount);
     }
 
+    /// @inheritdoc ICowSwapFeeBurner
     function emergencyCancelOrder(IERC20 tokenIn, address receiver) external authenticate {
+        _cancelOrder(tokenIn, receiver, tokenIn.balanceOf(address(this)));
+    }
+
+    function _cancelOrder(IERC20 tokenIn, address receiver, uint256 amount) internal {
         tokenIn.forceApprove(vaultRelayer, 0);
         delete _orders[tokenIn];
 
-        uint256 amount = tokenIn.balanceOf(address(this));
         SafeERC20.safeTransfer(tokenIn, receiver, amount);
 
-        emit OrderReverted(tokenIn, amount, receiver);
+        emit OrderCanceled(tokenIn, amount, receiver);
     }
 
     /***************************************************************************
@@ -131,7 +130,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         IERC20 feeToken,
         uint256 feeTokenAmount,
         IERC20 targetToken,
-        uint256 minTargetTokenAmount,
+        uint256 minAmountOut,
         address recipient,
         uint256 deadline
     ) external authenticate {
@@ -141,7 +140,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             revert InvalidOrderParameters("Fee token amount is zero");
         }
 
-        _checkMinTargetTokenAmount(minTargetTokenAmount);
+        _checkMinAmountOut(minAmountOut);
         _checkDeadline(deadline);
 
         (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken);
@@ -158,11 +157,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         _orders[feeToken] = ShortOrder({
             tokenOut: targetToken,
             receiver: recipient,
-            minAmountOut: minTargetTokenAmount,
+            minAmountOut: minAmountOut,
             deadline: uint32(deadline)
         });
 
-        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmount, recipient);
+        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minAmountOut, recipient);
     }
 
     /***************************************************************************
@@ -295,9 +294,9 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         }
     }
 
-    function _checkMinTargetTokenAmount(uint256 minTargetTokenAmount) private pure {
-        if (minTargetTokenAmount == 0) {
-            revert InvalidOrderParameters("Min target token amount is zero");
+    function _checkMinAmountOut(uint256 minAmountOut) private pure {
+        if (minAmountOut == 0) {
+            revert InvalidOrderParameters("Min amount out is zero");
         }
     }
 
