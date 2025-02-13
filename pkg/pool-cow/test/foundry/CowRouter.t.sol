@@ -325,6 +325,46 @@ contract CowRouterTest is BaseCowTest {
         );
     }
 
+    function testSwapExactInAndDonateHintBiggerThanTransfer() public {
+        // 1% protocol fee percentage.
+        uint256 protocolFeePercentage = 1e16;
+        uint256 donationDai = DEFAULT_AMOUNT / 10;
+        uint256 donationUsdc = DEFAULT_AMOUNT / 10;
+        uint256 daiSwapAmountIn = DEFAULT_AMOUNT / 10;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(protocolFeePercentage);
+
+        uint256 expectedSwapAmountOut = _calculateAmountOutSwapExactIn(daiSwapAmountIn);
+
+        // The hint is bigger than the transfer amount (2 * expectedSwapAmountIn).
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees,
+            uint256[] memory transferAmountHints
+        ) = _getDonationAndFees(donationDai, donationUsdc, 2 * daiSwapAmountIn, protocolFeePercentage);
+
+        vm.startPrank(alice);
+        // Transfer the expected amount of DAI.
+        dai.transfer(address(vault), daiSwapAmountIn);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
+
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        cowRouter.swapExactInAndDonateSurplus(
+            pool,
+            dai,
+            usdc,
+            daiSwapAmountIn,
+            expectedSwapAmountOut,
+            type(uint32).max,
+            donationAmounts,
+            transferAmountHints,
+            bytes("")
+        );
+        vm.stopPrank();
+    }
+
     function testSwapExactInAndDonateSurplusMissingToken() public {
         // 1% protocol fee percentage.
         uint256 protocolFeePercentage = 1e16;
@@ -717,6 +757,46 @@ contract CowRouterTest is BaseCowTest {
             usdcSwapAmountOut,
             0
         );
+    }
+
+    function testSwapExactOutAndDonateHintBiggerThanTransfer() public {
+        // 1% protocol fee percentage.
+        uint256 protocolFeePercentage = 1e16;
+        uint256 donationDai = DEFAULT_AMOUNT / 10;
+        uint256 donationUsdc = DEFAULT_AMOUNT / 10;
+        uint256 usdcSwapAmountOut = DEFAULT_AMOUNT / 10;
+
+        vm.prank(admin);
+        cowRouter.setProtocolFeePercentage(protocolFeePercentage);
+
+        uint256 expectedSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
+
+        // The hint is bigger than the transfer amount (2 * expectedSwapAmountIn).
+        (
+            uint256[] memory donationAmounts,
+            uint256[] memory expectedProtocolFees,
+            uint256[] memory donationAfterFees,
+            uint256[] memory transferAmountHints
+        ) = _getDonationAndFees(donationDai, donationUsdc, 2 * expectedSwapAmountIn, protocolFeePercentage);
+
+        vm.startPrank(alice);
+        // Transfer the expected amount of DAI.
+        dai.transfer(address(vault), expectedSwapAmountIn);
+        usdc.transfer(address(vault), transferAmountHints[usdcIdx]);
+
+        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        cowRouter.swapExactOutAndDonateSurplus(
+            pool,
+            dai,
+            usdc,
+            MAX_UINT128,
+            usdcSwapAmountOut,
+            type(uint32).max,
+            donationAmounts,
+            transferAmountHints,
+            bytes("")
+        );
+        vm.stopPrank();
     }
 
     function testSwapExactOutAndDonateSurplusMissingToken() public {
