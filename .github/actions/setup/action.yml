@@ -19,6 +19,8 @@ runs:
       if: steps.cache.outputs.cache-hit != 'true'
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: v0.2.0
     - name: Install lcov
       shell: bash
       run: sudo apt-get install lcov
