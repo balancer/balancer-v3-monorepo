@@ -79,7 +79,8 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
                 if (feeToken == targetToken) {
                     _transferFeeToken(pool, feeToken, withdrawnBalance);
                 } else {
-                    // Transfer the tokens directly to avoid "hanging approvals," in case the burn is unsuccessful.
+                    // We must revert if this allowance is not entirely consumed by the burner, to avoid exploitable
+                    // "hanging approvals." The order may be asynchronous, but it must pull the tokens immediately.
                     feeToken.forceApprove(address(feeBurner), withdrawnBalance);
                     // This is asynchronous; the burner will complete the action and emit an event.
                     feeBurner.burn(
