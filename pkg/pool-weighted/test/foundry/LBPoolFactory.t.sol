@@ -6,32 +6,54 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
+import { LBPool } from "../../contracts/lbp/LBPool.sol";
+import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
 
-contract LBPoolFactoryTest is BaseVaultTest {
-    using CastingHelpers for address[];
+contract LBPoolFactoryTest is BaseLBPTest {
     using ArrayHelpers for *;
 
-    uint64 public constant swapFee = 1e16; //1%
+    uint256 private constant _DEFAULT_WEIGHT = 50e16;
 
-    LBPoolFactory internal lbPoolFactory;
+    function testPoolRegistrationOnCreate() public view {
+        // Verify pool was registered in the factory.
+        assertTrue(lbPoolFactory.isPoolFromFactory(pool), "Pool is not from LBP factory");
 
-    string public constant poolVersion = "Pool v1";
+        // Verify pool was created and initialized correctly in the vault by the factory.
+        assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
+        assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
+    }
 
-    function setUp() public override {
-        super.setUp();
+    function testPoolInitialization() public view {
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(pool);
 
-        lbPoolFactory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", poolVersion, address(router));
-        vm.label(address(lbPoolFactory), "LB pool factory");
+        assertEq(address(tokens[projectIdx]), address(projectToken), "Project token mismatch");
+        assertEq(address(tokens[reserveIdx]), address(reserveToken), "Reserve token mismatch");
+
+        assertEq(balancesRaw[projectIdx], poolInitAmount, "Balances of project token mismatch");
+        assertEq(balancesRaw[reserveIdx], poolInitAmount, "Balances of reserve token mismatch");
+    }
+
+    function testGetPoolVersion() public view {
+        assertEq(lbPoolFactory.getPoolVersion(), poolVersion, "Pool version mismatch");
+    }
+
+    function testInvalidTrustedRouter() public {
+        vm.expectRevert(LBPoolFactory.InvalidTrustedRouter.selector);
+        new LBPoolFactory(
+            vault,
+            365 days,
+            factoryVersion,
+            poolVersion,
+            address(0) // invalid trusted router address
+        );
     }
 
     function testGetTrustedRouter() public view {
@@ -43,66 +65,71 @@ contract LBPoolFactoryTest is BaseVaultTest {
         assertEq(pauseWindowDuration, 365 days);
     }
 
-    function testInitializePoolNotOwner() public {
-        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
-        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
+    function testCreatePoolWithInvalidOwner() public {
+        // Create LBP params with owner set to zero address
+        LBPParams memory params = LBPParams({
+            owner: address(0),
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            projectTokenStartWeight: _DEFAULT_WEIGHT,
+            projectTokenEndWeight: _DEFAULT_WEIGHT,
+            reserveTokenStartWeight: _DEFAULT_WEIGHT,
+            reserveTokenEndWeight: _DEFAULT_WEIGHT,
+            blockProjectTokenSwapsIn: true
+        });
 
-        address lbPool = lbPoolFactory.create(
-            "LB Pool",
-            "LBP",
-            vault.buildTokenConfig(tokens),
-            weights,
-            swapFee,
-            bob, // owner
-            true, // swapEnabledOnStart
-            ZERO_BYTES32
-        );
-
-        vm.expectRevert(IVaultErrors.BeforeInitializeHookFailed.selector);
-        vm.prank(lp); // Not the owner
-        router.initialize(lbPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
+        vm.expectRevert(LBPoolFactory.InvalidOwner.selector);
+        lbPoolFactory.create("LBPool", "LBP", params, swapFee, bytes32(0));
     }
 
     function testCreatePool() public {
-        address lbPool = _deployAndInitializeLBPool();
+        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        initPool();
 
         // Verify pool was created and initialized correctly
-        assertTrue(vault.isPoolRegistered(lbPool), "Pool not registered in the vault");
+        assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
+        assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
     }
 
-    function testGetPoolVersion() public view {
-        assert(keccak256(abi.encodePacked(lbPoolFactory.getPoolVersion())) == keccak256(abi.encodePacked(poolVersion)));
+    function testAddLiquidityPermission() public {
+        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        initPool();
+
+        // Try to add to the pool without permission.
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
+        router.addLiquidityProportional(pool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
+
+        // The owner is allowed to add.
+        vm.prank(bob);
+        router.addLiquidityProportional(pool, [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray(), 0, false, bytes(""));
     }
 
     function testDonationNotAllowed() public {
-        address lbPool = _deployAndInitializeLBPool();
+        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        initPool();
 
         // Try to donate to the pool
-        vm.startPrank(bob);
-        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
-        router.donate(lbPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
-        vm.stopPrank();
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
+        router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
     }
 
-    function _deployAndInitializeLBPool() private returns (address) {
-        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
-        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
+    function testSetSwapFeeNoPermission() public {
+        // The LBP Factory only allows the owner (a.k.a. bob) to set the static swap fee percentage of the pool.
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        vault.setStaticSwapFeePercentage(pool, 2.5e16);
+    }
 
-        address lbPool = lbPoolFactory.create(
-            "LB Pool",
-            "LBP",
-            vault.buildTokenConfig(tokens),
-            weights,
-            swapFee,
-            bob, // owner
-            true, // swapEnabledOnStart
-            ZERO_BYTES32
-        );
+    function testSetSwapFee() public {
+        uint256 newSwapFee = 2.5e16; // 2.5%
 
-        // Initialize pool.
-        vm.prank(bob); // Owner initializes the pool
-        router.initialize(lbPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
+        // Starts out at the default
+        assertEq(vault.getStaticSwapFeePercentage(pool), swapFee);
 
-        return lbPool;
+        vm.prank(bob);
+        vault.setStaticSwapFeePercentage(pool, newSwapFee);
+
+        assertEq(vault.getStaticSwapFeePercentage(pool), newSwapFee);
     }
 }
