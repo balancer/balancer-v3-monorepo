@@ -72,7 +72,9 @@ interface IProtocolFeeSweeper {
     error ProtocolFeeBurnerNotAdded(address protocolFeeBurner);
 
     /**
-     * @notice The burner does not used approve.
+     * @notice The burner did not consume its entire allowance.
+     * @dev The fee sweeper approves the burner to pull tokens. If it doesn't do so, revert to avoid a "hanging"
+     * approval that could be exploited later.
      */
     error BurnerDidNotUseApprove();
 
