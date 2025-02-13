@@ -949,7 +949,7 @@ contract CowRouterTest is BaseCowTest {
 
         vm.expectEmit();
         emit ICowRouter.CoWDonation(pool, donationAfterFees, expectedProtocolFees, bytes(""));
-        cowRouter.donate(pool, donationAmounts, bytes(""));
+        cowRouter.donate(pool, donationAmounts, false, bytes(""));
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(cowRouter));

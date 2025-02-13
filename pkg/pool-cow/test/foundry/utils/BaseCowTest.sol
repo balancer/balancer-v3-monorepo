@@ -69,7 +69,7 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
         feeSweeper = bob;
 
         // Creates cowRouter before the factory, so we have an address to set as trusted router.
-        cowRouter = deployCowPoolRouter(vault, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper);
+        cowRouter = deployCowPoolRouter(vault, weth, _INITIAL_PROTOCOL_FEE_PERCENTAGE, feeSweeper, _ROUTER_VERSION);
 
         cowFactory = deployCowPoolFactory(
             IVault(address(vault)),

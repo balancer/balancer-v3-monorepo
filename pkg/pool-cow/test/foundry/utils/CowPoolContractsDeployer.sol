@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 
@@ -48,19 +49,21 @@ contract CowPoolContractsDeployer is BaseContractsDeployer {
 
     function deployCowPoolRouter(
         IVault vault,
+        IWETH weth,
         uint256 initialProtocolFeePercentage,
-        address feeSweeper
+        address feeSweeper,
+        string memory routerVersion
     ) internal returns (CowRouter) {
         if (reusingArtifacts) {
             return
                 CowRouter(
                     deployCode(
                         _computeCowPath(type(CowRouter).name),
-                        abi.encode(vault, initialProtocolFeePercentage, feeSweeper)
+                        abi.encode(vault, weth, initialProtocolFeePercentage, feeSweeper, routerVersion)
                     )
                 );
         } else {
-            return new CowRouter(vault, initialProtocolFeePercentage, feeSweeper);
+            return new CowRouter(vault, weth, initialProtocolFeePercentage, feeSweeper, routerVersion);
         }
     }
 
