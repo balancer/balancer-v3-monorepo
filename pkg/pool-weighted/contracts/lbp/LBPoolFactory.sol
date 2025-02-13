@@ -31,6 +31,15 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
 
     address internal immutable _trustedRouter;
 
+    /**
+     * @notice Emitted on deployment so that offchain processes know which token is which from the beginning.
+     * @dev This information is also available onchain through immutable data and explicit getters on the pool.
+     * @param pool The address of the new pool
+     * @param projectToken The address of the project token (being distributed in the sale)
+     * @param reserveToken The address of the reserve token (used to purchase the project token)
+     */
+    event LBPoolCreated(address indexed pool, IERC20 indexed projectToken, IERC20 indexed reserveToken);
+
     /// @notice The zero address was given for the trusted router.
     error InvalidTrustedRouter();
 
@@ -103,6 +112,8 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         );
 
         pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
+
+        emit LBPoolCreated(pool, lbpParams.projectToken, lbpParams.reserveToken);
 
         _registerPoolWithVault(
             pool,
