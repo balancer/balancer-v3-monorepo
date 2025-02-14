@@ -116,7 +116,7 @@ contract MevCaptureHookTest is BaseVaultTest {
                        isMevTaxEnabled()
     ********************************************************/
     function testIsMevTaxEnabledStartingState() public view {
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled after hook creation.");
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled after hook creation.");
     }
 
     /********************************************************
@@ -128,22 +128,28 @@ contract MevCaptureHookTest is BaseVaultTest {
     }
 
     function testEnableMevTax() public {
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
-        vm.prank(admin);
+        // Defaults to enabled initially
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        vm.startPrank(admin);
+        _mevCaptureHook.disableMevTax();
+        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled after disabling");
+
         vm.expectEmit();
         emit IMevCaptureHook.MevTaxEnabledSet(true);
         _mevCaptureHook.enableMevTax();
+        vm.stopPrank();
+
         assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
     }
 
     function testMultipleEnableMevTax() public {
-        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not initially enabled");
         vm.prank(admin);
         _mevCaptureHook.enableMevTax();
-        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled (first time set)");
         vm.prank(admin);
         _mevCaptureHook.enableMevTax();
-        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled (second time set)");
     }
 
     /********************************************************

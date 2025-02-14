@@ -10,7 +10,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { MevCaptureHook } from "../MevCaptureHook.sol";
 
 contract MevCaptureHookMock is MevCaptureHook {
-    constructor(IVault vault, IBalancerContractRegistry registry) MevCaptureHook(vault, registry) {
+    constructor(IVault vault, IBalancerContractRegistry registry) MevCaptureHook(vault, registry, 0, 0) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
