@@ -98,9 +98,10 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         );
     }
 
-    function testFailSetFactorySpecificProtocolFeePercentageInvalidFactory() public {
+    function testRevertWhenSetFactorySpecificProtocolFeePercentageInvalidFactory() public {
         _grantPermissions();
 
+        vm.expectRevert();
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
             INVALID_ADDRESS,

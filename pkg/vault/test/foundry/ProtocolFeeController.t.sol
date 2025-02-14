@@ -1318,8 +1318,6 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         tokenConfig[daiIdx].token = IERC20(dai);
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
-        PoolRoleAccounts memory roleAccounts;
-
         pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
 
         vm.expectEmit();
