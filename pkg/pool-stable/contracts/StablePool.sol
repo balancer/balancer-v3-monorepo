@@ -126,7 +126,6 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             // Otherwise, defer to governance.
             _authenticateCaller();
         }
-
         _;
     }
 
