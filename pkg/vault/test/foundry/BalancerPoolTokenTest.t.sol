@@ -210,7 +210,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertsWhen_PermitBadNonce() public {
+    function testRevertsWhenPermitBadNonce() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -254,7 +254,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v2, r2, s2);
     }
 
-    function test_RevertsWhen_PermitRevokedNonceV1() public {
+    function testRevertsWhenPermitRevokedNonceV1() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -272,7 +272,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v, r, s);
     }
 
-    function test_RevertsWhen_PermitRevokedNonceV2() public {
+    function testRevertsWhenPermitRevokedNonceV2() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -305,7 +305,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertsWhen_PermitBadDeadline() public {
+    function testRevertsWhenPermitBadDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -321,7 +321,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertsWhen_PermitPastDeadline() public {
+    function testRevertsWhenPermitPastDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -337,7 +337,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertsWhen_PermitReplay() public {
+    function testRevertsWhenPermitReplay() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -380,7 +380,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertsWhen_PermitBadNonce__Fuzz(
+    function testRevertsWhenPermitBadNonce__Fuzz(
         uint256 privKey,
         address to,
         uint256 amount,
@@ -410,7 +410,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertsWhen_PermitBadDeadline__Fuzz(
+    function testRevertsWhenPermitBadDeadline__Fuzz(
         uint248 privKey,
         address to,
         uint256 amount,
@@ -458,7 +458,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertsWhen_PermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
+    function testRevertsWhenPermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
         deadline = bound(deadline, block.timestamp, MAX_UINT256);
