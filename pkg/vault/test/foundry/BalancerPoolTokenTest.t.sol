@@ -210,7 +210,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertWhen_PermitBadNonce() public {
+    function test_RevertsWhen_PermitBadNonce() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -221,7 +221,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             privateKey
         );
 
-        vm.expectRevert(bytes(""));
+        vm.expectRevert();
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v, r, s);
     }
 
@@ -254,7 +254,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v2, r2, s2);
     }
 
-    function test_RevertWhen_PermitRevokedNonceV1() public {
+    function test_RevertsWhen_PermitRevokedNonceV1() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -268,11 +268,11 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.prank(user);
         poolToken.incrementNonce();
 
-        vm.expectRevert(bytes(""));
+        vm.expectRevert();
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v, r, s);
     }
 
-    function test_RevertWhen_PermitRevokedNonceV2() public {
+    function test_RevertsWhen_PermitRevokedNonceV2() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -295,15 +295,17 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             block.timestamp,
             privateKey
         );
+
+        vm.expectRevert();
         // Works with nonce + 2.
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v2, r2, s2);
 
-        vm.expectRevert(bytes(""));
+        vm.expectRevert();
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v, r, s);
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertWhen_PermitBadDeadline() public {
+    function test_RevertsWhen_PermitBadDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -314,11 +316,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             privateKey
         );
 
+        vm.expectRevert();
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp + 1, v, r, s);
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertWhen_PermitPastDeadline() public {
+    function test_RevertsWhen_PermitPastDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -329,11 +332,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             privateKey
         );
 
+        vm.expectRevert();
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp - 1, v, r, s);
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertWhen_PermitReplay() public {
+    function test_RevertsWhen_PermitReplay() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
             user,
@@ -345,6 +349,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         );
 
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v, r, s);
+        vm.expectRevert();
         poolToken.permit(user, address(0xCAFE), DEFAULT_AMOUNT, block.timestamp, v, r, s);
     }
 
@@ -375,7 +380,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertWhen_PermitBadNonce__Fuzz(
+    function test_RevertsWhen_PermitBadNonce__Fuzz(
         uint256 privKey,
         address to,
         uint256 amount,
@@ -383,7 +388,8 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         uint256 nonce
     ) public {
         deadline = bound(deadline, block.timestamp, MAX_UINT256);
-        vm.assume(privKey != 0);
+        // privKey cannot be greater than Secp256k1 curve order.
+        privKey = bound(privKey, 1, 115792089237316195423570985008687907852837564279074904382605163141518161494337);
         vm.assume(to != address(0));
         vm.assume(nonce != 0);
 
@@ -399,11 +405,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             privKey
         );
 
+        vm.expectRevert();
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertWhen_PermitBadDeadline__Fuzz(
+    function test_RevertsWhen_PermitBadDeadline__Fuzz(
         uint248 privKey,
         address to,
         uint256 amount,
@@ -425,6 +432,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
             privKey
         );
 
+        vm.expectRevert();
         poolToken.permit(usr, to, amount, deadline + 1, v, r, s);
     }
 
@@ -450,7 +458,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     /// @dev Just test for general fail as it is hard to compute error arguments.
-    function test_RevertWhen_PermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
+    function test_RevertsWhen_PermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
         deadline = bound(deadline, block.timestamp, MAX_UINT256);
@@ -468,6 +476,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         );
 
         poolToken.permit(usr, to, amount, deadline, v, r, s);
+        vm.expectRevert();
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
