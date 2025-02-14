@@ -120,7 +120,7 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         IRateProvider(pool).getRate();
     }
 
-    function test_RevertsWhen_SwapFeeTooLow() public {
+    function testRevertsWhenSwapFeeTooLow() public {
         TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         tokenConfigs[daiIdx].token = IERC20(dai);
         tokenConfigs[usdcIdx].token = IERC20(usdc);
