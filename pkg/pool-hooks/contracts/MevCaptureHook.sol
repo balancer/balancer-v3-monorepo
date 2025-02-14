@@ -72,7 +72,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
             revert InvalidBalancerContractRegistry();
         }
 
-        // Default to enabled and externally provided default numerical values to avoid requiring further
+        // Default to enabled and externally-provided default numerical values to reduce the need for further
         // governance actions.
         _setMevTaxEnabled(true);
         _setDefaultMevTaxMultiplier(defaultMevTaxMultiplier);
