@@ -367,6 +367,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -810,6 +811,7 @@ contract CowRouterTest is BaseCowTest {
             type(uint32).max,
             donationAmounts,
             transferAmountHints,
+            false,
             bytes("")
         );
         vm.stopPrank();
