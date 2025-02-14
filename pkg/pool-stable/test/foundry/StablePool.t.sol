@@ -34,8 +34,11 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
+    address swapFeeManager;
+
     function setUp() public virtual override {
         expectedAddLiquidityBptAmountOut = TOKEN_AMOUNT * 2;
+        (swapFeeManager, ) = createUser("swapFeeManager");
 
         BasePoolTest.setUp();
 
@@ -63,6 +66,8 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         }
 
         PoolRoleAccounts memory roleAccounts;
+        roleAccounts.swapFeeManager = swapFeeManager;
+
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
 
@@ -118,6 +123,46 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
     }
 
+    function testAmplificationUpdateByRole() public {
+        // Ensure the swap manager was set for the pool.
+        assertEq(vault.getPoolRoleAccounts(pool).swapFeeManager, swapFeeManager, "Wrong swap fee manager");
+
+        // Ensure the swap manager doesn't have permission through governance.
+        assertFalse(
+            authorizer.hasRole(
+                IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
+                swapFeeManager
+            ),
+            "Has governance-granted start permission"
+        );
+        assertFalse(
+            authorizer.hasRole(
+                IAuthentication(pool).getActionId(StablePool.stopAmplificationParameterUpdate.selector),
+                swapFeeManager
+            ),
+            "Has governance-granted stop permission"
+        );
+
+        // Ensure the swap manager account can start/stop anyway.
+        uint256 currentTime = block.timestamp;
+        uint256 updateInterval = 5000 days;
+
+        uint256 endTime = currentTime + updateInterval;
+        uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
+
+        vm.startPrank(swapFeeManager);
+        IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+
+        (, bool isUpdating, ) = IStablePool(pool).getAmplificationParameter();
+        assertTrue(isUpdating, "Amplification update not started");
+
+        IStablePool(pool).stopAmplificationParameterUpdate();
+        vm.stopPrank();
+
+        (, isUpdating, ) = IStablePool(pool).getAmplificationParameter();
+        assertFalse(isUpdating, "Amplification update not stopped");
+    }
+
     function testGetAmplificationState() public {
         (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
 
@@ -139,7 +184,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
 
         vm.prank(admin);
-        StablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+        IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
 
         vm.warp(currentTime + updateInterval + 1);
 
