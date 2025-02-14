@@ -122,7 +122,8 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
         if (params.kind == SwapKind.EXACT_OUT) {
             // If the swap is ExactOut, the router assumes the sender sent maxAmountIn to the Vault.
             _vault.settle(params.tokenIn, params.limit);
-            // The router transfers any leftovers back to the sender.
+            // The router transfers any leftovers back to the sender. At this point, the Vault already validated that
+            // `params.limit > amountIn`.
             _sendTokenOut(params.sender, params.tokenIn, params.limit - amountIn, false);
         } else {
             // If the swap is ExactIn, the router assumes the sender has already sent the amountIn to the Vault.
