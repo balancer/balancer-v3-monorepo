@@ -74,6 +74,7 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
 
     /**
      * @notice Return tokens from an order that has failed.
+     * @dev Canceling an order prevents it from being retried.
      * @param tokenIn The token used to identify the order
      * @param receiver The address to receive the tokens from the unfilled order
      */
