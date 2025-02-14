@@ -60,9 +60,9 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
     /**
      * @notice Get the status of the order at the sell token.
      * @param tokenIn The token used to identify the order
-     * @return The status of the order for the given token
+     * @return orderStatus The status of the order for the given token
      */
-    function getOrderStatus(IERC20 tokenIn) external view returns (OrderStatus);
+    function getOrderStatus(IERC20 tokenIn) external view returns (OrderStatus orderStatus);
 
     /**
      * @notice Retry an order that has not been filled yet and expired.
