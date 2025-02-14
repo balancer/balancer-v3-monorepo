@@ -87,6 +87,45 @@ contract AggregatorsRouterTest is BaseVaultTest {
         aggregatorsRouter.swapSingleTokenExactIn(address(pool), usdc, dai, MIN_SWAP_AMOUNT, 0, MAX_UINT256, bytes(""));
     }
 
+    function testQuerySwapExactIn__Fuzz(uint256 swapAmountExactIn) public {
+        swapAmountExactIn = bound(
+            swapAmountExactIn,
+            MIN_SWAP_AMOUNT,
+            vault.getPoolData(address(pool)).balancesLiveScaled18[daiIdx]
+        );
+
+        // First query the swap.
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256 queryAmountOut = aggregatorsRouter.querySwapSingleTokenExactIn(
+            address(pool),
+            dai,
+            usdc,
+            swapAmountExactIn,
+            alice,
+            bytes("")
+        );
+        // Restore the state before the query.
+        vm.revertTo(snapshot);
+
+        // Then execute the actual swap.
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), swapAmountExactIn);
+        uint256 actualAmountOut = aggregatorsRouter.swapSingleTokenExactIn(
+            address(pool),
+            dai,
+            usdc,
+            swapAmountExactIn,
+            0,
+            MAX_UINT256,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        // The query and actual swap should return the same amount.
+        assertEq(queryAmountIn, actualAmountIn, "Query amount differs from actual swap amount");
+    }
+
     function testSwapExactIn__Fuzz(uint256 swapAmount) public {
         swapAmount = bound(swapAmount, MIN_SWAP_AMOUNT, vault.getPoolData(address(pool)).balancesLiveScaled18[daiIdx]);
 
