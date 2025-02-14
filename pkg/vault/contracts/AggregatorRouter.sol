@@ -112,11 +112,6 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
     function swapSingleTokenHook(
         IRouter.SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
-        if (params.kind == SwapKind.EXACT_OUT && params.limit > params.tokenIn.balanceOf(address(_vault))) {
-            // If the swap is ExactOut, the router assumes the sender sent maxAmountIn to the Vault.
-            revert SwapInsufficientPayment();
-        }
-
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         if (params.kind == SwapKind.EXACT_OUT) {
