@@ -34,11 +34,8 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
-    address swapFeeManager;
-
     function setUp() public virtual override {
         expectedAddLiquidityBptAmountOut = TOKEN_AMOUNT * 2;
-        (swapFeeManager, ) = createUser("swapFeeManager");
 
         BasePoolTest.setUp();
 
@@ -66,7 +63,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         }
 
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.swapFeeManager = swapFeeManager;
+        roleAccounts.swapFeeManager = alice;
 
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(poolFactory);
@@ -125,20 +122,20 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
 
     function testAmplificationUpdateByRole() public {
         // Ensure the swap manager was set for the pool.
-        assertEq(vault.getPoolRoleAccounts(pool).swapFeeManager, swapFeeManager, "Wrong swap fee manager");
+        assertEq(vault.getPoolRoleAccounts(pool).swapFeeManager, alice, "Wrong swap fee manager");
 
         // Ensure the swap manager doesn't have permission through governance.
         assertFalse(
             authorizer.hasRole(
                 IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
-                swapFeeManager
+                alice
             ),
             "Has governance-granted start permission"
         );
         assertFalse(
             authorizer.hasRole(
                 IAuthentication(pool).getActionId(StablePool.stopAmplificationParameterUpdate.selector),
-                swapFeeManager
+                alice
             ),
             "Has governance-granted stop permission"
         );
@@ -150,7 +147,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         uint256 endTime = currentTime + updateInterval;
         uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
 
-        vm.startPrank(swapFeeManager);
+        vm.startPrank(alice);
         IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
 
         (, bool isUpdating, ) = IStablePool(pool).getAmplificationParameter();
