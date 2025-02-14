@@ -389,7 +389,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     ) public {
         deadline = bound(deadline, block.timestamp, MAX_UINT256);
         // privKey cannot be greater than Secp256k1 curve order.
-        privKey = bound(privKey, 1, 115792089237316195423570985008687907852837564279074904382605163141518161494337);
+        privKey = bound(privKey, 1, 115792089237316195423570985008687907852837564279074904382605163141518161494336);
         vm.assume(to != address(0));
         vm.assume(nonce != 0);
 
