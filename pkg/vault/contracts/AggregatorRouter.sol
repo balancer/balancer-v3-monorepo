@@ -112,14 +112,19 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
     function swapSingleTokenHook(
         IRouter.SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
-
+        // If the swap is ExactOut, we must settle the input token before the swap, so we can check
+        // if the Vault has enough tokens to take the user debt, avoiding a math underflow error.
         if (params.kind == SwapKind.EXACT_OUT) {
             // If the swap is ExactOut, the router assumes the sender sent maxAmountIn to the Vault.
             uint256 tokenInCredit = _vault.settle(params.tokenIn, params.limit);
+            // If the user sent less tokens than the limit, the router reverts.
             if (tokenInCredit < params.limit) {
                 revert SwapInsufficientPayment();
             }
+        }
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
+
+        if (params.kind == SwapKind.EXACT_OUT) {
             // The router transfers any leftovers back to the sender. At this point, the Vault already validated that
             // `params.limit > amountIn`.
             _sendTokenOut(params.sender, params.tokenIn, params.limit - amountIn, false);

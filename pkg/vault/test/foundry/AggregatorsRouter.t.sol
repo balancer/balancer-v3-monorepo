@@ -159,7 +159,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
 
     function testSwapExactOutWithoutPayment() public {
         vm.prank(alice);
-        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
         aggregatorsRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
@@ -171,11 +171,9 @@ contract AggregatorsRouterTest is BaseVaultTest {
         );
     }
 
-    function testSwapExactOutWithBalanceNotSettled() public {
+    function testSwapExactOutWrongTransferAndNoBalanceInVault() public {
         // If the swap is ExactOut, the router assumes the sender sent maxAmountIn to the Vault. If the sender does not
-        // send the correct amount, the swap will revert. If the Vault has a balance of DAI above the maxAmountIn, the
-        // swap reverts in the Vault with BalanceNotSettled. However, if the vault does not have enough DAI, the
-        // router will revert with SwapInsufficientPayment.
+        // send the correct amount, the swap will revert.
 
         uint256 exactAmountOut = MIN_SWAP_AMOUNT;
         uint256 maxAmountIn = 2e18;
@@ -183,7 +181,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
 
         vm.startPrank(alice);
         dai.transfer(address(vault), insufficientAmount);
-        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
+        vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
         aggregatorsRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
@@ -196,11 +194,9 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testSwapExactOutWithSwapInsufficientPayment() public {
+    function testSwapExactOutWrongTransferAndBalanceInVault() public {
         // If the swap is ExactOut, the router assumes the sender sent maxAmountIn to the Vault. If the sender does not
-        // send the correct amount, the swap will revert. If the Vault has a balance of DAI above the maxAmountIn, the
-        // swap reverts in the Vault with BalanceNotSettled. However, if the vault does not have enough DAI, the
-        // router will revert with SwapInsufficientPayment.
+        // send the correct amount, the swap will revert.
 
         uint256 exactAmountOut = MIN_SWAP_AMOUNT;
         uint256 maxAmountIn = dai.balanceOf(alice);
