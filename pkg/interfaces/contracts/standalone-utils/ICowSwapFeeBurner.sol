@@ -53,9 +53,9 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
     /**
      * @notice Get the order at the sell token.
      * @param tokenIn The token used to identify the order
-     * @return The order data for the given token
+     * @return orderData The order data for the given token
      */
-    function getOrder(IERC20 tokenIn) external view returns (GPv2Order memory);
+    function getOrder(IERC20 tokenIn) external view returns (GPv2Order memory orderData);
 
     /**
      * @notice Get the status of the order at the sell token.
