@@ -26,6 +26,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
+import { RouterWethLib } from "./lib/RouterWethLib.sol";
 
 /**
  * @notice Abstract base contract for functions shared among all Routers.
@@ -36,7 +37,7 @@ import { VaultGuard } from "./VaultGuard.sol";
 abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTransient, Version {
     using Address for address payable;
     using StorageSlotExtension for *;
-    using SafeERC20 for IWETH;
+    using RouterWethLib for IWETH;
     using SafeCast for *;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used by what is written
@@ -52,9 +53,6 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
 
     /// @notice Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
-
-    /// @notice The amount of ETH paid is insufficient to complete this operation.
-    error InsufficientEth();
 
     /// @notice The swap transaction was not validated before the specified deadline timestamp.
     error SwapDeadline();
@@ -116,6 +114,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
 
         address sender = _getSenderSlot().tload();
         _discardSenderIfRequired(isExternalSender);
+
         _returnEth(sender);
     }
 
@@ -264,31 +263,12 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         signatureParts.v = v;
     }
 
-    /**
-     * @dev Returns excess ETH back to the contract caller. Checks for sufficient ETH balance are made right before
-     * each deposit, ensuring it will revert with a friendly custom error. If there is any balance remaining when
-     * `_returnEth` is called, return it to the sender.
-     *
-     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
-     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender
-     * are not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
-     * returned ETH.
-     */
     function _returnEth(address sender) internal {
-        // It's cheaper to check the balance and return early than checking a transient variable.
-        // Moreover, most operations will not have ETH to return.
-        uint256 excess = address(this).balance;
-        if (excess == 0) {
-            return;
-        }
-
         // If the return of ETH is locked, then don't return it,
         // because _returnEth will be called again at the end of the call.
-        if (_isReturnEthLockedSlot().tload()) {
-            return;
+        if (_isReturnEthLockedSlot().tload() == false) {
+            _weth.returnEth(sender);
         }
-
-        payable(sender).sendValue(excess);
     }
 
     /**
@@ -310,16 +290,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
     function _takeTokenIn(address sender, IERC20 tokenIn, uint256 amountIn, bool wethIsEth) internal {
         // If the tokenIn is ETH, then wrap `amountIn` into WETH.
         if (wethIsEth && tokenIn == _weth) {
-            if (address(this).balance < amountIn) {
-                revert InsufficientEth();
-            }
-
-            // wrap amountIn to WETH.
-            _weth.deposit{ value: amountIn }();
-            // send WETH to Vault.
-            _weth.safeTransfer(address(_vault), amountIn);
-            // update Vault accounting.
-            _vault.settle(_weth, amountIn);
+            _weth.wrapEthAndSettle(_vault, amountIn);
         } else {
             if (amountIn > 0) {
                 // Send the tokenIn amount to the Vault.
@@ -336,12 +307,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
 
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
-            // Receive the WETH amountOut.
-            _vault.sendTo(tokenOut, address(this), amountOut);
-            // Withdraw WETH to ETH.
-            _weth.withdraw(amountOut);
-            // Send ETH to sender.
-            payable(sender).sendValue(amountOut);
+            _weth.unwrapWethAndTransferToSender(_vault, sender, amountOut);
         } else {
             // Receive the tokenOut amountOut.
             _vault.sendTo(tokenOut, sender, amountOut);
