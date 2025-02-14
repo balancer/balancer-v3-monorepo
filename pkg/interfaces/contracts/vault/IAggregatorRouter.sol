@@ -7,7 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SwapKind } from "./VaultTypes.sol";
 
 interface IAggregatorRouter {
-
     /// @notice Thrown when the sender does not transfer the correct amount of tokens to the Vault.
     error SwapInsufficientPayment();
 
@@ -34,10 +33,10 @@ interface IAggregatorRouter {
 
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
-     * @dev Differently from `swapSingleTokenExactIn`, the sender should transfer the maxAmountIn to the Vault before 
-     * calling this function, and the router will transfer any leftovers back to the sender after the swap is 
+     * @dev Differently from `swapSingleTokenExactIn`, the sender should transfer the maxAmountIn to the Vault before
+     * calling this function, and the router will transfer any leftovers back to the sender after the swap is
      * calculated.
-     * 
+     *
      * @param pool Address of the liquidity pool
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
