@@ -67,6 +67,39 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
             );
     }
 
+    /// @inheritdoc IAggregatorRouter
+    function swapSingleTokenExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        uint256 maxAmountIn,
+        uint256 deadline,
+        bytes calldata userData
+    ) external saveSender(msg.sender) returns (uint256) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        AggregatorRouter.swapSingleTokenHook,
+                        IRouter.SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: maxAmountIn,
+                            deadline: deadline,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
     /**
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. This router expects the caller to pay upfront by sending tokens to the
@@ -81,7 +114,13 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
     ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        _vault.settle(params.tokenIn, amountIn);
+        if (params.kind == SwapKind.EXACT_OUT) {
+            _vault.settle(params.tokenIn, params.limit);
+            _sendTokenOut(params.sender, params.tokenIn, params.limit - amountIn, false);
+        } else {
+            _vault.settle(params.tokenIn, amountIn);
+        }
+
         _sendTokenOut(params.sender, params.tokenOut, amountOut, false);
 
         return amountCalculated;
@@ -135,6 +174,38 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
                             tokenOut: tokenOut,
                             amountGiven: exactAmountIn,
                             limit: 0,
+                            deadline: _MAX_AMOUNT,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IAggregatorRouter
+    function querySwapSingleTokenExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        address sender,
+        bytes memory userData
+    ) external saveSender(sender) returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        AggregatorRouter.querySwapHook,
+                        IRouter.SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: _MAX_AMOUNT,
                             deadline: _MAX_AMOUNT,
                             wethIsEth: false,
                             userData: userData

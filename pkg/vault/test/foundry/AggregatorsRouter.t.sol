@@ -101,6 +101,32 @@ contract AggregatorsRouterTest is BaseVaultTest {
         assertEq(dai.balanceOf(alice), defaultAccountBalance() + outputTokenAmount, "Wrong DAI balance");
     }
 
+    function testSwapExactOut__Fuzz(uint256 swapAmountExactOut) public {
+        swapAmountExactOut = bound(
+            swapAmountExactOut,
+            1e18,
+            vault.getPoolData(address(pool)).balancesLiveScaled18[daiIdx]
+        );
+        uint256 maxAmountIn = dai.balanceOf(alice);
+
+        vm.startPrank(alice);
+        dai.transfer(address(vault), maxAmountIn);
+
+        uint256 swapAmountExactIn = aggregatorsRouter.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            swapAmountExactOut,
+            maxAmountIn,
+            MAX_UINT256,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(dai.balanceOf(alice), defaultAccountBalance() - swapAmountExactIn, "Wrong DAI balance");
+        assertEq(usdc.balanceOf(alice), defaultAccountBalance() + swapAmountExactOut, "Wrong USDC balance");
+    }
+
     function testRouterVersion() public view {
         assertEq(aggregatorsRouter.version(), version, "Router version mismatch");
     }
