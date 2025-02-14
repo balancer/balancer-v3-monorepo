@@ -110,7 +110,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
 
         // Then execute the actual swap.
         vm.startPrank(alice);
-        usdc.transfer(address(vault), swapAmountExactIn);
+        dai.transfer(address(vault), swapAmountExactIn);
         uint256 actualAmountOut = aggregatorsRouter.swapSingleTokenExactIn(
             address(pool),
             dai,
