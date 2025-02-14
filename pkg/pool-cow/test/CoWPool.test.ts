@@ -51,6 +51,7 @@ describe('CoWPool', function () {
   let cowRouter: CowRouter;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
+  let feeSweeper: SignerWithAddress;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let poolTokens: string[];
@@ -60,7 +61,7 @@ describe('CoWPool', function () {
   let tokenConfig: TokenConfigStruct[];
 
   before('setup signers', async () => {
-    [, alice, bob] = await ethers.getSigners();
+    [, alice, bob, feeSweeper] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
@@ -69,7 +70,7 @@ describe('CoWPool', function () {
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
     router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
-    cowRouter = await deploy('CowRouter', { args: [vault, COW_ROUTER_FEE_PERCENTAGE] });
+    cowRouter = await deploy('CowRouter', { args: [vault, COW_ROUTER_FEE_PERCENTAGE, feeSweeper] });
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
