@@ -72,6 +72,13 @@ interface IProtocolFeeSweeper {
     error ProtocolFeeBurnerNotAdded(address protocolFeeBurner);
 
     /**
+     * @notice The burner did not consume its entire allowance.
+     * @dev The fee sweeper approves the burner to pull tokens. If it doesn't do so, revert to avoid a "hanging"
+     * approval that could be exploited later.
+     */
+    error BurnerDidNotConsumeAllowance();
+
+    /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
      * @dev This will withdraw the fee token from the controller to this contract, and attempt to convert and forward
      * the proceeds to the fee recipient. Note that this requires governance to grant this contract permission to call
