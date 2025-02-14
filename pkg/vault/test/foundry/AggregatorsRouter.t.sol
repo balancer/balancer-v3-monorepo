@@ -123,7 +123,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         // The query and actual swap should return the same amount.
-        assertEq(queryAmountIn, actualAmountIn, "Query amount differs from actual swap amount");
+        assertEq(queryAmountOut, actualAmountOut, "Query amount differs from actual swap amount");
     }
 
     function testSwapExactIn__Fuzz(uint256 swapAmount) public {
