@@ -118,6 +118,15 @@ contract ProtocolFeeController is
     // Disaggregated pool creator fees (from swap and yield), available for withdrawal by the pool creator.
     mapping(address pool => mapping(IERC20 poolToken => uint256 feeAmount)) internal _poolCreatorFeeAmounts;
 
+    // Explicit list of pools for which either `registerPool` or `initializePool` has been called.
+    mapping(address pool => bool isRegistered) internal _registeredPools;
+
+    /**
+     * @notice A pool has already been registered, and cannot be initialized.
+     * @param pool The address of the pool
+     */
+    error PoolAlreadyRegistered(address pool);
+
     // Ensure that the caller is the pool creator.
     modifier onlyPoolCreator(address pool) {
         _ensureCallerIsPoolCreator(pool);
@@ -283,6 +292,21 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
+    function getPoolCreatorSwapFeePercentage(address pool) external view returns (uint256) {
+        return _poolCreatorSwapFeePercentages[pool];
+    }
+
+    /// @inheritdoc IProtocolFeeController
+    function getPoolCreatorYieldFeePercentage(address pool) external view returns (uint256) {
+        return _poolCreatorYieldFeePercentages[pool];
+    }
+
+    /// @inheritdoc IProtocolFeeController
+    function isPoolRegistered(address pool) external view returns (bool) {
+        return _registeredPools[pool];
+    }
+
+    /// @inheritdoc IProtocolFeeController
     function getProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
@@ -390,6 +414,7 @@ contract ProtocolFeeController is
         address poolCreator,
         bool protocolFeeExempt
     ) external onlyVault returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
+        _registeredPools[pool] = true;
         _poolCreators[pool] = poolCreator;
 
         // Set local storage of the actual percentages for the pool (default to global).
@@ -412,6 +437,57 @@ contract ProtocolFeeController is
         // Allow tracking pool fee percentages in all cases (e.g., when the pool is protocol-fee exempt).
         emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
         emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
+    }
+
+    // Function that should only be called during protocol fee controller migration, as there is normally no access
+    // to the pool creator state. Ensure this can only be called once on an empty data structure (i.e., governance
+    // cannot override a pool creator!) Permission to call this function should NEVER be granted through normal
+    // governance, but only inside a migration contract.
+    //
+    // After migration, pool parameters can only be set by normal means (i.e., through the Vault, with `registerPool`).
+    function initializePool(
+        address pool,
+        address poolCreator,
+        uint256 protocolSwapFeePercentage,
+        uint256 protocolYieldFeePercentage,
+        bool swapFeeIsOverride,
+        bool yieldFeeIsOverride,
+        uint256 poolCreatorSwapFeePercentage,
+        uint256 poolCreatorYieldFeePercentage
+    ) external authenticate {
+        // Ensure this can never be used to change any existing pool parameters. The swap fee percentages can only be
+        // zero if either the global percentages are zero (which they should not be), or the project is choosing to be
+        // initially protocol fee exempt, where generally there would be a pool creator. The only edge case would be if
+        // you had a fee exempt project with no pool creator, in which case you could technically add a pool creator
+        // later if anyone were granted permission to call this function.
+        //
+        // Future versions will avoid even that, as we're introducing an explicit `_registeredPools` mapping that can
+        // be checked directly and definitively, vs. the following heuristic check necessary with the original
+        // ProtocolFeeController. (Replace this check with a simple `if (_registeredPools[pool])`.)
+        if (
+            _poolCreators[pool] != address(0) ||
+            _poolProtocolSwapFeePercentages[pool].feePercentage > 0 ||
+            _poolProtocolYieldFeePercentages[pool].feePercentage > 0
+        ) {
+            revert PoolAlreadyRegistered(pool);
+        }
+
+        _registeredPools[pool] = true;
+        _poolCreators[pool] = poolCreator;
+
+        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: protocolSwapFeePercentage.toUint64(),
+            isOverride: swapFeeIsOverride
+        });
+        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: protocolYieldFeePercentage.toUint64(),
+            isOverride: yieldFeeIsOverride
+        });
+
+        if (poolCreator != address(0)) {
+            _poolCreatorSwapFeePercentages[pool] = poolCreatorSwapFeePercentage;
+            _poolCreatorYieldFeePercentages[pool] = poolCreatorYieldFeePercentage;
+        }
     }
 
     /// @inheritdoc IProtocolFeeController

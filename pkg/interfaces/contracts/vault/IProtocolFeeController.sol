@@ -180,7 +180,7 @@ interface IProtocolFeeController {
     /**
      * @notice Getter for the current protocol swap fee for a given pool.
      * @param pool The address of the pool
-     * @return protocolSwapFeePercentage The global protocol swap fee percentage
+     * @return protocolSwapFeePercentage The protocol swap fee percentage for the given pool
      * @return isOverride True if the protocol fee has been overridden
      */
     function getPoolProtocolSwapFeeInfo(
@@ -190,12 +190,36 @@ interface IProtocolFeeController {
     /**
      * @notice Getter for the current protocol yield fee for a given pool.
      * @param pool The address of the pool
-     * @return protocolYieldFeePercentage The global protocol yield fee percentage
+     * @return protocolYieldFeePercentage The protocol yield fee percentage for the given pool
      * @return isOverride True if the protocol fee has been overridden
      */
     function getPoolProtocolYieldFeeInfo(
         address pool
     ) external view returns (uint256 protocolYieldFeePercentage, bool isOverride);
+
+    /**
+     * @notice Getter for the current pool creator swap fee percentage for a given pool.
+     * @param pool The address of the pool
+     * @return poolCreatorSwapFeePercentage The pool creator swap fee component of the aggregate swap fee
+     */
+    function getPoolCreatorSwapFeePercentage(address pool) external view returns (uint256);
+
+    /**
+     * @notice Getter for the current pool creator swap fee percentage for a given pool.
+     * @param pool The address of the pool
+     * @return poolCreatorSwapFeePercentage The pool creator swap fee component of the aggregate swap fee
+     */
+    function getPoolCreatorYieldFeePercentage(address pool) external view returns (uint256);
+
+    /**
+     * @notice Check whether any data exists for a given pool.
+     * @dev Will be true if `registerPool` has been called by the Vault, or if `initializePool` has been called as
+     * part of a migration. This data structure exists to aid in future contract migrations, but since we have it,
+     * might as well allow querying it directly.
+     *
+     * @return isRegistered True if this pool has been registered with the fee controller.
+     */
+    function isPoolRegistered(address pool) external view returns (bool);
 
     /**
      * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
