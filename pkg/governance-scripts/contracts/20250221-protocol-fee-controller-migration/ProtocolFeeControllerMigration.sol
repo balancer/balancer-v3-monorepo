@@ -201,7 +201,6 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
         // information after registration by the Vault during pool deployment.
         ProtocolFeeController(address(newFeeController)).initializePool(
             pool,
-            roleAccounts.poolCreator,
             protocolSwapFeePercentage,
             protocolYieldFeePercentage,
             swapFeeIsOverride,

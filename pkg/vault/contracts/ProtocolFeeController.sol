@@ -6,10 +6,14 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { FEE_SCALING_FACTOR, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    FEE_SCALING_FACTOR,
+    MAX_FEE_PERCENTAGE,
+    PoolRoleAccounts
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     ReentrancyGuardTransient
@@ -447,7 +451,6 @@ contract ProtocolFeeController is
     // After migration, pool parameters can only be set by normal means (i.e., through the Vault, with `registerPool`).
     function initializePool(
         address pool,
-        address poolCreator,
         uint256 protocolSwapFeePercentage,
         uint256 protocolYieldFeePercentage,
         bool swapFeeIsOverride,
@@ -457,13 +460,11 @@ contract ProtocolFeeController is
     ) external authenticate {
         // Ensure this can never be used to change any existing pool parameters. The swap fee percentages can only be
         // zero if either the global percentages are zero (which they should not be), or the project is choosing to be
-        // initially protocol fee exempt, where generally there would be a pool creator. The only edge case would be if
-        // you had a fee exempt project with no pool creator, in which case you could technically add a pool creator
-        // later if anyone were granted permission to call this function.
+        // initially protocol fee exempt, where generally there would be a pool creator.
         //
-        // Future versions will avoid even that, as we're introducing an explicit `_registeredPools` mapping that can
-        // be checked directly and definitively, vs. the following heuristic check necessary with the original
-        // ProtocolFeeController. (Replace this check with a simple `if (_registeredPools[pool])`.)
+        // Future versions can use the new `_registeredPools` mapping that can be checked directly and definitively,
+        // vs. the following heuristic check necessary with the original ProtocolFeeController.
+        // Replace this check with a simple `if (_registeredPools[pool])`.
         if (
             _poolCreators[pool] != address(0) ||
             _poolProtocolSwapFeePercentages[pool].feePercentage > 0 ||
@@ -473,7 +474,10 @@ contract ProtocolFeeController is
         }
 
         _registeredPools[pool] = true;
-        _poolCreators[pool] = poolCreator;
+
+        // For extra safety, don't allow the pool creator to be passed in; get it from the Vault again.
+        PoolRoleAccounts memory roleAccounts = _vault.getPoolRoleAccounts(pool);
+        _poolCreators[pool] = roleAccounts.poolCreator;
 
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
             feePercentage: protocolSwapFeePercentage.toUint64(),
@@ -484,7 +488,7 @@ contract ProtocolFeeController is
             isOverride: yieldFeeIsOverride
         });
 
-        if (poolCreator != address(0)) {
+        if (roleAccounts.poolCreator != address(0)) {
             _poolCreatorSwapFeePercentages[pool] = poolCreatorSwapFeePercentage;
             _poolCreatorYieldFeePercentages[pool] = poolCreatorYieldFeePercentage;
         }
