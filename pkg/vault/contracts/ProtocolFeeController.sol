@@ -119,12 +119,6 @@ contract ProtocolFeeController is
     // Disaggregated pool creator fees (from swap and yield), available for withdrawal by the pool creator.
     mapping(address pool => mapping(IERC20 poolToken => uint256 feeAmount)) internal _poolCreatorFeeAmounts;
 
-    /**
-     * @notice A pool has already been registered, and cannot be initialized.
-     * @param pool The address of the pool
-     */
-    error PoolAlreadyRegistered(address pool);
-
     // Ensure that the caller is the pool creator.
     modifier onlyPoolCreator(address pool) {
         _ensureCallerIsPoolCreator(pool);
