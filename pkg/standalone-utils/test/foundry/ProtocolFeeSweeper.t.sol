@@ -275,6 +275,11 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         // Put some fees in the Vault.
         vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
         vault.manualSetAggregateYieldFeeAmount(pool, usdc, DEFAULT_AMOUNT);
+        feeController.collectAggregateFees(pool);
+
+        // Also need to withdraw them to the sweeper.
+        vm.prank(admin);
+        feeController.withdrawProtocolFees(pool, address(feeSweeper));
 
         ProtocolFeeBurnerMock(address(feeBurner)).setTransferFromEnabled(false);
 
@@ -461,6 +466,6 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
     function _defaultSweep(IERC20 token) private {
         // No limit and max deadline
-        feeSweeper.sweepProtocolFeesForToken(token, 0, 0, MAX_UINT256, feeBurner);
+        feeSweeper.sweepProtocolFeesForToken(token, DEFAULT_AMOUNT, 0, MAX_UINT256, feeBurner);
     }
 }
