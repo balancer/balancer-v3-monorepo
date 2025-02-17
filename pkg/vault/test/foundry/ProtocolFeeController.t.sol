@@ -278,6 +278,18 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         poolConfigBits = vault.getPoolConfig(pool);
         assertEq(poolConfigBits.aggregateSwapFeePercentage, expectedAggregateSwapFee, "Wrong aggregate swap fee");
         assertEq(poolConfigBits.aggregateYieldFeePercentage, expectedAggregateYieldFee, "Wrong aggregate yield fee");
+
+        // Test direct pool creator fee getters.
+        assertEq(
+            feeController.getPoolCreatorSwapFeePercentage(pool),
+            POOL_CREATOR_SWAP_FEE_PCT,
+            "Wrong pool creator swap fee percentage"
+        );
+        assertEq(
+            feeController.getPoolCreatorYieldFeePercentage(pool),
+            POOL_CREATOR_YIELD_FEE_PCT,
+            "Wrong pool creator yield fee percentage"
+        );
     }
 
     function testSettingPoolProtocolSwapFee() public {
@@ -1270,8 +1282,6 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         tokenConfig[daiIdx].token = IERC20(dai);
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
-        PoolRoleAccounts memory roleAccounts;
-
         pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
 
         vm.expectEmit();
@@ -1279,6 +1289,12 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         vm.expectEmit();
         emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, 0, true);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolWithCreatorRegistered(pool, lp, true);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = lp;
 
         PoolFactoryMock(poolFactory).registerGeneralTestPool(
             pool,
@@ -1289,6 +1305,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             roleAccounts,
             address(0)
         );
+
+        assertTrue(feeController.isPoolRegistered(pool), "Pool not registered");
     }
 
     function testPoolRegistrationEventsNonExempt() public {
@@ -1310,8 +1328,6 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         tokenConfig[daiIdx].token = IERC20(dai);
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
-        PoolRoleAccounts memory roleAccounts;
-
         pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
 
         vm.expectEmit();
@@ -1320,7 +1336,27 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT, false);
 
-        PoolFactoryMock(poolFactory).registerTestPool(pool, tokenConfig);
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolWithCreatorRegistered(pool, lp, false);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = lp;
+
+        PoolFactoryMock(poolFactory).registerGeneralTestPool(
+            pool,
+            tokenConfig,
+            0,
+            365 days,
+            false, // not exempt from protocol fees
+            roleAccounts,
+            address(0)
+        );
+
+        assertTrue(feeController.isPoolRegistered(pool), "Pool not registered");
+    }
+
+    function testPoolRegistrationInvalid() public view {
+        assertFalse(feeController.isPoolRegistered(ZERO_ADDRESS), "Invalid pool registered");
     }
 
     function _registerPoolWithMaxProtocolFees() internal {
