@@ -53,13 +53,20 @@ contract BalancerContractRegistryInitializer {
         InputHelpers.ensureInputLengthMatch(_poolFactoryNames.length, _poolFactoryAddresses.length);
         InputHelpers.ensureInputLengthMatch(_aliasNames.length, _aliasAddresses.length);
 
-        balancerContractRegistry = _balancerContractRegistry;
-
         // Extract the Vault (also indirectly verifying the registry contract is valid).
         IVault registryVault = SingletonAuthentication(address(_balancerContractRegistry)).getVault();
         if (registryVault != vault) {
             revert VaultMismatch();
         }
+
+        balancerContractRegistry = _balancerContractRegistry;
+
+        routerNames = _routerNames;
+        routerAddresses = _routerAddresses;
+        poolFactoryNames = _poolFactoryNames;
+        poolFactoryAddresses = _poolFactoryAddresses;
+        aliasNames = _aliasNames;
+        aliasAddresses = _aliasAddresses;
 
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
