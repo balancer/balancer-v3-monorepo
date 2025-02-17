@@ -229,7 +229,7 @@ describe('StablePoolAmplification', () => {
           });
 
           it('reverts when requesting above the max', async () => {
-            const highAmp = bn(5001);
+            const highAmp = bn(MAX_AMP + 1n);
             await expect(
               pool.connect(caller).startAmplificationParameterUpdate(highAmp, endTime)
             ).to.be.revertedWithCustomError(pool, 'AmplificationFactorTooHigh');
