@@ -42,9 +42,6 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
     IProtocolFeeController public immutable oldFeeController;
     IProtocolFeeController public immutable newFeeController;
 
-    // Recipient of protocol fees (from the old controller).
-    address public immutable feeRecipient;
-
     IVault public immutable vault;
 
     // IAuthorizer with interface for granting/revoking roles.
@@ -63,14 +60,10 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
     /// @notice Migration can only be performed once.
     error AlreadyMigrated();
 
-    /// @notice Ensure protocol fees aren't getting burned.
-    error InvalidFeeRecipient();
-
     constructor(
         IVault _vault,
         IProtocolFeeController _oldFeeController,
-        IProtocolFeeController _newFeeController,
-        address _feeRecipient
+        IProtocolFeeController _newFeeController
     ) SingletonAuthentication(_oldFeeController.vault()) {
         IVault oldControllerVault = _oldFeeController.vault();
 
@@ -79,14 +72,9 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
             revert InvalidFeeController();
         }
 
-        if (_feeRecipient == address(0)) {
-            revert InvalidFeeRecipient();
-        }
-
         vault = _vault;
         oldFeeController = _oldFeeController;
         newFeeController = _newFeeController;
-        feeRecipient = _feeRecipient;
 
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
@@ -100,44 +88,29 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
 
         _migrateGlobalPercentages();
 
-        // Allow withdrawing protocol fees from the old controller to the new controller (during pool migrations).
-        bytes32 withdrawProtocolFeesRole = IAuthentication(address(oldFeeController)).getActionId(
-            IProtocolFeeController.withdrawProtocolFees.selector
-        );
-
-        _authorizer.grantRole(withdrawProtocolFeesRole, address(this));
-
         // This simple migration assumes that:
         // 1) There are no pool creators, so no state related to pool creator fees (and no fees to be withdrawn).
         // 2) There are no protocol fee exempt pools or governance overrides
         //    (i.e., all override flags are false, and all pool fees match current global values).
         //
-        // At the end of this process, since there are no pool creators, token balances should all be zero.
-        // This allows for some fee collection after deployment of this contract and before migration, which is
-        // why the migrator forces collection and withdraws them, so that no further interaction with the old
-        // fee controller is necessary after migration.
+        // At the end of this process, since there are no pool creators, token balances should all be zero, unless
+        // there are "left over" protocol fees that have been collected but not withdrawn. Governance would then
+        // still have to withdraw from the old fee controller.
         //
         // For future migrations, when we might have pool creator fees, the pool creators would still need to withdraw
         // them from the old controller themselves.
         for (uint256 i = 0; i < pools.length; ++i) {
             address pool = pools[i];
 
-            // Force collection of fees, and withdraw them to the fee recipient.
-            // Pool creators will still need to withdraw from the old pool controller.
-            oldFeeController.collectAggregateFees(pool);
-            oldFeeController.withdrawProtocolFees(pool, feeRecipient);
-
             // Set pool-specific values. This assumes there are no fee exempt pools or overrides.
             newFeeController.updateProtocolSwapFeePercentage(pool);
             newFeeController.updateProtocolYieldFeePercentage(pool);
         }
 
-        // Remove all permissions.
-        _authorizer.renounceRole(withdrawProtocolFeesRole, address(this));
-
         // Update the fee controller in the Vault.
         _migrateFeeController();
 
+        // Revoke all permissions.
         _authorizer.renounceRole(_authorizer.DEFAULT_ADMIN_ROLE(), address(this));
     }
 
