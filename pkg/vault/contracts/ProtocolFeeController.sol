@@ -122,6 +122,15 @@ contract ProtocolFeeController is
     // Disaggregated pool creator fees (from swap and yield), available for withdrawal by the pool creator.
     mapping(address pool => mapping(IERC20 poolToken => uint256 feeAmount)) internal _poolCreatorFeeAmounts;
 
+    /**
+     * @notice Prevent pool data from being registered more than once.
+     * @dev This can happen if there is an error in the migration, or if governance somehow grants permission to
+     * `registerPoolInMigration`, which should never happen.
+     *
+     * @param pool The pool
+     */
+    error PoolAlreadyRegistered(address pool);
+
     // Ensure that the caller is the pool creator.
     modifier onlyPoolCreator(address pool) {
         _ensureCallerIsPoolCreator(pool);
@@ -442,6 +451,54 @@ contract ProtocolFeeController is
         if (poolCreator != address(0)) {
             emit PoolWithCreatorRegistered(pool, poolCreator, protocolFeeExempt);
         }
+    }
+
+    /**
+     * @notice Not exposed in the interface, this enables migration of hidden pool state.
+     * @dev Permission should NEVER be granted to this function outside of a migration contract. It is necessary to
+     * permit migration of the `ProtocolFeeController` with all state (in particular, protocol fee overrides and pool
+     * creator fees) that cannot be written outside of the `registerPool` function called by the Vault during pool
+     * deployment.
+     *
+     * Even if governance were to grant permission to call this function, the `_registeredPools` latch keeps it safe,
+     * guaranteeing that it is impossible to use this function to change anything after registration. A pool can only
+     * be registered / configured once - either copied to a new controller in the migration context, or added normally
+     * through the Vault calling `registerPool`.
+     *
+     * @param pool The address of the pool
+     * @param protocolSwapFeePercentage The current protocol swap fee percentage (copied from the old controller)
+     * @param protocolYieldFeePercentage The current protocol yield fee percentage (copied from the old controller)
+     * @param swapFeeIsOverride The swap override flag. True if protocol fee exempt, or governance has overridden it
+     * @param swapFeeIsOverride The yield override flag. True if protocol fee exempt, or governance has overridden it
+     * @param poolCreatorSwapFeePercentage The pool creator swap fee percentage (copied from the old controller)
+     * @param poolCreatorYieldFeePercentage The pool creator yield fee percentage (copied from the old controller)
+     */
+    function registerPoolInMigration(
+        address pool,
+        uint256 protocolSwapFeePercentage,
+        uint256 protocolYieldFeePercentage,
+        bool swapFeeIsOverride,
+        bool yieldFeeIsOverride,
+        uint256 poolCreatorSwapFeePercentage,
+        uint256 poolCreatorYieldFeePercentage
+    ) external authenticate {
+        if (_registeredPools[pool]) {
+            revert PoolAlreadyRegistered(pool);
+        }
+
+        _registeredPools[pool] = true;
+
+        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: protocolSwapFeePercentage.toUint64(),
+            isOverride: swapFeeIsOverride
+        });
+        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: protocolYieldFeePercentage.toUint64(),
+            isOverride: yieldFeeIsOverride
+        });
+
+        _poolCreatorSwapFeePercentages[pool] = poolCreatorSwapFeePercentage;
+        _poolCreatorYieldFeePercentages[pool] = poolCreatorYieldFeePercentage;
     }
 
     /// @inheritdoc IProtocolFeeController
