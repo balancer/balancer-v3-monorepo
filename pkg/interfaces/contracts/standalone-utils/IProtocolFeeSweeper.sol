@@ -70,18 +70,26 @@ interface IProtocolFeeSweeper {
      */
     error ProtocolFeeBurnerNotAdded(address protocolFeeBurner);
 
-    /**
+     /**
      * @notice Cannot request burning more than the balance of the contract.
      * @param feeToken The feeToken being burned
      * @param requiredBalance The exact amount to be burned
      * @param actualBalance The actual balance of the token (will be less than the required balance)
-     */
+      */
     error InsufficientBalance(IERC20 feeToken, uint256 requiredBalance, uint256 actualBalance);
 
     /**
-     * @notice Convert, and forward withdrawn protocol fees for a given pool and token.
-     * @dev This presumes protocol fees have been withdrawn externally to this contract, and attempts to convert a
-     * given amount of fee tokens to the target, and forward the proceeds to the fee recipient.
+     * @notice The burner did not consume its entire allowance.
+     * @dev The fee sweeper approves the burner to pull tokens. If it doesn't do so, revert to avoid a "hanging"
+     * approval that could be exploited later.
+     */
+    error BurnerDidNotConsumeAllowance();
+
+    /**
+     * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
+     * @dev This will withdraw the fee token from the controller to this contract, and attempt to convert and forward
+     * the proceeds to the fee recipient. Note that this requires governance to grant this contract permission to call
+     * `withdrawProtocolFeesForToken` on the `ProtocolFeeController`.
      *
      * This is a permissioned call, since it involves a swap and a permissionless sweep could be triggered at times
      * disadvantageous to the protocol (e.g., flash crashes). The general design is for an off-chain process to
