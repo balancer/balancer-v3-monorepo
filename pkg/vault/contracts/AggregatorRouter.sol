@@ -112,28 +112,31 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
     function swapSingleTokenHook(
         IRouter.SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
-        // If the swap is ExactOut, we must settle the input token before the swap, so we can check
-        // if the Vault has enough tokens to take the user debt, avoiding a math underflow error.
-        if (params.kind == SwapKind.EXACT_OUT) {
-            // If the swap is ExactOut, the router assumes the sender sent maxAmountIn to the Vault.
-            uint256 tokenInCredit = _vault.settle(params.tokenIn, params.limit);
-            // If the user sent less tokens than the limit, the router reverts.
-            if (tokenInCredit < params.limit) {
-                revert SwapInsufficientPayment();
-            }
+        // `amountInHint` represents the amount supposedly paid upfront by the sender.
+        uint256 amountInHint;
+        if (params.kind == SwapKind.EXACT_IN) {
+            amountInHint = params.amountGiven;
+        } else {
+            amountInHint = params.limit;
         }
+
+        // Always settle the amount paid first to prevent potential underflows at the vault. `tokenInCredit`
+        // represents the amount actually paid by the sender, which can be at most `amountInHint`.
+        // If the user paid less than what was expected, revert early.
+        uint256 tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
+        if (tokenInCredit < amountInHint) {
+            revert SwapInsufficientPayment();
+        }
+
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         if (params.kind == SwapKind.EXACT_OUT) {
-            // The router transfers any leftovers back to the sender. At this point, the Vault already validated that
-            // `params.limit > amountIn`.
-            _sendTokenOut(params.sender, params.tokenIn, params.limit - amountIn, false);
-        } else {
-            // If the swap is ExactIn, the router assumes the sender has already sent the amountIn to the Vault.
-            _vault.settle(params.tokenIn, amountIn);
+            // Transfer any leftovers back to the sender (amount actually paid minus amount required for the swap).
+            // At this point, the Vault already validated that `tokenInCredit > amountIn`.
+            _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
         }
 
-        // The router settles the output token and sends the output tokens to the sender.
+        // Finally, settle the output token by sending the credited tokens to the sender.
         _sendTokenOut(params.sender, params.tokenOut, amountOut, false);
 
         return amountCalculated;
