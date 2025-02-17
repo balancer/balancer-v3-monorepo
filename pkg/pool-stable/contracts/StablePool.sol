@@ -45,6 +45,22 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     using FixedPoint for uint256;
     using SafeCast for *;
 
+    /**
+     * @notice Parameters used to deploy a new Stable Pool.
+     * @param name ERC20 token name
+     * @param symbol ERC20 token symbol
+     * @param amplificationParameter Controls the "flatness" of the invariant curve. higher values = lower slippage,
+     * and assumes prices are near parity. lower values = closer to the constant product curve (e.g., more like a
+     * weighted pool). This has higher slippage, and accommodates greater price volatility
+     * @param version The stable pool version
+     */
+    struct NewPoolParams {
+        string name;
+        string symbol;
+        uint256 amplificationParameter;
+        string version;
+    }
+
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the block time, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
@@ -101,19 +117,16 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     error AmpUpdateNotStarted();
 
     /**
-     * @notice Parameters used to deploy a new Stable Pool.
-     * @param name ERC20 token name
-     * @param symbol ERC20 token symbol
-     * @param amplificationParameter Controls the "flatness" of the invariant curve. higher values = lower slippage,
-     * and assumes prices are near parity. lower values = closer to the constant product curve (e.g., more like a
-     * weighted pool). This has higher slippage, and accommodates greater price volatility
-     * @param version The stable pool version
+     * @notice Allow the swap manager to change the amplification parameter.
+     * @dev Unlike the swap fee percentage setting permission, this is non-exclusive.
      */
-    struct NewPoolParams {
-        string name;
-        string symbol;
-        uint256 amplificationParameter;
-        string version;
+    modifier authenticateByRole() {
+        // Allow if this is the swapFeeManager.
+        if (msg.sender != _vault.getPoolRoleAccounts(address(this)).swapFeeManager) {
+            // Otherwise, defer to governance.
+            _authenticateCaller();
+        }
+        _;
     }
 
     constructor(
@@ -196,7 +209,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IStablePool
-    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
+    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticateByRole {
         if (rawEndValue < StableMath.MIN_AMP) {
             revert AmplificationFactorTooLow();
         }
@@ -246,7 +259,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IStablePool
-    function stopAmplificationParameterUpdate() external authenticate {
+    function stopAmplificationParameterUpdate() external authenticateByRole {
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
 
         if (isUpdating == false) {
