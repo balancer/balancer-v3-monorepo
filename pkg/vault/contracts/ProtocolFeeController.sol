@@ -107,9 +107,6 @@ contract ProtocolFeeController is
     // Store the pool-specific yield fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
     mapping(address pool => PoolFeeConfig yieldFeeConfig) internal _poolProtocolYieldFeePercentages;
 
-    // Pool creators for each pool (empowered to set pool creator fee percentages, and withdraw creator fees).
-    mapping(address pool => address poolCreator) internal _poolCreators;
-
     // Pool creator swap fee percentages for each pool.
     mapping(address pool => uint256 poolCreatorSwapFee) internal _poolCreatorSwapFeePercentages;
 
@@ -121,9 +118,6 @@ contract ProtocolFeeController is
 
     // Disaggregated pool creator fees (from swap and yield), available for withdrawal by the pool creator.
     mapping(address pool => mapping(IERC20 poolToken => uint256 feeAmount)) internal _poolCreatorFeeAmounts;
-
-    // Explicit list of pools for which either `registerPool` or `initializePool` has been called.
-    mapping(address pool => bool isRegistered) internal _registeredPools;
 
     /**
      * @notice A pool has already been registered, and cannot be initialized.
@@ -306,11 +300,6 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function isPoolRegistered(address pool) external view returns (bool) {
-        return _registeredPools[pool];
-    }
-
-    /// @inheritdoc IProtocolFeeController
     function getProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
@@ -392,7 +381,7 @@ contract ProtocolFeeController is
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
-        address poolCreator = _poolCreators[pool];
+        address poolCreator = _getPoolCreator(pool);
 
         if (poolCreator == address(0)) {
             revert PoolCreatorNotRegistered(pool);
@@ -408,6 +397,13 @@ contract ProtocolFeeController is
         numTokens = tokens.length;
     }
 
+    // Retrieve the pool creator for a pool from the Vault.
+    function _getPoolCreator(address pool) internal view returns (address) {
+        PoolRoleAccounts memory roleAccounts = _vault.getPoolRoleAccounts(pool);
+
+        return roleAccounts.poolCreator;
+    }
+
     /***************************************************************************
                                 Permissioned Functions
     ***************************************************************************/
@@ -415,12 +411,9 @@ contract ProtocolFeeController is
     /// @inheritdoc IProtocolFeeController
     function registerPool(
         address pool,
-        address poolCreator,
+        address,
         bool protocolFeeExempt
     ) external onlyVault returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
-        _registeredPools[pool] = true;
-        _poolCreators[pool] = poolCreator;
-
         // Set local storage of the actual percentages for the pool (default to global).
         aggregateSwapFeePercentage = protocolFeeExempt ? 0 : _globalProtocolSwapFeePercentage;
         aggregateYieldFeePercentage = protocolFeeExempt ? 0 : _globalProtocolYieldFeePercentage;
@@ -441,57 +434,6 @@ contract ProtocolFeeController is
         // Allow tracking pool fee percentages in all cases (e.g., when the pool is protocol-fee exempt).
         emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
         emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
-    }
-
-    // Function that should only be called during protocol fee controller migration, as there is normally no access
-    // to the pool creator state. Ensure this can only be called once on an empty data structure (i.e., governance
-    // cannot override a pool creator!) Permission to call this function should NEVER be granted through normal
-    // governance, but only inside a migration contract.
-    //
-    // After migration, pool parameters can only be set by normal means (i.e., through the Vault, with `registerPool`).
-    function initializePool(
-        address pool,
-        uint256 protocolSwapFeePercentage,
-        uint256 protocolYieldFeePercentage,
-        bool swapFeeIsOverride,
-        bool yieldFeeIsOverride,
-        uint256 poolCreatorSwapFeePercentage,
-        uint256 poolCreatorYieldFeePercentage
-    ) external authenticate {
-        // Ensure this can never be used to change any existing pool parameters. The swap fee percentages can only be
-        // zero if either the global percentages are zero (which they should not be), or the project is choosing to be
-        // initially protocol fee exempt, where generally there would be a pool creator.
-        //
-        // Future versions can use the new `_registeredPools` mapping that can be checked directly and definitively,
-        // vs. the following heuristic check necessary with the original ProtocolFeeController.
-        // Replace this check with a simple `if (_registeredPools[pool])`.
-        if (
-            _poolCreators[pool] != address(0) ||
-            _poolProtocolSwapFeePercentages[pool].feePercentage > 0 ||
-            _poolProtocolYieldFeePercentages[pool].feePercentage > 0
-        ) {
-            revert PoolAlreadyRegistered(pool);
-        }
-
-        _registeredPools[pool] = true;
-
-        // For extra safety, don't allow the pool creator to be passed in; get it from the Vault again.
-        PoolRoleAccounts memory roleAccounts = _vault.getPoolRoleAccounts(pool);
-        _poolCreators[pool] = roleAccounts.poolCreator;
-
-        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: protocolSwapFeePercentage.toUint64(),
-            isOverride: swapFeeIsOverride
-        });
-        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: protocolYieldFeePercentage.toUint64(),
-            isOverride: yieldFeeIsOverride
-        });
-
-        if (roleAccounts.poolCreator != address(0)) {
-            _poolCreatorSwapFeePercentages[pool] = poolCreatorSwapFeePercentage;
-            _poolCreatorYieldFeePercentages[pool] = poolCreatorYieldFeePercentage;
-        }
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -602,7 +544,7 @@ contract ProtocolFeeController is
 
     /// @inheritdoc IProtocolFeeController
     function withdrawPoolCreatorFees(address pool) external {
-        _withdrawPoolCreatorFees(pool, _poolCreators[pool]);
+        _withdrawPoolCreatorFees(pool, _getPoolCreator(pool));
     }
 
     function _withdrawPoolCreatorFees(address pool, address recipient) private {

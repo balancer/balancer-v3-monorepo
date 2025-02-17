@@ -212,16 +212,6 @@ interface IProtocolFeeController {
     function getPoolCreatorYieldFeePercentage(address pool) external view returns (uint256);
 
     /**
-     * @notice Check whether any data exists for a given pool.
-     * @dev Will be true if `registerPool` has been called by the Vault, or if `initializePool` has been called as
-     * part of a migration. This data structure exists to aid in future contract migrations, but since we have it,
-     * might as well allow querying it directly.
-     *
-     * @return isRegistered True if this pool has been registered with the fee controller.
-     */
-    function isPoolRegistered(address pool) external view returns (bool);
-
-    /**
      * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
      * @dev Includes both swap and yield fees.
      * @param pool The address of the pool on which fees were collected
