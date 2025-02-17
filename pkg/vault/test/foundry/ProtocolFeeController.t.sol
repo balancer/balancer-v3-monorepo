@@ -1359,6 +1359,28 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertFalse(feeController.isPoolRegistered(ZERO_ADDRESS), "Invalid pool registered");
     }
 
+    function testRegisterPoolInMigrationPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+
+        // This function is not in the public interface.
+        ProtocolFeeController(address(feeController)).registerPoolInMigration(pool, 0, 0, false, false, 0, 0);
+    }
+
+    function testRegisterExistingPoolInMigration() public {
+        _registerPoolWithMaxProtocolFees();
+
+        // Grant permission - should not happen in real life.
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(ProtocolFeeController.registerPoolInMigration.selector),
+            admin
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(ProtocolFeeController.PoolAlreadyRegistered.selector, pool));
+
+        vm.prank(admin);
+        ProtocolFeeController(address(feeController)).registerPoolInMigration(pool, 0, 0, false, false, 0, 0);
+    }
+
     function _registerPoolWithMaxProtocolFees() internal {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
