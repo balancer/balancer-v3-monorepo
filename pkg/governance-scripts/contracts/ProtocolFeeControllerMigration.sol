@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { PoolRoleAccounts, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
@@ -14,7 +15,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { IBasicAuthorizer } from "../IBasicAuthorizer.sol";
+import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
 
 /**
  * @notice Migrate from the original ProtocolFeeController to one with extra events.
@@ -32,6 +33,8 @@ import { IBasicAuthorizer } from "../IBasicAuthorizer.sol";
  * When all pools have been migrated, call `finalizeMigration` to disable further migration and renounce all
  * permissions. While `migratePools` is permissionless, this call must be permissioned to prevent premature
  * termination in case multiple transactions are required to migrate all the pools.
+ *
+ * Associated with `20250221-protocol-fee-controller-migration`.
  */
 contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGuardTransient {
     using FixedPoint for uint256;
@@ -46,14 +49,6 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
 
     // IAuthorizer with interface for granting/revoking roles.
     IBasicAuthorizer internal immutable _authorizer;
-
-    // ActionId for withdrawing protocol fees.
-    bytes32 internal immutable _withdrawProtocolFeesRole;
-    // ActionId for initializing pool creator data for pools.
-    bytes32 internal immutable _initializePoolRole;
-
-    // Set when the global (pool-independent) data have been migrated.
-    bool private _percentagesMigrated;
 
     // Set when the operation is complete and all permissions have been renounced.
     bool private _finalized;
@@ -72,14 +67,15 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
     error InvalidFeeRecipient();
 
     constructor(
+        IVault _vault,
         IProtocolFeeController _oldFeeController,
         IProtocolFeeController _newFeeController,
         address _feeRecipient
     ) SingletonAuthentication(_oldFeeController.vault()) {
-        vault = _oldFeeController.vault();
+        IVault oldControllerVault = _oldFeeController.vault();
 
         // Ensure valid fee controllers.
-        if (_newFeeController.vault() != _oldFeeController.vault()) {
+        if (_newFeeController.vault() != oldControllerVault || _vault != oldControllerVault) {
             revert InvalidFeeController();
         }
 
@@ -87,53 +83,60 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
             revert InvalidFeeRecipient();
         }
 
+        vault = _vault;
         oldFeeController = _oldFeeController;
         newFeeController = _newFeeController;
         feeRecipient = _feeRecipient;
 
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
-
-        // Allow withdrawing protocol fees from the old controller to the new controller (during pool migrations).
-        _withdrawProtocolFeesRole = IAuthentication(address(oldFeeController)).getActionId(
-            IProtocolFeeController.withdrawProtocolFees.selector
-        );
-
-        // This function is not in the public interface.
-        _initializePoolRole = IAuthentication(address(newFeeController)).getActionId(
-            ProtocolFeeController.initializePool.selector
-        );
-
-        _authorizer.grantRole(_withdrawProtocolFeesRole, address(this));
-        _authorizer.grantRole(_initializePoolRole, address(this));
     }
 
-    function migratePools(address[] memory pools) external nonReentrant {
-        if (_finalized) {
-            revert AlreadyMigrated();
-        }
-
-        // Do this first (and only once).
-        if (_percentagesMigrated == false) {
-            _percentagesMigrated = true;
-
-            _migrateGlobalPercentages();
-        }
-
-        for (uint256 i = 0; i < pools.length; ++i) {
-            _migratePool(pools[i]);
-        }
-    }
-
-    function finalizeMigration() external authenticate {
-        // Check for consistency, though finalizing multiple times shouldn't hurt anything.
+    function migrateFeeController(address[] memory pools) external nonReentrant {
         if (_finalized) {
             revert AlreadyMigrated();
         }
 
         _finalized = true;
 
-        _authorizer.renounceRole(_withdrawProtocolFeesRole, address(this));
-        _authorizer.renounceRole(_initializePoolRole, address(this));
+        _migrateGlobalPercentages();
+
+        // Allow withdrawing protocol fees from the old controller to the new controller (during pool migrations).
+        bytes32 withdrawProtocolFeesRole = IAuthentication(address(oldFeeController)).getActionId(
+            IProtocolFeeController.withdrawProtocolFees.selector
+        );
+
+        _authorizer.grantRole(withdrawProtocolFeesRole, address(this));
+
+        // This simple migration assumes that:
+        // 1) There are no pool creators, so no state related to pool creator fees (and no fees to be withdrawn).
+        // 2) There are no protocol fee exempt pools or governance overrides
+        //    (i.e., all override flags are false, and all pool fees match current global values).
+        //
+        // At the end of this process, since there are no pool creators, token balances should all be zero.
+        // This allows for some fee collection after deployment of this contract and before migration, which is
+        // why the migrator forces collection and withdraws them, so that no further interaction with the old
+        // fee controller is necessary after migration.
+        //
+        // For future migrations, when we might have pool creator fees, the pool creators would still need to withdraw
+        // them from the old controller themselves.
+        for (uint256 i = 0; i < pools.length; ++i) {
+            address pool = pools[i];
+
+            // Force collection of fees, and withdraw them to the fee recipient.
+            // Pool creators will still need to withdraw from the old pool controller.
+            oldFeeController.collectAggregateFees(pool);
+            oldFeeController.withdrawProtocolFees(pool, feeRecipient);
+
+            // Set pool-specific values. This assumes there are no fee exempt pools or overrides.
+            newFeeController.updateProtocolSwapFeePercentage(pool);
+            newFeeController.updateProtocolYieldFeePercentage(pool);
+        }
+
+        // Remove all permissions.
+        _authorizer.renounceRole(withdrawProtocolFeesRole, address(this));
+
+        // Update the fee controller in the Vault.
+        _migrateFeeController();
 
         _authorizer.renounceRole(_authorizer.DEFAULT_ADMIN_ROLE(), address(this));
     }
@@ -163,50 +166,15 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
         _authorizer.renounceRole(yieldFeeRole, address(this));
     }
 
-    function _migratePool(address pool) private {
-        // Force collection of fees, and withdraw them to the fee recipient.
-        // Pool creators will still need to withdraw from the old pool controller.
-        oldFeeController.collectAggregateFees(pool);
-        oldFeeController.withdrawProtocolFees(pool, feeRecipient);
-
-        // Copy pool-specific fee percentages.
-        // If we know for sure there are no pool creators, we can use the setProtocolFee messages and not have to do
-        // the wacky initialization thing. However, what will we do in the future? I guess we still need it.
-        (uint256 protocolSwapFeePercentage, bool swapFeeIsOverride) = oldFeeController.getPoolProtocolSwapFeeInfo(pool);
-        (uint256 protocolYieldFeePercentage, bool yieldFeeIsOverride) = oldFeeController.getPoolProtocolYieldFeeInfo(pool);
-
-        PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
-        uint256 poolCreatorSwapFeePercentage;
-        uint256 poolCreatorYieldFeePercentage;
-
-        if (roleAccounts.poolCreator != address(0)) {
-            // There is no getter in the original protocol fee controller for the pool creator fees, so we must reverse
-            // engineer them. Future versions will be able to read the values directly (e.g., from
-            // `getPoolCreatorSwapFeePercentage` instead of needing to calculate them.
-            //
-            // aggregateFeePercentage =
-            //    protocolFeePercentage +
-            //    protocolFeePercentage.complement() * poolCreatorFeePercentage;
-            //
-            // So, poolCreatorFeePercentage = (aggregateFeePercentage - protocolFeePercentage) / protocolFeePercentage.complement()
-            PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-
-            poolCreatorSwapFeePercentage = (poolConfig.aggregateSwapFeePercentage - protocolSwapFeePercentage)
-                .divDown(protocolSwapFeePercentage.complement());
-            poolCreatorYieldFeePercentage = (poolConfig.aggregateYieldFeePercentage - protocolYieldFeePercentage)
-                .divDown(protocolYieldFeePercentage.complement());
-        }
-
-        // Alternative registration required for migration, since there is normally no way to set pool creator
-        // information after registration by the Vault during pool deployment.
-        ProtocolFeeController(address(newFeeController)).initializePool(
-            pool,
-            protocolSwapFeePercentage,
-            protocolYieldFeePercentage,
-            swapFeeIsOverride,
-            yieldFeeIsOverride,
-            poolCreatorSwapFeePercentage,
-            poolCreatorYieldFeePercentage
+    function _migrateFeeController() internal {
+        bytes32 setFeeControllerRole = IAuthentication(address(vault)).getActionId(
+            IVaultAdmin.setProtocolFeeController.selector
         );
+
+        _authorizer.grantRole(setFeeControllerRole, address(this));
+
+        vault.setProtocolFeeController(newFeeController);
+
+        _authorizer.renounceRole(setFeeControllerRole, address(this));
     }
 }
