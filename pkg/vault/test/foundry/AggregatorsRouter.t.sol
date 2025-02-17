@@ -16,8 +16,9 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
-import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { AggregatorRouter } from "../../contracts/AggregatorRouter.sol";
+import { RouterCommon } from "../../contracts/RouterCommon.sol";
+import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -81,10 +82,82 @@ contract AggregatorsRouterTest is BaseVaultTest {
         aggregatorsRouter.querySwapSingleTokenExactIn(pool, usdc, dai, MIN_SWAP_AMOUNT, address(this), bytes(""));
     }
 
-    function testSwapExactInWithoutPayment() public {
-        vm.prank(alice);
-        vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        aggregatorsRouter.swapSingleTokenExactIn(address(pool), usdc, dai, MIN_SWAP_AMOUNT, 0, MAX_UINT256, bytes(""));
+    function testSwapExactInMinAmountOut() public {
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), DEFAULT_AMOUNT);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT, DEFAULT_AMOUNT + 1));
+        aggregatorsRouter.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            DEFAULT_AMOUNT,
+            DEFAULT_AMOUNT + 1,
+            MAX_UINT256,
+            bytes("")
+        );
+    }
+
+    function testSwapExactInDeadline() public {
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), DEFAULT_AMOUNT);
+
+        vm.expectRevert(RouterCommon.SwapDeadline.selector);
+        aggregatorsRouter.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            DEFAULT_AMOUNT,
+            DEFAULT_AMOUNT,
+            block.timestamp - 1,
+            bytes("")
+        );
+    }
+
+    function testSwapExactInWrongTransferAndNoBalanceInVault() public {
+        // If the swap is ExactIn, the router assumes the sender sent exactAmountIn to the Vault. If the sender does not
+        // send the correct amount, the swap will revert.
+
+        uint256 exactAmountIn = poolInitAmount * 2;
+        uint256 minAmountOut = poolInitAmount * 2;
+        uint256 insufficientAmount = MIN_SWAP_AMOUNT;
+
+        vm.startPrank(alice);
+        dai.transfer(address(vault), insufficientAmount);
+        vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
+        aggregatorsRouter.swapSingleTokenExactIn(
+            address(pool),
+            dai,
+            usdc,
+            exactAmountIn,
+            minAmountOut,
+            MAX_UINT256,
+            bytes("")
+        );
+        vm.stopPrank();
+    }
+
+    function testSwapExactInWrongTransferAndBalanceInVault() public {
+        // If the swap is ExactIn, the router assumes the sender sent exactAmountIn to the Vault. If the sender does not
+        // send the correct amount, the swap will revert.
+
+        uint256 exactAmountIn = DEFAULT_AMOUNT;
+        uint256 minAmountOut = dai.balanceOf(alice);
+        uint256 partialTransfer = DEFAULT_AMOUNT / 2;
+
+        vm.startPrank(alice);
+        dai.transfer(address(vault), partialTransfer);
+        vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
+        aggregatorsRouter.swapSingleTokenExactIn(
+            address(pool),
+            dai,
+            usdc,
+            exactAmountIn,
+            minAmountOut,
+            MAX_UINT256,
+            bytes("")
+        );
+        vm.stopPrank();
     }
 
     function testQuerySwapExactIn__Fuzz(uint256 swapAmountExactIn) public {
@@ -171,12 +244,44 @@ contract AggregatorsRouterTest is BaseVaultTest {
         );
     }
 
+    function testSwapExactOutMaxAmountIn() public {
+        vm.startPrank(alice);
+        dai.transfer(address(vault), DEFAULT_AMOUNT);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT + 1, DEFAULT_AMOUNT));
+        aggregatorsRouter.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            DEFAULT_AMOUNT + 1,
+            DEFAULT_AMOUNT,
+            MAX_UINT256,
+            bytes("")
+        );
+    }
+
+    function testSwapExactOutDeadline() public {
+        vm.startPrank(alice);
+        dai.transfer(address(vault), DEFAULT_AMOUNT);
+
+        vm.expectRevert(RouterCommon.SwapDeadline.selector);
+        aggregatorsRouter.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            DEFAULT_AMOUNT,
+            DEFAULT_AMOUNT,
+            block.timestamp - 1,
+            bytes("")
+        );
+    }
+
     function testSwapExactOutWrongTransferAndNoBalanceInVault() public {
         // If the swap is ExactOut, the router assumes the sender sent maxAmountIn to the Vault. If the sender does not
         // send the correct amount, the swap will revert.
 
         uint256 exactAmountOut = MIN_SWAP_AMOUNT;
-        uint256 maxAmountIn = 2e18;
+        uint256 maxAmountIn = poolInitAmount * 2;
         uint256 insufficientAmount = MIN_SWAP_AMOUNT;
 
         vm.startPrank(alice);
