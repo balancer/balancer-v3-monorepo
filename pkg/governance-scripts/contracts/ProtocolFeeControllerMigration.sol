@@ -20,19 +20,20 @@ import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
 /**
  * @notice Migrate from the original ProtocolFeeController to one with extra events.
  * @dev These events enable tracking pool protocol fees under all circumstances (in particular, when protocol fees are
- * initially turned off).
+ * initially turned off). It also adds some infrastructure that makes future migrations easier, and removes redundant
+ * poolCreator storage.
  *
- * After deployment, call `migratePools` as many times as necessary. The list must be generated externally, as pools
- * are not iterable on-chain. The batch interface allows an unlimited number of pools to be migrated; it's possible
- * there might be too many to migrate in a single call.
+ * This simple migration assumes:
+ * 1) There are no pools with pool creators
+ * 2) There are no pools with protocol fee exemptions or overrides
+ * 3) Migrating the complete list of pools can be done in a single transaction.
  *
- * The first time `migratePools` is called, the contract will first copy the global (pool-independent data). This could
- * be done in a separate stage, but we're trying to keep the contract simple, vs. duplicating the staging coordinator
- * system of v2 just yet.
+ * These simplifications enable simply calling `migrateFeeController` once with the complete list of pools.
  *
- * When all pools have been migrated, call `finalizeMigration` to disable further migration and renounce all
- * permissions. While `migratePools` is permissionless, this call must be permissioned to prevent premature
- * termination in case multiple transactions are required to migrate all the pools.
+ * After the migration, the Vault will point to the new fee controller, and any collection thereafter will go there.
+ * If there are any residual fee amounts in the old fee controller (i.e., that were collected but not withdrawn),
+ * governance will still need to withdraw from the old fee controller. Otherwise, no further interaction with the old
+ * controller is necessary.
  *
  * Associated with `20250221-protocol-fee-controller-migration`.
  */
