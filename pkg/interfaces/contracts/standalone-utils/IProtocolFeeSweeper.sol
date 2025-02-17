@@ -70,12 +70,12 @@ interface IProtocolFeeSweeper {
      */
     error ProtocolFeeBurnerNotAdded(address protocolFeeBurner);
 
-     /**
+    /**
      * @notice Cannot request burning more than the balance of the contract.
      * @param feeToken The feeToken being burned
      * @param requiredBalance The exact amount to be burned
      * @param actualBalance The actual balance of the token (will be less than the required balance)
-      */
+     */
     error InsufficientBalance(IERC20 feeToken, uint256 requiredBalance, uint256 actualBalance);
 
     /**
