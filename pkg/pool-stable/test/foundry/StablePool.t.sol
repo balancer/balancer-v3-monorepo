@@ -158,6 +158,18 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
 
         (, isUpdating, ) = IStablePool(pool).getAmplificationParameter();
         assertFalse(isUpdating, "Amplification update not stopped");
+
+        // Grant to Bob via governance.
+        authorizer.grantRole(
+            IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
+            bob
+        );
+
+        vm.startPrank(bob);
+        IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+
+        (, isUpdating, ) = IStablePool(pool).getAmplificationParameter();
+        assertTrue(isUpdating, "Amplification update by Bob not started");
     }
 
     function testGetAmplificationState() public {
