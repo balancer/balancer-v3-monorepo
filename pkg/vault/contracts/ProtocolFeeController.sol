@@ -101,6 +101,9 @@ contract ProtocolFeeController is
     // Global protocol yield fee.
     uint256 private _globalProtocolYieldFeePercentage;
 
+    // Explicitly mark a pool as registered. This will enable future migrations to safely update protected state.
+    mapping(address pool => bool isRegistered) internal _registeredPools;
+
     // Store the pool-specific swap fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
     mapping(address pool => PoolFeeConfig swapFeeConfig) internal _poolProtocolSwapFeePercentages;
 
@@ -270,6 +273,11 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
+    function isPoolRegistered(address pool) external view returns (bool) {
+        return _registeredPools[pool];
+    }
+
+    /// @inheritdoc IProtocolFeeController
     function getPoolProtocolSwapFeeInfo(address pool) external view returns (uint256, bool) {
         PoolFeeConfig memory config = _poolProtocolSwapFeePercentages[pool];
 
@@ -405,9 +413,11 @@ contract ProtocolFeeController is
     /// @inheritdoc IProtocolFeeController
     function registerPool(
         address pool,
-        address,
+        address poolCreator,
         bool protocolFeeExempt
     ) external onlyVault returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
+        _registeredPools[pool] = true;
+
         // Set local storage of the actual percentages for the pool (default to global).
         aggregateSwapFeePercentage = protocolFeeExempt ? 0 : _globalProtocolSwapFeePercentage;
         aggregateYieldFeePercentage = protocolFeeExempt ? 0 : _globalProtocolYieldFeePercentage;
@@ -428,6 +438,10 @@ contract ProtocolFeeController is
         // Allow tracking pool fee percentages in all cases (e.g., when the pool is protocol-fee exempt).
         emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
         emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
+
+        if (poolCreator != address(0)) {
+            emit PoolWithCreatorRegistered(pool, poolCreator, protocolFeeExempt);
+        }
     }
 
     /// @inheritdoc IProtocolFeeController

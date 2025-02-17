@@ -126,6 +126,18 @@ interface IProtocolFeeController {
     );
 
     /**
+     * @notice Emitted for pools registered with creators.
+     * @dev The `PoolRegistered` event includes the `roleAccounts` field, which also records the pool creator, but this
+     * simpler event is also provided for convenience. Though `InitialPoolAggregateSwapFeePercentage` and its yield fee
+     * counterpart also include the protocol fee exemption flag, we might as well include it here as well.
+     *
+     * @param pool The address of the pool being registered
+     * @param poolCreator The address of the pool creator (non-zero, or the event would not be emitted)
+     * @param  protocolFeeExempt True if the pool is initially exempt from protocol fees
+     */
+    event PoolWithCreatorRegistered(address indexed pool, address indexed poolCreator, bool protocolFeeExempt);
+
+    /**
      * @notice Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
      * @dev Note that this is checked for both the global and pool-specific protocol swap fee percentages.
      */
@@ -176,6 +188,13 @@ interface IProtocolFeeController {
      * @return protocolYieldFeePercentage The global protocol yield fee percentage
      */
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256 protocolYieldFeePercentage);
+
+    /**
+     * @notice Getter for pool registration flag.
+     * @param pool The address of the pool
+     * @return isRegistered True if the pool configuration has been set (e.g., through `registerPool`)
+     */
+    function isPoolRegistered(address pool) external view returns (bool);
 
     /**
      * @notice Getter for the current protocol swap fee for a given pool.
