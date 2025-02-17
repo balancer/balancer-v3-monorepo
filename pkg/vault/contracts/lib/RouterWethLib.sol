@@ -22,25 +22,6 @@ library RouterWethLib {
     /// @notice The amount of ETH paid is insufficient to complete this operation.
     error InsufficientEth();
 
-    /**
-     * @dev Returns excess ETH back to the contract caller. Checks for sufficient ETH balance are made right before
-     * each deposit, ensuring it will revert with a friendly custom error. If there is any balance remaining when
-     * `_returnEth` is called, return it to the sender.
-     *
-     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
-     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender
-     * are not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
-     * returned ETH.
-     */
-    function returnEth(IWETH, address sender) internal {
-        uint256 excess = address(this).balance;
-        if (excess == 0) {
-            return;
-        }
-
-        payable(sender).sendValue(excess);
-    }
-
     function wrapEthAndSettle(IWETH weth, IVault vault, uint256 amountToSettle) internal {
         if (address(this).balance < amountToSettle) {
             revert InsufficientEth();

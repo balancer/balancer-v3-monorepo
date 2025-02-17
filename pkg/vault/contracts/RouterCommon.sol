@@ -263,12 +263,31 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         signatureParts.v = v;
     }
 
+    /**
+     * @dev Returns excess ETH back to the contract caller. Checks for sufficient ETH balance are made right before
+     * each deposit, ensuring it will revert with a friendly custom error. If there is any balance remaining when
+     * `_returnEth` is called, return it to the sender.
+     *
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender
+     * are not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
+     */
     function _returnEth(address sender) internal {
+        // It's cheaper to check the balance and return early than checking a transient variable.
+        // Moreover, most operations will not have ETH to return.
+        uint256 excess = address(this).balance;
+        if (excess == 0) {
+            return;
+        }
+
         // If the return of ETH is locked, then don't return it,
         // because _returnEth will be called again at the end of the call.
-        if (_isReturnEthLockedSlot().tload() == false) {
-            _weth.returnEth(sender);
+        if (_isReturnEthLockedSlot().tload()) {
+            return;
         }
+
+        payable(sender).sendValue(excess);
     }
 
     /**
