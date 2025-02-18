@@ -58,7 +58,12 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
         _;
     }
 
-    constructor(IVault vault, IBalancerContractRegistry registry) SingletonAuthentication(vault) VaultGuard(vault) {
+    constructor(
+        IVault vault,
+        IBalancerContractRegistry registry,
+        uint256 defaultMevTaxMultiplier,
+        uint256 defaultMevTaxThreshold
+    ) SingletonAuthentication(vault) VaultGuard(vault) {
         _registry = registry;
 
         // Smoke test to ensure the given registry is a contract and isn't hard-coded to trust everything.
@@ -67,9 +72,12 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
             revert InvalidBalancerContractRegistry();
         }
 
-        _setMevTaxEnabled(false);
-        _setDefaultMevTaxMultiplier(0);
-        _setDefaultMevTaxThreshold(0);
+        // Default to enabled and externally-provided default numerical values to reduce the need for further
+        // governance actions.
+        _setMevTaxEnabled(true);
+        _setDefaultMevTaxMultiplier(defaultMevTaxMultiplier);
+        _setDefaultMevTaxThreshold(defaultMevTaxThreshold);
+
         // Default to the maximum value allowed by the Vault.
         _setMaxMevSwapFeePercentage(_MEV_MAX_FEE_PERCENTAGE);
     }
