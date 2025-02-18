@@ -20,10 +20,12 @@ import {
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import { RouterWethLib } from "@balancer-labs/v3-vault/contracts/lib/RouterWethLib.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 
 contract CowRouter is SingletonAuthentication, VaultGuard, Version, ICowRouter {
     using Address for address payable;
+    using RouterWethLib for IWETH;
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
@@ -446,10 +448,10 @@ contract CowRouter is SingletonAuthentication, VaultGuard, Version, ICowRouter {
                 if (wethIsEth && address(token) == address(_weth)) {
                     // If weth is eth, the sender sent ETH to the router, so we should wrap and send to the vault
                     // before settling.
-                    _weth.deposit{ value: transferAmountHint }();
-                    _weth.safeTransfer(address(_vault), transferAmountHint);
+                    _weth.wrapEthAndSettle(_vault, transferAmountHint);
+                } else {
+                    _vault.settle(token, transferAmountHint);
                 }
-                _vault.settle(token, transferAmountHint);
             }
 
             // Protocol fees are charged on the sender's upfront transfers to the vault, and sent to the router.
@@ -463,11 +465,7 @@ contract CowRouter is SingletonAuthentication, VaultGuard, Version, ICowRouter {
             uint256 returnToSenderAmount = senderCredits[i];
             if (returnToSenderAmount > 0) {
                 if (wethIsEth && address(token) == address(_weth)) {
-                    // Receive the WETH amountOut.
-                    _vault.sendTo(token, address(this), returnToSenderAmount);
-                    // Withdraw WETH to ETH.
-                    _weth.withdraw(returnToSenderAmount);
-                    // We don't need to return the ETH to the sender, because it is returned in the `_returnEth` call.
+                    _weth.unwrapWethAndTransferToSender(_vault, sender, returnToSenderAmount);
                 } else {
                     _vault.sendTo(token, sender, returnToSenderAmount);
                 }
@@ -495,5 +493,21 @@ contract CowRouter is SingletonAuthentication, VaultGuard, Version, ICowRouter {
         }
 
         payable(sender).sendValue(excess);
+    }
+
+    /**
+     * @dev Enables the Router to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
+     * caller.
+     *
+     * Any ETH sent to the Router outside of the WETH unwrapping mechanism would be forever locked inside the Router, so
+     * we prevent that from happening. Other mechanisms used to send ETH to the Router (such as being the recipient of
+     * an ETH swap, Pool exit or withdrawal, contract self-destruction, or receiving the block mining reward) will
+     * result in locked funds, but are not otherwise a security or soundness issue. This check only exists as an attempt
+     * to prevent user error.
+     */
+    receive() external payable {
+        if (msg.sender != address(_weth)) {
+            revert EthTransfer();
+        }
     }
 }

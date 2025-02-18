@@ -29,16 +29,18 @@ contract CowRouterTest is BaseCowTest {
         vaultMockMinTradeAmount = _MIN_TRADE_AMOUNT;
         super.setUp();
 
+        address payable cowRouterPayable = payable(address(cowRouter));
+
         // Alice representes CoW Settlement.
         authorizer.grantRole(
-            CowRouter(address(cowRouter)).getActionId(ICowRouter.swapExactInAndDonateSurplus.selector),
+            CowRouter(cowRouterPayable).getActionId(ICowRouter.swapExactInAndDonateSurplus.selector),
             alice
         );
         authorizer.grantRole(
-            CowRouter(address(cowRouter)).getActionId(ICowRouter.swapExactOutAndDonateSurplus.selector),
+            CowRouter(cowRouterPayable).getActionId(ICowRouter.swapExactOutAndDonateSurplus.selector),
             alice
         );
-        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.donate.selector), alice);
+        authorizer.grantRole(CowRouter(cowRouterPayable).getActionId(ICowRouter.donate.selector), alice);
     }
 
     /********************************************************

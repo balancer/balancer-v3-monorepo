@@ -57,9 +57,11 @@ contract CowPoolContractsDeployer is BaseContractsDeployer {
         if (reusingArtifacts) {
             return
                 CowRouter(
-                    deployCode(
-                        _computeCowPath(type(CowRouter).name),
-                        abi.encode(vault, weth, initialProtocolFeePercentage, feeSweeper, routerVersion)
+                    payable(
+                        deployCode(
+                            _computeCowPath(type(CowRouter).name),
+                            abi.encode(vault, weth, initialProtocolFeePercentage, feeSweeper, routerVersion)
+                        )
                     )
                 );
         } else {

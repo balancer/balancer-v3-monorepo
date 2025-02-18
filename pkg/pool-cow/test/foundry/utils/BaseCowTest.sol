@@ -44,12 +44,14 @@ contract BaseCowTest is CowPoolContractsDeployer, BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
+        address payable cowRouterPayable = payable(address(cowRouter));
+
         // Set router permissions.
         authorizer.grantRole(
-            CowRouter(address(cowRouter)).getActionId(ICowRouter.setProtocolFeePercentage.selector),
+            CowRouter(cowRouterPayable).getActionId(ICowRouter.setProtocolFeePercentage.selector),
             admin
         );
-        authorizer.grantRole(CowRouter(address(cowRouter)).getActionId(ICowRouter.setFeeSweeper.selector), admin);
+        authorizer.grantRole(CowRouter(cowRouterPayable).getActionId(ICowRouter.setFeeSweeper.selector), admin);
 
         // Set factory permissions.
         authorizer.grantRole(

@@ -55,6 +55,9 @@ interface ICowRouter {
         bytes userData;
     }
 
+    /// @notice Incoming ETH transfer from an address that is not WETH.
+    error EthTransfer();
+
     /**
      * @notice The funds transferred to the Vault and the swap tokenOut amount were not enough to pay for the Swap and
      * Donate operation.
