@@ -6,6 +6,8 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 
+import { IWETH } from "../solidity-utils/misc/IWETH.sol";
+
 /// @notice Interface for functions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
     /**
@@ -51,6 +53,9 @@ interface IRouterCommon {
     /*******************************************************************************
                                          Utils
     *******************************************************************************/
+
+    /// @notice Returns WETH contract address.
+    function getWeth() external view returns (IWETH);
 
     /// @notice Returns Permit2 contract address.
     function getPermit2() external view returns (IPermit2);

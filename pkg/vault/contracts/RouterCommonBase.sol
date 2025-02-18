@@ -38,9 +38,6 @@ abstract contract RouterCommonBase is IRouterCommonBase, VaultGuard, ReentrancyG
     // scaled inside the Vault, sending type(uint256).max would result in an overflow and revert.
     uint256 internal constant _MAX_AMOUNT = type(uint128).max;
 
-    // solhint-disable-next-line var-name-mixedcase
-    IWETH internal immutable _weth;
-
     /**
      * @notice Saves the user or contract that initiated the current operation.
      * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the Router's
@@ -88,29 +85,8 @@ abstract contract RouterCommonBase is IRouterCommonBase, VaultGuard, ReentrancyG
         }
     }
 
-    constructor(IVault vault, IWETH weth, string memory routerVersion) VaultGuard(vault) Version(routerVersion) {
-        _weth = weth;
-    }
-
-    /// @inheritdoc IRouterCommonBase
-    function getWeth() external view returns (IWETH) {
-        return _weth;
-    }
-
-    /**
-     * @dev Enables the Router to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
-     * caller.
-     *
-     * Any ETH sent to the Router outside of the WETH unwrapping mechanism would be forever locked inside the Router, so
-     * we prevent that from happening. Other mechanisms used to send ETH to the Router (such as being the recipient of
-     * an ETH swap, Pool exit or withdrawal, contract self-destruction, or receiving the block mining reward) will
-     * result in locked funds, but are not otherwise a security or soundness issue. This check only exists as an attempt
-     * to prevent user error.
-     */
-    receive() external payable {
-        if (msg.sender != address(_weth)) {
-            revert EthTransfer();
-        }
+    constructor(IVault vault, string memory routerVersion) VaultGuard(vault) Version(routerVersion) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc IRouterCommonBase

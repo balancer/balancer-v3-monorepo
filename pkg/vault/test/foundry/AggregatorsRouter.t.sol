@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
@@ -24,6 +25,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract AggregatorsRouterTest is BaseVaultTest {
+    using Address for address payable;
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -40,7 +42,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
-        aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), weth, version);
+        aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), version);
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
@@ -390,5 +392,11 @@ contract AggregatorsRouterTest is BaseVaultTest {
 
     function testRouterVersion() public view {
         assertEq(aggregatorsRouter.version(), version, "Router version mismatch");
+    }
+
+    function testSendEth() public {
+        vm.deal(address(this), 1 ether);
+        vm.expectRevert(IAggregatorRouter.CannotReceiveEth.selector);
+        payable(aggregatorsRouter).sendValue(address(this).balance);
     }
 }
