@@ -12,7 +12,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
-import { RouterCommonBase } from "../../contracts/RouterCommonBase.sol";
+import { SaveSender } from "../../contracts/SaveSender.sol";
 
 contract RouterCommonMock is RouterCommon {
     event CurrentSenderMock(address sender);
@@ -30,9 +30,7 @@ contract RouterCommonMock is RouterCommon {
     }
 
     function emitSender() external {
-        (bool success, bytes memory result) = address(this).call(
-            abi.encodeWithSelector(RouterCommonBase.getSender.selector)
-        );
+        (bool success, bytes memory result) = address(this).call(abi.encodeWithSelector(SaveSender.getSender.selector));
         require(success, "RouterCommonMock: failed getSender call");
 
         emit CurrentSenderMock(abi.decode(result, (address)));

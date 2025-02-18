@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 /// @notice Interface for functions shared across all trusted routers.
-interface IRouterCommonBase {
+interface ISaveSender {
     /// @notice Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
 
