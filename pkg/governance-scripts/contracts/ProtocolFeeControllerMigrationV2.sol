@@ -107,7 +107,7 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, Sin
     }
 
     /// @inheritdoc ProtocolFeeControllerMigration
-    function migrateFeeController(address[] memory) external override pure {
+    function migrateFeeController(address[] memory) external pure override {
         // The one-step migration does not work in this version, with pool creators and overrides.
         revert WrongMigrationVersion();
     }
