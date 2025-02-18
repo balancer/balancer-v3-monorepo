@@ -125,7 +125,7 @@ contract ProtocolFeeController is
     /**
      * @notice Prevent pool data from being registered more than once.
      * @dev This can happen if there is an error in the migration, or if governance somehow grants permission to
-     * `registerPoolInMigration`, which should never happen.
+     * `migratePool`, which should never happen.
      *
      * @param pool The pool
      */
@@ -471,7 +471,7 @@ contract ProtocolFeeController is
      * @param pool The address of the pool
      * @param oldFeeController The fee controller we're copying the state from
      */
-    function registerPoolInMigration(address pool, IProtocolFeeController oldFeeController) external authenticate {
+    function migratePool(address pool, IProtocolFeeController oldFeeController) external authenticate {
         if (address(oldFeeController) == address(this)) {
             revert InvalidMigrationSource();
         }
