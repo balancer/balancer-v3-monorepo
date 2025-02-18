@@ -256,7 +256,12 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         hookAdjustedAmountsOutRaw = amountsOutRaw;
         uint256 currentFee = getCurrentFeePercentage(tokenId);
         if (currentFee > 0) {
-            hookAdjustedAmountsOutRaw = _takeFee(IRouterCommonBase(router).getSender(), pool, amountsOutRaw, currentFee);
+            hookAdjustedAmountsOutRaw = _takeFee(
+                IRouterCommonBase(router).getSender(),
+                pool,
+                amountsOutRaw,
+                currentFee
+            );
         }
         return (true, hookAdjustedAmountsOutRaw);
     }

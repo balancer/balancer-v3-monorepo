@@ -31,7 +31,8 @@ abstract contract RouterCommonBase is IRouterCommonBase, VaultGuard, ReentrancyG
     // constant has executable variables, they will be executed every time the constant is used.
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommonBase).name, "sender");
+    bytes32 private immutable _SENDER_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommonBase).name, "sender");
 
     // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given that amounts are usually
     // scaled inside the Vault, sending type(uint256).max would result in an overflow and revert.
@@ -87,11 +88,7 @@ abstract contract RouterCommonBase is IRouterCommonBase, VaultGuard, ReentrancyG
         }
     }
 
-    constructor(
-        IVault vault,
-        IWETH weth,
-        string memory routerVersion
-    ) VaultGuard(vault) Version(routerVersion) {
+    constructor(IVault vault, IWETH weth, string memory routerVersion) VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
     }
 

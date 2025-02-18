@@ -21,11 +21,7 @@ import { RouterCommonBase } from "./RouterCommonBase.sol";
  * `swapSingleTokenExactIn`, `swapSingleTokenExactOut`, and the associated queries.
  */
 contract AggregatorRouter is IAggregatorRouter, RouterCommonBase {
-    constructor(
-        IVault vault,
-        IWETH weth,
-        string memory routerVersion
-    ) RouterCommonBase(vault, weth, routerVersion) {
+    constructor(IVault vault, IWETH weth, string memory routerVersion) RouterCommonBase(vault, weth, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
