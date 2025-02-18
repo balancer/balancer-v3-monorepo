@@ -49,7 +49,7 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
     IBasicAuthorizer internal immutable _authorizer;
 
     // Set when the operation is complete and all permissions have been renounced.
-    bool private _finalized;
+    bool internal _finalized;
 
     /**
      * @notice Attempt to deploy this contract with invalid parameters.
@@ -80,7 +80,15 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
 
-    function migrateFeeController(address[] memory pools) external nonReentrant {
+    /**
+     * @notice Permissionless migration function.
+     * @dev Call this with the full set of pools to perform the migration. After this runs, the Vault will point to the
+     * new fee controller, which will have a copy of all the relevant state from the old controller. Also, all
+     * permissions will be revoked, and the contract will be disabled.
+     *
+     * @param pools The complete set of pools to migrate
+     */
+    function migrateFeeController(address[] memory pools) virtual external nonReentrant {
         if (_finalized) {
             revert AlreadyMigrated();
         }
@@ -115,7 +123,7 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
         _authorizer.renounceRole(_authorizer.DEFAULT_ADMIN_ROLE(), address(this));
     }
 
-    function _migrateGlobalPercentages() private {
+    function _migrateGlobalPercentages() internal {
         // Grant global fee percentage permissions to set on new controller.
         bytes32 swapFeeRole = IAuthentication(address(newFeeController)).getActionId(
             IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector
