@@ -3,10 +3,14 @@
 pragma solidity ^0.8.24;
 
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 
 /// @notice Interface for functions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
+    /// @notice The amount of ETH paid is insufficient to complete this operation.
+    error InsufficientEth();
+
     /**
      * @notice Data for the add liquidity hook.
      * @param sender Account originating the add liquidity operation
@@ -47,15 +51,12 @@ interface IRouterCommon {
         bytes userData;
     }
 
-    /**
-     * @notice Get the first sender which initialized the call to Router.
-     * @return sender The address of the sender
-     */
-    function getSender() external view returns (address sender);
-
     /*******************************************************************************
                                          Utils
     *******************************************************************************/
+
+    /// @notice Returns Permit2 contract address.
+    function getPermit2() external view returns (IPermit2);
 
     struct PermitApproval {
         address token;

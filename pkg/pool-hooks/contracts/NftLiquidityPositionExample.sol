@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { IRouterCommonBase } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommonBase.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -256,7 +256,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         hookAdjustedAmountsOutRaw = amountsOutRaw;
         uint256 currentFee = getCurrentFeePercentage(tokenId);
         if (currentFee > 0) {
-            hookAdjustedAmountsOutRaw = _takeFee(IRouterCommon(router).getSender(), pool, amountsOutRaw, currentFee);
+            hookAdjustedAmountsOutRaw = _takeFee(IRouterCommonBase(router).getSender(), pool, amountsOutRaw, currentFee);
         }
         return (true, hookAdjustedAmountsOutRaw);
     }

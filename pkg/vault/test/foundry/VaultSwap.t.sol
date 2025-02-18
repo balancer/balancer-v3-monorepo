@@ -9,13 +9,13 @@ import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
+import { IRouterCommonBase } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommonBase.sol";
 import { SwapKind, VaultSwapParams, HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -138,7 +138,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapDeadlineExactIn() public {
         vm.prank(alice);
-        vm.expectRevert(RouterCommon.SwapDeadline.selector);
+        vm.expectRevert(IRouterCommonBase.SwapDeadline.selector);
         router.swapSingleTokenExactIn(
             pool,
             usdc,
@@ -168,7 +168,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapDeadlineExactOut() public {
         vm.prank(alice);
-        vm.expectRevert(RouterCommon.SwapDeadline.selector);
+        vm.expectRevert(IRouterCommonBase.SwapDeadline.selector);
         router.swapSingleTokenExactOut(
             pool,
             usdc,

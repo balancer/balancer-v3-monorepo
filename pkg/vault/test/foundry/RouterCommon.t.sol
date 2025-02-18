@@ -18,7 +18,6 @@ import {
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { RouterCommonMock } from "../../contracts/test/RouterCommonMock.sol";
 
 contract RouterCommonTest is BaseVaultTest {
@@ -74,7 +73,7 @@ contract RouterCommonTest is BaseVaultTest {
     function testTakeTokenInWethIsEth() public {
         uint256 routerEthBalance = address(routerMock).balance;
 
-        vm.expectRevert(RouterCommon.InsufficientEth.selector);
+        vm.expectRevert(IRouterCommon.InsufficientEth.selector);
         routerMock.mockTakeTokenIn(bob, IERC20(weth), routerEthBalance + 1, true);
     }
 
