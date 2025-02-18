@@ -88,11 +88,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         _;
     }
 
-    modifier withPermission(address pool) {
-        _ensureValidSender(pool);
-        _;
-    }
-
     // Store the current threshold for each pool.
     mapping(address pool => uint256 threshold) private _surgeThresholdPercentage;
 
@@ -285,7 +280,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     function setMaxSurgeFeePercentage(
         address pool,
         uint256 newMaxSurgeSurgeFeePercentage
-    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) withPermission(pool) {
+    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) onlySwapFeeManagerOrAuthentication(pool) {
         _setMaxSurgeFeePercentage(pool, newMaxSurgeSurgeFeePercentage);
     }
 
@@ -297,21 +292,8 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     function setSurgeThresholdPercentage(
         address pool,
         uint256 newSurgeThresholdPercentage
-    ) external withValidPercentage(newSurgeThresholdPercentage) withPermission(pool) {
+    ) external withValidPercentage(newSurgeThresholdPercentage) onlySwapFeeManagerOrAuthentication(pool) {
         _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
-    }
-
-    /// @dev Ensure the sender is the swapFeeManager, or default to governance if there is no manager.
-    function _ensureValidSender(address pool) private view {
-        address swapFeeManager = _vault.getPoolRoleAccounts(pool).swapFeeManager;
-
-        if (swapFeeManager == address(0)) {
-            if (_canPerform(getActionId(msg.sig), msg.sender, pool) == false) {
-                revert SenderNotAllowed();
-            }
-        } else if (swapFeeManager != msg.sender) {
-            revert SenderNotAllowed();
-        }
     }
 
     /**
