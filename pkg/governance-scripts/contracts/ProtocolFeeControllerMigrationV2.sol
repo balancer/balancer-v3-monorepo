@@ -10,7 +10,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/ProtocolFeeController.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { ProtocolFeeControllerMigration } from "./ProtocolFeeControllerMigration.sol";
 import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
@@ -35,8 +34,6 @@ import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
  * Associated with `20250221-protocol-fee-controller-migration` (fork test only).
  */
 contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, SingletonAuthentication {
-    using FixedPoint for uint256;
-
     // Set after the global percentages have been transferred (on the first call to `migratePools`).
     bool internal _globalPercentagesMigrated;
 

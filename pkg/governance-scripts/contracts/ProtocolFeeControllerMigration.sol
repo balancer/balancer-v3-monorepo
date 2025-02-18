@@ -12,7 +12,6 @@ import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/Protoco
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
 
@@ -37,8 +36,6 @@ import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
  * Associated with `20250221-protocol-fee-controller-migration`.
  */
 contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
-    using FixedPoint for uint256;
-
     IProtocolFeeController public immutable oldFeeController;
     IProtocolFeeController public immutable newFeeController;
 
@@ -63,8 +60,8 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     constructor(IVault _vault, IProtocolFeeController _newFeeController) {
         oldFeeController = _vault.getProtocolFeeController();
 
-        // Ensure valid fee controllers. Also ensure
-        if (_newFeeController.vault() != _vault) {
+        // Ensure valid fee controllers. Also ensure that we are not trying to operate on the current fee controller.
+        if (_newFeeController.vault() != _vault || _newFeeController == oldFeeController) {
             revert InvalidFeeController();
         }
 
