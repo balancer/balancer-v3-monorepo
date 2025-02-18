@@ -6,7 +6,7 @@ import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { IRouterCommonBase } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommonBase.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -358,7 +358,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault onlyBeforeSale returns (bool) {
-        return IRouterCommon(_trustedRouter).getSender() == owner();
+        return IRouterCommonBase(_trustedRouter).getSender() == owner();
     }
 
     /**
@@ -375,7 +375,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault onlyBeforeSale returns (bool) {
-        return router == _trustedRouter && IRouterCommon(router).getSender() == owner();
+        return router == _trustedRouter && IRouterCommonBase(router).getSender() == owner();
     }
 
     /**

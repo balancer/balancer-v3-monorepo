@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -25,7 +26,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { MOCK_ROUTER_VERSION } from "../../contracts/test/RouterMock.sol";
 import { RouterWethLib } from "../../contracts/lib/RouterWethLib.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
