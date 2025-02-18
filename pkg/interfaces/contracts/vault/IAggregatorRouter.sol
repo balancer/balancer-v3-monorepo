@@ -7,6 +7,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SwapKind } from "./VaultTypes.sol";
 
 interface IAggregatorRouter {
+    /// @notice Thrown if native eth is received.
+    error CannotReceiveEth();
+
     /// @notice Thrown when the sender does not transfer the correct amount of tokens to the Vault.
     error SwapInsufficientPayment();
 

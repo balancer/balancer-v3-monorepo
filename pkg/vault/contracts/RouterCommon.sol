@@ -20,12 +20,11 @@ import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
-import { VaultGuard } from "./VaultGuard.sol";
+import { RouterCommonBase } from "./RouterCommonBase.sol";
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
 
 /**
@@ -34,7 +33,7 @@ import { RouterWethLib } from "./lib/RouterWethLib.sol";
  * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
  * invocation functions (`permitBatchAndCall` and `multicall`).
  */
-abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTransient, Version {
+abstract contract RouterCommon is IRouterCommon, RouterCommonBase {
     using Address for address payable;
     using StorageSlotExtension for *;
     using RouterWethLib for IWETH;
@@ -45,55 +44,13 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
     // constant has executable variables, they will be executed every time the constant is used.
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
-
-    // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _IS_RETURN_ETH_LOCKED_SLOT =
         TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "isReturnEthLocked");
-
-    /// @notice Incoming ETH transfer from an address that is not WETH.
-    error EthTransfer();
-
-    /// @notice The swap transaction was not validated before the specified deadline timestamp.
-    error SwapDeadline();
-
-    // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given that amounts are usually
-    // scaled inside the Vault, sending type(uint256).max would result in an overflow and revert.
-    uint256 internal constant _MAX_AMOUNT = type(uint128).max;
 
     // solhint-disable-next-line var-name-mixedcase
     IWETH internal immutable _weth;
 
     IPermit2 internal immutable _permit2;
-
-    /**
-     * @notice Saves the user or contract that initiated the current operation.
-     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the Router's
-     * `getSender` function will always be the "outermost" caller. Some transactions require the Router to identify
-     * multiple senders. Consider the following example:
-     *
-     * - ContractA has a function that calls the Router, then calls ContractB with the output. ContractB in turn
-     * calls back into the Router.
-     * - Imagine further that ContractA is a pool with a "before" hook that also calls the Router.
-     *
-     * When the user calls the function on ContractA, there are three calls to the Router in the same transaction:
-     * - 1st call: When ContractA calls the Router directly, to initiate an operation on the pool (say, a swap).
-     *             (Sender is contractA, initiator of the operation.)
-     *
-     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the Router.
-     *             This is a "nested" call within the original pool operation. The nested call returns, then the
-     *             before hook returns, the Router completes the operation, and finally returns back to ContractA
-     *             with the result (e.g., a calculated amount of tokens).
-     *             (Nested call; sender is still ContractA through all of this.)
-     *
-     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the Router.
-     *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
-     */
-    modifier saveSender(address sender) {
-        bool isExternalSender = _saveSender(sender);
-        _;
-        _discardSenderIfRequired(isExternalSender);
-    }
 
     /**
      * @notice Locks the return of excess ETH to the sender until the end of the function.
@@ -118,38 +75,22 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         _returnEth(sender);
     }
 
-    function _saveSender(address sender) internal returns (bool isExternalSender) {
-        address savedSender = _getSenderSlot().tload();
-
-        // NOTE: Only the most external sender will be saved by the Router.
-        if (savedSender == address(0)) {
-            _getSenderSlot().tstore(sender);
-            isExternalSender = true;
-        }
-    }
-
-    function _discardSenderIfRequired(bool isExternalSender) internal {
-        // Only the external sender shall be cleaned up; if it's not an external sender it means that
-        // the value was not saved in this modifier.
-        if (isExternalSender) {
-            _getSenderSlot().tstore(address(0));
-        }
-    }
-
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) VaultGuard(vault) Version(routerVersion) {
+    ) RouterCommonBase(vault, routerVersion) {
         _weth = weth;
         _permit2 = permit2;
     }
 
+    /// @inheritdoc IRouterCommon
     function getWeth() external view returns (IWETH) {
         return _weth;
     }
 
+    /// @inheritdoc IRouterCommon
     function getPermit2() external view returns (IPermit2) {
         return _permit2;
     }
@@ -341,6 +282,10 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         }
     }
 
+    function _isReturnEthLockedSlot() internal view returns (StorageSlotExtension.BooleanSlotType) {
+        return _IS_RETURN_ETH_LOCKED_SLOT.asBoolean();
+    }
+
     /**
      * @dev Enables the Router to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
      * caller.
@@ -355,18 +300,5 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard, ReentrancyGuardTran
         if (msg.sender != address(_weth)) {
             revert EthTransfer();
         }
-    }
-
-    /// @inheritdoc IRouterCommon
-    function getSender() external view returns (address) {
-        return _getSenderSlot().tload();
-    }
-
-    function _getSenderSlot() internal view returns (StorageSlotExtension.AddressSlotType) {
-        return _SENDER_SLOT.asAddress();
-    }
-
-    function _isReturnEthLockedSlot() internal view returns (StorageSlotExtension.BooleanSlotType) {
-        return _IS_RETURN_ETH_LOCKED_SLOT.asBoolean();
     }
 }

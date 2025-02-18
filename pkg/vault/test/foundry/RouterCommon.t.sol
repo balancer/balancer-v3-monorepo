@@ -17,6 +17,7 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { RouterCommonMock } from "../../contracts/test/RouterCommonMock.sol";
 import { RouterWethLib } from "../../contracts/lib/RouterWethLib.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
@@ -49,7 +50,7 @@ contract RouterCommonTest is BaseVaultTest {
     function testSenderSlot() external view {
         assertEq(
             StorageSlotExtension.AddressSlotType.unwrap(routerMock.manualGetSenderSlot()),
-            keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) &
+            keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommonBase.sender")) - 1)) &
                 ~bytes32(uint256(0xff))
         );
     }
