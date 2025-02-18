@@ -131,6 +131,9 @@ contract ProtocolFeeController is
      */
     error PoolAlreadyRegistered(address pool);
 
+    /// @notice Migration source cannot be this contract.
+    error InvalidMigrationSource();
+
     // Ensure that the caller is the pool creator.
     modifier onlyPoolCreator(address pool) {
         _ensureCallerIsPoolCreator(pool);
@@ -466,39 +469,35 @@ contract ProtocolFeeController is
      * through the Vault calling `registerPool`.
      *
      * @param pool The address of the pool
-     * @param protocolSwapFeePercentage The current protocol swap fee percentage (copied from the old controller)
-     * @param protocolYieldFeePercentage The current protocol yield fee percentage (copied from the old controller)
-     * @param swapFeeIsOverride The swap override flag. True if protocol fee exempt, or governance has overridden it
-     * @param swapFeeIsOverride The yield override flag. True if protocol fee exempt, or governance has overridden it
-     * @param poolCreatorSwapFeePercentage The pool creator swap fee percentage (copied from the old controller)
-     * @param poolCreatorYieldFeePercentage The pool creator yield fee percentage (copied from the old controller)
+     * @param oldFeeController The fee controller we're copying the state from
      */
-    function registerPoolInMigration(
-        address pool,
-        uint256 protocolSwapFeePercentage,
-        uint256 protocolYieldFeePercentage,
-        bool swapFeeIsOverride,
-        bool yieldFeeIsOverride,
-        uint256 poolCreatorSwapFeePercentage,
-        uint256 poolCreatorYieldFeePercentage
-    ) external authenticate {
+    function registerPoolInMigration(address pool, IProtocolFeeController oldFeeController) external authenticate {
+        if (address(oldFeeController) == address(this)) {
+            revert InvalidMigrationSource();
+        }
+
         if (_registeredPools[pool]) {
             revert PoolAlreadyRegistered(pool);
         }
 
         _registeredPools[pool] = true;
 
+        (uint256 protocolSwapFeePercentage, bool swapFeeIsOverride) = oldFeeController.getPoolProtocolSwapFeeInfo(pool);
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
             feePercentage: protocolSwapFeePercentage.toUint64(),
             isOverride: swapFeeIsOverride
         });
+
+        (uint256 protocolYieldFeePercentage, bool yieldFeeIsOverride) = oldFeeController.getPoolProtocolYieldFeeInfo(
+            pool
+        );
         _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
             feePercentage: protocolYieldFeePercentage.toUint64(),
             isOverride: yieldFeeIsOverride
         });
 
-        _poolCreatorSwapFeePercentages[pool] = poolCreatorSwapFeePercentage;
-        _poolCreatorYieldFeePercentages[pool] = poolCreatorYieldFeePercentage;
+        _poolCreatorSwapFeePercentages[pool] = oldFeeController.getPoolCreatorSwapFeePercentage(pool);
+        _poolCreatorYieldFeePercentages[pool] = oldFeeController.getPoolCreatorYieldFeePercentage(pool);
     }
 
     /// @inheritdoc IProtocolFeeController
