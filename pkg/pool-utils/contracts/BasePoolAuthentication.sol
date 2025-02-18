@@ -11,6 +11,14 @@ abstract contract BasePoolAuthentication is Authentication {
     IVault private immutable _vault;
 
     /**
+     * @dev Allow only the swapFeeManager or an authenticated user to call the function.
+     */
+    modifier onlySwapFeeManagerOrAuthentication(address pool) {
+        _ensureSwapFeeManagerOrAuthentication(pool);
+        _;
+    }
+
+    /**
      * @dev Pools should use the pool factory as the disambiguator passed into the base Authentication contract.
      * Otherwise, permissions would conflict if different pools reused function names.
      */
@@ -26,5 +34,18 @@ abstract contract BasePoolAuthentication is Authentication {
 
     function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
         return _vault.getAuthorizer().canPerform(actionId, account, where);
+    }
+
+    /// @dev Ensure the sender is the swapFeeManager, or default to governance if there is no manager.
+    function _ensureSwapFeeManagerOrAuthentication(address pool) internal view {
+        address swapFeeManager = _vault.getPoolRoleAccounts(pool).swapFeeManager;
+
+        if (swapFeeManager == address(0)) {
+            if (_canPerform(getActionId(msg.sig), msg.sender, pool) == false) {
+                revert SenderNotAllowed();
+            }
+        } else if (swapFeeManager != msg.sender) {
+            revert SenderNotAllowed();
+        }
     }
 }

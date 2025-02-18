@@ -172,6 +172,16 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         assertTrue(isUpdating, "Amplification update by Bob not started");
     }
 
+    function testStartAmplificationParameterUpdateIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        IStablePool(pool).startAmplificationParameterUpdate(DEFAULT_AMP_FACTOR * 2, block.timestamp + 5000 days);
+    }
+
+    function testStopAmplificationParameterUpdateIsPermissioned() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        IStablePool(pool).stopAmplificationParameterUpdate();
+    }
+
     function testGetAmplificationState() public {
         (AmplificationState memory ampState, uint256 precision) = IStablePool(pool).getAmplificationState();
 
