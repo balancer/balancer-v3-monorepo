@@ -62,7 +62,7 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, Sin
      *
      * @param pools The set of pools to be migrated in this call
      */
-    function migratePools(address[] memory pools) external nonReentrant {
+    function migratePools(address[] memory pools) external virtual nonReentrant {
         if (_finalized) {
             revert AlreadyMigrated();
         }
@@ -86,7 +86,7 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, Sin
         }
     }
 
-    function finalizeMigration() external authenticate {
+    function finalizeMigration() external virtual authenticate {
         if (_finalized) {
             revert AlreadyMigrated();
         }
