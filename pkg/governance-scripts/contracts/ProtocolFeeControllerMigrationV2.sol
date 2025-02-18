@@ -8,6 +8,7 @@ import { PoolRoleAccounts, PoolConfig } from "@balancer-labs/v3-interfaces/contr
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/ProtocolFeeController.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -33,7 +34,7 @@ import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
  *
  * Associated with `20250221-protocol-fee-controller-migration` (fork test only).
  */
-contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
+contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, SingletonAuthentication {
     using FixedPoint for uint256;
 
     // Set after the global percentages have been transferred (on the first call to `migratePools`).
@@ -47,9 +48,8 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
 
     constructor(
         IVault _vault,
-        IProtocolFeeController _oldFeeController,
         IProtocolFeeController _newFeeController
-    ) ProtocolFeeControllerMigration(_vault, _oldFeeController, _newFeeController) {
+    ) ProtocolFeeControllerMigration(_vault, _newFeeController) SingletonAuthentication(_vault) {
         _migrationRole = IAuthentication(address(newFeeController)).getActionId(
             ProtocolFeeController.migratePool.selector
         );
@@ -85,7 +85,7 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
         // withdraw any leftover pool creator fees from the old controller.
         for (uint256 i = 0; i < pools.length; ++i) {
             // This function is not in the public interface.
-            ProtocolFeeController(address(newFeeController)).migratePool(pools[i], oldFeeController);
+            ProtocolFeeController(address(newFeeController)).migratePool(pools[i]);
         }
     }
 

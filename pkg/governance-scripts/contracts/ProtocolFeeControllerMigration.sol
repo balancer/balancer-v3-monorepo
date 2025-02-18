@@ -8,7 +8,6 @@ import { PoolRoleAccounts, PoolConfig } from "@balancer-labs/v3-interfaces/contr
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/ProtocolFeeController.sol";
 import {
     ReentrancyGuardTransient
@@ -37,7 +36,7 @@ import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
  *
  * Associated with `20250221-protocol-fee-controller-migration`.
  */
-contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGuardTransient {
+contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     using FixedPoint for uint256;
 
     IProtocolFeeController public immutable oldFeeController;
@@ -61,20 +60,15 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
     /// @notice Migration can only be performed once.
     error AlreadyMigrated();
 
-    constructor(
-        IVault _vault,
-        IProtocolFeeController _oldFeeController,
-        IProtocolFeeController _newFeeController
-    ) SingletonAuthentication(_oldFeeController.vault()) {
-        IVault oldControllerVault = _oldFeeController.vault();
+    constructor(IVault _vault, IProtocolFeeController _newFeeController) {
+        oldFeeController = _vault.getProtocolFeeController();
 
-        // Ensure valid fee controllers.
-        if (_newFeeController.vault() != oldControllerVault || _vault != oldControllerVault) {
+        // Ensure valid fee controllers. Also ensure
+        if (_newFeeController.vault() != _vault) {
             revert InvalidFeeController();
         }
 
         vault = _vault;
-        oldFeeController = _oldFeeController;
         newFeeController = _newFeeController;
 
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
