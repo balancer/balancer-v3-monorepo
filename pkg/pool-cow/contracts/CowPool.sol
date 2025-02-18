@@ -75,7 +75,7 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public view override returns (bool) {
+    ) public view virtual override returns (bool) {
         return
             pool == address(this) &&
             factory == address(_cowPoolFactory) &&
@@ -84,7 +84,7 @@ contract CowPool is ICowPool, BaseHooks, WeightedPool {
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
+    function getHookFlags() public pure virtual override returns (HookFlags memory hookFlags) {
         hookFlags.shouldCallBeforeSwap = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
     }
