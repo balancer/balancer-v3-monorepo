@@ -39,6 +39,9 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
     // Set after the global percentages have been transferred (on the first call to `migratePools`).
     bool internal _globalPercentagesMigrated;
 
+    // ActionId for permission required in `migratePools`.
+    bytes32 internal _migrationRole;
+
     /// @notice Cannot call the base contract migration; it is invalid for this migration.
     error WrongMigrationVersion();
 
@@ -47,23 +50,27 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
         IProtocolFeeController _oldFeeController,
         IProtocolFeeController _newFeeController
     ) ProtocolFeeControllerMigration(_vault, _oldFeeController, _newFeeController) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
+        _migrationRole = IAuthentication(address(newFeeController)).getActionId(
+            ProtocolFeeController.migratePool.selector
+        );
 
-
-    /// @inheritdoc ProtocolFeeControllerMigration
-    function migrateFeeController(address[] memory) external pure override {
-        revert WrongMigrationVersion();
+        // Grant permission required in `migratePools`.
+        _authorizer.grantRole(_migrationRole, address(this));
     }
 
     /**
      * @notice Migrate pools from the old fee controller to the new one.
+     * @dev THis can be called multiple times, if there are too many pools for a single transaction. Note that the
+     * first time this is called, it will migrate the global fee percentages, then proceed with the first set of pools.
+     *
+     * @param pools The set of pools to be migrated in this call
      */
     function migratePools(address[] memory pools) external nonReentrant {
         if (_finalized) {
             revert AlreadyMigrated();
         }
 
+        // Migrate the global percentages only once, before the first set of pools.
         if (_globalPercentagesMigrated == false) {
             _globalPercentagesMigrated = true;
 
@@ -77,7 +84,8 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
         // controller (i.e., that have been collected but not withdrawn). Pool creators likewise would still need to
         // withdraw any leftover pool creator fees from the old controller.
         for (uint256 i = 0; i < pools.length; ++i) {
-            _migratePool(pools[i]);
+            // This function is not in the public interface.
+            ProtocolFeeController(address(newFeeController)).migratePool(pools[i], oldFeeController);
         }
     }
 
@@ -88,6 +96,9 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
 
         _finalized = true;
 
+        // Remove permission to migrate pools.
+        _authorizer.renounceRole(_migrationRole, address(this));
+
         // Update the fee controller in the Vault.
         _migrateFeeController();
 
@@ -95,7 +106,9 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration {
         _authorizer.renounceRole(_authorizer.DEFAULT_ADMIN_ROLE(), address(this));
     }
 
-    function _migratePool(address pool) internal {
-
+    /// @inheritdoc ProtocolFeeControllerMigration
+    function migrateFeeController(address[] memory) external override pure {
+        // The one-step migration does not work in this version, with pool creators and overrides.
+        revert WrongMigrationVersion();
     }
 }

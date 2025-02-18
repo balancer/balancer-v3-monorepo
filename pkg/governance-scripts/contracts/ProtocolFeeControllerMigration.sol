@@ -88,7 +88,7 @@ contract ProtocolFeeControllerMigration is SingletonAuthentication, ReentrancyGu
      *
      * @param pools The complete set of pools to migrate
      */
-    function migrateFeeController(address[] memory pools) virtual external nonReentrant {
+    function migrateFeeController(address[] memory pools) external virtual nonReentrant {
         if (_finalized) {
             revert AlreadyMigrated();
         }
