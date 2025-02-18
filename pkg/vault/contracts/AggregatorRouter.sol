@@ -12,7 +12,7 @@ import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { RouterCommon } from "./RouterCommon.sol";
+import { RouterCommonBase } from "./RouterCommonBase.sol";
 
 /**
  * @notice Entrypoint for aggregators who want to swap without the standard permit2 payment logic.
@@ -20,13 +20,12 @@ import { RouterCommon } from "./RouterCommon.sol";
  * These interact with the Vault and settle accounting. This is not a full-featured Router; it only implements
  * `swapSingleTokenExactIn`, `swapSingleTokenExactOut`, and the associated queries.
  */
-contract AggregatorRouter is IAggregatorRouter, RouterCommon {
+contract AggregatorRouter is IAggregatorRouter, RouterCommonBase {
     constructor(
         IVault vault,
         IWETH weth,
-        IPermit2 permit2,
         string memory routerVersion
-    ) RouterCommon(vault, weth, permit2, routerVersion) {
+    ) RouterCommonBase(vault, weth, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -133,11 +132,11 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
         if (params.kind == SwapKind.EXACT_OUT) {
             // Transfer any leftovers back to the sender (amount actually paid minus amount required for the swap).
             // At this point, the Vault already validated that `tokenInCredit > amountIn`.
-            _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
+            _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn);
         }
 
         // Finally, settle the output token by sending the credited tokens to the sender.
-        _sendTokenOut(params.sender, params.tokenOut, amountOut, false);
+        _sendTokenOut(params.sender, params.tokenOut, amountOut);
 
         return amountCalculated;
     }
@@ -244,5 +243,13 @@ contract AggregatorRouter is IAggregatorRouter, RouterCommon {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;
+    }
+
+    function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut) internal {
+        if (amountOut == 0) {
+            return;
+        }
+
+        _vault.sendTo(tokenOut, sender, amountOut);
     }
 }
