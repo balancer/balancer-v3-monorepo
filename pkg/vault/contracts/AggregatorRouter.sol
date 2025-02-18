@@ -17,7 +17,7 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-import { SaveSender } from "./SaveSender.sol";
+import { SenderGuard } from "./SenderGuard.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -27,8 +27,8 @@ import { VaultGuard } from "./VaultGuard.sol";
  * These interact with the Vault and settle accounting. This is not a full-featured Router; it only implements
  * `swapSingleTokenExactIn`, `swapSingleTokenExactOut`, and the associated queries.
  */
-contract AggregatorRouter is IAggregatorRouter, SaveSender, VaultGuard, ReentrancyGuardTransient, Version {
-    constructor(IVault vault, string memory routerVersion) SaveSender() VaultGuard(vault) Version(routerVersion) {
+contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, ReentrancyGuardTransient, Version {
+    constructor(IVault vault, string memory routerVersion) SenderGuard() VaultGuard(vault) Version(routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

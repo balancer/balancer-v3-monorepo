@@ -25,7 +25,7 @@ import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
-import { SaveSender } from "./SaveSender.sol";
+import { SenderGuard } from "./SenderGuard.sol";
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -35,7 +35,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
  * invocation functions (`permitBatchAndCall` and `multicall`).
  */
-abstract contract RouterCommon is IRouterCommon, SaveSender, VaultGuard, ReentrancyGuardTransient, Version {
+abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, ReentrancyGuardTransient, Version {
     using Address for address payable;
     using StorageSlotExtension for *;
     using RouterWethLib for IWETH;
@@ -82,7 +82,7 @@ abstract contract RouterCommon is IRouterCommon, SaveSender, VaultGuard, Reentra
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) SaveSender() VaultGuard(vault) Version(routerVersion) {
+    ) SenderGuard() VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
         _permit2 = permit2;
     }

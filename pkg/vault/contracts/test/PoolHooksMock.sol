@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { ISaveSender } from "@balancer-labs/v3-interfaces/contracts/vault/ISaveSender.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -112,7 +112,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
 
         if (_specialSender != address(0)) {
             // Check the sender.
-            address swapper = ISaveSender(params.router).getSender();
+            address swapper = ISenderGuard(params.router).getSender();
             if (swapper == _specialSender) {
                 finalSwapFee = 0;
             }
@@ -123,7 +123,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
 
     function onBeforeSwap(PoolSwapParams calldata params, address) public override returns (bool) {
         if (shouldIgnoreSavedSender == false) {
-            _savedSender = ISaveSender(params.router).getSender();
+            _savedSender = ISenderGuard(params.router).getSender();
         }
 
         if (changeTokenRateOnBeforeSwapHook) {
@@ -226,7 +226,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         bytes memory
     ) public override returns (bool) {
         if (shouldIgnoreSavedSender == false) {
-            _savedSender = ISaveSender(router).getSender();
+            _savedSender = ISenderGuard(router).getSender();
         }
 
         if (changeTokenRateOnBeforeAddLiquidity) {
@@ -250,7 +250,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
         bytes memory
     ) public override returns (bool) {
         if (shouldIgnoreSavedSender == false) {
-            _savedSender = ISaveSender(router).getSender();
+            _savedSender = ISenderGuard(router).getSender();
         }
 
         if (changeTokenRateOnBeforeRemoveLiquidity) {

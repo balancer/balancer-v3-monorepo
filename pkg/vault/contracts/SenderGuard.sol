@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { ISaveSender } from "@balancer-labs/v3-interfaces/contracts/vault/ISaveSender.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
@@ -17,7 +17,7 @@ import {
  * Vault is the Router contract itself, not the account that invoked the Router), versioning, and the external
  * invocation functions (`permitBatchAndCall` and `multicall`).
  */
-abstract contract SaveSender is ISaveSender {
+abstract contract SenderGuard is ISenderGuard {
     using StorageSlotExtension for *;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used by what is written
@@ -25,7 +25,7 @@ abstract contract SaveSender is ISaveSender {
     // constant has executable variables, they will be executed every time the constant is used.
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(SaveSender).name, "sender");
+    bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(SenderGuard).name, "sender");
 
     // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given that amounts are usually
     // scaled inside the Vault, sending type(uint256).max would result in an overflow and revert.
@@ -82,7 +82,7 @@ abstract contract SaveSender is ISaveSender {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /// @inheritdoc ISaveSender
+    /// @inheritdoc ISenderGuard
     function getSender() external view returns (address) {
         return _getSenderSlot().tload();
     }
