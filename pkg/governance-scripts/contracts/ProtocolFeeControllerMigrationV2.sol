@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasicAuthorizer } from "@balancer-labs/v3-interfaces/contracts/governance-scripts/IBasicAuthorizer.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { PoolRoleAccounts, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -12,7 +13,6 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/ProtocolFeeController.sol";
 
 import { ProtocolFeeControllerMigration } from "./ProtocolFeeControllerMigration.sol";
-import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
 
 /**
  * @notice Migrate from the original ProtocolFeeController to one with extra events.
