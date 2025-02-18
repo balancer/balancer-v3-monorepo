@@ -8,7 +8,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { E2eErc4626SwapsTest } from "@balancer-labs/v3-vault/test/foundry/E2eErc4626Swaps.t.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
@@ -52,9 +51,6 @@ contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest, StablePoolContractsDe
 
         // Cannot set the pool creator directly on a standard Balancer stable pool factory.
         vault.manualSetPoolCreator(address(newPool), lp);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), lp);
 
         poolArgs = abi.encode(
             StablePool.NewPoolParams({

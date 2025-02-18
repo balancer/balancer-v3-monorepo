@@ -13,8 +13,6 @@ import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/cont
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
-import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
-
 import { GyroECLPPoolFactory } from "../../../contracts/GyroECLPPoolFactory.sol";
 import { GyroECLPPool } from "../../../contracts/GyroECLPPool.sol";
 
@@ -115,9 +113,6 @@ contract GyroEclpPoolDeployer is BaseContractsDeployer {
 
         // Cannot set the pool creator directly on a standard Balancer stable pool factory.
         vault.manualSetPoolCreator(newPool, poolCreator);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(newPool, poolCreator);
     }
 
     function deployGyroECLPPoolFactory(IVault vault) internal returns (GyroECLPPoolFactory) {

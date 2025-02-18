@@ -12,7 +12,6 @@ import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfa
 
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 
 import { Gyro2CLPPoolFactory } from "../../../contracts/Gyro2CLPPoolFactory.sol";
 import { Gyro2CLPPool } from "../../../contracts/Gyro2CLPPool.sol";
@@ -62,9 +61,6 @@ contract Gyro2ClpPoolDeployer is BaseContractsDeployer {
 
         // Cannot set the pool creator directly on a standard Balancer stable pool factory.
         vault.manualSetPoolCreator(newPool, poolCreator);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(newPool, poolCreator);
 
         poolArgs = abi.encode(
             IGyro2CLPPool.GyroParams({
