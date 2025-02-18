@@ -25,6 +25,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
 import { RouterCommonBase } from "./RouterCommonBase.sol";
+import { RouterWethLib } from "./lib/RouterWethLib.sol";
 
 /**
  * @notice Abstract base contract for functions shared among all Routers.
@@ -35,7 +36,7 @@ import { RouterCommonBase } from "./RouterCommonBase.sol";
 abstract contract RouterCommon is IRouterCommon, RouterCommonBase {
     using Address for address payable;
     using StorageSlotExtension for *;
-    using SafeERC20 for IWETH;
+    using RouterWethLib for IWETH;
     using SafeCast for *;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used by what is written
@@ -67,6 +68,7 @@ abstract contract RouterCommon is IRouterCommon, RouterCommonBase {
 
         address sender = _getSenderSlot().tload();
         _discardSenderIfRequired(isExternalSender);
+
         _returnEth(sender);
     }
 
@@ -239,16 +241,7 @@ abstract contract RouterCommon is IRouterCommon, RouterCommonBase {
     function _takeTokenIn(address sender, IERC20 tokenIn, uint256 amountIn, bool wethIsEth) internal {
         // If the tokenIn is ETH, then wrap `amountIn` into WETH.
         if (wethIsEth && tokenIn == _weth) {
-            if (address(this).balance < amountIn) {
-                revert InsufficientEth();
-            }
-
-            // wrap amountIn to WETH.
-            _weth.deposit{ value: amountIn }();
-            // send WETH to Vault.
-            _weth.safeTransfer(address(_vault), amountIn);
-            // update Vault accounting.
-            _vault.settle(_weth, amountIn);
+            _weth.wrapEthAndSettle(_vault, amountIn);
         } else {
             if (amountIn > 0) {
                 // Send the tokenIn amount to the Vault.
@@ -265,12 +258,7 @@ abstract contract RouterCommon is IRouterCommon, RouterCommonBase {
 
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
-            // Receive the WETH amountOut.
-            _vault.sendTo(tokenOut, address(this), amountOut);
-            // Withdraw WETH to ETH.
-            _weth.withdraw(amountOut);
-            // Send ETH to sender.
-            payable(sender).sendValue(amountOut);
+            _weth.unwrapWethAndTransferToSender(_vault, sender, amountOut);
         } else {
             // Receive the tokenOut amountOut.
             _vault.sendTo(tokenOut, sender, amountOut);

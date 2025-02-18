@@ -8,9 +8,6 @@ import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 
 /// @notice Interface for functions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
-    /// @notice The amount of ETH paid is insufficient to complete this operation.
-    error InsufficientEth();
-
     /**
      * @notice Data for the add liquidity hook.
      * @param sender Account originating the add liquidity operation
