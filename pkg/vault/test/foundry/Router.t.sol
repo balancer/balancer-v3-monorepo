@@ -24,10 +24,10 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { MOCK_ROUTER_VERSION } from "../../contracts/test/RouterMock.sol";
+import { RouterWethLib } from "../../contracts/lib/RouterWethLib.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BasePoolMath } from "../../contracts/BasePoolMath.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterTest is BaseVaultTest {
@@ -233,7 +233,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(RouterCommon.InsufficientEth.selector);
+        vm.expectRevert(RouterWethLib.InsufficientEth.selector);
         vm.prank(alice);
         router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, true, bytes(""));
     }
@@ -302,7 +302,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(RouterCommon.InsufficientEth.selector);
+        vm.expectRevert(RouterWethLib.InsufficientEth.selector);
         vm.prank(alice);
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, true, bytes(""));
     }
