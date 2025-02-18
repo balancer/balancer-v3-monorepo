@@ -284,10 +284,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
             return
                 AggregatorRouter(
                     payable(
-                        deployCode(
-                            _computeVaultPath(type(AggregatorRouter).name),
-                            abi.encode(vault, weth, version)
-                        )
+                        deployCode(_computeVaultPath(type(AggregatorRouter).name), abi.encode(vault, weth, version))
                     )
                 );
         } else {
