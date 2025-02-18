@@ -1363,7 +1363,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
 
         // This function is not in the public interface.
-        ProtocolFeeController(address(feeController)).registerPoolInMigration(pool, 0, 0, false, false, 0, 0);
+        ProtocolFeeController(address(feeController)).registerPoolInMigration(pool, feeController);
     }
 
     function testRegisterExistingPoolInMigration() public {
@@ -1378,7 +1378,20 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(ProtocolFeeController.PoolAlreadyRegistered.selector, pool));
 
         vm.prank(admin);
-        ProtocolFeeController(address(feeController)).registerPoolInMigration(pool, 0, 0, false, false, 0, 0);
+        ProtocolFeeController(address(feeController)).registerPoolInMigration(pool, IProtocolFeeController(address(1)));
+    }
+
+    function testSelfMigration() public {
+        // Grant permission - should not happen in real life.
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(ProtocolFeeController.registerPoolInMigration.selector),
+            admin
+        );
+
+        vm.expectRevert(ProtocolFeeController.InvalidMigrationSource.selector);
+
+        vm.prank(admin);
+        ProtocolFeeController(address(feeController)).registerPoolInMigration(pool, feeController);
     }
 
     function _registerPoolWithMaxProtocolFees() internal {
