@@ -199,7 +199,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     function startAmplificationParameterUpdate(
         uint256 rawEndValue,
         uint256 endTime
-    ) external onlySwapFeeManagerOrAuthentication(address(this)) {
+    ) external onlySwapFeeManagerOrGovernance(address(this)) {
         if (rawEndValue < StableMath.MIN_AMP) {
             revert AmplificationFactorTooLow();
         }
@@ -249,7 +249,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IStablePool
-    function stopAmplificationParameterUpdate() external onlySwapFeeManagerOrAuthentication(address(this)) {
+    function stopAmplificationParameterUpdate() external onlySwapFeeManagerOrGovernance(address(this)) {
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
 
         if (isUpdating == false) {
