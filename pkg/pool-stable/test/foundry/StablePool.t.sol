@@ -242,18 +242,13 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         assertEq(ampState.startValue, DEFAULT_AMP_FACTOR * precision, "Wrong initial amp update start value");
         assertEq(ampState.endValue, DEFAULT_AMP_FACTOR * precision, "Wrong initial amp update end value");
 
-        authorizer.grantRole(
-            IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
-            admin
-        );
-
         uint256 currentTime = block.timestamp;
         uint256 updateInterval = 5000 days;
 
         uint256 endTime = currentTime + updateInterval;
         uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
 
-        vm.prank(admin);
+        vm.prank(alice);
         IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
 
         vm.warp(currentTime + updateInterval + 1);
