@@ -20,7 +20,8 @@ contract RouterWethLibTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         // Ensure the contract has no ETH balance.
-        payable(0).call{ value: address(this).balance }("");
+        (bool success, ) = payable(0).call{ value: address(this).balance }("");
+        require(success, "Failed to send ETH to address 0");
     }
 
     function testWrapEthAndSettleInsufficientBalance() public {
