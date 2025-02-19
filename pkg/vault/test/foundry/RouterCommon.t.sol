@@ -4,22 +4,24 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { ReentrancyAttack } from "@balancer-labs/v3-solidity-utils/contracts/test/ReentrancyAttack.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { RouterCommonMock } from "../../contracts/test/RouterCommonMock.sol";
+import { RouterWethLib } from "../../contracts/lib/RouterWethLib.sol";
+import { RouterCommon } from "../../contracts/RouterCommon.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterCommonTest is BaseVaultTest {
     ReentrancyAttack internal reentrancyAttack;
@@ -48,7 +50,7 @@ contract RouterCommonTest is BaseVaultTest {
     function testSenderSlot() external view {
         assertEq(
             StorageSlotExtension.AddressSlotType.unwrap(routerMock.manualGetSenderSlot()),
-            keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) &
+            keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.SenderGuard.sender")) - 1)) &
                 ~bytes32(uint256(0xff))
         );
     }
@@ -74,7 +76,7 @@ contract RouterCommonTest is BaseVaultTest {
     function testTakeTokenInWethIsEth() public {
         uint256 routerEthBalance = address(routerMock).balance;
 
-        vm.expectRevert(RouterCommon.InsufficientEth.selector);
+        vm.expectRevert(RouterWethLib.InsufficientEth.selector);
         routerMock.mockTakeTokenIn(bob, IERC20(weth), routerEthBalance + 1, true);
     }
 

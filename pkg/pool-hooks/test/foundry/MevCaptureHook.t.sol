@@ -5,7 +5,12 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { PoolSwapParams, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    PoolSwapParams,
+    MAX_FEE_PERCENTAGE,
+    PoolRoleAccounts
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IMevCaptureHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevCaptureHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -417,6 +422,19 @@ contract MevCaptureHookTest is BaseVaultTest {
         );
     }
 
+    function testSetPoolMevTaxMultiplierRevertIfSenderIsNotFeeManager() public {
+        _mockPoolRoleAccounts(address(0x01));
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
+    }
+
+    function testSetPoolMevTaxMultiplierWithSwapFeeManager() public {
+        _mockPoolRoleAccounts(address(this));
+
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
+    }
+
     /********************************************************
                    getPoolMevTaxThreshold()
     ********************************************************/
@@ -447,6 +465,19 @@ contract MevCaptureHookTest is BaseVaultTest {
 
     function testSetPoolMevTaxThresholdIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
+    }
+
+    function testSetPoolMevTaxThresholdRevertIfSenderIsNotFeeManager() public {
+        _mockPoolRoleAccounts(address(0x01));
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
+    }
+
+    function testSetPoolMevTaxThresholdWithSwapFeeManager() public {
+        _mockPoolRoleAccounts(address(this));
+
         _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
     }
 
@@ -730,5 +761,21 @@ contract MevCaptureHookTest is BaseVaultTest {
         assertTrue(_mevCaptureHook.isMevTaxExemptSender(lp), "LP is not exempt");
         assertFalse(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob is exempt");
         assertTrue(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice is not exempt");
+    }
+
+    /********************************************************
+                            Other
+    ********************************************************/
+    function _mockPoolRoleAccounts(address swapFeeManager) private {
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0x01),
+            swapFeeManager: swapFeeManager,
+            poolCreator: address(0x01)
+        });
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(IVaultExtension.getPoolRoleAccounts.selector, pool),
+            abi.encode(poolRoleAccounts)
+        );
     }
 }
