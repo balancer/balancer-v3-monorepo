@@ -198,6 +198,18 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
             "Has governance-granted stop permission"
         );
 
+        // Ensure the swap manager account can start/stop anyway.
+        uint256 currentTime = block.timestamp;
+        uint256 updateInterval = 5000 days;
+
+        uint256 endTime = currentTime + updateInterval;
+        uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
+
+        // Test that the swap manager can't start/stop the update.
+        vm.prank(bob);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+
         // Grant to Bob via governance.
         authorizer.grantRole(
             IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
@@ -207,13 +219,6 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
             IAuthentication(pool).getActionId(StablePool.stopAmplificationParameterUpdate.selector),
             bob
         );
-
-        // Ensure the swap manager account can start/stop anyway.
-        uint256 currentTime = block.timestamp;
-        uint256 updateInterval = 5000 days;
-
-        uint256 endTime = currentTime + updateInterval;
-        uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
 
         vm.startPrank(bob);
         IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
@@ -226,11 +231,6 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
 
         (, isUpdating, ) = IStablePool(pool).getAmplificationParameter();
         assertFalse(isUpdating, "Amplification update not stopped");
-
-        // Test that the swap manager can't start/stop the update.
-        vm.startPrank(alice);
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
     }
 
     function testGetAmplificationState() public {
