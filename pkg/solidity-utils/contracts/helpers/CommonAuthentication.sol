@@ -13,6 +13,7 @@ abstract contract CommonAuthentication is Authentication {
     /**
      * @dev Allow only the swapFeeManager or governance user to call the function.
      */
+     /// @notice Caller must be the swapFeeManager, if defined. Otherwise, default to governance.
     modifier onlySwapFeeManagerOrGovernance(address pool) {
         address roleAddress = _vault.getPoolRoleAccounts(pool).swapFeeManager;
         _ensureAuthenticatedByExclusiveRole(pool, roleAddress);
