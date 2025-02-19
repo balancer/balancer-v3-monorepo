@@ -7,9 +7,9 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 
 import { MOCK_BATCH_ROUTER_VERSION } from "../../contracts/test/BatchRouterMock.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BatchRouterTest is BaseVaultTest {
@@ -20,14 +20,14 @@ contract BatchRouterTest is BaseVaultTest {
     function testSwapDeadlineExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths;
 
-        vm.expectRevert(RouterCommon.SwapDeadline.selector);
+        vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         batchRouter.swapExactIn(paths, block.timestamp - 1, false, bytes(""));
     }
 
     function testSwapDeadlineExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths;
 
-        vm.expectRevert(RouterCommon.SwapDeadline.selector);
+        vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         batchRouter.swapExactOut(paths, block.timestamp - 1, false, bytes(""));
     }
 

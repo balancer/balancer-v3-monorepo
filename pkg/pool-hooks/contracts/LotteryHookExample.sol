@@ -6,7 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -203,7 +203,7 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
         uint256 hookFee
     ) private returns (uint256) {
         if (drawnNumber == LUCKY_NUMBER) {
-            address user = IRouterCommon(router).getSender();
+            address user = ISenderGuard(router).getSender();
 
             // Iterating backwards is more efficient, since the last element is removed from the map on each iteration.
             for (uint256 i = _tokensWithAccruedFees.size; i > 0; i--) {

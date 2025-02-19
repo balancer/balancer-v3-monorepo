@@ -9,7 +9,7 @@ import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     LBPoolImmutableData,
@@ -731,6 +731,6 @@ contract LBPoolTest is BaseLBPTest {
     *******************************************************************************/
 
     function _mockGetSender(address sender) private {
-        vm.mockCall(address(router), abi.encodeWithSelector(IRouterCommon.getSender.selector), abi.encode(sender));
+        vm.mockCall(address(router), abi.encodeWithSelector(ISenderGuard.getSender.selector), abi.encode(sender));
     }
 }
