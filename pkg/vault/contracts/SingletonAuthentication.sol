@@ -16,6 +16,12 @@ import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 abstract contract SingletonAuthentication is Authentication {
     IVault private immutable _vault;
 
+    modifier onlySwapFeeManagerOrGovernance(address pool) {
+        address roleAddress = _vault.getPoolRoleAccounts(pool).swapFeeManager;
+        _ensureAuthenticatedByExclusiveRole(pool, roleAddress);
+        _;
+    }
+
     // Use the contract's own address to disambiguate action identifiers.
     constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(this))))) {
         _vault = vault;
@@ -43,5 +49,17 @@ abstract contract SingletonAuthentication is Authentication {
 
     function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
+    }
+
+    /// @dev Ensure the sender is the roleAddress, or default to governance if roleAddress is address(0).
+    function _ensureAuthenticatedByExclusiveRole(address pool, address roleAddress) internal view {
+        if (roleAddress == address(0)) {
+            // Defer to governance if no role assigned.
+            if (_canPerform(getActionId(msg.sig), msg.sender, pool) == false) {
+                revert SenderNotAllowed();
+            }
+        } else if (msg.sender != roleAddress) {
+            revert SenderNotAllowed();
+        }
     }
 }

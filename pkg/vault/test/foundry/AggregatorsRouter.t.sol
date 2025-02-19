@@ -9,7 +9,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
-import { IRouterCommonBase } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommonBase.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -74,6 +74,11 @@ contract AggregatorsRouterTest is BaseVaultTest {
         poolArgs = abi.encode(vault, name, symbol);
     }
 
+    function testGetVault() public view {
+        assertNotEq(address(vault), address(0), "Vault not set");
+        assertEq(address(aggregatorsRouter.getVault()), address(vault), "Wrong vault");
+    }
+
     /************************************
                   EXACT IN
     ************************************/
@@ -104,7 +109,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), DEFAULT_AMOUNT);
 
-        vm.expectRevert(IRouterCommonBase.SwapDeadline.selector);
+        vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         aggregatorsRouter.swapSingleTokenExactIn(
             address(pool),
             usdc,
@@ -266,7 +271,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         dai.transfer(address(vault), DEFAULT_AMOUNT);
 
-        vm.expectRevert(IRouterCommonBase.SwapDeadline.selector);
+        vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         aggregatorsRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
