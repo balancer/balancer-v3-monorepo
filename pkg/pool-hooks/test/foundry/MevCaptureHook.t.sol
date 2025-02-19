@@ -10,7 +10,7 @@ import {
     MAX_FEE_PERCENTAGE,
     PoolRoleAccounts
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExplorer.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IMevCaptureHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevCaptureHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -774,7 +774,7 @@ contract MevCaptureHookTest is BaseVaultTest {
         });
         vm.mockCall(
             address(vault),
-            abi.encodeWithSelector(IVaultExplorer.getPoolRoleAccounts.selector, pool),
+            abi.encodeWithSelector(IVaultExtension.getPoolRoleAccounts.selector, pool),
             abi.encode(poolRoleAccounts)
         );
     }
