@@ -280,7 +280,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     function setMaxSurgeFeePercentage(
         address pool,
         uint256 newMaxSurgeSurgeFeePercentage
-    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) onlySwapFeeManagerOrAuthentication(pool) {
+    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) onlySwapFeeManagerOrGovernance(pool) {
         _setMaxSurgeFeePercentage(pool, newMaxSurgeSurgeFeePercentage);
     }
 
@@ -292,7 +292,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     function setSurgeThresholdPercentage(
         address pool,
         uint256 newSurgeThresholdPercentage
-    ) external withValidPercentage(newSurgeThresholdPercentage) onlySwapFeeManagerOrAuthentication(pool) {
+    ) external withValidPercentage(newSurgeThresholdPercentage) onlySwapFeeManagerOrGovernance(pool) {
         _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 
