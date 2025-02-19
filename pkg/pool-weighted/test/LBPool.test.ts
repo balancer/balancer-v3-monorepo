@@ -227,7 +227,7 @@ describe('LBPool', function () {
 
     describe('Owner operations and events', () => {
       it('should emit GradualWeightUpdateScheduled event on deployment', async () => {
-        const startTime = await currentTimestamp();
+        const startTime = (await currentTimestamp()) + 100n;
         const endTime = startTime + bn(bn(MONTH));
         const endWeights = [fp(0.7), fp(0.3)];
 
@@ -237,11 +237,9 @@ describe('LBPool', function () {
 
         const pool = (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
 
-        const actualStartTime = await currentTimestamp();
-
         await expect(tx)
           .to.emit(pool, 'GradualWeightUpdateScheduled')
-          .withArgs(actualStartTime - 1n, endTime, WEIGHTS, endWeights);
+          .withArgs(startTime, endTime, WEIGHTS, endWeights);
       });
 
       it('should only allow owner to be the LP', async () => {
