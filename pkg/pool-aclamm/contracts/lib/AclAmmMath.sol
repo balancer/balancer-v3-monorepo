@@ -42,25 +42,28 @@ library AclAmmMath {
         return invariant.divUp(finalBalances[tokenOutIndex] - amountGivenScaled18) - finalBalances[tokenInIndex];
     }
 
+    function initializeVirtualBalances(
+        uint256[] memory balancesScaled18,
+        uint256 sqrtQ0
+    ) internal pure returns (uint256[] memory virtualBalances) {
+        virtualBalances = new uint256[](balancesScaled18.length);
+        virtualBalances[0] = balancesScaled18[0].divDown(sqrtQ0 - FixedPoint.ONE);
+        virtualBalances[1] = balancesScaled18[1].divDown(sqrtQ0 - FixedPoint.ONE);
+    }
+
     function getVirtualBalances(
         uint256[] memory balancesScaled18,
         uint256[] memory lastVirtualBalances,
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin,
-        bool isPoolInitializing
+        uint256 centernessMargin
     ) internal view returns (uint256[] memory virtualBalances, bool changed) {
         // TODO Review rounding
 
         virtualBalances = new uint256[](balancesScaled18.length);
 
-        if (isPoolInitializing) {
-            virtualBalances[0] = balancesScaled18[0].divDown(sqrtQ0 - FixedPoint.ONE);
-            virtualBalances[1] = balancesScaled18[1].divDown(sqrtQ0 - FixedPoint.ONE);
-
-            changed = true;
-        } else if (isPoolInRange(balancesScaled18, lastVirtualBalances, centernessMargin) == false) {
+        if (isPoolInRange(balancesScaled18, lastVirtualBalances, centernessMargin) == false) {
             uint256 q0 = sqrtQ0.mulDown(sqrtQ0);
 
             if (isAboveCenter(balancesScaled18, lastVirtualBalances)) {

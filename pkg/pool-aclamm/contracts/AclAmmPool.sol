@@ -3,20 +3,25 @@
 pragma solidity ^0.8.24;
 
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
-import { Rounding, PoolSwapParams, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    Rounding,
+    PoolSwapParams,
+    SwapKind,
+    HookFlags
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
 import { AclAmmMath } from "./lib/AclAmmMath.sol";
 
-contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool {
+contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, IHooks {
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0.001e16; // 0.001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
@@ -32,18 +37,23 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool {
     uint256 private _sqrtQ0;
     uint256 private _centernessMargin;
 
+    /// @dev Struct with data for deploying a new AclAmmPool.
+    struct AclAmmPoolParams {
+        string name;
+        string symbol;
+        string version;
+        uint256 increaseDayRate;
+        uint256 sqrtQ0;
+        uint256 centernessMargin;
+    }
+
     constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        string memory poolVersion,
-        uint256 increaseDayRate,
-        uint256 sqrtQ0,
-        uint256 centernessMargin
-    ) BalancerPoolToken(vault, name, symbol) PoolInfo(vault) Version(poolVersion) {
-        _setIncreaseDayRate(increaseDayRate);
-        _setSqrtQ0(sqrtQ0);
-        _setCenternessMargin(centernessMargin);
+        AclAmmPoolParams memory params,
+        IVault vault
+    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
+        _setIncreaseDayRate(params.increaseDayRate);
+        _setSqrtQ0(params.sqrtQ0);
+        _setCenternessMargin(params.centernessMargin);
     }
 
     /// @inheritdoc IBasePool
@@ -67,8 +77,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool {
             _c,
             _sqrtQ0,
             _lastTimestamp,
-            _centernessMargin,
-            false
+            _centernessMargin
         );
 
         _lastTimestamp = block.timestamp;
@@ -96,6 +105,18 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool {
                     request.amountGivenScaled18
                 );
         }
+    }
+
+    /// @inheritdoc IHooks
+    function getHookFlags() external pure returns (HookFlags memory hookFlags) {
+        hookFlags.shouldCallAfterSwap = true;
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterInitialize(uint256[] memory balancesScaled18, uint256, bytes) external returns (bool) {
+        _lastTimestamp = block.timestamp;
+        _virtualBalances = AclAmmMath.initializeVirtualBalances(balancesScaled18, _sqrtQ0);
+        return true;
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
