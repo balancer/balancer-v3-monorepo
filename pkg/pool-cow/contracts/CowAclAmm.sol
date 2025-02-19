@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { console2 } from "forge-std/Test.sol";
+
 import { HookFlags, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
@@ -23,6 +25,7 @@ contract CowAclAmm is CowPool {
     uint256 immutable _c;
 
     uint256 internal _lastTimestamp;
+    uint256 internal _lastInvariant;
 
     constructor(
         WeightedPool.NewPoolParams memory params,
@@ -35,13 +38,12 @@ contract CowAclAmm is CowPool {
         // TODO Check num tokens is 2
         _sqrtQ0 = sqrtQ0;
         _centernessMargin = centernessMargin;
-        _c = increasePerDay / 86400;
+        _c = increasePerDay / 110000; // A bit more than 86400 seconds (seconds/day)
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(PoolSwapParams memory request) public override returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view override returns (uint256) {
         request.balancesScaled18 = _calculateNewBalances(request.balancesScaled18);
-        _lastTimestamp = block.timestamp;
 
         return super.onSwap(request);
     }
@@ -49,6 +51,7 @@ contract CowAclAmm is CowPool {
     /// @inheritdoc IHooks
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         hookFlags.shouldCallBeforeSwap = true;
+        hookFlags.shouldCallAfterSwap = true;
         hookFlags.shouldCallAfterInitialize = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
     }
@@ -57,14 +60,24 @@ contract CowAclAmm is CowPool {
     function onAfterInitialize(uint256[] memory exactAmountsIn, uint256, bytes memory) public override returns (bool) {
         (_virtualBalances, ) = _getVirtualBalances(exactAmountsIn, true);
         _lastTimestamp = block.timestamp;
+        _lastInvariant = (exactAmountsIn[0] + _virtualBalances[0]).mulDown(exactAmountsIn[1] + _virtualBalances[1]);
         return true;
     }
 
-    function _calculateNewBalances(uint256[] memory balancesScaled18) internal returns (uint256[] memory newBalances) {
-        (uint256[] memory virtualBalances, bool changed) = _getVirtualBalances(balancesScaled18, false);
+    function onAfterSwap(PoolSwapParams memory request, address) public returns (bool) {
+        (uint256[] memory virtualBalances, bool changed) = _getVirtualBalances(request.balancesScaled18, false);
         if (changed) {
             _virtualBalances = virtualBalances;
         }
+        _lastTimestamp = block.timestamp;
+        setLastInvariant(request.balancesScaled18);
+        return true;
+    }
+
+    function _calculateNewBalances(
+        uint256[] memory balancesScaled18
+    ) internal view returns (uint256[] memory newBalances) {
+        (uint256[] memory virtualBalances, ) = _getVirtualBalances(balancesScaled18, false);
 
         newBalances = new uint256[](balancesScaled18.length);
 
@@ -73,11 +86,32 @@ contract CowAclAmm is CowPool {
         }
     }
 
+    function updateVirtualBalances(uint256[] memory balancesScaled18) public {
+        (uint256[] memory virtualBalances, bool changed) = _getVirtualBalances(balancesScaled18, false);
+        if (changed) {
+            _virtualBalances = virtualBalances;
+        }
+        _lastTimestamp = block.timestamp;
+        setLastInvariant(balancesScaled18);
+    }
+
     function getVirtualBalances(
         uint256[] memory balancesScaled18,
         bool isPoolInitializing
     ) public view returns (uint256[] memory virtualBalances, bool changed) {
         return _getVirtualBalances(balancesScaled18, isPoolInitializing);
+    }
+
+    function setVirtualBalances(uint256[] memory virtualBalances) public {
+        _virtualBalances = virtualBalances;
+    }
+
+    function setLastTimestamp(uint256 lastTimestamp) public {
+        _lastTimestamp = lastTimestamp;
+    }
+
+    function setLastInvariant(uint256[] memory balancesScaled18) public {
+        _lastInvariant = (balancesScaled18[0] + _virtualBalances[0]).mulDown(balancesScaled18[1] + _virtualBalances[1]);
     }
 
     function _getVirtualBalances(
@@ -103,23 +137,34 @@ contract CowAclAmm is CowPool {
             }
 
             // (Rb * (Va + Ra)) / (((Q0 - 1) * Va) - Ra)
-            uint256 q0 = LogExpMath.pow(_sqrtQ0, 2e18);
-            virtualBalances[1] = (balancesScaled18[1].mulDown(virtualBalances[0] + balancesScaled18[0])).divDown(
-                (q0 - FixedPoint.ONE).mulDown(virtualBalances[0]) - balancesScaled18[0]
-            );
+            // uint256 q0 = LogExpMath.pow(_sqrtQ0, 2e18);
+            // virtualBalances[1] = (balancesScaled18[1].mulDown(virtualBalances[0] + balancesScaled18[0])).divDown(
+            //     (q0 - FixedPoint.ONE).mulDown(virtualBalances[0]) - balancesScaled18[0]
+            // );
+
+            // // Vb = L / (Va + Ra) - Rb
+            virtualBalances[1] = _lastInvariant.divDown(balancesScaled18[0] + virtualBalances[0]) - balancesScaled18[1];
             changed = true;
         } else {
             virtualBalances = _virtualBalances;
         }
     }
 
+    function _isPoolInRange(uint256[] memory balancesScaled18) internal view returns (bool) {
+        uint256 centerness = _calculateCenterness(balancesScaled18);
+        console2.log("centerness", centerness);
+        return centerness >= _centernessMargin;
+    }
+
     function _calculateCenterness(uint256[] memory balancesScaled18) internal view returns (uint256) {
         if (_isAboveCenter(balancesScaled18)) {
+            console2.log("above center");
             return
                 balancesScaled18[1].mulDown(_virtualBalances[0]).divDown(
                     balancesScaled18[0].mulDown(_virtualBalances[1])
                 );
         } else {
+            console2.log("below center");
             return
                 balancesScaled18[0].mulDown(_virtualBalances[1]).divDown(
                     balancesScaled18[1].mulDown(_virtualBalances[0])
@@ -127,15 +172,14 @@ contract CowAclAmm is CowPool {
         }
     }
 
-    function _isPoolInRange(uint256[] memory balancesScaled18) internal view returns (bool) {
-        uint256 centerness = _calculateCenterness(balancesScaled18);
-        return centerness >= _centernessMargin;
-    }
-
     function _isAboveCenter(uint256[] memory balancesScaled18) internal view returns (bool) {
-        return
-            balancesScaled18[0].divDown(balancesScaled18[1]).divDown(_virtualBalances[0]).divDown(
-                _virtualBalances[1]
-            ) >= FixedPoint.ONE;
+        if (balancesScaled18[1] == 0) {
+            return true;
+        } else {
+            return
+                balancesScaled18[0].divDown(balancesScaled18[1]).divDown(_virtualBalances[0]).divDown(
+                    _virtualBalances[1]
+                ) >= FixedPoint.ONE;
+        }
     }
 }
