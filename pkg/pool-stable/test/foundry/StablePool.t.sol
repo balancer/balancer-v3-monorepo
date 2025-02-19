@@ -208,7 +208,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
             bob
         );
 
-        // Ensure the swap manager account can start/stop anyway.
+        // Ensure governance can grant permission to start/stop when there is no swap manager.
         uint256 currentTime = block.timestamp;
         uint256 updateInterval = 5000 days;
 
