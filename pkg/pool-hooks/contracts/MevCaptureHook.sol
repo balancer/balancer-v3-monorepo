@@ -244,7 +244,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     function setPoolMevTaxMultiplier(
         address pool,
         uint256 newPoolMevTaxMultiplier
-    ) external withMevTaxEnabledPool(pool) onlySwapFeeManagerOrAuthentication(pool) {
+    ) external withMevTaxEnabledPool(pool) onlySwapFeeManagerOrGovernance(pool) {
         _setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
     }
 
@@ -279,7 +279,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     function setPoolMevTaxThreshold(
         address pool,
         uint256 newPoolMevTaxThreshold
-    ) external withMevTaxEnabledPool(pool) onlySwapFeeManagerOrAuthentication(pool) {
+    ) external withMevTaxEnabledPool(pool) onlySwapFeeManagerOrGovernance(pool) {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
