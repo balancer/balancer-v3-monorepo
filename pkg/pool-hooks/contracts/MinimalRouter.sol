@@ -11,10 +11,12 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { RouterWethLib } from "@balancer-labs/v3-vault/contracts/lib/RouterWethLib.sol";
 import { RouterCommon } from "@balancer-labs/v3-vault/contracts/RouterCommon.sol";
 
 abstract contract MinimalRouter is RouterCommon {
     using Address for address payable;
+    using RouterWethLib for IWETH;
     using SafeCast for *;
 
     /**
@@ -145,13 +147,7 @@ abstract contract MinimalRouter is RouterCommon {
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (address(this).balance < amountIn) {
-                    revert InsufficientEth();
-                }
-
-                _weth.deposit{ value: amountIn }();
-                _weth.transfer(address(_vault), amountIn);
-                _vault.settle(_weth, amountIn);
+                _weth.wrapEthAndSettle(_vault, amountIn);
             } else {
                 // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
                 // necessary. Done out of an abundance of caution.
@@ -238,11 +234,7 @@ abstract contract MinimalRouter is RouterCommon {
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
-                // Send WETH here and unwrap to native ETH.
-                _vault.sendTo(_weth, address(this), amountOut);
-                _weth.withdraw(amountOut);
-                // Send ETH to receiver.
-                payable(params.receiver).sendValue(amountOut);
+                _weth.unwrapWethAndTransferToSender(_vault, params.receiver, amountOut);
             } else {
                 // Transfer the token to the receiver (amountOut).
                 _vault.sendTo(token, params.receiver, amountOut);

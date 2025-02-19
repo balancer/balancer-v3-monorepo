@@ -77,7 +77,12 @@ describe('MevCaptureHook', () => {
       args: [vaultAddress, 'Pool with MEV Hook', 'POOL-MEV'],
     });
 
-    hook = await deploy('MevCaptureHook', { args: [vaultAddress, registry] });
+    const defaultMevTaxMultiplier = 0;
+    const defaultMevTaxThreshold = 0;
+
+    hook = await deploy('MevCaptureHook', {
+      args: [vaultAddress, registry, defaultMevTaxMultiplier, defaultMevTaxThreshold],
+    });
 
     await factory.registerPoolWithHook(pool, buildTokenConfig(poolTokens), hook);
   });
