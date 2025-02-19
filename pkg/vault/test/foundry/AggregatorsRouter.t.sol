@@ -74,6 +74,11 @@ contract AggregatorsRouterTest is BaseVaultTest {
         poolArgs = abi.encode(vault, name, symbol);
     }
 
+    function testGetVault() public view {
+        assertNotEq(address(vault), address(0), "Vault not set");
+        assertEq(address(aggregatorsRouter.getVault()), address(vault), "Wrong vault");
+    }
+
     /************************************
                   EXACT IN
     ************************************/

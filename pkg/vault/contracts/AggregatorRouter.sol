@@ -32,6 +32,11 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /// @inheritdoc IAggregatorRouter
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
