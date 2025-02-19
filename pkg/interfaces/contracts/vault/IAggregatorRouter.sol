@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { SwapKind } from "./VaultTypes.sol";
 
 interface IAggregatorRouter {
@@ -12,6 +14,9 @@ interface IAggregatorRouter {
 
     /// @notice Thrown when the sender does not transfer the correct amount of tokens to the Vault.
     error SwapInsufficientPayment();
+
+    /// @notice Get the address of the Balancer Vault.
+    function getVault() external view returns (IVault);
 
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
