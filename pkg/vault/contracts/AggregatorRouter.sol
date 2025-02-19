@@ -12,7 +12,14 @@ import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { RouterCommonBase } from "./RouterCommonBase.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+
+import { SenderGuard } from "./SenderGuard.sol";
+
+import { VaultGuard } from "./VaultGuard.sol";
 
 /**
  * @notice Entrypoint for aggregators who want to swap without the standard permit2 payment logic.
@@ -20,8 +27,8 @@ import { RouterCommonBase } from "./RouterCommonBase.sol";
  * These interact with the Vault and settle accounting. This is not a full-featured Router; it only implements
  * `swapSingleTokenExactIn`, `swapSingleTokenExactOut`, and the associated queries.
  */
-contract AggregatorRouter is IAggregatorRouter, RouterCommonBase {
-    constructor(IVault vault, string memory routerVersion) RouterCommonBase(vault, routerVersion) {
+contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, ReentrancyGuardTransient, Version {
+    constructor(IVault vault, string memory routerVersion) SenderGuard() VaultGuard(vault) Version(routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
