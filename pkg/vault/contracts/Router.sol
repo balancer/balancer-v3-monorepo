@@ -13,6 +13,7 @@ import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { RouterWethLib } from "./lib/RouterWethLib.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 /**
@@ -22,6 +23,7 @@ import { RouterCommon } from "./RouterCommon.sol";
  */
 contract Router is IRouter, RouterCommon {
     using Address for address payable;
+    using RouterWethLib for IWETH;
     using SafeCast for *;
 
     constructor(
@@ -94,14 +96,7 @@ contract Router is IRouter, RouterCommon {
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (address(this).balance < amountIn) {
-                    revert InsufficientEth();
-                }
-
-                _weth.deposit{ value: amountIn }();
-                // Transfer WETH from the Router to the Vault.
-                _weth.transfer(address(_vault), amountIn);
-                _vault.settle(_weth, amountIn);
+                _weth.wrapEthAndSettle(_vault, amountIn);
             } else {
                 // Transfer tokens from the user to the Vault.
                 // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
@@ -305,13 +300,7 @@ contract Router is IRouter, RouterCommon {
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (address(this).balance < amountIn) {
-                    revert InsufficientEth();
-                }
-
-                _weth.deposit{ value: amountIn }();
-                _weth.transfer(address(_vault), amountIn);
-                _vault.settle(_weth, amountIn);
+                _weth.wrapEthAndSettle(_vault, amountIn);
             } else {
                 // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
                 // necessary. Done out of an abundance of caution.
@@ -510,11 +499,7 @@ contract Router is IRouter, RouterCommon {
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
-                // Send WETH here and unwrap to native ETH.
-                _vault.sendTo(_weth, address(this), amountOut);
-                _weth.withdraw(amountOut);
-                // Send ETH to sender.
-                payable(params.sender).sendValue(amountOut);
+                _weth.unwrapWethAndTransferToSender(_vault, params.sender, amountOut);
             } else {
                 // Transfer the token to the sender (amountOut).
                 _vault.sendTo(token, params.sender, amountOut);

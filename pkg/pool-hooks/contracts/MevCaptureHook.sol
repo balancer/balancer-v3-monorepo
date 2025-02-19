@@ -7,7 +7,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import {
     IBalancerContractRegistry
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IMevCaptureHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevCaptureHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -122,7 +122,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
 
         // We can only check senders if the router is trusted. Apply the exemption for MEV tax-exempt senders.
         if (_registry.isTrustedRouter(params.router)) {
-            address sender = IRouterCommon(params.router).getSender();
+            address sender = ISenderGuard(params.router).getSender();
             if (_isMevTaxExemptSender[sender]) {
                 return (true, staticSwapFeePercentage);
             }
@@ -244,7 +244,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     function setPoolMevTaxMultiplier(
         address pool,
         uint256 newPoolMevTaxMultiplier
-    ) external withMevTaxEnabledPool(pool) authenticate {
+    ) external withMevTaxEnabledPool(pool) onlySwapFeeManagerOrGovernance(pool) {
         _setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
     }
 
@@ -279,7 +279,7 @@ contract MevCaptureHook is BaseHooks, SingletonAuthentication, VaultGuard, IMevC
     function setPoolMevTaxThreshold(
         address pool,
         uint256 newPoolMevTaxThreshold
-    ) external withMevTaxEnabledPool(pool) authenticate {
+    ) external withMevTaxEnabledPool(pool) onlySwapFeeManagerOrGovernance(pool) {
         _setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
     }
 
