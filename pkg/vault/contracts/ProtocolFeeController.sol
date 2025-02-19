@@ -101,14 +101,14 @@ contract ProtocolFeeController is
     // Global protocol yield fee.
     uint256 private _globalProtocolYieldFeePercentage;
 
-    // Explicitly mark a pool as registered. This will enable future migrations to safely update protected state.
-    mapping(address pool => bool isRegistered) internal _registeredPools;
-
     // Store the pool-specific swap fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
     mapping(address pool => PoolFeeConfig swapFeeConfig) internal _poolProtocolSwapFeePercentages;
 
     // Store the pool-specific yield fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
     mapping(address pool => PoolFeeConfig yieldFeeConfig) internal _poolProtocolYieldFeePercentages;
+
+    // Explicitly mark a pool as registered. This will enable future migrations to safely update protected state.
+    mapping(address pool => bool isRegistered) internal _registeredPools;
 
     // Pool creator swap fee percentages for each pool.
     mapping(address pool => uint256 poolCreatorSwapFee) internal _poolCreatorSwapFeePercentages;
