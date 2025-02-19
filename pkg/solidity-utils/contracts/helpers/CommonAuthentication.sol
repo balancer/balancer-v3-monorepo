@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { Authentication } from "./Authentication.sol";
 
 /// @dev Base contract for performing access control on external functions within pools.
 abstract contract CommonAuthentication is Authentication {
@@ -13,6 +13,7 @@ abstract contract CommonAuthentication is Authentication {
     /**
      * @dev Allow only the swapFeeManager or governance user to call the function.
      */
+    /// @notice Caller must be the swapFeeManager, if defined. Otherwise, default to governance.
     modifier onlySwapFeeManagerOrGovernance(address pool) {
         address roleAddress = _vault.getPoolRoleAccounts(pool).swapFeeManager;
         _ensureAuthenticatedByExclusiveRole(pool, roleAddress);
