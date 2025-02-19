@@ -224,9 +224,9 @@ interface IProtocolFeeController {
     function getPoolCreatorSwapFeePercentage(address pool) external view returns (uint256);
 
     /**
-     * @notice Getter for the current pool creator swap fee percentage for a given pool.
+     * @notice Getter for the current pool creator yield fee percentage for a given pool.
      * @param pool The address of the pool
-     * @return poolCreatorSwapFeePercentage The pool creator swap fee component of the aggregate swap fee
+     * @return poolCreatorSwapFeePercentage The pool creator yield fee component of the aggregate yield fee
      */
     function getPoolCreatorYieldFeePercentage(address pool) external view returns (uint256);
 
