@@ -152,7 +152,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
             lbpParams.reserveTokenEndWeight
         );
 
-        emit GradualWeightUpdateScheduled(lbpParams.startTime, lbpParams.endTime, startWeights, endWeights);
+        emit GradualWeightUpdateScheduled(_startTime, _endTime, startWeights, endWeights);
     }
 
     /**
