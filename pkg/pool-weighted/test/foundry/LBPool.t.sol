@@ -145,6 +145,44 @@ contract LBPoolTest is BaseLBPTest {
         );
     }
 
+    function testCreatePoolTimeTravelSameTime() public {
+        uint32 startTime = uint32(block.timestamp + 200);
+        uint32 endTime = uint32(block.timestamp + 200);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(GradualValueChange.GradualUpdateTimeTravel.selector, startTime, endTime)
+        );
+        _createLBPoolWithCustomWeights(
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            startTime,
+            endTime, // EndTime = StartTime, it should revert.
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+    }
+
+    function testCreatePoolStartTimeInPast() public {
+        // Set startTime in the past
+        uint32 pastStartTime = uint32(block.timestamp - 100);
+        uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
+
+        vm.expectEmit();
+        // The event should be emitted with block.timestamp as startTime, not the past time
+        emit LBPool.GradualWeightUpdateScheduled(block.timestamp, endTime, startWeights, endWeights);
+
+        _createLBPoolWithCustomWeights(
+            startWeights[projectIdx],
+            startWeights[reserveIdx],
+            endWeights[projectIdx],
+            endWeights[reserveIdx],
+            pastStartTime,
+            endTime,
+            DEFAULT_PROJECT_TOKENS_SWAP_IN
+        );
+    }
+
     function testCreatePoolEvents() public {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);

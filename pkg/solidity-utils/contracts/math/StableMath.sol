@@ -31,22 +31,13 @@ library StableMath {
     uint256 public constant MAX_STABLE_TOKENS = 5;
 
     uint256 internal constant MIN_AMP = 1;
-    uint256 internal constant MAX_AMP = 5000;
+    uint256 internal constant MAX_AMP = 50000;
     uint256 internal constant AMP_PRECISION = 1e3;
 
     // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
     uint256 internal constant MIN_INVARIANT_RATIO = 60e16; // 60%
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant MAX_INVARIANT_RATIO = 500e16; // 500%
-
-    // Note on unchecked arithmetic:
-    // This contract performs a large number of additions, subtractions, multiplications and divisions, often inside
-    // loops. Since many of these operations are gas-sensitive (as they happen e.g. during a swap), it is important to
-    // not make any unnecessary checks. We rely on a set of invariants to avoid having to use checked arithmetic,
-    // including:
-    //  - the amplification parameter is bounded by MAX_AMP * AMP_PRECISION, which fits in 23 bits
-    //
-    // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
     // About swap fees on add and remove liquidity:
     // Any add or remove that is not perfectly balanced (e.g. all single token operations) is mathematically

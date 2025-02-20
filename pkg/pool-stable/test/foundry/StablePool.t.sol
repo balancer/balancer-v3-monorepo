@@ -8,6 +8,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import {
     IStablePool,
     AmplificationState,
@@ -120,7 +121,7 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
     }
 
-    function testAmplificationUpdateByRole() public {
+    function testAmplificationUpdateBySwapFeeManager() public {
         // Ensure the swap manager was set for the pool.
         assertEq(vault.getPoolRoleAccounts(pool).swapFeeManager, alice, "Wrong swap fee manager");
 
@@ -166,10 +167,70 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         );
 
         vm.startPrank(bob);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+    }
+
+    function testAmplificationUpdateByGovernance() public {
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0x00),
+            swapFeeManager: address(0x00),
+            poolCreator: address(0x00)
+        });
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(IVaultExtension.getPoolRoleAccounts.selector, pool),
+            abi.encode(poolRoleAccounts)
+        );
+
+        assertFalse(
+            authorizer.hasRole(
+                IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
+                bob
+            ),
+            "Has governance-granted start permission"
+        );
+        assertFalse(
+            authorizer.hasRole(
+                IAuthentication(pool).getActionId(StablePool.stopAmplificationParameterUpdate.selector),
+                bob
+            ),
+            "Has governance-granted stop permission"
+        );
+
+        // Ensure the swap manager account can start/stop anyway.
+        uint256 currentTime = block.timestamp;
+        uint256 updateInterval = 5000 days;
+
+        uint256 endTime = currentTime + updateInterval;
+        uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
+
+        // Test that the swap manager can't start/stop the update.
+        vm.prank(bob);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
 
+        // Grant to Bob via governance.
+        authorizer.grantRole(
+            IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
+            bob
+        );
+        authorizer.grantRole(
+            IAuthentication(pool).getActionId(StablePool.stopAmplificationParameterUpdate.selector),
+            bob
+        );
+
+        vm.startPrank(bob);
+        IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
+
+        (, bool isUpdating, ) = IStablePool(pool).getAmplificationParameter();
+        assertTrue(isUpdating, "Amplification update not started");
+
+        IStablePool(pool).stopAmplificationParameterUpdate();
+        vm.stopPrank();
+
         (, isUpdating, ) = IStablePool(pool).getAmplificationParameter();
-        assertTrue(isUpdating, "Amplification update by Bob not started");
+        assertFalse(isUpdating, "Amplification update not stopped");
     }
 
     function testGetAmplificationState() public {
@@ -181,18 +242,13 @@ contract StablePoolTest is BasePoolTest, StablePoolContractsDeployer {
         assertEq(ampState.startValue, DEFAULT_AMP_FACTOR * precision, "Wrong initial amp update start value");
         assertEq(ampState.endValue, DEFAULT_AMP_FACTOR * precision, "Wrong initial amp update end value");
 
-        authorizer.grantRole(
-            IAuthentication(pool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
-            admin
-        );
-
         uint256 currentTime = block.timestamp;
         uint256 updateInterval = 5000 days;
 
         uint256 endTime = currentTime + updateInterval;
         uint256 newAmplificationParameter = DEFAULT_AMP_FACTOR * 2;
 
-        vm.prank(admin);
+        vm.prank(alice);
         IStablePool(pool).startAmplificationParameterUpdate(newAmplificationParameter, endTime);
 
         vm.warp(currentTime + updateInterval + 1);
