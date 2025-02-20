@@ -451,9 +451,7 @@ contract ProtocolFeeController is
         emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
         emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
 
-        if (poolCreator != address(0)) {
-            emit PoolWithCreatorRegistered(pool, poolCreator, protocolFeeExempt);
-        }
+        emit PoolRegisteredWithFeeController(pool, poolCreator, protocolFeeExempt);
     }
 
     /**
@@ -468,13 +466,9 @@ contract ProtocolFeeController is
      * be registered / configured once - either copied to a new controller in the migration context, or added normally
      * through the Vault calling `registerPool`.
      *
-     * Technically, since the logic prevents it from being called on the active fee controller, and on a previously
-     * registered or migrated pool, it could even be permissionless. But since we already have other permissioned
-     * functions, it doesn't really cost anything to be permissioned, and that provides another layer of security.
-     *
      * @param pool The address of the pool to be migrated
      */
-    function migratePool(address pool) external authenticate {
+    function migratePool(address pool) external {
         IProtocolFeeController oldFeeController = _vault.getProtocolFeeController();
 
         if (address(oldFeeController) == address(this)) {

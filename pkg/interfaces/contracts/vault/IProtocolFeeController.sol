@@ -135,7 +135,7 @@ interface IProtocolFeeController {
      * @param poolCreator The address of the pool creator (non-zero, or the event would not be emitted)
      * @param  protocolFeeExempt True if the pool is initially exempt from protocol fees
      */
-    event PoolWithCreatorRegistered(address indexed pool, address indexed poolCreator, bool protocolFeeExempt);
+    event PoolRegisteredWithFeeController(address indexed pool, address indexed poolCreator, bool protocolFeeExempt);
 
     /**
      * @notice Error raised when the protocol swap fee percentage exceeds the maximum allowed value.

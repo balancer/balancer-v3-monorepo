@@ -1291,7 +1291,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, 0, true);
 
         vm.expectEmit();
-        emit IProtocolFeeController.PoolWithCreatorRegistered(pool, lp, true);
+        emit IProtocolFeeController.PoolRegisteredWithFeeController(pool, lp, true);
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
@@ -1337,7 +1337,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT, false);
 
         vm.expectEmit();
-        emit IProtocolFeeController.PoolWithCreatorRegistered(pool, lp, false);
+        emit IProtocolFeeController.PoolRegisteredWithFeeController(pool, lp, false);
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
@@ -1359,25 +1359,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertFalse(feeController.isPoolRegistered(ZERO_ADDRESS), "Invalid pool registered");
     }
 
-    function testRegisterPoolInMigrationPermissioned() public {
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-
-        // This function is not in the public interface.
-        ProtocolFeeController(address(feeController)).migratePool(pool);
-    }
-
     function testRegisterExistingPoolInMigration() public {
         _registerPoolWithMaxProtocolFees();
 
         ProtocolFeeController newFeeController = new ProtocolFeeController(vault);
 
-        // Grant permission - should not happen in real life.
-        authorizer.grantRole(
-            IAuthentication(address(newFeeController)).getActionId(ProtocolFeeController.migratePool.selector),
-            admin
-        );
-
-        vm.startPrank(admin);
         ProtocolFeeController(address(newFeeController)).migratePool(pool);
 
         vm.expectRevert(abi.encodeWithSelector(ProtocolFeeController.PoolAlreadyRegistered.selector, pool));
@@ -1386,12 +1372,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     }
 
     function testSelfMigration() public {
-        // Grant permission - should not happen in real life.
-        authorizer.grantRole(feeControllerAuth.getActionId(ProtocolFeeController.migratePool.selector), admin);
-
         vm.expectRevert(ProtocolFeeController.InvalidMigrationSource.selector);
-
-        vm.prank(admin);
         ProtocolFeeController(address(feeController)).migratePool(pool);
     }
 
