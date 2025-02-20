@@ -419,40 +419,8 @@ contract ProtocolFeeController is
     }
 
     /***************************************************************************
-                                Permissioned Functions
+                                 Pool Migration
     ***************************************************************************/
-
-    /// @inheritdoc IProtocolFeeController
-    function registerPool(
-        address pool,
-        address poolCreator,
-        bool protocolFeeExempt
-    ) external onlyVault returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
-        _registeredPools[pool] = true;
-
-        // Set local storage of the actual percentages for the pool (default to global).
-        aggregateSwapFeePercentage = protocolFeeExempt ? 0 : _globalProtocolSwapFeePercentage;
-        aggregateYieldFeePercentage = protocolFeeExempt ? 0 : _globalProtocolYieldFeePercentage;
-
-        // `isOverride` is true if the pool is protocol fee exempt; otherwise, default to false.
-        // If exempt, this pool cannot be updated to the current global percentage permissionlessly.
-        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
-        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
-        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: aggregateSwapFeePercentage.toUint64(),
-            isOverride: protocolFeeExempt
-        });
-        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: aggregateYieldFeePercentage.toUint64(),
-            isOverride: protocolFeeExempt
-        });
-
-        // Allow tracking pool fee percentages in all cases (e.g., when the pool is protocol-fee exempt).
-        emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
-        emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
-
-        emit PoolRegisteredWithFeeController(pool, poolCreator, protocolFeeExempt);
-    }
 
     /**
      * @notice Not exposed in the interface, this enables migration of hidden pool state.
@@ -497,6 +465,42 @@ contract ProtocolFeeController is
 
         _poolCreatorSwapFeePercentages[pool] = oldFeeController.getPoolCreatorSwapFeePercentage(pool);
         _poolCreatorYieldFeePercentages[pool] = oldFeeController.getPoolCreatorYieldFeePercentage(pool);
+    }
+
+    /***************************************************************************
+                                Permissioned Functions
+    ***************************************************************************/
+
+    /// @inheritdoc IProtocolFeeController
+    function registerPool(
+        address pool,
+        address poolCreator,
+        bool protocolFeeExempt
+    ) external onlyVault returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
+        _registeredPools[pool] = true;
+
+        // Set local storage of the actual percentages for the pool (default to global).
+        aggregateSwapFeePercentage = protocolFeeExempt ? 0 : _globalProtocolSwapFeePercentage;
+        aggregateYieldFeePercentage = protocolFeeExempt ? 0 : _globalProtocolYieldFeePercentage;
+
+        // `isOverride` is true if the pool is protocol fee exempt; otherwise, default to false.
+        // If exempt, this pool cannot be updated to the current global percentage permissionlessly.
+        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
+        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
+        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: aggregateSwapFeePercentage.toUint64(),
+            isOverride: protocolFeeExempt
+        });
+        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: aggregateYieldFeePercentage.toUint64(),
+            isOverride: protocolFeeExempt
+        });
+
+        // Allow tracking pool fee percentages in all cases (e.g., when the pool is protocol-fee exempt).
+        emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
+        emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
+
+        emit PoolRegisteredWithFeeController(pool, poolCreator, protocolFeeExempt);
     }
 
     /// @inheritdoc IProtocolFeeController
