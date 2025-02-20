@@ -37,9 +37,6 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, Sin
     // Set after the global percentages have been transferred (on the first call to `migratePools`).
     bool internal _globalPercentagesMigrated;
 
-    // ActionId for permission required in `migratePools`.
-    bytes32 internal _migrationRole;
-
     /// @notice Cannot call the base contract migration; it is invalid for this migration.
     error WrongMigrationVersion();
 
@@ -47,12 +44,7 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, Sin
         IVault _vault,
         IProtocolFeeController _newFeeController
     ) ProtocolFeeControllerMigration(_vault, _newFeeController) SingletonAuthentication(_vault) {
-        _migrationRole = IAuthentication(address(newFeeController)).getActionId(
-            ProtocolFeeController.migratePool.selector
-        );
-
-        // Grant permission required in `migratePools`.
-        _authorizer.grantRole(_migrationRole, address(this));
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -92,9 +84,6 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, Sin
         }
 
         _finalized = true;
-
-        // Remove permission to migrate pools.
-        _authorizer.renounceRole(_migrationRole, address(this));
 
         // Update the fee controller in the Vault.
         _migrateFeeController();
