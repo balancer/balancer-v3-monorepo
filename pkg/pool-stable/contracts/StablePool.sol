@@ -116,19 +116,6 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     /// @notice Cannot stop an amplification update before it starts.
     error AmpUpdateNotStarted();
 
-    /**
-     * @notice Allow the swap manager to change the amplification parameter.
-     * @dev Unlike the swap fee percentage setting permission, this is non-exclusive.
-     */
-    modifier authenticateByRole() {
-        // Allow if this is the swapFeeManager.
-        if (msg.sender != _vault.getPoolRoleAccounts(address(this)).swapFeeManager) {
-            // Otherwise, defer to governance.
-            _authenticateCaller();
-        }
-        _;
-    }
-
     constructor(
         NewPoolParams memory params,
         IVault vault
@@ -209,7 +196,10 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IStablePool
-    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticateByRole {
+    function startAmplificationParameterUpdate(
+        uint256 rawEndValue,
+        uint256 endTime
+    ) external onlySwapFeeManagerOrGovernance(address(this)) {
         if (rawEndValue < StableMath.MIN_AMP) {
             revert AmplificationFactorTooLow();
         }
@@ -259,7 +249,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IStablePool
-    function stopAmplificationParameterUpdate() external authenticateByRole {
+    function stopAmplificationParameterUpdate() external onlySwapFeeManagerOrGovernance(address(this)) {
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
 
         if (isUpdating == false) {

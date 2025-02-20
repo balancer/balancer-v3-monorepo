@@ -126,7 +126,7 @@ interface IProtocolFeeController {
     );
 
     /**
-     * @notice Emitted for pools registered with creators.
+     * @notice Emitted as a convenience during pool registration, more focused than the Vault's `PoolRegistered` event.
      * @dev The `PoolRegistered` event includes the `roleAccounts` field, which also records the pool creator, but this
      * simpler event is also provided for convenience. Though `InitialPoolAggregateSwapFeePercentage` and its yield fee
      * counterpart also include the protocol fee exemption flag, we might as well include it here as well.
@@ -135,7 +135,7 @@ interface IProtocolFeeController {
      * @param poolCreator The address of the pool creator (non-zero, or the event would not be emitted)
      * @param  protocolFeeExempt True if the pool is initially exempt from protocol fees
      */
-    event PoolWithCreatorRegistered(address indexed pool, address indexed poolCreator, bool protocolFeeExempt);
+    event PoolRegisteredWithFeeController(address indexed pool, address indexed poolCreator, bool protocolFeeExempt);
 
     /**
      * @notice Error raised when the protocol swap fee percentage exceeds the maximum allowed value.

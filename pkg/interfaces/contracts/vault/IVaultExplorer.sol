@@ -542,4 +542,12 @@ interface IVaultExplorer {
     function getBufferBalance(
         IERC4626 wrappedToken
     ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw);
+
+    /**
+     * @notice Checks if the wrapped token has an initialized buffer in the Vault.
+     * @dev An initialized buffer should have an asset registered in the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return isBufferInitialized True if the ERC4626 buffer is initialized
+     */
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized);
 }

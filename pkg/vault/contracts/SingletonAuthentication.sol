@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { CommonAuthentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CommonAuthentication.sol";
 
 /**
  * @notice Base contract suitable for Singleton contracts (e.g., pool factories) that have permissioned functions.
@@ -13,18 +13,10 @@ import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpe
  * functions, to avoid conflicts when multiple contracts (or multiple versions of the same contract) use the same
  * function name.
  */
-abstract contract SingletonAuthentication is Authentication {
-    IVault private immutable _vault;
-
-    modifier onlySwapFeeManagerOrGovernance(address pool) {
-        address roleAddress = _vault.getPoolRoleAccounts(pool).swapFeeManager;
-        _ensureAuthenticatedByExclusiveRole(pool, roleAddress);
-        _;
-    }
-
+abstract contract SingletonAuthentication is CommonAuthentication {
     // Use the contract's own address to disambiguate action identifiers.
-    constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(this))))) {
-        _vault = vault;
+    constructor(IVault vault) CommonAuthentication(vault, bytes32(uint256(uint160(address(this))))) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -32,7 +24,7 @@ abstract contract SingletonAuthentication is Authentication {
      * @return vault An interface pointer to the Vault
      */
     function getVault() public view returns (IVault) {
-        return _vault;
+        return _getVault();
     }
 
     /**
@@ -41,25 +33,5 @@ abstract contract SingletonAuthentication is Authentication {
      */
     function getAuthorizer() public view returns (IAuthorizer) {
         return getVault().getAuthorizer();
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
-    }
-
-    function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, where);
-    }
-
-    /// @dev Ensure the sender is the roleAddress, or default to governance if roleAddress is address(0).
-    function _ensureAuthenticatedByExclusiveRole(address pool, address roleAddress) internal view {
-        if (roleAddress == address(0)) {
-            // Defer to governance if no role assigned.
-            if (_canPerform(getActionId(msg.sig), msg.sender, pool) == false) {
-                revert SenderNotAllowed();
-            }
-        } else if (msg.sender != roleAddress) {
-            revert SenderNotAllowed();
-        }
     }
 }

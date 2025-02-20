@@ -1291,7 +1291,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, 0, true);
 
         vm.expectEmit();
-        emit IProtocolFeeController.PoolWithCreatorRegistered(pool, lp, true);
+        emit IProtocolFeeController.PoolRegisteredWithFeeController(pool, lp, true);
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
@@ -1337,7 +1337,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT, false);
 
         vm.expectEmit();
-        emit IProtocolFeeController.PoolWithCreatorRegistered(pool, lp, false);
+        emit IProtocolFeeController.PoolRegisteredWithFeeController(pool, lp, false);
 
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = lp;
@@ -1359,26 +1359,49 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertFalse(feeController.isPoolRegistered(ZERO_ADDRESS), "Invalid pool registered");
     }
 
-    function testRegisterPoolInMigrationPermissioned() public {
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-
-        // This function is not in the public interface.
-        ProtocolFeeController(address(feeController)).migratePool(pool);
-    }
-
     function testRegisterExistingPoolInMigration() public {
         _registerPoolWithMaxProtocolFees();
 
-        ProtocolFeeController newFeeController = new ProtocolFeeController(vault);
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE_PCT);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
+        vm.stopPrank();
 
-        // Grant permission - should not happen in real life.
         authorizer.grantRole(
-            IAuthentication(address(newFeeController)).getActionId(ProtocolFeeController.migratePool.selector),
+            feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
             admin
         );
 
-        vm.startPrank(admin);
+        // Change through governance to set the override flag.
+        vm.prank(admin);
+        feeController.setProtocolYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT / 2);
+
+        ProtocolFeeController newFeeController = new ProtocolFeeController(vault);
+        vm.label(address(newFeeController), "New fee controller");
+
+        // Migrate the pool to a new controller.
         ProtocolFeeController(address(newFeeController)).migratePool(pool);
+
+        assertTrue(newFeeController.isPoolRegistered(pool), "Pool not registered in migration");
+
+        assertEq(
+            newFeeController.getPoolCreatorSwapFeePercentage(pool),
+            POOL_CREATOR_SWAP_FEE_PCT,
+            "Wrong pool creator swap fee percentage"
+        );
+        assertEq(
+            newFeeController.getPoolCreatorYieldFeePercentage(pool),
+            POOL_CREATOR_YIELD_FEE_PCT,
+            "Wrong pool creator yield fee percentage"
+        );
+
+        (uint256 swapFee, bool swapOverride) = newFeeController.getPoolProtocolSwapFeeInfo(pool);
+        (uint256 yieldFee, bool yieldOverride) = newFeeController.getPoolProtocolYieldFeeInfo(pool);
+
+        assertEq(swapFee, MAX_PROTOCOL_SWAP_FEE_PCT, "Wrong swap fee percentage");
+        assertEq(yieldFee, MAX_PROTOCOL_YIELD_FEE_PCT / 2, "Wrong yield fee percentage");
+        assertFalse(swapOverride, "Swap fee is overridden");
+        assertTrue(yieldOverride, "Yield fee is overridden");
 
         vm.expectRevert(abi.encodeWithSelector(ProtocolFeeController.PoolAlreadyRegistered.selector, pool));
         ProtocolFeeController(address(newFeeController)).migratePool(pool);
@@ -1386,12 +1409,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     }
 
     function testSelfMigration() public {
-        // Grant permission - should not happen in real life.
-        authorizer.grantRole(feeControllerAuth.getActionId(ProtocolFeeController.migratePool.selector), admin);
-
         vm.expectRevert(ProtocolFeeController.InvalidMigrationSource.selector);
-
-        vm.prank(admin);
         ProtocolFeeController(address(feeController)).migratePool(pool);
     }
 

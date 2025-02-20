@@ -419,6 +419,55 @@ contract ProtocolFeeController is
     }
 
     /***************************************************************************
+                                 Pool Migration
+    ***************************************************************************/
+
+    /**
+     * @notice Not exposed in the interface, this enables migration of hidden pool state.
+     * @dev Permission should NEVER be granted to this function outside of a migration contract. It is necessary to
+     * permit migration of the `ProtocolFeeController` with all state (in particular, protocol fee overrides and pool
+     * creator fees) that cannot be written outside of the `registerPool` function called by the Vault during pool
+     * deployment.
+     *
+     * Even if governance were to grant permission to call this function, the `_registeredPools` latch keeps it safe,
+     * guaranteeing that it is impossible to use this function to change anything after registration. A pool can only
+     * be registered / configured once - either copied to a new controller in the migration context, or added normally
+     * through the Vault calling `registerPool`.
+     *
+     * @param pool The address of the pool to be migrated
+     */
+    function migratePool(address pool) external {
+        IProtocolFeeController oldFeeController = _vault.getProtocolFeeController();
+
+        if (address(oldFeeController) == address(this)) {
+            revert InvalidMigrationSource();
+        }
+
+        if (_registeredPools[pool]) {
+            revert PoolAlreadyRegistered(pool);
+        }
+
+        _registeredPools[pool] = true;
+
+        (uint256 protocolSwapFeePercentage, bool swapFeeIsOverride) = oldFeeController.getPoolProtocolSwapFeeInfo(pool);
+        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: protocolSwapFeePercentage.toUint64(),
+            isOverride: swapFeeIsOverride
+        });
+
+        (uint256 protocolYieldFeePercentage, bool yieldFeeIsOverride) = oldFeeController.getPoolProtocolYieldFeeInfo(
+            pool
+        );
+        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: protocolYieldFeePercentage.toUint64(),
+            isOverride: yieldFeeIsOverride
+        });
+
+        _poolCreatorSwapFeePercentages[pool] = oldFeeController.getPoolCreatorSwapFeePercentage(pool);
+        _poolCreatorYieldFeePercentages[pool] = oldFeeController.getPoolCreatorYieldFeePercentage(pool);
+    }
+
+    /***************************************************************************
                                 Permissioned Functions
     ***************************************************************************/
 
@@ -451,58 +500,7 @@ contract ProtocolFeeController is
         emit InitialPoolAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage, protocolFeeExempt);
         emit InitialPoolAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage, protocolFeeExempt);
 
-        if (poolCreator != address(0)) {
-            emit PoolWithCreatorRegistered(pool, poolCreator, protocolFeeExempt);
-        }
-    }
-
-    /**
-     * @notice Not exposed in the interface, this enables migration of hidden pool state.
-     * @dev Permission should NEVER be granted to this function outside of a migration contract. It is necessary to
-     * permit migration of the `ProtocolFeeController` with all state (in particular, protocol fee overrides and pool
-     * creator fees) that cannot be written outside of the `registerPool` function called by the Vault during pool
-     * deployment.
-     *
-     * Even if governance were to grant permission to call this function, the `_registeredPools` latch keeps it safe,
-     * guaranteeing that it is impossible to use this function to change anything after registration. A pool can only
-     * be registered / configured once - either copied to a new controller in the migration context, or added normally
-     * through the Vault calling `registerPool`.
-     *
-     * Technically, since the logic prevents it from being called on the active fee controller, and on a previously
-     * registered or migrated pool, it could even be permissionless. But since we already have other permissioned
-     * functions, it doesn't really cost anything to be permissioned, and that provides another layer of security.
-     *
-     * @param pool The address of the pool to be migrated
-     */
-    function migratePool(address pool) external authenticate {
-        IProtocolFeeController oldFeeController = _vault.getProtocolFeeController();
-
-        if (address(oldFeeController) == address(this)) {
-            revert InvalidMigrationSource();
-        }
-
-        if (_registeredPools[pool]) {
-            revert PoolAlreadyRegistered(pool);
-        }
-
-        _registeredPools[pool] = true;
-
-        (uint256 protocolSwapFeePercentage, bool swapFeeIsOverride) = oldFeeController.getPoolProtocolSwapFeeInfo(pool);
-        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: protocolSwapFeePercentage.toUint64(),
-            isOverride: swapFeeIsOverride
-        });
-
-        (uint256 protocolYieldFeePercentage, bool yieldFeeIsOverride) = oldFeeController.getPoolProtocolYieldFeeInfo(
-            pool
-        );
-        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: protocolYieldFeePercentage.toUint64(),
-            isOverride: yieldFeeIsOverride
-        });
-
-        _poolCreatorSwapFeePercentages[pool] = oldFeeController.getPoolCreatorSwapFeePercentage(pool);
-        _poolCreatorYieldFeePercentages[pool] = oldFeeController.getPoolCreatorYieldFeePercentage(pool);
+        emit PoolRegisteredWithFeeController(pool, poolCreator, protocolFeeExempt);
     }
 
     /// @inheritdoc IProtocolFeeController
