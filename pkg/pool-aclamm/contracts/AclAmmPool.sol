@@ -139,6 +139,14 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, IHooks {
         return _MAX_INVARIANT_RATIO;
     }
 
+    function getLastVirtualBalances() external view returns (uint256[] memory) {
+        return _virtualBalances;
+    }
+
+    function getLastTimestamp() external view returns (uint256) {
+        return _lastTimestamp;
+    }
+
     function _setIncreaseDayRate(uint256 increaseDayRate) internal {
         _c = AclAmmMath.parseIncreaseDayRate(increaseDayRate);
     }
