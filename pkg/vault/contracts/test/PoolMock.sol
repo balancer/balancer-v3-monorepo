@@ -7,14 +7,11 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BasePoolAuthentication } from "@balancer-labs/v3-pool-utils/contracts/BasePoolAuthentication.sol";
-import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
-
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolAuthentication, PoolInfo {
+contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it.
@@ -23,11 +20,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolAuthe
     // If non-zero, use this return value for `getRate` (otherwise, defer to BalancerPoolToken's base implementation).
     uint256 private _mockRate;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol
-    ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) PoolInfo(vault) {
+    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
         // solhint-previous-line no-empty-blocks
     }
 
@@ -113,5 +106,29 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolAuthe
 
     function getRate() public view override returns (uint256) {
         return _mockRate == 0 ? super.getRate() : _mockRate;
+    }
+
+    function getTokenInfo()
+        external
+        view
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory lastBalancesLiveScaled18
+        )
+    {
+        return _vault.getPoolTokenInfo(address(this));
+    }
+
+    function getAggregateFeePercentages()
+        external
+        view
+        returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage)
+    {
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+
+        aggregateSwapFeePercentage = poolConfig.aggregateSwapFeePercentage;
+        aggregateYieldFeePercentage = poolConfig.aggregateYieldFeePercentage;
     }
 }
