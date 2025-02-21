@@ -4,48 +4,119 @@ pragma solidity ^0.8.24;
 
 import { console2 } from "forge-std/Test.sol";
 
-import { FixedPoint } from "@balancer-labs/v2-vault/contracts/math/FixedPoint.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { GyroPoolMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroPoolMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseAclAmmTest } from "./utils/BaseAclAmmTest.sol";
+import { AclAmmPool } from "../../contracts/AclAmmPool.sol";
 
 contract AclAmmPoolTest is BaseAclAmmTest {
     using FixedPoint for uint256;
 
-    uint256 internal constant _ITERATION = 100;
+    uint256 internal constant _ITERATIONS = 100;
     uint256 internal constant _DAI_MIN_PRICE = 1e16;
     uint256 internal constant _DAI_MAX_PRICE = 1e20;
 
+    uint256 counter = 1;
+
     function testMultipleSwaps() public {
         uint256 currentPoolPriceDai = _getCurrentDaiPoolPrice();
-        uint256 currentMarketPriceDai = currentPoolPriceDai
-        
-        for (uint256 i = 0; i < _ITERATIONS; i++) {
-            // 90 - 110% of current market price.
-            uint256 currentMarketPriceDai = currentMarketPriceDai.mulDown(90e16) + currentMarketPriceDai.mulDown(vm.randomUint(0, 20e16)); 
-            uint256 swapAmount = vm.randomUint(1e18, 100e18);
+        uint256 currentMarketPriceDai = currentPoolPriceDai;
 
-            console2.log("Current market price: %s", currentMarketPrice);
-            console2.log("Swap amount: %s", swapAmount);
+        for (uint256 i = 0; i < _ITERATIONS; i++) {
+            console2.log("------------------ Iteration: %s ------------------", i);
+
+            // 99.0 - 100.1% of current market price.
+            currentMarketPriceDai =
+                currentMarketPriceDai.mulDown(99e16) +
+                currentMarketPriceDai.mulDown(bound(_random(), 0, 1.1e16));
+
+            uint256 tokenInIndex;
+            uint256 tokenOutIndex;
+
+            if (currentPoolPriceDai < currentMarketPriceDai) {
+                tokenInIndex = usdcIdx;
+                tokenOutIndex = daiIdx;
+            } else {
+                tokenInIndex = daiIdx;
+                tokenOutIndex = usdcIdx;
+            }
+
+            console2.log("Current pool price:   %s", currentPoolPriceDai);
+            console2.log("Current market price: %s", currentMarketPriceDai);
+            console2.log("Token in: ", (tokenInIndex == daiIdx) ? "DAI" : "USDC");
+            console2.log("Token out: ", (tokenOutIndex == daiIdx) ? "DAI" : "USDC");
+
+            uint256 swapAmount = _calculateSwapInForMarketPrice(currentMarketPriceDai, tokenInIndex);
+
+            if (swapAmount != 0) {
+                vm.prank(bob);
+                uint256 amountOut = router.swapSingleTokenExactIn(
+                    pool,
+                    IERC20(tokenInIndex == daiIdx ? dai : usdc),
+                    IERC20(tokenOutIndex == daiIdx ? dai : usdc),
+                    swapAmount,
+                    0,
+                    block.timestamp,
+                    false,
+                    bytes("")
+                );
+            }
+
+            currentPoolPriceDai = _getCurrentDaiPoolPrice();
         }
     }
 
     function _getCurrentDaiPoolPrice() internal view returns (uint256) {
         uint256[] memory virtualBalances = AclAmmPool(pool).getLastVirtualBalances();
+
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
 
         return (balances[usdcIdx] + virtualBalances[usdcIdx]).divDown(balances[daiIdx] + virtualBalances[daiIdx]);
     }
 
-    function _calculateSwapInDaiForMarketPrice(uint256 currentMarketPriceDai) internal view returns (uint256) {
+    function _calculateSwapInForMarketPrice(
+        uint256 currentMarketPriceDai,
+        uint256 tokenInIndex
+    ) internal view returns (uint256) {
+        uint256[] memory virtualBalances = AclAmmPool(pool).getLastVirtualBalances();
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
+
         uint256 currentPoolPriceDai = _getCurrentDaiPoolPrice();
-        if (currentPoolPriceDai > currentMarketPriceDai) {
-            // DAI price has decreased, so the market will buy USDC and sell DAI.
-            return currentMarketPriceDai.mulDown(1e18).divDown(currentPoolPriceDai);
+
+        console2.log("balances[0]:              %s", balances[0]);
+        console2.log("balances[1]:              %s", balances[1]);
+
+        uint256 invariant = (balances[0] + virtualBalances[0]).mulDown(balances[1] + virtualBalances[1]);
+
+        uint256 invariantFactor;
+        if (tokenInIndex == daiIdx) {
+            invariantFactor = invariant.divDown(currentMarketPriceDai);
         } else {
-            // DAI price has increased, so the market will buy DAI and sell USDC.
-            return currentPoolPriceDai.mulDown(1e18).divDown(currentMarketPriceDai);
+            invariantFactor = invariant.mulDown(currentMarketPriceDai);
         }
+
+        // Temporarily using sqrt lib with decimals from Gyro.
+        uint256 sqrtBaskhara = GyroPoolMath.sqrt(invariantFactor, 3);
+        uint256 finalBalance = balances[tokenInIndex] + virtualBalances[tokenInIndex];
+
+        uint256 amountIn = sqrtBaskhara - finalBalance;
+        uint256 tokenOutIndex = tokenInIndex == daiIdx ? usdcIdx : daiIdx;
+        uint256 expectedAmountOut = balances[tokenOutIndex] +
+            virtualBalances[tokenOutIndex] -
+            invariant.divDown(finalBalance + amountIn);
+
+        if (expectedAmountOut > balances[tokenOutIndex] || expectedAmountOut <= 1) {
+            return 0;
+        }
+
+        return amountIn;
     }
-        return currentMarketPriceDai.mulDown(1e18).divDown(currentPoolPriceDai);
+
+    function _random() private returns (uint256) {
+        counter++;
+        return uint256(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, counter)));
     }
 }

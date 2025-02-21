@@ -4,25 +4,30 @@ pragma solidity ^0.8.24;
 
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import {
-    Rounding,
-    PoolSwapParams,
-    SwapKind,
-    HookFlags
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import {
+    Rounding,
+    PoolSwapParams,
+    SwapKind,
+    HookFlags,
+    TokenConfig,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { AclAmmMath } from "./lib/AclAmmMath.sol";
 
-contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, IHooks {
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0.001e16; // 0.001%
+contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHooks {
+    // uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0.001e16; // 0.001%
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
@@ -57,9 +62,17 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, IHooks {
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory, Rounding) public pure returns (uint256) {
-        // The pool does not accept unbalanced adds and removes, so this function does not need to be implemented.
-        revert("Not implemented");
+    function computeInvariant(uint256[] memory balancesScaled18, Rounding rounding) public view returns (uint256) {
+        return
+            AclAmmMath.computeInvariant(
+                balancesScaled18,
+                _virtualBalances,
+                _c,
+                _sqrtQ0,
+                _lastTimestamp,
+                _centernessMargin,
+                rounding
+            );
     }
 
     /// @inheritdoc IBasePool
@@ -108,12 +121,22 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, IHooks {
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external pure returns (HookFlags memory hookFlags) {
-        hookFlags.shouldCallAfterSwap = true;
+    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
+        hookFlags.shouldCallBeforeInitialize = true;
     }
 
     /// @inheritdoc IHooks
-    function onAfterInitialize(uint256[] memory balancesScaled18, uint256, bytes) external returns (bool) {
+    function onRegister(
+        address,
+        address,
+        TokenConfig[] memory,
+        LiquidityManagement calldata
+    ) public override returns (bool) {
+        return true;
+    }
+
+    /// @inheritdoc IHooks
+    function onBeforeInitialize(uint256[] memory balancesScaled18, bytes memory) public override returns (bool) {
         _lastTimestamp = block.timestamp;
         _virtualBalances = AclAmmMath.initializeVirtualBalances(balancesScaled18, _sqrtQ0);
         return true;

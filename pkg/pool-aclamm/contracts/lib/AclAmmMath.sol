@@ -2,11 +2,38 @@
 
 pragma solidity ^0.8.24;
 
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { LogExpMath } from "@balancer-labs/v3-solidity-utils/contracts/math/LogExpMath.sol";
 
 library AclAmmMath {
     using FixedPoint for uint256;
+
+    function computeInvariant(
+        uint256[] memory balancesScaled18,
+        uint256[] memory lastVirtualBalances,
+        uint256 c,
+        uint256 sqrtQ0,
+        uint256 lastTimestamp,
+        uint256 centernessMargin,
+        Rounding rounding
+    ) internal view returns (uint256) {
+        function(uint256, uint256) pure returns (uint256) _mulUpOrDown = rounding == Rounding.ROUND_DOWN
+            ? FixedPoint.mulDown
+            : FixedPoint.mulUp;
+
+        (uint256[] memory virtualBalances, ) = getVirtualBalances(
+            balancesScaled18,
+            lastVirtualBalances,
+            c,
+            sqrtQ0,
+            lastTimestamp,
+            centernessMargin
+        );
+
+        return _mulUpOrDown((balancesScaled18[0] + virtualBalances[0]), (balancesScaled18[1] + virtualBalances[1]));
+    }
 
     function calculateOutGivenIn(
         uint256[] memory balancesScaled18,
