@@ -17,6 +17,7 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | Gyroscope pools                   | Certora       | [`2024-12-24`](./certora/2024-12-24.pdf)             |
 | Post-competition v3 codebase      | Cantina<sup>2</sup>  | [`2024-12-31`](./cantina/2024-12-31.pdf)      |
 | MEV Capture Hook                  | Certora       | [`2025-02-07`](./certora/2025-02-07.pdf)             |
+| Stable Surge Factory / Hook       | Certora       | [`2025-02-18`](./certora/2025-02-18.pdf)             |
 
 ## Addenda
   
