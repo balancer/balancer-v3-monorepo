@@ -42,7 +42,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     mapping(IProtocolFeeBurner feeBurner => bool isApproved) private _protocolFeeBurners;
 
     /// @notice Allows calls from fee recipient or governance allowed accounts (non-exclusive).
-    modifier onlyRecipientOrGovernance() {
+    modifier onlyFeeRecipientOrGovernance() {
         _ensureAuthenticatedByRole(address(this), _feeRecipient);
         _;
     }
@@ -59,7 +59,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         uint256 minTargetTokenAmountOut,
         uint256 deadline,
         IProtocolFeeBurner feeBurner
-    ) external nonReentrant onlyRecipientOrGovernance {
+    ) external nonReentrant onlyFeeRecipientOrGovernance {
         bool feeBurnerProvided = _getValidFeeBurner(feeBurner);
 
         uint256 existingBalance = feeToken.balanceOf(address(this));
@@ -158,7 +158,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     ***************************************************************************/
 
     /// @inheritdoc IProtocolFeeSweeper
-    function setFeeRecipient(address feeRecipient) external onlyRecipientOrGovernance {
+    function setFeeRecipient(address feeRecipient) external onlyFeeRecipientOrGovernance {
         _setFeeRecipient(feeRecipient);
     }
 
@@ -179,14 +179,14 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function setTargetToken(IERC20 targetToken) external onlyRecipientOrGovernance {
+    function setTargetToken(IERC20 targetToken) external onlyFeeRecipientOrGovernance {
         _targetToken = targetToken;
 
         emit TargetTokenSet(targetToken);
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external onlyRecipientOrGovernance {
+    function addProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external onlyFeeRecipientOrGovernance {
         if (_protocolFeeBurners[protocolFeeBurner]) {
             revert ProtocolFeeBurnerAlreadyAdded(address(protocolFeeBurner));
         }
@@ -202,7 +202,7 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     }
 
     /// @inheritdoc IProtocolFeeSweeper
-    function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external onlyRecipientOrGovernance {
+    function removeProtocolFeeBurner(IProtocolFeeBurner protocolFeeBurner) external onlyFeeRecipientOrGovernance {
         if (_protocolFeeBurners[protocolFeeBurner] == false) {
             revert ProtocolFeeBurnerNotAdded(address(protocolFeeBurner));
         }

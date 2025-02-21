@@ -11,11 +11,11 @@ contract CommonAuthenticationMock is CommonAuthentication {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function ensureAuthenticatedByExclusiveRole(address where, address roleManager) external view {
-        _ensureAuthenticatedByExclusiveRole(where, roleManager);
+    function ensureAuthenticatedByExclusiveRole(address where, address roleAccount) external view {
+        _ensureAuthenticatedByExclusiveRole(where, roleAccount);
     }
 
-    function ensureAuthenticatedByRole(address where, address roleManager) external view {
-        _ensureAuthenticatedByRole(where, roleManager);
+    function ensureAuthenticatedByRole(address where, address roleAccount) external view {
+        _ensureAuthenticatedByRole(where, roleAccount);
     }
 }

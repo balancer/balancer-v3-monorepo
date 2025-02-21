@@ -33,22 +33,22 @@ abstract contract CommonAuthentication is Authentication {
         return _vault.getAuthorizer().canPerform(actionId, account, where);
     }
 
-    /// @dev Ensure the sender is the roleManager, or default to governance if roleManager is address(0).
-    function _ensureAuthenticatedByExclusiveRole(address where, address roleManager) internal view {
-        if (roleManager == address(0)) {
+    /// @dev Ensure the sender is the roleAccount, or default to governance if roleAccount is address(0).
+    function _ensureAuthenticatedByExclusiveRole(address where, address roleAccount) internal view {
+        if (roleAccount == address(0)) {
             // Defer to governance if no role assigned.
             if (_canPerform(getActionId(msg.sig), msg.sender, where) == false) {
                 revert SenderNotAllowed();
             }
-        } else if (msg.sender != roleManager) {
+        } else if (msg.sender != roleAccount) {
             revert SenderNotAllowed();
         }
     }
 
     /// @dev Ensure the sender is either the role manager, or is authorized by governance (non-exclusive).
-    function _ensureAuthenticatedByRole(address where, address roleManager) internal view {
+    function _ensureAuthenticatedByRole(address where, address roleAccount) internal view {
         // If the sender is not the delegated manager for the role, defer to governance.
-        if (msg.sender != roleManager) {
+        if (msg.sender != roleAccount) {
             if (_canPerform(getActionId(msg.sig), msg.sender, where) == false) {
                 revert SenderNotAllowed();
             }
