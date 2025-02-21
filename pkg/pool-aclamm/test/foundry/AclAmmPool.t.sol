@@ -21,6 +21,7 @@ contract AclAmmPoolTest is BaseAclAmmTest {
 
     uint256 counter = 1;
 
+    // TODO Remove test. Temporary test to study pool behavior visually.
     function testMultipleSwaps() public {
         uint256 currentPoolPriceDai = _getCurrentDaiPoolPrice();
         uint256 currentMarketPriceDai = currentPoolPriceDai;
