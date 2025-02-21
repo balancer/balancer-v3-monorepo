@@ -27,8 +27,8 @@ contract BaseAclAmmTest is AclAmmPoolContractsDeployer, BaseVaultTest {
     uint256 internal constant _DEFAULT_SWAP_FEE = 0; // 0%
     string internal constant _POOL_VERSION = "Acl Amm Pool v1";
 
-    uint256 internal constant _DEFAULT_INCREASE_DAY_RATE = 10e16; // 10%
-    uint256 internal constant _DEFAULT_SQRT_Q0 = 1.1421356e18; // Price Range of 4 (fourth square root is 1.41)
+    uint256 internal constant _DEFAULT_INCREASE_DAY_RATE = 100e16; // 100%
+    uint256 internal constant _DEFAULT_SQRT_Q0 = 1.41421356e18; // Price Range of 4 (fourth square root is 1.41)
     uint256 internal constant _DEFAULT_CENTERNESS_MARGIN = 10e16; // 10%
 
     AclAmmPool internal ammPool;

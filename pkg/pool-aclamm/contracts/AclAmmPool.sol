@@ -162,8 +162,18 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
         return _MAX_INVARIANT_RATIO;
     }
 
-    function getLastVirtualBalances() external view returns (uint256[] memory) {
-        return _virtualBalances;
+    function getLastVirtualBalances() external view returns (uint256[] memory virtualBalances) {
+        (, , uint256[] memory balancesScaled18, ) = _vault.getPoolTokenInfo(address(this));
+
+        // Calculate virtual balances
+        (virtualBalances, ) = AclAmmMath.getVirtualBalances(
+            balancesScaled18,
+            _virtualBalances,
+            _c,
+            _sqrtQ0,
+            _lastTimestamp,
+            _centernessMargin
+        );
     }
 
     function getLastTimestamp() external view returns (uint256) {

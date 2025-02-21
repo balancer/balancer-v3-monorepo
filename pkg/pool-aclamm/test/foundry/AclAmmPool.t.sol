@@ -29,10 +29,10 @@ contract AclAmmPoolTest is BaseAclAmmTest {
         for (uint256 i = 0; i < _ITERATIONS; i++) {
             console2.log("------------------ Iteration: %s ------------------", i);
 
-            // 99.0 - 100.1% of current market price.
+            // 98 - 105% of current market price.
             currentMarketPriceDai =
-                currentMarketPriceDai.mulDown(99e16) +
-                currentMarketPriceDai.mulDown(bound(_random(), 0, 1.1e16));
+                currentMarketPriceDai.mulDown(98e16) +
+                currentMarketPriceDai.mulDown(bound(_random(), 0, 7e16));
 
             uint256 tokenInIndex;
             uint256 tokenOutIndex;
@@ -67,6 +67,7 @@ contract AclAmmPoolTest is BaseAclAmmTest {
             }
 
             currentPoolPriceDai = _getCurrentDaiPoolPrice();
+            vm.warp(block.timestamp + 1 hours);
         }
     }
 
@@ -92,6 +93,16 @@ contract AclAmmPoolTest is BaseAclAmmTest {
 
         uint256 invariant = (balances[0] + virtualBalances[0]).mulDown(balances[1] + virtualBalances[1]);
 
+        {
+            // Price range calculation
+            uint256 PMaxDai = invariant.divDown(virtualBalances[daiIdx].mulDown(virtualBalances[daiIdx]));
+            uint256 PMinDai = virtualBalances[usdcIdx].mulDown(virtualBalances[usdcIdx]).divDown(invariant);
+
+            console2.log("PMaxDai:                 %s", PMaxDai);
+            console2.log("PMinDai:                 %s", PMinDai);
+            console2.log("PriceRange:              %s", PMaxDai.divDown(PMinDai));
+        }
+
         uint256 invariantFactor;
         if (tokenInIndex == daiIdx) {
             invariantFactor = invariant.divDown(currentMarketPriceDai);
@@ -102,6 +113,13 @@ contract AclAmmPoolTest is BaseAclAmmTest {
         // Temporarily using sqrt lib with decimals from Gyro.
         uint256 sqrtBaskhara = GyroPoolMath.sqrt(invariantFactor, 3);
         uint256 finalBalance = balances[tokenInIndex] + virtualBalances[tokenInIndex];
+
+        console2.log("sqrtBaskhara:             %s", sqrtBaskhara);
+        console2.log("finalBalance:             %s", finalBalance);
+
+        if (sqrtBaskhara < finalBalance) {
+            return 0;
+        }
 
         uint256 amountIn = sqrtBaskhara - finalBalance;
         uint256 tokenOutIndex = tokenInIndex == daiIdx ? usdcIdx : daiIdx;
