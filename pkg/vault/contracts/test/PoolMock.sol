@@ -20,11 +20,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     // If non-zero, use this return value for `getRate` (otherwise, defer to BalancerPoolToken's base implementation).
     uint256 private _mockRate;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol
-    ) BalancerPoolToken(vault, name, symbol) {
+    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
         // solhint-previous-line no-empty-blocks
     }
 
