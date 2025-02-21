@@ -36,7 +36,7 @@ import {
  */
 contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     IProtocolFeeController public immutable oldFeeController;
-    IProtocolFeeController public immutable newFeeController;
+    IProtocolFeeController public newFeeController;
 
     IVault public immutable vault;
 
@@ -56,7 +56,7 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     /// @notice Migration can only be performed once.
     error AlreadyMigrated();
 
-    constructor(IVault _vault, IProtocolFeeController _newFeeController) {
+    /*constructor(IVault _vault, IProtocolFeeController _newFeeController) {
         oldFeeController = _vault.getProtocolFeeController();
 
         // Ensure valid fee controllers. Also ensure that we are not trying to operate on the current fee controller.
@@ -68,8 +68,21 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
         newFeeController = _newFeeController;
 
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
+    }*/
+
+    // Temporary constructor used for fork testing.
+    constructor(IVault _vault) {
+        oldFeeController = _vault.getProtocolFeeController();
+
+        vault = _vault;
+
+        _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
 
+    // Temporary - delete after fork test. Run this before `migrateFeeController`.
+    function setNewFeeController(IProtocolFeeController _newFeeController) external {
+        newFeeController = _newFeeController;
+    }
     /**
      * @notice Permissionless migration function.
      * @dev Call this with the full set of pools to perform the migration. After this runs, the Vault will point to the

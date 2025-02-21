@@ -43,7 +43,8 @@ contract ProtocolFeeControllerMigrationV2 is ProtocolFeeControllerMigration, Sin
     constructor(
         IVault _vault,
         IProtocolFeeController _newFeeController
-    ) ProtocolFeeControllerMigration(_vault, _newFeeController) SingletonAuthentication(_vault) {
+    // temporary! ) ProtocolFeeControllerMigration(_vault, _newFeeController) SingletonAuthentication(_vault) {
+    ) ProtocolFeeControllerMigration(_vault) SingletonAuthentication(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
