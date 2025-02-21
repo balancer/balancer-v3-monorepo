@@ -126,7 +126,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
 
     /// @inheritdoc IProtocolFeeBurner
     function burn(
-        address pool,
         IERC20 feeToken,
         uint256 feeTokenAmount,
         IERC20 targetToken,
@@ -161,7 +160,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
             deadline: uint32(deadline)
         });
 
-        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minAmountOut, recipient);
+        emit ProtocolFeeBurned(feeToken, feeTokenAmount, targetToken, minAmountOut, recipient);
     }
 
     /***************************************************************************
