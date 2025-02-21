@@ -3,16 +3,12 @@
 pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-
-import { Authentication } from "./Authentication.sol";
+import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 
 /// @dev Base contract for performing access control on external functions within pools.
 abstract contract CommonAuthentication is Authentication {
     IVault private immutable _vault;
 
-    /**
-     * @dev Allow only the swapFeeManager or governance user to call the function.
-     */
     /// @notice Caller must be the swapFeeManager, if defined. Otherwise, default to governance.
     modifier onlySwapFeeManagerOrGovernance(address pool) {
         address roleAddress = _vault.getPoolRoleAccounts(pool).swapFeeManager;
@@ -37,15 +33,26 @@ abstract contract CommonAuthentication is Authentication {
         return _vault.getAuthorizer().canPerform(actionId, account, where);
     }
 
-    /// @dev Ensure the sender is the roleAddress, or default to governance if roleAddress is address(0).
-    function _ensureAuthenticatedByExclusiveRole(address pool, address roleAddress) internal view {
-        if (roleAddress == address(0)) {
+    /// @dev Ensure the sender is the roleManager, or default to governance if roleManager is address(0).
+    function _ensureAuthenticatedByExclusiveRole(address where, address roleManager) internal view {
+        if (roleManager == address(0)) {
             // Defer to governance if no role assigned.
-            if (_canPerform(getActionId(msg.sig), msg.sender, pool) == false) {
+            if (_canPerform(getActionId(msg.sig), msg.sender, where) == false) {
                 revert SenderNotAllowed();
             }
-        } else if (msg.sender != roleAddress) {
+        } else if (msg.sender != roleManager) {
             revert SenderNotAllowed();
         }
+    }
+
+    /// @dev Ensure the sender is either the role manager, or is authorized by governance (non-exclusive).
+    function _ensureAuthenticatedByRole(address where, address roleManager) internal view {
+        // If the sender is not the delegated manager for the role, defer to governance.
+        if (msg.sender != roleManager) {
+            if (_canPerform(getActionId(msg.sig), msg.sender, where) == false) {
+                revert SenderNotAllowed();
+            }
+        }
+        // (else) if the sender is the delegated manager, proceed.
     }
 }
