@@ -5,7 +5,7 @@ import { ethers } from 'hardhat';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { CodeDeployer__factory, CodeDeployerMock__factory } from '../typechain-types';
+import { CodeDeployer__factory } from '../typechain-types';
 
 describe('CodeDeployer', function () {
   let factory: Contract;
