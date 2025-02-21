@@ -11,6 +11,8 @@ import "./CodeDeployer.sol";
  * Note that this factory cannot help with contracts that have a *runtime* (deployed) bytecode larger than 24kB.
  */
 contract BaseSplitCodeFactory {
+    error Create2FailedDeployment();
+
     // The contract's creation code is stored as code in two separate addresses, and retrieved via `extcodecopy`. This
     // means this factory supports contracts with creation code of up to 48kB.
     // We rely on inline-assembly to achieve this, both to make the entire operation highly gas efficient, and because
@@ -174,12 +176,7 @@ contract BaseSplitCodeFactory {
         }
 
         if (destination == address(0)) {
-            // Bubble up inner revert reason
-            // solhint-disable-next-line no-inline-assembly
-            assembly {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            revert Create2FailedDeployment();
         }
 
         return destination;
