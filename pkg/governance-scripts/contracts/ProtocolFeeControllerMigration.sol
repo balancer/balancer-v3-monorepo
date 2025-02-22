@@ -16,7 +16,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 /**
- * @notice Migrate from the original ProtocolFeeController to one with extra events.
+ * @notice Migrate to a ProtocolFeeController with extra events and infrastructure for future migrations.
  * @dev These events enable tracking pool protocol fees under all circumstances (in particular, when protocol fees are
  * initially turned off).
  *
@@ -83,7 +83,7 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient, SingletonAu
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
 
-    // Temporary - delete after fork test. Run this before `migrateFeeController`.
+    // Temporary - delete after fork test. Run this before `migratePools`.
     function setNewFeeController(IProtocolFeeController _newFeeController) external {
         newFeeController = _newFeeController;
     }
