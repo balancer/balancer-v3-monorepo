@@ -463,8 +463,22 @@ contract ProtocolFeeController is
             isOverride: yieldFeeIsOverride
         });
 
-        _poolCreatorSwapFeePercentages[pool] = oldFeeController.getPoolCreatorSwapFeePercentage(pool);
-        _poolCreatorYieldFeePercentages[pool] = oldFeeController.getPoolCreatorYieldFeePercentage(pool);
+        // On the first migration, these functions won't exist, as they were not included in the originally deployed
+        // contract. This is ok, as the first time the contract will be migrated, there will be no pool creators.
+        // In the event a pool that did have a pool creator was missed, the pool creator can simply set the fee
+        // percentage again on the new controller. The fact that a pool has a pool creator cannot be lost, as this
+        // is stored in the Vault on initial registration.
+        try oldFeeController.getPoolCreatorSwapFeePercentage(pool) returns (uint256 poolCreatorSwapFeePercentage) {
+            _poolCreatorSwapFeePercentages[pool] = poolCreatorSwapFeePercentage;
+        } catch {
+            // solhint-disable-previous-line no-empty-blocks
+        }
+
+        try oldFeeController.getPoolCreatorYieldFeePercentage(pool) returns (uint256 poolCreatorYieldFeePercentage) {
+            _poolCreatorYieldFeePercentages[pool] = poolCreatorYieldFeePercentage;
+        } catch {
+            // solhint-disable-previous-line no-empty-blocks
+        }
     }
 
     /***************************************************************************
