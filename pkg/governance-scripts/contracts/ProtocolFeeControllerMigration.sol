@@ -9,6 +9,7 @@ import { PoolRoleAccounts, PoolConfig } from "@balancer-labs/v3-interfaces/contr
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/ProtocolFeeController.sol";
 import {
     ReentrancyGuardTransient
@@ -17,24 +18,23 @@ import {
 /**
  * @notice Migrate from the original ProtocolFeeController to one with extra events.
  * @dev These events enable tracking pool protocol fees under all circumstances (in particular, when protocol fees are
- * initially turned off). It also adds some infrastructure that makes future migrations easier, and removes redundant
- * poolCreator storage.
+ * initially turned off).
  *
- * This simple migration assumes:
- * 1) There are no pools with pool creators
- * 2) There are no pools with protocol fee exemptions or overrides
- * 3) Migrating the complete list of pools can be done in a single transaction.
+ * After deployment, call `migratePools` as many times as necessary. The list must be generated externally, as pools
+ * are not iterable on-chain. The batch interface allows an unlimited number of pools to be migrated; it's possible
+ * there might be too many to migrate in a single call.
  *
- * These simplifications enable simply calling `migrateFeeController` once with the complete list of pools.
+ * The first time `migratePools` is called, the contract will first copy the global (pool-independent data). This could
+ * be done in a separate stage, but we're trying to keep the contract simple, vs. duplicating the staging coordinator
+ * system of v2 just yet.
  *
- * After the migration, the Vault will point to the new fee controller, and any collection thereafter will go there.
- * If there are any residual fee amounts in the old fee controller (i.e., that were collected but not withdrawn),
- * governance will still need to withdraw from the old fee controller. Otherwise, no further interaction with the old
- * controller is necessary.
+ * When all pools have been migrated, call `finalizeMigration` to disable further migration, update the address in the
+ * Vault, and renounce all permissions. While `migratePools` is permissionless, this call must be permissioned to
+ * prevent premature termination in case multiple transactions are required to migrate all the pools.
  *
- * Associated with `20250221-protocol-fee-controller-migration`.
+ * Associated with `20250221-protocol-fee-controller-migration` (fork test only).
  */
-contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
+contract ProtocolFeeControllerMigration is ReentrancyGuardTransient, SingletonAuthentication {
     IProtocolFeeController public immutable oldFeeController;
     IProtocolFeeController public newFeeController;
 
@@ -46,6 +46,9 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     // Set when the operation is complete and all permissions have been renounced.
     bool internal _finalized;
 
+    // Set after the global percentages have been transferred (on the first call to `migratePools`).
+    bool internal _globalPercentagesMigrated;
+
     /**
      * @notice Attempt to deploy this contract with invalid parameters.
      * @dev ProtocolFeeController contracts return the address of the Vault they were deployed with. Ensure that both
@@ -56,7 +59,7 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     /// @notice Migration can only be performed once.
     error AlreadyMigrated();
 
-    /*constructor(IVault _vault, IProtocolFeeController _newFeeController) {
+    /*constructor(IVault _vault, IProtocolFeeController _newFeeController) SingletonAuthentication(_vault) {
         oldFeeController = _vault.getProtocolFeeController();
 
         // Ensure valid fee controllers. Also ensure that we are not trying to operate on the current fee controller.
@@ -71,7 +74,8 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     }*/
 
     // Temporary constructor used for fork testing.
-    constructor(IVault _vault) {
+
+    constructor(IVault _vault) SingletonAuthentication(_vault) {
         oldFeeController = _vault.getProtocolFeeController();
 
         vault = _vault;
@@ -83,41 +87,53 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient {
     function setNewFeeController(IProtocolFeeController _newFeeController) external {
         newFeeController = _newFeeController;
     }
+
     /**
-     * @notice Permissionless migration function.
-     * @dev Call this with the full set of pools to perform the migration. After this runs, the Vault will point to the
-     * new fee controller, which will have a copy of all the relevant state from the old controller. Also, all
-     * permissions will be revoked, and the contract will be disabled.
-     *
-     * @param pools The complete set of pools to migrate
+     * @notice Check whether migration has been completed.
+     * @dev It can only be done once.
+     * @return isComplete True if `finalizeMigration` has been called.
      */
-    function migrateFeeController(address[] memory pools) external virtual nonReentrant {
-        if (_finalized) {
+    function isMigrationComplete() public view returns (bool) {
+        return _finalized;
+    }
+
+    /**
+     * @notice Migrate pools from the old fee controller to the new one.
+     * @dev THis can be called multiple times, if there are too many pools for a single transaction. Note that the
+     * first time this is called, it will migrate the global fee percentages, then proceed with the first set of pools.
+     *
+     * @param pools The set of pools to be migrated in this call
+     */
+    function migratePools(address[] memory pools) external virtual nonReentrant {
+        if (isMigrationComplete()) {
+            revert AlreadyMigrated();
+        }
+
+        // Migrate the global percentages only once, before the first set of pools.
+        if (_globalPercentagesMigrated == false) {
+            _globalPercentagesMigrated = true;
+
+            _migrateGlobalPercentages();
+        }
+
+        // This more complex migration allows for pool creators and overrides, and uses the new features in the second
+        // deployment of the `ProtocolFeeController`.
+        //
+        // At the end of this process, governance must still withdraw any leftover protocol fees from the old
+        // controller (i.e., that have been collected but not withdrawn). Pool creators likewise would still need to
+        // withdraw any leftover pool creator fees from the old controller.
+        for (uint256 i = 0; i < pools.length; ++i) {
+            // This function is not in the public interface.
+            ProtocolFeeController(address(newFeeController)).migratePool(pools[i]);
+        }
+    }
+
+    function finalizeMigration() external virtual authenticate {
+        if (isMigrationComplete()) {
             revert AlreadyMigrated();
         }
 
         _finalized = true;
-
-        _migrateGlobalPercentages();
-
-        // This simple migration assumes that:
-        // 1) There are no pool creators, so no state related to pool creator fees (and no fees to be withdrawn).
-        // 2) There are no protocol fee exempt pools or governance overrides
-        //    (i.e., all override flags are false, and all pool fees match current global values).
-        //
-        // At the end of this process, since there are no pool creators, token balances should all be zero, unless
-        // there are "left over" protocol fees that have been collected but not withdrawn. Governance would then
-        // still have to withdraw from the old fee controller.
-        //
-        // For future migrations, when we might have pool creator fees, the pool creators would still need to withdraw
-        // them from the old controller themselves.
-        for (uint256 i = 0; i < pools.length; ++i) {
-            address pool = pools[i];
-
-            // Set pool-specific values. This assumes there are no fee exempt pools or overrides.
-            newFeeController.updateProtocolSwapFeePercentage(pool);
-            newFeeController.updateProtocolYieldFeePercentage(pool);
-        }
 
         // Update the fee controller in the Vault.
         _migrateFeeController();
