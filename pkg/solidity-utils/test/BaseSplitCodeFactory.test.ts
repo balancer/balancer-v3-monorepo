@@ -8,6 +8,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import { takeSnapshot } from '@nomicfoundation/hardhat-network-helpers';
 import { BaseSplitCodeFactory__factory } from '../typechain-types/factories/contracts/helpers/BaseSplitCodeFactory__factory';
+import { Create2__factory } from '../typechain-types';
 
 describe('BasePoolCodeFactory', function () {
   let factory: Contract;
@@ -80,7 +81,7 @@ describe('BasePoolCodeFactory', function () {
     it('reverts and bubbles up revert reasons', async () => {
       await expect(factory.create(INVALID_ID, ZERO_BYTES32)).to.be.revertedWithCustomError(
         {
-          interface: BaseSplitCodeFactory__factory.createInterface(),
+          interface: Create2__factory.createInterface(),
         },
         'Create2FailedDeployment'
       );

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import "./CodeDeployer.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
 /**
  * @dev Base factory for contracts whose creation code is so large that the factory cannot hold it. This happens when
@@ -11,8 +12,6 @@ import "./CodeDeployer.sol";
  * Note that this factory cannot help with contracts that have a *runtime* (deployed) bytecode larger than 24kB.
  */
 contract BaseSplitCodeFactory {
-    error Create2FailedDeployment();
-
     // The contract's creation code is stored as code in two separate addresses, and retrieved via `extcodecopy`. This
     // means this factory supports contracts with creation code of up to 48kB.
     // We rely on inline-assembly to achieve this, both to make the entire operation highly gas efficient, and because
@@ -160,7 +159,10 @@ contract BaseSplitCodeFactory {
             constructorArgsCodeDataPtr := add(add(code, 32), creationCodeSize)
         }
 
-        _memcpy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize);
+        // solhint-disable-next-line no-inline-assembly
+        assembly ("memory-safe") {
+            mcopy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize)
+        }
     }
 
     /**
@@ -170,41 +172,12 @@ contract BaseSplitCodeFactory {
     function _create2(bytes memory constructorArgs, bytes32 salt) internal virtual returns (address) {
         bytes memory creationCode = _getCreationCodeWithArgs(constructorArgs);
 
-        address destination;
-        assembly {
-            destination := create2(0, add(creationCode, 32), mload(creationCode), salt)
-        }
-
-        if (destination == address(0)) {
-            revert Create2FailedDeployment();
-        }
-
-        return destination;
+        return Create2.deploy(0, salt, creationCode);
     }
 
-    // From
-    // https://github.com/Arachnid/solidity-stringutils/blob/b9a6f6615cf18a87a823cbc461ce9e140a61c305/src/strings.sol
-    function _memcpy(uint256 dest, uint256 src, uint256 len) private pure {
-        // Copy word-length chunks while possible
-        for (; len >= 32; len -= 32) {
-            assembly {
-                mstore(dest, mload(src))
-            }
-            dest += 32;
-            src += 32;
-        }
+    function _getDeploymentAddress(bytes memory constructorArgs, bytes32 salt) internal view returns (address) {
+        bytes memory creationCode = _getCreationCodeWithArgs(constructorArgs);
 
-        // Don't copy the tail if len is 0
-        if (len == 0) {
-            return;
-        }
-
-        // Copy remaining bytes
-        uint256 mask = 256 ** (32 - len) - 1;
-        assembly {
-            let srcpart := and(mload(src), not(mask))
-            let destpart := and(mload(dest), mask)
-            mstore(dest, or(destpart, srcpart))
-        }
+        return Create2.computeAddress(salt, keccak256(creationCode));
     }
 }

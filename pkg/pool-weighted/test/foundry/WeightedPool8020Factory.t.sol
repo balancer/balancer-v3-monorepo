@@ -109,7 +109,7 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         _createPool(tokenA, tokenB);
 
         // Should not be able to deploy identical pool
-        vm.expectRevert(BaseSplitCodeFactory.Create2FailedDeployment.selector);
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         _createPool(tokenA, tokenB);
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
@@ -123,7 +123,7 @@ contract WeightedPool8020FactoryTest is WeightedPoolContractsDeployer, VaultCont
         tokenConfig[1].tokenType = TokenType.WITH_RATE;
 
         // Trying to create the same pool with same tokens but different token configs should revert
-        vm.expectRevert(BaseSplitCodeFactory.Create2FailedDeployment.selector);
+        vm.expectRevert(Create2.Create2FailedDeployment.selector);
         factory.create(tokenConfig[0], tokenConfig[1], roleAccounts, DEFAULT_SWAP_FEE);
     }
 

@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
-
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -57,9 +55,6 @@ abstract contract BasePoolFactory is
 
     bool private _disabled;
 
-    // Store the creationCode of the contract to be deployed by create2.
-    bytes private _creationCode;
-
     /// @notice A pool creator was specified for a pool from a Balancer core pool type.
     error StandardPoolWithCreator();
 
@@ -67,9 +62,7 @@ abstract contract BasePoolFactory is
         IVault vault,
         uint32 pauseWindowDuration,
         bytes memory creationCode
-    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
-        _creationCode = creationCode;
-    }
+    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {}
 
     /// @inheritdoc IBasePoolFactory
     function isPoolFromFactory(address pool) external view returns (bool) {
@@ -112,11 +105,9 @@ abstract contract BasePoolFactory is
 
     /// @inheritdoc IBasePoolFactory
     function getDeploymentAddress(bytes memory constructorArgs, bytes32 salt) public view returns (address) {
-        bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
-        bytes32 creationCodeHash = keccak256(creationCode);
         bytes32 finalSalt = _computeFinalSalt(salt);
 
-        return Create2.computeAddress(finalSalt, creationCodeHash);
+        return _getDeploymentAddress(constructorArgs, finalSalt);
     }
 
     /// @inheritdoc IBasePoolFactory
