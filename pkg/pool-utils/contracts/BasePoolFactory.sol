@@ -62,7 +62,9 @@ abstract contract BasePoolFactory is
         IVault vault,
         uint32 pauseWindowDuration,
         bytes memory creationCode
-    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {}
+    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /// @inheritdoc IBasePoolFactory
     function isPoolFromFactory(address pool) external view returns (bool) {
