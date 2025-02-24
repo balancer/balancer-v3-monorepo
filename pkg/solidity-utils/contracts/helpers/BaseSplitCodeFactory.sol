@@ -97,12 +97,12 @@ contract BaseSplitCodeFactory {
         }
     }
 
-     /// @dev Returns the two addresses where the creation code of the contract created by this factory is stored.
+    /// @dev Returns the two addresses where the creation code of the contract created by this factory is stored.
     function getCreationCodeContracts() public view returns (address contractA, address contractB) {
         return (_creationCodeContractA, _creationCodeContractB);
     }
 
-     /// @dev Returns the creation code of the contract this factory creates.
+    /// @dev Returns the creation code of the contract this factory creates.
     function getCreationCode() public view returns (bytes memory) {
         return _getCreationCodeWithArgs("");
     }
