@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { CommonAuthentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CommonAuthentication.sol";
+import { CommonAuthentication } from "./CommonAuthentication.sol";
 
 /**
  * @notice Base contract suitable for Singleton contracts (e.g., pool factories) that have permissioned functions.
