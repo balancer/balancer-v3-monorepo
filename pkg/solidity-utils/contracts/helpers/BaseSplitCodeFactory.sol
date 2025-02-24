@@ -102,9 +102,7 @@ contract BaseSplitCodeFactory {
         return (_creationCodeContractA, _creationCodeContractB);
     }
 
-    /**
-     * @dev Returns the creation code of the contract this factory creates.
-     */
+     /// @dev Returns the creation code of the contract this factory creates.
     function getCreationCode() public view returns (bytes memory) {
         return _getCreationCodeWithArgs("");
     }
