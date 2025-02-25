@@ -44,7 +44,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
 
     uint256 private _sqrtQ0;
     uint256 private _initSqrtQ0;
-    uint256 private _targetQ0;
+    uint256 private _targetSqrtQ0;
 
     uint256 private _startChangingQ0Timestamp;
     uint256 private _endChangingQ0Timestamp;
@@ -191,7 +191,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
 
     function setNewQ0(uint256 newQ0, uint256 startTime, uint256 endTime) external {
         _initSqrtQ0 = _updateAndGetSqrtQ0();
-        _targetQ0 = newQ0;
+        _targetSqrtQ0 = Math.sqrt(newQ0);
         _startChangingQ0Timestamp = startTime;
         _endChangingQ0Timestamp = endTime;
     }
@@ -214,8 +214,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
         uint256 currentTime = block.timestamp;
         uint256 endTime = _endChangingQ0Timestamp;
         uint256 startTime = _startChangingQ0Timestamp;
-        uint256 targetQ0 = _targetQ0;
-        uint256 targetSqrtQ0 = Math.sqrt(targetQ0);
+        uint256 targetSqrtQ0 = _targetSqrtQ0;
 
         if (currentTime > endTime && storedSqrtQ0 != targetSqrtQ0) {
             return targetSqrtQ0;
