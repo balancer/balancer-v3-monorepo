@@ -75,7 +75,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
                 balancesScaled18,
                 _virtualBalances,
                 _c,
-                _sqrtQ0,
+                _calculateCurrentQ0(),
                 _lastTimestamp,
                 _centernessMargin,
                 rounding
