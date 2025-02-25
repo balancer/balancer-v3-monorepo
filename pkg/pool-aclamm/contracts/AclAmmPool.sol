@@ -39,7 +39,14 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
     uint256[] private _virtualBalances;
 
     uint256 private _c;
+
     uint256 private _sqrtQ0;
+    uint256 private _initialSqrtQ0;
+    uint256 private _targetSqrtQ0;
+
+    uint256 private _startChangingQ0Timestamp;
+    uint256 private _endChangingQ0Timestamp;
+
     uint256 private _centernessMargin;
 
     /// @dev Struct with data for deploying a new AclAmmPool.
@@ -88,7 +95,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
             request.balancesScaled18,
             _virtualBalances,
             _c,
-            _sqrtQ0,
+            _updateAndGetSqrtQ0(),
             _lastTimestamp,
             _centernessMargin
         );
@@ -138,7 +145,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
     /// @inheritdoc IHooks
     function onBeforeInitialize(uint256[] memory balancesScaled18, bytes memory) public override returns (bool) {
         _lastTimestamp = block.timestamp;
-        _virtualBalances = AclAmmMath.initializeVirtualBalances(balancesScaled18, _sqrtQ0);
+        _virtualBalances = AclAmmMath.initializeVirtualBalances(balancesScaled18, _updateAndGetSqrtQ0());
         return true;
     }
 
@@ -170,7 +177,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
             balancesScaled18,
             _virtualBalances,
             _c,
-            _sqrtQ0,
+            _calculateCurrentQ0(),
             _lastTimestamp,
             _centernessMargin
         );
@@ -178,6 +185,44 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
 
     function getLastTimestamp() external view returns (uint256) {
         return _lastTimestamp;
+    }
+
+    function setNewQ0(uint256 newQ0, uint256 startTime, uint256 endTime) external {
+        _initialSqrtQ0 = _updateAndGetSqrtQ0();
+        _targetSqrtQ0 = newQ0;
+        _startChangingQ0Timestamp = startTime;
+        _endChangingQ0Timestamp = endTime;
+    }
+
+    function _updateAndGetSqrtQ0() internal returns (uint256) {
+        uint256 storedSqrtQ0 = _sqrtQ0;
+        uint256 currentQ0 = _calculateCurrentQ0(storedSqrtQ0);
+        if (currentQ0 != storedSqrtQ0) {
+            _setSqrtQ0(currentQ0);
+        }
+
+        return currentQ0;
+    }
+
+    function _calculateCurrentQ0() internal view returns (uint256) {
+        return _calculateCurrentQ0(_sqrtQ0);
+    }
+
+    function _calculateCurrentQ0(uint256 storedSqrtQ0) internal view returns (uint256) {
+        uint256 currentTime = block.timestamp;
+        uint256 endTime = _endChangingQ0Timestamp;
+        uint256 startTime = _startChangingQ0Timestamp;
+        uint256 targetSqrtQ0 = _targetSqrtQ0;
+
+        if (currentTime > endTime && storedSqrtQ0 != targetSqrtQ0) {
+            return targetSqrtQ0;
+        } else if (currentTime < startTime) {
+            return storedSqrtQ0;
+        }
+
+        return
+            ((endTime - currentTime) * _initialSqrtQ0 + (currentTime - startTime) * targetSqrtQ0) /
+            (endTime - startTime);
     }
 
     function _setIncreaseDayRate(uint256 increaseDayRate) internal {
