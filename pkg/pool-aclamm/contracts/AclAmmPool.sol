@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
@@ -41,8 +43,8 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
     uint256 private _c;
 
     uint256 private _sqrtQ0;
-    uint256 private _initialSqrtQ0;
-    uint256 private _targetSqrtQ0;
+    uint256 private _initSqrtQ0;
+    uint256 private _targetQ0;
 
     uint256 private _startChangingQ0Timestamp;
     uint256 private _endChangingQ0Timestamp;
@@ -75,7 +77,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
                 balancesScaled18,
                 _virtualBalances,
                 _c,
-                _calculateCurrentQ0(),
+                _calculateCurrentSqrtQ0(),
                 _lastTimestamp,
                 _centernessMargin,
                 rounding
@@ -177,7 +179,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
             balancesScaled18,
             _virtualBalances,
             _c,
-            _calculateCurrentQ0(),
+            _calculateCurrentSqrtQ0(),
             _lastTimestamp,
             _centernessMargin
         );
@@ -188,41 +190,44 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
     }
 
     function setNewQ0(uint256 newQ0, uint256 startTime, uint256 endTime) external {
-        _initialSqrtQ0 = _updateAndGetSqrtQ0();
-        _targetSqrtQ0 = newQ0;
+        _initSqrtQ0 = _updateAndGetSqrtQ0();
+        _targetQ0 = newQ0;
         _startChangingQ0Timestamp = startTime;
         _endChangingQ0Timestamp = endTime;
     }
 
     function _updateAndGetSqrtQ0() internal returns (uint256) {
         uint256 storedSqrtQ0 = _sqrtQ0;
-        uint256 currentQ0 = _calculateCurrentQ0(storedSqrtQ0);
-        if (currentQ0 != storedSqrtQ0) {
-            _setSqrtQ0(currentQ0);
+        uint256 currentSqrtQ0 = _calculateCurrentSqrtQ0(storedSqrtQ0);
+        if (currentSqrtQ0 != storedSqrtQ0) {
+            _setSqrtQ0(currentSqrtQ0);
         }
 
-        return currentQ0;
+        return currentSqrtQ0;
     }
 
-    function _calculateCurrentQ0() internal view returns (uint256) {
-        return _calculateCurrentQ0(_sqrtQ0);
+    function _calculateCurrentSqrtQ0() internal view returns (uint256) {
+        return _calculateCurrentSqrtQ0(_sqrtQ0);
     }
 
-    function _calculateCurrentQ0(uint256 storedSqrtQ0) internal view returns (uint256) {
+    function _calculateCurrentSqrtQ0(uint256 storedSqrtQ0) internal view returns (uint256) {
         uint256 currentTime = block.timestamp;
         uint256 endTime = _endChangingQ0Timestamp;
         uint256 startTime = _startChangingQ0Timestamp;
-        uint256 targetSqrtQ0 = _targetSqrtQ0;
+        uint256 targetQ0 = _targetQ0;
+        uint256 targetSqrtQ0 = Math.sqrt(targetQ0);
 
         if (currentTime > endTime && storedSqrtQ0 != targetSqrtQ0) {
             return targetSqrtQ0;
-        } else if (currentTime < startTime) {
+        } else if (currentTime > endTime) {
             return storedSqrtQ0;
         }
 
         return
-            ((endTime - currentTime) * _initialSqrtQ0 + (currentTime - startTime) * targetSqrtQ0) /
-            (endTime - startTime);
+            Math.sqrt(
+                ((endTime - currentTime) * _initSqrtQ0 + (currentTime - startTime) * targetSqrtQ0) /
+                    (endTime - startTime)
+            );
     }
 
     function _setIncreaseDayRate(uint256 increaseDayRate) internal {
