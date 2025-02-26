@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
@@ -28,6 +26,12 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import { AclAmmMath } from "./lib/AclAmmMath.sol";
 
 contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHooks {
+    struct SqrtQ0State {
+        uint256 startSqrtQ0;
+        uint256 endSqrtQ0;
+        uint256 startTime;
+        uint256 endTime;
+    }
     // uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0.001e16; // 0.001%
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
@@ -42,13 +46,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
 
     uint256 private _c;
 
-    uint256 private _sqrtQ0;
-    uint256 private _initSqrtQ0;
-    uint256 private _targetSqrtQ0;
-
-    uint256 private _startChangingQ0Timestamp;
-    uint256 private _endChangingQ0Timestamp;
-
+    SqrtQ0State private _sqrtQ0State;
     uint256 private _centernessMargin;
 
     /// @dev Struct with data for deploying a new AclAmmPool.
@@ -66,7 +64,8 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
         IVault vault
     ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
         _setIncreaseDayRate(params.increaseDayRate);
-        _setSqrtQ0(params.sqrtQ0);
+
+        _sqrtQ0State.endSqrtQ0 = params.sqrtQ0;
         _setCenternessMargin(params.centernessMargin);
     }
 
@@ -97,7 +96,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
             request.balancesScaled18,
             _virtualBalances,
             _c,
-            _updateAndGetSqrtQ0(),
+            _calculateCurrentSqrtQ0(),
             _lastTimestamp,
             _centernessMargin
         );
@@ -147,7 +146,7 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
     /// @inheritdoc IHooks
     function onBeforeInitialize(uint256[] memory balancesScaled18, bytes memory) public override returns (bool) {
         _lastTimestamp = block.timestamp;
-        _virtualBalances = AclAmmMath.initializeVirtualBalances(balancesScaled18, _updateAndGetSqrtQ0());
+        _virtualBalances = AclAmmMath.initializeVirtualBalances(balancesScaled18, _calculateCurrentSqrtQ0());
         return true;
     }
 
@@ -189,52 +188,30 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
         return _lastTimestamp;
     }
 
-    function setNewQ0(uint256 newQ0, uint256 startTime, uint256 endTime) external {
-        _initSqrtQ0 = _updateAndGetSqrtQ0();
-        _targetSqrtQ0 = Math.sqrt(newQ0);
-        _startChangingQ0Timestamp = startTime;
-        _endChangingQ0Timestamp = endTime;
-    }
-
-    function _updateAndGetSqrtQ0() internal returns (uint256) {
-        uint256 storedSqrtQ0 = _sqrtQ0;
-        uint256 currentSqrtQ0 = _calculateCurrentSqrtQ0(storedSqrtQ0);
-        if (currentSqrtQ0 != storedSqrtQ0) {
-            _setSqrtQ0(currentSqrtQ0);
-        }
-
-        return currentSqrtQ0;
+    // TODO: permissions
+    function setSqrtQ0(uint256 newSqrtQ0, uint256 startTime, uint256 endTime) external {
+        _sqrtQ0State.startSqrtQ0 = _calculateCurrentSqrtQ0();
+        _sqrtQ0State.endSqrtQ0 = newSqrtQ0;
+        _sqrtQ0State.startTime = startTime;
+        _sqrtQ0State.endTime = endTime;
     }
 
     function _calculateCurrentSqrtQ0() internal view returns (uint256) {
-        return _calculateCurrentSqrtQ0(_sqrtQ0);
-    }
-
-    function _calculateCurrentSqrtQ0(uint256 storedSqrtQ0) internal view returns (uint256) {
+        SqrtQ0State memory sqrtQ0State = _sqrtQ0State;
         uint256 currentTime = block.timestamp;
-        uint256 endTime = _endChangingQ0Timestamp;
-        uint256 startTime = _startChangingQ0Timestamp;
-        uint256 targetSqrtQ0 = _targetSqrtQ0;
-
-        if (currentTime > endTime && storedSqrtQ0 != targetSqrtQ0) {
-            return targetSqrtQ0;
-        } else if (currentTime > endTime) {
-            return storedSqrtQ0;
-        }
 
         return
-            Math.sqrt(
-                ((endTime - currentTime) * _initSqrtQ0 + (currentTime - startTime) * targetSqrtQ0) /
-                    (endTime - startTime)
+            AclAmmMath.calculateSqrtQ0(
+                currentTime,
+                sqrtQ0State.startSqrtQ0,
+                sqrtQ0State.endSqrtQ0,
+                sqrtQ0State.startTime,
+                sqrtQ0State.endTime
             );
     }
 
     function _setIncreaseDayRate(uint256 increaseDayRate) internal {
         _c = AclAmmMath.parseIncreaseDayRate(increaseDayRate);
-    }
-
-    function _setSqrtQ0(uint256 sqrtQ0) internal {
-        _sqrtQ0 = sqrtQ0;
     }
 
     function _setCenternessMargin(uint256 centernessMargin) internal {
