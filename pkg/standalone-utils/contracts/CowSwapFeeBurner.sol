@@ -20,6 +20,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 // solhint-disable not-rely-on-time
@@ -30,7 +31,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, Version, ERC165, SingletonAuthentication {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -55,8 +56,9 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication 
         IVault _vault,
         IComposableCow _composableCow,
         address _vaultRelayer,
-        bytes32 _appData
-    ) SingletonAuthentication(_vault) {
+        bytes32 _appData,
+        string memory _version
+    ) Version(_version) SingletonAuthentication(_vault) {
         composableCow = _composableCow;
         vaultRelayer = _vaultRelayer;
         appData = _appData;

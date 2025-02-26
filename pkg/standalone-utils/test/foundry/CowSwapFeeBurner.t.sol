@@ -58,7 +58,8 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             vault,
             IComposableCow(composableCowMock),
             vaultRelayerMock,
-            APP_DATA_HASH
+            APP_DATA_HASH,
+            "v1"
         );
 
         (feeRecipient, ) = makeAddrAndKey("feeRecipient");
