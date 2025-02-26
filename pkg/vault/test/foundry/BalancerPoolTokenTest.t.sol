@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 
@@ -13,6 +12,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { IERC165 } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IERC165.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
