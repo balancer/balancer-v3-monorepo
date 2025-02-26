@@ -6,7 +6,11 @@ import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import {
+    SqrtQ0State,
+    AclAmmPoolParams,
+    IAclAmmPool
+} from "@balancer-labs/v3-interfaces/contracts/pool-aclamm/IAclAmmPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import {
@@ -20,18 +24,21 @@ import {
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import { BasePoolAuthentication } from "@balancer-labs/v3-pool-utils/contracts/BasePoolAuthentication.sol";
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { AclAmmMath } from "./lib/AclAmmMath.sol";
 
-contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHooks {
-    struct SqrtQ0State {
-        uint256 startSqrtQ0;
-        uint256 endSqrtQ0;
-        uint256 startTime;
-        uint256 endTime;
-    }
+contract AclAmmPool is
+    IAclAmmPool,
+    IUnbalancedLiquidityInvariantRatioBounds,
+    BalancerPoolToken,
+    BasePoolAuthentication,
+    PoolInfo,
+    Version,
+    BaseHooks
+{
     // uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0.001e16; // 0.001%
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
@@ -41,23 +48,11 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 70e16; // 70%
 
-    uint256 private _lastTimestamp;
-    uint256[] private _virtualBalances;
-
-    uint256 private _c;
-
     SqrtQ0State private _sqrtQ0State;
+    uint256 private _lastTimestamp;
+    uint256 private _c;
     uint256 private _centernessMargin;
-
-    /// @dev Struct with data for deploying a new AclAmmPool.
-    struct AclAmmPoolParams {
-        string name;
-        string symbol;
-        string version;
-        uint256 increaseDayRate;
-        uint256 sqrtQ0;
-        uint256 centernessMargin;
-    }
+    uint256[] private _virtualBalances;
 
     constructor(
         AclAmmPoolParams memory params,
@@ -188,8 +183,11 @@ contract AclAmmPool is BalancerPoolToken, PoolInfo, Version, IBasePool, BaseHook
         return _lastTimestamp;
     }
 
-    // TODO: permissions
-    function setSqrtQ0(uint256 newSqrtQ0, uint256 startTime, uint256 endTime) external {
+    function setSqrtQ0(
+        uint256 newSqrtQ0,
+        uint256 startTime,
+        uint256 endTime
+    ) external onlySwapFeeManagerOrGovernance(address(this)) {
         _sqrtQ0State.startSqrtQ0 = _calculateCurrentSqrtQ0();
         _sqrtQ0State.endSqrtQ0 = newSqrtQ0;
         _sqrtQ0State.startTime = startTime;

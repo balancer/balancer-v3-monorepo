@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -157,10 +156,8 @@ library AclAmmMath {
             return endSqrtQ0;
         }
 
-        uint256 numerator = (Math.sqrt(endTime - currentTime) * startSqrtQ0) +
-            (Math.sqrt(currentTime - startTime) * endSqrtQ0);
-
-        uint256 denominator = Math.sqrt(endTime - startTime);
+        uint256 numerator = ((endTime - currentTime) * startSqrtQ0) + ((currentTime - startTime) * endSqrtQ0);
+        uint256 denominator = endTime - startTime;
 
         return numerator.divDown(denominator);
     }
