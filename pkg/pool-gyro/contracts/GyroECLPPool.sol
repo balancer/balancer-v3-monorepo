@@ -3,7 +3,7 @@
 // <https://github.com/gyrostable/concentrated-lps>.
 
 pragma solidity ^0.8.27;
-
+import {console2} from "forge-std/console2.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -154,6 +154,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
 
     /// @inheritdoc IBasePool
     function onSwap(PoolSwapParams memory request) external view onlyVault returns (uint256) {
+        console2.log("onSwap");
         // The Vault already checks that index in != index out.
         bool tokenInIsToken0 = request.indexIn == 0;
 

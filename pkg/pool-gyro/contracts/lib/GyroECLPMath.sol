@@ -3,7 +3,7 @@
 // <https://github.com/gyrostable/concentrated-lps>.
 
 pragma solidity ^0.8.27;
-
+import {console2} from "forge-std/console2.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
@@ -559,6 +559,8 @@ library GyroECLPMath {
         int256 balInNew = (balances[ixIn] + amountIn).toInt256(); // checked because amountIn is given by the user.
         checkAssetBounds(params, derived, invariant, balInNew, ixIn);
         int256 balOutNew = calcGiven(balInNew, params, derived, invariant);
+        console2.log("check");
+        console2.log(balOutNew);
         // Make sub checked as an extra check against numerical error; but this really should never happen
         amountOut = balances[ixOut] - balOutNew.toUint256();
         // The above line guarantees that amountOut <= balances[ixOut].
@@ -646,6 +648,8 @@ library GyroECLPMath {
 
         // Now compute the argument of the square root.
         q.c = -calcXpXpDivLambdaLambda(x, r, lambda, s, c, tauBeta, dSq);
+        console2.log("solveQuadraticSwap");
+        console2.log(q.c);
         q.c = q.c + r.y.mulDownMagU(r.y).mulDownXpToNpU(sTerm.y);
         // The square root is always being subtracted, so round it down to overestimate the end balance.
         // Mathematically, terms in square root > 0, so treat as 0 if it is < 0 because of rounding error.
