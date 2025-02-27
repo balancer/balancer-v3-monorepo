@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -36,6 +37,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
     uint256 constant TEST_BURN_AMOUNT = 1e18;
     uint256 constant MIN_TARGET_TOKEN_AMOUNT = 1e18;
     uint256 constant ORDER_LIFETIME = 1 days;
+    string constant VERSION = "v1";
 
     uint256 internal orderDeadline;
 
@@ -59,7 +61,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
             IComposableCow(composableCowMock),
             vaultRelayerMock,
             APP_DATA_HASH,
-            "v1"
+            VERSION
         );
 
         (feeRecipient, ) = makeAddrAndKey("feeRecipient");
@@ -745,6 +747,10 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         SafeERC20.safeTransferFrom(dai, address(cowSwapFeeBurner), vaultRelayerMock, TEST_BURN_AMOUNT);
 
         assertEq(cowSwapFeeBurner.getOrderStatus(dai), ICowSwapFeeBurner.OrderStatus.Filled, "Order should be filled");
+    }
+
+    function testVersion() public view {
+        assertEq(IVersion(address(cowSwapFeeBurner)).version(), VERSION, "Wrong version");
     }
 
     function assertEq(GPv2Order memory left, GPv2Order memory right, string memory message) internal pure {
