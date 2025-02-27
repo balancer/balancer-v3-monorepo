@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -17,7 +18,6 @@ import {
     ICowConditionalOrder,
     GPv2Order
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
-import { IERC165 } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IERC165.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 

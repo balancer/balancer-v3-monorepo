@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0 <0.9.0;
 
-import { IERC165 } from "../solidity-utils/misc/IERC165.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 import { ICowConditionalOrder, GPv2Order } from "./ICowConditionalOrder.sol";
 
 /**
