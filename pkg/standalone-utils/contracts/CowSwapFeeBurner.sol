@@ -3,9 +3,8 @@
 pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
@@ -31,7 +30,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication, Version {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Version {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -230,7 +229,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication,
     }
 
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) public view override(ERC165, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
         // Fails on SignatureVerifierMuxer due to compatibility issues with ComposableCow.
         if (interfaceId == _SIGNATURE_VERIFIER_MUXER_INTERFACE) {
             revert InterfaceIsSignatureVerifierMuxer();
@@ -240,7 +239,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication,
             interfaceId == type(ICowConditionalOrder).interfaceId ||
             interfaceId == type(ICowConditionalOrderGenerator).interfaceId ||
             interfaceId == type(IERC1271).interfaceId ||
-            super.supportsInterface(interfaceId);
+            interfaceId == type(IERC165).interfaceId;
     }
 
     /***************************************************************************
