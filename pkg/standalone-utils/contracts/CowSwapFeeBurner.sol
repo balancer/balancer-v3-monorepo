@@ -58,7 +58,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ERC165, SingletonAuthentication,
         address _vaultRelayer,
         bytes32 _appData,
         string memory _version
-    ) Version(_version) SingletonAuthentication(_vault) {
+    ) SingletonAuthentication(_vault) Version(_version) {
         composableCow = _composableCow;
         vaultRelayer = _vaultRelayer;
         appData = _appData;
