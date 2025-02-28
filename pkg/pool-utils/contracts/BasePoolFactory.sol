@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
-
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -12,6 +10,7 @@ import {
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { BaseSplitCodeFactory } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
@@ -45,14 +44,16 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * Nevertheless, this is a factor to consider when launching new pools. To avoid any possibility of frontrunning,
  * the best practice would be to create (i.e., deploy and register) and initialize in the same transaction.
  */
-abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
+abstract contract BasePoolFactory is
+    IBasePoolFactory,
+    BaseSplitCodeFactory,
+    SingletonAuthentication,
+    FactoryWidePauseWindow
+{
     mapping(address pool => bool isFromFactory) private _isPoolFromFactory;
     address[] private _pools;
 
     bool private _disabled;
-
-    // Store the creationCode of the contract to be deployed by create2.
-    bytes private _creationCode;
 
     /// @notice A pool creator was specified for a pool from a Balancer core pool type.
     error StandardPoolWithCreator();
@@ -61,8 +62,8 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         IVault vault,
         uint32 pauseWindowDuration,
         bytes memory creationCode
-    ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
-        _creationCode = creationCode;
+    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -106,11 +107,9 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     /// @inheritdoc IBasePoolFactory
     function getDeploymentAddress(bytes memory constructorArgs, bytes32 salt) public view returns (address) {
-        bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
-        bytes32 creationCodeHash = keccak256(creationCode);
         bytes32 finalSalt = _computeFinalSalt(salt);
 
-        return Create2.computeAddress(finalSalt, creationCodeHash);
+        return _getDeploymentAddress(constructorArgs, finalSalt);
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -147,9 +146,8 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
-        bytes memory creationCode = abi.encodePacked(_creationCode, constructorArgs);
         bytes32 finalSalt = _computeFinalSalt(salt);
-        pool = Create2.deploy(0, finalSalt, creationCode);
+        pool = _create2(constructorArgs, finalSalt);
 
         _registerPoolWithFactory(pool);
     }
