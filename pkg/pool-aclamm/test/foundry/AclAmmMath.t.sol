@@ -103,4 +103,48 @@ contract AclAmmMathTest is Test {
             assertEq(isAboveCenter, balance0.divDown(balance1) > virtualBalance0.divDown(virtualBalance1));
         }
     }
+
+    function testCalculateSqrtQ0__Fuzz(
+        uint256 currentTime,
+        uint256 startSqrtQ0,
+        uint256 endSqrtQ0,
+        uint256 startTime,
+        uint256 endTime
+    ) public view {
+        endTime = bound(endTime, 2, type(uint64).max);
+        startTime = bound(startTime, 1, endTime - 1);
+        currentTime = bound(currentTime, startTime, endTime);
+
+        console.log("currentTime: %s", currentTime);
+        console.log("startSqrtQ0: %s", startSqrtQ0);
+        console.log("endSqrtQ0: %s", endSqrtQ0);
+        console.log("startTime: %s", startTime);
+        console.log("endTime: %s", endTime);
+
+        endSqrtQ0 = bound(endSqrtQ0, 1, type(uint128).max);
+        startSqrtQ0 = bound(endSqrtQ0, 1, type(uint128).max);
+
+        uint256 sqrtQ0 = AclAmmMath.calculateSqrtQ0(currentTime, startSqrtQ0, endSqrtQ0, startTime, endTime);
+
+        currentTime++;
+        uint256 nextSqrtQ0 = AclAmmMath.calculateSqrtQ0(currentTime, startSqrtQ0, endSqrtQ0, startTime, endTime);
+
+        if (startSqrtQ0 >= endSqrtQ0) {
+            assertLe(nextSqrtQ0, sqrtQ0, "Next sqrtQ0 should be less than current sqrtQ0");
+        } else {
+            assertGe(nextSqrtQ0, sqrtQ0, "Next sqrtQ0 should be greater than current sqrtQ0");
+        }
+    }
+
+    function testCalculateSqrtQ0WhenCurrentTimeIsAfterEndTime() public pure {
+        uint256 startSqrtQ0 = 100;
+        uint256 endSqrtQ0 = 200;
+        uint256 startTime = 0;
+        uint256 endTime = 50;
+        uint256 currentTime = 100;
+
+        uint256 sqrtQ0 = AclAmmMath.calculateSqrtQ0(currentTime, startSqrtQ0, endSqrtQ0, startTime, endTime);
+    
+        assertEq(sqrtQ0, endSqrtQ0, "SqrtQ0 should be equal to endSqrtQ0");
+    }
 }

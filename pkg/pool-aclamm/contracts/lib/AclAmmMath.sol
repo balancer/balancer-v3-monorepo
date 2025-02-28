@@ -145,6 +145,23 @@ library AclAmmMath {
         }
     }
 
+    function calculateSqrtQ0(
+        uint256 currentTime,
+        uint256 startSqrtQ0,
+        uint256 endSqrtQ0,
+        uint256 startTime,
+        uint256 endTime
+    ) internal pure returns (uint256) {
+        if (currentTime > endTime) {
+            return endSqrtQ0;
+        }
+
+        uint256 numerator = ((endTime - currentTime) * startSqrtQ0) + ((currentTime - startTime) * endSqrtQ0);
+        uint256 denominator = endTime - startTime;
+
+        return numerator / denominator;
+    }
+
     function isAboveCenter(
         uint256[] memory balancesScaled18,
         uint256[] memory virtualBalances

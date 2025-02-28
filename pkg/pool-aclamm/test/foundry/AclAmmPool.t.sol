@@ -11,6 +11,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BaseAclAmmTest } from "./utils/BaseAclAmmTest.sol";
 import { AclAmmPool } from "../../contracts/AclAmmPool.sol";
+import { AclAmmMath } from "../../contracts/lib/AclAmmMath.sol";
 
 contract AclAmmPoolTest is BaseAclAmmTest {
     using FixedPoint for uint256;
@@ -137,5 +138,31 @@ contract AclAmmPoolTest is BaseAclAmmTest {
     function _random() private returns (uint256) {
         counter++;
         return uint256(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, counter)));
+    }
+
+    function testGetCurrentSqrtQ0() public {
+        uint256 sqrtQ0 = AclAmmPool(pool).getCurrentSqrtQ0();
+        assertEq(sqrtQ0, _DEFAULT_SQRT_Q0, "Invalid default sqrtQ0");
+    }
+
+    function testSetSqrtQ0() public {
+        uint256 newSqrtQ0 = 2e18;
+        uint256 startTime = block.timestamp;
+        uint256 duration = 1 hours;
+        uint256 endTime = block.timestamp + duration;
+
+        uint256 startSqrtQ0 = AclAmmPool(pool).getCurrentSqrtQ0();
+        vm.prank(admin);
+        AclAmmPool(pool).setSqrtQ0(newSqrtQ0, startTime, endTime);
+
+        skip(duration / 2);
+        uint256 sqrtQ0 = AclAmmPool(pool).getCurrentSqrtQ0();
+        uint256 mathSqrtQ0 = AclAmmMath.calculateSqrtQ0(block.timestamp, startSqrtQ0, newSqrtQ0, startTime, endTime);
+
+        assertEq(sqrtQ0, mathSqrtQ0, "SqrtQ0 not updated correctly");
+
+        skip(duration / 2 + 1);
+        sqrtQ0 = AclAmmPool(pool).getCurrentSqrtQ0();
+        assertEq(sqrtQ0, newSqrtQ0, "SqrtQ0 does not match new value");
     }
 }
