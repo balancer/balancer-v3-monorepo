@@ -59,7 +59,7 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient, SingletonAu
     /// @notice Migration can only be performed once.
     error AlreadyMigrated();
 
-    /*constructor(IVault _vault, IProtocolFeeController _newFeeController) SingletonAuthentication(_vault) {
+    constructor(IVault _vault, IProtocolFeeController _newFeeController) SingletonAuthentication(_vault) {
         oldFeeController = _vault.getProtocolFeeController();
 
         // Ensure valid fee controllers. Also ensure that we are not trying to operate on the current fee controller.
@@ -71,21 +71,6 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient, SingletonAu
         newFeeController = _newFeeController;
 
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
-    }*/
-
-    // Temporary constructor used for fork testing.
-
-    constructor(IVault _vault) SingletonAuthentication(_vault) {
-        oldFeeController = _vault.getProtocolFeeController();
-
-        vault = _vault;
-
-        _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
-    }
-
-    // Temporary - delete after fork test. Run this before `migratePools`.
-    function setNewFeeController(IProtocolFeeController _newFeeController) external {
-        newFeeController = _newFeeController;
     }
 
     /**
