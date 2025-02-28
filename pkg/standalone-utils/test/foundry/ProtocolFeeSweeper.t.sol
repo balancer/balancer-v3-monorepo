@@ -28,6 +28,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
     IProtocolFeeBurner internal feeBurner;
     IProtocolFeeBurner internal feeBurner2;
+    IProtocolFeeBurner internal feeBurner3;
 
     address internal feeRecipient;
 
@@ -39,6 +40,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         feeSweeper = new ProtocolFeeSweeper(vault, feeRecipient);
         feeBurner = new ProtocolFeeBurnerMock();
         feeBurner2 = new ProtocolFeeBurnerMock();
+        feeBurner3 = new ProtocolFeeBurnerMock();
 
         authorizer.grantRole(
             IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.setFeeRecipient.selector),
@@ -102,6 +104,15 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         feeSweeper.setFeeRecipient(alice);
 
         assertEq(feeSweeper.getFeeRecipient(), alice, "Wrong fee recipient");
+
+        vm.prank(alice);
+        feeSweeper.setFeeRecipient(bob);
+        assertEq(feeSweeper.getFeeRecipient(), bob, "Wrong new fee recipient");
+
+        // Admin can still set fee recipient
+        vm.prank(admin);
+        feeSweeper.setFeeRecipient(lp);
+        assertEq(feeSweeper.getFeeRecipient(), lp, "Wrong final fee recipient");
     }
 
     function testSetFeeRecipientEmitsEvent() public {
@@ -121,7 +132,12 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vm.prank(admin);
         feeSweeper.setTargetToken(usdc);
 
-        assertEq(address(feeSweeper.getTargetToken()), address(usdc), "Wrong target token");
+        assertEq(address(feeSweeper.getTargetToken()), address(usdc), "Wrong target token (usdc)");
+
+        // Fee recipient can also set target token.
+        vm.prank(feeRecipient);
+        feeSweeper.setTargetToken(dai);
+        assertEq(address(feeSweeper.getTargetToken()), address(dai), "Wrong target token (dai)");
     }
 
     function testSetTargetTokenEmitsEvent() public {
@@ -194,7 +210,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(feeRecipient)), 0, "Initial recipient DAI balance non-zero");
         assertEq(usdc.balanceOf(address(feeRecipient)), 0, "Initial recipient USDC balance non-zero");
 
-        vm.startPrank(admin);
+        vm.prank(admin);
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, dai, DEFAULT_AMOUNT, feeRecipient);
 
@@ -203,8 +219,9 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
+        // Fee recipient can also sweep fees.
+        vm.prank(feeRecipient);
         feeSweeper.sweepProtocolFeesForToken(pool, usdc, 0, MAX_UINT256, IProtocolFeeBurner(address(0)));
-        vm.stopPrank();
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
         assertEq(usdc.balanceOf(address(feeController)), 0, "USDC not withdrawn");
@@ -328,6 +345,11 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)), "Standard fee burner is not approved");
         assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner2)), "Second fee burner is not approved");
+
+        // Fee recipient can also add burners.
+        vm.prank(feeRecipient);
+        feeSweeper.addProtocolFeeBurner(feeBurner3);
+        assertTrue(feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner3)), "Third fee burner is not approved");
     }
 
     function testAddDuplicateFeeBurner() public {
@@ -358,6 +380,16 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         assertFalse(
             feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner)),
             "Standard fee burner is still approved"
+        );
+
+        // Fee recipient can also remove.
+        vm.prank(admin);
+        feeSweeper.addProtocolFeeBurner(feeBurner2);
+        vm.prank(feeRecipient);
+        feeSweeper.removeProtocolFeeBurner(feeBurner2);
+        assertFalse(
+            feeSweeper.isApprovedProtocolFeeBurner(address(feeBurner2)),
+            "Standard fee burner2 is still approved"
         );
     }
 

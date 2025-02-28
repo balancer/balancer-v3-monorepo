@@ -14,6 +14,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { BaseSplitCodeFactory } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";

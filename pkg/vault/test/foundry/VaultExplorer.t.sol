@@ -750,6 +750,12 @@ contract VaultExplorerTest is BaseVaultTest {
         feeController.updateProtocolYieldFeePercentage(pool);
     }
 
+    function testIsERC4626BufferInitialized() public {
+        _setupBuffer();
+        bool isInitialized = explorer.isERC4626BufferInitialized(waDAI);
+        assertTrue(isInitialized, "Buffer is not initialized");
+    }
+
     function testGetBufferOwnerShares() public {
         _setupBuffer();
 
