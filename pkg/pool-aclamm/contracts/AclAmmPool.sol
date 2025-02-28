@@ -13,6 +13,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/pool-aclamm/IAclAmmPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     Rounding,
     PoolSwapParams,
@@ -31,11 +32,11 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import { AclAmmMath } from "./lib/AclAmmMath.sol";
 
 contract AclAmmPool is
-    IAclAmmPool,
     IUnbalancedLiquidityInvariantRatioBounds,
+    IAclAmmPool,
     BalancerPoolToken,
-    BasePoolAuthentication,
     PoolInfo,
+    BasePoolAuthentication,
     Version,
     BaseHooks
 {
@@ -57,7 +58,12 @@ contract AclAmmPool is
     constructor(
         AclAmmPoolParams memory params,
         IVault vault
-    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
+    )
+        BalancerPoolToken(vault, params.name, params.symbol)
+        PoolInfo(vault)
+        BasePoolAuthentication(vault, msg.sender)
+        Version(params.version)
+    {
         _setIncreaseDayRate(params.increaseDayRate);
 
         _sqrtQ0State.endSqrtQ0 = params.sqrtQ0;
@@ -134,7 +140,7 @@ contract AclAmmPool is
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public override returns (bool) {
+    ) public pure override returns (bool) {
         return true;
     }
 
@@ -165,6 +171,7 @@ contract AclAmmPool is
         return _MAX_INVARIANT_RATIO;
     }
 
+    /// @inheritdoc IAclAmmPool
     function getLastVirtualBalances() external view returns (uint256[] memory virtualBalances) {
         (, , uint256[] memory balancesScaled18, ) = _vault.getPoolTokenInfo(address(this));
 
@@ -179,10 +186,12 @@ contract AclAmmPool is
         );
     }
 
+    /// @inheritdoc IAclAmmPool
     function getLastTimestamp() external view returns (uint256) {
         return _lastTimestamp;
     }
 
+    /// @inheritdoc IAclAmmPool
     function setSqrtQ0(
         uint256 newSqrtQ0,
         uint256 startTime,
