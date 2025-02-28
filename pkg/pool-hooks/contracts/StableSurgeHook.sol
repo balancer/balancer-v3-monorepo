@@ -88,9 +88,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         _;
     }
 
-    // Store the current threshold for each pool.
-    mapping(address pool => uint256 threshold) private _surgeThresholdPercentage;
-
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
