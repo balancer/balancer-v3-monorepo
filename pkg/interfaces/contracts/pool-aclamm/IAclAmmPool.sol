@@ -28,5 +28,7 @@ interface IAclAmmPool is IBasePool {
 
     function getLastTimestamp() external view returns (uint256);
 
+    function getCurrentSqrtQ0() external view returns (uint256);
+
     function setSqrtQ0(uint256 newSqrtQ0, uint256 startTime, uint256 endTime) external;
 }

@@ -62,6 +62,8 @@ contract BaseAclAmmTest is AclAmmPoolContractsDeployer, BaseVaultTest {
 
         PoolRoleAccounts memory roleAccounts;
 
+        roleAccounts = PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: admin, poolCreator: address(0) });
+
         newPool = AclAmmPoolFactory(poolFactory).create(
             name,
             symbol,

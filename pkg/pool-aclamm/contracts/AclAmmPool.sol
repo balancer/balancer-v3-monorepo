@@ -192,6 +192,11 @@ contract AclAmmPool is
     }
 
     /// @inheritdoc IAclAmmPool
+    function getCurrentSqrtQ0() external view override returns (uint256) {
+        return _calculateCurrentSqrtQ0();
+    }
+
+    /// @inheritdoc IAclAmmPool
     function setSqrtQ0(
         uint256 newSqrtQ0,
         uint256 startTime,

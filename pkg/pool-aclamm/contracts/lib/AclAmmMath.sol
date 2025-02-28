@@ -159,7 +159,7 @@ library AclAmmMath {
         uint256 numerator = ((endTime - currentTime) * startSqrtQ0) + ((currentTime - startTime) * endSqrtQ0);
         uint256 denominator = endTime - startTime;
 
-        return numerator.divDown(denominator);
+        return numerator / denominator;
     }
 
     function isAboveCenter(
