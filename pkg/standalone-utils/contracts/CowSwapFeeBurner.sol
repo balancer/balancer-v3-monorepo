@@ -127,7 +127,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Version
 
     /// @inheritdoc IProtocolFeeBurner
     function burn(
-        address pool,
         IERC20 feeToken,
         uint256 feeTokenAmount,
         IERC20 targetToken,
@@ -162,7 +161,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Version
             deadline: uint32(deadline)
         });
 
-        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minAmountOut, recipient);
+        emit ProtocolFeeBurned(feeToken, feeTokenAmount, targetToken, minAmountOut, recipient);
     }
 
     /***************************************************************************
