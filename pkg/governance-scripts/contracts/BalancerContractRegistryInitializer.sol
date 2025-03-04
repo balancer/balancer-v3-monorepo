@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasicAuthorizer } from "@balancer-labs/v3-interfaces/contracts/governance-scripts/IBasicAuthorizer.sol";
 import {
     IBalancerContractRegistry,
     ContractType
@@ -11,8 +12,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-
-import { IBasicAuthorizer } from "./IBasicAuthorizer.sol";
 
 // Associated with `20250221-balancer-registry-initializer`.
 contract BalancerContractRegistryInitializer {
