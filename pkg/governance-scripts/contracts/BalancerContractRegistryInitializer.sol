@@ -91,7 +91,11 @@ contract BalancerContractRegistryInitializer {
 
         // Add Routers.
         for (uint256 i = 0; i < _routerNames.length; ++i) {
-            balancerContractRegistry.registerBalancerContract(ContractType.ROUTER, _routerNames[i], _routerAddresses[i]);
+            balancerContractRegistry.registerBalancerContract(
+                ContractType.ROUTER,
+                _routerNames[i],
+                _routerAddresses[i]
+            );
         }
 
         // Add Pool Factories.
