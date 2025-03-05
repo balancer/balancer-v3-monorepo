@@ -6,10 +6,6 @@ import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativ
 import { random } from 'lodash';
 import { calculateSqrtQ0 } from '@balancer-labs/v3-helpers/src/math/aclAmm';
 
-const MAX_RELATIVE_ERROR = 0.0001; // Max relative error
-
-// TODO: Test this math by checking extremes values for the amplification field (0 and infinite)
-// to verify that it equals constant sum and constant product (weighted) invariants.
 
 describe('AclAmmMath', function () {
   let mock: Contract;
