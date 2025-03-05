@@ -55,7 +55,7 @@ contract AclAmmPoolTest is BaseAclAmmTest {
 
             if (swapAmount != 0) {
                 vm.prank(bob);
-                uint256 amountOut = router.swapSingleTokenExactIn(
+                router.swapSingleTokenExactIn(
                     pool,
                     IERC20(tokenInIndex == daiIdx ? dai : usdc),
                     IERC20(tokenOutIndex == daiIdx ? dai : usdc),
@@ -87,7 +87,7 @@ contract AclAmmPoolTest is BaseAclAmmTest {
         uint256[] memory virtualBalances = AclAmmPool(pool).getLastVirtualBalances();
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
 
-        uint256 currentPoolPriceDai = _getCurrentDaiPoolPrice();
+        // uint256 currentPoolPriceDai = _getCurrentDaiPoolPrice();
 
         console2.log("balances[0]:              %s", balances[0]);
         console2.log("balances[1]:              %s", balances[1]);
@@ -140,7 +140,7 @@ contract AclAmmPoolTest is BaseAclAmmTest {
         return uint256(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, counter)));
     }
 
-    function testGetCurrentSqrtQ0() public {
+    function testGetCurrentSqrtQ0() public view {
         uint256 sqrtQ0 = AclAmmPool(pool).getCurrentSqrtQ0();
         assertEq(sqrtQ0, _DEFAULT_SQRT_Q0, "Invalid default sqrtQ0");
     }

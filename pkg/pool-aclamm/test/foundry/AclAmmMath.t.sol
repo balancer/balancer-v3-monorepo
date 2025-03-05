@@ -110,16 +110,10 @@ contract AclAmmMathTest is Test {
         uint256 endSqrtQ0,
         uint256 startTime,
         uint256 endTime
-    ) public view {
+    ) public pure {
         endTime = bound(endTime, 2, type(uint64).max);
         startTime = bound(startTime, 1, endTime - 1);
         currentTime = bound(currentTime, startTime, endTime);
-
-        console.log("currentTime: %s", currentTime);
-        console.log("startSqrtQ0: %s", startSqrtQ0);
-        console.log("endSqrtQ0: %s", endSqrtQ0);
-        console.log("startTime: %s", startTime);
-        console.log("endTime: %s", endTime);
 
         endSqrtQ0 = bound(endSqrtQ0, 1, type(uint128).max);
         startSqrtQ0 = bound(endSqrtQ0, 1, type(uint128).max);
@@ -144,7 +138,7 @@ contract AclAmmMathTest is Test {
         uint256 currentTime = 100;
 
         uint256 sqrtQ0 = AclAmmMath.calculateSqrtQ0(currentTime, startSqrtQ0, endSqrtQ0, startTime, endTime);
-    
+
         assertEq(sqrtQ0, endSqrtQ0, "SqrtQ0 should be equal to endSqrtQ0");
     }
 }
