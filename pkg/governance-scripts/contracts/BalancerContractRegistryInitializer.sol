@@ -23,14 +23,14 @@ contract BalancerContractRegistryInitializer {
     // Set to true when operation is complete.
     bool private _initialized;
 
-    string[] private routerNames;
-    address[] private routerAddresses;
+    string[] private _routerNames;
+    address[] private _routerAddresses;
 
-    string[] private poolFactoryNames;
-    address[] private poolFactoryAddresses;
+    string[] private _poolFactoryNames;
+    address[] private _poolFactoryAddresses;
 
-    string[] private aliasNames;
-    address[] private aliasAddresses;
+    string[] private _aliasNames;
+    address[] private _aliasAddresses;
 
     /// @notice The initialization can only be done once.
     error AlreadyInitialized();
@@ -40,32 +40,32 @@ contract BalancerContractRegistryInitializer {
 
     constructor(
         IVault vault,
-        IBalancerContractRegistry _balancerContractRegistry,
-        string[] memory _routerNames,
-        address[] memory _routerAddresses,
-        string[] memory _poolFactoryNames,
-        address[] memory _poolFactoryAddresses,
-        string[] memory _aliasNames,
-        address[] memory _aliasAddresses
+        IBalancerContractRegistry balancerContractRegistry_,
+        string[] memory routerNames,
+        address[] memory routerAddresses,
+        string[] memory poolFactoryNames,
+        address[] memory poolFactoryAddresses,
+        string[] memory aliasNames,
+        address[] memory aliasAddresses
     ) {
         InputHelpers.ensureInputLengthMatch(_routerNames.length, _routerAddresses.length);
         InputHelpers.ensureInputLengthMatch(_poolFactoryNames.length, _poolFactoryAddresses.length);
         InputHelpers.ensureInputLengthMatch(_aliasNames.length, _aliasAddresses.length);
 
         // Extract the Vault (also indirectly verifying the registry contract is valid).
-        IVault registryVault = SingletonAuthentication(address(_balancerContractRegistry)).getVault();
+        IVault registryVault = SingletonAuthentication(address(balancerContractRegistry_)).getVault();
         if (registryVault != vault) {
             revert VaultMismatch();
         }
 
-        balancerContractRegistry = _balancerContractRegistry;
+        balancerContractRegistry = balancerContractRegistry_;
 
-        routerNames = _routerNames;
-        routerAddresses = _routerAddresses;
-        poolFactoryNames = _poolFactoryNames;
-        poolFactoryAddresses = _poolFactoryAddresses;
-        aliasNames = _aliasNames;
-        aliasAddresses = _aliasAddresses;
+        _routerNames = routerNames;
+        _routerAddresses = routerAddresses;
+        _poolFactoryNames = poolFactoryNames;
+        _poolFactoryAddresses = poolFactoryAddresses;
+        _aliasNames = aliasNames;
+        _aliasAddresses = aliasAddresses;
 
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
@@ -90,22 +90,22 @@ contract BalancerContractRegistryInitializer {
         _authorizer.grantRole(addAliasRole, address(this));
 
         // Add Routers.
-        for (uint256 i = 0; i < routerNames.length; ++i) {
-            balancerContractRegistry.registerBalancerContract(ContractType.ROUTER, routerNames[i], routerAddresses[i]);
+        for (uint256 i = 0; i < _routerNames.length; ++i) {
+            balancerContractRegistry.registerBalancerContract(ContractType.ROUTER, _routerNames[i], _routerAddresses[i]);
         }
 
         // Add Pool Factories.
-        for (uint256 i = 0; i < poolFactoryNames.length; ++i) {
+        for (uint256 i = 0; i < _poolFactoryNames.length; ++i) {
             balancerContractRegistry.registerBalancerContract(
                 ContractType.POOL_FACTORY,
-                poolFactoryNames[i],
-                poolFactoryAddresses[i]
+                _poolFactoryNames[i],
+                _poolFactoryAddresses[i]
             );
         }
 
         // Add (pool factory) aliases.
-        for (uint256 i = 0; i < aliasNames.length; ++i) {
-            balancerContractRegistry.addOrUpdateBalancerContractAlias(aliasNames[i], aliasAddresses[i]);
+        for (uint256 i = 0; i < _aliasNames.length; ++i) {
+            balancerContractRegistry.addOrUpdateBalancerContractAlias(_aliasNames[i], _aliasAddresses[i]);
         }
 
         // Renounce all roles.
