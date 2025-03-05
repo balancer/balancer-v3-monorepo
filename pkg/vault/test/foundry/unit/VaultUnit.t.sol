@@ -43,7 +43,7 @@ contract VaultUnitTest is BaseTest, VaultContractsDeployer {
 
     function setUp() public virtual override {
         BaseTest.setUp();
-        vault = deployVaultMock(MIN_TRADE_AMOUNT, MIN_WRAP_AMOUNT);
+        vault = deployVaultMock(MIN_TRADE_AMOUNT, MIN_WRAP_AMOUNT, 0, 0); // Zero args are protocol fee percentages
     }
 
     function testBuildPoolSwapParams() public view {
