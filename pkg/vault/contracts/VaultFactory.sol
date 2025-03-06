@@ -111,7 +111,6 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
             revert InvalidBytecode("VaultExtension");
         }
 
-        // If this passes, we know we can use the targetAddress for the vaultAddress.
         if (targetAddress != getDeploymentAddress(salt)) {
             revert VaultAddressMismatch();
         }
