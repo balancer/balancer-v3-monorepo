@@ -131,6 +131,10 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     // Change this value before calling `setUp` to test under real conditions.
     uint256 vaultMockMinWrapAmount = 1;
 
+    // These are passed into the Protocol Fee Controller (keep zero for now to avoid breaking tests).
+    uint256 vaultMockInitialProtocolSwapFeePercentage = 0;
+    uint256 vaultMockInitialProtocolYieldFeePercentage = 0;
+
     // ------------------------------ Hooks ------------------------------
     function onAfterDeployMainContracts() internal virtual {}
 
@@ -155,7 +159,12 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function _deployMainContracts() private {
-        vault = deployVaultMock(vaultMockMinTradeAmount, vaultMockMinWrapAmount);
+        vault = deployVaultMock(
+            vaultMockMinTradeAmount,
+            vaultMockMinWrapAmount,
+            vaultMockInitialProtocolSwapFeePercentage,
+            vaultMockInitialProtocolYieldFeePercentage
+        );
 
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());

@@ -1384,7 +1384,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(admin);
         feeController.setProtocolYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT / 2);
 
-        ProtocolFeeController newFeeController = new ProtocolFeeController(vault);
+        ProtocolFeeController newFeeController = new ProtocolFeeController(vault, 0, 0);
         vm.label(address(newFeeController), "New fee controller");
 
         // Migrate the pool to a new controller.
@@ -1419,6 +1419,30 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     function testSelfMigration() public {
         vm.expectRevert(ProtocolFeeController.InvalidMigrationSource.selector);
         ProtocolFeeController(address(feeController)).migratePool(pool);
+    }
+
+    function testFeeInitialization() public {
+        uint256 swapFeePercentage = 50e16;
+        uint256 yieldFeePercentage = 10e16;
+
+        vm.expectEmit();
+        emit IProtocolFeeController.GlobalProtocolSwapFeePercentageChanged(swapFeePercentage);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.GlobalProtocolYieldFeePercentageChanged(yieldFeePercentage);
+
+        ProtocolFeeController feeController = new ProtocolFeeController(vault, swapFeePercentage, yieldFeePercentage);
+
+        assertEq(
+            feeController.getGlobalProtocolSwapFeePercentage(),
+            swapFeePercentage,
+            "Wrong initial swap fee percentage"
+        );
+        assertEq(
+            feeController.getGlobalProtocolYieldFeePercentage(),
+            yieldFeePercentage,
+            "Wrong initial yield fee percentage"
+        );
     }
 
     function _registerPoolWithMaxProtocolFees() internal {

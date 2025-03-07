@@ -23,7 +23,7 @@ interface ICowPoolFactory {
      * @param normalizedWeights The pool weights (must sum to FixedPoint.ONE)
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
-     * @param salt The salt value that will be passed to create2 deployment
+     * @param salt The salt value that will be passed to deployment
      */
     function create(
         string memory name,

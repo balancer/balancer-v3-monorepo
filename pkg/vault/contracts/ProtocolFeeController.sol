@@ -173,8 +173,13 @@ contract ProtocolFeeController is
         _;
     }
 
-    constructor(IVault vault_) SingletonAuthentication(vault_) VaultGuard(vault_) {
-        // solhint-disable-previous-line no-empty-blocks
+    constructor(
+        IVault vault_,
+        uint256 initialGlobalSwapFeePercentage,
+        uint256 initialGlobalYieldFeePercentage
+    ) SingletonAuthentication(vault_) VaultGuard(vault_) {
+        _setGlobalProtocolSwapFeePercentage(initialGlobalSwapFeePercentage);
+        _setGlobalProtocolYieldFeePercentage(initialGlobalYieldFeePercentage);
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -525,18 +530,26 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setGlobalProtocolSwapFeePercentage(
+    function setGlobalProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
+        _setGlobalProtocolSwapFeePercentage(newProtocolSwapFeePercentage);
+    }
+
+    function _setGlobalProtocolSwapFeePercentage(
         uint256 newProtocolSwapFeePercentage
-    ) external withValidSwapFee(newProtocolSwapFeePercentage) authenticate {
+    ) internal withValidSwapFee(newProtocolSwapFeePercentage) {
         _globalProtocolSwapFeePercentage = newProtocolSwapFeePercentage;
 
         emit GlobalProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setGlobalProtocolYieldFeePercentage(
+    function setGlobalProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate {
+        _setGlobalProtocolYieldFeePercentage(newProtocolYieldFeePercentage);
+    }
+
+    function _setGlobalProtocolYieldFeePercentage(
         uint256 newProtocolYieldFeePercentage
-    ) external withValidYieldFee(newProtocolYieldFeePercentage) authenticate {
+    ) internal withValidYieldFee(newProtocolYieldFeePercentage) {
         _globalProtocolYieldFeePercentage = newProtocolYieldFeePercentage;
 
         emit GlobalProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
