@@ -10,6 +10,7 @@ import { GyroPoolMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroPool
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IAclAmmPool } from "@balancer-labs/v3-interfaces/contracts/pool-aclamm/IAclAmmPool.sol";
 
 import { BaseAclAmmTest } from "./utils/BaseAclAmmTest.sol";
 import { AclAmmPool } from "../../contracts/AclAmmPool.sol";
@@ -93,7 +94,6 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
     function testWithDifferentPriceRange_Fuzz(uint256 newSqrtQ) public {
         newSqrtQ = bound(newSqrtQ, 1.4e18, 1_000_000e18);
 
-        console.log("newSqrtQ: ", newSqrtQ);
         uint256 initialSqrtQ = sqrtQ0();
         setSqrtQ0(newSqrtQ);
         (address firstPool, address secondPool) = _createNewPool();
@@ -122,6 +122,48 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
                 curentNewPoolVirtualBalances[1],
                 curentFirstPoolVirtualBalances[1],
                 "Virtual B balance should be greater for newPool"
+            );
+        }
+    }
+
+    function testChangingDifferentPriceRange_Fuzz(uint256 newSqrtQ) public {
+        newSqrtQ = bound(newSqrtQ, 1.4e18, 1_000_000e18);
+
+        uint256 initialSqrtQ = sqrtQ0();
+
+        uint256 duration = 2 hours;
+
+        uint256[] memory poolVirtualBalancesBefore = AclAmmPool(pool).getLastVirtualBalances();
+
+        uint256 currentTimestamp = block.timestamp;
+
+        vm.prank(admin);
+        AclAmmPool(pool).setSqrtQ0(initialSqrtQ, currentTimestamp, currentTimestamp + duration);
+        skip(duration);
+
+        uint256[] memory poolVirtualBalancesAfter = AclAmmPool(pool).getLastVirtualBalances();
+
+        if (newSqrtQ > initialSqrtQ) {
+            assertLt(
+                poolVirtualBalancesAfter[0],
+                poolVirtualBalancesBefore[0],
+                "Virtual A balance after should be less than before"
+            );
+            assertLt(
+                poolVirtualBalancesAfter[1],
+                poolVirtualBalancesBefore[1],
+                "Virtual B balance after should be less than before"
+            );
+        } else {
+            assertGe(
+                poolVirtualBalancesAfter[0],
+                poolVirtualBalancesBefore[0],
+                "Virtual A balance after should be greater than before"
+            );
+            assertGe(
+                poolVirtualBalancesAfter[1],
+                poolVirtualBalancesBefore[1],
+                "Virtual B balance after should be greater than before"
             );
         }
     }
@@ -175,7 +217,7 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
 
         uint256 invariantBefore = _getCurrentInvariant();
 
-        vm.prank(lp );
+        vm.prank(lp);
         router.removeLiquidityProportional(
             pool,
             exactBptAmountIn,
@@ -185,7 +227,6 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
         );
 
         uint256 invariantAfter = _getCurrentInvariant();
-
         assertEq(invariantBefore, invariantAfter, "Invariant should not change");
 
         uint256[] memory curentVirtualBalances = AclAmmPool(pool).getLastVirtualBalances();

@@ -6,11 +6,7 @@ import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
-import {
-    SqrtQ0State,
-    AclAmmPoolParams,
-    IAclAmmPool
-} from "@balancer-labs/v3-interfaces/contracts/pool-aclamm/IAclAmmPool.sol";
+import { AclAmmPoolParams, IAclAmmPool } from "@balancer-labs/v3-interfaces/contracts/pool-aclamm/IAclAmmPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -29,7 +25,7 @@ import { BasePoolAuthentication } from "@balancer-labs/v3-pool-utils/contracts/B
 import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-import { AclAmmMath } from "./lib/AclAmmMath.sol";
+import { SqrtQ0State, AclAmmMath } from "./lib/AclAmmMath.sol";
 
 contract AclAmmPool is
     IUnbalancedLiquidityInvariantRatioBounds,
@@ -80,6 +76,7 @@ contract AclAmmPool is
                 _calculateCurrentSqrtQ0(),
                 _lastTimestamp,
                 _centernessMargin,
+                _sqrtQ0State,
                 rounding
             );
     }
@@ -99,7 +96,9 @@ contract AclAmmPool is
             _c,
             _calculateCurrentSqrtQ0(),
             _lastTimestamp,
-            _centernessMargin
+            _centernessMargin,
+            block.timestamp,
+            _sqrtQ0State
         );
 
         _lastTimestamp = block.timestamp;
@@ -182,7 +181,9 @@ contract AclAmmPool is
             _c,
             _calculateCurrentSqrtQ0(),
             _lastTimestamp,
-            _centernessMargin
+            _centernessMargin,
+            block.timestamp,
+            _sqrtQ0State
         );
     }
 
@@ -210,11 +211,10 @@ contract AclAmmPool is
 
     function _calculateCurrentSqrtQ0() internal view returns (uint256) {
         SqrtQ0State memory sqrtQ0State = _sqrtQ0State;
-        uint256 currentTime = block.timestamp;
 
         return
             AclAmmMath.calculateSqrtQ0(
-                currentTime,
+                block.timestamp,
                 sqrtQ0State.startSqrtQ0,
                 sqrtQ0State.endSqrtQ0,
                 sqrtQ0State.startTime,

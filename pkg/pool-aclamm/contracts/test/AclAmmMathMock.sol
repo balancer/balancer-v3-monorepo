@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { AclAmmMath } from "../lib/AclAmmMath.sol";
+import { SqrtQ0State, AclAmmMath } from "../lib/AclAmmMath.sol";
 
 contract AclAmmMathMock {
     function computeInvariant(
@@ -13,6 +13,7 @@ contract AclAmmMathMock {
         uint256 sqrtQ0,
         uint256 lastTimestamp,
         uint256 centernessMargin,
+        SqrtQ0State memory sqrtQ0State,
         Rounding rounding
     ) external view returns (uint256) {
         return
@@ -23,6 +24,7 @@ contract AclAmmMathMock {
                 sqrtQ0,
                 lastTimestamp,
                 centernessMargin,
+                sqrtQ0State,
                 rounding
             );
     }
@@ -74,7 +76,9 @@ contract AclAmmMathMock {
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin
+        uint256 centernessMargin,
+        uint256 currentTime,
+        SqrtQ0State memory sqrtQ0State
     ) external view returns (uint256[] memory virtualBalances, bool changed) {
         return
             AclAmmMath.getVirtualBalances(
@@ -83,7 +87,9 @@ contract AclAmmMathMock {
                 c,
                 sqrtQ0,
                 lastTimestamp,
-                centernessMargin
+                centernessMargin,
+                currentTime,
+                sqrtQ0State
             );
     }
 

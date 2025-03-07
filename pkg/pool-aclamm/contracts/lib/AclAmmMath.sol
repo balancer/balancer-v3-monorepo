@@ -7,6 +7,13 @@ import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { LogExpMath } from "@balancer-labs/v3-solidity-utils/contracts/math/LogExpMath.sol";
 
+struct SqrtQ0State {
+    uint256 startSqrtQ0;
+    uint256 endSqrtQ0;
+    uint256 startTime;
+    uint256 endTime;
+}
+
 library AclAmmMath {
     using FixedPoint for uint256;
 
@@ -17,6 +24,7 @@ library AclAmmMath {
         uint256 sqrtQ0,
         uint256 lastTimestamp,
         uint256 centernessMargin,
+        SqrtQ0State memory sqrtQ0State,
         Rounding rounding
     ) internal view returns (uint256) {
         function(uint256, uint256) pure returns (uint256) _mulUpOrDown = rounding == Rounding.ROUND_DOWN
@@ -29,7 +37,9 @@ library AclAmmMath {
             c,
             sqrtQ0,
             lastTimestamp,
-            centernessMargin
+            centernessMargin,
+            block.timestamp,
+            sqrtQ0State
         );
 
         return _mulUpOrDown((balancesScaled18[0] + virtualBalances[0]), (balancesScaled18[1] + virtualBalances[1]));
@@ -84,13 +94,17 @@ library AclAmmMath {
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin
+        uint256 centernessMargin,
+        uint256 currentTime,
+        SqrtQ0State memory sqrtQ0State
     ) internal view returns (uint256[] memory virtualBalances, bool changed) {
         // TODO Review rounding
 
         virtualBalances = new uint256[](balancesScaled18.length);
 
-        if (isPoolInRange(balancesScaled18, lastVirtualBalances, centernessMargin) == false) {
+        bool isInRange = isPoolInRange(balancesScaled18, lastVirtualBalances, centernessMargin);
+
+        if (isInRange == false) {
             uint256 q0 = sqrtQ0.mulDown(sqrtQ0);
 
             if (isAboveCenter(balancesScaled18, lastVirtualBalances)) {
@@ -112,6 +126,20 @@ library AclAmmMath {
             }
 
             changed = true;
+        } else if (isInRange && currentTime > sqrtQ0State.startTime && currentTime <= sqrtQ0State.endTime) {
+            uint256 rACenter = lastVirtualBalances[0].mulDown(sqrtQ0State.startSqrtQ0 - FixedPoint.ONE);
+            uint256 rBCenter = lastVirtualBalances[1].mulDown(sqrtQ0State.startSqrtQ0 - FixedPoint.ONE);
+
+            uint256 currentSqrtQ0 = calculateSqrtQ0(
+                currentTime,
+                sqrtQ0State.startSqrtQ0,
+                sqrtQ0State.endSqrtQ0,
+                sqrtQ0State.startTime,
+                sqrtQ0State.endTime
+            );
+
+            virtualBalances[0] = rACenter.divDown(currentSqrtQ0 - FixedPoint.ONE);
+            virtualBalances[1] = rBCenter.divDown(currentSqrtQ0 - FixedPoint.ONE);
         } else {
             virtualBalances = lastVirtualBalances;
         }
@@ -152,7 +180,7 @@ library AclAmmMath {
         uint256 startTime,
         uint256 endTime
     ) internal pure returns (uint256) {
-        if (currentTime > endTime) {
+        if (currentTime >= endTime) {
             return endSqrtQ0;
         }
 
