@@ -9,7 +9,11 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { ProtocolFeeController } from "../ProtocolFeeController.sol";
 
 contract ProtocolFeeControllerMock is ProtocolFeeController {
-    constructor(IVaultMock vault_) ProtocolFeeController(vault_) {
+    constructor(
+        IVaultMock vault_,
+        uint256 protocolSwapFeePercentage,
+        uint256 protocolYieldFeePercentage
+    ) ProtocolFeeController(vault_, protocolSwapFeePercentage, protocolYieldFeePercentage) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
