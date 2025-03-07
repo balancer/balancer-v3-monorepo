@@ -6,13 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "../vault/IBasePool.sol";
 
-struct SqrtQ0State {
-    uint256 startSqrtQ0;
-    uint256 endSqrtQ0;
-    uint256 startTime;
-    uint256 endTime;
-}
-
 /// @dev Struct with data for deploying a new AclAmmPool.
 struct AclAmmPoolParams {
     string name;
