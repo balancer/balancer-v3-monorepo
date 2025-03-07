@@ -163,7 +163,7 @@ contract BaseMedusaTest is Test {
             minWrapAmount
         );
         vaultExtension = new VaultExtensionMock(IVault(payable(address(newVault))), vaultAdmin);
-        feeController = new ProtocolFeeControllerMock(IVaultMock(payable(address(newVault))));
+        feeController = new ProtocolFeeControllerMock(IVaultMock(payable(address(newVault))), 0, 0);
 
         _create3(abi.encode(vaultExtension, authorizer, feeController), vaultMockBytecode, salt);
 
