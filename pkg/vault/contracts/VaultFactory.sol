@@ -82,7 +82,6 @@ contract VaultFactory is ReentrancyGuardTransient, Ownable2Step {
     /**
      * @notice Deploys the Vault.
      * @dev The Vault can only be deployed once per salt. This function is permissioned.
-     *
      * @param salt Salt used to create the Vault. See `getDeploymentAddress`
      * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
      * Vault to the target address
