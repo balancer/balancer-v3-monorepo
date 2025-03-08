@@ -49,7 +49,7 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
   });
 
   const protocolFeeController: ProtocolFeeController = await contract.deploy('v3-vault/ProtocolFeeController', {
-    args: [futureVaultAddress],
+    args: [futureVaultAddress, 0, 0],
     from: admin,
   });
 
@@ -75,7 +75,7 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
   });
 
   const protocolFeeController: ProtocolFeeController = await contract.deploy('v3-vault/ProtocolFeeController', {
-    args: [futureVaultAddress],
+    args: [futureVaultAddress, 0, 0],
     from: admin,
   });
 
