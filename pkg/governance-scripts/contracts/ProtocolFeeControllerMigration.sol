@@ -84,7 +84,7 @@ contract ProtocolFeeControllerMigration is ReentrancyGuardTransient, SingletonAu
 
     /**
      * @notice Migrate pools from the old fee controller to the new one.
-     * @dev THis can be called multiple times, if there are too many pools for a single transaction. Note that the
+     * @dev This can be called multiple times, if there are too many pools for a single transaction. Note that the
      * first time this is called, it will migrate the global fee percentages, then proceed with the first set of pools.
      *
      * @param pools The set of pools to be migrated in this call
