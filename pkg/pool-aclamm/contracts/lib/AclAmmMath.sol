@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// solhint-disable not-rely-on-time
 
 pragma solidity ^0.8.24;
 
@@ -207,6 +208,7 @@ library AclAmmMath {
     }
 
     function parseIncreaseDayRate(uint256 increaseDayRate) internal pure returns (uint256) {
-        return increaseDayRate / 110000; // Divide daily rate by a number of seconds per day (plus some adjustment) = 86400 + 25%
+        // Divide daily rate by a number of seconds per day (plus some adjustment) = 86400 + 25%
+        return increaseDayRate / 110000;
     }
 }

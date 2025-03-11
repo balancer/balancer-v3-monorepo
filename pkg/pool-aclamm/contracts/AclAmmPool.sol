@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// solhint-disable not-rely-on-time
 
 pragma solidity ^0.8.24;
 
@@ -102,7 +103,6 @@ contract AclAmmPool is
             block.timestamp,
             _sqrtQ0State
         );
-
         _lastTimestamp = block.timestamp;
         if (changed) {
             _virtualBalances = virtualBalances;
