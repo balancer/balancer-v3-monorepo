@@ -96,15 +96,14 @@ library AclAmmMath {
         uint256 lastTimestamp,
         uint256 centernessMargin,
         uint256 currentTime,
-        SqrtQ0State memory sqrtQ0State
+        SqrtQ0State memory sqrtQ0State //TODO: optimize gas usage
     ) internal view returns (uint256[] memory virtualBalances, bool changed) {
         // TODO Review rounding
+        // TODO: try to find better way to change the virtual balances in storage
 
         virtualBalances = new uint256[](balancesScaled18.length);
 
-        bool isInRange = isPoolInRange(balancesScaled18, lastVirtualBalances, centernessMargin);
-
-        if (isInRange == false) {
+        if (isPoolInRange(balancesScaled18, lastVirtualBalances, centernessMargin) == false) {
             uint256 q0 = sqrtQ0.mulDown(sqrtQ0);
 
             if (isAboveCenter(balancesScaled18, lastVirtualBalances)) {
@@ -126,7 +125,7 @@ library AclAmmMath {
             }
 
             changed = true;
-        } else if (isInRange && currentTime > sqrtQ0State.startTime && currentTime <= sqrtQ0State.endTime) {
+        } else if (sqrtQ0State.startTime != 0 && currentTime > sqrtQ0State.startTime) {
             uint256 rACenter = lastVirtualBalances[0].mulDown(sqrtQ0State.startSqrtQ0 - FixedPoint.ONE);
             uint256 rBCenter = lastVirtualBalances[1].mulDown(sqrtQ0State.startSqrtQ0 - FixedPoint.ONE);
 
@@ -140,6 +139,10 @@ library AclAmmMath {
 
             virtualBalances[0] = rACenter.divDown(currentSqrtQ0 - FixedPoint.ONE);
             virtualBalances[1] = rBCenter.divDown(currentSqrtQ0 - FixedPoint.ONE);
+
+            if (currentTime >= sqrtQ0State.endTime) {
+                changed = true;
+            }
         } else {
             virtualBalances = lastVirtualBalances;
         }
@@ -180,7 +183,9 @@ library AclAmmMath {
         uint256 startTime,
         uint256 endTime
     ) internal pure returns (uint256) {
-        if (currentTime >= endTime) {
+        if (currentTime <= startTime) {
+            return startSqrtQ0;
+        } else if (currentTime >= endTime) {
             return endSqrtQ0;
         }
 

@@ -43,6 +43,9 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
     }
 
     function testWithDifferentInitialBalances_Fuzz(int256 diffCoefficient) public {
+        // This test verifies the virtual balances of two pools, where the real balances
+        // differ by a certain coefficient while maintaining the balance ratio.
+
         diffCoefficient = bound(diffCoefficient, -100, 100);
         if (diffCoefficient >= -1 && diffCoefficient <= 1) {
             diffCoefficient = 2;
@@ -188,8 +191,6 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
     function testAddLiquidity_Fuzz(uint256 exactBptAmountOut) public {
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, 10_000e18);
 
-        // uint256[] memory virtualBalances = _calculateVirtualBalances();
-
         uint256 invariantBefore = _getCurrentInvariant();
 
         vm.prank(alice);
@@ -205,15 +206,11 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
 
         assertGt(invariantAfter, invariantBefore, "Invariant should increase");
 
-        // uint256[] memory curentVirtualBalances = AclAmmPool(pool).getLastVirtualBalances();
-        // assertEq(curentVirtualBalances[0], virtualBalances[0], "Virtual A balances don't equal");
-        // assertEq(curentVirtualBalances[1], virtualBalances[1], "Virtual B balances don't equal");
+        // TODO: add check for virtual balances
     }
 
     function testRemoveLiquidity_Fuzz(uint256 exactBptAmountIn) public {
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, 10_000e18);
-
-        // uint256[] memory virtualBalances = _calculateVirtualBalances();
 
         uint256 invariantBefore = _getCurrentInvariant();
 
@@ -229,9 +226,7 @@ contract AclAmmPoolVirtualBalancesTest is BaseAclAmmTest {
         uint256 invariantAfter = _getCurrentInvariant();
         assertLt(invariantAfter, invariantBefore, "Invariant should decrease");
 
-        // uint256[] memory curentVirtualBalances = AclAmmPool(pool).getLastVirtualBalances();
-        // assertEq(curentVirtualBalances[0], virtualBalances[0], "Virtual A balances don't equal");
-        // assertEq(curentVirtualBalances[1], virtualBalances[1], "Virtual B balances don't equal");
+        // TODO: add check for virtual balances
     }
 
     function _getCurrentInvariant() internal view returns (uint256) {

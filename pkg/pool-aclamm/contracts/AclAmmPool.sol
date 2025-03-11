@@ -64,6 +64,8 @@ contract AclAmmPool is
 
         _sqrtQ0State.endSqrtQ0 = params.sqrtQ0;
         _setCenternessMargin(params.centernessMargin);
+
+        emit AclAmmPoolInitialized(params.increaseDayRate, params.sqrtQ0, params.centernessMargin);
     }
 
     /// @inheritdoc IBasePool
@@ -104,6 +106,10 @@ contract AclAmmPool is
         _lastTimestamp = block.timestamp;
         if (changed) {
             _virtualBalances = virtualBalances;
+
+            if (_sqrtQ0State.startTime != 0) {
+                _sqrtQ0State.startTime = 0;
+            }
         }
 
         // Calculate swap result
@@ -203,10 +209,19 @@ contract AclAmmPool is
         uint256 startTime,
         uint256 endTime
     ) external onlySwapFeeManagerOrGovernance(address(this)) {
-        _sqrtQ0State.startSqrtQ0 = _calculateCurrentSqrtQ0();
-        _sqrtQ0State.endSqrtQ0 = newSqrtQ0;
+        _setSqrtQ0(newSqrtQ0, startTime, endTime);
+    }
+
+    function _setSqrtQ0(uint256 endSqrtQ0, uint256 startTime, uint256 endTime) internal {
+        require(startTime < endTime, "AclAmmPool: Invalid time range");
+
+        uint256 startSqrtQ0 = _calculateCurrentSqrtQ0();
+        _sqrtQ0State.startSqrtQ0 = startSqrtQ0;
+        _sqrtQ0State.endSqrtQ0 = endSqrtQ0;
         _sqrtQ0State.startTime = startTime;
         _sqrtQ0State.endTime = endTime;
+
+        emit SqrtQ0Updated(startSqrtQ0, endSqrtQ0, startTime, endTime);
     }
 
     function _calculateCurrentSqrtQ0() internal view returns (uint256) {
