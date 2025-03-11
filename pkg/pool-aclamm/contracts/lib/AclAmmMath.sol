@@ -24,7 +24,7 @@ library AclAmmMath {
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin,
+        uint256 centerednessMargin,
         SqrtQ0State memory sqrtQ0State,
         Rounding rounding
     ) internal view returns (uint256) {
@@ -38,7 +38,7 @@ library AclAmmMath {
             c,
             sqrtQ0,
             lastTimestamp,
-            centernessMargin,
+            centerednessMargin,
             block.timestamp,
             sqrtQ0State
         );
@@ -95,7 +95,7 @@ library AclAmmMath {
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin,
+        uint256 centerednessMargin,
         uint256 currentTime,
         SqrtQ0State memory sqrtQ0State //TODO: optimize gas usage
     ) internal view returns (uint256[] memory virtualBalances, bool changed) {
@@ -104,7 +104,7 @@ library AclAmmMath {
 
         virtualBalances = new uint256[](balancesScaled18.length);
 
-        if (isPoolInRange(balancesScaled18, lastVirtualBalances, centernessMargin) == false) {
+        if (isPoolInRange(balancesScaled18, lastVirtualBalances, centerednessMargin) == false) {
             uint256 q0 = sqrtQ0.mulDown(sqrtQ0);
 
             if (isAboveCenter(balancesScaled18, lastVirtualBalances)) {
@@ -152,13 +152,13 @@ library AclAmmMath {
     function isPoolInRange(
         uint256[] memory balancesScaled18,
         uint256[] memory virtualBalances,
-        uint256 centernessMargin
+        uint256 centerednessMargin
     ) internal pure returns (bool) {
-        uint256 centerness = calculateCenterness(balancesScaled18, virtualBalances);
-        return centerness >= centernessMargin;
+        uint256 centeredness = calculateCenteredness(balancesScaled18, virtualBalances);
+        return centeredness >= centerednessMargin;
     }
 
-    function calculateCenterness(
+    function calculateCenteredness(
         uint256[] memory balancesScaled18,
         uint256[] memory virtualBalances
     ) internal pure returns (uint256) {

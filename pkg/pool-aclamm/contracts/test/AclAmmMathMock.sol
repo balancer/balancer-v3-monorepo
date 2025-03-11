@@ -12,7 +12,7 @@ contract AclAmmMathMock {
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin,
+        uint256 centerednessMargin,
         SqrtQ0State memory sqrtQ0State,
         Rounding rounding
     ) external view returns (uint256) {
@@ -23,7 +23,7 @@ contract AclAmmMathMock {
                 c,
                 sqrtQ0,
                 lastTimestamp,
-                centernessMargin,
+                centerednessMargin,
                 sqrtQ0State,
                 rounding
             );
@@ -76,7 +76,7 @@ contract AclAmmMathMock {
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin,
+        uint256 centerednessMargin,
         uint256 currentTime,
         SqrtQ0State memory sqrtQ0State
     ) external view returns (uint256[] memory virtualBalances, bool changed) {
@@ -87,7 +87,7 @@ contract AclAmmMathMock {
                 c,
                 sqrtQ0,
                 lastTimestamp,
-                centernessMargin,
+                centerednessMargin,
                 currentTime,
                 sqrtQ0State
             );
@@ -96,16 +96,16 @@ contract AclAmmMathMock {
     function isPoolInRange(
         uint256[] memory balancesScaled18,
         uint256[] memory virtualBalances,
-        uint256 centernessMargin
+        uint256 centerednessMargin
     ) external pure returns (bool) {
-        return AclAmmMath.isPoolInRange(balancesScaled18, virtualBalances, centernessMargin);
+        return AclAmmMath.isPoolInRange(balancesScaled18, virtualBalances, centerednessMargin);
     }
 
-    function calculateCenterness(
+    function calculateCenteredness(
         uint256[] memory balancesScaled18,
         uint256[] memory virtualBalances
     ) external pure returns (uint256) {
-        return AclAmmMath.calculateCenterness(balancesScaled18, virtualBalances);
+        return AclAmmMath.calculateCenteredness(balancesScaled18, virtualBalances);
     }
 
     function calculateSqrtQ0(

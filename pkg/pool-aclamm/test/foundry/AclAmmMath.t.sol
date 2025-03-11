@@ -19,13 +19,13 @@ contract AclAmmMathTest is Test {
         uint256 balance1,
         uint256 virtualBalance0,
         uint256 virtualBalance1,
-        uint256 centernessMargin
+        uint256 centerednessMargin
     ) public pure {
         balance0 = bound(balance0, 0, _MAX_BALANCE);
         balance1 = bound(balance1, 0, _MAX_BALANCE);
         virtualBalance0 = bound(virtualBalance0, _MIN_VIRTUAL_BALANCE, _MAX_BALANCE);
         virtualBalance1 = bound(virtualBalance1, _MIN_VIRTUAL_BALANCE, _MAX_BALANCE);
-        centernessMargin = bound(centernessMargin, 0, 50e16);
+        centerednessMargin = bound(centerednessMargin, 0, 50e16);
 
         uint256[] memory balancesScaled18 = new uint256[](2);
         balancesScaled18[0] = balance0;
@@ -35,16 +35,19 @@ contract AclAmmMathTest is Test {
         virtualBalances[0] = virtualBalance0;
         virtualBalances[1] = virtualBalance1;
 
-        bool isInRange = AclAmmMath.isPoolInRange(balancesScaled18, virtualBalances, centernessMargin);
+        bool isInRange = AclAmmMath.isPoolInRange(balancesScaled18, virtualBalances, centerednessMargin);
 
         if (balance0 == 0 || balance1 == 0) {
             assertEq(isInRange, false);
         } else {
-            assertEq(isInRange, AclAmmMath.calculateCenterness(balancesScaled18, virtualBalances) >= centernessMargin);
+            assertEq(
+                isInRange,
+                AclAmmMath.calculateCenteredness(balancesScaled18, virtualBalances) >= centerednessMargin
+            );
         }
     }
 
-    function testCalculateCenterness__Fuzz(
+    function testCalculateCenteredness__Fuzz(
         uint256 balance0,
         uint256 balance1,
         uint256 virtualBalance0,
@@ -63,14 +66,14 @@ contract AclAmmMathTest is Test {
         virtualBalances[0] = virtualBalance0;
         virtualBalances[1] = virtualBalance1;
 
-        uint256 centerness = AclAmmMath.calculateCenterness(balancesScaled18, virtualBalances);
+        uint256 centeredness = AclAmmMath.calculateCenteredness(balancesScaled18, virtualBalances);
 
         if (balance0 == 0 || balance1 == 0) {
-            assertEq(centerness, 0);
+            assertEq(centeredness, 0);
         } else if (AclAmmMath.isAboveCenter(balancesScaled18, virtualBalances)) {
-            assertEq(centerness, balance1.mulDown(virtualBalance0).divDown(balance0.mulDown(virtualBalance1)));
+            assertEq(centeredness, balance1.mulDown(virtualBalance0).divDown(balance0.mulDown(virtualBalance1)));
         } else {
-            assertEq(centerness, balance0.mulDown(virtualBalance1).divDown(balance1.mulDown(virtualBalance0)));
+            assertEq(centeredness, balance0.mulDown(virtualBalance1).divDown(balance1.mulDown(virtualBalance0)));
         }
     }
 

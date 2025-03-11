@@ -49,7 +49,7 @@ contract AclAmmPool is
     SqrtQ0State private _sqrtQ0State;
     uint256 private _lastTimestamp;
     uint256 private _c;
-    uint256 private _centernessMargin;
+    uint256 private _centerednessMargin;
     uint256[] private _virtualBalances;
 
     constructor(
@@ -64,9 +64,9 @@ contract AclAmmPool is
         _setIncreaseDayRate(params.increaseDayRate);
 
         _sqrtQ0State.endSqrtQ0 = params.sqrtQ0;
-        _setCenternessMargin(params.centernessMargin);
+        _setCenterednessMargin(params.centerednessMargin);
 
-        emit AclAmmPoolInitialized(params.increaseDayRate, params.sqrtQ0, params.centernessMargin);
+        emit AclAmmPoolInitialized(params.increaseDayRate, params.sqrtQ0, params.centerednessMargin);
     }
 
     /// @inheritdoc IBasePool
@@ -78,7 +78,7 @@ contract AclAmmPool is
                 _c,
                 _calculateCurrentSqrtQ0(),
                 _lastTimestamp,
-                _centernessMargin,
+                _centerednessMargin,
                 _sqrtQ0State,
                 rounding
             );
@@ -99,7 +99,7 @@ contract AclAmmPool is
             _c,
             _calculateCurrentSqrtQ0(),
             _lastTimestamp,
-            _centernessMargin,
+            _centerednessMargin,
             block.timestamp,
             _sqrtQ0State
         );
@@ -143,14 +143,17 @@ contract AclAmmPool is
     function onRegister(
         address,
         address,
-        TokenConfig[] memory,
+        TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata
-    ) public pure override returns (bool) {
-        return true;
+    ) public view override onlyVault returns (bool) {
+        return tokenConfig.length == 2;
     }
 
     /// @inheritdoc IHooks
-    function onBeforeInitialize(uint256[] memory balancesScaled18, bytes memory) public override returns (bool) {
+    function onBeforeInitialize(
+        uint256[] memory balancesScaled18,
+        bytes memory
+    ) public override onlyVault returns (bool) {
         _lastTimestamp = block.timestamp;
         _virtualBalances = AclAmmMath.initializeVirtualBalances(balancesScaled18, _calculateCurrentSqrtQ0());
         return true;
@@ -187,7 +190,7 @@ contract AclAmmPool is
             _c,
             _calculateCurrentSqrtQ0(),
             _lastTimestamp,
-            _centernessMargin,
+            _centerednessMargin,
             block.timestamp,
             _sqrtQ0State
         );
@@ -213,7 +216,9 @@ contract AclAmmPool is
     }
 
     function _setSqrtQ0(uint256 endSqrtQ0, uint256 startTime, uint256 endTime) internal {
-        require(startTime < endTime, "AclAmmPool: Invalid time range");
+        if (startTime > endTime) {
+            revert InvalidTimeRange(startTime, endTime);
+        }
 
         uint256 startSqrtQ0 = _calculateCurrentSqrtQ0();
         _sqrtQ0State.startSqrtQ0 = startSqrtQ0;
@@ -241,7 +246,7 @@ contract AclAmmPool is
         _c = AclAmmMath.parseIncreaseDayRate(increaseDayRate);
     }
 
-    function _setCenternessMargin(uint256 centernessMargin) internal {
-        _centernessMargin = centernessMargin;
+    function _setCenterednessMargin(uint256 centerednessMargin) internal {
+        _centerednessMargin = centerednessMargin;
     }
 }

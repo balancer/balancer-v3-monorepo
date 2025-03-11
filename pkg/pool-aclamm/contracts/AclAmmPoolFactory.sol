@@ -44,7 +44,7 @@ contract AclAmmPoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param increaseDayRate The allowed change in a virtual balance per day
      * @param sqrtQ0 The fourth root of the price range (e.g. price range = [400, 6400], Q0^2 = 16 and sqrtQ0 = 2)
-     * @param centernessMargin How far the price can be from the center before the price range starts to move
+     * @param centerednessMargin How far the price can be from the center before the price range starts to move
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to deployment
@@ -57,7 +57,7 @@ contract AclAmmPoolFactory is IPoolVersion, BasePoolFactory, Version {
         uint256 swapFeePercentage,
         uint256 increaseDayRate,
         uint256 sqrtQ0,
-        uint256 centernessMargin,
+        uint256 centerednessMargin,
         bytes32 salt
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
@@ -81,7 +81,7 @@ contract AclAmmPoolFactory is IPoolVersion, BasePoolFactory, Version {
                     version: _poolVersion,
                     increaseDayRate: increaseDayRate,
                     sqrtQ0: sqrtQ0,
-                    centernessMargin: centernessMargin
+                    centerednessMargin: centerednessMargin
                 }),
                 getVault()
             ),

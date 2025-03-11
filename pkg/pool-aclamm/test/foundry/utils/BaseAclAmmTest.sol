@@ -33,7 +33,7 @@ contract BaseAclAmmTest is AclAmmPoolContractsDeployer, BaseVaultTest {
 
     uint256 internal constant _DEFAULT_INCREASE_DAY_RATE = 100e16; // 100%
     uint256 internal constant _DEFAULT_SQRT_Q0 = 1.41421356e18; // Price Range of 4 (fourth square root is 1.41)
-    uint256 internal constant _DEFAULT_CENTERNESS_MARGIN = 10e16; // 10%
+    uint256 internal constant _DEFAULT_CENTEREDNESS_MARGIN = 10e16; // 10%
 
     uint256 private _sqrtQ0 = _DEFAULT_SQRT_Q0;
     uint256 private _increaseDayRate = _DEFAULT_INCREASE_DAY_RATE;
@@ -112,7 +112,7 @@ contract BaseAclAmmTest is AclAmmPoolContractsDeployer, BaseVaultTest {
             _DEFAULT_SWAP_FEE,
             _DEFAULT_INCREASE_DAY_RATE,
             sqrtQ0(),
-            _DEFAULT_CENTERNESS_MARGIN,
+            _DEFAULT_CENTEREDNESS_MARGIN,
             salt
         );
         vm.label(newPool, label);
@@ -125,7 +125,7 @@ contract BaseAclAmmTest is AclAmmPoolContractsDeployer, BaseVaultTest {
                 version: _POOL_VERSION,
                 increaseDayRate: _DEFAULT_INCREASE_DAY_RATE,
                 sqrtQ0: sqrtQ0(),
-                centernessMargin: _DEFAULT_CENTERNESS_MARGIN
+                centerednessMargin: _DEFAULT_CENTEREDNESS_MARGIN
             }),
             vault
         );
