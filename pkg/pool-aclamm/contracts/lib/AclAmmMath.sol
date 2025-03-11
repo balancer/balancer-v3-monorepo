@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// solhint-disable not-rely-on-time
 
 pragma solidity ^0.8.24;
 
@@ -6,6 +7,13 @@ import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { LogExpMath } from "@balancer-labs/v3-solidity-utils/contracts/math/LogExpMath.sol";
+
+struct SqrtQ0State {
+    uint256 startSqrtQ0;
+    uint256 endSqrtQ0;
+    uint256 startTime;
+    uint256 endTime;
+}
 
 library AclAmmMath {
     using FixedPoint for uint256;
@@ -17,6 +25,7 @@ library AclAmmMath {
         uint256 sqrtQ0,
         uint256 lastTimestamp,
         uint256 centernessMargin,
+        SqrtQ0State memory sqrtQ0State,
         Rounding rounding
     ) internal view returns (uint256) {
         function(uint256, uint256) pure returns (uint256) _mulUpOrDown = rounding == Rounding.ROUND_DOWN
@@ -29,7 +38,9 @@ library AclAmmMath {
             c,
             sqrtQ0,
             lastTimestamp,
-            centernessMargin
+            centernessMargin,
+            block.timestamp,
+            sqrtQ0State
         );
 
         return _mulUpOrDown((balancesScaled18[0] + virtualBalances[0]), (balancesScaled18[1] + virtualBalances[1]));
@@ -84,9 +95,12 @@ library AclAmmMath {
         uint256 c,
         uint256 sqrtQ0,
         uint256 lastTimestamp,
-        uint256 centernessMargin
+        uint256 centernessMargin,
+        uint256 currentTime,
+        SqrtQ0State memory sqrtQ0State //TODO: optimize gas usage
     ) internal view returns (uint256[] memory virtualBalances, bool changed) {
         // TODO Review rounding
+        // TODO: try to find better way to change the virtual balances in storage
 
         virtualBalances = new uint256[](balancesScaled18.length);
 
@@ -112,6 +126,24 @@ library AclAmmMath {
             }
 
             changed = true;
+        } else if (sqrtQ0State.startTime != 0 && currentTime > sqrtQ0State.startTime) {
+            uint256 rACenter = lastVirtualBalances[0].mulDown(sqrtQ0State.startSqrtQ0 - FixedPoint.ONE);
+            uint256 rBCenter = lastVirtualBalances[1].mulDown(sqrtQ0State.startSqrtQ0 - FixedPoint.ONE);
+
+            uint256 currentSqrtQ0 = calculateSqrtQ0(
+                currentTime,
+                sqrtQ0State.startSqrtQ0,
+                sqrtQ0State.endSqrtQ0,
+                sqrtQ0State.startTime,
+                sqrtQ0State.endTime
+            );
+
+            virtualBalances[0] = rACenter.divDown(currentSqrtQ0 - FixedPoint.ONE);
+            virtualBalances[1] = rBCenter.divDown(currentSqrtQ0 - FixedPoint.ONE);
+
+            if (currentTime >= sqrtQ0State.endTime) {
+                changed = true;
+            }
         } else {
             virtualBalances = lastVirtualBalances;
         }
@@ -145,6 +177,25 @@ library AclAmmMath {
         }
     }
 
+    function calculateSqrtQ0(
+        uint256 currentTime,
+        uint256 startSqrtQ0,
+        uint256 endSqrtQ0,
+        uint256 startTime,
+        uint256 endTime
+    ) internal pure returns (uint256) {
+        if (currentTime <= startTime) {
+            return startSqrtQ0;
+        } else if (currentTime >= endTime) {
+            return endSqrtQ0;
+        }
+
+        uint256 numerator = ((endTime - currentTime) * startSqrtQ0) + ((currentTime - startTime) * endSqrtQ0);
+        uint256 denominator = endTime - startTime;
+
+        return numerator / denominator;
+    }
+
     function isAboveCenter(
         uint256[] memory balancesScaled18,
         uint256[] memory virtualBalances
@@ -157,6 +208,7 @@ library AclAmmMath {
     }
 
     function parseIncreaseDayRate(uint256 increaseDayRate) internal pure returns (uint256) {
-        return increaseDayRate / 110000; // Divide daily rate by a number of seconds per day (plus some adjustment) = 86400 + 25%
+        // Divide daily rate by a number of seconds per day (plus some adjustment) = 86400 + 25%
+        return increaseDayRate / 110000;
     }
 }
