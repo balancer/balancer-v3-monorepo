@@ -1,5 +1,4 @@
 import { Decimal } from 'decimal.js';
-import { BigNumberish } from 'ethers';
 import { decimal, bn, fp, fromFp, toFp } from '../numbers';
 
 export enum Rounding {
@@ -8,8 +7,8 @@ export enum Rounding {
 }
 
 export function calculateInvariant(
-  fpRawBalances: BigNumberish[],
-  amplificationParameter: BigNumberish,
+  fpRawBalances: bigint[],
+  amplificationParameter: bigint,
   rounding: Rounding
 ): bigint {
   let invariant = calculateApproxInvariant(fpRawBalances, amplificationParameter);
@@ -19,7 +18,7 @@ export function calculateInvariant(
   return invariant;
 }
 
-export function calculateApproxInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): bigint {
+export function calculateApproxInvariant(fpRawBalances: bigint[], amplificationParameter: bigint): bigint {
   const totalCoins = fpRawBalances.length;
   const balances: Decimal[] = fpRawBalances.map(fromFp);
 
@@ -60,15 +59,15 @@ export function calculateApproxInvariant(fpRawBalances: BigNumberish[], amplific
 }
 
 export function calculateAnalyticalInvariantForTwoTokens(
-  fpRawBalances: BigNumberish[],
-  amplificationParameter: BigNumberish
+  fpRawBalances: bigint[],
+  amplificationParameter: bigint
 ): bigint {
   if (fpRawBalances.length !== 2) {
     throw 'Analytical invariant is solved only for 2 balances';
   }
 
-  const sum = fpRawBalances.reduce((a: Decimal, b: BigNumberish) => a.add(fromFp(b)), decimal(0));
-  const prod = fpRawBalances.reduce((a: Decimal, b: BigNumberish) => a.mul(fromFp(b)), decimal(1));
+  const sum = fpRawBalances.reduce((a: Decimal, b: bigint) => a.add(fromFp(b)), decimal(0));
+  const prod = fpRawBalances.reduce((a: Decimal, b: bigint) => a.mul(fromFp(b)), decimal(1));
 
   // The amplification parameter equals to: A n^(n-1), where A is the amplification coefficient
   const amplificationCoefficient = decimal(amplificationParameter).div(2);
@@ -93,11 +92,11 @@ export function calculateAnalyticalInvariantForTwoTokens(
 }
 
 export function calcOutGivenExactIn(
-  fpBalances: BigNumberish[],
-  amplificationParameter: BigNumberish,
+  fpBalances: bigint[],
+  amplificationParameter: bigint,
   tokenIndexIn: number,
   tokenIndexOut: number,
-  fpTokenAmountIn: BigNumberish
+  fpTokenAmountIn: bigint
 ): Decimal {
   const invariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
@@ -115,11 +114,11 @@ export function calcOutGivenExactIn(
 }
 
 export function calcInGivenExactOut(
-  fpBalances: BigNumberish[],
-  amplificationParameter: BigNumberish,
+  fpBalances: bigint[],
+  amplificationParameter: bigint,
   tokenIndexIn: number,
   tokenIndexOut: number,
-  fpTokenAmountOut: BigNumberish
+  fpTokenAmountOut: bigint
 ): Decimal {
   const invariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
@@ -139,8 +138,8 @@ export function calcInGivenExactOut(
 // The amp factor input must be a number: *not* multiplied by the precision
 export function getTokenBalanceGivenInvariantAndAllOtherBalances(
   amp: number,
-  fpBalances: BigNumberish[],
-  fpInvariant: BigNumberish,
+  fpBalances: bigint[],
+  fpInvariant: bigint,
   tokenIndex: number
 ): bigint {
   const invariant = fromFp(fpInvariant);
@@ -150,7 +149,7 @@ export function getTokenBalanceGivenInvariantAndAllOtherBalances(
 
 function _getTokenBalanceGivenInvariantAndAllOtherBalances(
   balances: Decimal[],
-  amplificationParameter: Decimal | BigNumberish,
+  amplificationParameter: Decimal | bigint,
   invariant: Decimal,
   tokenIndex: number
 ): Decimal {

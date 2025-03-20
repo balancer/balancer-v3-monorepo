@@ -32,7 +32,7 @@ abstract contract BasePoolMathRoundingTest is Test {
     function testComputeProportionalAmountsIn__Fuzz(
         uint256[2] calldata rawBalances,
         uint256 rawBptAmountOut
-    ) external view {
+    ) external virtual {
         uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
@@ -73,7 +73,7 @@ abstract contract BasePoolMathRoundingTest is Test {
     function testComputeProportionalAmountsOut__Fuzz(
         uint256[2] calldata rawBalances,
         uint256 rawBptAmountIn
-    ) external view {
+    ) external virtual {
         uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
@@ -115,7 +115,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         uint256[2] calldata rawBalances,
         uint256[2] calldata rawAmountsIn,
         uint64 rawSwapFee
-    ) external view {
+    ) external virtual {
         uint256[] memory balances = new uint256[](rawBalances.length);
         uint256[] memory amountsIn = new uint256[](2);
         for (uint256 i = 0; i < balances.length; ++i) {
@@ -187,7 +187,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         uint256 rawTokenInIndex,
         uint256 rawBptAmountOut,
         uint64 rawSwapFee
-    ) external view {
+    ) external virtual {
         uint256[] memory balances = new uint256[](2);
         uint256 balance = bound(rawBalance, MIN_BALANCE * 4, MAX_AMOUNT);
         for (uint256 i = 0; i < balances.length; ++i) {
@@ -263,7 +263,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         uint256 rawTokenOutIndex,
         uint256 rawAmountOut,
         uint64 rawSwapFee
-    ) external view {
+    ) external virtual {
         uint256[] memory balances = new uint256[](2);
         uint256 balance = bound(rawBalance, MIN_BALANCE * 5, MAX_AMOUNT);
 
@@ -340,7 +340,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         uint256 rawTokenOutIndex,
         uint256 rawBptAmountIn,
         uint64 rawSwapFee
-    ) external view {
+    ) external virtual {
         uint256[] memory balances = new uint256[](2);
 
         uint balance = bound(rawBalance, MIN_BALANCE, MAX_AMOUNT);
