@@ -5,19 +5,19 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/_vault/IVault.sol";
 import {
     IWrappedBalancerPoolTokenFactory
-} from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolTokenFactory.sol";
+} from "@balancer-labs/v3-interfaces/contracts/_vault/IWrappedBalancerPoolTokenFactory.sol";
 
 import { WrappedBalancerPoolToken } from "./WrappedBalancerPoolToken.sol";
 
 contract WrappedBalancerPoolTokenFactory is IWrappedBalancerPoolTokenFactory {
-    IVault internal immutable vault;
+    IVault internal immutable _vault;
     mapping(address => address) internal _wrappedTokens;
 
     constructor(IVault vault_) {
-        vault = vault_;
+        _vault = vault_;
     }
 
     /// @inheritdoc IWrappedBalancerPoolTokenFactory
@@ -27,13 +27,13 @@ contract WrappedBalancerPoolTokenFactory is IWrappedBalancerPoolTokenFactory {
             revert WrappedBPTAlreadyExists(wrappedToken);
         }
 
-        if (!vault.isPoolInitialized(address(bpt))) {
+        if (!_vault.isPoolInitialized(address(bpt))) {
             revert BalancerPoolTokenNotInitialized();
         }
 
         string memory name = string(abi.encodePacked("Wrapped ", IERC20Metadata(bpt).name()));
         string memory symbol = string(abi.encodePacked("w", IERC20Metadata(bpt).symbol()));
-        wrappedToken = address(new WrappedBalancerPoolToken(vault, IERC20(bpt), name, symbol));
+        wrappedToken = address(new WrappedBalancerPoolToken(_vault, IERC20(bpt), name, symbol));
 
         _wrappedTokens[address(bpt)] = wrappedToken;
         emit WrappedTokenCreated(bpt, wrappedToken);
