@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.24;
+
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
+
+contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Permit {
+    using SafeERC20 for *;
+
+    IERC20 public immutable bpt;
+    IVault public immutable vault;
+
+    constructor(
+        IVault vault_,
+        IERC20 bpt_,
+        string memory name,
+        string memory symbol
+    ) ERC20(name, symbol) ERC20Permit(name) {
+        vault = vault_;
+        bpt = bpt_;
+    }
+
+    modifier onlyIfVaultLocked() {
+        if (vault.isUnlocked()) {
+            revert VaultIsUnlocked();
+        }
+        _;
+    }
+
+    /// @inheritdoc IWrappedBalancerPoolToken
+    function mint(uint256 amount) public onlyIfVaultLocked {
+        bpt.safeTransferFrom(msg.sender, address(this), amount);
+
+        _mint(msg.sender, amount);
+    }
+
+    /// @inheritdoc IWrappedBalancerPoolToken
+    function burn(uint256 value) public onlyIfVaultLocked {
+        _burnAndTransfer(msg.sender, value);
+    }
+
+    /// @inheritdoc IWrappedBalancerPoolToken
+    function burnFrom(address account, uint256 value) public onlyIfVaultLocked {
+        _spendAllowance(account, msg.sender, value);
+
+        _burnAndTransfer(account, value);
+    }
+
+    function _burnAndTransfer(address account, uint256 value) internal {
+        _burn(account, value);
+
+        bpt.transfer(account, value);
+    }
+}
