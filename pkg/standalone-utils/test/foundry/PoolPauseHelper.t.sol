@@ -6,13 +6,13 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IPausePoolHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPausePoolHelper.sol";
+import { IPoolPauseHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolPauseHelper.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
-import { PausePoolHelper } from "../../contracts/PausePoolHelper.sol";
+import { PoolPauseHelper } from "../../contracts/PoolPauseHelper.sol";
 
-contract PausePoolHelperTest is BaseVaultTest {
-    PausePoolHelper pauseHelper;
+contract PoolPauseHelperTest is BaseVaultTest {
+    PoolPauseHelper pauseHelper;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -20,7 +20,7 @@ contract PausePoolHelperTest is BaseVaultTest {
         address[] memory owners = new address[](1);
         owners[0] = address(this);
 
-        pauseHelper = new PausePoolHelper(vault);
+        pauseHelper = new PoolPauseHelper(vault);
 
         authorizer.grantRole(pauseHelper.getActionId(pauseHelper.addPools.selector), address(this));
         authorizer.grantRole(pauseHelper.getActionId(pauseHelper.removePools.selector), address(this));
@@ -36,7 +36,7 @@ contract PausePoolHelperTest is BaseVaultTest {
         address[] memory firstPools = _generatePools(10);
         for (uint256 i = 0; i < firstPools.length; i++) {
             vm.expectEmit();
-            emit IPausePoolHelper.PoolAddedToPausableSet(firstPools[i]);
+            emit IPoolPauseHelper.PoolAddedToPausableSet(firstPools[i]);
         }
 
         pauseHelper.addPools(firstPools);
@@ -50,7 +50,7 @@ contract PausePoolHelperTest is BaseVaultTest {
         address[] memory secondPools = _generatePools(10);
         for (uint256 i = 0; i < secondPools.length; i++) {
             vm.expectEmit();
-            emit IPausePoolHelper.PoolAddedToPausableSet(secondPools[i]);
+            emit IPoolPauseHelper.PoolAddedToPausableSet(secondPools[i]);
         }
 
         pauseHelper.addPools(secondPools);
@@ -71,7 +71,7 @@ contract PausePoolHelperTest is BaseVaultTest {
         pools[0] = address(0x1);
         pools[1] = address(0x1);
 
-        vm.expectRevert(abi.encodeWithSelector(IPausePoolHelper.PoolAlreadyInPausableSet.selector, pools[1]));
+        vm.expectRevert(abi.encodeWithSelector(IPoolPauseHelper.PoolAlreadyInPausableSet.selector, pools[1]));
         pauseHelper.addPools(pools);
     }
 
@@ -90,7 +90,7 @@ contract PausePoolHelperTest is BaseVaultTest {
 
         for (uint256 i = 0; i < pools.length; i++) {
             vm.expectEmit();
-            emit IPausePoolHelper.PoolRemovedFromPausableSet(pools[i]);
+            emit IPoolPauseHelper.PoolRemovedFromPausableSet(pools[i]);
         }
 
         pauseHelper.removePools(pools);
@@ -105,7 +105,7 @@ contract PausePoolHelperTest is BaseVaultTest {
     function testRemoveNotExistingPool() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IPausePoolHelper.PoolNotInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolPauseHelper.PoolNotInPausableSet.selector, address(0x00)));
         pauseHelper.removePools(new address[](1));
     }
 
@@ -139,7 +139,7 @@ contract PausePoolHelperTest is BaseVaultTest {
     function testPauseIfPoolIsNotInList() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IPausePoolHelper.PoolNotInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolPauseHelper.PoolNotInPausableSet.selector, address(0x00)));
         pauseHelper.pausePools(new address[](1));
     }
 
@@ -174,6 +174,34 @@ contract PausePoolHelperTest is BaseVaultTest {
         for (uint256 i = 3; i < 5; i++) {
             assertEq(pools[i], storedPools[i - 3], "Stored pool should be the same as the added pool (partial)");
         }
+    }
+
+    function testGetPoolsEdgeCases() public {
+        address[] memory pools = _addPools(10);
+        address[] memory noPools = pauseHelper.getPools(5, 5);
+        assertEq(noPools.length, 0, "No pools should be returned");
+
+        address[] memory lastPool = pauseHelper.getPools(9, 10);
+        assertEq(lastPool.length, 1, "Last pool length is incorrect");
+        assertEq(pools[9], lastPool[0], "Last pool is incorrect");
+
+        address[] memory firstPool = pauseHelper.getPools(0, 1);
+        assertEq(firstPool.length, 1, "First pool length is incorrect");
+        assertEq(pools[0], firstPool[0], "First pool is incorrect");
+    }
+
+    function testGetPoolsInvalidCases() public {
+        uint256 poolsNum = 10;
+
+        address[] memory pools = _addPools(poolsNum);
+        vm.expectRevert(IPoolPauseHelper.IndexOutOfBounds.selector);
+        pauseHelper.getPools(2, 1);
+
+        vm.expectRevert(IPoolPauseHelper.IndexOutOfBounds.selector);
+        pauseHelper.getPools(2, poolsNum + 1);
+
+        vm.expectRevert(IPoolPauseHelper.IndexOutOfBounds.selector);
+        pauseHelper.getPools(poolsNum, poolsNum);
     }
 
     function _generatePools(uint256 length) internal returns (address[] memory pools) {

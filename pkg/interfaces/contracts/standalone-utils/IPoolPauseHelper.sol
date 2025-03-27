@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-interface IPausePoolHelper {
+interface IPoolPauseHelper {
     /**
      * @notice Cannot add a pool that is already there.
      * @param pool Address of the pool being added

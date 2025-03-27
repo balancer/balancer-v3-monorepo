@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IPausePoolHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPausePoolHelper.sol";
+import { IPoolPauseHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolPauseHelper.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
-contract PausePoolHelper is IPausePoolHelper, SingletonAuthentication {
+contract PoolPauseHelper is IPoolPauseHelper, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _pausablePools;
@@ -22,7 +22,7 @@ contract PausePoolHelper is IPausePoolHelper, SingletonAuthentication {
                                     Manage Pools
     ***************************************************************************/
 
-    /// @inheritdoc IPausePoolHelper
+    /// @inheritdoc IPoolPauseHelper
     function addPools(address[] calldata newPools) external authenticate {
         uint256 length = newPools.length;
 
@@ -36,7 +36,7 @@ contract PausePoolHelper is IPausePoolHelper, SingletonAuthentication {
         }
     }
 
-    /// @inheritdoc IPausePoolHelper
+    /// @inheritdoc IPoolPauseHelper
     function removePools(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
@@ -49,7 +49,7 @@ contract PausePoolHelper is IPausePoolHelper, SingletonAuthentication {
         }
     }
 
-    /// @inheritdoc IPausePoolHelper
+    /// @inheritdoc IPoolPauseHelper
     function pausePools(address[] memory pools) public authenticate {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
@@ -66,17 +66,17 @@ contract PausePoolHelper is IPausePoolHelper, SingletonAuthentication {
                                     Getters                                
     ***************************************************************************/
 
-    /// @inheritdoc IPausePoolHelper
+    /// @inheritdoc IPoolPauseHelper
     function getPoolsCount() external view returns (uint256) {
         return _pausablePools.length();
     }
 
-    /// @inheritdoc IPausePoolHelper
+    /// @inheritdoc IPoolPauseHelper
     function hasPool(address pool) external view returns (bool) {
         return _pausablePools.contains(pool);
     }
 
-    /// @inheritdoc IPausePoolHelper
+    /// @inheritdoc IPoolPauseHelper
     function getPools(uint256 from, uint256 to) public view returns (address[] memory pools) {
         uint256 poolLength = _pausablePools.length();
         if (from > to || to > poolLength || from >= poolLength) {
