@@ -96,6 +96,48 @@ interface IProtocolFeeController {
     );
 
     /**
+     * @notice Emitted on pool registration with the initial aggregate swap fee percentage, for off-chain processes.
+     * @dev If the pool is registered as protocol fee exempt, this will be zero (until changed). Otherwise, it will
+     * equal the current global swap fee percentage.
+     *
+     * @param pool The pool being registered
+     * @param aggregateSwapFeePercentage The initial aggregate swap fee percentage
+     * @param isProtocolFeeExempt True if the pool is exempt from taking protocol fees initially
+     */
+    event InitialPoolAggregateSwapFeePercentage(
+        address indexed pool,
+        uint256 aggregateSwapFeePercentage,
+        bool isProtocolFeeExempt
+    );
+
+    /**
+     * @notice Emitted on pool registration with the initial aggregate yield fee percentage, for off-chain processes.
+     * @dev If the pool is registered as protocol fee exempt, this will be zero (until changed). Otherwise, it will
+     * equal the current global yield fee percentage.
+     *
+     * @param pool The pool being registered
+     * @param aggregateYieldFeePercentage The initial aggregate yield fee percentage
+     * @param isProtocolFeeExempt True if the pool is exempt from taking protocol fees initially
+     */
+    event InitialPoolAggregateYieldFeePercentage(
+        address indexed pool,
+        uint256 aggregateYieldFeePercentage,
+        bool isProtocolFeeExempt
+    );
+
+    /**
+     * @notice Emitted as a convenience during pool registration, more focused than the Vault's `PoolRegistered` event.
+     * @dev The `PoolRegistered` event includes the `roleAccounts` field, which also records the pool creator, but this
+     * simpler event is also provided for convenience. Though `InitialPoolAggregateSwapFeePercentage` and its yield fee
+     * counterpart also include the protocol fee exemption flag, we might as well include it here as well.
+     *
+     * @param pool The address of the pool being registered
+     * @param poolCreator The address of the pool creator (non-zero, or the event would not be emitted)
+     * @param  protocolFeeExempt True if the pool is initially exempt from protocol fees
+     */
+    event PoolRegisteredWithFeeController(address indexed pool, address indexed poolCreator, bool protocolFeeExempt);
+
+    /**
      * @notice Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
      * @dev Note that this is checked for both the global and pool-specific protocol swap fee percentages.
      */
@@ -148,9 +190,16 @@ interface IProtocolFeeController {
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256 protocolYieldFeePercentage);
 
     /**
+     * @notice Getter for pool registration flag.
+     * @param pool The address of the pool
+     * @return isRegistered True if the pool configuration has been set (e.g., through `registerPool`)
+     */
+    function isPoolRegistered(address pool) external view returns (bool);
+
+    /**
      * @notice Getter for the current protocol swap fee for a given pool.
      * @param pool The address of the pool
-     * @return protocolSwapFeePercentage The global protocol swap fee percentage
+     * @return protocolSwapFeePercentage The protocol swap fee percentage for the given pool
      * @return isOverride True if the protocol fee has been overridden
      */
     function getPoolProtocolSwapFeeInfo(
@@ -160,12 +209,26 @@ interface IProtocolFeeController {
     /**
      * @notice Getter for the current protocol yield fee for a given pool.
      * @param pool The address of the pool
-     * @return protocolYieldFeePercentage The global protocol yield fee percentage
+     * @return protocolYieldFeePercentage The protocol yield fee percentage for the given pool
      * @return isOverride True if the protocol fee has been overridden
      */
     function getPoolProtocolYieldFeeInfo(
         address pool
     ) external view returns (uint256 protocolYieldFeePercentage, bool isOverride);
+
+    /**
+     * @notice Getter for the current pool creator swap fee percentage for a given pool.
+     * @param pool The address of the pool
+     * @return poolCreatorSwapFeePercentage The pool creator swap fee component of the aggregate swap fee
+     */
+    function getPoolCreatorSwapFeePercentage(address pool) external view returns (uint256);
+
+    /**
+     * @notice Getter for the current pool creator yield fee percentage for a given pool.
+     * @param pool The address of the pool
+     * @return poolCreatorSwapFeePercentage The pool creator yield fee component of the aggregate yield fee
+     */
+    function getPoolCreatorYieldFeePercentage(address pool) external view returns (uint256);
 
     /**
      * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.

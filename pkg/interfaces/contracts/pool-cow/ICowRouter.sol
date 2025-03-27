@@ -19,6 +19,7 @@ interface ICowRouter {
      * @param swapLimit Minimum or maximum value of the calculated amount (depending on the type of swap)
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap request and emitted with donation and swap events
      */
     struct SwapAndDonateHookParams {
@@ -31,6 +32,7 @@ interface ICowRouter {
         uint256 swapLimit;
         uint256 swapDeadline;
         uint256[] donationAmounts;
+        uint256[] transferAmountHints;
         bytes userData;
     }
 
@@ -49,15 +51,15 @@ interface ICowRouter {
         bytes userData;
     }
 
-    /// @notice The swap transaction was not validated before the specified deadline timestamp.
-    error SwapDeadline();
-
     /**
-     * @notice The `newProtocolFeePercentage` is above the maximum limit.
-     * @param newProtocolFeePercentage New value of the protocol fee percentage
-     * @param maxProtocolFeePercentage The maximum protocol fee percentage
+     * @notice The funds transferred to the Vault and the swap tokenOut amount were not enough to pay for the Swap and
+     * Donate operation.
+     *
+     * @param token The address of the token in which credits and debits were accumulated
+     * @param senderCredits Funds transferred by the sender to the Vault and amount of tokenOut of the swap
+     * @param senderDebits Funds donated to the pool, paid in fees and amount of tokenIn of the swap
      */
-    error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
+    error InsufficientFunds(IERC20 token, uint256 senderCredits, uint256 senderDebits);
 
     /**
      * @notice A swap and a donation have occurred.
@@ -97,6 +99,34 @@ interface ICowRouter {
     event ProtocolFeePercentageChanged(uint256 newProtocolFeePercentage);
 
     /**
+     * @notice The fee sweeper contract was changed.
+     * @dev This is the contract that receives protocol fees on withdrawal.
+     * @param newFeeSweeper The address of the new fee sweeper
+     */
+    event FeeSweeperChanged(address newFeeSweeper);
+
+    /**
+     * @notice Protocol fees collected in the given token were withdrawn to the fee sweeper contract.
+     * @param token Token in which the protocol fees were charged
+     * @param feeSweeper Address that received protocol fees
+     * @param amountWithdrawn Amount of tokens withdawn from CowRouter
+     */
+    event ProtocolFeesWithdrawn(IERC20 token, address feeSweeper, uint256 amountWithdrawn);
+
+    /// @notice The swap transaction was not validated before the specified deadline timestamp.
+    error SwapDeadline();
+
+    /**
+     * @notice The `newProtocolFeePercentage` is above the maximum limit.
+     * @param newProtocolFeePercentage New value of the protocol fee percentage
+     * @param maxProtocolFeePercentage The maximum protocol fee percentage
+     */
+    error ProtocolFeePercentageAboveLimit(uint256 newProtocolFeePercentage, uint256 maxProtocolFeePercentage);
+
+    /// @notice The caller tried to set the zero address as the fee sweeper.
+    error InvalidFeeSweeper();
+
+    /**
      * @notice Executes an ExactIn swap and donates a specified amount to the same CoW AMM Pool.
      * @dev This is a permissioned function, intended to be called only by a `CoW Settlement` contract. CoW AMM matches
      * transaction tokens outside of the pool, and donates fees (surplus) back to the pool. Therefore, the swap has no
@@ -109,6 +139,7 @@ interface ICowRouter {
      * @param swapMinAmountOut Minimum number of tokenOut tokens
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountOut Number of tokenOut tokens returned from the swap
      */
@@ -120,6 +151,7 @@ interface ICowRouter {
         uint256 swapMinAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferAmountHints,
         bytes memory userData
     ) external returns (uint256 exactAmountOut);
 
@@ -136,6 +168,7 @@ interface ICowRouter {
      * @param swapExactAmountOut Number of tokenOut tokens
      * @param swapDeadline Deadline for the swap, after which it will revert
      * @param donationAmounts Amount of tokens to donate + protocol fees, sorted in token registration order
+     * @param transferAmountHints Amount of tokens transferred upfront, sorted in token registration order
      * @param userData Additional (optional) data sent with the swap and donate request
      * @return exactAmountIn Number of tokenIn tokens charged in the swap
      */
@@ -147,6 +180,7 @@ interface ICowRouter {
         uint256 swapExactAmountOut,
         uint256 swapDeadline,
         uint256[] memory donationAmounts,
+        uint256[] memory transferAmountHints,
         bytes memory userData
     ) external returns (uint256 exactAmountIn);
 
@@ -160,6 +194,15 @@ interface ICowRouter {
      * @param userData Additional (optional) data sent with the donate request
      */
     function donate(address pool, uint256[] memory donationAmounts, bytes memory userData) external;
+
+    /**
+     * @notice Withdraws collected protocol fees to the fee sweeper.
+     * @dev Permissionless because the fee sweeper (receiver of protocol fees) is defined by a variable with a
+     * permissioned setter. Emits the ProtocolFeesWithdrawn event on success.
+     *
+     * @param token Token in which the protocol fees were charged
+     */
+    function withdrawCollectedProtocolFees(IERC20 token) external;
 
     /**
      * @notice Returns the protocol fee percentage, registered in the CoW Router.
@@ -185,6 +228,12 @@ interface ICowRouter {
     function getCollectedProtocolFees(IERC20 token) external view returns (uint256 fees);
 
     /**
+     * @notice Gets the address that will receive protocol fees on withdrawal.
+     * @param feeSweeper Address that receives protocol fees
+     */
+    function getFeeSweeper() external view returns (address feeSweeper);
+
+    /**
      * @notice Sets the protocol fee percentage.
      * @dev This is a permissioned function. The protocol fee percentage is capped at a maximum value, registered as a
      * constant in the CoW AMM Router.
@@ -192,4 +241,11 @@ interface ICowRouter {
      * @param newProtocolFeePercentage New value of the protocol fee percentage
      */
     function setProtocolFeePercentage(uint256 newProtocolFeePercentage) external;
+
+    /**
+     * @notice Sets the address that will receive protocol fees on withdrawal.
+     * @dev Fee Sweeper cannot be the zero address.
+     * @param newFeeSweeper Address of the new fee sweeper
+     */
+    function setFeeSweeper(address newFeeSweeper) external;
 }

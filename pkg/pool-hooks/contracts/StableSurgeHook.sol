@@ -8,10 +8,12 @@ import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
+    AddLiquidityKind,
     LiquidityManagement,
     TokenConfig,
     PoolSwapParams,
     HookFlags,
+    RemoveLiquidityKind,
     SwapKind,
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -52,7 +54,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     uint256 private immutable _defaultSurgeThresholdPercentage;
 
     // Store the current threshold and max fee for each pool.
-    mapping(address pool => SurgeFeeData data) private _surgeFeePoolData;
+    mapping(address pool => SurgeFeeData data) internal _surgeFeePoolData;
 
     /**
      * @notice A new `StableSurgeHook` contract has been registered successfully.
@@ -86,14 +88,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         _;
     }
 
-    modifier withPermission(address pool) {
-        _ensureValidSender(pool);
-        _;
-    }
-
-    // Store the current threshold for each pool.
-    mapping(address pool => uint256 threshold) private _surgeThresholdPercentage;
-
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
@@ -112,6 +106,8 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     /// @inheritdoc IHooks
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         hookFlags.shouldCallComputeDynamicSwapFee = true;
+        hookFlags.shouldCallAfterAddLiquidity = true;
+        hookFlags.shouldCallAfterRemoveLiquidity = true;
     }
 
     /**
@@ -190,6 +186,89 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         return (true, getSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
+    function getSurgeFeePercentage(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) public view returns (uint256) {
+        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
+
+        uint256[] memory newBalances = new uint256[](params.balancesScaled18.length);
+        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            newBalances[params.indexIn] += params.amountGivenScaled18;
+            newBalances[params.indexOut] -= amountCalculatedScaled18;
+        } else {
+            newBalances[params.indexIn] += amountCalculatedScaled18;
+            newBalances[params.indexOut] -= params.amountGivenScaled18;
+        }
+
+        return _getSurgeFeePercentage(params, pool, staticSwapFeePercentage, newBalances);
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterAddLiquidity(
+        address,
+        address pool,
+        AddLiquidityKind kind,
+        uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
+        uint256,
+        uint256[] memory balancesScaled18,
+        bytes memory
+    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
+        // Proportional add is always fine.
+        if (kind == AddLiquidityKind.PROPORTIONAL) {
+            return (true, amountsInRaw);
+        }
+
+        // Rebuild old balances before adding liquidity.
+        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
+        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
+            oldBalancesScaled18[i] = balancesScaled18[i] - amountsInScaled18[i];
+        }
+
+        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
+        uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(balancesScaled18);
+
+        bool isSurging = _isSurging(surgeFeeData, oldBalancesScaled18, newTotalImbalance);
+
+        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
+        return (isSurging == false, amountsInRaw);
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterRemoveLiquidity(
+        address,
+        address pool,
+        RemoveLiquidityKind kind,
+        uint256,
+        uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
+        uint256[] memory balancesScaled18,
+        bytes memory
+    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
+        // Proportional remove is always fine.
+        if (kind == RemoveLiquidityKind.PROPORTIONAL) {
+            return (true, amountsOutRaw);
+        }
+
+        // Rebuild old balances before removing liquidity.
+        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
+        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
+            oldBalancesScaled18[i] = balancesScaled18[i] + amountsOutScaled18[i];
+        }
+
+        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
+        uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(balancesScaled18);
+
+        bool isSurging = _isSurging(surgeFeeData, oldBalancesScaled18, newTotalImbalance);
+
+        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
+        return (isSurging == false, amountsOutRaw);
+    }
+
     /**
      * @notice Sets the max surge fee percentage.
      * @dev This function must be permissioned. If the pool does not have a swap fee manager role set, the max surge
@@ -198,7 +277,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     function setMaxSurgeFeePercentage(
         address pool,
         uint256 newMaxSurgeSurgeFeePercentage
-    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) withPermission(pool) {
+    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) onlySwapFeeManagerOrGovernance(pool) {
         _setMaxSurgeFeePercentage(pool, newMaxSurgeSurgeFeePercentage);
     }
 
@@ -210,21 +289,8 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     function setSurgeThresholdPercentage(
         address pool,
         uint256 newSurgeThresholdPercentage
-    ) external withValidPercentage(newSurgeThresholdPercentage) withPermission(pool) {
+    ) external withValidPercentage(newSurgeThresholdPercentage) onlySwapFeeManagerOrGovernance(pool) {
         _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
-    }
-
-    /// @dev Ensure the sender is the swapFeeManager, or default to governance if there is no manager.
-    function _ensureValidSender(address pool) private view {
-        address swapFeeManager = _vault.getPoolRoleAccounts(pool).swapFeeManager;
-
-        if (swapFeeManager == address(0)) {
-            if (_canPerform(getActionId(msg.sig), msg.sender, pool) == false) {
-                revert SenderNotAllowed();
-            }
-        } else if (swapFeeManager != msg.sender) {
-            revert SenderNotAllowed();
-        }
     }
 
     /**
@@ -234,39 +300,23 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
      * @param pool The pool we are computing the fee for
      * @param staticFeePercentage The static fee percentage for the pool (default if there is no surge)
      */
-    function getSurgeFeePercentage(
+    function _getSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
-        uint256 staticFeePercentage
-    ) public view returns (uint256) {
-        uint256 numTokens = params.balancesScaled18.length;
+        uint256 staticFeePercentage,
+        uint256[] memory newBalances
+    ) internal view returns (uint256 surgeFeePercentage) {
+        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
 
-        uint256 amountCalculatedScaled18 = StablePool(pool).onSwap(params);
-
-        uint256[] memory newBalances = new uint256[](numTokens);
-        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
-
-        if (params.kind == SwapKind.EXACT_IN) {
-            newBalances[params.indexIn] += params.amountGivenScaled18;
-            newBalances[params.indexOut] -= amountCalculatedScaled18;
-        } else {
-            newBalances[params.indexIn] += amountCalculatedScaled18;
-            newBalances[params.indexOut] -= params.amountGivenScaled18;
+        // If the max surge fee percentage is less than the static fee percentage, return the static fee percentage.
+        // No matter where the imbalance is, the fee can never be smaller than the static fee.
+        if (surgeFeeData.maxSurgeFeePercentage < staticFeePercentage) {
+            return staticFeePercentage;
         }
 
         uint256 newTotalImbalance = StableSurgeMedianMath.calculateImbalance(newBalances);
 
-        // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
-        if (newTotalImbalance == 0) {
-            return staticFeePercentage;
-        }
-
-        uint256 oldTotalImbalance = StableSurgeMedianMath.calculateImbalance(params.balancesScaled18);
-
-        SurgeFeeData storage surgeFeeData = _surgeFeePoolData[pool];
-        if (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= surgeFeeData.thresholdPercentage) {
-            return staticFeePercentage;
-        }
+        bool isSurging = _isSurging(surgeFeeData, params.balancesScaled18, newTotalImbalance);
 
         // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
         //
@@ -276,13 +326,33 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         // This formula linearly increases the fee from 0 at the threshold up to the maximum fee.
         // At 35%, the fee would be 1% + (0.95 - 0.01) * ((0.35 - 0.3)/(0.95-0.3)) = 1% + 0.94 * 0.0769 ~ 8.2%.
         // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
-        return
-            staticFeePercentage +
-            (surgeFeeData.maxSurgeFeePercentage - staticFeePercentage).mulDown(
-                (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
-                    uint256(surgeFeeData.thresholdPercentage).complement()
-                )
-            );
+        if (isSurging) {
+            surgeFeePercentage =
+                staticFeePercentage +
+                (surgeFeeData.maxSurgeFeePercentage - staticFeePercentage).mulDown(
+                    (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
+                        uint256(surgeFeeData.thresholdPercentage).complement()
+                    )
+                );
+        } else {
+            surgeFeePercentage = staticFeePercentage;
+        }
+    }
+
+    function _isSurging(
+        SurgeFeeData memory surgeFeeData,
+        uint256[] memory currentBalances,
+        uint256 newTotalImbalance
+    ) internal pure returns (bool isSurging) {
+        // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
+        if (newTotalImbalance == 0) {
+            return false;
+        }
+
+        uint256 oldTotalImbalance = StableSurgeMedianMath.calculateImbalance(currentBalances);
+
+        // Surging if imbalance grows and we're currently above the threshold.
+        return (newTotalImbalance > oldTotalImbalance && newTotalImbalance > surgeFeeData.thresholdPercentage);
     }
 
     /// @dev Assumes the percentage value and sender have been externally validated.

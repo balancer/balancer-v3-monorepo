@@ -14,8 +14,12 @@ The audits have been conducted before the [Cantina contest](https://cantina.xyz/
 | Vault, Weighted Pool, Stable Pool | Trail Of Bits | [`2024-10-08`](./trail-of-bits/2024-10-08.pdf)       |
 | Vault, Weighted Pool, Stable Pool | Spearbit<sup>1</sup> | [`2024-10-04`](./spearbit/2024-10-04.pdf)     |
 | Pre-competition v3 codebase       | Cantina<sup>2</sup>  | [`2024-12-17`](./cantina/2024-12-17.pdf)      |
+| Gyroscope pools                   | Certora       | [`2024-12-24`](./certora/2024-12-24.pdf)             |
 | Post-competition v3 codebase      | Cantina<sup>2</sup>  | [`2024-12-31`](./cantina/2024-12-31.pdf)      |
-  
+| Stable Surge Factory / Hook       | Certora       | [`2025-01-30`](./certora/2025-01-30.pdf)             |
+| MEV Capture Hook                  | Certora       | [`2025-02-07`](./certora/2025-02-07.pdf)             |
+| Liquidity Bootstrapping Pool      | Certora       | [`2025-02-17`](./certora/2025-02-17.pdf)             |
+
 ## Addenda
   
 <sup>1</sup> Note that 5.2.6 in the Spearbit audit of 2024-10-04 was resolved after the date of the audit. [PR #1113](https://github.com/balancer/balancer-v3-monorepo/pull/1113) replaces the event with explicit add/remove liquidity events, and accounts for swap fees in a separate field.

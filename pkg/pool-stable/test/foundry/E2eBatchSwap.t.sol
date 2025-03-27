@@ -4,18 +4,16 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-
-import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { E2eBatchSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eBatchSwap.t.sol";
 
+import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
-import { StablePoolContractsDeployer } from "./utils/StablePoolContractsDeployer.sol";
 
 contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer {
     using CastingHelpers for address[];
@@ -73,9 +71,6 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest, StablePoolContractsDeployer
 
         // Cannot set pool creator directly with stable pool factory.
         vault.manualSetPoolCreator(address(newPool), lp);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), lp);
 
         poolArgs = abi.encode(
             StablePool.NewPoolParams({

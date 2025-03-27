@@ -155,13 +155,18 @@ contract VaultContractsDeployer is BaseContractsDeployer {
     }
 
     function deployVaultMock() internal returns (IVaultMock) {
-        return deployVaultMock(0, 0);
+        return deployVaultMock(0, 0, 0, 0);
     }
 
-    function deployVaultMock(uint256 minTradeAmount, uint256 minWrapAmount) internal returns (IVaultMock) {
+    function deployVaultMock(
+        uint256 minTradeAmount,
+        uint256 minWrapAmount,
+        uint256 protocolSwapFeePercentage,
+        uint256 protocolYieldFeePercentage
+    ) internal returns (IVaultMock) {
         IAuthorizer authorizer = deployBasicAuthorizerMock();
-        bytes32 salt = bytes32(0);
-        VaultMock vault = VaultMock(payable(CREATE3.getDeployed(salt)));
+
+        VaultMock vault = VaultMock(payable(CREATE3.getDeployed(bytes32(0))));
 
         VaultAdminMock vaultAdmin;
         VaultExtensionMock vaultExtension;
@@ -182,16 +187,23 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                 payable(deployCode(_computeVaultTestPath(type(VaultExtensionMock).name), abi.encode(vault, vaultAdmin)))
             );
             protocolFeeController = ProtocolFeeControllerMock(
-                deployCode(_computeVaultTestPath(type(ProtocolFeeControllerMock).name), abi.encode(vault))
+                deployCode(
+                    _computeVaultTestPath(type(ProtocolFeeControllerMock).name),
+                    abi.encode(vault, protocolSwapFeePercentage, protocolYieldFeePercentage)
+                )
             );
         } else {
             vaultMockBytecode = type(VaultMock).creationCode;
             vaultAdmin = new VaultAdminMock(IVault(payable(vault)), 90 days, 30 days, minTradeAmount, minWrapAmount);
             vaultExtension = new VaultExtensionMock(IVault(payable(vault)), vaultAdmin);
-            protocolFeeController = new ProtocolFeeControllerMock(IVaultMock(address(vault)));
+            protocolFeeController = new ProtocolFeeControllerMock(
+                IVaultMock(address(vault)),
+                protocolSwapFeePercentage,
+                protocolYieldFeePercentage
+            );
         }
 
-        _create3(abi.encode(vaultExtension, authorizer, protocolFeeController), vaultMockBytecode, salt);
+        _create3(abi.encode(vaultExtension, authorizer, protocolFeeController), vaultMockBytecode, bytes32(0));
         return IVaultMock(address(vault));
     }
 
@@ -275,24 +287,14 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployAggregatorsRouter(
-        IVault vault,
-        IWETH weth,
-        IPermit2 permit2,
-        string memory version
-    ) internal returns (AggregatorRouter) {
+    function deployAggregatorsRouter(IVault vault, string memory version) internal returns (AggregatorRouter) {
         if (reusingArtifacts) {
             return
                 AggregatorRouter(
-                    payable(
-                        deployCode(
-                            _computeVaultPath(type(AggregatorRouter).name),
-                            abi.encode(vault, weth, permit2, version)
-                        )
-                    )
+                    payable(deployCode(_computeVaultPath(type(AggregatorRouter).name), abi.encode(vault, version)))
                 );
         } else {
-            return new AggregatorRouter(vault, weth, permit2, version);
+            return new AggregatorRouter(vault, version);
         }
     }
 

@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
@@ -16,7 +14,7 @@ import { ERC4626TestToken } from "../../../contracts/test/ERC4626TestToken.sol";
 import { ERC20TestToken } from "../../../contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "../../../contracts/test/WETHTestToken.sol";
 
-abstract contract BaseTest is Test, GasSnapshot {
+abstract contract BaseTest is Test {
     using CastingHelpers for *;
 
     uint256 internal constant DEFAULT_BALANCE = 1e9 * 1e18;

@@ -120,28 +120,31 @@ contract WeightedPoolTest is WeightedPoolContractsDeployer, BasePoolTest {
         IRateProvider(pool).getRate();
     }
 
-    function testFailSwapFeeTooLow() public {
+    function testRevertsWhenSwapFeeTooLow() public {
         TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         tokenConfigs[daiIdx].token = IERC20(dai);
         tokenConfigs[usdcIdx].token = IERC20(usdc);
 
         PoolRoleAccounts memory roleAccounts;
 
+        uint256 minimumSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
+
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         address lowFeeWeightedPool = WeightedPoolFactory(poolFactory).create(
             "ERC20 Pool",
             "ERC20POOL",
             tokenConfigs,
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
-            IBasePool(pool).getMinimumSwapFeePercentage() - 1, // Swap fee too low
+            minimumSwapFeePercentage - 1, // Swap fee too low
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
             "Low fee pool"
         );
 
-        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
-        PoolFactoryMock(poolFactory).registerTestPool(lowFeeWeightedPool, tokenConfigs);
+        // The pool was not deployed, so the address is 0x0.
+        assertEq(address(lowFeeWeightedPool), address(0));
     }
 
     function testGetWeightedPoolImmutableData() public view {

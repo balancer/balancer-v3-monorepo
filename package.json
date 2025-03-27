@@ -21,13 +21,13 @@
     "Nicolás Venturo <nico@balancerlabs.dev>"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach --parallel --verbose run build",
-    "lint": "NODE_NO_WARNINGS=1 yarn workspaces foreach --parallel --verbose run lint",
-    "test": "yarn workspaces foreach --parallel --verbose run test",
-    "coverage": "yarn workspaces foreach --parallel --verbose run coverage",
-    "gas": "yarn workspaces foreach --parallel --verbose run gas",
+    "build": "yarn workspaces foreach --parallel --jobs unlimited --verbose run build",
+    "lint": "NODE_NO_WARNINGS=1 yarn workspaces foreach --parallel --jobs unlimited --verbose run lint",
+    "test": "yarn workspaces foreach --parallel --jobs unlimited --verbose run test",
+    "coverage": "yarn workspaces foreach --parallel --jobs unlimited --verbose run coverage",
+    "gas": "yarn workspaces foreach --parallel --jobs unlimited --verbose run gas",
     "slither-install": "python3 -m venv slither && bash -c 'source slither/bin/activate && pip3 install https://github.com/crytic/slither/releases/download/0.10.1/0.10.1.zip'",
-    "slither": "yarn workspaces foreach --parallel --verbose run slither"
+    "slither": "yarn workspaces foreach --parallel --jobs unlimited --verbose run slither"
   },
   "workspaces": [
     "pkg/*",

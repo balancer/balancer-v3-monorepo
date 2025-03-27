@@ -18,7 +18,7 @@ import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 describe('StablePoolAmplification', () => {
   const TOKEN_AMOUNT = fp(1000);
   const MIN_AMP = 1n;
-  const MAX_AMP = 5000n;
+  const MAX_AMP = 50000n;
   const AMP_PRECISION = 1000n;
   const INITIAL_AMPLIFICATION_PARAMETER = 200n;
 
@@ -229,7 +229,7 @@ describe('StablePoolAmplification', () => {
           });
 
           it('reverts when requesting above the max', async () => {
-            const highAmp = bn(5001);
+            const highAmp = bn(MAX_AMP + 1n);
             await expect(
               pool.connect(caller).startAmplificationParameterUpdate(highAmp, endTime)
             ).to.be.revertedWithCustomError(pool, 'AmplificationFactorTooHigh');

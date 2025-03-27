@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
+import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -84,7 +84,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
             return (true, staticSwapFeePercentage);
         }
 
-        address user = IRouterCommon(params.router).getSender();
+        address user = ISenderGuard(params.router).getSender();
 
         // If user has veBAL, apply a 50% discount to the current fee.
         if (_veBAL.balanceOf(user) > 0) {

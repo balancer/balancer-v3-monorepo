@@ -30,7 +30,7 @@ library GradualValueChange {
         // only 10% of the period in the future, the value would immediately jump 90%
         resolvedStartTime = Math.max(block.timestamp, startTime);
 
-        if (resolvedStartTime > endTime) {
+        if (resolvedStartTime >= endTime) {
             revert GradualUpdateTimeTravel(resolvedStartTime, endTime);
         }
     }

@@ -5,8 +5,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { PoolSwapParams, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IMevTaxHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevTaxHook.sol";
+import {
+    PoolSwapParams,
+    MAX_FEE_PERCENTAGE,
+    PoolRoleAccounts
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IMevCaptureHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IMevCaptureHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -17,34 +22,42 @@ import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFact
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { MevTaxHookMock } from "../../contracts/test/MevTaxHookMock.sol";
+import { MevCaptureHookMock } from "../../contracts/test/MevCaptureHookMock.sol";
 
-contract MevTaxHookTest is BaseVaultTest {
+contract MevCaptureHookTest is BaseVaultTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
-    MevTaxHookMock private _mevTaxHook;
+    error MockRegistryRevert();
+
+    uint256 private DEFAULT_MEV_TAX_MULTIPLIER = 10e18;
+    uint256 private DEFAULT_MEV_TAX_THRESHOLD = 10e16;
+
+    MevCaptureHookMock private _mevCaptureHook;
 
     BalancerContractRegistry private registry;
 
     function setUp() public override {
         super.setUp();
 
-        bytes4[] memory mevTaxHookSelectors = new bytes4[](9);
+        bytes4[] memory mevCaptureHookSelectors = new bytes4[](9);
 
-        mevTaxHookSelectors[0] = IMevTaxHook.disableMevTax.selector;
-        mevTaxHookSelectors[1] = IMevTaxHook.enableMevTax.selector;
-        mevTaxHookSelectors[2] = IMevTaxHook.setMaxMevSwapFeePercentage.selector;
-        mevTaxHookSelectors[3] = IMevTaxHook.setDefaultMevTaxMultiplier.selector;
-        mevTaxHookSelectors[4] = IMevTaxHook.setPoolMevTaxMultiplier.selector;
-        mevTaxHookSelectors[5] = IMevTaxHook.setDefaultMevTaxThreshold.selector;
-        mevTaxHookSelectors[6] = IMevTaxHook.setPoolMevTaxThreshold.selector;
-        mevTaxHookSelectors[7] = IMevTaxHook.addMevTaxExemptSenders.selector;
-        mevTaxHookSelectors[8] = IMevTaxHook.removeMevTaxExemptSenders.selector;
+        mevCaptureHookSelectors[0] = IMevCaptureHook.disableMevTax.selector;
+        mevCaptureHookSelectors[1] = IMevCaptureHook.enableMevTax.selector;
+        mevCaptureHookSelectors[2] = IMevCaptureHook.setMaxMevSwapFeePercentage.selector;
+        mevCaptureHookSelectors[3] = IMevCaptureHook.setDefaultMevTaxMultiplier.selector;
+        mevCaptureHookSelectors[4] = IMevCaptureHook.setPoolMevTaxMultiplier.selector;
+        mevCaptureHookSelectors[5] = IMevCaptureHook.setDefaultMevTaxThreshold.selector;
+        mevCaptureHookSelectors[6] = IMevCaptureHook.setPoolMevTaxThreshold.selector;
+        mevCaptureHookSelectors[7] = IMevCaptureHook.addMevTaxExemptSenders.selector;
+        mevCaptureHookSelectors[8] = IMevCaptureHook.removeMevTaxExemptSenders.selector;
 
-        for (uint256 i = 0; i < mevTaxHookSelectors.length; i++) {
-            authorizer.grantRole(IAuthentication(address(_mevTaxHook)).getActionId(mevTaxHookSelectors[i]), admin);
+        for (uint256 i = 0; i < mevCaptureHookSelectors.length; i++) {
+            authorizer.grantRole(
+                IAuthentication(address(_mevCaptureHook)).getActionId(mevCaptureHookSelectors[i]),
+                admin
+            );
         }
     }
 
@@ -71,20 +84,78 @@ contract MevTaxHookTest is BaseVaultTest {
 
     function createHook() internal override returns (address) {
         registry = new BalancerContractRegistry(vault);
-        _mevTaxHook = new MevTaxHookMock(IVault(address(vault)), registry);
-        vm.label(address(_mevTaxHook), "MEV Hook");
-        return address(_mevTaxHook);
+        _mevCaptureHook = new MevCaptureHookMock(
+            IVault(address(vault)),
+            registry,
+            DEFAULT_MEV_TAX_MULTIPLIER,
+            DEFAULT_MEV_TAX_THRESHOLD
+        );
+        vm.label(address(_mevCaptureHook), "MEV Hook");
+        return address(_mevCaptureHook);
     }
 
     function testGetBalancerContractRegistry() public view {
-        assertEq(address(_mevTaxHook.getBalancerContractRegistry()), address(registry), "Wrong registry");
+        assertEq(address(_mevCaptureHook.getBalancerContractRegistry()), address(registry), "Wrong registry");
+    }
+
+    /********************************************************
+                         constructor()
+    ********************************************************/
+
+    function testInvalidRegistry() public {
+        BalancerContractRegistry mockRegistry = BalancerContractRegistry(address(1));
+        vm.mockCall(
+            address(mockRegistry),
+            abi.encodeWithSelector(BalancerContractRegistry.isTrustedRouter.selector, address(0)),
+            abi.encode(true)
+        );
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.InvalidBalancerContractRegistry.selector));
+        new MevCaptureHookMock(
+            IVault(address(vault)),
+            mockRegistry,
+            DEFAULT_MEV_TAX_THRESHOLD,
+            DEFAULT_MEV_TAX_MULTIPLIER
+        );
+    }
+
+    function testRevertingRegistry() public {
+        BalancerContractRegistry mockRegistry = BalancerContractRegistry(address(1));
+        vm.mockCallRevert(
+            address(mockRegistry),
+            abi.encodeWithSelector(BalancerContractRegistry.isTrustedRouter.selector, address(0)),
+            abi.encodePacked(MockRegistryRevert.selector)
+        );
+
+        vm.expectRevert(MockRegistryRevert.selector);
+        new MevCaptureHookMock(
+            IVault(address(vault)),
+            mockRegistry,
+            DEFAULT_MEV_TAX_THRESHOLD,
+            DEFAULT_MEV_TAX_MULTIPLIER
+        );
+    }
+
+    function testDefaultMevTaxMultiplier() public view {
+        assertEq(
+            _mevCaptureHook.getDefaultMevTaxMultiplier(),
+            DEFAULT_MEV_TAX_MULTIPLIER,
+            "Wrong default MEV tax multiplier"
+        );
+    }
+
+    function testDefaultMevTaxThreshold() public view {
+        assertEq(
+            _mevCaptureHook.getDefaultMevTaxThreshold(),
+            DEFAULT_MEV_TAX_THRESHOLD,
+            "Wrong default MEV tax threshold"
+        );
     }
 
     /********************************************************
                        isMevTaxEnabled()
     ********************************************************/
     function testIsMevTaxEnabledStartingState() public view {
-        assertFalse(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is enabled after hook creation.");
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled after hook creation.");
     }
 
     /********************************************************
@@ -92,26 +163,32 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function testEnableMevTaxIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.enableMevTax();
+        _mevCaptureHook.enableMevTax();
     }
 
     function testEnableMevTax() public {
-        assertFalse(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is enabled");
-        vm.prank(admin);
+        // Defaults to enabled initially
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        vm.startPrank(admin);
+        _mevCaptureHook.disableMevTax();
+        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled after disabling");
+
         vm.expectEmit();
-        emit IMevTaxHook.MevTaxEnabledSet(true);
-        _mevTaxHook.enableMevTax();
-        assertTrue(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        emit IMevCaptureHook.MevTaxEnabledSet(true);
+        _mevCaptureHook.enableMevTax();
+        vm.stopPrank();
+
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
     }
 
     function testMultipleEnableMevTax() public {
-        assertFalse(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is enabled");
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not initially enabled");
         vm.prank(admin);
-        _mevTaxHook.enableMevTax();
-        assertTrue(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevTax();
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled (first time set)");
         vm.prank(admin);
-        _mevTaxHook.enableMevTax();
-        assertTrue(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevTax();
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled (second time set)");
     }
 
     /********************************************************
@@ -119,7 +196,7 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function getMaxMevSwapFeePercentage() public view {
         assertEq(
-            _mevTaxHook.getMaxMevSwapFeePercentage(),
+            _mevCaptureHook.getMaxMevSwapFeePercentage(),
             MAX_FEE_PERCENTAGE,
             "Incorrect initial max mev fee percentage"
         );
@@ -130,34 +207,34 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function testSetMaxMevSwapFeePercentageIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.setMaxMevSwapFeePercentage(50e16);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(50e16);
     }
 
     function testSetMaxMevSwapFeePercentageAboveMax() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                IMevTaxHook.MevSwapFeePercentageAboveMax.selector,
+                IMevCaptureHook.MevSwapFeePercentageAboveMax.selector,
                 MAX_FEE_PERCENTAGE + 1,
                 MAX_FEE_PERCENTAGE
             )
         );
         vm.prank(admin);
-        _mevTaxHook.setMaxMevSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
     function testSetMaxMevSwapFeePercentage() public {
         uint256 newMaxMevSwapFeePercentage = 50e16;
         assertEq(
-            _mevTaxHook.getMaxMevSwapFeePercentage(),
+            _mevCaptureHook.getMaxMevSwapFeePercentage(),
             MAX_FEE_PERCENTAGE,
             "Incorrect initial max mev fee percentage"
         );
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.MaxMevSwapFeePercentageSet(newMaxMevSwapFeePercentage);
-        _mevTaxHook.setMaxMevSwapFeePercentage(newMaxMevSwapFeePercentage);
+        emit IMevCaptureHook.MaxMevSwapFeePercentageSet(newMaxMevSwapFeePercentage);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(newMaxMevSwapFeePercentage);
         assertEq(
-            _mevTaxHook.getMaxMevSwapFeePercentage(),
+            _mevCaptureHook.getMaxMevSwapFeePercentage(),
             newMaxMevSwapFeePercentage,
             "Incorrect new max mev fee percentage"
         );
@@ -168,42 +245,31 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function testDisableMevTaxIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.disableMevTax();
+        _mevCaptureHook.disableMevTax();
     }
 
     function testDisableMevTax() public {
         vm.prank(admin);
-        _mevTaxHook.enableMevTax();
-        assertTrue(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevTax();
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.MevTaxEnabledSet(false);
-        _mevTaxHook.disableMevTax();
-        assertFalse(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is enabled");
+        emit IMevCaptureHook.MevTaxEnabledSet(false);
+        _mevCaptureHook.disableMevTax();
+        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
     }
 
     function testMultipleDisableMevTax() public {
         vm.prank(admin);
-        _mevTaxHook.enableMevTax();
-        assertTrue(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is not enabled");
+        _mevCaptureHook.enableMevTax();
+        assertTrue(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is not enabled");
         vm.prank(admin);
-        _mevTaxHook.disableMevTax();
-        assertFalse(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is enabled");
+        _mevCaptureHook.disableMevTax();
+        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
         vm.prank(admin);
-        _mevTaxHook.disableMevTax();
-        assertFalse(_mevTaxHook.isMevTaxEnabled(), "MEV Tax is enabled");
-    }
-
-    /********************************************************
-                   getDefaultMevTaxMultiplier()
-    ********************************************************/
-    function testGetDefaultMevTaxMultiplierStartingState() public view {
-        assertEq(
-            _mevTaxHook.getDefaultMevTaxMultiplier(),
-            0,
-            "Default MEV Tax Multiplier is not 0 after hook creation."
-        );
+        _mevCaptureHook.disableMevTax();
+        assertFalse(_mevCaptureHook.isMevTaxEnabled(), "MEV Tax is enabled");
     }
 
     /********************************************************
@@ -211,11 +277,11 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function testSetDefaultMevTaxMultiplierIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.setDefaultMevTaxMultiplier(1e18);
+        _mevCaptureHook.setDefaultMevTaxMultiplier(1e18);
     }
 
     function testSetDefaultMevTaxMultiplier() public {
-        uint256 firstDefaultMevTaxMultiplier = _mevTaxHook.getDefaultMevTaxMultiplier();
+        uint256 firstDefaultMevTaxMultiplier = _mevCaptureHook.getDefaultMevTaxMultiplier();
 
         uint256 newDefaultMevTaxMultiplier = 1e18;
 
@@ -227,10 +293,10 @@ contract MevTaxHookTest is BaseVaultTest {
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.DefaultMevTaxMultiplierSet(newDefaultMevTaxMultiplier);
-        _mevTaxHook.setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
+        emit IMevCaptureHook.DefaultMevTaxMultiplierSet(newDefaultMevTaxMultiplier);
+        _mevCaptureHook.setDefaultMevTaxMultiplier(newDefaultMevTaxMultiplier);
         assertEq(
-            _mevTaxHook.getDefaultMevTaxMultiplier(),
+            _mevCaptureHook.getDefaultMevTaxMultiplier(),
             newDefaultMevTaxMultiplier,
             "defaultMevTaxMultiplier is not correct"
         );
@@ -238,23 +304,16 @@ contract MevTaxHookTest is BaseVaultTest {
 
     function testSetDefaultMevTaxMultiplierRegisteredPool() public {
         vm.prank(admin);
-        _mevTaxHook.setPoolMevTaxMultiplier(pool, 5e18);
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
 
         vm.prank(admin);
-        _mevTaxHook.setDefaultMevTaxMultiplier(1e18);
+        _mevCaptureHook.setDefaultMevTaxMultiplier(1e18);
 
         assertNotEq(
-            _mevTaxHook.getDefaultMevTaxMultiplier(),
-            _mevTaxHook.getPoolMevTaxMultiplier(pool),
+            _mevCaptureHook.getDefaultMevTaxMultiplier(),
+            _mevCaptureHook.getPoolMevTaxMultiplier(pool),
             "setDefaultMevTaxMultiplier changed pool multiplier."
         );
-    }
-
-    /********************************************************
-                   getDefaultMevTaxThreshold()
-    ********************************************************/
-    function testGetDefaultMevTaxThresholdStartingState() public view {
-        assertEq(_mevTaxHook.getDefaultMevTaxThreshold(), 0, "Default MEV Tax Threshold is not 0 after hook creation.");
     }
 
     /********************************************************
@@ -262,11 +321,11 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function testSetDefaultMevTaxThresholdIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.setDefaultMevTaxThreshold(1e18);
+        _mevCaptureHook.setDefaultMevTaxThreshold(1e18);
     }
 
     function testSetDefaultMevTaxThreshold() public {
-        uint256 firstDefaultMevTaxThreshold = _mevTaxHook.getDefaultMevTaxThreshold();
+        uint256 firstDefaultMevTaxThreshold = _mevCaptureHook.getDefaultMevTaxThreshold();
 
         uint256 newDefaultMevTaxThreshold = 1e18;
 
@@ -278,10 +337,10 @@ contract MevTaxHookTest is BaseVaultTest {
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.DefaultMevTaxThresholdSet(newDefaultMevTaxThreshold);
-        _mevTaxHook.setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
+        emit IMevCaptureHook.DefaultMevTaxThresholdSet(newDefaultMevTaxThreshold);
+        _mevCaptureHook.setDefaultMevTaxThreshold(newDefaultMevTaxThreshold);
         assertEq(
-            _mevTaxHook.getDefaultMevTaxThreshold(),
+            _mevCaptureHook.getDefaultMevTaxThreshold(),
             newDefaultMevTaxThreshold,
             "defaultMevTaxThreshold is not correct"
         );
@@ -289,14 +348,14 @@ contract MevTaxHookTest is BaseVaultTest {
 
     function testSetDefaultMevTaxThresholdRegisteredPool() public {
         vm.prank(admin);
-        _mevTaxHook.setPoolMevTaxThreshold(pool, 5e18);
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
 
         vm.prank(admin);
-        _mevTaxHook.setDefaultMevTaxThreshold(1e18);
+        _mevCaptureHook.setDefaultMevTaxThreshold(1e18);
 
         assertNotEq(
-            _mevTaxHook.getDefaultMevTaxThreshold(),
-            _mevTaxHook.getPoolMevTaxThreshold(pool),
+            _mevCaptureHook.getDefaultMevTaxThreshold(),
+            _mevCaptureHook.getPoolMevTaxThreshold(pool),
             "setDefaultMevTaxThreshold changed pool threshold."
         );
     }
@@ -305,35 +364,38 @@ contract MevTaxHookTest is BaseVaultTest {
                    getPoolMevTaxMultiplier()
     ********************************************************/
     function testGetPoolMevTaxMultiplierPoolNotRegistered() public {
-        // Creates a new hook and stores into _mevTaxHook, so the pool won't be registered with the new MevTaxHook.
+        // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         createHook();
 
-        vm.expectRevert(abi.encodeWithSelector(IMevTaxHook.MevTaxHookNotRegisteredInPool.selector, pool));
-        _mevTaxHook.getPoolMevTaxMultiplier(pool);
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
+        _mevCaptureHook.getPoolMevTaxMultiplier(pool);
     }
 
     /********************************************************
                    setPoolMevTaxMultiplier()
     ********************************************************/
     function testSetPoolMevTaxMultiplierPoolNotRegistered() public {
-        // Creates a new hook and stores into _mevTaxHook, so the pool won't be registered with the new MevTaxHook.
+        // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         address newHook = createHook();
 
-        authorizer.grantRole(IAuthentication(newHook).getActionId(IMevTaxHook.setPoolMevTaxMultiplier.selector), admin);
+        authorizer.grantRole(
+            IAuthentication(newHook).getActionId(IMevCaptureHook.setPoolMevTaxMultiplier.selector),
+            admin
+        );
 
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IMevTaxHook.MevTaxHookNotRegisteredInPool.selector, pool));
-        _mevTaxHook.setPoolMevTaxMultiplier(pool, 5e18);
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
     }
 
     function testSetPoolMevTaxMultiplierIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.setPoolMevTaxMultiplier(pool, 5e18);
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
     }
 
     function testSetPoolMevTaxMultiplier() public {
-        uint256 firstPoolMevTaxMultiplier = _mevTaxHook.getPoolMevTaxMultiplier(pool);
-        uint256 firstDefaultMevTaxMultiplier = _mevTaxHook.getDefaultMevTaxMultiplier();
+        uint256 firstPoolMevTaxMultiplier = _mevCaptureHook.getPoolMevTaxMultiplier(pool);
+        uint256 firstDefaultMevTaxMultiplier = _mevCaptureHook.getDefaultMevTaxMultiplier();
 
         uint256 newPoolMevTaxMultiplier = 5e18;
 
@@ -345,50 +407,83 @@ contract MevTaxHookTest is BaseVaultTest {
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
-        _mevTaxHook.setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
+        emit IMevCaptureHook.PoolMevTaxMultiplierSet(pool, newPoolMevTaxMultiplier);
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, newPoolMevTaxMultiplier);
         assertEq(
-            _mevTaxHook.getPoolMevTaxMultiplier(pool),
+            _mevCaptureHook.getPoolMevTaxMultiplier(pool),
             newPoolMevTaxMultiplier,
             "poolMevTaxMultiplier is not correct"
         );
 
-        assertEq(_mevTaxHook.getDefaultMevTaxMultiplier(), firstDefaultMevTaxMultiplier, "Default multiplier changed");
+        assertEq(
+            _mevCaptureHook.getDefaultMevTaxMultiplier(),
+            firstDefaultMevTaxMultiplier,
+            "Default multiplier changed"
+        );
+    }
+
+    function testSetPoolMevTaxMultiplierRevertIfSenderIsNotFeeManager() public {
+        _mockPoolRoleAccounts(address(0x01));
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
+    }
+
+    function testSetPoolMevTaxMultiplierWithSwapFeeManager() public {
+        _mockPoolRoleAccounts(address(this));
+
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, 5e18);
     }
 
     /********************************************************
                    getPoolMevTaxThreshold()
     ********************************************************/
     function testGetPoolMevTaxThresholdPoolNotRegistered() public {
-        // Creates a new hook and stores into _mevTaxHook, so the pool won't be registered with the new MevTaxHook.
+        // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         createHook();
 
-        vm.expectRevert(abi.encodeWithSelector(IMevTaxHook.MevTaxHookNotRegisteredInPool.selector, pool));
-        _mevTaxHook.getPoolMevTaxThreshold(pool);
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
+        _mevCaptureHook.getPoolMevTaxThreshold(pool);
     }
 
     /********************************************************
                    setPoolMevTaxThreshold()
     ********************************************************/
     function testSetPoolMevTaxThresholdPoolNotRegistered() public {
-        // Creates a new hook and stores into _mevTaxHook, so the pool won't be registered with the new MevTaxHook.
+        // Creates a new hook and stores into _mevCaptureHook, so the pool won't be registered with the new MevCaptureHook.
         address newHook = createHook();
 
-        authorizer.grantRole(IAuthentication(newHook).getActionId(IMevTaxHook.setPoolMevTaxThreshold.selector), admin);
+        authorizer.grantRole(
+            IAuthentication(newHook).getActionId(IMevCaptureHook.setPoolMevTaxThreshold.selector),
+            admin
+        );
 
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(IMevTaxHook.MevTaxHookNotRegisteredInPool.selector, pool));
-        _mevTaxHook.setPoolMevTaxThreshold(pool, 5e18);
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevCaptureHookNotRegisteredInPool.selector, pool));
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
     }
 
     function testSetPoolMevTaxThresholdIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.setPoolMevTaxThreshold(pool, 5e18);
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
+    }
+
+    function testSetPoolMevTaxThresholdRevertIfSenderIsNotFeeManager() public {
+        _mockPoolRoleAccounts(address(0x01));
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
+    }
+
+    function testSetPoolMevTaxThresholdWithSwapFeeManager() public {
+        _mockPoolRoleAccounts(address(this));
+
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, 5e18);
     }
 
     function testSetPoolMevTaxThreshold() public {
-        uint256 firstPoolMevTaxThreshold = _mevTaxHook.getPoolMevTaxThreshold(pool);
-        uint256 firstDefaultMevTaxThreshold = _mevTaxHook.getDefaultMevTaxThreshold();
+        uint256 firstPoolMevTaxThreshold = _mevCaptureHook.getPoolMevTaxThreshold(pool);
+        uint256 firstDefaultMevTaxThreshold = _mevCaptureHook.getDefaultMevTaxThreshold();
 
         uint256 newPoolMevTaxThreshold = 5e18;
 
@@ -400,15 +495,15 @@ contract MevTaxHookTest is BaseVaultTest {
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
-        _mevTaxHook.setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
+        emit IMevCaptureHook.PoolMevTaxThresholdSet(pool, newPoolMevTaxThreshold);
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, newPoolMevTaxThreshold);
         assertEq(
-            _mevTaxHook.getPoolMevTaxThreshold(pool),
+            _mevCaptureHook.getPoolMevTaxThreshold(pool),
             newPoolMevTaxThreshold,
             "poolMevTaxThreshold is not correct"
         );
 
-        assertEq(_mevTaxHook.getDefaultMevTaxThreshold(), firstDefaultMevTaxThreshold, "Default threshold changed");
+        assertEq(_mevCaptureHook.getDefaultMevTaxThreshold(), firstDefaultMevTaxThreshold, "Default threshold changed");
     }
 
     /**
@@ -434,14 +529,14 @@ contract MevTaxHookTest is BaseVaultTest {
         vm.txGasPrice(txGasPrice);
         vm.fee(txBaseFee);
         vm.startPrank(admin);
-        _mevTaxHook.setPoolMevTaxThreshold(pool, threshold);
-        _mevTaxHook.setPoolMevTaxMultiplier(pool, multiplier);
-        _mevTaxHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+        _mevCaptureHook.setPoolMevTaxThreshold(pool, threshold);
+        _mevCaptureHook.setPoolMevTaxMultiplier(pool, multiplier);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
         vm.stopPrank();
 
         PoolSwapParams memory poolSwapParams;
 
-        (bool success, uint256 computedSwapFeePercentage) = IHooks(address(_mevTaxHook))
+        (bool success, uint256 computedSwapFeePercentage) = IHooks(address(_mevCaptureHook))
             .onComputeDynamicSwapFeePercentage(poolSwapParams, pool, staticSwapFeePercentage);
         assertGe(
             computedSwapFeePercentage,
@@ -478,7 +573,7 @@ contract MevTaxHookTest is BaseVaultTest {
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold - gasPriceDelta);
 
-        uint256 feePercentage = _mevTaxHook.calculateSwapFeePercentageExternal(
+        uint256 feePercentage = _mevCaptureHook.calculateSwapFeePercentageExternal(
             staticSwapFeePercentage,
             multiplier,
             priorityThreshold
@@ -493,7 +588,7 @@ contract MevTaxHookTest is BaseVaultTest {
 
         uint256 maxMevSwapFeePercentage = 20e16; // 20% max swap fee
         vm.prank(admin);
-        _mevTaxHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
 
         uint256 baseFee = 1e9;
         uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
@@ -504,7 +599,7 @@ contract MevTaxHookTest is BaseVaultTest {
 
         uint256 expectedFeePercentage = staticSwapFeePercentage + gasPriceDelta.mulDown(multiplier);
 
-        uint256 feePercentage = _mevTaxHook.calculateSwapFeePercentageExternal(
+        uint256 feePercentage = _mevCaptureHook.calculateSwapFeePercentageExternal(
             staticSwapFeePercentage,
             multiplier,
             priorityThreshold
@@ -520,7 +615,7 @@ contract MevTaxHookTest is BaseVaultTest {
 
         uint256 maxMevSwapFeePercentage = 20e16; // 20% max swap fee
         vm.prank(admin);
-        _mevTaxHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
 
         uint256 baseFee = 1e9;
         uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
@@ -529,7 +624,7 @@ contract MevTaxHookTest is BaseVaultTest {
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
 
-        uint256 feePercentage = _mevTaxHook.calculateSwapFeePercentageExternal(
+        uint256 feePercentage = _mevCaptureHook.calculateSwapFeePercentageExternal(
             staticSwapFeePercentage,
             multiplier,
             priorityThreshold
@@ -545,7 +640,7 @@ contract MevTaxHookTest is BaseVaultTest {
 
         uint256 maxMevSwapFeePercentage = 20e16; // 20% max swap fee
         vm.prank(admin);
-        _mevTaxHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
 
         uint256 baseFee = 1e9;
         uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
@@ -559,7 +654,7 @@ contract MevTaxHookTest is BaseVaultTest {
             vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
         }
 
-        uint256 feePercentage = _mevTaxHook.calculateSwapFeePercentageExternal(
+        uint256 feePercentage = _mevCaptureHook.calculateSwapFeePercentageExternal(
             staticSwapFeePercentage,
             multiplier,
             priorityThreshold
@@ -575,7 +670,7 @@ contract MevTaxHookTest is BaseVaultTest {
 
         uint256 maxMevSwapFeePercentage = 5e16; // 5% max swap fee
         vm.prank(admin);
-        _mevTaxHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
+        _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
 
         uint256 baseFee = 1e9;
         gasPriceDelta = bound(gasPriceDelta, 0, type(uint256).max - priorityThreshold - baseFee);
@@ -583,7 +678,7 @@ contract MevTaxHookTest is BaseVaultTest {
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
 
-        uint256 feePercentage = _mevTaxHook.calculateSwapFeePercentageExternal(
+        uint256 feePercentage = _mevCaptureHook.calculateSwapFeePercentageExternal(
             staticSwapFeePercentage,
             multiplier,
             priorityThreshold
@@ -597,30 +692,30 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function testAddMevTaxExemptSendersIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.addMevTaxExemptSenders([address(1), address(2)].toMemoryArray());
+        _mevCaptureHook.addMevTaxExemptSenders([address(1), address(2)].toMemoryArray());
     }
 
     function testAddMevTaxExemptSenders() public {
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.MevTaxExemptSenderAdded(lp);
+        emit IMevCaptureHook.MevTaxExemptSenderAdded(lp);
         vm.expectEmit();
-        emit IMevTaxHook.MevTaxExemptSenderAdded(bob);
+        emit IMevCaptureHook.MevTaxExemptSenderAdded(bob);
         vm.expectEmit();
-        emit IMevTaxHook.MevTaxExemptSenderAdded(alice);
-        _mevTaxHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
-        assertTrue(_mevTaxHook.isMevTaxExempt(lp), "LP was not added properly as MEV tax-exempt");
-        assertTrue(_mevTaxHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertTrue(_mevTaxHook.isMevTaxExempt(alice), "Alice was not added properly as MEV tax-exempt");
+        emit IMevCaptureHook.MevTaxExemptSenderAdded(alice);
+        _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(lp), "LP was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob was not added properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice was not added properly as MEV tax-exempt");
     }
 
     function testAddMevTaxExemptSendersRevertsWithDuplicated() public {
         vm.prank(admin);
-        _mevTaxHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
+        _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
 
-        vm.expectRevert(abi.encodeWithSelector(IMevTaxHook.MevTaxExemptSenderAlreadyAdded.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.MevTaxExemptSenderAlreadyAdded.selector, bob));
         vm.prank(admin);
-        _mevTaxHook.addMevTaxExemptSenders([bob].toMemoryArray());
+        _mevCaptureHook.addMevTaxExemptSenders([bob].toMemoryArray());
     }
 
     /********************************************************
@@ -628,43 +723,59 @@ contract MevTaxHookTest is BaseVaultTest {
     ********************************************************/
     function testRemoveMevTaxExemptSendersIsPermissioned() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _mevTaxHook.removeMevTaxExemptSenders([alice, bob].toMemoryArray());
+        _mevCaptureHook.removeMevTaxExemptSenders([alice, bob].toMemoryArray());
     }
 
     function testRemoveMevTaxExemptSenders() public {
         vm.prank(admin);
-        _mevTaxHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
+        _mevCaptureHook.addMevTaxExemptSenders([lp, bob, alice].toMemoryArray());
 
         vm.prank(admin);
         vm.expectEmit();
-        emit IMevTaxHook.MevTaxExemptSenderRemoved(lp);
+        emit IMevCaptureHook.MevTaxExemptSenderRemoved(lp);
         vm.expectEmit();
-        emit IMevTaxHook.MevTaxExemptSenderRemoved(alice);
-        _mevTaxHook.removeMevTaxExemptSenders([lp, alice].toMemoryArray());
+        emit IMevCaptureHook.MevTaxExemptSenderRemoved(alice);
+        _mevCaptureHook.removeMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevTaxHook.isMevTaxExempt(bob), "Bob was not added properly as MEV tax-exempt");
-        assertFalse(_mevTaxHook.isMevTaxExempt(lp), "LP was not removed properly as MEV tax-exempt");
-        assertFalse(_mevTaxHook.isMevTaxExempt(alice), "Alice was not removed properly as MEV tax-exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob was not added properly as MEV tax-exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(lp), "LP was not removed properly as MEV tax-exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice was not removed properly as MEV tax-exempt");
     }
 
     function testRemoveMevTaxExemptSendersRevertsIfNotExist() public {
         vm.prank(admin);
-        _mevTaxHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
+        _mevCaptureHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        vm.expectRevert(abi.encodeWithSelector(IMevTaxHook.SenderNotRegisteredAsMevTaxExempt.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IMevCaptureHook.SenderNotRegisteredAsMevTaxExempt.selector, bob));
         vm.prank(admin);
-        _mevTaxHook.removeMevTaxExemptSenders([bob].toMemoryArray());
+        _mevCaptureHook.removeMevTaxExemptSenders([bob].toMemoryArray());
     }
 
     /********************************************************
                        isMevTaxExempt
     ********************************************************/
-    function testIsMevTaxExempt() public {
+    function testIsMevTaxExemptSender() public {
         vm.prank(admin);
-        _mevTaxHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
+        _mevCaptureHook.addMevTaxExemptSenders([lp, alice].toMemoryArray());
 
-        assertTrue(_mevTaxHook.isMevTaxExempt(lp), "LP is not exempt");
-        assertFalse(_mevTaxHook.isMevTaxExempt(bob), "Bob is exempt");
-        assertTrue(_mevTaxHook.isMevTaxExempt(alice), "Alice is not exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(lp), "LP is not exempt");
+        assertFalse(_mevCaptureHook.isMevTaxExemptSender(bob), "Bob is exempt");
+        assertTrue(_mevCaptureHook.isMevTaxExemptSender(alice), "Alice is not exempt");
+    }
+
+    /********************************************************
+                            Other
+    ********************************************************/
+    function _mockPoolRoleAccounts(address swapFeeManager) private {
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0x01),
+            swapFeeManager: swapFeeManager,
+            poolCreator: address(0x01)
+        });
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(IVaultExtension.getPoolRoleAccounts.selector, pool),
+            abi.encode(poolRoleAccounts)
+        );
     }
 }

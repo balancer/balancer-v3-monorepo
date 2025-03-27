@@ -65,8 +65,6 @@ contract AddAndRemoveLiquidityWeightedMedusaTest is AddAndRemoveLiquidityMedusaT
         // Cannot set the pool creator directly on a standard Balancer weighted pool factory.
         vault.manualSetPoolCreator(address(newPool), lp);
 
-        feeController.manualSetPoolCreator(address(newPool), lp);
-
         // Initialize liquidity of weighted pool.
         medusa.prank(lp);
         router.initialize(address(newPool), tokens, initialBalances, 0, false, bytes(""));

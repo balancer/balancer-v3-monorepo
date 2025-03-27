@@ -278,6 +278,18 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         poolConfigBits = vault.getPoolConfig(pool);
         assertEq(poolConfigBits.aggregateSwapFeePercentage, expectedAggregateSwapFee, "Wrong aggregate swap fee");
         assertEq(poolConfigBits.aggregateYieldFeePercentage, expectedAggregateYieldFee, "Wrong aggregate yield fee");
+
+        // Test direct pool creator fee getters.
+        assertEq(
+            feeController.getPoolCreatorSwapFeePercentage(pool),
+            POOL_CREATOR_SWAP_FEE_PCT,
+            "Wrong pool creator swap fee percentage"
+        );
+        assertEq(
+            feeController.getPoolCreatorYieldFeePercentage(pool),
+            POOL_CREATOR_YIELD_FEE_PCT,
+            "Wrong pool creator yield fee percentage"
+        );
     }
 
     function testSettingPoolProtocolSwapFee() public {
@@ -1262,6 +1274,166 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             expectedYieldAggregatePercentage,
             MAX_FEE_PERCENTAGE,
             "Maximum possible aggregate fee percentage is above max allowed"
+        );
+    }
+
+    function testPoolRegistrationEventsExempt() public {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[daiIdx].token = IERC20(dai);
+        tokenConfig[usdcIdx].token = IERC20(usdc);
+
+        pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, 0, true);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, 0, true);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolRegisteredWithFeeController(pool, lp, true);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = lp;
+
+        PoolFactoryMock(poolFactory).registerGeneralTestPool(
+            pool,
+            tokenConfig,
+            0,
+            365 days,
+            true, // exempt from protocol fees
+            roleAccounts,
+            address(0)
+        );
+
+        assertTrue(feeController.isPoolRegistered(pool), "Pool not registered");
+    }
+
+    function testPoolRegistrationEventsNonExempt() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        vm.startPrank(admin);
+        feeController.setGlobalProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE_PCT);
+        feeController.setGlobalProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE_PCT);
+        vm.stopPrank();
+
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[daiIdx].token = IERC20(dai);
+        tokenConfig[usdcIdx].token = IERC20(usdc);
+
+        pool = address(deployPoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateSwapFeePercentage(pool, MAX_PROTOCOL_SWAP_FEE_PCT, false);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.InitialPoolAggregateYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT, false);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolRegisteredWithFeeController(pool, lp, false);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = lp;
+
+        PoolFactoryMock(poolFactory).registerGeneralTestPool(
+            pool,
+            tokenConfig,
+            0,
+            365 days,
+            false, // not exempt from protocol fees
+            roleAccounts,
+            address(0)
+        );
+
+        assertTrue(feeController.isPoolRegistered(pool), "Pool not registered");
+    }
+
+    function testPoolRegistrationInvalid() public view {
+        assertFalse(feeController.isPoolRegistered(ZERO_ADDRESS), "Invalid pool registered");
+    }
+
+    function testRegisterExistingPoolInMigration() public {
+        _registerPoolWithMaxProtocolFees();
+
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE_PCT);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
+        vm.stopPrank();
+
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        // Change through governance to set the override flag.
+        vm.prank(admin);
+        feeController.setProtocolYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE_PCT / 2);
+
+        ProtocolFeeController newFeeController = new ProtocolFeeController(vault, 0, 0);
+        vm.label(address(newFeeController), "New fee controller");
+
+        // Migrate the pool to a new controller.
+        ProtocolFeeController(address(newFeeController)).migratePool(pool);
+
+        assertTrue(newFeeController.isPoolRegistered(pool), "Pool not registered in migration");
+
+        assertEq(
+            newFeeController.getPoolCreatorSwapFeePercentage(pool),
+            POOL_CREATOR_SWAP_FEE_PCT,
+            "Wrong pool creator swap fee percentage"
+        );
+        assertEq(
+            newFeeController.getPoolCreatorYieldFeePercentage(pool),
+            POOL_CREATOR_YIELD_FEE_PCT,
+            "Wrong pool creator yield fee percentage"
+        );
+
+        (uint256 swapFee, bool swapOverride) = newFeeController.getPoolProtocolSwapFeeInfo(pool);
+        (uint256 yieldFee, bool yieldOverride) = newFeeController.getPoolProtocolYieldFeeInfo(pool);
+
+        assertEq(swapFee, MAX_PROTOCOL_SWAP_FEE_PCT, "Wrong swap fee percentage");
+        assertEq(yieldFee, MAX_PROTOCOL_YIELD_FEE_PCT / 2, "Wrong yield fee percentage");
+        assertFalse(swapOverride, "Swap fee is overridden");
+        assertTrue(yieldOverride, "Yield fee is overridden");
+
+        vm.expectRevert(abi.encodeWithSelector(ProtocolFeeController.PoolAlreadyRegistered.selector, pool));
+        ProtocolFeeController(address(newFeeController)).migratePool(pool);
+        vm.stopPrank();
+    }
+
+    function testSelfMigration() public {
+        vm.expectRevert(ProtocolFeeController.InvalidMigrationSource.selector);
+        ProtocolFeeController(address(feeController)).migratePool(pool);
+    }
+
+    function testFeeInitialization() public {
+        uint256 swapFeePercentage = 50e16;
+        uint256 yieldFeePercentage = 10e16;
+
+        vm.expectEmit();
+        emit IProtocolFeeController.GlobalProtocolSwapFeePercentageChanged(swapFeePercentage);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.GlobalProtocolYieldFeePercentageChanged(yieldFeePercentage);
+
+        ProtocolFeeController feeController = new ProtocolFeeController(vault, swapFeePercentage, yieldFeePercentage);
+
+        assertEq(
+            feeController.getGlobalProtocolSwapFeePercentage(),
+            swapFeePercentage,
+            "Wrong initial swap fee percentage"
+        );
+        assertEq(
+            feeController.getGlobalProtocolYieldFeePercentage(),
+            yieldFeePercentage,
+            "Wrong initial yield fee percentage"
         );
     }
 

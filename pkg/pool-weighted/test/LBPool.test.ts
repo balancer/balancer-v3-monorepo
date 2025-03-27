@@ -5,21 +5,19 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ONES_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { LBPool, LBPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
-import { MONTH, MINUTE } from '@balancer-labs/v3-helpers/src/time';
+import { MONTH, MINUTE, currentTimestamp, advanceToTimestamp, DAY } from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { PoolConfigStructOutput } from '@balancer-labs/v3-solidity-utils/typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
-import { TokenConfigStruct } from '../typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
 
 describe('LBPool', function () {
@@ -30,10 +28,14 @@ describe('LBPool', function () {
   let permit2: IPermit2;
   let vault: IVaultMock;
   let factory: LBPoolFactory;
-  let pool: LBPool;
+  // Most parameters are immutable so we'll need to deploy the pool several times during the test.
+  // However, we will run liquidity tests on the global one to save unnecessary initialization steps every time.
+  let globalPool: LBPool;
+  let globalPoolStartTime: bigint;
+  let globalPoolEndTime: bigint;
+
   let router: Router;
-  let alice: SignerWithAddress;
-  let bob: SignerWithAddress;
+  let alice: SignerWithAddress, bob: SignerWithAddress, admin: SignerWithAddress;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
   let poolTokens: string[];
@@ -54,8 +56,60 @@ describe('LBPool', function () {
 
   const SWAP_FEE = fp(0.01);
 
+  async function deployPool(
+    projectTokenStartWeight: bigint,
+    reserveTokenStartWeight: bigint,
+    projectTokenEndWeight: bigint,
+    reserveTokenEndWeight: bigint,
+    startTime: bigint,
+    endTime: bigint,
+    blockProjectTokenSwapsIn: boolean
+  ): Promise<LBPool> {
+    const tx = await deployPoolTx(
+      projectTokenStartWeight,
+      reserveTokenStartWeight,
+      projectTokenEndWeight,
+      reserveTokenEndWeight,
+      startTime,
+      endTime,
+      blockProjectTokenSwapsIn
+    );
+
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+    return (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
+  }
+
+  async function deployPoolTx(
+    projectTokenStartWeight: bigint,
+    reserveTokenStartWeight: bigint,
+    projectTokenEndWeight: bigint,
+    reserveTokenEndWeight: bigint,
+    startTime: bigint,
+    endTime: bigint,
+    blockProjectTokenSwapsIn: boolean
+  ): Promise<ContractTransactionResponse> {
+    const tokens = sortAddresses([tokenAAddress, tokenBAddress]);
+
+    const lbpParams = {
+      owner: admin.address,
+      projectToken: tokens[0],
+      reserveToken: tokens[1],
+      projectTokenStartWeight,
+      reserveTokenStartWeight,
+      projectTokenEndWeight,
+      reserveTokenEndWeight,
+      startTime,
+      endTime,
+      blockProjectTokenSwapsIn,
+    };
+
+    return factory.create('LBPool', 'Test', lbpParams, SWAP_FEE, ONES_BYTES32);
+  }
+
   before('setup signers', async () => {
-    [, alice, bob] = await ethers.getSigners();
+    [, alice, bob, admin] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
@@ -77,34 +131,33 @@ describe('LBPool', function () {
 
   sharedBeforeEach('create pool and grant approvals', async () => {
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION, router],
+      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router],
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
-    const tokenConfig: TokenConfigStruct[] = buildTokenConfig(poolTokens);
+    // Leave a gap to test operations before start time.
+    globalPoolStartTime = (await currentTimestamp()) + bn(MONTH);
+    globalPoolEndTime = globalPoolStartTime + bn(MONTH);
 
-    const tx = await factory.create(
-      'LBPool',
-      'Test',
-      tokenConfig,
-      WEIGHTS,
-      SWAP_FEE,
-      bob.address, // owner
-      true, // swapEnabledOnStart
-      ZERO_BYTES32
+    globalPool = await deployPool(
+      WEIGHTS[0],
+      WEIGHTS[1],
+      WEIGHTS[1],
+      WEIGHTS[0],
+      globalPoolStartTime,
+      globalPoolEndTime,
+      false
     );
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
-    pool = (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
+    for (const user of [alice, bob, admin]) {
+      await tokenA.mint(user, TOKEN_AMOUNT + SWAP_AMOUNT);
+      await tokenB.mint(user, TOKEN_AMOUNT);
 
-    await tokenA.mint(bob, TOKEN_AMOUNT + SWAP_AMOUNT);
-    await tokenB.mint(bob, TOKEN_AMOUNT);
-
-    await pool.connect(bob).approve(router, MAX_UINT256);
-    for (const token of [tokenA, tokenB]) {
-      await token.connect(bob).approve(permit2, MAX_UINT256);
-      await permit2.connect(bob).approve(token, router, MAX_UINT160, MAX_UINT48);
+      await globalPool.connect(user).approve(router, MAX_UINT256);
+      for (const token of [tokenA, tokenB]) {
+        await token.connect(user).approve(permit2, MAX_UINT256);
+        await permit2.connect(user).approve(token, router, MAX_UINT160, MAX_UINT48);
+      }
     }
   });
 
@@ -114,185 +167,184 @@ describe('LBPool', function () {
     const authorizerAddress = await vault.getAuthorizer();
     const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
 
-    await authorizer.grantRole(setPoolSwapFeeAction, bob.address);
+    await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
 
-    await vault.connect(bob).setStaticSwapFeePercentage(pool, POOL_SWAP_FEE);
+    await vault.connect(admin).setStaticSwapFeePercentage(globalPool, POOL_SWAP_FEE);
   });
 
   it('should have correct versions', async () => {
     expect(await factory.version()).to.eq(FACTORY_VERSION);
     expect(await factory.getPoolVersion()).to.eq(POOL_VERSION);
-    expect(await pool.version()).to.eq(POOL_VERSION);
+    expect(await globalPool.version()).to.eq(POOL_VERSION);
   });
 
-  it('returns weights', async () => {
-    const weights = await pool.getNormalizedWeights();
+  it('returns starting weights', async () => {
+    const weights = await globalPool.getNormalizedWeights();
     expect(weights).to.be.deep.eq(WEIGHTS);
   });
 
   it('cannot be initialized by non-owners', async () => {
     await expect(
-      router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x')
+      router.connect(alice).initialize(globalPool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x')
     ).to.be.revertedWithCustomError(vault, 'BeforeInitializeHookFailed');
   });
 
   it('can be initialized by the owner', async () => {
-    await expect(await router.connect(bob).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
+    await expect(await router.connect(admin).initialize(globalPool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
       .to.emit(vault, 'PoolInitialized')
-      .withArgs(pool);
+      .withArgs(globalPool);
   });
 
   context('with initialized pool', () => {
     sharedBeforeEach(async () => {
-      await router.connect(bob).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x');
+      await router.connect(admin).initialize(globalPool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x');
     });
 
     it('pool and protocol fee preconditions', async () => {
-      const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
+      const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(globalPool);
 
       expect(poolConfig.isPoolRegistered).to.be.true;
       expect(poolConfig.isPoolInitialized).to.be.true;
 
-      expect(await vault.getStaticSwapFeePercentage(pool)).to.eq(POOL_SWAP_FEE);
+      expect(await vault.getStaticSwapFeePercentage(globalPool)).to.eq(POOL_SWAP_FEE);
     });
 
     it('has the correct pool tokens and balances', async () => {
-      const tokensFromPool = await pool.getTokens();
+      const tokensFromPool = await globalPool.getTokens();
       expect(tokensFromPool).to.deep.equal(poolTokens);
 
-      const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
+      const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(globalPool);
 
       expect(tokensFromVault).to.deep.equal(tokensFromPool);
       expect(balancesFromVault).to.deep.equal(INITIAL_BALANCES);
     });
 
     it('cannot be initialized twice', async () => {
-      await expect(router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
+      await expect(router.connect(alice).initialize(globalPool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
         .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')
-        .withArgs(await pool.getAddress());
+        .withArgs(await globalPool.getAddress());
     });
 
     describe('Owner operations and events', () => {
-      it('should emit SwapEnabledSet event when setSwapEnabled is called', async () => {
-        await expect(pool.connect(bob).setSwapEnabled(false)).to.emit(pool, 'SwapEnabledSet').withArgs(false);
-
-        await expect(pool.connect(bob).setSwapEnabled(true)).to.emit(pool, 'SwapEnabledSet').withArgs(true);
-      });
-
-      it('should emit GradualWeightUpdateScheduled event when updateWeightsGradually is called', async () => {
-        const startTime = await time.latest();
-        const endTime = startTime + MONTH;
+      it('should emit GradualWeightUpdateScheduled event on deployment', async () => {
+        const startTime = (await currentTimestamp()) + 100n;
+        const endTime = startTime + bn(bn(MONTH));
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const tx = await pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights);
-        const actualStartTime = await time.latest();
+        const tx = await deployPoolTx(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
+        const receipt = await tx.wait();
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+        const pool = (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
 
         await expect(tx)
           .to.emit(pool, 'GradualWeightUpdateScheduled')
-          .withArgs(actualStartTime, endTime, WEIGHTS, endWeights);
+          .withArgs(startTime, endTime, WEIGHTS, endWeights);
       });
 
       it('should only allow owner to be the LP', async () => {
+        await advanceToTimestamp(globalPoolStartTime - bn(MINUTE));
+
         const amounts: bigint[] = [FP_ZERO, FP_ZERO];
         amounts[tokenAIdx] = SWAP_AMOUNT;
 
-        await expect(router.addLiquidityUnbalanced(pool, amounts, FP_ZERO, false, '0x')).to.be.revertedWithCustomError(
-          vault,
-          'BeforeAddLiquidityHookFailed'
-        );
-
-        await router.connect(bob).addLiquidityUnbalanced(pool, amounts, FP_ZERO, false, '0x');
-      });
-
-      it('should only allow owner to update weights', async () => {
-        const startTime = await time.latest();
-        const endTime = startTime + MONTH;
-        const endWeights = [fp(0.7), fp(0.3)];
-
         await expect(
-          pool.connect(alice).updateWeightsGradually(startTime, endTime, endWeights)
-        ).to.be.revertedWithCustomError(pool, 'OwnableUnauthorizedAccount');
+          router.addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x')
+        ).to.be.revertedWithCustomError(vault, 'BeforeAddLiquidityHookFailed');
 
-        await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights)).to.not.be.reverted;
+        await router.connect(admin).addLiquidityUnbalanced(globalPool, amounts, FP_ZERO, false, '0x');
       });
     });
 
-    describe('Weight updates', () => {
+    describe('Weight update on deployment', () => {
       it('should update weights gradually', async () => {
-        const startTime = await time.latest();
-        const endTime = startTime + MONTH;
+        const startTime = await currentTimestamp();
+        const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
-        await pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights);
+        const pool = await deployPool(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
 
         // Check weights at start
         expect(await pool.getNormalizedWeights()).to.deep.equal(WEIGHTS);
 
         // Check weights halfway through
-        await time.increaseTo(startTime + MONTH / 2);
+        await advanceToTimestamp(startTime + bn(MONTH) / 2n);
         const midWeights = await pool.getNormalizedWeights();
         expect(midWeights[0]).to.be.closeTo(fp(0.6), fp(1e-6));
         expect(midWeights[1]).to.be.closeTo(fp(0.4), fp(1e-6));
 
         // Check weights at end
-        await time.increaseTo(endTime);
+        await advanceToTimestamp(endTime);
         expect(await pool.getNormalizedWeights()).to.deep.equal(endWeights);
       });
 
       it('should constrain weights to [1%, 99%]', async () => {
-        const startTime = await time.latest();
-        const endTime = startTime + MONTH;
+        const startTime = await currentTimestamp();
+        const endTime = startTime + bn(MONTH);
 
-        // Try to set weight below 1%
+        // Try to set start weight below 1%
         await expect(
-          pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.009), fp(0.991)])
-        ).to.be.revertedWithCustomError(pool, 'MinWeight');
+          deployPoolTx(fp(0.009), fp(0.991), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
-        // Try to set weight above 99%
+        // Try to set start weight above 99%
         await expect(
-          pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.991), fp(0.009)])
-        ).to.be.revertedWithCustomError(pool, 'MinWeight');
+          deployPoolTx(fp(0.991), fp(0.009), WEIGHTS[0], WEIGHTS[1], startTime, endTime, false)
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
+
+        // Try to set end weight below 1%
+        await expect(
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.009), fp(0.991), startTime, endTime, false)
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
+
+        // Try to set end weight above 99%
+        await expect(
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.991), fp(0.009), startTime, endTime, false)
+        ).to.be.revertedWithCustomError(factory, 'MinWeight');
 
         // Valid weight update
-        await expect(pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.01), fp(0.99)])).to.not.be
+        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)).to.not.be
           .reverted;
       });
 
       it('should not allow endTime before startTime', async () => {
-        const startTime = await time.latest();
-        const endTime = startTime - MONTH;
+        const startTime = await currentTimestamp();
+        const endTime = startTime - bn(MONTH);
 
         // Try to set endTime before startTime
         await expect(
-          pool.connect(bob).updateWeightsGradually(startTime, endTime, [fp(0.4), fp(0.6)])
-        ).to.be.revertedWithCustomError(pool, 'GradualUpdateTimeTravel');
+          deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)
+        ).to.be.revertedWithCustomError(factory, 'GradualUpdateTimeTravel');
 
         // Valid time update
-        await expect(pool.connect(bob).updateWeightsGradually(startTime, startTime + MONTH, [fp(0.01), fp(0.99)])).to
-          .not.be.reverted;
+        await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false))
+          .to.not.be.reverted;
       });
 
       it('should always sum weights to 1', async () => {
-        const currentTime = await time.latest();
-        const startTime = currentTime + MINUTE; // Set startTime 1 min in the future
-        const endTime = startTime + MONTH;
+        const currentTime = await currentTimestamp();
+        const startTime = currentTime + bn(MINUTE); // Set startTime 1 min in the future
+        const endTime = startTime + bn(MONTH);
         const startWeights = [fp(0.5), fp(0.5)];
         const endWeights = [fp(0.7), fp(0.3)];
 
         // Move time to just before startTime
-        await time.increaseTo(startTime - 1);
+        await advanceToTimestamp(startTime - 1n);
 
-        // Set weights to 50/50 instantaneously
-        const tx1 = await pool.connect(bob).updateWeightsGradually(startTime, startTime, startWeights);
-        await tx1.wait();
-
-        // Schedule gradual shift to 70/30
-        const tx2 = await pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights);
-        await tx2.wait();
+        // Start at 50/50, schedule gradual shift to 70/30
+        const pool = await deployPool(
+          startWeights[0],
+          startWeights[1],
+          endWeights[0],
+          endWeights[1],
+          startTime,
+          endTime,
+          true
+        );
 
         // Check weights at various points during the transition
         for (let i = 0; i <= 100; i++) {
-          const checkTime = startTime + (i * MONTH) / 100;
+          const checkTime = startTime + (bn(i) * bn(MONTH)) / 100n;
 
           // Only increase time if it's greater than the current time
           const currentBlockTime = await time.latest();
@@ -310,22 +362,13 @@ describe('LBPool', function () {
     });
 
     describe('Setters and Getters', () => {
-      it('should set and get swap enabled status', async () => {
-        await pool.connect(bob).setSwapEnabled(false);
-        expect(await pool.getSwapEnabled()).to.be.false;
-
-        await pool.connect(bob).setSwapEnabled(true);
-        expect(await pool.getSwapEnabled()).to.be.true;
-      });
-
       it('should get gradual weight update params', async () => {
-        const startTime = await time.latest();
-        const endTime = startTime + MONTH;
+        const startTime = await currentTimestamp();
+        const endTime = startTime + bn(MONTH);
         const endWeights = [fp(0.7), fp(0.3)];
 
-        const tx = await pool.connect(bob).updateWeightsGradually(startTime, endTime, endWeights);
-        await tx.wait();
-        const actualStartTime = await time.latest();
+        const pool = await deployPool(WEIGHTS[0], WEIGHTS[1], endWeights[0], endWeights[1], startTime, endTime, false);
+        const actualStartTime = await currentTimestamp();
 
         const params = await pool.getGradualWeightUpdateParams();
         expect(params.startTime).to.equal(actualStartTime);
@@ -335,42 +378,63 @@ describe('LBPool', function () {
     });
 
     describe('Swap restrictions', () => {
-      it('should allow swaps when enabled', async () => {
-        await expect(
-          router
-            .connect(bob)
-            .swapSingleTokenExactIn(
-              pool,
-              poolTokens[tokenAIdx],
-              poolTokens[tokenBIdx],
-              SWAP_AMOUNT,
-              0,
-              MAX_UINT256,
-              false,
-              '0x'
-            )
-        ).to.not.be.reverted;
-      });
+      context('without project token restrictions', () => {
+        it('should allow swaps after init time and before end time', async () => {
+          await advanceToTimestamp((globalPoolStartTime + globalPoolEndTime) / 2n);
 
-      it('should not allow swaps when disabled', async () => {
-        await expect(await pool.connect(bob).setSwapEnabled(false))
-          .to.emit(pool, 'SwapEnabledSet')
-          .withArgs(false);
+          await expect(
+            router
+              .connect(alice)
+              .swapSingleTokenExactIn(
+                globalPool,
+                poolTokens[tokenAIdx],
+                poolTokens[tokenBIdx],
+                SWAP_AMOUNT,
+                0,
+                MAX_UINT256,
+                false,
+                '0x'
+              )
+          ).to.not.be.reverted;
+        });
 
-        await expect(
-          router
-            .connect(bob)
-            .swapSingleTokenExactIn(
-              pool,
-              poolTokens[tokenAIdx],
-              poolTokens[tokenBIdx],
-              SWAP_AMOUNT,
-              0,
-              MAX_UINT256,
-              false,
-              '0x'
-            )
-        ).to.be.reverted;
+        it('should not allow swaps before start time', async () => {
+          await advanceToTimestamp(globalPoolStartTime - bn(MINUTE));
+
+          await expect(
+            router
+              .connect(bob)
+              .swapSingleTokenExactIn(
+                globalPool,
+                poolTokens[tokenAIdx],
+                poolTokens[tokenBIdx],
+                SWAP_AMOUNT,
+                0,
+                MAX_UINT256,
+                false,
+                '0x'
+              )
+          ).to.be.revertedWithCustomError(globalPool, 'SwapsDisabled');
+        });
+
+        it('should allow swaps after end time', async () => {
+          await advanceToTimestamp(globalPoolEndTime + bn(DAY));
+
+          await expect(
+            router
+              .connect(bob)
+              .swapSingleTokenExactIn(
+                globalPool,
+                poolTokens[tokenAIdx],
+                poolTokens[tokenBIdx],
+                SWAP_AMOUNT,
+                0,
+                MAX_UINT256,
+                false,
+                '0x'
+              )
+          ).to.be.revertedWithCustomError(globalPool, 'SwapsDisabled');
+        });
       });
     });
   });

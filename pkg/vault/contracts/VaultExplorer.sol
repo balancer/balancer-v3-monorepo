@@ -373,4 +373,9 @@ contract VaultExplorer is IVaultExplorer {
     ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw) {
         return _vault.getBufferBalance(wrappedToken);
     }
+
+    /// @inheritdoc IVaultExplorer
+    function isERC4626BufferInitialized(IERC4626 wrappedToken) external view returns (bool isBufferInitialized) {
+        return _vault.isERC4626BufferInitialized(wrappedToken);
+    }
 }

@@ -52,7 +52,7 @@ contract GyroECLPPoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param poolHooksContract Contract that implements the hooks for the pool
      * @param enableDonation If true, the pool will support the donation add liquidity mechanism
      * @param disableUnbalancedLiquidity If true, only proportional add and remove liquidity are accepted
-     * @param salt The salt value that will be passed to create3 deployment
+     * @param salt The salt value that will be passed to deployment
      */
     function create(
         string memory name,
