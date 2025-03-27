@@ -12,6 +12,7 @@ import {
 
 import { WrappedBalancerPoolToken } from "./WrappedBalancerPoolToken.sol";
 
+/// @notice Factory contract for creating wrapped Balancer pool tokens
 contract WrappedBalancerPoolTokenFactory is IWrappedBalancerPoolTokenFactory {
     IVault internal immutable _vault;
     mapping(address => address) internal _wrappedTokens;

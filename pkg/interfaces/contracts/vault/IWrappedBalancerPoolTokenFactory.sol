@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+/// @notice Interface for factory contract for creating wrapped Balancer pool tokens
 interface IWrappedBalancerPoolTokenFactory {
     /// @notice The wrapped BPT already exists
     error WrappedBPTAlreadyExists(address wrappedToken);

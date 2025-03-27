@@ -10,6 +10,11 @@ import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 
+/**
+ * @notice ERC20 wrapper for Balancer Pool Token (BPT), allowing users to deposit BPT
+ * and receive 1:1 wrapped tokens, or burn wrapped tokens to redeem the original BPT.
+ * Minting and burning are only allowed when the Vault is locked.
+ */
 contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Permit {
     using SafeERC20 for *;
 
