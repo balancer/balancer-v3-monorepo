@@ -5,10 +5,10 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/_vault/IVault.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     IWrappedBalancerPoolTokenFactory
-} from "@balancer-labs/v3-interfaces/contracts/_vault/IWrappedBalancerPoolTokenFactory.sol";
+} from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolTokenFactory.sol";
 
 import { WrappedBalancerPoolToken } from "./WrappedBalancerPoolToken.sol";
 
