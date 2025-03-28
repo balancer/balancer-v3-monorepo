@@ -241,6 +241,11 @@ contract VaultExplorer is IVaultExplorer {
         return _vault.isPoolInRecoveryMode(pool);
     }
 
+    /// @inheritdoc IVaultExplorer
+    function enableRecoveryMode(address pool) external {
+        _vault.enableRecoveryMode(pool);
+    }
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
@@ -351,7 +356,12 @@ contract VaultExplorer is IVaultExplorer {
 
     /// @inheritdoc IVaultExplorer
     function getBufferAsset(IERC4626 wrappedToken) external view returns (address underlyingToken) {
-        return _vault.getBufferAsset(wrappedToken);
+        return _vault.getERC4626BufferAsset(wrappedToken);
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function getERC4626BufferAsset(IERC4626 wrappedToken) external view returns (address underlyingToken) {
+        return _vault.getERC4626BufferAsset(wrappedToken);
     }
 
     /// @inheritdoc IVaultExplorer
