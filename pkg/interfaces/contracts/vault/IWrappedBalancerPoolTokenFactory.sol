@@ -11,15 +11,19 @@ interface IWrappedBalancerPoolTokenFactory {
     error BalancerPoolTokenNotInitialized();
 
     /// @notice Wrapped Token was created
-    event WrappedTokenCreated(address indexed bpt, address wrappedToken);
+    event WrappedTokenCreated(address indexed balancerPoolToken, address wrappedToken);
 
-    /// @notice Creates a wrapped token for the given Balancer pool token
-    /// @param bpt The Balancer pool token to wrap
-    /// @return address The wrapped token address
-    function createWrappedToken(address bpt) external returns (address);
+    /**
+     * @notice Creates a wrapped token for the given Balancer pool token
+     * @param balancerPoolToken The Balancer pool token to wrap
+     * @return address The wrapped token address
+     */
+    function createWrappedToken(address balancerPoolToken) external returns (address);
 
-    /// @notice Gets the wrapped token for the given Balancer pool token
-    /// @param bpt The Balancer pool token
-    /// @return address The wrapped token address
-    function getWrappedToken(address bpt) external view returns (address);
+    /**
+     * @notice Gets the wrapped token for the given Balancer pool token
+     * @param balancerPoolToken The Balancer pool token
+     * @return address The wrapped token address
+     */
+    function getWrappedToken(address balancerPoolToken) external view returns (address);
 }
