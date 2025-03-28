@@ -11,24 +11,26 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
 
 /**
- * @notice ERC20 wrapper for Balancer Pool Token (BPT), allowing users to deposit BPT
- * and receive 1:1 wrapped tokens, or burn wrapped tokens to redeem the original BPT.
+ * @notice ERC20 wrapper for Balancer Pool Token (BPT).
+ * @dev This allows users to deposit BPT and receive wrapped tokens 1:1, or burn wrapped tokens to redeem the original
+ * amount of BPT.
+ *
  * Minting and burning are only allowed when the Vault is locked.
  */
 contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Permit {
     using SafeERC20 for *;
 
-    IERC20 public immutable bpt;
+    IERC20 public immutable balancerPoolToken;
     IVault public immutable vault;
 
     constructor(
         IVault vault_,
-        IERC20 bpt_,
+        IERC20 balancerPoolToken_,
         string memory name,
         string memory symbol
     ) ERC20(name, symbol) ERC20Permit(name) {
         vault = vault_;
-        bpt = bpt_;
+        balancerPoolToken = balancerPoolToken_;
     }
 
     modifier onlyIfVaultLocked() {
@@ -40,7 +42,7 @@ contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Perm
 
     /// @inheritdoc IWrappedBalancerPoolToken
     function mint(uint256 amount) public onlyIfVaultLocked {
-        bpt.safeTransferFrom(msg.sender, address(this), amount);
+        balancerPoolToken.safeTransferFrom(msg.sender, address(this), amount);
 
         _mint(msg.sender, amount);
     }
@@ -60,6 +62,6 @@ contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Perm
     function _burnAndTransfer(address account, uint256 value) internal {
         _burn(account, value);
 
-        bpt.transfer(account, value);
+        balancerPoolToken.transfer(account, value);
     }
 }

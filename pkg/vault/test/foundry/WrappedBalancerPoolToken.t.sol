@@ -22,7 +22,7 @@ contract WrappedBalancerPoolTokenTest is BaseVaultTest {
 
     function testConstructor() public view {
         assertEq(address(wBPT.vault()), address(vault), "Invalid vault address");
-        assertEq(address(wBPT.bpt()), pool, "Invalid pool address");
+        assertEq(address(wBPT.balancerPoolToken()), pool, "Invalid pool address");
     }
 
     function testMint() public {
@@ -37,6 +37,8 @@ contract WrappedBalancerPoolTokenTest is BaseVaultTest {
 
         assertEq(bpt.balanceOf(lp), balanceBefore - DEFAULT_AMOUNT, "Invalid BPT balance");
         assertEq(wBPT.balanceOf(lp), DEFAULT_AMOUNT, "Invalid wBPT balance");
+        assertEq(bpt.balanceOf(address(wBPT)), wBPT.totalSupply(), "Invalid BPT balance in wBPT");
+        assertEq(wBPT.totalSupply(), DEFAULT_AMOUNT, "Invalid wBPT total supply");
     }
 
     function testMintIfVaultUnlocked() public {
@@ -59,6 +61,8 @@ contract WrappedBalancerPoolTokenTest is BaseVaultTest {
 
         assertEq(bpt.balanceOf(lp), balanceBefore + DEFAULT_AMOUNT, "Invalid BPT balance");
         assertEq(wBPT.balanceOf(lp), 0, "Invalid wBPT balance");
+        assertEq(bpt.balanceOf(address(wBPT)), wBPT.totalSupply(), "Invalid BPT balance in wBPT");
+        assertEq(wBPT.totalSupply(), 0, "Invalid wBPT total supply");
     }
 
     function testBurnIfVaultUnlocked() public {
@@ -86,6 +90,8 @@ contract WrappedBalancerPoolTokenTest is BaseVaultTest {
 
         assertEq(bpt.balanceOf(lp), balanceBefore + DEFAULT_AMOUNT, "Invalid BPT balance");
         assertEq(wBPT.balanceOf(lp), 0, "Invalid wBPT balance");
+        assertEq(bpt.balanceOf(address(wBPT)), wBPT.totalSupply(), "Invalid BPT balance in wBPT");
+        assertEq(wBPT.totalSupply(), 0, "Invalid wBPT total supply");
     }
 
     function testBurnFromIfVaultUnlocked() public {

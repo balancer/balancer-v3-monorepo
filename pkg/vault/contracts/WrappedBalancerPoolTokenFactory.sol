@@ -17,33 +17,33 @@ contract WrappedBalancerPoolTokenFactory is IWrappedBalancerPoolTokenFactory {
     IVault internal immutable _vault;
     mapping(address => address) internal _wrappedTokens;
 
-    constructor(IVault vault_) {
-        _vault = vault_;
+    constructor(IVault vault) {
+        _vault = vault;
     }
 
     /// @inheritdoc IWrappedBalancerPoolTokenFactory
-    function createWrappedToken(address bpt) external returns (address) {
-        address wrappedToken = _wrappedTokens[bpt];
+    function createWrappedToken(address balancerPoolToken) external returns (address) {
+        address wrappedToken = _wrappedTokens[balancerPoolToken];
         if (wrappedToken != address(0)) {
             revert WrappedBPTAlreadyExists(wrappedToken);
         }
 
-        if (!_vault.isPoolInitialized(address(bpt))) {
+        if (_vault.isPoolInitialized(address(balancerPoolToken)) == false) {
             revert BalancerPoolTokenNotInitialized();
         }
 
-        string memory name = string(abi.encodePacked("Wrapped ", IERC20Metadata(bpt).name()));
-        string memory symbol = string(abi.encodePacked("w", IERC20Metadata(bpt).symbol()));
-        wrappedToken = address(new WrappedBalancerPoolToken(_vault, IERC20(bpt), name, symbol));
+        string memory name = string(abi.encodePacked("Wrapped ", IERC20Metadata(balancerPoolToken).name()));
+        string memory symbol = string(abi.encodePacked("w", IERC20Metadata(balancerPoolToken).symbol()));
+        wrappedToken = address(new WrappedBalancerPoolToken(_vault, IERC20(balancerPoolToken), name, symbol));
 
-        _wrappedTokens[address(bpt)] = wrappedToken;
-        emit WrappedTokenCreated(bpt, wrappedToken);
+        _wrappedTokens[address(balancerPoolToken)] = wrappedToken;
+        emit WrappedTokenCreated(balancerPoolToken, wrappedToken);
 
         return address(wrappedToken);
     }
 
     /// @inheritdoc IWrappedBalancerPoolTokenFactory
-    function getWrappedToken(address bpt) external view returns (address) {
-        return _wrappedTokens[bpt];
+    function getWrappedToken(address balancerPoolToken) external view returns (address) {
+        return _wrappedTokens[balancerPoolToken];
     }
 }
