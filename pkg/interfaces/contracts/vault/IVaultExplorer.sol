@@ -45,8 +45,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Returns the VaultAdmin contract address.
-     * @dev The VaultAdmin contract is mostly used for permissioned functions. The function implementation is in
-     * `VaultExtension`.
+     * @dev The VaultAdmin contract is mostly used for permissioned calls.
+     * The getter function implementation is in `VaultExtension`.
      *
      * @return vaultAdmin The address of the Vault admin
      */
@@ -92,7 +92,9 @@ interface IVaultExplorer {
 
     /**
      * @notice Retrieves the token delta for a specific token.
-     * @dev This function allows reading from the `_tokenDeltas` mapping. The implementation is in `VaultExtension`.
+     * @dev This function allows reading values from `_tokenDeltas`. A non-zero delta typically occurs only during an
+     * operation, and indicates a debt or credit amount in that token. The implementation is in `VaultExtension`.
+     *
      * @param token The token for which the delta is being fetched
      * @return tokenDelta The delta of the specified token
      */
@@ -100,8 +102,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Retrieves the reserve (i.e., sum of all pool balances) of a given token.
-     * @dev The implementation is in `VaultExtension`. The `reserveAmount` should always be equal to or less than
-     * the Vault's balance of the token.
+     * @dev The `reserveAmount` should always be equal to or less than the Vault's balance of the token.
+     * The implementation is in `VaultExtension`.
      *
      * @param token The token for which to retrieve the reserve
      * @return reserveAmount The amount of reserves for the given token
@@ -110,11 +112,12 @@ interface IVaultExplorer {
 
     /**
      * @notice This flag is used to detect "round trip" transactions (adding and removing liquidity in the same pool).
-     * @dev Taxing remove liquidity proportional whenever liquidity was added in the same transaction adds an extra
+     * @dev Taxing removing liquidity proportionally whenever liquidity was added in the same transaction adds an extra
      * layer of security, discouraging operations that try to undo others for profit. Remove liquidity proportional
-     * is the only standard way to exit a position without fees, and this flag is used to enable fees in that case.
-     * It also discourages indirect swaps via unbalanced add and remove proportional, as they are expected to be worse
-     * than a simple swap for every pool type. The implementation is in `VaultExtension`.
+     * is the only standard way to exit a position without fees, and this flag is used to enable fees when the
+     * operation might be an attempted exploit. It also discourages indirect swaps via unbalanced add and remove
+     * proportional, as they are expected to be worse than a simple swap for every pool type.
+     * The implementation is in `VaultExtension`.
      *
      * @param pool Address of the pool to check
      * @return liquidityAdded True if liquidity has been added to this pool in the current transaction
@@ -213,7 +216,7 @@ interface IVaultExplorer {
         );
 
     /**
-     * @notice Gets current live balances of a given pool, corresponding to its tokens in registration order.
+     * @notice Gets current live balances of a given pool, in token registration order.
      * @dev These are 18-decimal fixed point values. The implementation is in `VaultExtension`.
      * @param pool Address of the pool
      * @return balancesLiveScaled18  Token balances after paying yield fees, applying decimal scaling and rates
@@ -232,8 +235,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Gets the hooks configuration parameters of a pool.
-     * @dev The `HooksConfig` contains flags indicating which pool hooks are implemented. The implementation is in
-     * `VaultExtension`.
+     * @dev The `HooksConfig` contains flags indicating which pool hooks are implemented.
+     * The implementation is in `VaultExtension`.
      *
      * @param pool Address of the pool
      * @return hooksConfig The hooks configuration as a `HooksConfig` struct
@@ -285,8 +288,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Indicates whether a pool is paused.
-     * @dev If a pool is paused, all non-Recovery Mode state-changing operations will revert. The implementation
-     * is in `VaultExtension`.
+     * @dev If a pool is paused, all non-Recovery Mode state-changing operations will revert.
+     * The implementation is in `VaultExtension`.
      *
      * @param pool The pool to be checked
      * @return poolPaused True if the pool is paused
@@ -351,8 +354,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
-     * @dev Reverts if the hook doesn't return the success flag set to `true`. The implementation
-     * is in `VaultExtension`.
+     * @dev Reverts if the hook doesn't return the success flag set to `true`.
+     * The implementation is in `VaultExtension`.
      *
      * @param pool The pool
      * @param swapParams The swap parameters used to compute the fee
@@ -369,8 +372,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Checks whether a pool is in Recovery Mode.
-     * @dev Recovery Mode enables a safe proportional withdrawal path, with no external calls. The implementation
-     * is in `VaultExtension`.
+     * @dev Recovery Mode enables a safe proportional withdrawal path, with no external calls.
+     * The implementation is in `VaultExtension`.
      *
      * @param pool Address of the pool to check
      * @return inRecoveryMode True if the pool is in Recovery Mode, false otherwise
@@ -502,8 +505,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Indicates whether the Vault is paused.
-     * @dev If the Vault is paused, all non-Recovery Mode state-changing operations will revert. The implementation
-     * is in `VaultAdmin`.
+     * @dev If the Vault is paused, all non-Recovery Mode state-changing operations will revert.
+     * The implementation is in `VaultAdmin`.
      *
      * @return vaultPaused True if the Vault is paused
      */
@@ -556,8 +559,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Checks whether the wrapped token has an initialized buffer in the Vault.
-     * @dev An initialized buffer will have an asset registered in the Vault. The implementation is in
-     * `VaultExtension`.
+     * @dev An initialized buffer will have an asset registered in the Vault.
+     * The implementation is in `VaultExtension`.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return isBufferInitialized True if the ERC4626 buffer is initialized
@@ -601,8 +604,8 @@ interface IVaultExplorer {
 
     /**
      * @notice Returns the shares (internal buffer BPT) of a liquidity owner.
-     * @dev The "liquidity owner" is the user who deposited assets in the buffer. The implementation is in
-     * `VaultAdmin`.
+     * @dev The "liquidity owner" is the user who deposited assets in the buffer.
+     * The implementation is in `VaultAdmin`.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
