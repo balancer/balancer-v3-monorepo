@@ -9,8 +9,8 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import {
     IWrappedBalancerPoolTokenFactory
 } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolTokenFactory.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
+import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 import { WrappedBalancerPoolToken } from "./WrappedBalancerPoolToken.sol";
 
 /// @notice Factory contract for creating wrapped Balancer pool tokens
