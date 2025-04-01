@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import {
     IWrappedBalancerPoolTokenFactory
 } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolTokenFactory.sol";
@@ -20,6 +21,8 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         factory = new WrappedBalancerPoolTokenFactory(vault);
+
+        authorizer.grantRole(factory.getActionId(factory.createWrappedToken.selector), address(this));
     }
 
     function testCreateWrappedToken() public {
@@ -37,6 +40,21 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
 
         assertEq(IERC20Metadata(wrappedToken).name(), "Wrapped ERC20 Pool", "Wrapped token name should be correct");
         assertEq(IERC20Metadata(wrappedToken).symbol(), "wERC20POOL", "Wrapped token symbol should be correct");
+    }
+
+    function testCreateWithDisabledFactory() public {
+        assertEq(factory.isDisabled(), false, "Factory should not be disabled");
+        factory.setDisabled(true);
+        assertEq(factory.isDisabled(), true, "Factory should be disabled");
+
+        vm.expectRevert(abi.encodeWithSelector(IWrappedBalancerPoolTokenFactory.FactoryPaused.selector));
+        factory.createWrappedToken(pool);
+    }
+
+    function testCreateWithNoPermission() public {
+        authorizer.revokeRole(factory.getActionId(factory.createWrappedToken.selector), address(this));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        factory.createWrappedToken(pool);
     }
 
     function testCreateWithExistingWrappedToken() public {
