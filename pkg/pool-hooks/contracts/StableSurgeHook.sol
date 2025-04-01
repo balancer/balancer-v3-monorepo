@@ -39,9 +39,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication, Vers
     using FixedPoint for uint256;
     using SafeCast for *;
 
-    // Only pools from the allowed factory are able to register and use this hook.
-    address private immutable _allowedPoolFactory;
-
     // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
     struct SurgeFeeData {
         uint64 thresholdPercentage;
