@@ -18,18 +18,19 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
+import { StableSurgeHookDeployer } from "./utils/StableSurgeHookDeployer.sol";
 import { StableSurgeHook } from "../../contracts/StableSurgeHook.sol";
 import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
 
-contract StableSurgeHookUnitTest is BaseVaultTest {
+contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
     using FixedPoint for uint256;
 
     uint256 constant MIN_TOKENS = 2;
     uint256 constant MAX_TOKENS = 8;
 
-    uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 30e16; // 30%
-    uint256 constant DEFAULT_MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
     uint256 constant STATIC_FEE_PERCENTAGE = 1e16;
+
+    string internal version = "Stable Surge Hook Vx";
 
     StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
     StableSurgeHook stableSurgeHook;
@@ -39,16 +40,21 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
         super.setUp();
 
         vm.prank(address(poolFactory));
-        stableSurgeHook = new StableSurgeHook(
+        stableSurgeHook = deployStableSurgeHook(
             vault,
             DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
-            DEFAULT_SURGE_THRESHOLD_PERCENTAGE
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            version
         );
 
         authorizer.grantRole(
             IAuthentication(address(stableSurgeHook)).getActionId(StableSurgeHook.setMaxSurgeFeePercentage.selector),
             admin
         );
+    }
+
+    function testVersion() public {
+        assertEq(stableSurgeHook.version(), version, "Incorrect version");
     }
 
     function testOnRegister() public {
@@ -63,19 +69,6 @@ contract StableSurgeHookUnitTest is BaseVaultTest {
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
             "Surge threshold percentage should be DEFAULT_SURGE_THRESHOLD_PERCENTAGE"
         );
-    }
-
-    function testOnRegisterWithIncorrectFactory() public {
-        assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
-
-        vm.prank(address(vault));
-        assertEq(
-            stableSurgeHook.onRegister(address(0), pool, new TokenConfig[](0), defaultLiquidityManagement),
-            false,
-            "onRegister should return false"
-        );
-
-        assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
     }
 
     function _registerPool() private {

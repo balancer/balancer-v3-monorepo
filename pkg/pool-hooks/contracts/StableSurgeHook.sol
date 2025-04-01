@@ -25,6 +25,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
@@ -34,7 +35,7 @@ import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
+contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -91,16 +92,14 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
-        uint256 defaultSurgeThresholdPercentage
-    ) SingletonAuthentication(vault) VaultGuard(vault) {
-        _ensureValidPercentage(defaultSurgeThresholdPercentage);
+        uint256 defaultSurgeThresholdPercentage,
+        string memory version
+    ) SingletonAuthentication(vault) VaultGuard(vault) Version(version) {
         _ensureValidPercentage(defaultMaxSurgeFeePercentage);
+        _ensureValidPercentage(defaultSurgeThresholdPercentage);
 
-        _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
         _defaultMaxSurgeFeePercentage = defaultMaxSurgeFeePercentage;
-
-        // Assumes the hook is deployed by the same factory as the pool.
-        _allowedPoolFactory = msg.sender;
+        _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
     }
 
     /// @inheritdoc IHooks
@@ -108,14 +107,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         hookFlags.shouldCallComputeDynamicSwapFee = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
-    }
-
-    /**
-     * @notice Getter for the allowed pool factory.
-     * @dev This will likely be a custom factory that deploys the standard Stable Pool with this hook contract.
-     */
-    function getAllowedPoolFactory() external view returns (address) {
-        return _allowedPoolFactory;
     }
 
     /**
@@ -159,12 +150,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
-        bool isAllowedFactory = factory == _allowedPoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
-
-        if (isAllowedFactory == false) {
-            return false;
-        }
-
         // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
         // in the future).
         _setMaxSurgeFeePercentage(pool, _defaultMaxSurgeFeePercentage);

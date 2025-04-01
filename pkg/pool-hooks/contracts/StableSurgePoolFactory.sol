@@ -25,17 +25,16 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
     string private _poolVersion;
 
     constructor(
-        IVault vault,
+        StableSurgeHook stableSurgeHook,
         uint32 pauseWindowDuration,
-        uint256 defaultMaxSurgeFeePercentage,
-        uint256 defaultSurgeThresholdPercentage,
         string memory factoryVersion,
         string memory poolVersion
-    ) BasePoolFactory(vault, pauseWindowDuration, type(StablePool).creationCode) Version(factoryVersion) {
+    )
+        BasePoolFactory(stableSurgeHook.getVault(), pauseWindowDuration, type(StablePool).creationCode)
+        Version(factoryVersion)
+    {
+        _stableSurgeHook = address(stableSurgeHook);
         _poolVersion = poolVersion;
-        _stableSurgeHook = address(
-            new StableSurgeHook(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage)
-        );
     }
 
     /// @inheritdoc IPoolVersion
