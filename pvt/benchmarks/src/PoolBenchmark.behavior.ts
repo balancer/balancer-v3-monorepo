@@ -48,12 +48,14 @@ export type TestsAddLiquidityHooks = {
 
 export type TestSettings = {
   offNestedPoolTests: boolean;
+  offUnbalancedLiquidityTests: boolean;
+  offDonationTests: boolean;
 };
 
 export class Benchmark {
   _testDirname: string;
   _poolType: string;
-  _settings: TestSettings = { offNestedPoolTests: false };
+  _settings: TestSettings = { offNestedPoolTests: false, offUnbalancedLiquidityTests: false, offDonationTests: false };
 
   vault!: IVault;
   tokenA!: ERC20WithRateTestToken;
@@ -244,6 +246,10 @@ export class Benchmark {
     };
 
     const itTestsDonation = (poolTag: PoolTag) => {
+      if (this._settings.offDonationTests) {
+        return;
+      }
+
       let poolInfo: PoolInfo;
       sharedBeforeEach(`get pool (${poolTag})`, async () => {
         poolInfo = this.poolsInfo[poolTag];
@@ -443,6 +449,10 @@ export class Benchmark {
       });
 
       it(`measures gas (unbalanced) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         const exactAmountsIn = Array(poolInfo.poolTokens.length)
           .fill(TOKEN_AMOUNT)
           .map((amount, index) => BigInt(amount / BigInt(index + 1)));
@@ -465,6 +475,10 @@ export class Benchmark {
       });
 
       it(`measures gas (unbalanced - BatchRouter) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
           [
@@ -521,6 +535,10 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
 
         // Warm up.
@@ -560,6 +578,10 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
 
         // Warm up.
@@ -656,6 +678,10 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact in) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         await router
@@ -679,6 +705,10 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact in - BatchRouter) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactIn(
@@ -735,6 +765,10 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         await router
@@ -771,6 +805,10 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async () => {
+        if (this._settings.offUnbalancedLiquidityTests) {
+          return;
+        }
+
         const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
         // Warm up.
         let tx = await batchRouter.connect(alice).swapExactOut(
