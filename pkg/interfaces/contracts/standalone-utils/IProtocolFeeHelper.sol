@@ -2,6 +2,14 @@
 
 pragma solidity ^0.8.24;
 
+/**
+ * @notice Maintain a set of pools whose protocol fees can be set from this helper contract, vs. the fee controller.
+ * @dev Governance can add a set of pools to this contract, then grant permission to call protocol swap- or yield-
+ * setting functions here, which allows greater granularity than setting permissions directly on the fee controller.
+ *
+ * Note that governance must grant this contract permission to call the pool protocol fee setting functions on the
+ * controller. 
+ */
 interface IProtocolFeeHelper {
     /**
      * @notice Cannot add a pool that is already there.
@@ -36,7 +44,7 @@ interface IProtocolFeeHelper {
 
     /**
      * @notice Add pools to the list of pools whose protocol fees can be set.
-     * @dev This is a permissioned function. Only authorized accounts may pools to the set.
+     * @dev This is a permissioned function. Only authorized accounts may add pools to the set.
      *
      * @param newPools List of pools to add
      */
@@ -56,9 +64,9 @@ interface IProtocolFeeHelper {
      * independently grant permission to call the swap and yield fee setters.
      *
      * @param pool The address of the pool
-     * @param protocolSwapFeePercentage The new protocol swap fee percentage
+     * @param newProtocolSwapFeePercentage The new protocol swap fee percentage
      */
-    function setProtocolSwapFeePercentage(address pool, uint256 protocolSwapFeePercentage) external;
+    function setProtocolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage) external;
 
     /**
      * @notice Set the protocol yield fee for a pool.
@@ -66,9 +74,9 @@ interface IProtocolFeeHelper {
      * independently grant permission to call the swap and yield fee setters.
      *
      * @param pool The address of the pool
-     * @param protocolYieldFeePercentage The new protocol yield fee percentage
+     * @param newProtocolYieldFeePercentage The new protocol yield fee percentage
      */
-    function setProtocolYieldFeePercentage(address pool, uint256 protocolYieldFeePercentage) external;
+    function setProtocolYieldFeePercentage(address pool, uint256 newProtocolYieldFeePercentage) external;
 
     /***************************************************************************
                                     Getters                                
