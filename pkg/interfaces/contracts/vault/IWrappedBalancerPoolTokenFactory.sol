@@ -7,8 +7,11 @@ interface IWrappedBalancerPoolTokenFactory {
     /// @notice The wrapped BPT already exists
     error WrappedBPTAlreadyExists(address wrappedToken);
 
-    /// @notice The factory is paused
-    error FactoryPaused();
+    /// @notice The factory was disabled by governance.
+    event FactoryDisabled();
+
+    /// @notice Attempted wrapped token creation after the factory was disabled.
+    error Disabled();
 
     /// @notice The Balancer pool token has not been initialized
     error BalancerPoolTokenNotInitialized();
@@ -31,14 +34,15 @@ interface IWrappedBalancerPoolTokenFactory {
     function getWrappedToken(address balancerPoolToken) external view returns (address);
 
     /**
-     * @notice Sets the factory to be disabled or enabled
-     * @param disabled True to disable the factory, false to enable it
+     * @notice Disables the factory
      */
-    function setDisabled(bool disabled) external;
+    function disable() external;
 
     /**
      * @notice Checks if the factory is disabled
      * @return bool True if the factory is disabled, false if it is enabled
      */
     function isDisabled() external view returns (bool);
+
+    
 }
