@@ -4,9 +4,10 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IPoolPauseHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolPauseHelper.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 contract PoolPauseHelper is IPoolPauseHelper, SingletonAuthentication {
