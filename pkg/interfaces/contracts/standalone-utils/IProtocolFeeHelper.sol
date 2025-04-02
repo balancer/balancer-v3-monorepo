@@ -8,7 +8,7 @@ pragma solidity ^0.8.24;
  * setting functions here, which allows greater granularity than setting permissions directly on the fee controller.
  *
  * Note that governance must grant this contract permission to call the pool protocol fee setting functions on the
- * controller. 
+ * controller.
  */
 interface IProtocolFeeHelper {
     /**
