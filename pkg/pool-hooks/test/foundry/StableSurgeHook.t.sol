@@ -11,6 +11,7 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { CommonAuthentication } from "@balancer-labs/v3-vault/contracts/CommonAuthentication.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
@@ -96,6 +97,16 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
                 }),
                 vault
             )
+        );
+    }
+
+    function testValidVault() public {
+        vm.expectRevert(CommonAuthentication.VaultNotSet.selector);
+        deployStableSurgeHook(
+            IVault(address(0)),
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            ""
         );
     }
 

@@ -56,7 +56,7 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, S
     }
 
     function testFactoryHasHook() public {
-        address surgeHook = stablePoolFactory.getStableSurgeHook();
+        address surgeHook = address(stablePoolFactory.getStableSurgeHook());
         assertNotEq(surgeHook, address(0), "No surge hook deployed");
 
         address stablePool = _deployAndInitializeStablePool(false);

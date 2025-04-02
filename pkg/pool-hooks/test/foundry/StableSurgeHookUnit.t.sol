@@ -3,6 +3,8 @@
 pragma solidity ^0.8.24;
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+
+import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
 import {
     LiquidityManagement,
     TokenConfig,
@@ -48,12 +50,12 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
         );
 
         authorizer.grantRole(
-            IAuthentication(address(stableSurgeHook)).getActionId(StableSurgeHook.setMaxSurgeFeePercentage.selector),
+            IAuthentication(address(stableSurgeHook)).getActionId(IStableSurgeHook.setMaxSurgeFeePercentage.selector),
             admin
         );
     }
 
-    function testVersion() public {
+    function testVersion() public view {
         assertEq(stableSurgeHook.version(), version, "Incorrect version");
     }
 
@@ -61,7 +63,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
         assertEq(stableSurgeHook.getSurgeThresholdPercentage(pool), 0, "Surge threshold percentage should be 0");
 
         vm.expectEmit();
-        emit StableSurgeHook.StableSurgeHookRegistered(pool, poolFactory);
+        emit IStableSurgeHook.StableSurgeHookRegistered(pool, poolFactory);
         _registerPool();
 
         assertEq(
@@ -106,7 +108,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
         uint256 newSurgeThresholdPercentage = 0.5e18;
 
         vm.expectEmit();
-        emit StableSurgeHook.ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
+        emit IStableSurgeHook.ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
 
         PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
             pauseManager: address(this),
@@ -143,7 +145,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
             abi.encode(poolRoleAccounts)
         );
 
-        vm.expectRevert(StableSurgeHook.InvalidPercentage.selector);
+        vm.expectRevert(IStableSurgeHook.InvalidPercentage.selector);
         stableSurgeHook.setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 

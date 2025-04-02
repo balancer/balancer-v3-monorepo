@@ -7,6 +7,7 @@ import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 /// @dev Base contract for performing access control on external functions within pools.
 abstract contract CommonAuthentication is Authentication {
+    /// @dev Vault cannot be address(0).
     error VaultNotSet();
 
     IVault private immutable _vault;
