@@ -75,7 +75,7 @@ interface IPoolPauseHelper {
      * @dev Needed to support pagination in case the list is too long to process in a single transaction.
      * @return poolCount The current number of pools in the pausable list
      */
-    function getPoolsCount() external view returns (uint256);
+    function getPoolCount() external view returns (uint256);
 
     /**
      * @notice Check whether a pool is in the list of pausable pools.

@@ -67,7 +67,7 @@ contract PoolPauseHelper is IPoolPauseHelper, SingletonAuthentication {
     ***************************************************************************/
 
     /// @inheritdoc IPoolPauseHelper
-    function getPoolsCount() external view returns (uint256) {
+    function getPoolCount() external view returns (uint256) {
         return _pausablePools.length();
     }
 
