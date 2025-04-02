@@ -2,6 +2,14 @@
 
 pragma solidity ^0.8.24;
 
+/**
+ * @notice Maintain a set of pools that can be paused from this helper contract, vs. directly from the Vault.
+ * @dev Governance can add a set of pools to this contract, then grant pause permission to accounts here, which
+ * allows greater granularity than setting the permission directly on the Vault.
+ *
+ * Note that governance must grant this contract permission to pause pools from the Vault. Unpausing is not
+ * addressed here, and must still be done through the Vault.
+ */
 interface IPoolPauseHelper {
     /**
      * @notice Cannot add a pool that is already there.
