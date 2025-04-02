@@ -17,9 +17,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
     EnumerableSet.AddressSet private _pools;
 
     modifier withKnownPool(address pool) {
-        if (_pools.contains(pool) == false) {
-            revert PoolNotInProtocolFeeSet(pool);
-        }
+        _ensureKnownPool(pool);
         _;
     }
 
@@ -50,9 +48,9 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
             address pool = pools[i];
-            if (_pools.remove(pool) == false) {
-                revert PoolNotInProtocolFeeSet(pool);
-            }
+            _ensureKnownPool(pool);
+
+            _pools.remove(pool);
 
             emit PoolRemovedFromProtocolFeeSet(pool);
         }
@@ -61,17 +59,17 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
     /// @inheritdoc IProtocolFeeHelper
     function setProtocolSwapFeePercentage(
         address pool,
-        uint256 protocolSwapFeePercentage
+        uint256 newProtocolSwapFeePercentage
     ) external withKnownPool(pool) authenticate {
-        _getProtocolFeeController().setProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
+        _getProtocolFeeController().setProtocolSwapFeePercentage(pool, newProtocolSwapFeePercentage);
     }
 
     /// @inheritdoc IProtocolFeeHelper
     function setProtocolYieldFeePercentage(
         address pool,
-        uint256 protocolYieldFeePercentage
+        uint256 newProtocolYieldFeePercentage
     ) external withKnownPool(pool) authenticate {
-        _getProtocolFeeController().setProtocolYieldFeePercentage(pool, protocolYieldFeePercentage);
+        _getProtocolFeeController().setProtocolYieldFeePercentage(pool, newProtocolYieldFeePercentage);
     }
 
     /***************************************************************************
@@ -104,5 +102,11 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
     // The protocol fee controller is upgradeable in the Vault, so we must fetch it every time.
     function _getProtocolFeeController() internal view returns (IProtocolFeeController) {
         return getVault().getProtocolFeeController();
+    }
+
+    function _ensureKnownPool(address pool) internal view {
+        if (_pools.contains(pool) == false) {
+            revert PoolNotInProtocolFeeSet(pool);
+        }
     }
 }
