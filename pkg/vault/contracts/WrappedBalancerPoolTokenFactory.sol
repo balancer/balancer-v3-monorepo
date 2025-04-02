@@ -24,7 +24,7 @@ contract WrappedBalancerPoolTokenFactory is IWrappedBalancerPoolTokenFactory, Si
 
     modifier notDisabled() {
         if (_isDisabled) {
-            revert FactoryPaused();
+            revert Disabled();
         }
         _;
     }
@@ -56,8 +56,10 @@ contract WrappedBalancerPoolTokenFactory is IWrappedBalancerPoolTokenFactory, Si
     }
 
     /// @inheritdoc IWrappedBalancerPoolTokenFactory
-    function setDisabled(bool disabled) external {
-        _isDisabled = disabled;
+    function disable() external notDisabled authenticate {
+        _isDisabled = true;
+
+        emit FactoryDisabled();
     }
 
     /// @inheritdoc IWrappedBalancerPoolTokenFactory

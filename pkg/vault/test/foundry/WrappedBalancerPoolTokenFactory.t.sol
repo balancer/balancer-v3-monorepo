@@ -23,6 +23,7 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
         factory = new WrappedBalancerPoolTokenFactory(vault);
 
         authorizer.grantRole(factory.getActionId(factory.createWrappedToken.selector), address(this));
+        authorizer.grantRole(factory.getActionId(factory.disable.selector), address(this));
     }
 
     function testCreateWrappedToken() public {
@@ -44,14 +45,31 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
 
     function testCreateWithDisabledFactory() public {
         assertEq(factory.isDisabled(), false, "Factory should not be disabled");
-        factory.setDisabled(true);
+
+        vm.expectEmit();
+        emit IWrappedBalancerPoolTokenFactory.FactoryDisabled();
+        factory.disable();
+
         assertEq(factory.isDisabled(), true, "Factory should be disabled");
 
-        vm.expectRevert(abi.encodeWithSelector(IWrappedBalancerPoolTokenFactory.FactoryPaused.selector));
+        vm.expectRevert(abi.encodeWithSelector(IWrappedBalancerPoolTokenFactory.Disabled.selector));
         factory.createWrappedToken(pool);
     }
 
-    function testCreateWithNoPermission() public {
+    function testDisableWithoutPermission() public {
+        authorizer.revokeRole(factory.getActionId(factory.disable.selector), address(this));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        factory.disable();
+    }
+
+    function testDisableTwoTimes() public {
+        factory.disable();
+
+        vm.expectRevert(abi.encodeWithSelector(IWrappedBalancerPoolTokenFactory.Disabled.selector));
+        factory.disable();
+    }
+
+    function testCreateWithoutPermission() public {
         authorizer.revokeRole(factory.getActionId(factory.createWrappedToken.selector), address(this));
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         factory.createWrappedToken(pool);
