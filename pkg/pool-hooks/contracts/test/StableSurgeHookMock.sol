@@ -11,8 +11,11 @@ contract StableSurgeHookMock is StableSurgeHook {
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
-        uint256 defaultSurgeThresholdPercentage
-    ) StableSurgeHook(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage) {}
+        uint256 defaultSurgeThresholdPercentage,
+        string memory version
+    ) StableSurgeHook(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage, version) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function getSurgeFeePercentage(
         PoolSwapParams calldata params,
