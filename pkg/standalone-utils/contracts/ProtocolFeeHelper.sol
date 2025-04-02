@@ -4,15 +4,24 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IProtocolFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeHelper.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _pools;
+
+    modifier withKnownPool(address pool) {
+        if (_pools.contains(pool) == false) {
+            revert PoolNotInProtocolFeeSet(pool);
+        }
+        _;
+    }
 
     constructor(IVault vault) SingletonAuthentication(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -50,21 +59,19 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
     }
 
     /// @inheritdoc IProtocolFeeHelper
-    function setProtocolSwapFeePercentage(address pool, uint256 protocolSwapFee) external authenticate {
-        if (_pools.contains(pool) == false) {
-            revert PoolNotInProtocolFeeSet(pool);
-        }
-
-        getVault().getProtocolFeeController().setProtocolSwapFeePercentage(pool, protocolSwapFee);
+    function setProtocolSwapFeePercentage(
+        address pool,
+        uint256 protocolSwapFeePercentage
+    ) external withKnownPool(pool) authenticate {
+        _getProtocolFeeController().setProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
     }
 
     /// @inheritdoc IProtocolFeeHelper
-    function setProtocolYieldFeePercentage(address pool, uint256 protocolYieldFee) external authenticate {
-        if (_pools.contains(pool) == false) {
-            revert PoolNotInProtocolFeeSet(pool);
-        }
-
-        getVault().getProtocolFeeController().setProtocolYieldFeePercentage(pool, protocolYieldFee);
+    function setProtocolYieldFeePercentage(
+        address pool,
+        uint256 protocolYieldFeePercentage
+    ) external withKnownPool(pool) authenticate {
+        _getProtocolFeeController().setProtocolYieldFeePercentage(pool, protocolYieldFeePercentage);
     }
 
     /***************************************************************************
@@ -92,5 +99,10 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
         for (uint256 i = from; i < to; i++) {
             pools[i - from] = _pools.at(i);
         }
+    }
+
+    // The protocol fee controller is upgradeable in the Vault, so we must fetch it every time.
+    function _getProtocolFeeController() internal view returns (IProtocolFeeController) {
+        return getVault().getProtocolFeeController();
     }
 }
