@@ -43,6 +43,4 @@ interface IWrappedBalancerPoolTokenFactory {
      * @return bool True if the factory is disabled, false if it is enabled
      */
     function isDisabled() external view returns (bool);
-
-    
 }
