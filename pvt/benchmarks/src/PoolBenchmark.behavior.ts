@@ -271,10 +271,6 @@ export class Benchmark {
     };
 
     const itTestsDonation = (poolTag: PoolTag) => {
-      if (this._settings.disableDonationTests) {
-        return;
-      }
-
       let poolInfo: PoolInfo;
       sharedBeforeEach(`get pool (${poolTag})`, async () => {
         poolInfo = this.poolsInfo[poolTag];
@@ -287,7 +283,7 @@ export class Benchmark {
           .initialize(poolInfo.pool, poolInfo.poolTokens, initialBalances, FP_ZERO, false, '0x');
       });
 
-      it(`pool preconditions (${poolTag})`, async () => {
+      (this._settings.disableDonationTests ? it.skip : it)(`pool preconditions (${poolTag})`, async () => {
         const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(poolInfo.pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
@@ -295,7 +291,7 @@ export class Benchmark {
         expect(poolConfig.liquidityManagement.enableDonation).to.be.true;
       });
 
-      it(`measures gas (${poolTag})`, async () => {
+      (this._settings.disableDonationTests ? it.skip : it)(`measures gas (${poolTag})`, async () => {
         // Warm up.
         const tx = await router.connect(alice).donate(poolInfo.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
         const receipt = await tx.wait();
@@ -318,20 +314,24 @@ export class Benchmark {
       });
 
       describe('Custom Swap Tests', () => {
+        // itTestsCustomSwaps() needs to run inside a "sharedBeforeEach" block, so the variables "router",
+        // "batchRouter", "alice" and "poolInfo" are initialized. So, to don't repeat the custom swap tests for each
+        // standard swap test, we created this describe with only one "it" block (which is required to run the
+        // "sharedBeforeEach" block).
         sharedBeforeEach(`Test custom swaps`, async () => {
           if (this._settings.enableCustomSwapTests) {
-            const poolInfo = this.poolsInfo[poolTag];
             this.itTestsCustomSwaps(
               poolTag,
               this._testDirname,
               this._poolType,
-              { router, batchRouter, alice, poolInfo },
+              { router, batchRouter, alice, poolInfo: this.poolsInfo[poolTag] },
               testsHooks
             );
           }
         });
 
         it('Custom Swaps starter', async () => {
+          // At least one "it" is required to run the "sharedBeforeEach" block.
           return;
         });
       });
@@ -492,195 +492,191 @@ export class Benchmark {
         await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] add liquidity proportional`, [receipt]);
       });
 
-      it(`measures gas (unbalanced) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (unbalanced) (${poolTag})`,
+        async () => {
+          const exactAmountsIn = Array(poolInfo.poolTokens.length)
+            .fill(TOKEN_AMOUNT)
+            .map((amount, index) => BigInt(amount / BigInt(index + 1)));
+
+          // Warm up.
+          await router.connect(alice).addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
+
+          if (testsHooks?.actionAfterFirstTx) {
+            await testsHooks.actionAfterFirstTx();
+          }
+
+          // Measure add liquidity gas.
+          const tx = await router.connect(alice).addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
+
+          const receipt = (await tx.wait())!;
+
+          await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] add liquidity unbalanced - warm slots`, [
+            receipt,
+          ]);
         }
+      );
 
-        const exactAmountsIn = Array(poolInfo.poolTokens.length)
-          .fill(TOKEN_AMOUNT)
-          .map((amount, index) => BigInt(amount / BigInt(index + 1)));
-
-        // Warm up.
-        await router.connect(alice).addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
-
-        if (testsHooks?.actionAfterFirstTx) {
-          await testsHooks.actionAfterFirstTx();
-        }
-
-        // Measure add liquidity gas.
-        const tx = await router.connect(alice).addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
-
-        const receipt = (await tx.wait())!;
-
-        await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] add liquidity unbalanced - warm slots`, [
-          receipt,
-        ]);
-      });
-
-      it(`measures gas (unbalanced - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
-        }
-
-        // Warm up.
-        let tx = await batchRouter.connect(alice).swapExactIn(
-          [
-            {
-              tokenIn: poolInfo.poolTokens[0],
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.pool,
-                  isBuffer: false,
-                },
-              ],
-              exactAmountIn: TOKEN_AMOUNT,
-              minAmountOut: 0,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
-
-        if (testsHooks?.actionAfterFirstTx) {
-          await testsHooks.actionAfterFirstTx();
-        }
-
-        // Measure gas for the swap.
-        tx = await batchRouter.connect(alice).swapExactIn(
-          [
-            {
-              tokenIn: poolInfo.poolTokens[0],
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.pool,
-                  isBuffer: false,
-                },
-              ],
-              exactAmountIn: TOKEN_AMOUNT,
-              minAmountOut: 0,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
-
-        const receipt = (await tx.wait())!;
-
-        await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] add liquidity unbalanced using swapExactIn - warm slots`,
-          [receipt]
-        );
-      });
-
-      it(`measures gas (single token exact out) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
-        }
-
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
-
-        // Warm up.
-        await router
-          .connect(alice)
-          .addLiquiditySingleTokenExactOut(
-            poolInfo.pool,
-            poolInfo.poolTokens[0],
-            TOKEN_AMOUNT,
-            bptBalance / 1000n,
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (unbalanced - BatchRouter) (${poolTag})`,
+        async () => {
+          // Warm up.
+          let tx = await batchRouter.connect(alice).swapExactIn(
+            [
+              {
+                tokenIn: poolInfo.poolTokens[0],
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.pool,
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountIn: TOKEN_AMOUNT,
+                minAmountOut: 0,
+              },
+            ],
+            MAX_UINT256,
             false,
             '0x'
           );
 
-        if (testsHooks?.actionAfterFirstTx) {
-          await testsHooks.actionAfterFirstTx();
-        }
+          if (testsHooks?.actionAfterFirstTx) {
+            await testsHooks.actionAfterFirstTx();
+          }
 
-        // Measure add liquidity gas.
-        const tx = await router
-          .connect(alice)
-          .addLiquiditySingleTokenExactOut(
-            poolInfo.pool,
-            poolInfo.poolTokens[0],
-            TOKEN_AMOUNT,
-            bptBalance / 1000n,
+          // Measure gas for the swap.
+          tx = await batchRouter.connect(alice).swapExactIn(
+            [
+              {
+                tokenIn: poolInfo.poolTokens[0],
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.pool,
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountIn: TOKEN_AMOUNT,
+                minAmountOut: 0,
+              },
+            ],
+            MAX_UINT256,
             false,
             '0x'
           );
 
-        const receipt = await tx.wait();
-        await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag}] add liquidity single token exact out - warm slots`,
-          [receipt!]
-        );
-      });
+          const receipt = (await tx.wait())!;
 
-      it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
+          await saveSnap(
+            this._testDirname,
+            `[${this._poolType} - ${poolTag} - BatchRouter] add liquidity unbalanced using swapExactIn - warm slots`,
+            [receipt]
+          );
         }
+      );
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (single token exact out) (${poolTag})`,
+        async () => {
+          const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
 
-        // Warm up.
-        let tx = await batchRouter.connect(alice).swapExactOut(
-          [
-            {
-              tokenIn: poolInfo.poolTokens[0],
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.pool,
-                  isBuffer: false,
-                },
-              ],
-              exactAmountOut: bptBalance / 1000n,
-              maxAmountIn: TOKEN_AMOUNT,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
+          // Warm up.
+          await router
+            .connect(alice)
+            .addLiquiditySingleTokenExactOut(
+              poolInfo.pool,
+              poolInfo.poolTokens[0],
+              TOKEN_AMOUNT,
+              bptBalance / 1000n,
+              false,
+              '0x'
+            );
 
-        if (testsHooks?.actionAfterFirstTx) {
-          await testsHooks.actionAfterFirstTx();
+          if (testsHooks?.actionAfterFirstTx) {
+            await testsHooks.actionAfterFirstTx();
+          }
+
+          // Measure add liquidity gas.
+          const tx = await router
+            .connect(alice)
+            .addLiquiditySingleTokenExactOut(
+              poolInfo.pool,
+              poolInfo.poolTokens[0],
+              TOKEN_AMOUNT,
+              bptBalance / 1000n,
+              false,
+              '0x'
+            );
+
+          const receipt = await tx.wait();
+          await saveSnap(
+            this._testDirname,
+            `[${this._poolType} - ${poolTag}] add liquidity single token exact out - warm slots`,
+            [receipt!]
+          );
         }
+      );
 
-        // Measure gas for the swap.
-        tx = await batchRouter.connect(alice).swapExactOut(
-          [
-            {
-              tokenIn: poolInfo.poolTokens[0],
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.pool,
-                  isBuffer: false,
-                },
-              ],
-              exactAmountOut: bptBalance / 1000n,
-              maxAmountIn: TOKEN_AMOUNT,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (single token exact out - BatchRouter) (${poolTag})`,
+        async () => {
+          const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
 
-        const receipt = await tx.wait();
-        await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] add liquidity using swapExactOur - warm slots`,
-          [receipt!]
-        );
-      });
+          // Warm up.
+          let tx = await batchRouter.connect(alice).swapExactOut(
+            [
+              {
+                tokenIn: poolInfo.poolTokens[0],
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.pool,
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountOut: bptBalance / 1000n,
+                maxAmountIn: TOKEN_AMOUNT,
+              },
+            ],
+            MAX_UINT256,
+            false,
+            '0x'
+          );
+
+          if (testsHooks?.actionAfterFirstTx) {
+            await testsHooks.actionAfterFirstTx();
+          }
+
+          // Measure gas for the swap.
+          tx = await batchRouter.connect(alice).swapExactOut(
+            [
+              {
+                tokenIn: poolInfo.poolTokens[0],
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.pool,
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountOut: bptBalance / 1000n,
+                maxAmountIn: TOKEN_AMOUNT,
+              },
+            ],
+            MAX_UINT256,
+            false,
+            '0x'
+          );
+
+          const receipt = await tx.wait();
+          await saveSnap(
+            this._testDirname,
+            `[${this._poolType} - ${poolTag} - BatchRouter] add liquidity using swapExactOur - warm slots`,
+            [receipt!]
+          );
+        }
+      );
     };
 
     const itTestsRemoveLiquidity = (poolTag: PoolTag, actionAfterFirstTx?: () => Promise<void>) => {
@@ -721,192 +717,188 @@ export class Benchmark {
         await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] remove liquidity proportional`, [receipt!]);
       });
 
-      it(`measures gas (single token exact in) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (single token exact in) (${poolTag})`,
+        async () => {
+          const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
+          // Warm up.
+          await router
+            .connect(alice)
+            .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
+
+          if (actionAfterFirstTx) {
+            await actionAfterFirstTx();
+          }
+
+          // Measure remove liquidity gas.
+          const tx = await router
+            .connect(alice)
+            .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
+          const receipt = await tx.wait();
+          await saveSnap(
+            this._testDirname,
+            `[${this._poolType} - ${poolTag}] remove liquidity single token exact in - warm slots`,
+            [receipt!]
+          );
         }
+      );
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
-        // Warm up.
-        await router
-          .connect(alice)
-          .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
-
-        if (actionAfterFirstTx) {
-          await actionAfterFirstTx();
-        }
-
-        // Measure remove liquidity gas.
-        const tx = await router
-          .connect(alice)
-          .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
-        const receipt = await tx.wait();
-        await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag}] remove liquidity single token exact in - warm slots`,
-          [receipt!]
-        );
-      });
-
-      it(`measures gas (single token exact in - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
-        }
-
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
-        // Warm up.
-        let tx = await batchRouter.connect(alice).swapExactIn(
-          [
-            {
-              tokenIn: poolInfo.pool,
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.poolTokens[0],
-                  isBuffer: false,
-                },
-              ],
-              exactAmountIn: bptBalance / 10n,
-              minAmountOut: 1,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
-
-        if (actionAfterFirstTx) {
-          await actionAfterFirstTx();
-        }
-
-        // Measure gas for the swap.
-        tx = await batchRouter.connect(alice).swapExactIn(
-          [
-            {
-              tokenIn: poolInfo.pool,
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.poolTokens[0],
-                  isBuffer: false,
-                },
-              ],
-              exactAmountIn: bptBalance / 10n,
-              minAmountOut: 1,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
-
-        const receipt = await tx.wait();
-        await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactIn - warm slots`,
-          [receipt!]
-        );
-      });
-
-      it(`measures gas (single token exact out) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
-        }
-
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
-        // Warm up.
-        await router
-          .connect(alice)
-          .removeLiquiditySingleTokenExactOut(
-            poolInfo.pool,
-            bptBalance / 2n,
-            poolInfo.poolTokens[0],
-            TOKEN_AMOUNT / 1000n,
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (single token exact in - BatchRouter) (${poolTag})`,
+        async () => {
+          const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
+          // Warm up.
+          let tx = await batchRouter.connect(alice).swapExactIn(
+            [
+              {
+                tokenIn: poolInfo.pool,
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.poolTokens[0],
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountIn: bptBalance / 10n,
+                minAmountOut: 1,
+              },
+            ],
+            MAX_UINT256,
             false,
             '0x'
           );
 
-        if (actionAfterFirstTx) {
-          await actionAfterFirstTx();
-        }
-        // Measure remove liquidity gas.
-        const tx = await router
-          .connect(alice)
-          .removeLiquiditySingleTokenExactOut(
-            poolInfo.pool,
-            bptBalance / 2n,
-            poolInfo.poolTokens[0],
-            TOKEN_AMOUNT / 1000n,
+          if (actionAfterFirstTx) {
+            await actionAfterFirstTx();
+          }
+
+          // Measure gas for the swap.
+          tx = await batchRouter.connect(alice).swapExactIn(
+            [
+              {
+                tokenIn: poolInfo.pool,
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.poolTokens[0],
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountIn: bptBalance / 10n,
+                minAmountOut: 1,
+              },
+            ],
+            MAX_UINT256,
             false,
             '0x'
           );
-        const receipt = await tx.wait();
-        await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag}] remove liquidity single token exact out - warm slots`,
-          [receipt!]
-        );
-      });
 
-      it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.disableUnbalancedLiquidityTests) {
-          return;
+          const receipt = await tx.wait();
+          await saveSnap(
+            this._testDirname,
+            `[${this._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactIn - warm slots`,
+            [receipt!]
+          );
         }
+      );
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
-        // Warm up.
-        let tx = await batchRouter.connect(alice).swapExactOut(
-          [
-            {
-              tokenIn: poolInfo.pool,
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.poolTokens[0],
-                  isBuffer: false,
-                },
-              ],
-              exactAmountOut: TOKEN_AMOUNT / 1000n,
-              maxAmountIn: bptBalance / 2n,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (single token exact out) (${poolTag})`,
+        async () => {
+          const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
+          // Warm up.
+          await router
+            .connect(alice)
+            .removeLiquiditySingleTokenExactOut(
+              poolInfo.pool,
+              bptBalance / 2n,
+              poolInfo.poolTokens[0],
+              TOKEN_AMOUNT / 1000n,
+              false,
+              '0x'
+            );
 
-        if (actionAfterFirstTx) {
-          await actionAfterFirstTx();
+          if (actionAfterFirstTx) {
+            await actionAfterFirstTx();
+          }
+          // Measure remove liquidity gas.
+          const tx = await router
+            .connect(alice)
+            .removeLiquiditySingleTokenExactOut(
+              poolInfo.pool,
+              bptBalance / 2n,
+              poolInfo.poolTokens[0],
+              TOKEN_AMOUNT / 1000n,
+              false,
+              '0x'
+            );
+          const receipt = await tx.wait();
+          await saveSnap(
+            this._testDirname,
+            `[${this._poolType} - ${poolTag}] remove liquidity single token exact out - warm slots`,
+            [receipt!]
+          );
         }
+      );
 
-        // Measure gas for the swap.
-        tx = await batchRouter.connect(alice).swapExactOut(
-          [
-            {
-              tokenIn: poolInfo.pool,
-              steps: [
-                {
-                  pool: poolInfo.pool,
-                  tokenOut: poolInfo.poolTokens[0],
-                  isBuffer: false,
-                },
-              ],
-              exactAmountOut: TOKEN_AMOUNT / 1000n,
-              maxAmountIn: bptBalance / 2n,
-            },
-          ],
-          MAX_UINT256,
-          false,
-          '0x'
-        );
+      (this._settings.disableUnbalancedLiquidityTests ? it.skip : it)(
+        `measures gas (single token exact out - BatchRouter) (${poolTag})`,
+        async () => {
+          const bptBalance = await this.vault.balanceOf(poolInfo.pool, alice);
+          // Warm up.
+          let tx = await batchRouter.connect(alice).swapExactOut(
+            [
+              {
+                tokenIn: poolInfo.pool,
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.poolTokens[0],
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountOut: TOKEN_AMOUNT / 1000n,
+                maxAmountIn: bptBalance / 2n,
+              },
+            ],
+            MAX_UINT256,
+            false,
+            '0x'
+          );
 
-        const receipt = await tx.wait();
-        await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactOut - warm slots`,
-          [receipt!]
-        );
-      });
+          if (actionAfterFirstTx) {
+            await actionAfterFirstTx();
+          }
+
+          // Measure gas for the swap.
+          tx = await batchRouter.connect(alice).swapExactOut(
+            [
+              {
+                tokenIn: poolInfo.pool,
+                steps: [
+                  {
+                    pool: poolInfo.pool,
+                    tokenOut: poolInfo.poolTokens[0],
+                    isBuffer: false,
+                  },
+                ],
+                exactAmountOut: TOKEN_AMOUNT / 1000n,
+                maxAmountIn: bptBalance / 2n,
+              },
+            ],
+            MAX_UINT256,
+            false,
+            '0x'
+          );
+
+          const receipt = await tx.wait();
+          await saveSnap(
+            this._testDirname,
+            `[${this._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactOut - warm slots`,
+            [receipt!]
+          );
+        }
+      );
     };
 
     const setStaticSwapFeePercentage = async (pool: BaseContract, swapFee: bigint) => {
@@ -1337,11 +1329,7 @@ export class Benchmark {
       });
     });
 
-    describe('test nested pool', async () => {
-      if (this._settings.disableNestedPoolTests) {
-        return;
-      }
-
+    (this._settings.disableNestedPoolTests ? describe.skip : describe)('test nested pool', async () => {
       let poolTag: PoolTag;
       let poolAInfo: PoolInfo;
       let poolAAddress: string;
