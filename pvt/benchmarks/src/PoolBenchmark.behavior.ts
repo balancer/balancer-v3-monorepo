@@ -47,9 +47,17 @@ export type TestsAddLiquidityHooks = {
 };
 
 export type TestSettings = {
-  disableNestedPoolTests: boolean;
-  disableUnbalancedLiquidityTests: boolean;
-  disableDonationTests: boolean;
+  disableNestedPoolTests?: boolean;
+  disableUnbalancedLiquidityTests?: boolean;
+  disableDonationTests?: boolean;
+  enableCustomSwapTests?: boolean;
+};
+
+export type TestCustomSwapsParams = {
+  router: Router;
+  batchRouter: BatchRouter;
+  alice: SignerWithAddress;
+  poolInfo: PoolInfo;
 };
 
 export class Benchmark {
@@ -59,6 +67,7 @@ export class Benchmark {
     disableNestedPoolTests: false,
     disableUnbalancedLiquidityTests: false,
     disableDonationTests: false,
+    enableCustomSwapTests: false,
   };
 
   vault!: IVault;
@@ -86,6 +95,14 @@ export class Benchmark {
   async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo | null> {
     return null;
   }
+
+  async itTestsCustomSwaps(
+    poolTag: PoolTag,
+    testDirname: string,
+    poolType: string,
+    testCustomSwapsParams: TestCustomSwapsParams,
+    testsHooks?: TestsSwapHooks
+  ): Promise<void> {}
 
   itBenchmarks = () => {
     const BATCH_ROUTER_VERSION = 'BatchRouter v9';
@@ -294,6 +311,25 @@ export class Benchmark {
             testsHooks = { gasTag: poolTag };
           }
         }
+      });
+
+      describe('Custom Swap Tests', () => {
+        sharedBeforeEach(`Test custom swaps`, async () => {
+          if (this._settings.enableCustomSwapTests) {
+            const poolInfo = this.poolsInfo[poolTag];
+            this.itTestsCustomSwaps(
+              poolTag,
+              this._testDirname,
+              this._poolType,
+              { router, batchRouter, alice, poolInfo },
+              testsHooks
+            );
+          }
+        });
+
+        it('Custom Swaps starter', async () => {
+          return;
+        });
       });
 
       it(`pool and protocol fee preconditions (${testsHooks?.gasTag})`, async () => {
