@@ -560,6 +560,23 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(explorer.isPoolInRecoveryMode(pool), "Pool is not in recovery mode");
     }
 
+    function testEnableRecoveryMode() public {
+        assertFalse(explorer.isPoolInRecoveryMode(pool), "Pool is initially in recovery mode");
+
+        // Cannot do this normally.
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        explorer.enableRecoveryMode(pool);
+
+        vault.manualSetPoolPauseWindowEndTime(pool, uint32(block.timestamp) + 365 days);
+        vault.manualPausePool(pool);
+
+        // Now it should allow the explorer to enable recovery mode.
+        explorer.enableRecoveryMode(pool);
+
+        assertTrue(explorer.isPoolPaused(pool), "Pool is not paused");
+        assertTrue(explorer.isPoolInRecoveryMode(pool), "Pool is not in recovery mode");
+    }
+
     function testIsQueryDisabled() public {
         assertFalse(explorer.isQueryDisabled(), "Queries are initially disabled");
 
@@ -767,6 +784,13 @@ contract VaultExplorerTest is BaseVaultTest {
         _setupBuffer();
 
         address underlyingToken = explorer.getBufferAsset(waDAI);
+        assertEq(underlyingToken, address(dai));
+    }
+
+    function getERC4626BufferAsset() public {
+        _setupBuffer();
+
+        address underlyingToken = explorer.getERC4626BufferAsset(waDAI);
         assertEq(underlyingToken, address(dai));
     }
 
