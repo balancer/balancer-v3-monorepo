@@ -96,13 +96,17 @@ export class Benchmark {
     return null;
   }
 
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   async itTestsCustomSwaps(
     poolTag: PoolTag,
     testDirname: string,
     poolType: string,
     testCustomSwapsParams: TestCustomSwapsParams,
     testsHooks?: TestsSwapHooks
-  ): Promise<void> {}
+  ): Promise<void> {
+    return;
+  }
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   itBenchmarks = () => {
     const BATCH_ROUTER_VERSION = 'BatchRouter v9';
