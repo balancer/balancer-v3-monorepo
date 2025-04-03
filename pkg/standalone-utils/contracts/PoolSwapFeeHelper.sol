@@ -47,6 +47,7 @@ contract PoolSwapFeeHelper is IPoolSwapFeeHelper, SingletonAuthentication {
         for (uint256 i = 0; i < length; i++) {
             address pool = pools[i];
             _ensureKnownPool(pool);
+            _pools.remove(pool);
 
             emit PoolRemovedFromSwapFeeSet(pool);
         }
