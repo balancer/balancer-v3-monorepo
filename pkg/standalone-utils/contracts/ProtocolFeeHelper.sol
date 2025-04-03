@@ -99,6 +99,10 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
         }
     }
 
+    /***************************************************************************
+                                Internal functions                                
+    ***************************************************************************/
+
     // The protocol fee controller is upgradeable in the Vault, so we must fetch it every time.
     function _getProtocolFeeController() internal view returns (IProtocolFeeController) {
         return getVault().getProtocolFeeController();
