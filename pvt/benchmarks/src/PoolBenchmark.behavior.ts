@@ -47,15 +47,19 @@ export type TestsAddLiquidityHooks = {
 };
 
 export type TestSettings = {
-  offNestedPoolTests: boolean;
-  offUnbalancedLiquidityTests: boolean;
-  offDonationTests: boolean;
+  disableNestedPoolTests: boolean;
+  disableUnbalancedLiquidityTests: boolean;
+  disableDonationTests: boolean;
 };
 
 export class Benchmark {
   _testDirname: string;
   _poolType: string;
-  _settings: TestSettings = { offNestedPoolTests: false, offUnbalancedLiquidityTests: false, offDonationTests: false };
+  _settings: TestSettings = {
+    disableNestedPoolTests: false,
+    disableUnbalancedLiquidityTests: false,
+    disableDonationTests: false,
+  };
 
   vault!: IVault;
   tokenA!: ERC20WithRateTestToken;
@@ -246,7 +250,7 @@ export class Benchmark {
     };
 
     const itTestsDonation = (poolTag: PoolTag) => {
-      if (this._settings.offDonationTests) {
+      if (this._settings.disableDonationTests) {
         return;
       }
 
@@ -449,7 +453,7 @@ export class Benchmark {
       });
 
       it(`measures gas (unbalanced) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -475,7 +479,7 @@ export class Benchmark {
       });
 
       it(`measures gas (unbalanced - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -535,7 +539,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -578,7 +582,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -678,7 +682,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact in) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -705,7 +709,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact in - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -765,7 +769,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -805,7 +809,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async () => {
-        if (this._settings.offUnbalancedLiquidityTests) {
+        if (this._settings.disableUnbalancedLiquidityTests) {
           return;
         }
 
@@ -1294,7 +1298,7 @@ export class Benchmark {
     });
 
     describe('test nested pool', async () => {
-      if (this._settings.offNestedPoolTests) {
+      if (this._settings.disableNestedPoolTests) {
         return;
       }
 
