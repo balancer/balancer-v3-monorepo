@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 /**
  * @notice Maintain a set of pools whose static swap fee percentages can be changed from here, vs. from the Vault.
- * @dev Governance can add a set of pools to this contract, then grant pause permission to accounts here, which
- * allows greater granularity than setting the permission directly on the Vault.
+ * @dev Governance can add a set of pools to this contract, then grant swap fee setting permission to accounts on this
+ * contract, which allows greater granularity than setting the permission directly on the Vault.
  *
  * Note that governance must grant this contract permission to set swap fees from the Vault, and only pools that
  * allow governance to set fees can be added (i.e., they must not have swap managers).
@@ -54,7 +54,7 @@ interface IPoolSwapFeeHelper {
 
     /**
      * @notice Add pools to the list of pools whose swap fee can be changed.
-     * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may add
+     * @dev This is a permissioned function. Only authorized accounts (e.g., dynamic fee service providers) may add
      * pools to the set.
      *
      * @param newPools List of pools to add
@@ -63,7 +63,7 @@ interface IPoolSwapFeeHelper {
 
     /**
      * @notice Remove pools from the list of pools whose swap fee can be changed.
-     * @dev This is a permissioned function. Only authorized accounts (e.g., monitoring service providers) may remove
+     * @dev This is a permissioned function. Only authorized accounts (e.g., dynamic fee service providers) may remove
      * pools from the set.
      *
      * @param pools List of pools to remove
@@ -71,14 +71,15 @@ interface IPoolSwapFeeHelper {
     function removePools(address[] memory pools) external;
 
     /**
-     * @notice Pause a set of pools.
+     * @notice Set the static swap fee percentage on a given pool.
      * @dev This is a permissioned function. Governance must grant this contract permission to call
      * `setStaticSwapFeePercentage` on the Vault. Note that since the swap manager is an exclusive role, the swap fee
      * cannot be changed by governance if it is set, and the pool cannot be added to the set.
      *
-     * @param pools List of pools to pause
+     * @param pool The address of the pool
+     * @param swapFeePercentage The new swap fee percentage
      */
-    function setStaticSwapFeePercentage(address pools, uint256 swapFeePercentage) external;
+    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /***************************************************************************
                                     Getters                                
@@ -87,13 +88,13 @@ interface IPoolSwapFeeHelper {
     /**
      * @notice Get the number of pools.
      * @dev Needed to support pagination in case the list is too long to process in a single transaction.
-     * @return poolCount The current number of pools whose swap fee can be changed
+     * @return poolCount The current number of pools whose swap fee can be changed from this contract
      */
     function getPoolCount() external view returns (uint256);
 
     /**
      * @notice Check whether a pool is in the set of pools whose swap fee can be changed.
-     * @param pool Pool to check
+     * @param pool Address of the pool
      * @return isPausable True if the pool is in the set
      */
     function hasPool(address pool) external view returns (bool);
