@@ -56,7 +56,7 @@ export type TestSettings = {
 export class Benchmark {
   _testDirname: string;
   _poolType: string;
-  _settings: TestSettings = {
+  settings: TestSettings = {
     disableNestedPoolTests: false,
     disableUnbalancedLiquidityTests: false,
     disableDonationTests: false,
@@ -88,7 +88,7 @@ export class Benchmark {
     this._poolType = poolType;
 
     if (testSettings) {
-      this._settings = testSettings;
+      this.settings = testSettings;
     }
   }
 
@@ -104,8 +104,6 @@ export class Benchmark {
   /* eslint-enable @typescript-eslint/no-unused-vars */
 
   itBenchmarks = () => {
-    const settings = this._settings;
-
     const BATCH_ROUTER_VERSION = 'BatchRouter v9';
     const ROUTER_VERSION = 'Router v9';
 
@@ -281,7 +279,7 @@ export class Benchmark {
       });
 
       it(`pool preconditions (${poolTag})`, async function () {
-        if (settings.disableDonationTests) {
+        if (benchmark.settings.disableDonationTests) {
           return this.skip();
         }
 
@@ -293,7 +291,7 @@ export class Benchmark {
       });
 
       it(`measures gas (${poolTag})`, async function () {
-        if (settings.disableDonationTests) {
+        if (benchmark.settings.disableDonationTests) {
           return this.skip();
         }
         // Warm up.
@@ -478,7 +476,7 @@ export class Benchmark {
       });
 
       it(`measures gas (unbalanced) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -510,7 +508,7 @@ export class Benchmark {
       });
 
       it(`measures gas (unbalanced - BatchRouter) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -570,7 +568,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -613,7 +611,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -713,7 +711,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact in) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -740,7 +738,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact in - BatchRouter) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -800,7 +798,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -840,7 +838,7 @@ export class Benchmark {
       });
 
       it(`measures gas (single token exact out - BatchRouter) (${poolTag})`, async function () {
-        if (settings.disableUnbalancedLiquidityTests) {
+        if (benchmark.settings.disableUnbalancedLiquidityTests) {
           return this.skip();
         }
 
@@ -1330,7 +1328,7 @@ export class Benchmark {
       });
     });
 
-    (settings.disableNestedPoolTests ? describe.skip : describe)('test nested pool', async function () {
+    (this.settings.disableNestedPoolTests ? describe.skip : describe)('test nested pool', async function () {
       let poolTag: PoolTag;
       let poolAInfo: PoolInfo;
       let poolAAddress: string;
