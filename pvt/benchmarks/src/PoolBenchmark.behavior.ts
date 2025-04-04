@@ -104,7 +104,7 @@ export class Benchmark {
   /* eslint-enable @typescript-eslint/no-unused-vars */
 
   itBenchmarks = () => {
-    let settings = this._settings;
+    const settings = this._settings;
 
     const BATCH_ROUTER_VERSION = 'BatchRouter v9';
     const ROUTER_VERSION = 'Router v9';
@@ -131,6 +131,7 @@ export class Benchmark {
     let benchmark: Benchmark;
 
     before('setup benchmark variables', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       benchmark = this;
     });
 
