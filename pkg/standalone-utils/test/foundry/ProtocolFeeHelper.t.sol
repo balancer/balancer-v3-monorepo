@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IProtocolFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeHelper.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
@@ -21,9 +20,6 @@ contract PoolPauseHelperTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        address[] memory owners = new address[](1);
-        owners[0] = address(this);
 
         feeHelper = new ProtocolFeeHelper(vault);
         feeControllerAuth = IAuthentication(address(feeController));
