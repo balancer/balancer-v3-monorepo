@@ -15,7 +15,7 @@ class WeightedPoolBenchmark extends Benchmark {
 
   constructor(dirname: string) {
     super(dirname, 'WeightedPool', {
-      offNestedPoolTests: true,
+      disableNestedPoolTests: true,
     });
   }
 
