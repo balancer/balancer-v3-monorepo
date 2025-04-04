@@ -127,6 +127,13 @@ export class Benchmark {
     let wTokenCAddress: string;
     let wethAddress: string;
 
+    // Variable used to access benchmark closure variables inside arrow functions.
+    let benchmark: Benchmark;
+
+    before('setup benchmark variables', async () => {
+      benchmark = this;
+    });
+
     before('setup signers', async () => {
       [, this.alice, this.admin] = await ethers.getSigners();
     });
@@ -277,7 +284,7 @@ export class Benchmark {
           return this.skip();
         }
 
-        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(poolInfo.pool);
+        const poolConfig: PoolConfigStructOutput = await benchmark.vault.getPoolConfig(poolInfo.pool);
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
@@ -289,9 +296,11 @@ export class Benchmark {
           return this.skip();
         }
         // Warm up.
-        const tx = await this.router.connect(this.alice).donate(poolInfo.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
+        const tx = await benchmark.router
+          .connect(benchmark.alice)
+          .donate(poolInfo.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
         const receipt = await tx.wait();
-        await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] donation`, [receipt!]);
+        await saveSnap(benchmark._testDirname, `[${benchmark._poolType} - ${poolTag}] donation`, [receipt!]);
       });
     };
 
@@ -477,22 +486,26 @@ export class Benchmark {
           .map((amount, index) => BigInt(amount / BigInt(index + 1)));
 
         // Warm up.
-        await this.router.connect(this.alice).addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
+        await benchmark.router
+          .connect(benchmark.alice)
+          .addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
 
         if (testsHooks?.actionAfterFirstTx) {
           await testsHooks.actionAfterFirstTx();
         }
 
         // Measure add liquidity gas.
-        const tx = await this.router
-          .connect(this.alice)
+        const tx = await benchmark.router
+          .connect(benchmark.alice)
           .addLiquidityUnbalanced(poolInfo.pool, exactAmountsIn, 0, false, '0x');
 
         const receipt = (await tx.wait())!;
 
-        await saveSnap(this._testDirname, `[${this._poolType} - ${poolTag}] add liquidity unbalanced - warm slots`, [
-          receipt,
-        ]);
+        await saveSnap(
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag}] add liquidity unbalanced - warm slots`,
+          [receipt]
+        );
       });
 
       it(`measures gas (unbalanced - BatchRouter) (${poolTag})`, async function () {
@@ -501,7 +514,7 @@ export class Benchmark {
         }
 
         // Warm up.
-        let tx = await this.batchRouter.connect(this.alice).swapExactIn(
+        let tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactIn(
           [
             {
               tokenIn: poolInfo.poolTokens[0],
@@ -526,7 +539,7 @@ export class Benchmark {
         }
 
         // Measure gas for the swap.
-        tx = await this.batchRouter.connect(this.alice).swapExactIn(
+        tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactIn(
           [
             {
               tokenIn: poolInfo.poolTokens[0],
@@ -549,8 +562,8 @@ export class Benchmark {
         const receipt = (await tx.wait())!;
 
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] add liquidity unbalanced using swapExactIn - warm slots`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag} - BatchRouter] add liquidity unbalanced using swapExactIn - warm slots`,
           [receipt]
         );
       });
@@ -560,11 +573,11 @@ export class Benchmark {
           return this.skip();
         }
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, this.alice);
+        const bptBalance = await benchmark.vault.balanceOf(poolInfo.pool, benchmark.alice);
 
         // Warm up.
-        await this.router
-          .connect(this.alice)
+        await benchmark.router
+          .connect(benchmark.alice)
           .addLiquiditySingleTokenExactOut(
             poolInfo.pool,
             poolInfo.poolTokens[0],
@@ -579,8 +592,8 @@ export class Benchmark {
         }
 
         // Measure add liquidity gas.
-        const tx = await this.router
-          .connect(this.alice)
+        const tx = await benchmark.router
+          .connect(benchmark.alice)
           .addLiquiditySingleTokenExactOut(
             poolInfo.pool,
             poolInfo.poolTokens[0],
@@ -592,8 +605,8 @@ export class Benchmark {
 
         const receipt = await tx.wait();
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag}] add liquidity single token exact out - warm slots`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag}] add liquidity single token exact out - warm slots`,
           [receipt!]
         );
       });
@@ -603,10 +616,10 @@ export class Benchmark {
           return this.skip();
         }
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, this.alice);
+        const bptBalance = await benchmark.vault.balanceOf(poolInfo.pool, benchmark.alice);
 
         // Warm up.
-        let tx = await this.batchRouter.connect(this.alice).swapExactOut(
+        let tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactOut(
           [
             {
               tokenIn: poolInfo.poolTokens[0],
@@ -631,7 +644,7 @@ export class Benchmark {
         }
 
         // Measure gas for the swap.
-        tx = await this.batchRouter.connect(this.alice).swapExactOut(
+        tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactOut(
           [
             {
               tokenIn: poolInfo.poolTokens[0],
@@ -653,8 +666,8 @@ export class Benchmark {
 
         const receipt = await tx.wait();
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] add liquidity using swapExactOur - warm slots`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag} - BatchRouter] add liquidity using swapExactOut - warm slots`,
           [receipt!]
         );
       });
@@ -703,10 +716,10 @@ export class Benchmark {
           return this.skip();
         }
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, this.alice);
+        const bptBalance = await benchmark.vault.balanceOf(poolInfo.pool, benchmark.alice);
         // Warm up.
-        await router
-          .connect(this.alice)
+        await benchmark.router
+          .connect(benchmark.alice)
           .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
 
         if (actionAfterFirstTx) {
@@ -714,13 +727,13 @@ export class Benchmark {
         }
 
         // Measure remove liquidity gas.
-        const tx = await router
-          .connect(this.alice)
+        const tx = await benchmark.router
+          .connect(benchmark.alice)
           .removeLiquiditySingleTokenExactIn(poolInfo.pool, bptBalance / 10n, poolInfo.poolTokens[0], 1, false, '0x');
         const receipt = await tx.wait();
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag}] remove liquidity single token exact in - warm slots`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag}] remove liquidity single token exact in - warm slots`,
           [receipt!]
         );
       });
@@ -730,9 +743,9 @@ export class Benchmark {
           return this.skip();
         }
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, this.alice);
+        const bptBalance = await benchmark.vault.balanceOf(poolInfo.pool, benchmark.alice);
         // Warm up.
-        let tx = await this.batchRouter.connect(this.alice).swapExactIn(
+        let tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactIn(
           [
             {
               tokenIn: poolInfo.pool,
@@ -757,7 +770,7 @@ export class Benchmark {
         }
 
         // Measure gas for the swap.
-        tx = await this.batchRouter.connect(this.alice).swapExactIn(
+        tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactIn(
           [
             {
               tokenIn: poolInfo.pool,
@@ -779,8 +792,8 @@ export class Benchmark {
 
         const receipt = await tx.wait();
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactIn - warm slots`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactIn - warm slots`,
           [receipt!]
         );
       });
@@ -790,10 +803,10 @@ export class Benchmark {
           return this.skip();
         }
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, this.alice);
+        const bptBalance = await benchmark.vault.balanceOf(poolInfo.pool, benchmark.alice);
         // Warm up.
-        await router
-          .connect(this.alice)
+        await benchmark.router
+          .connect(benchmark.alice)
           .removeLiquiditySingleTokenExactOut(
             poolInfo.pool,
             bptBalance / 2n,
@@ -807,8 +820,8 @@ export class Benchmark {
           await actionAfterFirstTx();
         }
         // Measure remove liquidity gas.
-        const tx = await router
-          .connect(this.alice)
+        const tx = await benchmark.router
+          .connect(benchmark.alice)
           .removeLiquiditySingleTokenExactOut(
             poolInfo.pool,
             bptBalance / 2n,
@@ -819,8 +832,8 @@ export class Benchmark {
           );
         const receipt = await tx.wait();
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag}] remove liquidity single token exact out - warm slots`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag}] remove liquidity single token exact out - warm slots`,
           [receipt!]
         );
       });
@@ -830,9 +843,9 @@ export class Benchmark {
           return this.skip();
         }
 
-        const bptBalance = await this.vault.balanceOf(poolInfo.pool, this.alice);
+        const bptBalance = await benchmark.vault.balanceOf(poolInfo.pool, benchmark.alice);
         // Warm up.
-        let tx = await this.batchRouter.connect(this.alice).swapExactOut(
+        let tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactOut(
           [
             {
               tokenIn: poolInfo.pool,
@@ -857,7 +870,7 @@ export class Benchmark {
         }
 
         // Measure gas for the swap.
-        tx = await this.batchRouter.connect(this.alice).swapExactOut(
+        tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactOut(
           [
             {
               tokenIn: poolInfo.pool,
@@ -879,8 +892,8 @@ export class Benchmark {
 
         const receipt = await tx.wait();
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactOut - warm slots`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag} - BatchRouter] remove liquidity using swapExactOut - warm slots`,
           [receipt!]
         );
       });
@@ -1332,13 +1345,17 @@ export class Benchmark {
         );
         poolAAddress = await poolAInfo.pool.getAddress();
 
-        await this.wTokenA.mockRate(fp(1.1));
-        await this.wTokenB.mockRate(fp(1.1));
-        await this.wTokenC.mockRate(fp(1.1));
+        await benchmark.wTokenA.mockRate(fp(1.1));
+        await benchmark.wTokenB.mockRate(fp(1.1));
+        await benchmark.wTokenC.mockRate(fp(1.1));
 
-        await (poolAInfo.pool as IERC20).connect(this.alice).approve(this.permit2, MAX_UINT256);
-        await this.permit2.connect(this.alice).approve(poolAAddress, this.router, MAX_UINT160, MAX_UINT48);
-        await this.permit2.connect(this.alice).approve(poolAAddress, this.batchRouter, MAX_UINT160, MAX_UINT48);
+        await (poolAInfo.pool as IERC20).connect(benchmark.alice).approve(benchmark.permit2, MAX_UINT256);
+        await benchmark.permit2
+          .connect(benchmark.alice)
+          .approve(poolAAddress, benchmark.router, MAX_UINT160, MAX_UINT48);
+        await benchmark.permit2
+          .connect(benchmark.alice)
+          .approve(poolAAddress, benchmark.batchRouter, MAX_UINT160, MAX_UINT48);
 
         poolBInfo = await deployAndInitializePool(
           PoolTag.WithNestedPool,
@@ -1351,14 +1368,14 @@ export class Benchmark {
       });
 
       sharedBeforeEach('Initialize buffers', async () => {
-        await this.bufferRouter
-          .connect(this.alice)
+        await benchmark.bufferRouter
+          .connect(benchmark.alice)
           .initializeBuffer(wTokenAAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
-        await this.bufferRouter
-          .connect(this.alice)
+        await benchmark.bufferRouter
+          .connect(benchmark.alice)
           .initializeBuffer(wTokenBAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
-        await this.bufferRouter
-          .connect(this.alice)
+        await benchmark.bufferRouter
+          .connect(benchmark.alice)
           .initializeBuffer(wTokenCAddress, BUFFER_INITIALIZE_AMOUNT, BUFFER_INITIALIZE_AMOUNT, 0);
       });
 
@@ -1388,12 +1405,12 @@ export class Benchmark {
           },
         ];
 
-        const tx = await this.batchRouter.connect(this.alice).swapExactIn(path, MAX_UINT256, false, '0x');
+        const tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactIn(path, MAX_UINT256, false, '0x');
         const receipt = (await tx.wait())!;
 
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] swap exact in - tokenA-tokenD`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag} - BatchRouter] swap exact in - tokenA-tokenD`,
           [receipt]
         );
       });
@@ -1424,12 +1441,12 @@ export class Benchmark {
           },
         ];
 
-        const tx = await this.batchRouter.connect(this.alice).swapExactIn(path, MAX_UINT256, false, '0x');
+        const tx = await benchmark.batchRouter.connect(benchmark.alice).swapExactIn(path, MAX_UINT256, false, '0x');
         const receipt = (await tx.wait())!;
 
         await saveSnap(
-          this._testDirname,
-          `[${this._poolType} - ${poolTag} - BatchRouter] swap exact in - reverse - tokenD-tokenA`,
+          benchmark._testDirname,
+          `[${benchmark._poolType} - ${poolTag} - BatchRouter] swap exact in - reverse - tokenD-tokenA`,
           [receipt]
         );
       });
