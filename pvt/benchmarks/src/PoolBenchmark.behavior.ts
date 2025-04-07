@@ -129,6 +129,10 @@ export class Benchmark {
     let benchmark: Benchmark;
 
     before('setup benchmark variables', async () => {
+      // To skip some tests conditionally using `this.skip()`, we can't use arrow functions, which makes the Benchmark
+      // object not be available inside "it" blocks. So, the benchmark object must be saved as a closure variable,
+      // allowing it to be accessed inside "it" blocks that are not arrow functions.
+
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       benchmark = this;
     });
