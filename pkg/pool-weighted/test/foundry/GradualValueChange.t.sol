@@ -53,6 +53,19 @@ contract GradualValueChangeTest is Test {
         mock.resolveStartTime(futureTime + 200, futureTime + 100);
     }
 
+    function testResolveStartTimeSameEndTime() public {
+        uint256 currentTime = 1000000;
+        uint256 futureTime = currentTime + 100;
+
+        vm.warp(currentTime);
+        assertEq(mock.resolveStartTime(futureTime, futureTime), futureTime, "Should return future start time");
+        assertEq(
+            mock.resolveStartTime(currentTime - 100, currentTime),
+            currentTime,
+            "Should return current time for past start time"
+        );
+    }
+
     function testInterpolateValue() public view {
         uint256 startValue = 100e18;
         uint256 endValue = 200e18;
@@ -94,6 +107,20 @@ contract GradualValueChangeTest is Test {
         vm.warp(endTime + 50);
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Should be complete after end time");
     }
+
+    function testCalculateValueChangeProgressSameStartEndTime() public {
+        uint256 startTime = block.timestamp + 100;
+        uint256 endTime = startTime;
+
+        assertEq(mock.calculateValueChangeProgress(startTime, endTime), 0, "Wrong initial progress");
+
+        vm.warp(startTime);
+        assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (1)");
+
+        vm.warp(startTime + 100);
+        assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (2)");
+    }
+
 
     function testEdgeCases() public {
         uint256 startTime = block.timestamp;
