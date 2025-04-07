@@ -121,7 +121,6 @@ contract GradualValueChangeTest is Test {
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (2)");
     }
 
-
     function testEdgeCases() public {
         uint256 startTime = block.timestamp;
         uint256 endTime = startTime + 100;
