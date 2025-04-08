@@ -30,7 +30,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
     }
 
     function testAddPoolsWithTwoBatches() public {
-        assertEq(pauseHelper.getPoolsCount(), 0, "Initial pool count non-zero");
+        assertEq(pauseHelper.getPoolCount(), 0, "Initial pool count non-zero");
 
         // Add first batch of pools
         address[] memory firstPools = _generatePools(10);
@@ -41,7 +41,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
 
         pauseHelper.addPools(firstPools);
 
-        assertEq(pauseHelper.getPoolsCount(), firstPools.length, "Pools count should be 10");
+        assertEq(pauseHelper.getPoolCount(), firstPools.length, "Pools count should be 10");
         for (uint256 i = 0; i < firstPools.length; i++) {
             assertTrue(pauseHelper.hasPool(firstPools[i]));
         }
@@ -54,7 +54,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
         }
 
         pauseHelper.addPools(secondPools);
-        assertEq(pauseHelper.getPoolsCount(), firstPools.length + secondPools.length, "Pools count should be 20");
+        assertEq(pauseHelper.getPoolCount(), firstPools.length + secondPools.length, "Pools count should be 20");
 
         for (uint256 i = 0; i < secondPools.length; i++) {
             assertTrue(pauseHelper.hasPool(secondPools[i]));
@@ -65,7 +65,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
     }
 
     function testDoubleAddOnePool() public {
-        assertEq(pauseHelper.getPoolsCount(), 0, "Initial pool count non-zero");
+        assertEq(pauseHelper.getPoolCount(), 0, "Initial pool count non-zero");
 
         address[] memory pools = new address[](2);
         pools[0] = address(0x1);
@@ -83,10 +83,10 @@ contract PoolPauseHelperTest is BaseVaultTest {
     }
 
     function testRemovePools() public {
-        assertEq(pauseHelper.getPoolsCount(), 0, "Initial pool count non-zero");
+        assertEq(pauseHelper.getPoolCount(), 0, "Initial pool count non-zero");
 
         address[] memory pools = _addPools(10);
-        assertEq(pauseHelper.getPoolsCount(), 10, "Pools count should be 10");
+        assertEq(pauseHelper.getPoolCount(), 10, "Pools count should be 10");
 
         for (uint256 i = 0; i < pools.length; i++) {
             vm.expectEmit();
@@ -95,7 +95,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
 
         pauseHelper.removePools(pools);
 
-        assertEq(pauseHelper.getPoolsCount(), 0, "End pool count non-zero");
+        assertEq(pauseHelper.getPoolCount(), 0, "End pool count non-zero");
 
         for (uint256 i = 0; i < pools.length; i++) {
             assertFalse(pauseHelper.hasPool(pools[i]));
@@ -193,7 +193,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
     function testGetPoolsInvalidCases() public {
         uint256 poolsNum = 10;
 
-        address[] memory pools = _addPools(poolsNum);
+        _addPools(poolsNum);
         vm.expectRevert(IPoolPauseHelper.IndexOutOfBounds.selector);
         pauseHelper.getPools(2, 1);
 
