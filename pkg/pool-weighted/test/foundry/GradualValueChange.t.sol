@@ -112,11 +112,14 @@ contract GradualValueChangeTest is Test {
         uint256 startTime = block.timestamp + 100;
         uint256 endTime = startTime;
 
+        // block.timestamp < start time. Should report 0% before the update begins.
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), 0, "Wrong initial progress");
 
+        // block.timestamp == end time. Report 100% progress at the end of the (zero length) update interval.
         vm.warp(startTime);
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (1)");
 
+        // block.timestamp > end time. Should report 100% any time after the update is completed.
         vm.warp(startTime + 100);
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (2)");
     }

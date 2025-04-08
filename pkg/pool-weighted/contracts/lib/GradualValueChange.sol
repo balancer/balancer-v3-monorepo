@@ -81,8 +81,8 @@ library GradualValueChange {
 
         // We don't need to consider zero division here as the code would never reach this point in that case.
         // If startTime == endTime:
-        // - Progress == 1 if block.timestamp >= startTime == endTime
-        // - Progress == 0 if block.timestamp < startTime == endTime
+        // - Progress = 1 if block.timestamp >= endTime (== startTime)
+        // - Progress = 0 if block.timestamp < startTime (== endTime)
         return secondsElapsed.divDown(totalSeconds);
     }
 }
