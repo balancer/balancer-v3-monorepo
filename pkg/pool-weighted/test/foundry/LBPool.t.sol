@@ -145,9 +145,9 @@ contract LBPoolTest is BaseLBPTest {
         );
     }
 
-    function testCreatePoolTimeTravelSameTime() public {
+    function testCreatePoolTimeTravelWrongEndTime() public {
         uint32 startTime = uint32(block.timestamp + 200);
-        uint32 endTime = uint32(block.timestamp + 200);
+        uint32 endTime = startTime - 1;
 
         vm.expectRevert(
             abi.encodeWithSelector(GradualValueChange.GradualUpdateTimeTravel.selector, startTime, endTime)
