@@ -23,6 +23,7 @@ import { IBatchRouter } from '@balancer-labs/v3-interfaces/typechain-types';
 describe('BatchSwap', function () {
   const BATCH_ROUTER_VERSION = 'BatchRouter v9';
   const ROUTER_VERSION = 'Router v9';
+  const PAY_POSTPAY_MODE = 0;
 
   let permit2: IPermit2;
   let vault: Vault;
@@ -50,7 +51,9 @@ describe('BatchSwap', function () {
     vaultAddress = await vault.getAddress();
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('BatchRouter', { args: [vaultAddress, WETH, permit2, BATCH_ROUTER_VERSION] });
+    router = await deploy('BatchRouter', {
+      args: [vaultAddress, WETH, permit2, BATCH_ROUTER_VERSION, PAY_POSTPAY_MODE],
+    });
     basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
