@@ -12,6 +12,7 @@ import {
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { AddressLike } from 'ethers';
 import { sortTokens } from './sortingHelper';
+import { ERC20TestToken__factory } from '@balancer-labs/v3-standalone-utils/typechain-types';
 
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
@@ -70,6 +71,10 @@ export default class ERC20TokenList {
     if (typeof index !== 'number') return index;
     if (index >= this.length) throw Error('Accessing invalid token list index');
     return this.tokens[index];
+  }
+
+  push(token: ERC20TestToken) {
+    this.tokens.push(token);
   }
 
   indexOf(token: number | ERC20TestToken): number {

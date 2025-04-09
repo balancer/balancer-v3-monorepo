@@ -10,6 +10,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -175,7 +176,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(authorizer), "authorizer");
         router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
+        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2, IBatchRouter.PayMode.POSTPAY);
         vm.label(address(batchRouter), "batch router");
         compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");

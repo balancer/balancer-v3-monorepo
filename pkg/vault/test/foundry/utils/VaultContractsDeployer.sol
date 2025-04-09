@@ -11,6 +11,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { HooksConfigLibMock } from "@balancer-labs/v3-vault/contracts/test/HooksConfigLibMock.sol";
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
@@ -117,16 +118,24 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployBatchRouterMock(IVault vault, IWETH weth, IPermit2 permit2) internal returns (BatchRouterMock) {
+    function deployBatchRouterMock(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        IBatchRouter.PayMode payMode
+    ) internal returns (BatchRouterMock) {
         if (reusingArtifacts) {
             return
                 BatchRouterMock(
                     payable(
-                        deployCode(_computeVaultTestPath(type(BatchRouterMock).name), abi.encode(vault, weth, permit2))
+                        deployCode(
+                            _computeVaultTestPath(type(BatchRouterMock).name),
+                            abi.encode(vault, weth, permit2, payMode)
+                        )
                     )
                 );
         } else {
-            return new BatchRouterMock(vault, weth, permit2);
+            return new BatchRouterMock(vault, weth, permit2, payMode);
         }
     }
 

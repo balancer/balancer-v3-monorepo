@@ -14,6 +14,7 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IStdMedusaCheats } from "@balancer-labs/v3-interfaces/contracts/test/IStdMedusaCheats.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -89,7 +90,12 @@ contract BaseMedusaTest is Test {
         _deployVaultMock(0, 0);
 
         router = new RouterMock(IVault(address(vault)), IWETH(address(weth)), permit2);
-        batchRouter = new BatchRouterMock(IVault(address(vault)), IWETH(address(weth)), permit2);
+        batchRouter = new BatchRouterMock(
+            IVault(address(vault)),
+            IWETH(address(weth)),
+            permit2,
+            IBatchRouter.PayMode.POSTPAY
+        );
         compositeLiquidityRouter = new CompositeLiquidityRouterMock(
             IVault(address(vault)),
             IWETH(address(weth)),

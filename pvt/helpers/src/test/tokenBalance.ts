@@ -171,16 +171,17 @@ export async function expectBalanceChange(
         const value = bn(Array.isArray(change) ? change[1] : change);
         const abs = (value: bigint) => (value >= 0n ? value : -value);
 
+        const errorMessage = `Expected ${delta} ${symbol} to be ${compare} ${value} ${symbol}`;
+
         if (compare == 'near') {
           const epsilon = abs(value) / 10n;
-          expect(delta).to.be.at.least(value - epsilon);
-          expect(delta).to.be.at.most(value + epsilon);
+          expect(delta, errorMessage).to.be.at.least(value - epsilon);
+          expect(delta, errorMessage).to.be.at.most(value + epsilon);
         } else if (compare == 'very-near') {
           const epsilon = abs(value) / 100000n;
-          expect(delta).to.be.at.least(value - epsilon);
-          expect(delta).to.be.at.most(value + epsilon);
+          expect(delta, errorMessage).to.be.at.least(value - epsilon);
+          expect(delta, errorMessage).to.be.at.most(value + epsilon);
         } else {
-          const errorMessage = `Expected ${delta} ${symbol} to be ${compare} ${value} ${symbol}`;
           expect(delta, errorMessage).to[compare](value.toString());
         }
       }

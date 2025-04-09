@@ -154,7 +154,7 @@ export class Benchmark {
         args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION],
       });
       this.batchRouter = await deploy('v3-vault/BatchRouter', {
-        args: [this.vault, this.WETH, this.permit2, BATCH_ROUTER_VERSION],
+        args: [this.vault, this.WETH, this.permit2, BATCH_ROUTER_VERSION, 0],
       });
       this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token A', 'TKNA', 18] });
       this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token B', 'TKNB', 18] });

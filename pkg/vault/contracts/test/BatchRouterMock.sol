@@ -22,8 +22,9 @@ contract BatchRouterMock is BatchRouter {
     constructor(
         IVault vault,
         IWETH weth,
-        IPermit2 permit2
-    ) BatchRouter(vault, weth, permit2, MOCK_BATCH_ROUTER_VERSION) {
+        IPermit2 permit2,
+        PayMode payMode
+    ) BatchRouter(vault, weth, permit2, MOCK_BATCH_ROUTER_VERSION, payMode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

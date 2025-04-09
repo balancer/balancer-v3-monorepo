@@ -8,8 +8,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { MOCK_BATCH_ROUTER_VERSION } from "../../contracts/test/BatchRouterMock.sol";
+import { BatchRouterMock, MOCK_BATCH_ROUTER_VERSION } from "../../contracts/test/BatchRouterMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BatchRouterTest is BaseVaultTest {
@@ -57,5 +58,26 @@ contract BatchRouterTest is BaseVaultTest {
 
         vm.prank(alice, address(0));
         batchRouter.querySwapExactIn(paths, address(0), bytes(""));
+    }
+
+    function testBatchRouterPayMode() public {
+        assertEq(
+            uint256(batchRouter.payMode()),
+            uint256(IBatchRouter.PayMode.POSTPAY),
+            "BatchRouter pay mode mismatch"
+        );
+
+        BatchRouterMock batchRouterWithPayModeUpfront = deployBatchRouterMock(
+            IVault(address(vault)),
+            weth,
+            permit2,
+            IBatchRouter.PayMode.UPFRONT
+        );
+
+        assertEq(
+            uint256(batchRouterWithPayModeUpfront.payMode()),
+            uint256(IBatchRouter.PayMode.UPFRONT),
+            "BatchRouter pay mode mismatch"
+        );
     }
 }
