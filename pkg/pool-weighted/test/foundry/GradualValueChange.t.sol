@@ -44,11 +44,7 @@ contract GradualValueChangeTest is Test {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                GradualValueChange.InvalidStartTime.selector,
-                futureTime + 200,
-                futureTime + 100
-            )
+            abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, futureTime + 200, futureTime + 100)
         );
         mock.resolveStartTime(futureTime + 200, futureTime + 100);
     }
