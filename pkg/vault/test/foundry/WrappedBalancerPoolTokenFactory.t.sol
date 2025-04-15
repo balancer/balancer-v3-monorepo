@@ -56,4 +56,8 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
         );
         factory.createWrappedToken(pool);
     }
+
+    function testGetVault() public view {
+        assertEq(address(factory.getVault()), address(vault), "Vault mismatch");
+    }
 }

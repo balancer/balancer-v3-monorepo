@@ -314,7 +314,7 @@ describe('LBPool', function () {
         // Try to set endTime before startTime
         await expect(
           deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, endTime, false)
-        ).to.be.revertedWithCustomError(factory, 'GradualUpdateTimeTravel');
+        ).to.be.revertedWithCustomError(factory, 'InvalidStartTime');
 
         // Valid time update
         await expect(deployPoolTx(WEIGHTS[0], WEIGHTS[1], fp(0.99), fp(0.01), startTime, startTime + bn(MONTH), false))
