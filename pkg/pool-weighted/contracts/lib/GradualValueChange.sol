@@ -9,7 +9,7 @@ pragma solidity ^0.8.24;
 
 library GradualValueChange {
     /// @dev Indicates that the start time is after the end time
-    error GradualUpdateTimeTravel(uint256 resolvedStartTime, uint256 endTime);
+    error InvalidStartTime(uint256 resolvedStartTime, uint256 endTime);
 
     using FixedPoint for uint256;
 
@@ -30,8 +30,8 @@ library GradualValueChange {
         // only 10% of the period in the future, the value would immediately jump 90%
         resolvedStartTime = Math.max(block.timestamp, startTime);
 
-        if (resolvedStartTime >= endTime) {
-            revert GradualUpdateTimeTravel(resolvedStartTime, endTime);
+        if (resolvedStartTime > endTime) {
+            revert InvalidStartTime(resolvedStartTime, endTime);
         }
     }
 
@@ -79,7 +79,10 @@ library GradualValueChange {
             secondsElapsed = block.timestamp - startTime;
         }
 
-        // We don't need to consider zero division here as this is covered above.
+        // We don't need to consider zero division here as the code would never reach this point in that case.
+        // If startTime == endTime:
+        // - Progress = 1 if block.timestamp >= endTime (== startTime)
+        // - Progress = 0 if block.timestamp < startTime (== endTime)
         return secondsElapsed.divDown(totalSeconds);
     }
 }
