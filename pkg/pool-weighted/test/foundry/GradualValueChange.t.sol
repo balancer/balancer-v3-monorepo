@@ -45,7 +45,7 @@ contract GradualValueChangeTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                GradualValueChange.GradualUpdateTimeTravel.selector,
+                GradualValueChange.InvalidStartTime.selector,
                 futureTime + 200,
                 futureTime + 100
             )
@@ -115,7 +115,7 @@ contract GradualValueChangeTest is Test {
         // block.timestamp < start time. Should report 0% before the update begins.
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), 0, "Wrong initial progress");
 
-        // block.timestamp == end time. Report 100% progress at the end of the (zero length) update interval.
+        // block.timestamp == start/end time. Report 100% at the start/end of the (zero length) update interval.
         vm.warp(startTime);
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (1)");
 

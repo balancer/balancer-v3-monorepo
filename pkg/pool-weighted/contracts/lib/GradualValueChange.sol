@@ -9,7 +9,7 @@ pragma solidity ^0.8.24;
 
 library GradualValueChange {
     /// @dev Indicates that the start time is after the end time
-    error GradualUpdateTimeTravel(uint256 resolvedStartTime, uint256 endTime);
+    error InvalidStartTime(uint256 resolvedStartTime, uint256 endTime);
 
     using FixedPoint for uint256;
 
@@ -31,7 +31,7 @@ library GradualValueChange {
         resolvedStartTime = Math.max(block.timestamp, startTime);
 
         if (resolvedStartTime > endTime) {
-            revert GradualUpdateTimeTravel(resolvedStartTime, endTime);
+            revert InvalidStartTime(resolvedStartTime, endTime);
         }
     }
 

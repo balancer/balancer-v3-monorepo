@@ -132,7 +132,7 @@ contract LBPoolTest is BaseLBPTest {
         uint32 endTime = uint32(block.timestamp + 100);
 
         vm.expectRevert(
-            abi.encodeWithSelector(GradualValueChange.GradualUpdateTimeTravel.selector, startTime, endTime)
+            abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime)
         );
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
@@ -150,7 +150,7 @@ contract LBPoolTest is BaseLBPTest {
         uint32 endTime = startTime - 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(GradualValueChange.GradualUpdateTimeTravel.selector, startTime, endTime)
+            abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime)
         );
         _createLBPoolWithCustomWeights(
             startWeights[projectIdx],
