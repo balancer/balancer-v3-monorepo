@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -25,6 +26,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
@@ -34,12 +36,9 @@ import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
+contract StableSurgeHook is IStableSurgeHook, BaseHooks, VaultGuard, SingletonAuthentication, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
-
-    // Only pools from the allowed factory are able to register and use this hook.
-    address private immutable _allowedPoolFactory;
 
     // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
     struct SurgeFeeData {
@@ -56,33 +55,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     // Store the current threshold and max fee for each pool.
     mapping(address pool => SurgeFeeData data) internal _surgeFeePoolData;
 
-    /**
-     * @notice A new `StableSurgeHook` contract has been registered successfully.
-     * @dev If the registration fails the call will revert, so there will be no event.
-     * @param pool The pool on which the hook was registered
-     * @param factory The factory that registered the pool
-     */
-    event StableSurgeHookRegistered(address indexed pool, address indexed factory);
-
-    /**
-     * @notice The threshold percentage has been changed for a pool in a `StableSurgeHook` contract.
-     * @dev Note, the initial threshold percentage is set on deployment, and an event is emitted.
-     * @param pool The pool for which the threshold percentage has been changed
-     * @param newSurgeThresholdPercentage The new threshold percentage
-     */
-    event ThresholdSurgePercentageChanged(address indexed pool, uint256 newSurgeThresholdPercentage);
-
-    /**
-     * @notice The maximum surge fee percentage has been changed for a pool in a `StableSurgeHook` contract.
-     * @dev Note, the initial max surge fee percentage is set on deployment, and an event is emitted.
-     * @param pool The pool for which the max surge fee percentage has been changed
-     * @param newMaxSurgeFeePercentage The new max surge fee percentage
-     */
-    event MaxSurgeFeePercentageChanged(address indexed pool, uint256 newMaxSurgeFeePercentage);
-
-    /// @notice The max surge fee and threshold values must be valid percentages.
-    error InvalidPercentage();
-
     modifier withValidPercentage(uint256 percentageValue) {
         _ensureValidPercentage(percentageValue);
         _;
@@ -91,16 +63,14 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
-        uint256 defaultSurgeThresholdPercentage
-    ) SingletonAuthentication(vault) VaultGuard(vault) {
-        _ensureValidPercentage(defaultSurgeThresholdPercentage);
+        uint256 defaultSurgeThresholdPercentage,
+        string memory version
+    ) SingletonAuthentication(vault) VaultGuard(vault) Version(version) {
         _ensureValidPercentage(defaultMaxSurgeFeePercentage);
+        _ensureValidPercentage(defaultSurgeThresholdPercentage);
 
-        _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
         _defaultMaxSurgeFeePercentage = defaultMaxSurgeFeePercentage;
-
-        // Assumes the hook is deployed by the same factory as the pool.
-        _allowedPoolFactory = msg.sender;
+        _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
     }
 
     /// @inheritdoc IHooks
@@ -110,44 +80,22 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         hookFlags.shouldCallAfterRemoveLiquidity = true;
     }
 
-    /**
-     * @notice Getter for the allowed pool factory.
-     * @dev This will likely be a custom factory that deploys the standard Stable Pool with this hook contract.
-     */
-    function getAllowedPoolFactory() external view returns (address) {
-        return _allowedPoolFactory;
-    }
-
-    /**
-     * @notice Getter for the default maximum surge surge fee percentage.
-     * @return maxSurgeFeePercentage The default max surge fee percentage for this hook contract
-     */
+    /// @inheritdoc IStableSurgeHook
     function getDefaultMaxSurgeFeePercentage() external view returns (uint256) {
         return _defaultMaxSurgeFeePercentage;
     }
 
-    /**
-     * @notice Getter for the default surge threshold percentage.
-     * @return surgeThresholdPercentage The default surge threshold percentage for this hook contract
-     */
+    /// @inheritdoc IStableSurgeHook
     function getDefaultSurgeThresholdPercentage() external view returns (uint256) {
         return _defaultSurgeThresholdPercentage;
     }
 
-    /**
-     * @notice Getter for the maximum surge fee percentage for a pool.
-     * @param pool The pool for which the max surge fee percentage is requested
-     * @return maxSurgeFeePercentage The max surge fee percentage for the pool
-     */
+    /// @inheritdoc IStableSurgeHook
     function getMaxSurgeFeePercentage(address pool) external view returns (uint256) {
         return _surgeFeePoolData[pool].maxSurgeFeePercentage;
     }
 
-    /**
-     * @notice Getter for the surge threshold percentage for a pool.
-     * @param pool The pool for which the surge threshold percentage is requested
-     * @return surgeThresholdPercentage The surge threshold percentage for the pool
-     */
+    /// @inheritdoc IStableSurgeHook
     function getSurgeThresholdPercentage(address pool) external view returns (uint256) {
         return _surgeFeePoolData[pool].thresholdPercentage;
     }
@@ -159,12 +107,6 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
-        bool isAllowedFactory = factory == _allowedPoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
-
-        if (isAllowedFactory == false) {
-            return false;
-        }
-
         // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
         // in the future).
         _setMaxSurgeFeePercentage(pool, _defaultMaxSurgeFeePercentage);
@@ -269,11 +211,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         return (isSurging == false, amountsOutRaw);
     }
 
-    /**
-     * @notice Sets the max surge fee percentage.
-     * @dev This function must be permissioned. If the pool does not have a swap fee manager role set, the max surge
-     * fee can only be changed by governance. It is initially set to the default max surge fee for this hook contract.
-     */
+    /// @inheritdoc IStableSurgeHook
     function setMaxSurgeFeePercentage(
         address pool,
         uint256 newMaxSurgeSurgeFeePercentage
@@ -281,11 +219,7 @@ contract StableSurgeHook is BaseHooks, VaultGuard, SingletonAuthentication {
         _setMaxSurgeFeePercentage(pool, newMaxSurgeSurgeFeePercentage);
     }
 
-    /**
-     * @notice Sets the hook threshold percentage.
-     * @dev This function must be permissioned. If the pool does not have a swap fee manager role set, the surge
-     * threshold can only be changed by governance. It is initially set to the default threshold for this hook contract.
-     */
+    /// @inheritdoc IStableSurgeHook
     function setSurgeThresholdPercentage(
         address pool,
         uint256 newSurgeThresholdPercentage

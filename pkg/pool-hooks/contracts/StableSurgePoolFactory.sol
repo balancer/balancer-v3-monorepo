@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -20,22 +21,21 @@ import { StableSurgeHook } from "./StableSurgeHook.sol";
 
 /// @notice Stable Pool factory that deploys a standard StablePool with a StableSurgeHook.
 contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
-    address private immutable _stableSurgeHook;
+    IStableSurgeHook private immutable _stableSurgeHook;
 
     string private _poolVersion;
 
     constructor(
-        IVault vault,
+        StableSurgeHook stableSurgeHook,
         uint32 pauseWindowDuration,
-        uint256 defaultMaxSurgeFeePercentage,
-        uint256 defaultSurgeThresholdPercentage,
         string memory factoryVersion,
         string memory poolVersion
-    ) BasePoolFactory(vault, pauseWindowDuration, type(StablePool).creationCode) Version(factoryVersion) {
+    )
+        BasePoolFactory(stableSurgeHook.getVault(), pauseWindowDuration, type(StablePool).creationCode)
+        Version(factoryVersion)
+    {
+        _stableSurgeHook = stableSurgeHook;
         _poolVersion = poolVersion;
-        _stableSurgeHook = address(
-            new StableSurgeHook(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage)
-        );
     }
 
     /// @inheritdoc IPoolVersion
@@ -48,7 +48,7 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @dev This hook will be registered to every pool created by this factory.
      * @return address stableSurgeHook Address of the deployed StableSurgeHook
      */
-    function getStableSurgeHook() external view returns (address) {
+    function getStableSurgeHook() external view returns (IStableSurgeHook) {
         return _stableSurgeHook;
     }
 
@@ -105,7 +105,7 @@ contract StableSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
             swapFeePercentage,
             false, // not exempt from protocol fees
             roleAccounts,
-            _stableSurgeHook,
+            address(_stableSurgeHook),
             liquidityManagement
         );
     }

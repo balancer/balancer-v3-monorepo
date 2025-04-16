@@ -17,10 +17,12 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
+import { StableSurgeHookDeployer } from "./utils/StableSurgeHookDeployer.sol";
 import { StableSurgePoolFactoryDeployer } from "./utils/StableSurgePoolFactoryDeployer.sol";
+import { StableSurgeHook } from "../../contracts/StableSurgeHook.sol";
 import { StableSurgePoolFactory } from "../../contracts/StableSurgePoolFactory.sol";
 
-contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgePoolFactoryDeployer {
+contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgeHookDeployer, StableSurgePoolFactoryDeployer {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -40,19 +42,21 @@ contract StableSurgePoolFactoryTest is BaseVaultTest, StableSurgePoolFactoryDepl
     function setUp() public override {
         super.setUp();
 
-        stablePoolFactory = deployStableSurgePoolFactory(
-            IVault(address(vault)),
-            365 days,
-            FACTORY_VERSION,
-            POOL_VERSION
+        StableSurgeHook stableSurgeHook = deployStableSurgeHook(
+            vault,
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            "Test"
         );
+
+        stablePoolFactory = deployStableSurgePoolFactory(stableSurgeHook, 365 days, FACTORY_VERSION, POOL_VERSION);
         vm.label(address(stablePoolFactory), "stable pool factory");
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function testFactoryHasHook() public {
-        address surgeHook = stablePoolFactory.getStableSurgeHook();
+        address surgeHook = address(stablePoolFactory.getStableSurgeHook());
         assertNotEq(surgeHook, address(0), "No surge hook deployed");
 
         address stablePool = _deployAndInitializeStablePool(false);

@@ -11,6 +11,7 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { CommonAuthentication } from "@balancer-labs/v3-vault/contracts/CommonAuthentication.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
@@ -20,18 +21,17 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { PoolSwapParams, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { StableSurgeHookDeployer } from "./utils/StableSurgeHookDeployer.sol";
 import { StableSurgeHook } from "../../contracts/StableSurgeHook.sol";
 import { StableSurgeHookMock } from "../../contracts/test/StableSurgeHookMock.sol";
 import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
 
-contract StableSurgeHookTest is BaseVaultTest {
+contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
     using ArrayHelpers for *;
     using CastingHelpers for *;
     using FixedPoint for uint256;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
-    uint256 constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 30e16; // 30%
-    uint256 constant DEFAULT_MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
     uint256 constant DEFAULT_POOL_TOKEN_COUNT = 2;
 
     uint256 internal daiIdx;
@@ -56,10 +56,11 @@ contract StableSurgeHookTest is BaseVaultTest {
 
     function createHook() internal override returns (address) {
         vm.prank(poolFactory);
-        stableSurgeHook = new StableSurgeHookMock(
+        stableSurgeHook = deployStableSurgeHookMock(
             vault,
             DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
-            DEFAULT_SURGE_THRESHOLD_PERCENTAGE
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            "Test"
         );
         vm.label(address(stableSurgeHook), "StableSurgeHook");
         return address(stableSurgeHook);
@@ -96,6 +97,16 @@ contract StableSurgeHookTest is BaseVaultTest {
                 }),
                 vault
             )
+        );
+    }
+
+    function testValidVault() public {
+        vm.expectRevert(CommonAuthentication.VaultNotSet.selector);
+        deployStableSurgeHook(
+            IVault(address(0)),
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            ""
         );
     }
 

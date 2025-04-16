@@ -44,13 +44,22 @@ contract GradualValueChangeTest is Test {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                GradualValueChange.GradualUpdateTimeTravel.selector,
-                futureTime + 200,
-                futureTime + 100
-            )
+            abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, futureTime + 200, futureTime + 100)
         );
         mock.resolveStartTime(futureTime + 200, futureTime + 100);
+    }
+
+    function testResolveStartTimeSameEndTime() public {
+        uint256 currentTime = 1000000;
+        uint256 futureTime = currentTime + 100;
+
+        vm.warp(currentTime);
+        assertEq(mock.resolveStartTime(futureTime, futureTime), futureTime, "Should return future start time");
+        assertEq(
+            mock.resolveStartTime(currentTime - 100, currentTime),
+            currentTime,
+            "Should return current time for past start time"
+        );
     }
 
     function testInterpolateValue() public view {
@@ -93,6 +102,22 @@ contract GradualValueChangeTest is Test {
 
         vm.warp(endTime + 50);
         assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Should be complete after end time");
+    }
+
+    function testCalculateValueChangeProgressSameStartEndTime() public {
+        uint256 startTime = block.timestamp + 100;
+        uint256 endTime = startTime;
+
+        // block.timestamp < start time. Should report 0% before the update begins.
+        assertEq(mock.calculateValueChangeProgress(startTime, endTime), 0, "Wrong initial progress");
+
+        // block.timestamp == start/end time. Report 100% at the start/end of the (zero length) update interval.
+        vm.warp(startTime);
+        assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (1)");
+
+        // block.timestamp > end time. Should report 100% any time after the update is completed.
+        vm.warp(startTime + 100);
+        assertEq(mock.calculateValueChangeProgress(startTime, endTime), FP_ONE, "Wrong final progress (2)");
     }
 
     function testEdgeCases() public {
