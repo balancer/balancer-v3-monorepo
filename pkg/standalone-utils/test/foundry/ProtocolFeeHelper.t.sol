@@ -78,9 +78,8 @@ contract PoolPauseHelperTest is BaseVaultTest {
     function testDoubleAddOnePool() public {
         assertEq(feeHelper.getPoolCount(), 0, "Initial pool count non-zero");
 
-        address[] memory pools = new address[](2);
-        pools[0] = address(0x1);
-        pools[1] = address(0x1);
+        address[] memory pools = _generatePools(2);
+        pools[1] = pools[0];
 
         vm.expectRevert(abi.encodeWithSelector(IProtocolFeeHelper.PoolAlreadyInProtocolFeeSet.selector, pools[1]));
         feeHelper.addPools(pools);
