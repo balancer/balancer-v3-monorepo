@@ -8,6 +8,14 @@ import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.so
 
 /// @notice Interface for the `BatchRouter`, supporting multi-hop swaps.
 interface IBatchRouter {
+    error InsufficientPayment();
+    error NotSuppoted();
+
+    enum PayMode {
+        POSTPAY,
+        UPFRONT
+    }
+
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
@@ -127,4 +135,14 @@ interface IBatchRouter {
         address sender,
         bytes calldata userData
     ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn);
+
+    /***************************************************************************
+                                     Other
+    ***************************************************************************/
+
+    /**
+     * @notice Returns the current pay mode.
+     * @return The current pay mode (POSTPAY or UPFRONT)
+     */
+    function payMode() external view returns (PayMode);
 }

@@ -72,7 +72,7 @@ describe('ERC4626VaultPrimitive', function () {
     permit2 = await deployPermit2();
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     batchRouter = await deploy('v3-vault/BatchRouter', {
-      args: [vault, await WETH.getAddress(), permit2, BATCH_ROUTER_VERSION],
+      args: [vault, await WETH.getAddress(), permit2, BATCH_ROUTER_VERSION, 0],
     });
     router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress(), permit2, ROUTER_VERSION] });
     bufferRouter = await deploy('v3-vault/BufferRouter', {

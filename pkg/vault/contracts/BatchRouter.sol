@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import "hardhat/console.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -42,13 +43,17 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
     using SafeERC20 for IERC20;
     using SafeCast for *;
 
+    PayMode internal immutable _payMode;
+
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        string memory routerVersion
+        string memory routerVersion,
+        PayMode payMode_
     ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
+        _payMode = payMode_;
     }
 
     /***************************************************************************
@@ -149,6 +154,19 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                 _settledTokenAmounts().tGet(tokensOut[i]);
             _settledTokenAmounts().tSet(tokensOut[i], 0);
         }
+
+        if (_payMode == PayMode.UPFRONT) {
+            for (uint256 i = 0; i < params.paths.length; ++i) {
+                SwapPathExactAmountIn memory path = params.paths[i];
+
+                if (_currentSwapTokensOut().contains(address(path.tokenIn)) == false) {
+                    continue;
+                }
+
+                // TODO: add description
+                _currentSwapTokenInAmounts().tSet(address(path.tokenIn), 0);
+            }
+        }
     }
 
     function _computePathAmountsOut(
@@ -164,7 +182,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
+            if (path.steps[0].isBuffer && _payMode == PayMode.POSTPAY && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
                 _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
             } else {
@@ -174,6 +192,28 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                 _currentSwapTokensIn().add(address(stepTokenIn));
                 _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
             }
+        }
+
+        if (_payMode == PayMode.UPFRONT && EVMCallModeHelpers.isStaticCall() == false) {
+            int256 numTokensIn = int256(_currentSwapTokensIn().length());
+            for (int256 i = 0; i < numTokensIn; ++i) {
+                address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
+                uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+                uint256 tokenInCredit = _vault.settle(IERC20(tokenIn), amount);
+                if (tokenInCredit < amount) {
+                    revert InsufficientPayment();
+                }
+            }
+        }
+
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            SwapPathExactAmountIn memory path = params.paths[i];
+
+            // These two variables shall be updated at the end of each step to be used as inputs of the next one.
+            // The initial values are the given token and amount in for the current path.
+            uint256 stepExactAmountIn = path.exactAmountIn;
+            IERC20 stepTokenIn = path.tokenIn;
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
                 SwapStepLocals memory stepLocals;
@@ -191,6 +231,10 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                 SwapPathStep memory step = path.steps[j];
 
                 if (step.isBuffer) {
+                    if (_payMode == PayMode.UPFRONT) {
+                        revert NotSuppoted();
+                    }
+
                     (, , uint256 amountOut) = _vault.erc4626BufferWrapOrUnwrap(
                         BufferWrapOrUnwrapParams({
                             kind: SwapKind.EXACT_IN,
@@ -216,6 +260,10 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         stepTokenIn = step.tokenOut;
                     }
                 } else if (address(stepTokenIn) == step.pool) {
+                    if (_payMode == PayMode.UPFRONT) {
+                        revert NotSuppoted();
+                    }
+
                     // Token in is BPT: remove liquidity - Single token exact in
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -223,7 +271,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                     // step, in which case the user will have a BPT credit.
 
                     if (stepLocals.isFirstStep) {
-                        if (stepExactAmountIn > 0 && params.sender != address(this)) {
+                        if (stepExactAmountIn > 0 && params.sender != address(this) && _payMode == PayMode.POSTPAY) {
                             // If this is the first step, the sender must have the tokens. Therefore, we can transfer
                             // them to the Router, which acts as an intermediary. If the sender is the Router, we just
                             // skip this step (useful for queries).
@@ -283,6 +331,10 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         stepTokenIn = step.tokenOut;
                     }
                 } else if (address(step.tokenOut) == step.pool) {
+                    if (_payMode == PayMode.UPFRONT) {
+                        revert NotSuppoted();
+                    }
+
                     // Token out is BPT: add liquidity - Single token exact in (unbalanced).
                     (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -371,13 +423,36 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
 
         pathAmountsIn = _computePathAmountsIn(params);
 
-        // The hook writes current swap token and token amounts in.
-        // We copy that information to memory to return it before it is deleted during settlement.
-        tokensIn = _currentSwapTokensIn().values(); // Copy transient storage to memory
         amountsIn = new uint256[](tokensIn.length);
-        for (uint256 i = 0; i < tokensIn.length; ++i) {
-            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokensIn[i]) + _settledTokenAmounts().tGet(tokensIn[i]);
+
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            SwapPathExactAmountOut memory path = params.paths[i];
+
+            amountsIn[i] = _currentSwapTokenInAmounts().tGet(path.tokenIn) + _settledTokenAmounts().tGet(path.tokenIn);
             _settledTokenAmounts().tSet(tokensIn[i], 0);
+
+            if (_payMode != PayMode.UPFRONT) {
+                continue;
+            }
+
+            if (_currentSwapTokensIn().contains(address(path.tokenIn)) == false) {
+                continue;
+            }
+
+            // TODO: add description
+            _currentSwapTokenInAmounts().tSet(address(path.tokenIn), 0);
+
+            //TODO: add description
+            if (_settledTokenAmounts().tGet(address(path.tokenIn)) > 0) {
+                continue;
+            }
+
+            if (_currentSwapTokensOut().contains(address(path.tokenIn)) == false) {
+                _currentSwapTokensOut().add(address(path.tokenIn));
+                _currentSwapTokenOutAmounts().tSet(address(path.tokenIn), path.maxAmountIn - amountsIn[i]);
+            } else {
+                _currentSwapTokenOutAmounts().tAdd(address(path.tokenIn), path.maxAmountIn - amountsIn[i]);
+            }
         }
     }
 
@@ -392,9 +467,6 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountOut memory path = params.paths[i];
-            // This variable shall be updated at the end of each step to be used as input of the next one.
-            // The first value corresponds to the given amount out for the current path.
-            uint256 stepExactAmountOut = path.exactAmountOut;
 
             // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
             // a set with unique addresses that can be iterated later on.
@@ -403,6 +475,32 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
             // Since the path is 'given out', the output of the operation specified by the last step in each path will
             // be added to calculate the amounts in for each token.
             _currentSwapTokensIn().add(address(path.tokenIn));
+
+            if (_payMode == PayMode.UPFRONT && EVMCallModeHelpers.isStaticCall() == false) {
+                _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
+            }
+        }
+
+        if (_payMode == PayMode.UPFRONT && EVMCallModeHelpers.isStaticCall() == false) {
+            int256 numTokensIn = int256(_currentSwapTokensIn().length());
+            for (int256 i = 0; i < numTokensIn; ++i) {
+                address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
+                uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+                uint256 tokenInCredit = _vault.settle(IERC20(tokenIn), amount);
+                if (tokenInCredit < amount) {
+                    revert InsufficientPayment();
+                }
+
+                _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+            }
+        }
+
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            SwapPathExactAmountOut memory path = params.paths[i];
+            // This variable shall be updated at the end of each step to be used as input of the next one.
+            // The first value corresponds to the given amount out for the current path.
+            uint256 stepExactAmountOut = path.exactAmountOut;
 
             // Backwards iteration: the exact amount out applies to the last step, so we cannot iterate from first to
             // last. The calculated input of step (j) is the exact amount out for step (j - 1).
@@ -439,6 +537,10 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                 }
 
                 if (step.isBuffer) {
+                    if (_payMode == PayMode.UPFRONT) {
+                        revert NotSuppoted();
+                    }
+
                     if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
                         // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
                         _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, params.wethIsEth);
@@ -470,6 +572,10 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         stepExactAmountOut = amountIn;
                     }
                 } else if (address(stepTokenIn) == step.pool) {
+                    if (_payMode == PayMode.UPFRONT) {
+                        revert NotSuppoted();
+                    }
+
                     // Token in is BPT: remove liquidity - Single token exact out
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -481,7 +587,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                     if (stepLocals.isLastStep == false) {
                         stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
                         _vault.sendTo(IERC20(step.pool), address(this), stepMaxAmountIn);
-                    } else if (params.sender != address(this)) {
+                    } else if (params.sender != address(this) && _payMode == PayMode.POSTPAY) {
                         // The last step being executed is the first step in the swap path, meaning that it's the one
                         // that defines the inputs of the path.
                         //
@@ -535,6 +641,10 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
+                    if (_payMode == PayMode.UPFRONT) {
+                        revert NotSuppoted();
+                    }
+
                     // Token out is BPT: add liquidity - Single token exact out.
                     (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -684,5 +794,14 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
+    }
+
+    /***************************************************************************
+                                     Other
+    ***************************************************************************/
+
+    /// @inheritdoc IBatchRouter
+    function payMode() external view returns (PayMode) {
+        return _payMode;
     }
 }
