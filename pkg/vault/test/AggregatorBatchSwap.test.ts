@@ -4,8 +4,8 @@ import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { fp, pct } from '@balancer-labs/v3-helpers/src/numbers';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
+import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
@@ -172,7 +172,6 @@ describe('AggregatorBatchSwap', function () {
       tokensOut: string[];
       amountsOut: bigint[];
     }>;
-    let tokensIn: (ERC20TestToken | PoolMock)[];
     let tokensOut: (ERC20TestToken | PoolMock)[];
     const pathExactAmountIn = fp(1);
     const pathMinAmountOut = fp(1);
@@ -200,7 +199,7 @@ describe('AggregatorBatchSwap', function () {
       runQuery = async () => router.connect(zero).querySwapExactIn.staticCall(paths, zero.address, '0x');
     }
 
-    function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
+    function itTestsBatchSwap(singleTransferOut = true) {
       it('performs swap, transfers tokens', async () => {
         await expectBalanceChange(doSwap, tokens, balanceChange);
       });
@@ -506,7 +505,6 @@ describe('AggregatorBatchSwap', function () {
         beforeEach(async () => {
           tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), poolC];
-          const secondPathTokenIn = poolA;
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
           totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
@@ -602,7 +600,7 @@ describe('AggregatorBatchSwap', function () {
       runQuery = async () => router.connect(zero).querySwapExactOut.staticCall(paths, zero.address, '0x');
     }
 
-    function itTestsBatchSwap(singleTransferIn = true, singleTransferOut = true) {
+    function itTestsBatchSwap(singleTransferOut = true) {
       it('performs swap, transfers tokens', async () => {
         await expectBalanceChange(doSwap, tokens, balanceChange);
       });
@@ -974,7 +972,6 @@ describe('AggregatorBatchSwap', function () {
         beforeEach(async () => {
           tokensIn = [tokens.get(0), tokens.get(2)];
           tokenOut = tokens.get(2);
-          const secondPathTokenOut = tokens.get(0);
 
           totalAmountIn = 0n; // 2 paths
           totalAmountOut = 0n; // 2 paths, 1:1 ratio between inputs and outputs
