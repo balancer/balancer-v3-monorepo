@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import { IProtocolFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeHelper.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
@@ -34,6 +35,12 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
 
         for (uint256 i = 0; i < length; i++) {
             address pool = newPools[i];
+
+            // Ensure the address is a valid pool.
+            if (getVault().isPoolRegistered(pool) == false) {
+                revert IVaultErrors.PoolNotRegistered(pool);
+            }
+
             if (_pools.add(pool) == false) {
                 revert PoolAlreadyInProtocolFeeSet(pool);
             }
