@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IPoolSwapFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolSwapFeeHelper.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
@@ -209,6 +210,15 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
 
         vm.expectRevert(IPoolSwapFeeHelper.IndexOutOfBounds.selector);
         feeHelper.getPools(poolsNum, poolsNum);
+    }
+
+    function testAddUnregisteredPool() public {
+        address[] memory invalidAddresses = new address[](1);
+        invalidAddresses[0] = address(0x1234);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, invalidAddresses[0]));
+
+        feeHelper.addPools(invalidAddresses);
     }
 
     function _generatePools(uint256 length) internal returns (address[] memory pools) {

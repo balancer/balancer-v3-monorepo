@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import { IPoolSwapFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolSwapFeeHelper.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 contract PoolSwapFeeHelper is IPoolSwapFeeHelper, SingletonAuthentication {
@@ -24,16 +25,23 @@ contract PoolSwapFeeHelper is IPoolSwapFeeHelper, SingletonAuthentication {
     /// @inheritdoc IPoolSwapFeeHelper
     function addPools(address[] calldata newPools) external authenticate {
         uint256 length = newPools.length;
+        IVault vault = getVault();
 
         for (uint256 i = 0; i < length; i++) {
             address pool = newPools[i];
-            if (_pools.add(pool) == false) {
-                revert PoolAlreadyInSwapFeeSet(pool);
+
+            // Ensure the address is a valid pool.
+            if (vault.isPoolRegistered(pool) == false) {
+                revert IVaultErrors.PoolNotRegistered(pool);
             }
 
             // Pools cannot have a swap fee manager.
-            if (getVault().getPoolRoleAccounts(pool).swapFeeManager != address(0)) {
+            if (vault.getPoolRoleAccounts(pool).swapFeeManager != address(0)) {
                 revert PoolHasSwapManager(pool);
+            }
+
+            if (_pools.add(pool) == false) {
+                revert PoolAlreadyInSwapFeeSet(pool);
             }
 
             emit PoolAddedToSwapFeeSet(pool);
