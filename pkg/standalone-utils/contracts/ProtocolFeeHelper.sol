@@ -32,12 +32,13 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, SingletonAuthentication {
     /// @inheritdoc IProtocolFeeHelper
     function addPools(address[] calldata newPools) external authenticate {
         uint256 length = newPools.length;
+        IVault vault = getVault();
 
         for (uint256 i = 0; i < length; i++) {
             address pool = newPools[i];
 
             // Ensure the address is a valid pool.
-            if (getVault().isPoolRegistered(pool) == false) {
+            if (vault.isPoolRegistered(pool) == false) {
                 revert IVaultErrors.PoolNotRegistered(pool);
             }
 
