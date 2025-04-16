@@ -35,8 +35,8 @@ contract WrappedBalancerPoolTokenFactory is IWrappedBalancerPoolTokenFactory {
             revert WrappedBPTAlreadyExists(wrappedToken);
         }
 
-        if (_vault.isPoolInitialized(address(balancerPoolToken)) == false) {
-            revert BalancerPoolTokenNotInitialized();
+        if (_vault.isPoolRegistered(address(balancerPoolToken)) == false) {
+            revert BalancerPoolTokenNotRegistered();
         }
 
         string memory name = string(abi.encodePacked("Wrapped ", IERC20Metadata(balancerPoolToken).name()));
