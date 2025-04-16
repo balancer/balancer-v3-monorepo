@@ -401,7 +401,6 @@ describe('AggregatorBatchSwap', function () {
         beforeEach(async () => {
           tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
-          const secondPathTokenIn = tokens.get(1);
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
           totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
