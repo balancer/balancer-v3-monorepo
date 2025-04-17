@@ -172,6 +172,7 @@ describe('AggregatorBatchSwap', function () {
       tokensOut: string[];
       amountsOut: bigint[];
     }>;
+
     let tokensOut: (ERC20TestToken | PoolMock)[];
     const pathExactAmountIn = fp(1);
     const pathMinAmountOut = fp(1);
@@ -245,7 +246,6 @@ describe('AggregatorBatchSwap', function () {
     }
 
     afterEach('clean up expected results and inputs', () => {
-      tokensIn = undefined;
       tokensOut = undefined;
       totalAmountIn = undefined;
       totalAmountOut = undefined;
@@ -258,7 +258,6 @@ describe('AggregatorBatchSwap', function () {
     context('pure swaps with no nesting', () => {
       context('single path', () => {
         beforeEach(async () => {
-          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -302,7 +301,6 @@ describe('AggregatorBatchSwap', function () {
 
       context('single path, first - intermediate - final steps', () => {
         beforeEach(async () => {
-          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn; // 1 path
@@ -349,7 +347,6 @@ describe('AggregatorBatchSwap', function () {
 
       context('multi path, SISO', () => {
         beforeEach(async () => {
-          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -399,7 +396,6 @@ describe('AggregatorBatchSwap', function () {
 
       context('multi path, MISO', () => {
         beforeEach(async () => {
-          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -445,12 +441,11 @@ describe('AggregatorBatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap(false, true);
+        itTestsBatchSwap(true);
       });
 
       context('multi path, SIMO', () => {
         beforeEach(async () => {
-          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), tokens.get(1)];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -497,12 +492,11 @@ describe('AggregatorBatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap(true, false);
+        itTestsBatchSwap(false);
       });
 
       context('multi path, MIMO', () => {
         beforeEach(async () => {
-          tokensIn = [tokens.get(0)];
           tokensOut = [tokens.get(2), poolC];
 
           totalAmountIn = pathExactAmountIn * 2n; // 2 paths
@@ -555,7 +549,7 @@ describe('AggregatorBatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap(false, false);
+        itTestsBatchSwap(false);
       });
     });
   });
@@ -575,7 +569,9 @@ describe('AggregatorBatchSwap', function () {
     let tokensIn: (ERC20TestToken | PoolMock)[];
     let tokenOut: ERC20TestToken | PoolMock;
     const pathExactAmountOut = fp(1);
-    const pathMaxAmountIn = fp(1);
+    const pathMaxAmountIn = fp(2);
+    const expectedAmountToReturn = pathMaxAmountIn - pathExactAmountOut;
+    const expectedAmountIn = pathMaxAmountIn - expectedAmountToReturn;
 
     let totalAmountIn: bigint, totalAmountOut: bigint, pathAmountsIn: bigint[], amountsIn: bigint[];
     let balanceChange: BalanceChange[];
@@ -656,31 +652,29 @@ describe('AggregatorBatchSwap', function () {
           tokensIn = [tokens.get(0)];
           tokenOut = tokens.get(2);
 
-          const maxAmountIn = pathMaxAmountIn * 2n;
-
           totalAmountIn = pathMaxAmountIn; // 1 path
           totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountIn]; // 1 path, all tokens out
-          amountsIn = [totalAmountIn]; // 1 path
+          pathAmountsIn = [expectedAmountIn]; // 1 path, all tokens out
+          amountsIn = [expectedAmountIn]; // 1 path
 
           balanceChange = [
             {
               account: sender,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', pathMaxAmountIn], // Return the remaining amount
+                [await tokensIn[0].symbol()]: ['equal', expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', -pathMaxAmountIn], // Return the remaining amount
+                [await tokensIn[0].symbol()]: ['equal', -expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', -totalAmountOut],
               },
             },
           ];
 
-          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, maxAmountIn)).wait();
+          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, pathMaxAmountIn)).wait();
           paths = [
             {
               tokenIn: token0,
@@ -689,7 +683,7 @@ describe('AggregatorBatchSwap', function () {
                 { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: maxAmountIn,
+              maxAmountIn: pathMaxAmountIn,
             },
           ];
 
@@ -704,31 +698,29 @@ describe('AggregatorBatchSwap', function () {
           tokensIn = [tokens.get(0)];
           tokenOut = tokens.get(2);
 
-          const maxAmountIn = pathMaxAmountIn * 2n;
-
           totalAmountIn = pathMaxAmountIn; // 1 path
           totalAmountOut = pathExactAmountOut; // 1 path, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountIn]; // 1 path, all tokens out
-          amountsIn = [totalAmountIn]; // 1 path
+          pathAmountsIn = [expectedAmountIn]; // 1 path, all tokens out
+          amountsIn = [expectedAmountIn]; // 1 path
 
           balanceChange = [
             {
               account: sender,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', pathMaxAmountIn], // Return the remaining amount
+                [await tokensIn[0].symbol()]: ['equal', expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', -pathMaxAmountIn], // Return the remaining amount
+                [await tokensIn[0].symbol()]: ['equal', -expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', -totalAmountOut],
               },
             },
           ];
 
-          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, maxAmountIn)).wait();
+          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, pathMaxAmountIn)).wait();
           paths = [
             {
               tokenIn: token0,
@@ -740,7 +732,7 @@ describe('AggregatorBatchSwap', function () {
                 { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: maxAmountIn,
+              maxAmountIn: pathMaxAmountIn,
             },
           ];
 
@@ -755,31 +747,31 @@ describe('AggregatorBatchSwap', function () {
           tokensIn = [tokens.get(0)];
           tokenOut = tokens.get(2);
 
+          const totalAmountToReturn = expectedAmountToReturn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
           const maxAmountIn = pathMaxAmountIn * 2n;
-
-          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
-          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          totalAmountIn = expectedAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
           amountsIn = [totalAmountOut]; // 2 paths, single token input
 
           balanceChange = [
             {
               account: sender,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', maxAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', totalAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
-                [await tokensIn[0].symbol()]: ['equal', -maxAmountIn],
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', -totalAmountOut],
               },
             },
           ];
 
-          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, maxAmountIn * 2n)).wait();
+          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, maxAmountIn)).wait();
           paths = [
             {
               tokenIn: token0,
@@ -788,13 +780,13 @@ describe('AggregatorBatchSwap', function () {
                 { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: maxAmountIn,
+              maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token0,
               steps: [{ pool: poolC, tokenOut: token2, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
-              maxAmountIn: maxAmountIn,
+              maxAmountIn: pathMaxAmountIn,
             },
           ];
 
@@ -809,21 +801,25 @@ describe('AggregatorBatchSwap', function () {
           tokensIn = [tokens.get(0), tokens.get(1)];
           tokenOut = tokens.get(2);
 
-          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
-          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          totalAmountIn = expectedAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
           amountsIn = pathAmountsIn; // 2 paths, multiple token inputs
 
           balanceChange = [
             {
               account: sender,
               changes: {
+                [await tokensIn[0].symbol()]: ['equal', expectedAmountToReturn],
+                [await tokensIn[1].symbol()]: ['equal', expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', totalAmountOut],
               },
             },
             {
               account: vaultAddress,
               changes: {
+                [await tokensIn[0].symbol()]: ['equal', -expectedAmountToReturn],
+                [await tokensIn[1].symbol()]: ['equal', -expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', -totalAmountOut],
               },
             },
@@ -852,7 +848,7 @@ describe('AggregatorBatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap(false, true);
+        itTestsBatchSwap(true);
       });
 
       context('multi path, SIMO', () => {
@@ -861,15 +857,19 @@ describe('AggregatorBatchSwap', function () {
           tokenOut = tokens.get(2);
           const secondPathTokenOut = tokens.get(1);
 
-          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
-          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          const totalAmountToReturn = expectedAmountToReturn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          const maxAmountIn = pathMaxAmountIn * 2n;
+
+          totalAmountIn = expectedAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
           amountsIn = [totalAmountIn]; // 2 paths, single token input
 
           balanceChange = [
             {
               account: sender,
               changes: {
+                [await tokensIn[0].symbol()]: ['equal', totalAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', pathExactAmountOut],
                 [await secondPathTokenOut.symbol()]: ['equal', pathExactAmountOut],
               },
@@ -877,13 +877,14 @@ describe('AggregatorBatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
+                [await tokensIn[0].symbol()]: ['equal', -totalAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', -pathExactAmountOut],
                 [await secondPathTokenOut.symbol()]: ['equal', -pathExactAmountOut],
               },
             },
           ];
 
-          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, totalAmountIn)).wait();
+          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, maxAmountIn)).wait();
           paths = [
             {
               tokenIn: token0,
@@ -905,7 +906,7 @@ describe('AggregatorBatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap(true, false);
+        itTestsBatchSwap(false);
       });
 
       context('multi path, MIMO', () => {
@@ -914,15 +915,17 @@ describe('AggregatorBatchSwap', function () {
           tokenOut = tokens.get(2);
           const secondPathTokenOut = poolC;
 
-          totalAmountIn = pathExactAmountOut * 2n; // 2 paths
-          totalAmountOut = pathMaxAmountIn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
-          amountsIn = pathAmountsIn; // 2 paths, multiple token inputs
+          totalAmountIn = expectedAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
+          amountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, single token input
 
           balanceChange = [
             {
               account: sender,
               changes: {
+                [await poolA.symbol()]: ['equal', expectedAmountToReturn],
+                [await tokensIn[0].symbol()]: ['equal', expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', pathExactAmountOut],
                 [await secondPathTokenOut.symbol()]: ['equal', pathExactAmountOut],
               },
@@ -930,6 +933,8 @@ describe('AggregatorBatchSwap', function () {
             {
               account: vaultAddress,
               changes: {
+                [await poolA.symbol()]: ['equal', -expectedAmountToReturn],
+                [await tokensIn[0].symbol()]: ['equal', -expectedAmountToReturn],
                 [await tokenOut.symbol()]: ['equal', -pathExactAmountOut],
                 [await secondPathTokenOut.symbol()]: ['equal', -pathExactAmountOut],
               },
@@ -964,7 +969,7 @@ describe('AggregatorBatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap(false, false);
+        itTestsBatchSwap(false);
       });
 
       context('multi path, circular inputs/outputs', () => {
@@ -974,7 +979,7 @@ describe('AggregatorBatchSwap', function () {
 
           totalAmountIn = 0n; // 2 paths
           totalAmountOut = 0n; // 2 paths, 1:1 ratio between inputs and outputs
-          pathAmountsIn = [pathMaxAmountIn, pathMaxAmountIn]; // 2 paths, half the output in each
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
           amountsIn = pathAmountsIn; // 2 paths, 2 circular inputs
 
           balanceChange = [
@@ -1017,7 +1022,7 @@ describe('AggregatorBatchSwap', function () {
           setUp();
         });
 
-        itTestsBatchSwap(false, false);
+        itTestsBatchSwap(false);
       });
     });
   });
