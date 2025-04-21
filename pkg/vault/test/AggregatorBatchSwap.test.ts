@@ -5,14 +5,18 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
-import { fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { fp, fpDivDown, fpDivUp } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { BatchRouter, Router, PoolFactoryMock, Vault } from '../typechain-types';
 import { BalanceChange, expectBalanceChange } from '@balancer-labs/v3-helpers/src/test/tokenBalance';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { ERC20TestToken, ERC20TestToken__factory } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import {
+  ERC20TestToken,
+  ERC20TestToken__factory,
+  ERC4626TestToken,
+} from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
@@ -23,6 +27,7 @@ import { BufferRouter } from '@balancer-labs/v3-pool-weighted/typechain-types';
 
 describe('AggregatorBatchSwap', function () {
   const TOKEN_AMOUNT = fp(1e12);
+  const WRAPPED_TOKEN_AMOUNT = fp(1e6);
 
   const BATCH_ROUTER_VERSION = 'AggregatorBatchRouter v9';
   const ROUTER_VERSION = 'Router v9';
@@ -32,14 +37,21 @@ describe('AggregatorBatchSwap', function () {
   let factory: PoolFactoryMock;
 
   let router: BatchRouter, basicRouter: Router, bufferRouter: BufferRouter;
-  let poolA: PoolMock, poolB: PoolMock, poolC: PoolMock;
+  let poolA: PoolMock, poolB: PoolMock, poolC: PoolMock, poolWA: PoolMock, poolWB: PoolMock;
   let poolAB: PoolMock, poolAC: PoolMock, poolBC: PoolMock;
   let pools: PoolMock[];
   let tokens: ERC20TokenList;
 
+  let wToken0: ERC4626TestToken, wToken2: ERC4626TestToken;
+  let wToken0Address: string, wToken2Address: string;
+
   let lp: SignerWithAddress, sender: SignerWithAddress, zero: VoidSigner;
 
-  let poolATokens: string[], poolBTokens: string[], poolCTokens: string[];
+  let poolATokens: string[],
+    poolBTokens: string[],
+    poolCTokens: string[],
+    poolWATokens: string[],
+    poolWBTokens: string[];
   let poolABTokens: string[], poolACTokens: string[], poolBCTokens: string[];
   let token0: string, token1: string, token2: string;
   let vaultAddress: string;
@@ -69,9 +81,21 @@ describe('AggregatorBatchSwap', function () {
     token1 = await tokens.get(1).getAddress();
     token2 = await tokens.get(2).getAddress();
 
+    wToken0 = await deploy('v3-solidity-utils/ERC4626TestToken', {
+      args: [token0, 'Wrapped TK0', 'wTK0', 18],
+    });
+    wToken2 = await deploy('v3-solidity-utils/ERC4626TestToken', {
+      args: [token2, 'Wrapped TK2', 'wTK2', 18],
+    });
+
+    wToken0Address = await wToken0.getAddress();
+    wToken2Address = await wToken2.getAddress();
+
     poolATokens = sortAddresses([token0, token1]);
     poolBTokens = sortAddresses([token1, token2]);
     poolCTokens = sortAddresses([token0, token2]);
+    poolWATokens = sortAddresses([wToken0Address, token1]);
+    poolWBTokens = sortAddresses([token1, wToken2Address]);
 
     // Pool A has tokens 0 and 1.
     poolA = await deploy('v3-vault/PoolMock', {
@@ -88,9 +112,21 @@ describe('AggregatorBatchSwap', function () {
       args: [vaultAddress, 'Pool C', 'POOL-C'],
     });
 
+    // Pool A has wrapped token 0 and token 1.
+    poolWA = await deploy('v3-vault/PoolMock', {
+      args: [vaultAddress, 'Wrapped Token 0 - Pool A', 'WPOOL-A'],
+    });
+
+    // Pool B has wrapped token 2 and token 1.
+    poolWB = await deploy('v3-vault/PoolMock', {
+      args: [vaultAddress, 'Wrapped Token 2 - Pool B', 'WPOOL-B'],
+    });
+
     await factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
     await factory.registerTestPool(poolB, buildTokenConfig(poolBTokens));
     await factory.registerTestPool(poolC, buildTokenConfig(poolCTokens));
+    await factory.registerTestPool(poolWA, buildTokenConfig(poolWATokens));
+    await factory.registerTestPool(poolWB, buildTokenConfig(poolWBTokens));
   });
 
   sharedBeforeEach('nested pools', async () => {
@@ -115,16 +151,35 @@ describe('AggregatorBatchSwap', function () {
   });
 
   sharedBeforeEach('allowances', async () => {
-    pools = [poolA, poolB, poolC, poolAB, poolAC, poolBC];
+    pools = [poolA, poolB, poolC, poolAB, poolAC, poolBC, poolWA, poolWB];
 
-    await tokens.mint({ to: lp, amount: TOKEN_AMOUNT });
-    await tokens.mint({ to: sender, amount: TOKEN_AMOUNT });
+    for (const user of [lp, sender]) {
+      await tokens.mint({ to: user, amount: TOKEN_AMOUNT });
+
+      await tokens
+        .get(0)
+        .connect(lp)
+        .mint(user, WRAPPED_TOKEN_AMOUNT * 2n);
+      await tokens.get(0).connect(user).approve(wToken0, WRAPPED_TOKEN_AMOUNT);
+      await wToken0.connect(user).deposit(WRAPPED_TOKEN_AMOUNT, user);
+
+      await tokens
+        .get(2)
+        .connect(user)
+        .mint(user, WRAPPED_TOKEN_AMOUNT * 2n);
+      await tokens.get(2).connect(user).approve(wToken2, WRAPPED_TOKEN_AMOUNT);
+      await wToken2.connect(user).deposit(WRAPPED_TOKEN_AMOUNT, user);
+    }
+
+    tokens.push(ERC20TestToken__factory.connect(wToken0Address, sender));
+    tokens.push(ERC20TestToken__factory.connect(wToken2Address, sender));
 
     for (const pool of pools) {
       await pool.connect(lp).approve(router, MAX_UINT256);
       await pool.connect(lp).approve(basicRouter, MAX_UINT256);
     }
-    for (const token of [...tokens.tokens, poolA, poolB, poolC, poolAB, poolAC, poolBC]) {
+
+    for (const token of [...tokens.tokens, wToken0, wToken2, poolA, poolB, poolC, poolAB, poolAC, poolBC]) {
       for (const from of [lp, sender]) {
         await token.connect(from).approve(permit2, MAX_UINT256);
         for (const to of [basicRouter, bufferRouter]) {
@@ -132,6 +187,9 @@ describe('AggregatorBatchSwap', function () {
         }
       }
     }
+
+    await bufferRouter.connect(lp).initializeBuffer(wToken0, WRAPPED_TOKEN_AMOUNT, 0, 0);
+    await bufferRouter.connect(lp).initializeBuffer(wToken2, WRAPPED_TOKEN_AMOUNT, 0, 0);
   });
 
   sharedBeforeEach('initialize pools', async () => {
@@ -154,6 +212,14 @@ describe('AggregatorBatchSwap', function () {
     await basicRouter
       .connect(lp)
       .initialize(poolBC, poolBCTokens, Array(poolBCTokens.length).fill(fp(1000)), 0, false, '0x');
+
+    await basicRouter
+      .connect(lp)
+      .initialize(poolWA, poolWATokens, Array(poolWATokens.length).fill(fp(10000)), 0, false, '0x');
+
+    await basicRouter
+      .connect(lp)
+      .initialize(poolWB, poolWBTokens, Array(poolWBTokens.length).fill(fp(10000)), 0, false, '0x');
 
     await poolA.connect(lp).transfer(sender, fp(100));
     await poolB.connect(lp).transfer(sender, fp(100));
@@ -550,6 +616,187 @@ describe('AggregatorBatchSwap', function () {
         });
 
         itTestsBatchSwap(false);
+      });
+
+      context('unwrap first, SISO', () => {
+        beforeEach(async () => {
+          tokensOut = [tokens.get(2)];
+
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          amountsOut = [totalAmountOut]; // 2 paths, single token output
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensOut[0].symbol()]: ['very-near', -totalAmountOut],
+              },
+            },
+          ];
+
+          await (await ERC20TestToken__factory.connect(wToken0Address, sender).transfer(vault, totalAmountIn)).wait();
+          paths = [
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut - roundingError,
+            },
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut - roundingError,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(true);
+      });
+
+      context('unwrap first - wrap end, SISO', () => {
+        beforeEach(async () => {
+          tokensOut = [ERC20TestToken__factory.connect(wToken2Address, sender)];
+
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          amountsOut = [totalAmountOut];
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokens.get(2).symbol()]: ['very-near', -1n * fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+                [await tokensOut[0].symbol()]: ['very-near', fpDivDown(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+              },
+            },
+            {
+              account: wToken2Address,
+              changes: {
+                [await tokens.get(2).symbol()]: ['very-near', fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+              },
+            },
+          ];
+
+          await (await ERC20TestToken__factory.connect(wToken0Address, sender).transfer(vault, totalAmountIn)).wait();
+          paths = [
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: wToken2, tokenOut: wToken2, isBuffer: true },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut - roundingError * 2n,
+            },
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: wToken2, tokenOut: wToken2, isBuffer: true },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut - roundingError * 2n,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(true);
+      });
+
+      context('wrap first - unwrap end, SISO', () => {
+        beforeEach(async () => {
+          tokensOut = [tokens.get(2)];
+
+          totalAmountIn = pathExactAmountIn * 2n; // 2 paths
+          totalAmountOut = pathMinAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsOut = [totalAmountOut / 2n, totalAmountOut / 2n]; // 2 paths, half the output in each
+          amountsOut = [totalAmountOut];
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensOut[0].symbol()]: ['very-near', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokens.get(2).symbol()]: ['very-near', -totalAmountOut],
+                [await tokens.get(0).symbol()]: ['very-near', -1n * fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+                [await wToken0.symbol()]: ['very-near', fpDivDown(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+              },
+            },
+            {
+              account: wToken0Address,
+              changes: {
+                [await tokens.get(0).symbol()]: ['very-near', fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+              },
+            },
+          ];
+
+          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, totalAmountIn)).wait();
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: wToken0, tokenOut: wToken0, isBuffer: true },
+                { pool: poolWA, tokenOut: token1, isBuffer: false },
+                { pool: poolWB, tokenOut: wToken2, isBuffer: false },
+                { pool: wToken2, tokenOut: token2, isBuffer: true },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut - roundingError * 2n,
+            },
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: wToken0, tokenOut: wToken0, isBuffer: true },
+                { pool: poolWA, tokenOut: token1, isBuffer: false },
+                { pool: poolWB, tokenOut: wToken2, isBuffer: false },
+                { pool: wToken2, tokenOut: token2, isBuffer: true },
+              ],
+              exactAmountIn: pathExactAmountIn,
+              minAmountOut: pathMinAmountOut - roundingError * 2n,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap(true);
       });
     });
   });
@@ -970,6 +1217,204 @@ describe('AggregatorBatchSwap', function () {
         });
 
         itTestsBatchSwap(false);
+      });
+
+      context('unwrap first, SISO', () => {
+        beforeEach(async () => {
+          tokensIn = [ERC20TestToken__factory.connect(wToken0Address, sender)];
+          tokenOut = tokens.get(2);
+
+          const totalAmountToReturn = expectedAmountToReturn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          const maxAmountIn = pathMaxAmountIn * 2n;
+          totalAmountIn = expectedAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
+          amountsIn = [totalAmountOut]; // 2 paths, single token input
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountToReturn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountToReturn],
+                [await tokenOut.symbol()]: ['equal', -totalAmountOut],
+              },
+            },
+          ];
+
+          await (await tokensIn[0].transfer(vault, maxAmountIn)).wait();
+          paths = [
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
+      });
+
+      context('unwrap first - wrap end, SISO', () => {
+        beforeEach(async () => {
+          tokensIn = [ERC20TestToken__factory.connect(wToken0Address, sender)];
+          tokenOut = ERC20TestToken__factory.connect(wToken2Address, sender);
+
+          const totalAmountToReturn = expectedAmountToReturn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          const maxAmountIn = pathMaxAmountIn * 2n;
+          totalAmountIn = expectedAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
+          amountsIn = [totalAmountOut]; // 2 paths, single token input
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountToReturn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', -totalAmountToReturn],
+                [await tokens.get(2).symbol()]: ['very-near', -1n * fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+                [await tokenOut.symbol()]: ['very-near', fpDivDown(WRAPPED_TOKEN_AMOUNT, fp(2)) - totalAmountOut], // Rebalancing
+              },
+            },
+            {
+              account: wToken2Address,
+              changes: {
+                [await tokens.get(2).symbol()]: ['very-near', fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+              },
+            },
+          ];
+
+          await (await tokensIn[0].transfer(vault, maxAmountIn)).wait();
+          paths = [
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: wToken2, tokenOut: wToken2, isBuffer: true },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+            {
+              tokenIn: wToken0,
+              steps: [
+                { pool: wToken0, tokenOut: token0, isBuffer: true },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: wToken2, tokenOut: wToken2, isBuffer: true },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
+      });
+
+      context('wrap first - unwrap end, SISO', () => {
+        beforeEach(async () => {
+          tokensIn = [tokens.get(0)];
+          tokenOut = tokens.get(2);
+
+          const totalAmountToReturn = expectedAmountToReturn * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          const maxAmountIn = pathMaxAmountIn * 2n;
+          totalAmountIn = expectedAmountIn * 2n; // 2 paths
+          totalAmountOut = pathExactAmountOut * 2n; // 2 paths, 1:1 ratio between inputs and outputs
+          pathAmountsIn = [expectedAmountIn, expectedAmountIn]; // 2 paths, half the output in each
+          amountsIn = [totalAmountOut]; // 2 paths, single token input
+
+          balanceChange = [
+            {
+              account: sender,
+              changes: {
+                [await tokensIn[0].symbol()]: ['very-near', totalAmountToReturn],
+                [await tokenOut.symbol()]: ['equal', totalAmountOut],
+              },
+            },
+            {
+              account: vaultAddress,
+              changes: {
+                [await tokens.get(2).symbol()]: ['equal', -totalAmountOut],
+                [await tokensIn[0].symbol()]: [
+                  'very-near',
+                  -1n * fpDivDown(WRAPPED_TOKEN_AMOUNT, fp(2)) - totalAmountToReturn,
+                ], // Rebalancing
+                [await wToken0.symbol()]: ['very-near', fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+              },
+            },
+            {
+              account: wToken0Address,
+              changes: {
+                [await tokens.get(0).symbol()]: ['very-near', fpDivUp(WRAPPED_TOKEN_AMOUNT, fp(2))], // Rebalancing
+              },
+            },
+          ];
+
+          await (await ERC20TestToken__factory.connect(token0, sender).transfer(vault, maxAmountIn)).wait();
+          paths = [
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: wToken0, tokenOut: wToken0, isBuffer: true },
+                { pool: poolWA, tokenOut: token1, isBuffer: false },
+                { pool: poolWB, tokenOut: wToken2, isBuffer: false },
+                { pool: wToken2, tokenOut: token2, isBuffer: true },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+            {
+              tokenIn: token0,
+              steps: [
+                { pool: wToken0, tokenOut: wToken0, isBuffer: true },
+                { pool: poolWA, tokenOut: token1, isBuffer: false },
+                { pool: poolWB, tokenOut: wToken2, isBuffer: false },
+                { pool: wToken2, tokenOut: token2, isBuffer: true },
+              ],
+              exactAmountOut: pathExactAmountOut,
+              maxAmountIn: pathMaxAmountIn,
+            },
+          ];
+
+          setUp();
+        });
+
+        itTestsBatchSwap();
       });
 
       context('multi path, circular inputs/outputs', () => {

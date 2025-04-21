@@ -22,10 +22,6 @@ class ERC20TokensDeployer {
     const tokens = await Promise.all(deployments.map(this.deployToken));
     let tokenList = new ERC20TokenList(tokens);
 
-    if (sorted) {
-      tokenList = await tokenList.sort();
-    }
-
     return tokenList;
   }
 

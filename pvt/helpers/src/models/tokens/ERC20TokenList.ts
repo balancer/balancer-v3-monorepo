@@ -88,6 +88,10 @@ export default class ERC20TokenList {
     return new ERC20TokenList(this.tokens.slice(offset, offset + length));
   }
 
+  push(token: ERC20TestToken): void {
+    this.tokens.push(token);
+  }
+
   async mint(rawParams: RawTokenMint): Promise<void> {
     const params: TokenMint[] = TypesConverter.toTokenMints(rawParams);
     await Promise.all(
