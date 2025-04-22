@@ -96,11 +96,16 @@ contract BalancerContractRegistryInitializer {
             IBalancerContractRegistry.addOrUpdateBalancerContractAlias.selector
         );
 
+        // Ensure the contract has been granted the required permissions, given the deployment parameters.
+        uint256 numPoolFactories = _poolFactoryNames.length;
+        uint256 numRouters = _routerNames.length;
+        uint256 numAliases = _aliasNames.length;
+
         if (
-            ((_routerNames.length > 0 || _poolFactoryNames.length > 0) &&
+            ((numRouters > 0 || numPoolFactories > 0) &&
                 _authorizer.canPerform(registerContractRole, address(this), address(balancerContractRegistry)) ==
                 false) ||
-            (_aliasNames.length > 0 &&
+            (numAliases > 0 &&
                 _authorizer.canPerform(addAliasRole, address(this), address(balancerContractRegistry)) == false)
         ) {
             revert PermissionNotGranted();
@@ -109,7 +114,7 @@ contract BalancerContractRegistryInitializer {
         _initialized = true;
 
         // Add Routers.
-        for (uint256 i = 0; i < _routerNames.length; ++i) {
+        for (uint256 i = 0; i < numRouters; ++i) {
             balancerContractRegistry.registerBalancerContract(
                 ContractType.ROUTER,
                 _routerNames[i],
@@ -118,7 +123,7 @@ contract BalancerContractRegistryInitializer {
         }
 
         // Add Pool Factories.
-        for (uint256 i = 0; i < _poolFactoryNames.length; ++i) {
+        for (uint256 i = 0; i < numPoolFactories; ++i) {
             balancerContractRegistry.registerBalancerContract(
                 ContractType.POOL_FACTORY,
                 _poolFactoryNames[i],
@@ -127,7 +132,7 @@ contract BalancerContractRegistryInitializer {
         }
 
         // Add aliases.
-        for (uint256 i = 0; i < _aliasNames.length; ++i) {
+        for (uint256 i = 0; i < numAliases; ++i) {
             balancerContractRegistry.addOrUpdateBalancerContractAlias(_aliasNames[i], _aliasAddresses[i]);
         }
 
