@@ -97,8 +97,11 @@ contract BalancerContractRegistryInitializer {
         );
 
         if (
-            _authorizer.canPerform(registerContractRole, address(this), address(balancerContractRegistry)) == false ||
-            _authorizer.canPerform(addAliasRole, address(this), address(balancerContractRegistry)) == false
+            ((_routerNames.length > 0 || _poolFactoryNames.length > 0) &&
+                _authorizer.canPerform(registerContractRole, address(this), address(balancerContractRegistry)) ==
+                false) ||
+            (_aliasNames.length > 0 &&
+                _authorizer.canPerform(addAliasRole, address(this), address(balancerContractRegistry)) == false)
         ) {
             revert PermissionNotGranted();
         }
