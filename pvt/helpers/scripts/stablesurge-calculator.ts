@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, InvalidOptionArgumentError } from 'commander';
 
 interface ProgramOptions {
   staticFee: number;
@@ -11,19 +11,37 @@ function main() {
 
   program.name('stablesurge-calculator').description('Process stable surge internal parameters').version('0.1.0');
 
-  const parseFloatOrThrow = (value: string): number => {
-    const floatValue = parseFloat(value);
-    if (isNaN(floatValue)) {
-      throw new Error(`Invalid numeric argument: ${value}`);
+  function parsePercentage(value: string, name: string): number {
+    const num = parseFloat(value);
+    if (isNaN(num)) {
+      throw new InvalidOptionArgumentError(`${name} must be a valid number`);
     }
-    return floatValue;
-  };
+    if (num < 0 || num > 100) {
+      throw new InvalidOptionArgumentError(`${name} must be between 0 and 100`);
+    }
+    return num;
+  }
 
   program
     .argument('[balances...]', 'Pool balances after swap')
-    .option('--sf, --static-fee <fee-percentage>', 'static fee percentage', parseFloatOrThrow, 0.1)
-    .option('--t, --threshold <imbalance-threshold-percentage>', 'imbalance threshold percentage', parseFloatOrThrow, 5)
-    .option('--mf, --max-fee <max-fee-percentage>', 'max fee percentage', parseFloatOrThrow, 100);
+    .option(
+      '--sf, --static-fee <fee-percentage>',
+      'static fee percentage',
+      (value) => parsePercentage(value, 'static fee'),
+      0.1
+    )
+    .option(
+      '--t, --threshold <imbalance-threshold-percentage>',
+      'imbalance threshold percentage',
+      (value) => parsePercentage(value, 'imbalance threshold'),
+      5
+    )
+    .option(
+      '--mf, --max-fee <max-fee-percentage>',
+      'max fee percentage',
+      (value) => parsePercentage(value, 'max fee'),
+      100
+    );
 
   program.parse();
 
@@ -60,7 +78,8 @@ function main() {
   console.log('Max fee percentage: ' + options.maxFee.toFixed(2) + '%');
 
   let surgeFeePercentage = options.staticFee;
-  if (imbalancePercentage > options.threshold) {
+
+  if (imbalancePercentage > options.threshold && options.maxFee > options.staticFee) {
     surgeFeePercentage +=
       ((options.maxFee - options.staticFee) * (imbalancePercentage - options.threshold)) / (100 - options.threshold);
   }
