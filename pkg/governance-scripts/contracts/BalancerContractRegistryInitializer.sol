@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasicAuthorizer } from "@balancer-labs/v3-interfaces/contracts/governance-scripts/IBasicAuthorizer.sol";
 import {
     IBalancerContractRegistry,
     ContractType
@@ -14,6 +16,9 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 // Associated with `20250411-balancer-registry-initializer-v2`.
 contract BalancerContractRegistryInitializer {
     IBalancerContractRegistry public immutable balancerContractRegistry;
+
+    // IAuthorizer with interface for verifying/revoking roles.
+    IBasicAuthorizer internal immutable _authorizer;
 
     // Set to true when operation is complete.
     bool private _initialized;
@@ -32,6 +37,9 @@ contract BalancerContractRegistryInitializer {
 
     /// @notice The Vault passed in as a sanity check doesn't match the Vault associated with the registry.
     error VaultMismatch();
+
+    /// @notice A permission required to complete the initialization was not granted.
+    error PermissionNotGranted();
 
     constructor(
         IVault vault,
@@ -61,18 +69,38 @@ contract BalancerContractRegistryInitializer {
         _poolFactoryAddresses = poolFactoryAddresses;
         _aliasNames = aliasNames;
         _aliasAddresses = aliasAddresses;
+
+        _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
 
     /**
      * @notice The function that initializes the Balancer contract registry, based on the data supplied on deployment.
      * @dev This function can only be called once. This contract must be granted permission to call two functions on
      * the `BalancerContractRegistry` being initialized: `registerBalancerContract` and
-     * `addOrUpdateBalancerContractAlias`.
+     * `addOrUpdateBalancerContractAlias`. If this is not done, it will revert with `PermissionNotGranted`.
+     *
+     * Note that this contract revokes these permissions when the initialization is complete, so this does not need
+     * to be done externally.
      */
     function initializeBalancerContractRegistry() external {
         // Explicitly ensure this can only be called once.
         if (_initialized) {
             revert AlreadyInitialized();
+        }
+
+        // Grant permissions to register contracts and add aliases.
+        bytes32 registerContractRole = IAuthentication(address(balancerContractRegistry)).getActionId(
+            IBalancerContractRegistry.registerBalancerContract.selector
+        );
+        bytes32 addAliasRole = IAuthentication(address(balancerContractRegistry)).getActionId(
+            IBalancerContractRegistry.addOrUpdateBalancerContractAlias.selector
+        );
+
+        if (
+            _authorizer.canPerform(registerContractRole, address(this), address(balancerContractRegistry)) == false ||
+            _authorizer.canPerform(addAliasRole, address(this), address(balancerContractRegistry)) == false
+        ) {
+            revert PermissionNotGranted();
         }
 
         _initialized = true;
@@ -95,9 +123,13 @@ contract BalancerContractRegistryInitializer {
             );
         }
 
-        // Add (pool factory) aliases.
+        // Add aliases.
         for (uint256 i = 0; i < _aliasNames.length; ++i) {
             balancerContractRegistry.addOrUpdateBalancerContractAlias(_aliasNames[i], _aliasAddresses[i]);
         }
+
+        // Renounce all roles.
+        _authorizer.renounceRole(registerContractRole, address(this));
+        _authorizer.renounceRole(addAliasRole, address(this));
     }
 }
