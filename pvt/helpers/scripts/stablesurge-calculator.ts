@@ -79,6 +79,8 @@ function main() {
 
   let surgeFeePercentage = options.staticFee;
 
+  // If the max surge fee percentage is less than the static fee percentage, return the static fee percentage.
+  // No matter where the imbalance is, the fee can never be smaller than the static fee.
   if (imbalancePercentage > options.threshold && options.maxFee > options.staticFee) {
     surgeFeePercentage +=
       ((options.maxFee - options.staticFee) * (imbalancePercentage - options.threshold)) / (100 - options.threshold);
