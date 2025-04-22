@@ -48,12 +48,16 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
         factory.createWrappedToken(pool);
     }
 
-    function testCreateWhenPoolNotInitialized() public {
-        vault.manualSetInitializedPool(pool, false);
+    function testCreateWhenPoolNotRegistered() public {
+        vault.manualSetPoolRegistered(pool, false);
 
         vm.expectRevert(
-            abi.encodeWithSelector(IWrappedBalancerPoolTokenFactory.BalancerPoolTokenNotInitialized.selector)
+            abi.encodeWithSelector(IWrappedBalancerPoolTokenFactory.BalancerPoolTokenNotRegistered.selector)
         );
         factory.createWrappedToken(pool);
+    }
+
+    function testGetVault() public view {
+        assertEq(address(factory.getVault()), address(vault), "Vault mismatch");
     }
 }
