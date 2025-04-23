@@ -20,6 +20,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 
 import { ProtocolFeePercentagesProvider } from "../../contracts/ProtocolFeePercentagesProvider.sol";
+import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -59,7 +60,8 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         percentagesProviderAuth = IAuthentication(address(percentagesProvider));
         feeControllerAuth = IAuthentication(address(feeController));
 
-        (maxSwapFeePercentage, maxYieldFeePercentage) = feeController.getMaximumProtocolFeePercentages();
+        maxSwapFeePercentage = ProtocolFeeController(address(feeController)).MAX_PROTOCOL_SWAP_FEE_PERCENTAGE();
+        maxYieldFeePercentage = ProtocolFeeController(address(feeController)).MAX_PROTOCOL_YIELD_FEE_PERCENTAGE();
 
         // Ensure we aren't comparing to 0.
         require(maxSwapFeePercentage > 0, "Zero swap fee percentage");
@@ -101,7 +103,9 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
     function testRevertWhenSetFactorySpecificProtocolFeePercentageInvalidFactory() public {
         _grantPermissions();
 
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeePercentagesProvider.UnknownFactory.selector, INVALID_ADDRESS)
+        );
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
             INVALID_ADDRESS,
@@ -128,7 +132,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         );
     }
 
-    function testSetFactorySpecificProtocolFeePercentageInvalidSwap() public {
+    function testSetFactorySpecificProtocolFeePercentageTooHighSwap() public {
         _grantPermissions();
 
         vm.expectRevert(IProtocolFeeController.ProtocolSwapFeePercentageTooHigh.selector);
@@ -137,6 +141,18 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
             poolFactory,
             maxSwapFeePercentage + 1,
             maxYieldFeePercentage
+        );
+    }
+
+    function testSetFactorySpecificProtocolFeePercentageTooHighYield() public {
+        _grantPermissions();
+
+        vm.expectRevert(IProtocolFeeController.ProtocolYieldFeePercentageTooHigh.selector);
+        vm.prank(admin);
+        percentagesProvider.setFactorySpecificProtocolFeePercentages(
+            poolFactory,
+            maxSwapFeePercentage,
+            maxYieldFeePercentage + 1
         );
     }
 
@@ -152,27 +168,15 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         );
     }
 
-    function testSetFactorySpecificProtocolFeePercentageInvalidYield() public {
+    function testSetFactorySpecificProtocolFeePercentageHighPrecisionYield() public {
         _grantPermissions();
 
-        vm.expectRevert(IProtocolFeeController.ProtocolYieldFeePercentageTooHigh.selector);
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
             poolFactory,
             maxSwapFeePercentage,
-            maxYieldFeePercentage + 1
-        );
-    }
-
-    function testSetFactorySpecificProtocolFeePercentageHighPrecisionYield() public {
-        _grantPermissions();
-
-        vm.expectRevert(IProtocolFeeController.ProtocolYieldFeePercentageTooHigh.selector);
-        vm.prank(admin);
-        percentagesProvider.setFactorySpecificProtocolFeePercentages(
-            poolFactory,
-            1e16 + 234234234,
-            maxYieldFeePercentage + 1
+            1e16 + 234234234
         );
     }
 
