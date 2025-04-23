@@ -6,6 +6,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
+import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     IProtocolFeePercentagesProvider
 } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeePercentagesProvider.sol";
@@ -13,9 +14,11 @@ import {
     IBalancerContractRegistry,
     ContractType
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { SingletonAuthentication } from "./SingletonAuthentication.sol";
+import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 
 contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, SingletonAuthentication {
     using SafeCast for uint256;
@@ -48,16 +51,18 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         IProtocolFeeController protocolFeeController,
         IBalancerContractRegistry trustedContractRegistry
     ) SingletonAuthentication(vault) {
-        _protocolFeeController = protocolFeeController;
-        _trustedContractRegistry = trustedContractRegistry;
-
         if (protocolFeeController.vault() != vault) {
             revert WrongProtocolFeeControllerDeployment();
         }
 
-        // These values are constant in the `ProtocolFeeController`.
-        (_maxProtocolSwapFeePercentage, _maxProtocolYieldFeePercentage) = protocolFeeController
-            .getMaximumProtocolFeePercentages();
+        _protocolFeeController = protocolFeeController;
+        _trustedContractRegistry = trustedContractRegistry;
+
+        // Read the maximum percentages from the `protocolFeeController`.
+        _maxProtocolSwapFeePercentage = ProtocolFeeController(address(protocolFeeController))
+            .MAX_PROTOCOL_SWAP_FEE_PERCENTAGE();
+        _maxProtocolYieldFeePercentage = ProtocolFeeController(address(protocolFeeController))
+            .MAX_PROTOCOL_YIELD_FEE_PERCENTAGE();
     }
 
     /// @inheritdoc IProtocolFeePercentagesProvider
@@ -90,14 +95,14 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
             revert IProtocolFeeController.ProtocolYieldFeePercentageTooHigh();
         }
 
-        // Ensure precision checks will pass.
-        _protocolFeeController.ensureValidPrecision(protocolSwapFeePercentage);
-        _protocolFeeController.ensureValidPrecision(protocolYieldFeePercentage);
-
         // Ensure the factory is valid.
         if (_trustedContractRegistry.isActiveBalancerContract(ContractType.POOL_FACTORY, factory) == false) {
             revert UnknownFactory(factory);
         }
+
+        // Ensure precision checks will pass.
+        _ensureValidPrecision(protocolSwapFeePercentage);
+        _ensureValidPrecision(protocolYieldFeePercentage);
 
         // Store the default fee percentages, and mark the factory as registered.
         _factoryDefaultFeePercentages[IBasePoolFactory(factory)] = FactoryProtocolFees({
@@ -150,5 +155,17 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     ) private {
         _protocolFeeController.setProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
         _protocolFeeController.setProtocolYieldFeePercentage(pool, protocolYieldFeePercentage);
+    }
+
+    // Duplicate this function from the `ProtocolFeeController`, as it isn't exposed in the deployed version.
+    function _ensureValidPrecision(uint256 feePercentage) private pure {
+        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
+        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
+        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
+        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
+        // aggregate fee calculated here and that stored in the Vault.
+        if ((feePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != feePercentage) {
+            revert IVaultErrors.FeePrecisionTooHigh();
+        }
     }
 }
