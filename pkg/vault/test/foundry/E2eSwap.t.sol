@@ -524,12 +524,12 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 newDecimalsTokenB,
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
     ) public {
+        fuzzPoolParams(params);
+
         decimalsTokenA = bound(newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
         decimalsTokenB = bound(newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
 
         _setTokenDecimalsInPool();
-
-        fuzzPoolParams(params);
 
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
@@ -603,15 +603,15 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     function testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) internal {
+        if (testLocals.shouldFuzzPoolParams) {
+            fuzzPoolParams(testLocals.poolParams);
+        }
+
         if (testLocals.shouldTestDecimals) {
             decimalsTokenA = bound(testLocals.newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
             decimalsTokenB = bound(testLocals.newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
 
             _setTokenDecimalsInPool();
-        }
-
-        if (testLocals.shouldFuzzPoolParams) {
-            fuzzPoolParams(testLocals.poolParams);
         }
 
         uint256 maxAmountIn = maxSwapAmountTokenA;
@@ -722,15 +722,15 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     function testDoUndoExactOutBase(uint256 exactAmountOut, DoUndoLocals memory testLocals) internal {
+        if (testLocals.shouldFuzzPoolParams) {
+            fuzzPoolParams(testLocals.poolParams);
+        }
+
         if (testLocals.shouldTestDecimals) {
             decimalsTokenA = bound(testLocals.newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
             decimalsTokenB = bound(testLocals.newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
 
             _setTokenDecimalsInPool();
-        }
-
-        if (testLocals.shouldFuzzPoolParams) {
-            fuzzPoolParams(testLocals.poolParams);
         }
 
         uint256 maxAmountOut = maxSwapAmountTokenB;
