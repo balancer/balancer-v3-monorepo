@@ -172,13 +172,6 @@ interface IProtocolFeeController {
     function vault() external view returns (IVault);
 
     /**
-     * @notice Return the maximum swap and yield protocol fee percentages.
-     * @return maxProtocolSwapFeePercentage The maximum protocol swap fee percentage
-     * @return maxProtocolYieldFeePercentage The maximum protocol yield fee percentage
-     */
-    function getMaximumProtocolFeePercentages() external pure returns (uint256, uint256);
-
-    /**
      * @notice Collects aggregate fees from the Vault for a given pool.
      * @param pool The pool with aggregate fees
      */
@@ -296,13 +289,6 @@ interface IProtocolFeeController {
      * @param pool The pool for which we are setting the protocol yield fee
      */
     function updateProtocolYieldFeePercentage(address pool) external;
-
-    /**
-     * @notice Ensure the proposed fee can be stored in the Vault without precision loss.
-     * @dev Fees are stored with 24 bit precision. The function will revert with `FeePrecisionTooHigh` if invalid.
-     * @param feePercentage The percentage to be checked
-     */
-    function ensureValidPrecision(uint256 feePercentage) external pure;
 
     /***************************************************************************
                                 Permissioned Functions
