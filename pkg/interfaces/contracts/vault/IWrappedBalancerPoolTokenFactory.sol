@@ -12,8 +12,8 @@ interface IWrappedBalancerPoolTokenFactory {
      */
     error WrappedBPTAlreadyExists(address wrappedToken);
 
-    /// @notice The Balancer pool token has not been initialized.
-    error BalancerPoolTokenNotInitialized();
+    /// @notice The Balancer pool token has not been registered.
+    error BalancerPoolTokenNotRegistered();
 
     /**
      * @notice A new wrapped token was created.
