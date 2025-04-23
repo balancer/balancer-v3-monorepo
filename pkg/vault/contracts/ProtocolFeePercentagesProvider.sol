@@ -111,11 +111,16 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
 
     /// @inheritdoc IProtocolFeePercentagesProvider
     function setProtocolFeePercentagesForPools(address factory, address[] memory pools) external {
+        // Note that unless the factory fees were previously set in `setFactorySpecificProtocolFeePercentages` above,
+        // this getter will revert. The fee setter function validates the factory with the `BalancerContractRegistry`,
+        // so we know it is a valid Balancer pool factory.
         FactoryProtocolFees memory factoryFees = _getValidatedProtocolFees(factory);
 
         for (uint256 i = 0; i < pools.length; ++i) {
             address currentPool = pools[i];
 
+            // We know from the logic above that the factory is valid. Now also check that the given pool actually
+            // comes from that factory.
             if (IBasePoolFactory(factory).isPoolFromFactory(currentPool) == false) {
                 revert PoolNotFromFactory(currentPool, factory);
             }
