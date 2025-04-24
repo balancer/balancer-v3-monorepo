@@ -801,6 +801,8 @@ contract E2eSwapTest is BaseVaultTest {
         }
 
         {
+            // `exactAmountInDo` could be bigger than the actual balance of the pool, since the first swap paid fees
+            // and pool creator is 100% (no LP fees).
             BaseVaultTest.Balances memory balancesMiddle = getBalances(sender, Rounding.ROUND_DOWN);
             vm.assume(exactAmountInDo < balancesMiddle.poolTokens[tokenAIdx]);
         }
