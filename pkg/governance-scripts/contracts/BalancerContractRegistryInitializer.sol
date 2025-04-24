@@ -88,6 +88,8 @@ contract BalancerContractRegistryInitializer {
             revert AlreadyInitialized();
         }
 
+        _initialized = true;
+
         // Grant permissions to register contracts and add aliases.
         bytes32 registerContractRole = IAuthentication(address(balancerContractRegistry)).getActionId(
             IBalancerContractRegistry.registerBalancerContract.selector
@@ -110,8 +112,6 @@ contract BalancerContractRegistryInitializer {
         ) {
             revert PermissionNotGranted();
         }
-
-        _initialized = true;
 
         // Add Routers.
         for (uint256 i = 0; i < numRouters; ++i) {
