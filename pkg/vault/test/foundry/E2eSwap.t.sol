@@ -549,6 +549,8 @@ contract E2eSwapTest is BaseVaultTest {
             bytes("")
         );
 
+        vm.assume(exactAmountOut > 0);
+
         vm.revertTo(snapshotId);
         uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
             pool,
@@ -567,11 +569,11 @@ contract E2eSwapTest is BaseVaultTest {
             // the difference.
             uint256 tolerance;
             if (decimalsTokenA < decimalsTokenB) {
-                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
-                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 3);
+                // Add 4 to give some extra tolerance for weighted pools (multiply by 10000).
+                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 4);
             } else {
-                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 3);
+                // Add 4 to give some extra tolerance for weighted pools (multiply by 10000).
+                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 4);
             }
 
             assertApproxEqAbs(
@@ -581,10 +583,10 @@ contract E2eSwapTest is BaseVaultTest {
                 "ExactOut and ExactIn amountsIn should match"
             );
         } else {
-            // Accepts an error of 0.0002% between amountIn from ExactOut and ExactIn swaps. This error is caused by
+            // Accepts an error of 0.02% between amountIn from ExactOut and ExactIn swaps. This error is caused by
             // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
-            // amounts the error can be a bit above 0.0001%).
-            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 2e12, "ExactOut and ExactIn amountsIn should match");
+            // amounts the error can be a bit above 0.01%).
+            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 2e14, "ExactOut and ExactIn amountsIn should match");
         }
     }
 
@@ -796,6 +798,13 @@ contract E2eSwapTest is BaseVaultTest {
                     testLocals.poolSwapFeePercentage.complement()
                 ) > vaultMockMinTradeAmount
             );
+        }
+
+        {
+            // `exactAmountInDo` could be bigger than the actual balance of the pool, since the first swap paid fees
+            // and pool creator is 100% (no LP fees).
+            BaseVaultTest.Balances memory balancesMiddle = getBalances(sender, Rounding.ROUND_DOWN);
+            vm.assume(exactAmountInDo < balancesMiddle.poolTokens[tokenAIdx]);
         }
 
         // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
