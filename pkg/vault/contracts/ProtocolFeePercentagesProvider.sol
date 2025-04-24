@@ -146,8 +146,10 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         }
     }
 
-    // These are permissioned functions on `ProtocolFeeController`, so governance will need to allow this contract
-    // to call `setProtocolSwapFeePercentage` and `setProtocolYieldFeePercentage`.
+    /**
+     * @dev These are permissioned functions on `ProtocolFeeController`, so governance will need to allow this contract
+     * to call `setProtocolSwapFeePercentage` and `setProtocolYieldFeePercentage`.
+     */
     function _setPoolProtocolFees(
         address pool,
         uint256 protocolSwapFeePercentage,
@@ -157,7 +159,10 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         _protocolFeeController.setProtocolYieldFeePercentage(pool, protocolYieldFeePercentage);
     }
 
-    // Duplicate this function from the `ProtocolFeeController`, as it isn't exposed in the deployed version.
+    /**
+     * @dev This is a duplicate of the corresponding function in `ProtocolFeeController`, as it isn't exposed in the
+     * deployed version of the contract.
+     */
     function _ensureValidPrecision(uint256 feePercentage) private pure {
         // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
         // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
