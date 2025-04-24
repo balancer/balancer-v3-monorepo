@@ -13,11 +13,11 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-// Associated with `20250221-balancer-registry-initializer`.
+// Associated with `20250411-balancer-registry-initializer-v2`.
 contract BalancerContractRegistryInitializer {
     IBalancerContractRegistry public immutable balancerContractRegistry;
 
-    // IAuthorizer with interface for granting/revoking roles.
+    // IAuthorizer with interface for verifying/revoking roles.
     IBasicAuthorizer internal immutable _authorizer;
 
     // Set to true when operation is complete.
@@ -37,6 +37,9 @@ contract BalancerContractRegistryInitializer {
 
     /// @notice The Vault passed in as a sanity check doesn't match the Vault associated with the registry.
     error VaultMismatch();
+
+    /// @notice A permission required to complete the initialization was not granted.
+    error PermissionNotGranted();
 
     constructor(
         IVault vault,
@@ -70,6 +73,15 @@ contract BalancerContractRegistryInitializer {
         _authorizer = IBasicAuthorizer(address(vault.getAuthorizer()));
     }
 
+    /**
+     * @notice The function that initializes the Balancer contract registry, based on the data supplied on deployment.
+     * @dev This function can only be called once. This contract must be granted permission to call two functions on
+     * the `BalancerContractRegistry` being initialized: `registerBalancerContract` and
+     * `addOrUpdateBalancerContractAlias`. If this is not done, it will revert with `PermissionNotGranted`.
+     *
+     * Note that this contract revokes these permissions when the initialization is complete, so this does not need
+     * to be done externally.
+     */
     function initializeBalancerContractRegistry() external {
         // Explicitly ensure this can only be called once.
         if (_initialized) {
@@ -86,11 +98,23 @@ contract BalancerContractRegistryInitializer {
             IBalancerContractRegistry.addOrUpdateBalancerContractAlias.selector
         );
 
-        _authorizer.grantRole(registerContractRole, address(this));
-        _authorizer.grantRole(addAliasRole, address(this));
+        // Ensure the contract has been granted the required permissions, given the deployment parameters.
+        uint256 numPoolFactories = _poolFactoryNames.length;
+        uint256 numRouters = _routerNames.length;
+        uint256 numAliases = _aliasNames.length;
+
+        if (
+            ((numRouters > 0 || numPoolFactories > 0) &&
+                _authorizer.canPerform(registerContractRole, address(this), address(balancerContractRegistry)) ==
+                false) ||
+            (numAliases > 0 &&
+                _authorizer.canPerform(addAliasRole, address(this), address(balancerContractRegistry)) == false)
+        ) {
+            revert PermissionNotGranted();
+        }
 
         // Add Routers.
-        for (uint256 i = 0; i < _routerNames.length; ++i) {
+        for (uint256 i = 0; i < numRouters; ++i) {
             balancerContractRegistry.registerBalancerContract(
                 ContractType.ROUTER,
                 _routerNames[i],
@@ -99,7 +123,7 @@ contract BalancerContractRegistryInitializer {
         }
 
         // Add Pool Factories.
-        for (uint256 i = 0; i < _poolFactoryNames.length; ++i) {
+        for (uint256 i = 0; i < numPoolFactories; ++i) {
             balancerContractRegistry.registerBalancerContract(
                 ContractType.POOL_FACTORY,
                 _poolFactoryNames[i],
@@ -107,15 +131,13 @@ contract BalancerContractRegistryInitializer {
             );
         }
 
-        // Add (pool factory) aliases.
-        for (uint256 i = 0; i < _aliasNames.length; ++i) {
+        // Add aliases.
+        for (uint256 i = 0; i < numAliases; ++i) {
             balancerContractRegistry.addOrUpdateBalancerContractAlias(_aliasNames[i], _aliasAddresses[i]);
         }
 
         // Renounce all roles.
         _authorizer.renounceRole(registerContractRole, address(this));
         _authorizer.renounceRole(addAliasRole, address(this));
-
-        _authorizer.renounceRole(_authorizer.DEFAULT_ADMIN_ROLE(), address(this));
     }
 }
