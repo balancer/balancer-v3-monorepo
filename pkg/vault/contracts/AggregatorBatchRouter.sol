@@ -32,11 +32,8 @@ struct SwapStepLocals {
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
 contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
-    using CastingHelpers for *;
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
-    using SafeERC20 for IERC20;
-    using SafeCast for *;
 
     error InsufficientPayment();
 
