@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "./IPoolHelperCommon.sol";
-
 /**
  * @notice Maintain a set of pools that can be paused from this helper contract, vs. directly from the Vault.
  * @dev Governance can add a set of pools to this contract, then grant pause permission to accounts here, which
@@ -12,7 +10,7 @@ import "./IPoolHelperCommon.sol";
  * Note that governance must grant this contract permission to pause pools from the Vault. Unpausing is not
  * addressed here, and must still be done through the Vault.
  */
-interface IPoolPauseHelper is IPoolHelperCommon {
+interface IPoolPauseHelper {
     /**
      * @notice Pause a set of pools.
      * @dev This is a permissioned function. Governance must first grant this contract permission to call `pausePool`

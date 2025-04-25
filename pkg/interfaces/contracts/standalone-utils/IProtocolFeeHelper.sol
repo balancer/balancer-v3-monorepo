@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "./IPoolHelperCommon.sol";
-
 /**
  * @notice Maintain a set of pools whose protocol fees can be set from this helper contract, vs. the fee controller.
  * @dev Governance can add a set of pools to this contract, then grant permission to call protocol swap- or yield-
@@ -12,7 +10,7 @@ import "./IPoolHelperCommon.sol";
  * Note that governance must grant this contract permission to call the pool protocol fee setting functions on the
  * controller.
  */
-interface IProtocolFeeHelper is IPoolHelperCommon {
+interface IProtocolFeeHelper {
     /***************************************************************************
                                     Manage Pools
     ***************************************************************************/
