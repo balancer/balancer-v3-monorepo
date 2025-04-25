@@ -71,6 +71,11 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     }
 
     /// @inheritdoc IProtocolFeePercentagesProvider
+    function getBalancerContractRegistry() external view returns (IBalancerContractRegistry) {
+        return _trustedContractRegistry;
+    }
+
+    /// @inheritdoc IProtocolFeePercentagesProvider
     function getFactorySpecificProtocolFeePercentages(
         address factory
     ) external view returns (uint256 protocolSwapFeePercentage, uint256 protocolYieldFeePercentage) {
