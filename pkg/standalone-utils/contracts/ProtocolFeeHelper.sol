@@ -2,19 +2,14 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 import { IProtocolFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeHelper.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { PoolHelperCommon } from "./PoolHelperCommon.sol";
 
 contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
-    modifier withKnownPool(address pool) {
+    modifier withValidPool(address pool) {
         _ensurePoolAdded(pool);
         _;
     }
@@ -31,7 +26,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolSwapFeePercentage(
         address pool,
         uint256 newProtocolSwapFeePercentage
-    ) external withKnownPool(pool) authenticate {
+    ) external withValidPool(pool) authenticate {
         _getProtocolFeeController().setProtocolSwapFeePercentage(pool, newProtocolSwapFeePercentage);
     }
 
@@ -39,7 +34,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolYieldFeePercentage(
         address pool,
         uint256 newProtocolYieldFeePercentage
-    ) external withKnownPool(pool) authenticate {
+    ) external withValidPool(pool) authenticate {
         _getProtocolFeeController().setProtocolYieldFeePercentage(pool, newProtocolYieldFeePercentage);
     }
 
