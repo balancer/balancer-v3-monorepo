@@ -59,9 +59,30 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         IERC20 feeToken,
         uint256 minTargetTokenAmountOut,
         uint256 deadline,
+        IProtocolFeeBurner feeBurner
+    ) external nonReentrant onlyFeeRecipientOrGovernance {
+        _sweepProtocolFeesForToken(pool, feeToken, minTargetTokenAmountOut, deadline, feeBurner, false);
+    }
+
+    /// @inheritdoc IProtocolFeeSweeper
+    function sweepProtocolFeesForWrappedToken(
+        address pool,
+        IERC20 feeToken,
+        uint256 minTargetTokenAmountOut,
+        uint256 deadline,
+        IProtocolFeeBurner feeBurner
+    ) external nonReentrant onlyFeeRecipientOrGovernance {
+        _sweepProtocolFeesForToken(pool, feeToken, minTargetTokenAmountOut, deadline, feeBurner, true);
+    }
+
+    function _sweepProtocolFeesForToken(
+        address pool,
+        IERC20 feeToken,
+        uint256 minTargetTokenAmountOut,
+        uint256 deadline,
         IProtocolFeeBurner feeBurner,
         bool shouldUnwrap
-    ) external nonReentrant onlyFeeRecipientOrGovernance {
+    ) internal {
         bool feeBurnerProvided = _getValidFeeBurner(feeBurner);
 
         uint256 existingBalance = feeToken.balanceOf(address(this));

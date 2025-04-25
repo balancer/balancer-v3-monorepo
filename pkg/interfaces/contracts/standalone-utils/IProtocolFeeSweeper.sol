@@ -95,15 +95,30 @@ interface IProtocolFeeSweeper {
      * @param minTargetTokenAmountOut The minimum number of target tokens to be received
      * @param deadline Deadline for the burn operation (swap), after which it will revert
      * @param feeBurner The protocol fee burner to be used (or the zero address to fall back on direct transfer)
-     * @param shouldUnwrap Whether to unwrap the target token before burning
      */
     function sweepProtocolFeesForToken(
         address pool,
         IERC20 feeToken,
         uint256 minTargetTokenAmountOut,
         uint256 deadline,
-        IProtocolFeeBurner feeBurner,
-        bool shouldUnwrap
+        IProtocolFeeBurner feeBurner
+    ) external;
+
+    /**
+     * @notice The same as `sweepProtocolFeesForToken`, but for wrapped tokens.
+     *
+     * @param pool The pool that incurred the fees we're withdrawing
+     * @param feeToken The fee token in the pool
+     * @param minTargetTokenAmountOut The minimum number of target tokens to be received
+     * @param deadline Deadline for the burn operation (swap), after which it will revert
+     * @param feeBurner The protocol fee burner to be used (or the zero address to fall back on direct transfer)
+     */
+    function sweepProtocolFeesForWrappedToken(
+        address pool,
+        IERC20 feeToken,
+        uint256 minTargetTokenAmountOut,
+        uint256 deadline,
+        IProtocolFeeBurner feeBurner
     ) external;
 
     /**

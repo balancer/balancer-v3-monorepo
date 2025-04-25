@@ -113,7 +113,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         emit IProtocolFeeBurner.ProtocolFeeBurned(pool, dai, DEFAULT_AMOUNT, usdc, DEFAULT_AMOUNT, feeRecipient);
 
         vm.startPrank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, orderDeadline, cowSwapFeeBurner, false);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, orderDeadline, cowSwapFeeBurner);
 
         assertEq(
             dai.balanceOf(address(cowSwapFeeBurner)),

@@ -66,6 +66,12 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
             IAuthentication(address(feeSweeper)).getActionId(IProtocolFeeSweeper.sweepProtocolFeesForToken.selector),
             admin
         );
+        authorizer.grantRole(
+            IAuthentication(address(feeSweeper)).getActionId(
+                IProtocolFeeSweeper.sweepProtocolFeesForWrappedToken.selector
+            ),
+            admin
+        );
 
         // Allow the fee sweeper to withdraw protocol fees.
         authorizer.grantRole(
@@ -237,14 +243,14 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, dai, DEFAULT_AMOUNT, feeRecipient);
 
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, MAX_UINT256, IProtocolFeeBurner(address(0)), false);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, MAX_UINT256, IProtocolFeeBurner(address(0)));
 
         vm.expectEmit();
         emit IProtocolFeeSweeper.ProtocolFeeSwept(pool, usdc, DEFAULT_AMOUNT, feeRecipient);
 
         // Fee recipient can also sweep fees.
         vm.prank(feeRecipient);
-        feeSweeper.sweepProtocolFeesForToken(pool, usdc, 0, MAX_UINT256, IProtocolFeeBurner(address(0)), false);
+        feeSweeper.sweepProtocolFeesForToken(pool, usdc, 0, MAX_UINT256, IProtocolFeeBurner(address(0)));
 
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
         assertEq(usdc.balanceOf(address(feeController)), 0, "USDC not withdrawn");
@@ -286,7 +292,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(feeRecipient)), DEFAULT_AMOUNT * 2, "USDC not forwarded");
     }
 
-    function testSweepProtocolFeesForTokenBurnerWithUnwrap() public {
+    function testSweepProtocolFeesForWrappedToken() public {
         // Set up the sweeper to be able to burn.
         vm.prank(admin);
         feeSweeper.setTargetToken(usdc);
@@ -301,7 +307,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         emit IProtocolFeeBurner.ProtocolFeeBurned(waDAIPool, dai, finalAmount, usdc, finalAmount, feeRecipient);
 
         vm.prank(admin);
-        feeSweeper.sweepProtocolFeesForToken(waDAIPool, waDAI, 0, MAX_UINT256, feeBurner, true);
+        feeSweeper.sweepProtocolFeesForWrappedToken(waDAIPool, waDAI, 0, MAX_UINT256, feeBurner);
 
         assertEq(waDAI.balanceOf(address(feeController)), 0, "waDAI not withdrawn");
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
@@ -347,7 +353,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
 
         vm.expectRevert(IProtocolFeeBurner.SwapDeadline.selector);
         vm.prank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, 0, feeBurner, false);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, 0, feeBurner);
     }
 
     function testSwapLimits() public {
@@ -372,7 +378,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
             )
         );
         vm.prank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, MAX_UINT256, feeBurner, false);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, MAX_UINT256, feeBurner);
     }
 
     function testApprovedBurnerGetter() public view {
@@ -468,11 +474,11 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         );
 
         vm.prank(admin);
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, MAX_UINT256, feeBurner2, false);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, 0, MAX_UINT256, feeBurner2);
     }
 
     function _defaultSweep(address pool, IERC20 token) private {
         // No limit and max deadline
-        feeSweeper.sweepProtocolFeesForToken(pool, token, 0, MAX_UINT256, feeBurner, false);
+        feeSweeper.sweepProtocolFeesForToken(pool, token, 0, MAX_UINT256, feeBurner);
     }
 }
