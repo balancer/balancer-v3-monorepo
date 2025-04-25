@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IBalancerContractRegistry } from "../standalone-utils/IBalancerContractRegistry.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 
 interface IProtocolFeePercentagesProvider {
@@ -48,7 +49,13 @@ interface IProtocolFeePercentagesProvider {
      * @notice Get the address of the `ProtocolFeeController` used to set fees.
      * @return protocolFeeController The address of the fee controller
      */
-    function getProtocolFeeController() external view returns (IProtocolFeeController);
+    function getProtocolFeeController() external view returns (IProtocolFeeController protocolFeeController);
+
+    /**
+     * @notice Get the address of the `BalancerContractRegistry` used to validate factory contracts.
+     * @return balancerContractRegistry The address of the Balancer contract registry
+     */
+    function getBalancerContractRegistry() external view returns (IBalancerContractRegistry balancerContractRegistry);
 
     /**
      * @notice Query the protocol fee percentages for a given factory.
