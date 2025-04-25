@@ -2,17 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 import { IPoolSwapFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolSwapFeeHelper.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { PoolHelperCommon } from "./PoolHelperCommon.sol";
 
 contract PoolSwapFeeHelper is IPoolSwapFeeHelper, PoolHelperCommon {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
     constructor(IVault vault) PoolHelperCommon(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
