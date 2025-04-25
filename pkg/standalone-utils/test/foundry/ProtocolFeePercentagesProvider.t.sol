@@ -17,13 +17,12 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
+import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/ProtocolFeeController.sol";
+import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ProtocolFeePercentagesProvider } from "../../contracts/ProtocolFeePercentagesProvider.sol";
-import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
-import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
-
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { BalancerContractRegistry } from "../../contracts/BalancerContractRegistry.sol";
 
 contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
     address internal constant INVALID_ADDRESS = address(0x1234);
