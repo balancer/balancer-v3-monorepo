@@ -20,7 +20,7 @@ type SolcConfig = {
 
 // The coverage report doesn't work well with via-ir flags, so we disable it
 const viaIR = !(process.env.COVERAGE === 'true' ? true : false);
-const optimizerSteps =
+export const DEFAULT_OPTIMIZER_STEPS =
   'dhfoDgvulfnTUtnIf [ xa[r]EscLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LSsTFOtfDnca[r]Iulc ] jmul[jul] VcTOcul jmul : fDnTOcmu';
 
 export const compilers: SolcConfig[] = [
@@ -34,7 +34,7 @@ export const compilers: SolcConfig[] = [
         runs: 9999,
         details: {
           yulDetails: {
-            optimizerSteps,
+            optimizerSteps: DEFAULT_OPTIMIZER_STEPS,
           },
         },
       },
@@ -50,7 +50,7 @@ export const compilers: SolcConfig[] = [
         runs: 9999,
         details: {
           yulDetails: {
-            optimizerSteps,
+            optimizerSteps: DEFAULT_OPTIMIZER_STEPS,
           },
         },
       },
@@ -133,7 +133,7 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
           runs: contractSettings[contract].runs,
           details: {
             yulDetails: {
-              optimizerSteps,
+              optimizerSteps: DEFAULT_OPTIMIZER_STEPS,
             },
           },
         },
