@@ -35,14 +35,17 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    error InsufficientPayment();
+    /**
+     * @notice  Not enough tokens sent to cover the operation amount.
+     * @param senderCredits Amounts needed to cover the operation
+     * @param senderDebits Amounts sent by the sender
+     */
+    error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
 
     constructor(
         IVault vault,
-        IWETH weth,
-        IPermit2 permit2,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
+    ) BatchRouterCommon(vault, IWETH(address(0)), IPermit2(address(0)), routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -148,6 +151,8 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     ) internal returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
 
+        // Because tokens may repeat, we need to aggregate the total input amount and
+        // perform a settlement to prevent overflow.
         if (EVMCallModeHelpers.isStaticCall() == false) {
             for (uint256 i = 0; i < params.paths.length; ++i) {
                 SwapPathExactAmountIn memory path = params.paths[i];
@@ -157,13 +162,15 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
 
             address[] memory tokensIn = _currentSwapTokensIn().values();
             for (uint256 i = 0; i < tokensIn.length; ++i) {
-                uint256 amount = _currentSwapTokenInAmounts().tGet(tokensIn[i]);
-                uint256 tokenInCredit = _vault.settle(IERC20(tokensIn[i]), amount);
+                address tokenIn = tokensIn[i];
+
+                uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+                uint256 tokenInCredit = _vault.settle(IERC20(tokenIn), amount);
                 if (tokenInCredit < amount) {
-                    revert InsufficientPayment();
+                    revert InsufficientFunds(tokenIn, tokenInCredit, amount);
                 }
 
-                _currentSwapTokenInAmounts().tSet(tokensIn[i], 0);
+                _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             }
         }
 
@@ -263,8 +270,9 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         tokensIn = _currentSwapTokensIn().values(); // Copy transient storage to memory
         amountsIn = new uint256[](tokensIn.length);
         for (uint256 i = 0; i < tokensIn.length; ++i) {
-            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokensIn[i]);
-            _currentSwapTokenInAmounts().tSet(tokensIn[i], 0);
+            address tokenIn = tokensIn[i];
+            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokenIn);
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
         }
     }
 
@@ -283,16 +291,17 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
 
         address[] memory tokensIn = _currentSwapTokensIn().values();
         for (uint256 i = 0; i < tokensIn.length; ++i) {
-            uint256 amount = _currentSwapTokenInAmounts().tGet(tokensIn[i]);
+            address tokenIn = tokensIn[i];
+            uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
 
             if (EVMCallModeHelpers.isStaticCall() == false) {
-                uint256 tokenInCredit = _vault.settle(IERC20(tokensIn[i]), amount);
+                uint256 tokenInCredit = _vault.settle(IERC20(tokenIn), amount);
                 if (tokenInCredit < amount) {
-                    revert InsufficientPayment();
+                    revert InsufficientFunds(tokenIn, tokenInCredit, amount);
                 }
             }
 
-            _currentSwapTokenInAmounts().tSet(tokensIn[i], 0);
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
         }
 
         pathAmountsIn = new uint256[](params.paths.length);

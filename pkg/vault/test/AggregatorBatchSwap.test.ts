@@ -67,7 +67,7 @@ describe('AggregatorBatchSwap', function () {
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
     router = await deploy('AggregatorBatchRouter', {
-      args: [vaultAddress, WETH, permit2, BATCH_ROUTER_VERSION],
+      args: [vaultAddress, BATCH_ROUTER_VERSION],
     });
     basicRouter = await deploy('Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
     bufferRouter = await deploy('v3-vault/BufferRouter', {
