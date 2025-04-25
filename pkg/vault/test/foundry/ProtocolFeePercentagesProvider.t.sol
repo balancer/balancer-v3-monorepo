@@ -84,6 +84,14 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         );
     }
 
+    function testGetBalancerContractRegistry() public view {
+        assertEq(
+            address(percentagesProvider.getBalancerContractRegistry()),
+            address(trustedContractRegistry),
+            "Wrong Balancer contract registry"
+        );
+    }
+
     function testGetFactorySpecificProtocolFeePercentagesUnregisteredFactory() public {
         vm.expectRevert(
             abi.encodeWithSelector(IProtocolFeePercentagesProvider.FactoryFeesNotSet.selector, INVALID_ADDRESS)
