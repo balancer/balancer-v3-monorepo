@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+/// @notice Common interface for helper functions that operate on a subset of pools.
 interface IPoolHelperCommon {
     /**
      * @notice Emitted when a pool is added to the set of pools that can be controlled by the helper contract.

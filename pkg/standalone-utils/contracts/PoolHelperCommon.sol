@@ -10,6 +10,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
+/// @notice Common code for helper functions that operate on a subset of pools.
 abstract contract PoolHelperCommon is IPoolHelperCommon, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
