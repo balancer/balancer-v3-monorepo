@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
@@ -58,7 +59,8 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
         IERC20 feeToken,
         uint256 minTargetTokenAmountOut,
         uint256 deadline,
-        IProtocolFeeBurner feeBurner
+        IProtocolFeeBurner feeBurner,
+        bool shouldUnwrap
     ) external nonReentrant onlyFeeRecipientOrGovernance {
         bool feeBurnerProvided = _getValidFeeBurner(feeBurner);
 
@@ -85,6 +87,13 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
                 if (feeToken == targetToken) {
                     _transferFeeToken(pool, feeToken, withdrawnBalance);
                 } else {
+                    if (shouldUnwrap) {
+                        IERC4626 erc4626Token = IERC4626(address(feeToken));
+
+                        feeToken = IERC20(erc4626Token.asset());
+                        withdrawnBalance = erc4626Token.redeem(withdrawnBalance, address(this), address(this));
+                    }
+
                     // We must revert if this allowance is not entirely consumed by the burner, to avoid exploitable
                     // "hanging approvals." The order may be asynchronous, but it must pull the tokens immediately.
                     feeToken.forceApprove(address(feeBurner), withdrawnBalance);
