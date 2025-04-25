@@ -9,7 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { PoolHelperCommon } from "./PoolHelperCommon.sol";
 
 contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
-    modifier withValidPool(address pool) {
+    modifier withAddedPool(address pool) {
         _ensurePoolAdded(pool);
         _;
     }
@@ -26,7 +26,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolSwapFeePercentage(
         address pool,
         uint256 newProtocolSwapFeePercentage
-    ) external withValidPool(pool) authenticate {
+    ) external withAddedPool(pool) authenticate {
         _getProtocolFeeController().setProtocolSwapFeePercentage(pool, newProtocolSwapFeePercentage);
     }
 
@@ -34,7 +34,7 @@ contract ProtocolFeeHelper is IProtocolFeeHelper, PoolHelperCommon {
     function setProtocolYieldFeePercentage(
         address pool,
         uint256 newProtocolYieldFeePercentage
-    ) external withValidPool(pool) authenticate {
+    ) external withAddedPool(pool) authenticate {
         _getProtocolFeeController().setProtocolYieldFeePercentage(pool, newProtocolYieldFeePercentage);
     }
 
