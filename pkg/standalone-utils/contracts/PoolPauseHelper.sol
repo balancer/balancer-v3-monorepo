@@ -2,17 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
 import { IPoolPauseHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolPauseHelper.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { PoolHelperCommon } from "./PoolHelperCommon.sol";
 
 contract PoolPauseHelper is IPoolPauseHelper, PoolHelperCommon {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
     constructor(IVault vault) PoolHelperCommon(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -26,9 +21,7 @@ contract PoolPauseHelper is IPoolPauseHelper, PoolHelperCommon {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; i++) {
             address pool = pools[i];
-            if (_pools.contains(pool) == false) {
-                revert PoolNotInSet(pool);
-            }
+            _ensurePoolAdded(pool);
 
             getVault().pausePool(pool);
         }
