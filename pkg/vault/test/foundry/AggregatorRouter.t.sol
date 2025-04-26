@@ -24,7 +24,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract AggregatorsRouterTest is BaseVaultTest {
+contract AggregatorRouterTest is BaseVaultTest {
     using Address for address payable;
     using CastingHelpers for address[];
     using ArrayHelpers for *;
@@ -32,7 +32,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
     uint256 constant MIN_SWAP_AMOUNT = 1e6;
     string constant version = "test";
 
-    AggregatorRouter internal aggregatorsRouter;
+    AggregatorRouter internal aggregatorRouter;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -42,7 +42,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
-        aggregatorsRouter = deployAggregatorsRouter(IVault(address(vault)), version);
+        aggregatorRouter = deployAggregatorRouter(IVault(address(vault)), version);
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
@@ -76,7 +76,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
 
     function testGetVault() public view {
         assertNotEq(address(vault), address(0), "Vault not set");
-        assertEq(address(aggregatorsRouter.getVault()), address(vault), "Wrong vault");
+        assertEq(address(aggregatorRouter.getVault()), address(vault), "Wrong vault");
     }
 
     /************************************
@@ -86,7 +86,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
     function testQuerySwapExactIn() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        aggregatorsRouter.querySwapSingleTokenExactIn(pool, usdc, dai, MIN_SWAP_AMOUNT, address(this), bytes(""));
+        aggregatorRouter.querySwapSingleTokenExactIn(pool, usdc, dai, MIN_SWAP_AMOUNT, address(this), bytes(""));
     }
 
     function testSwapExactInMinAmountOut() public {
@@ -94,7 +94,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT, DEFAULT_AMOUNT + 1));
-        aggregatorsRouter.swapSingleTokenExactIn(
+        aggregatorRouter.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -110,7 +110,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
-        aggregatorsRouter.swapSingleTokenExactIn(
+        aggregatorRouter.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -132,7 +132,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         dai.transfer(address(vault), insufficientAmount);
         vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
-        aggregatorsRouter.swapSingleTokenExactIn(
+        aggregatorRouter.swapSingleTokenExactIn(
             address(pool),
             dai,
             usdc,
@@ -155,7 +155,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         dai.transfer(address(vault), partialTransfer);
         vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
-        aggregatorsRouter.swapSingleTokenExactIn(
+        aggregatorRouter.swapSingleTokenExactIn(
             address(pool),
             dai,
             usdc,
@@ -177,7 +177,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         // First query the swap.
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountOut = aggregatorsRouter.querySwapSingleTokenExactIn(
+        uint256 queryAmountOut = aggregatorRouter.querySwapSingleTokenExactIn(
             address(pool),
             dai,
             usdc,
@@ -191,7 +191,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         // Then execute the actual swap.
         vm.startPrank(alice);
         dai.transfer(address(vault), swapAmountExactIn);
-        uint256 actualAmountOut = aggregatorsRouter.swapSingleTokenExactIn(
+        uint256 actualAmountOut = aggregatorRouter.swapSingleTokenExactIn(
             address(pool),
             dai,
             usdc,
@@ -212,7 +212,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), swapAmount);
 
-        uint256 outputTokenAmount = aggregatorsRouter.swapSingleTokenExactIn(
+        uint256 outputTokenAmount = aggregatorRouter.swapSingleTokenExactIn(
             address(pool),
             usdc,
             dai,
@@ -234,13 +234,13 @@ contract AggregatorsRouterTest is BaseVaultTest {
     function testQuerySwapExactOut() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        aggregatorsRouter.querySwapSingleTokenExactOut(pool, dai, usdc, MAX_UINT256, address(this), bytes(""));
+        aggregatorRouter.querySwapSingleTokenExactOut(pool, dai, usdc, MAX_UINT256, address(this), bytes(""));
     }
 
     function testSwapExactOutWithoutPayment() public {
         vm.prank(alice);
         vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
-        aggregatorsRouter.swapSingleTokenExactOut(
+        aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -256,7 +256,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         dai.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT + 1, DEFAULT_AMOUNT));
-        aggregatorsRouter.swapSingleTokenExactOut(
+        aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -272,7 +272,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         dai.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
-        aggregatorsRouter.swapSingleTokenExactOut(
+        aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -294,7 +294,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         dai.transfer(address(vault), insufficientAmount);
         vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
-        aggregatorsRouter.swapSingleTokenExactOut(
+        aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -317,7 +317,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         dai.transfer(address(vault), partialTransfer);
         vm.expectRevert(IAggregatorRouter.SwapInsufficientPayment.selector);
-        aggregatorsRouter.swapSingleTokenExactOut(
+        aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -340,7 +340,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         // First query the swap.
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256 queryAmountIn = aggregatorsRouter.querySwapSingleTokenExactOut(
+        uint256 queryAmountIn = aggregatorRouter.querySwapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -354,7 +354,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         // Then execute the actual swap.
         vm.startPrank(alice);
         dai.transfer(address(vault), maxAmountIn);
-        uint256 actualAmountIn = aggregatorsRouter.swapSingleTokenExactOut(
+        uint256 actualAmountIn = aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -380,7 +380,7 @@ contract AggregatorsRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         dai.transfer(address(vault), maxAmountIn);
 
-        uint256 swapAmountExactIn = aggregatorsRouter.swapSingleTokenExactOut(
+        uint256 swapAmountExactIn = aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
             usdc,
@@ -396,12 +396,12 @@ contract AggregatorsRouterTest is BaseVaultTest {
     }
 
     function testRouterVersion() public view {
-        assertEq(aggregatorsRouter.version(), version, "Router version mismatch");
+        assertEq(aggregatorRouter.version(), version, "Router version mismatch");
     }
 
     function testSendEth() public {
         vm.deal(address(this), 1 ether);
         vm.expectRevert(IAggregatorRouter.CannotReceiveEth.selector);
-        payable(aggregatorsRouter).sendValue(address(this).balance);
+        payable(aggregatorRouter).sendValue(address(this).balance);
     }
 }
