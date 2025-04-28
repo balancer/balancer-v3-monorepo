@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -36,11 +37,14 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     using TransientStorageHelpers for *;
 
     /**
-     * @notice  Not enough tokens sent to cover the operation amount.
+     * @notice Not enough tokens sent to cover the operation amount.
      * @param senderCredits Amounts needed to cover the operation
      * @param senderDebits Amounts sent by the sender
      */
     error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
+
+    /// @notice The operation not supported by the router.
+    error OperationNotSupported();
 
     constructor(
         IVault vault,
@@ -65,6 +69,10 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         saveSender(msg.sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
+        if (wethIsEth) {
+            revert OperationNotSupported();
+        }
+
         return
             abi.decode(
                 _vault.unlock(
@@ -74,7 +82,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
-                            wethIsEth: wethIsEth,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -95,6 +103,10 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         saveSender(msg.sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
+        if (wethIsEth) {
+            revert OperationNotSupported();
+        }
+
         return
             abi.decode(
                 _vault.unlock(
@@ -104,7 +116,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
-                            wethIsEth: wethIsEth,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )
@@ -123,7 +135,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     {
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
-        _settlePaths(params.sender, params.wethIsEth);
+        _settlePaths(params.sender, false);
     }
 
     function _swapExactInHook(
@@ -154,6 +166,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         // Because tokens may repeat, we need to aggregate the total input amount and
         // perform a settlement to prevent overflow.
         if (EVMCallModeHelpers.isStaticCall() == false) {
+            // Register the token amounts expected to be paid by the sender upfront as settled
             for (uint256 i = 0; i < params.paths.length; ++i) {
                 SwapPathExactAmountIn memory path = params.paths[i];
                 _currentSwapTokensIn().add(address(path.tokenIn));
@@ -210,7 +223,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                             limitRaw: minAmountOut
                         })
                     );
-                } else {
+                } else if (step.pool != address(stepTokenIn) && step.pool != address(step.tokenOut)) {
                     // No BPT involved in the operation: regular swap exact in.
                     (, , amountOut) = _vault.swap(
                         VaultSwapParams({
@@ -223,6 +236,8 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                             userData: params.userData
                         })
                     );
+                } else {
+                    revert OperationNotSupported();
                 }
 
                 if (stepLocals.isLastStep) {
@@ -251,7 +266,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     {
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
-        _settlePaths(params.sender, params.wethIsEth);
+        _settlePaths(params.sender, false);
     }
 
     function _swapExactOutHook(
@@ -284,6 +299,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         SwapExactOutHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsIn) {
         for (uint256 i = 0; i < params.paths.length; ++i) {
+            // Register the token amounts expected to be paid by the sender upfront as settled
             SwapPathExactAmountOut memory path = params.paths[i];
             _currentSwapTokensIn().add(address(path.tokenIn));
             _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
@@ -358,7 +374,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                             limitRaw: stepMaxAmountIn
                         })
                     );
-                } else {
+                } else if (step.pool != address(stepTokenIn) && step.pool != address(step.tokenOut)) {
                     // No BPT involved in the operation: regular swap exact out.
                     (, amountIn, ) = _vault.swap(
                         VaultSwapParams({
@@ -371,9 +387,13 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                             userData: params.userData
                         })
                     );
+                } else {
+                    revert OperationNotSupported();
                 }
 
                 if (stepLocals.isLastStep) {
+                    // Save the remaining difference between maxAmountIn and actualAmountIn,
+                    // and add it to the token out amounts for processing during settlement.
                     pathAmountsIn[i] = amountIn;
                     _currentSwapTokensOut().add(address(stepTokenIn));
                     _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
@@ -384,6 +404,16 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                 }
             }
         }
+    }
+
+    function permitBatchAndCall(
+        PermitApproval[] calldata,
+        bytes[] calldata,
+        IAllowanceTransfer.PermitBatch calldata,
+        bytes calldata,
+        bytes[] calldata
+    ) external payable override returns (bytes[] memory) {
+        revert OperationNotSupported();
     }
 
     /***************************************************************************

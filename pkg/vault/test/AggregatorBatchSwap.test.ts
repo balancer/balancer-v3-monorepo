@@ -322,6 +322,42 @@ describe('AggregatorBatchSwap', function () {
     });
 
     context('pure swaps with no nesting', () => {
+      context('should revert if path is inccorrect', () => {
+        it('should revert if the step.pool is tokenIn', async () => {
+          expect(
+            router.connect(sender).swapExactIn(
+              [
+                {
+                  tokenIn: token0,
+                  steps: [{ pool: token0, tokenOut: token1, isBuffer: false }],
+                  exactAmountIn: pathExactAmountIn,
+                  minAmountOut: pathMinAmountOut,
+                },
+              ],
+              MAX_UINT256,
+              false,
+              '0x'
+            )
+          ).to.be.revertedWithCustomError(router, 'OperationNotSupported');
+        });
+        it('should revert if the step.pool is tokenOut', async () => {
+          expect(
+            router.connect(sender).swapExactIn(
+              [
+                {
+                  tokenIn: token0,
+                  steps: [{ pool: token1, tokenOut: token0, isBuffer: false }],
+                  exactAmountIn: pathExactAmountIn,
+                  minAmountOut: pathMinAmountOut,
+                },
+              ],
+              MAX_UINT256,
+              false,
+              '0x'
+            )
+          ).to.be.revertedWithCustomError(router, 'OperationNotSupported');
+        });
+      });
       context('single path', () => {
         beforeEach(async () => {
           tokensOut = [tokens.get(2)];
@@ -894,6 +930,41 @@ describe('AggregatorBatchSwap', function () {
     });
 
     context('pure swaps with no nesting', () => {
+      it('should revert if the step.pool is tokenIn', async () => {
+        expect(
+          router.connect(sender).swapExactOut(
+            [
+              {
+                tokenIn: token0,
+                steps: [{ pool: token0, tokenOut: token1, isBuffer: false }],
+                exactAmountOut: pathExactAmountOut,
+                maxAmountIn: pathMaxAmountIn,
+              },
+            ],
+            MAX_UINT256,
+            false,
+            '0x'
+          )
+        ).to.be.revertedWithCustomError(router, 'OperationNotSupported');
+      });
+      it('should revert if the step.pool is tokenOut', async () => {
+        expect(
+          router.connect(sender).swapExactOut(
+            [
+              {
+                tokenIn: token0,
+                steps: [{ pool: token1, tokenOut: token0, isBuffer: false }],
+                exactAmountOut: pathExactAmountOut,
+                maxAmountIn: pathMaxAmountIn,
+              },
+            ],
+            MAX_UINT256,
+            false,
+            '0x'
+          )
+        ).to.be.revertedWithCustomError(router, 'OperationNotSupported');
+      });
+
       context('single path', () => {
         beforeEach(async () => {
           tokensIn = [tokens.get(0)];
