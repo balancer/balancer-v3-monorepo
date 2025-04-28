@@ -205,6 +205,11 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         _defaultSweep(pool, usdc);
     }
 
+    function testSweepForWrappedTokenNoPermission() public {
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeSweeper.sweepProtocolFeesForWrappedToken(waDAIPool, waDAI, 0, MAX_UINT256, feeBurner);
+    }
+
     function testRecoverProtocolFees() public {
         IERC20[] memory feeTokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
 
@@ -309,6 +314,7 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         vm.prank(admin);
         feeSweeper.sweepProtocolFeesForWrappedToken(waDAIPool, waDAI, 0, MAX_UINT256, feeBurner);
 
+        assertApproxEqAbs(finalAmount, DEFAULT_AMOUNT.mulUp(waDAI.getRate()), 1e3, "Incorrect USDC amount forwarded");
         assertEq(waDAI.balanceOf(address(feeController)), 0, "waDAI not withdrawn");
         assertEq(dai.balanceOf(address(feeController)), 0, "DAI not withdrawn");
         assertEq(usdc.balanceOf(address(feeController)), 0, "USDC not withdrawn");
