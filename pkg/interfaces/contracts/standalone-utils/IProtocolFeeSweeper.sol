@@ -106,7 +106,6 @@ interface IProtocolFeeSweeper {
 
     /**
      * @notice The same as `sweepProtocolFeesForToken`, but for wrapped tokens.
-     *
      * @param pool The pool that incurred the fees we're withdrawing
      * @param feeToken The fee token in the pool
      * @param minTargetTokenAmountOut The minimum number of target tokens to be received
