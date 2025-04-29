@@ -190,7 +190,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
 
         // Set a larger static fee percentage.
         uint256 staticFeePercentage = 2e16; // 2%
-        vault.manuallySetSwapFee(pool, staticFeePercentage);
+        vault.manualUnsafeSetStaticSwapFeePercentage(pool, staticFeePercentage);
 
         // Create an unbalanced state to mock an imbalance in the pool. This would normally trigger surge pricing and
         // revert due to a math underflow, but the surge logic is currently blocked because maxSurgeFeePercentage <

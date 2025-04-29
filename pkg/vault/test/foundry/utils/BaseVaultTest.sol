@@ -309,7 +309,7 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     }
 
     function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
-        vault.manuallySetSwapFee(setPool, percentage);
+        vault.manualUnsafeSetStaticSwapFeePercentage(setPool, percentage);
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {

@@ -7,9 +7,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TokenConfig, PoolRoleAccounts, LiquidityManagement } from "../../contracts/vault/VaultTypes.sol";
 
 interface IVaultExtensionMock {
-    // Used in tests to circumvent minimum swap fees.
-    function manuallySetSwapFee(address pool, uint256 swapFeePercentage) external;
-
     function manualRegisterPoolReentrancy(
         address pool,
         TokenConfig[] memory tokenConfig,

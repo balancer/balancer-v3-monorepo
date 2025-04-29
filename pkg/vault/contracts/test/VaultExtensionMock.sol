@@ -25,10 +25,6 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
         return keccak256(input);
     }
 
-    function manuallySetSwapFee(address pool, uint256 newSwapFee) external {
-        _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(newSwapFee);
-    }
-
     function manualRegisterPoolReentrancy(
         address pool,
         TokenConfig[] memory tokenConfig,
