@@ -327,6 +327,19 @@ contract ProtocolFeeSweeperTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(feeRecipient)), finalAmount, "USDC not forwarded");
     }
 
+    function testSweepProtocolFeesForWrappedTokenIfTargetTokenIsFeeToken() public {
+        // Set up the sweeper to be able to burn.
+        vm.prank(admin);
+        feeSweeper.setTargetToken(waDAI);
+
+        // Put some fees in the Vault.
+        vault.manualSetAggregateSwapFeeAmount(waDAIPool, waDAI, DEFAULT_AMOUNT);
+
+        vm.prank(admin);
+        vm.expectRevert(IProtocolFeeSweeper.UnwrapIsNotAllowed.selector);
+        feeSweeper.sweepProtocolFeesForWrappedToken(waDAIPool, waDAI, 0, MAX_UINT256, feeBurner);
+    }
+
     function testSweepProtocolFeesIfBurnerDoesNotPullTokens() public {
         // Set up the sweeper to be able to burn.
         vm.prank(admin);

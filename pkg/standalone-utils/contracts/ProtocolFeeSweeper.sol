@@ -67,12 +67,12 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
     /// @inheritdoc IProtocolFeeSweeper
     function sweepProtocolFeesForWrappedToken(
         address pool,
-        IERC20 feeToken,
+        IERC4626 feeToken,
         uint256 minTargetTokenAmountOut,
         uint256 deadline,
         IProtocolFeeBurner feeBurner
     ) external nonReentrant onlyFeeRecipientOrGovernance {
-        _sweepProtocolFeesForToken(pool, feeToken, minTargetTokenAmountOut, deadline, feeBurner, true);
+        _sweepProtocolFeesForToken(pool, IERC20(address(feeToken)), minTargetTokenAmountOut, deadline, feeBurner, true);
     }
 
     function _sweepProtocolFeesForToken(
@@ -106,6 +106,10 @@ contract ProtocolFeeSweeper is IProtocolFeeSweeper, SingletonAuthentication, Ree
 
                 // If the fee token is already the target, there's no need to swap. Simply transfer it.
                 if (feeToken == targetToken) {
+                    if (shouldUnwrap) {
+                        revert UnwrapIsNotAllowed();
+                    }
+
                     _transferFeeToken(pool, feeToken, withdrawnBalance);
                 } else {
                     if (shouldUnwrap) {

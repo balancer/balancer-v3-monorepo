@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IProtocolFeeController } from "../vault/IProtocolFeeController.sol";
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
@@ -78,6 +79,9 @@ interface IProtocolFeeSweeper {
      */
     error BurnerDidNotConsumeAllowance();
 
+    /// @notice Unwrapping is not allowed for the operation.
+    error UnwrapIsNotAllowed();
+
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
      * @dev This will withdraw the fee token from the controller to this contract, and attempt to convert and forward
@@ -114,7 +118,7 @@ interface IProtocolFeeSweeper {
      */
     function sweepProtocolFeesForWrappedToken(
         address pool,
-        IERC20 feeToken,
+        IERC4626 feeToken,
         uint256 minTargetTokenAmountOut,
         uint256 deadline,
         IProtocolFeeBurner feeBurner
