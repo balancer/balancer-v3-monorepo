@@ -16,7 +16,7 @@ contract FungibilityTest is BaseVaultTest {
         super.setUp();
 
         // Sets swap fee to 0, so we measure the real amount of minted BPTs.
-        vault.manuallySetSwapFee(pool, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
     }
 
     function testFungibilityAddUnbalanced__Fuzz(uint256 proportion) public {

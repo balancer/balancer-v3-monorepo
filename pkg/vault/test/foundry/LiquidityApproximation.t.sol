@@ -412,8 +412,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     // Utils
 
     function assertLiquidityOperationNoSwapFee() internal {
-        vault.manuallySetSwapFee(liquidityPool, 0);
-        vault.manuallySetSwapFee(swapPool, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(liquidityPool, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(swapPool, 0);
 
         // Alice and Bob have no BPT tokens.
         assertEq(IERC20(swapPool).balanceOf(alice), 0, "Alice should have 0 BPT");
