@@ -94,7 +94,7 @@ export default class ERC20TokenList {
     return new ERC20TokenList(this.tokens.slice(offset, offset + length));
   }
 
-  async push(token: ERC20TestToken, mintable: boolean = false): Promise<void> {
+  async push(token: ERC20TestToken, mintable = false): Promise<void> {
     this.tokens.push(token);
     this.tokensParams[await token.getAddress()] = {
       mintable: mintable,
