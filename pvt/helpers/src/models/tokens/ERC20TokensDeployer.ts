@@ -26,6 +26,11 @@ class ERC20TokensDeployer {
       tokenList = await tokenList.sort();
     }
 
+    for (const token of tokens) {
+      tokenList.tokensParams[await token.getAddress()] = {
+        mintable: true,
+      };
+    }
     return tokenList;
   }
 
