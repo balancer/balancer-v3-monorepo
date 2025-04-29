@@ -13,6 +13,20 @@ import 'hardhat-contract-sizer';
 import 'hardhat-resolc';
 
 import { warnings } from '@balancer-labs/v3-common/hardhat-base-config';
+import { ResolcConfig } from 'hardhat-resolc/dist/types';
+
+const resolc: ResolcConfig = {
+  version: '0.8.27',
+  compilerSource: 'npm',
+  settings: {
+    overwrite: true,
+    optimizer: {
+      enabled: true,
+      parameters: 'z',
+      fallbackOz: true,
+    },
+  },
+};
 
 const config: HardhatUserConfig = {
   networks: {
@@ -25,10 +39,7 @@ const config: HardhatUserConfig = {
     compilers: [...hardhatBaseConfig.compilers],
     overrides: { ...hardhatBaseConfig.overrides(name) },
   },
-  resolc: {
-    compilerSource: 'npm',
-    settings: {},
-  },
+  resolc,
   warnings,
 };
 
