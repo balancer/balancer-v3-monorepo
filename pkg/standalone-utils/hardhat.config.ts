@@ -3,11 +3,13 @@ import '@nomicfoundation/hardhat-ethers';
 import '@nomicfoundation/hardhat-toolbox';
 import '@typechain/hardhat';
 
-import 'hardhat-ignore-warnings';
+import 'hardhat-contract-sizer';
 import 'hardhat-gas-reporter';
+import 'hardhat-resolc';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
 import { task } from 'hardhat/config';
+import { ResolcConfig } from 'hardhat-resolc/dist/types';
 
 task('setup-smoke-test-cow-burner-contracts', 'Setup contracts for smoke testing cow burner')
   .addParam('target', 'Target token address')
@@ -46,10 +48,24 @@ task(
     }
   );
 
+const resolc: ResolcConfig = {
+  version: '0.8.27',
+  compilerSource: 'npm',
+  settings: {
+    overwrite: true,
+    optimizer: {
+      enabled: true,
+      parameters: 'z',
+      fallbackOz: true,
+    },
+  },
+};
+
 export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      polkavm: true,
     },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || '',
@@ -59,5 +75,6 @@ export default {
   solidity: {
     compilers: hardhatBaseConfig.compilers,
   },
+  resolc,
   warnings: hardhatBaseConfig.warnings,
 };

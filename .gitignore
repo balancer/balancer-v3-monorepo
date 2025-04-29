@@ -17,6 +17,8 @@ node_modules/
 # Hardhat artifacts
 artifacts/
 cache/
+artifacts-pvm/
+cache-pvm/
 
 # Build artifacts
 dist/
