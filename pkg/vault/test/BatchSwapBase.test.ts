@@ -316,7 +316,7 @@ export class BatchSwapBaseTest {
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactIn.staticCall
           : this.aggregatorRouter.connect(this.sender).swapExactIn
-      )(this.pathsExactIn, MAX_UINT256, false, '0x');
+      )(this.pathsExactIn, MAX_UINT256, '0x');
     } else {
       return (
         isStatic
@@ -428,7 +428,7 @@ export class BatchSwapBaseTest {
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactOut.staticCall
           : this.aggregatorRouter.connect(this.sender).swapExactOut
-      )(this.pathsExactOut, MAX_UINT256, false, '0x');
+      )(this.pathsExactOut, MAX_UINT256, '0x');
     } else {
       return (
         isStatic

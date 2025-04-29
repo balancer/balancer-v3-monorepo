@@ -46,7 +46,6 @@ describe('AggregatorBatchSwap', function () {
                 },
               ],
               MAX_UINT256,
-              false,
               '0x'
             )
           ).to.be.revertedWithCustomError(baseTest.aggregatorRouter, 'OperationNotSupported');
@@ -63,7 +62,6 @@ describe('AggregatorBatchSwap', function () {
                 },
               ],
               MAX_UINT256,
-              false,
               '0x'
             )
           ).to.be.revertedWithCustomError(baseTest.aggregatorRouter, 'OperationNotSupported');

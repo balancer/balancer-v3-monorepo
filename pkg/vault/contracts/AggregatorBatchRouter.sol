@@ -7,6 +7,7 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { IAggregatorBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorBatchRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -32,7 +33,7 @@ struct SwapStepLocals {
  * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
-contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
+contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -57,11 +58,10 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                                        Swaps
     ***************************************************************************/
 
-    /// @inheritdoc IBatchRouter
+    /// @inheritdoc IAggregatorBatchRouter
     function swapExactIn(
-        SwapPathExactAmountIn[] memory paths,
+        IBatchRouter.SwapPathExactAmountIn[] memory paths,
         uint256 deadline,
-        bool wethIsEth,
         bytes calldata userData
     )
         external
@@ -69,16 +69,12 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         saveSender(msg.sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
-        if (wethIsEth) {
-            revert OperationNotSupported();
-        }
-
         return
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
                         AggregatorBatchRouter.swapExactInHook,
-                        SwapExactInHookParams({
+                        IBatchRouter.SwapExactInHookParams({
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
@@ -91,11 +87,10 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
             );
     }
 
-    /// @inheritdoc IBatchRouter
+    /// @inheritdoc IAggregatorBatchRouter
     function swapExactOut(
-        SwapPathExactAmountOut[] memory paths,
+        IBatchRouter.SwapPathExactAmountOut[] memory paths,
         uint256 deadline,
-        bool wethIsEth,
         bytes calldata userData
     )
         external
@@ -103,16 +98,12 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         saveSender(msg.sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
-        if (wethIsEth) {
-            revert OperationNotSupported();
-        }
-
         return
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
                         AggregatorBatchRouter.swapExactOutHook,
-                        SwapExactOutHookParams({
+                        IBatchRouter.SwapExactOutHookParams({
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
@@ -126,7 +117,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     }
 
     function swapExactInHook(
-        SwapExactInHookParams calldata params
+        IBatchRouter.SwapExactInHookParams calldata params
     )
         external
         nonReentrant
@@ -139,7 +130,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     }
 
     function _swapExactInHook(
-        SwapExactInHookParams calldata params
+        IBatchRouter.SwapExactInHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -159,7 +150,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     }
 
     function _computePathAmountsOut(
-        SwapExactInHookParams calldata params
+        IBatchRouter.SwapExactInHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
 
@@ -168,7 +159,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         if (EVMCallModeHelpers.isStaticCall() == false) {
             // Register the token amounts expected to be paid by the sender upfront as settled
             for (uint256 i = 0; i < params.paths.length; ++i) {
-                SwapPathExactAmountIn memory path = params.paths[i];
+                IBatchRouter.SwapPathExactAmountIn memory path = params.paths[i];
                 _currentSwapTokensIn().add(address(path.tokenIn));
                 _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.exactAmountIn);
             }
@@ -188,7 +179,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         }
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
-            SwapPathExactAmountIn memory path = params.paths[i];
+            IBatchRouter.SwapPathExactAmountIn memory path = params.paths[i];
 
             // These two variables shall be updated at the end of each step to be used as inputs of the next one.
             // The initial values are the given token and amount in for the current path.
@@ -209,7 +200,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                     minAmountOut = 0;
                 }
 
-                SwapPathStep memory step = path.steps[j];
+                IBatchRouter.SwapPathStep memory step = path.steps[j];
 
                 if (step.isBuffer) {
                     (, , amountOut) = _vault.erc4626BufferWrapOrUnwrap(
@@ -257,7 +248,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     }
 
     function swapExactOutHook(
-        SwapExactOutHookParams calldata params
+        IBatchRouter.SwapExactOutHookParams calldata params
     )
         external
         nonReentrant
@@ -270,7 +261,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     }
 
     function _swapExactOutHook(
-        SwapExactOutHookParams calldata params
+        IBatchRouter.SwapExactOutHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -296,11 +287,11 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
      * Computes inputs for the path, and aggregates them by token and amounts as well in transient storage.
      */
     function _computePathAmountsIn(
-        SwapExactOutHookParams calldata params
+        IBatchRouter.SwapExactOutHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsIn) {
         for (uint256 i = 0; i < params.paths.length; ++i) {
             // Register the token amounts expected to be paid by the sender upfront as settled
-            SwapPathExactAmountOut memory path = params.paths[i];
+            IBatchRouter.SwapPathExactAmountOut memory path = params.paths[i];
             _currentSwapTokensIn().add(address(path.tokenIn));
             _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
         }
@@ -322,7 +313,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
 
         pathAmountsIn = new uint256[](params.paths.length);
         for (uint256 i = 0; i < params.paths.length; ++i) {
-            SwapPathExactAmountOut memory path = params.paths[i];
+            IBatchRouter.SwapPathExactAmountOut memory path = params.paths[i];
             // This variable shall be updated at the end of each step to be used as input of the next one.
             // The first value corresponds to the given amount out for the current path.
             uint256 stepExactAmountOut = path.exactAmountOut;
@@ -330,7 +321,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
             // Backwards iteration: the exact amount out applies to the last step, so we cannot iterate from first to
             // last. The calculated input of step (j) is the exact amount out for step (j - 1).
             for (int256 j = int256(path.steps.length - 1); j >= 0; --j) {
-                SwapPathStep memory step = path.steps[uint256(j)];
+                IBatchRouter.SwapPathStep memory step = path.steps[uint256(j)];
                 SwapStepLocals memory stepLocals;
                 stepLocals.isLastStep = (j == 0);
                 stepLocals.isFirstStep = (uint256(j) == path.steps.length - 1);
@@ -416,13 +407,17 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         revert OperationNotSupported();
     }
 
+    function multicall(bytes[] calldata) public payable override returns (bytes[] memory) {
+        revert OperationNotSupported();
+    }
+
     /***************************************************************************
                                      Queries
     ***************************************************************************/
 
-    /// @inheritdoc IBatchRouter
+    /// @inheritdoc IAggregatorBatchRouter
     function querySwapExactIn(
-        SwapPathExactAmountIn[] memory paths,
+        IBatchRouter.SwapPathExactAmountIn[] memory paths,
         address sender,
         bytes calldata userData
     )
@@ -439,7 +434,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                 _vault.quote(
                     abi.encodeCall(
                         AggregatorBatchRouter.querySwapExactInHook,
-                        SwapExactInHookParams({
+                        IBatchRouter.SwapExactInHookParams({
                             sender: address(this),
                             paths: paths,
                             deadline: type(uint256).max,
@@ -452,9 +447,9 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
             );
     }
 
-    /// @inheritdoc IBatchRouter
+    /// @inheritdoc IAggregatorBatchRouter
     function querySwapExactOut(
-        SwapPathExactAmountOut[] memory paths,
+        IBatchRouter.SwapPathExactAmountOut[] memory paths,
         address sender,
         bytes calldata userData
     )
@@ -471,7 +466,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                 _vault.quote(
                     abi.encodeCall(
                         AggregatorBatchRouter.querySwapExactOutHook,
-                        SwapExactOutHookParams({
+                        IBatchRouter.SwapExactOutHookParams({
                             sender: address(this),
                             paths: paths,
                             deadline: type(uint256).max,
@@ -485,7 +480,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     }
 
     function querySwapExactInHook(
-        SwapExactInHookParams calldata params
+        IBatchRouter.SwapExactInHookParams calldata params
     )
         external
         nonReentrant
@@ -496,7 +491,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     }
 
     function querySwapExactOutHook(
-        SwapExactOutHookParams calldata params
+        IBatchRouter.SwapExactOutHookParams calldata params
     )
         external
         nonReentrant
