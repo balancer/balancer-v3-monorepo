@@ -287,7 +287,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployAggregatorsRouter(IVault vault, string memory version) internal returns (AggregatorRouter) {
+    function deployAggregatorRouter(IVault vault, string memory version) internal returns (AggregatorRouter) {
         if (reusingArtifacts) {
             return
                 AggregatorRouter(
