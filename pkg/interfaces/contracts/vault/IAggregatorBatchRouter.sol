@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBatchRouter } from "./IBatchRouter.sol";
 
-/// @notice Interface for the `BatchRouter`, supporting multi-hop swaps.
+/// @notice Interface for the `AggregatorBatchRouter`, supporting multi-hop swaps prepaid by the caller.
 interface IAggregatorBatchRouter {
     /**
      * @notice Executes a swap operation involving multiple paths (steps), specifying exact input token amounts.
