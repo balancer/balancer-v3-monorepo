@@ -5,7 +5,7 @@ import '@typechain/hardhat';
 
 import 'hardhat-contract-sizer';
 import 'hardhat-gas-reporter';
-import 'hardhat-resolc';
+import '@parity/hardhat-polkadot-resolc';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
 import { task } from 'hardhat/config';
