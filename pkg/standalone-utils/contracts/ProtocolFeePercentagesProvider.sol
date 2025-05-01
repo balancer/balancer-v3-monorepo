@@ -46,14 +46,8 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     // Factory address => FactoryProtocolFees
     mapping(IBasePoolFactory => FactoryProtocolFees) private _factoryDefaultFeePercentages;
 
-    constructor(
-        IVault vault,
-        IProtocolFeeController protocolFeeController,
-        IBalancerContractRegistry trustedContractRegistry
-    ) SingletonAuthentication(vault) {
-        if (protocolFeeController.vault() != vault) {
-            revert WrongProtocolFeeControllerDeployment();
-        }
+    constructor(IVault vault, IBalancerContractRegistry trustedContractRegistry) SingletonAuthentication(vault) {
+        IProtocolFeeController protocolFeeController = vault.getProtocolFeeController();
 
         _protocolFeeController = protocolFeeController;
         _trustedContractRegistry = trustedContractRegistry;
