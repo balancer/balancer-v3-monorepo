@@ -42,7 +42,7 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         trustedContractRegistry = new BalancerContractRegistry(vault);
-        percentagesProvider = new ProtocolFeePercentagesProvider(vault, feeController, trustedContractRegistry);
+        percentagesProvider = new ProtocolFeePercentagesProvider(vault, trustedContractRegistry);
 
         // Mark the poolFactory as trusted, so that operations on it won't fail.
         authorizer.grantRole(
@@ -68,11 +68,6 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
 
         pools = new address[](1);
         pools[0] = pool;
-    }
-
-    function testInvalidConstruction() public {
-        vm.expectRevert(IProtocolFeePercentagesProvider.WrongProtocolFeeControllerDeployment.selector);
-        new ProtocolFeePercentagesProvider(IVault(INVALID_ADDRESS), feeController, trustedContractRegistry);
     }
 
     function testGetProtocolFeeController() public view {
