@@ -2,8 +2,9 @@ import { expect } from 'chai';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { pct } from '@balancer-labs/v3-helpers/src/numbers';
 
-import { BatchSwapBaseTest } from './BatchSwapBase.test';
-import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { BatchSwapBaseTest } from './BatchSwapBase';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { IVaultErrors__factory } from '../typechain-types';
 
 describe('BatchSwap', function () {
   const baseTest = new BatchSwapBaseTest(false);
@@ -27,6 +28,10 @@ describe('BatchSwap', function () {
 
   afterEach('clean up expected results and inputs', () => {
     baseTest.cleanVariables();
+  });
+
+  describe('common tests', () => {
+    baseTest.itCommonTests();
   });
 
   describe('batch swap given in', () => {

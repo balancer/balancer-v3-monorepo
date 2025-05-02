@@ -4,7 +4,7 @@ import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
 import { fp, fpDivDown, fpDivUp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ERC20TestToken__factory } from '@balancer-labs/v3-solidity-utils/typechain-types';
 
-import { BatchSwapBaseTest, WRAPPED_TOKEN_AMOUNT } from './BatchSwapBase.test';
+import { BatchSwapBaseTest, WRAPPED_TOKEN_AMOUNT } from './BatchSwapBase';
 
 describe('AggregatorBatchSwap', function () {
   const baseTest = new BatchSwapBaseTest(true);
@@ -29,6 +29,10 @@ describe('AggregatorBatchSwap', function () {
 
   afterEach('clean up expected results and inputs', () => {
     baseTest.cleanVariables();
+  });
+
+  describe('common tests', () => {
+    baseTest.itCommonTests();
   });
 
   describe('batch swap given in', () => {

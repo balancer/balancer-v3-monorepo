@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { VoidSigner } from 'ethers';
+import { Contract, VoidSigner } from 'ethers';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
@@ -8,7 +8,15 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { BatchRouter, Router, PoolFactoryMock, Vault, AggregatorBatchRouter } from '../typechain-types';
+import {
+  BatchRouter,
+  Router,
+  PoolFactoryMock,
+  Vault,
+  AggregatorBatchRouter,
+  ISenderGuard__factory,
+  IVaultErrors__factory,
+} from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
@@ -310,19 +318,19 @@ export class BatchSwapBaseTest {
     };
   }
 
-  private async _doSwapExactIn(isStatic: boolean): Promise<unknown> {
+  private async _doSwapExactIn(isStatic: boolean, deadline = MAX_UINT256): Promise<unknown> {
     if (this.isAggregator) {
       return (
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactIn.staticCall
           : this.aggregatorRouter.connect(this.sender).swapExactIn
-      )(this.pathsExactIn, MAX_UINT256, '0x');
+      )(this.pathsExactIn, deadline, '0x');
     } else {
       return (
         isStatic
           ? this.router.connect(this.sender).swapExactIn.staticCall
           : this.router.connect(this.sender).swapExactIn
-      )(this.pathsExactIn, MAX_UINT256, false, '0x');
+      )(this.pathsExactIn, deadline, false, '0x');
     }
   }
 
@@ -338,6 +346,72 @@ export class BatchSwapBaseTest {
     } else {
       return this.router.connect(this.zero).querySwapExactIn.staticCall(this.pathsExactIn, this.zero.address, '0x');
     }
+  }
+
+  itCommonTests() {
+    it('reverts doSwapExactIn if deadline is in the past', async () => {
+      this.pathsExactIn = [];
+      const deadline = BigInt((await ethers.provider.getBlock('latest'))!.timestamp - 1);
+      await expect(this._doSwapExactIn(false, deadline)).to.be.revertedWithCustomError(
+        {
+          interface: ISenderGuard__factory.createInterface(),
+        },
+        'SwapDeadline'
+      );
+    });
+
+    it('reverts doSwapExactOut if deadline is in the past', async () => {
+      this.pathsExactOut = [];
+      const deadline = BigInt((await ethers.provider.getBlock('latest'))!.timestamp - 1);
+      await expect(this._doSwapExactOut(false, deadline)).to.be.revertedWithCustomError(
+        {
+          interface: ISenderGuard__factory.createInterface(),
+        },
+        'SwapDeadline'
+      );
+    });
+
+    it('reverts doSwapExactIn if amount out < min amount out', async () => {
+      this.pathsExactIn = [
+        {
+          tokenIn: this.token0,
+          steps: [{ pool: this.poolA, tokenOut: this.token1, isBuffer: false }],
+          exactAmountIn: this.pathExactAmountIn,
+          minAmountOut: MAX_UINT256,
+        },
+      ];
+
+      if (this.isAggregator) {
+        await (
+          await ERC20TestToken__factory.connect(this.token0, this.sender).transfer(this.vault, this.pathExactAmountIn)
+        ).wait();
+      }
+
+      await expect(this._doSwapExactIn(false)).to.be.revertedWithCustomError(
+        {
+          interface: IVaultErrors__factory.createInterface(),
+        },
+        'SwapLimit'
+      );
+    });
+
+    it('reverts doSwapExactOut if amount in > max amount in', async () => {
+      this.pathsExactOut = [
+        {
+          tokenIn: this.token0,
+          steps: [{ pool: this.poolA, tokenOut: this.token1, isBuffer: false }],
+          exactAmountOut: this.pathExactAmountOut,
+          maxAmountIn: 0n,
+        },
+      ];
+
+      await expect(this._doSwapExactOut(false)).to.be.revertedWithCustomError(
+        {
+          interface: IVaultErrors__factory.createInterface(),
+        },
+        'SwapLimit'
+      );
+    });
   }
 
   itTestsBatchSwapExactIn(singleTransferIn = true, singleTransferOut = true) {
@@ -422,19 +496,19 @@ export class BatchSwapBaseTest {
       return this.router.connect(this.zero).querySwapExactOut.staticCall(this.pathsExactOut, this.zero.address, '0x');
   }
 
-  private async _doSwapExactOut(isStatic: boolean): Promise<unknown> {
+  private async _doSwapExactOut(isStatic: boolean, deadline = MAX_UINT256): Promise<unknown> {
     if (this.isAggregator) {
       return (
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactOut.staticCall
           : this.aggregatorRouter.connect(this.sender).swapExactOut
-      )(this.pathsExactOut, MAX_UINT256, '0x');
+      )(this.pathsExactOut, deadline, '0x');
     } else {
       return (
         isStatic
           ? this.router.connect(this.sender).swapExactOut.staticCall
           : this.router.connect(this.sender).swapExactOut
-      )(this.pathsExactOut, MAX_UINT256, false, '0x');
+      )(this.pathsExactOut, deadline, false, '0x');
     }
   }
 
