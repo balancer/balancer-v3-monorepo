@@ -42,7 +42,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
         steps = _burnSteps[feeToken];
 
         if (steps.length == 0) {
-            revert BurnPathNotExists(feeToken);
+            revert BurnPathNotExists();
         }
     }
 
@@ -56,22 +56,20 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
         address recipient,
         uint256 deadline
     ) external authenticate {
-        abi.decode(
-            getVault().unlock(
-                abi.encodeCall(
-                    BalancerFeeBurner.burnHook,
-                    BurnHookParams({
-                        pool: pool,
-                        feeToken: feeToken,
-                        feeTokenAmount: feeTokenAmount,
-                        targetToken: targetToken,
-                        minAmountOut: minAmountOut,
-                        recipient: recipient,
-                        deadline: deadline
-                    })
-                )
-            ),
-            (uint256[], address[], uint256[])
+        getVault().unlock(
+            abi.encodeCall(
+                BalancerFeeBurner.burnHook,
+                BurnHookParams({
+                    pool: pool,
+                    sender: msg.sender,
+                    feeToken: feeToken,
+                    feeTokenAmount: feeTokenAmount,
+                    targetToken: targetToken,
+                    minAmountOut: minAmountOut,
+                    recipient: recipient,
+                    deadline: deadline
+                })
+            )
         );
     }
 
@@ -89,15 +87,14 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
         SwapPathStep[] memory steps = getBurnPath(feeToken);
         uint256 lastStepIndex = steps.length - 1;
         if (steps[lastStepIndex].tokenOut != targetToken) {
-            revert BurnPathNotExists(feeToken);
+            revert TargetTokenInPathNotTheSame();
         }
 
         IVault vault = getVault();
-        // Transfer the token in to the vault.
-        feeToken.safeTransferFrom(msg.sender, address(vault), feeTokenAmount);
-        vault.settle(feeToken, feeTokenAmount);
 
-        uint256 minAmountOut = params.minAmountOut;
+        // Transfer the token in to the vault.
+        feeToken.safeTransferFrom(params.sender, address(vault), feeTokenAmount);
+        vault.settle(feeToken, feeTokenAmount);
 
         // Swap the fee token for the target token through the steps.
         IERC20 stepTokenIn = feeToken;
@@ -112,7 +109,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
                     tokenIn: stepTokenIn,
                     tokenOut: step.tokenOut,
                     amountGivenRaw: stepExactAmountIn,
-                    limitRaw: (i == lastStepIndex) ? minAmountOut : 0,
+                    limitRaw: (i == lastStepIndex) ? params.minAmountOut : 0,
                     userData: new bytes(0)
                 })
             );
