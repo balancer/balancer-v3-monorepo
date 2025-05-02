@@ -7,6 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IComposableCow.sol";
+import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import {
@@ -22,16 +23,32 @@ import { CowSwapFeeBurner } from "./CowSwapFeeBurner.sol";
  * Only one order per token is allowed at a time.
  */
 contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
+    error InvalidProtocolFeeSweeper();
+
     using SafeERC20 for IERC20;
 
+    IProtocolFeeSweeper public immutable protocolFeeSweeper;
+
+    modifier onlyProtocolFeeSweeper() {
+        if (msg.sender != address(protocolFeeSweeper)) {
+            revert SenderNotAllowed();
+        }
+        _;
+    }
+
     constructor(
+        IProtocolFeeSweeper _protocolFeeSweeper,
         IVault vault,
         IComposableCow composableCow,
         address vaultRelayer,
         bytes32 appData,
         string memory version
     ) CowSwapFeeBurner(vault, composableCow, vaultRelayer, appData, version) {
-        // solhint-disable-previous-line no-empty-blocks
+        if (address(_protocolFeeSweeper) == address(0)) {
+            revert InvalidProtocolFeeSweeper();
+        }
+
+        protocolFeeSweeper = _protocolFeeSweeper;
     }
 
     /**
@@ -54,7 +71,7 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         uint256 minTargetTokenAmountOut,
         address recipient,
         uint256 deadline
-    ) external authenticate nonReentrant override {
+    ) external onlyProtocolFeeSweeper nonReentrant override {
         // In this case we first pull the wrapped token, unwrap, and then proceed to burn by creating an order for
         // the underlying token.
         feeToken.safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);
