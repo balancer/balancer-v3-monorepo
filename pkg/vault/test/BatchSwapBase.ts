@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract, VoidSigner } from 'ethers';
+import { VoidSigner } from 'ethers';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
@@ -351,7 +351,11 @@ export class BatchSwapBaseTest {
   itCommonTests() {
     it('reverts doSwapExactIn if deadline is in the past', async () => {
       this.pathsExactIn = [];
-      const deadline = BigInt((await ethers.provider.getBlock('latest'))!.timestamp - 1);
+
+      const block = await ethers.provider.getBlock('latest');
+      if (!block) throw new Error('Block not found');
+
+      const deadline = BigInt(block.timestamp - 1);
       await expect(this._doSwapExactIn(false, deadline)).to.be.revertedWithCustomError(
         {
           interface: ISenderGuard__factory.createInterface(),
@@ -362,7 +366,10 @@ export class BatchSwapBaseTest {
 
     it('reverts doSwapExactOut if deadline is in the past', async () => {
       this.pathsExactOut = [];
-      const deadline = BigInt((await ethers.provider.getBlock('latest'))!.timestamp - 1);
+      const block = await ethers.provider.getBlock('latest');
+      if (!block) throw new Error('Block not found');
+
+      const deadline = BigInt(block.timestamp - 1);
       await expect(this._doSwapExactOut(false, deadline)).to.be.revertedWithCustomError(
         {
           interface: ISenderGuard__factory.createInterface(),

@@ -3,8 +3,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { pct } from '@balancer-labs/v3-helpers/src/numbers';
 
 import { BatchSwapBaseTest } from './BatchSwapBase';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { IVaultErrors__factory } from '../typechain-types';
+import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 
 describe('BatchSwap', function () {
   const baseTest = new BatchSwapBaseTest(false);
