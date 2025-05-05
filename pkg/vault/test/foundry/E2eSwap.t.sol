@@ -194,14 +194,15 @@ contract E2eSwapTest is BaseVaultTest {
     /**
      * @notice Fuzz specific pool parameters.
      * @dev Override this function to fuzz test parameters that are specific to a kind of pool.
+     * This function is executed after setting pool balances. Some pools may require different swap limits based on
+     * the chosen parameters for the pool state.
+     * Set `minSwapAmountTokenA`, `maxSwapAmountTokenA`, `minSwapAmountTokenB` and `maxSwapAmountTokenB` to the values
+     * that are expected to be used in the pool, and return `true` to signal that these values shall be used as
+     * limits whenever needed.
      */
     function fuzzPoolParams(
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
-    )
-        internal
-        virtual
-        returns (bool overrideSwapLimits, uint256 maxAmountInSwapExactIn, uint256 minAmountOutSwapExactOut)
-    {
+    ) internal virtual returns (bool overrideSwapLimits) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -635,9 +636,9 @@ contract E2eSwapTest is BaseVaultTest {
         }
 
         if (testLocals.shouldFuzzPoolParams) {
-            (bool shouldOverrideSwapLimits, uint256 maxSwapAmountInExactIn, ) = fuzzPoolParams(testLocals.poolParams);
+            bool shouldOverrideSwapLimits = fuzzPoolParams(testLocals.poolParams);
             if (shouldOverrideSwapLimits) {
-                maxAmountIn = maxSwapAmountInExactIn;
+                maxAmountIn = maxSwapAmountTokenA;
             }
         }
 
@@ -757,9 +758,9 @@ contract E2eSwapTest is BaseVaultTest {
         }
 
         if (testLocals.shouldFuzzPoolParams) {
-            (bool shouldOverrideSwapLimits, , uint256 maxSwapAmountOutExactOut) = fuzzPoolParams(testLocals.poolParams);
+            bool shouldOverrideSwapLimits = fuzzPoolParams(testLocals.poolParams);
             if (shouldOverrideSwapLimits) {
-                maxAmountOut = maxSwapAmountOutExactOut;
+                maxAmountOut = maxSwapAmountTokenB;
             }
         }
 

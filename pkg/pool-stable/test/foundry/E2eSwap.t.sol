@@ -145,7 +145,7 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
         uint256 newAmplificationParameter = bound(params[0], StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         _setAmplificationParameter(pool, newAmplificationParameter);
-        return (false, 0, 0);
+        return false;
     }
 
     function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {
