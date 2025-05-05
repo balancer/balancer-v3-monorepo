@@ -82,13 +82,15 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         exactFeeTokenAmountIn = erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
 
         // This case is not handled by the internal `_burn` function, but it's valid: we can consider that the token
-        // has already been converted to the correct token, so we just forward the result.
+        // has already been converted to the correct token, so we just forward the result and finish.
         if (feeToken == targetToken) {
             // We apply the slippage check, but not deadline as the order settlement is instant in this case.
             if (exactFeeTokenAmountIn < minTargetTokenAmountOut) {
                 revert AmountOutBelowMin(targetToken, exactFeeTokenAmountIn, minTargetTokenAmountOut);
             }
+
             feeToken.safeTransfer(recipient, exactFeeTokenAmountIn);
+            return;
         }
 
         _burn(
