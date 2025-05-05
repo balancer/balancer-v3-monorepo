@@ -71,7 +71,7 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         uint256 minTargetTokenAmountOut,
         address recipient,
         uint256 deadline
-    ) external onlyProtocolFeeSweeper nonReentrant override {
+    ) external override onlyProtocolFeeSweeper nonReentrant {
         // In this case we first pull the wrapped token, unwrap, and then proceed to burn by creating an order for
         // the underlying token.
         feeToken.safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);

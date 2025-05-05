@@ -137,7 +137,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Reentra
         uint256 minTargetTokenAmountOut,
         address recipient,
         uint256 deadline
-    ) external authenticate nonReentrant virtual {
+    ) external virtual authenticate nonReentrant {
         _burn(
             pool,
             feeToken,
@@ -189,7 +189,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Reentra
             deadline: uint32(deadline)
         });
 
-        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmountOut, recipient);   
+        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmountOut, recipient);
     }
 
     /***************************************************************************
