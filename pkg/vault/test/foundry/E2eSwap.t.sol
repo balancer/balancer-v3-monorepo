@@ -195,7 +195,13 @@ contract E2eSwapTest is BaseVaultTest {
      * @notice Fuzz specific pool parameters.
      * @dev Override this function to fuzz test parameters that are specific to a kind of pool.
      */
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal virtual {
+    function fuzzPoolParams(
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    )
+        internal
+        virtual
+        returns (bool overrideSwapLimits, uint256 maxAmountInSwapExactIn, uint256 minAmountOutSwapExactOut)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -612,10 +618,6 @@ contract E2eSwapTest is BaseVaultTest {
             _setTokenDecimalsInPool();
         }
 
-        if (testLocals.shouldFuzzPoolParams) {
-            fuzzPoolParams(testLocals.poolParams);
-        }
-
         uint256 maxAmountIn = maxSwapAmountTokenA;
         if (testLocals.shouldTestLiquidity) {
             testLocals.liquidityTokenA = bound(
@@ -630,6 +632,13 @@ contract E2eSwapTest is BaseVaultTest {
             );
 
             maxAmountIn = _setPoolBalancesAndGetAmountIn(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+        }
+
+        if (testLocals.shouldFuzzPoolParams) {
+            (bool shouldOverrideSwapLimits, uint256 maxSwapAmountInExactIn, ) = fuzzPoolParams(testLocals.poolParams);
+            if (shouldOverrideSwapLimits) {
+                maxAmountIn = maxSwapAmountInExactIn;
+            }
         }
 
         if (testLocals.shouldTestSwapAmount) {
@@ -731,10 +740,6 @@ contract E2eSwapTest is BaseVaultTest {
             _setTokenDecimalsInPool();
         }
 
-        if (testLocals.shouldFuzzPoolParams) {
-            fuzzPoolParams(testLocals.poolParams);
-        }
-
         uint256 maxAmountOut = maxSwapAmountTokenB;
         if (testLocals.shouldTestLiquidity) {
             testLocals.liquidityTokenA = bound(
@@ -749,6 +754,13 @@ contract E2eSwapTest is BaseVaultTest {
             );
 
             maxAmountOut = _setPoolBalancesAndGetAmountOut(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+        }
+
+        if (testLocals.shouldFuzzPoolParams) {
+            (bool shouldOverrideSwapLimits, , uint256 maxSwapAmountOutExactOut) = fuzzPoolParams(testLocals.poolParams);
+            if (shouldOverrideSwapLimits) {
+                maxAmountOut = maxSwapAmountOutExactOut;
+            }
         }
 
         if (testLocals.shouldTestSwapAmount) {

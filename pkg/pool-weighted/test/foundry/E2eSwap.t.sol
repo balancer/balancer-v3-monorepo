@@ -65,7 +65,13 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         maxSwapAmountTokenB = poolInitAmountTokenB / 10;
     }
 
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {
+    function fuzzPoolParams(
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    )
+        internal
+        override
+        returns (bool overrideSwapLimits, uint256 maxAmountInSwapExactIn, uint256 maxAmountOutSwapExactOut)
+    {
         uint256 weightTokenA = params[0];
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
@@ -77,6 +83,10 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther the weights are from 50/50, the bigger
         // the error.
         exactInOutDecimalsErrorMultiplier = 2000;
+
+        overrideSwapLimits = true;
+        maxAmountInSwapExactIn = maxSwapAmountTokenA;
+        maxAmountOutSwapExactOut = maxSwapAmountTokenB;
     }
 
     function _setMinAndMaxSwapAmountExactIn(uint256[] memory poolBalancesRaw) private {

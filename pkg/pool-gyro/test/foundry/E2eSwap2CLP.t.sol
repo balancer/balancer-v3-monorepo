@@ -87,7 +87,13 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
         maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
     }
 
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {
+    function fuzzPoolParams(
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    )
+        internal
+        override
+        returns (bool overrideSwapLimits, uint256 maxAmountInSwapExactIn, uint256 maxAmountOutSwapExactOut)
+    {
         uint256 sqrtAlpha = params[0];
         sqrtAlpha = bound(sqrtAlpha, _MINIMUM_SQRT_ALPHA, _MAXIMUM_SQRT_BETA - _MINIMUM_DIFF_ALPHA_BETA);
 
@@ -95,5 +101,6 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
         sqrtBeta = bound(sqrtBeta, sqrtAlpha + _MINIMUM_DIFF_ALPHA_BETA, _MAXIMUM_SQRT_BETA);
 
         Gyro2CLPPoolMock(pool).setSqrtParams(sqrtAlpha, sqrtBeta);
+        return (false, 0, 0);
     }
 }
