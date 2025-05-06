@@ -47,6 +47,7 @@ contract E2eSwapTest is BaseVaultTest {
     uint256 internal maxSwapAmountTokenB;
 
     uint256 internal exactInOutDecimalsErrorMultiplier = 1;
+    uint256 internal amountInExactInOutError = 2e12;
 
     // We theoretically support the full range of token decimals, but tokens with extreme values don't tend to perform
     // well in AMMs, due to precision issues with their math. The lowest decimal value in common use would be 6,
@@ -520,7 +521,12 @@ contract E2eSwapTest is BaseVaultTest {
             // Accepts an error of 0.0002% between amountIn from ExactOut and ExactIn swaps. This error is caused by
             // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
             // amounts the error can be a bit above 0.0001%).
-            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 2e12, "ExactOut and ExactIn amountsIn should match");
+            assertApproxEqRel(
+                exactAmountIn,
+                exactAmountInSwap,
+                amountInExactInOutError,
+                "ExactOut and ExactIn amountsIn should match"
+            );
         }
     }
 
@@ -593,7 +599,12 @@ contract E2eSwapTest is BaseVaultTest {
             // Accepts an error of 0.02% between amountIn from ExactOut and ExactIn swaps. This error is caused by
             // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
             // amounts the error can be a bit above 0.01%).
-            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 9e14, "ExactOut and ExactIn amountsIn should match");
+            assertApproxEqRel(
+                exactAmountIn,
+                exactAmountInSwap,
+                amountInExactInOutError,
+                "ExactOut and ExactIn amountsIn should match"
+            );
         }
     }
 
