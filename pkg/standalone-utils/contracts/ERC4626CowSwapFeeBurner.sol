@@ -90,18 +90,17 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
             }
 
             feeToken.safeTransfer(recipient, exactFeeTokenAmountIn);
-            return;
+        } else {
+            _burn(
+                pool,
+                feeToken,
+                exactFeeTokenAmountIn,
+                targetToken,
+                minTargetTokenAmountOut,
+                recipient,
+                deadline,
+                false // pullToken
+            );
         }
-
-        _burn(
-            pool,
-            feeToken,
-            exactFeeTokenAmountIn,
-            targetToken,
-            minTargetTokenAmountOut,
-            recipient,
-            deadline,
-            false // pullToken
-        );
     }
 }
