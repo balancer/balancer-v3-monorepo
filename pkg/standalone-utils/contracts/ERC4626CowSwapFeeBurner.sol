@@ -23,33 +23,15 @@ import { CowSwapFeeBurner } from "./CowSwapFeeBurner.sol";
  * Only one order per token is allowed at a time.
  */
 contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
-    error InvalidProtocolFeeSweeper();
-
     using SafeERC20 for IERC20;
-
-    IProtocolFeeSweeper public immutable protocolFeeSweeper;
-
-    modifier onlyProtocolFeeSweeper() {
-        if (msg.sender != address(protocolFeeSweeper)) {
-            revert SenderNotAllowed();
-        }
-        _;
-    }
 
     constructor(
         IProtocolFeeSweeper _protocolFeeSweeper,
-        IVault vault,
-        IComposableCow composableCow,
-        address vaultRelayer,
-        bytes32 appData,
-        string memory version
-    ) CowSwapFeeBurner(vault, composableCow, vaultRelayer, appData, version) {
-        if (address(_protocolFeeSweeper) == address(0)) {
-            revert InvalidProtocolFeeSweeper();
-        }
-
-        protocolFeeSweeper = _protocolFeeSweeper;
-    }
+        IComposableCow _composableCow,
+        address _vaultRelayer,
+        bytes32 _appData,
+        string memory _version
+    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _vaultRelayer, _appData, _version) {}
 
     /**
      * @notice Treats `feeToken` as an ERC4626, redeems `exactFeeTokenAmountIn`, swaps the underlying asset for

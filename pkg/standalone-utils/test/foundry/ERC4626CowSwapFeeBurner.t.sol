@@ -63,7 +63,6 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // of this test.
         cowSwapFeeBurner = new ERC4626CowSwapFeeBurner(
             IProtocolFeeSweeper(admin),
-            vault,
             IComposableCow(composableCowMock),
             vaultRelayerMock,
             APP_DATA_HASH,

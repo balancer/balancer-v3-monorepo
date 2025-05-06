@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 import { ICowSwapFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowSwapFeeBurner.sol";
+import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
 import { IComposableCow } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IComposableCow.sol";
 import {
     ICowConditionalOrderGenerator
@@ -33,7 +34,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, ReentrancyGuardTransient, Version {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Version {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -48,20 +49,40 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Reentra
     bytes32 internal immutable _tokenBalance = keccak256("erc20");
 
     IComposableCow public immutable composableCow;
+    IProtocolFeeSweeper public immutable protocolFeeSweeper;
     address public immutable vaultRelayer;
     bytes32 public immutable appData;
 
     // Orders are identified by the tokenIn (often called the tokenIn).
     mapping(IERC20 token => ShortOrder order) internal _orders;
 
+    modifier onlyFeeRecipient() {
+        if (msg.sender != protocolFeeSweeper.getFeeRecipient()) {
+            revert SenderNotAllowed();
+        }
+        _;
+    }
+
+    modifier onlyProtocolFeeSweeper() {
+        if (msg.sender != address(protocolFeeSweeper)) {
+            revert SenderNotAllowed();
+        }
+        _;
+    }
+
     constructor(
-        IVault _vault,
+        IProtocolFeeSweeper _protocolFeeSweeper,
         IComposableCow _composableCow,
         address _vaultRelayer,
         bytes32 _appData,
         string memory _version
-    ) SingletonAuthentication(_vault) Version(_version) {
+    ) Version(_version) {
+        if (address(_protocolFeeSweeper) == address(0)) {
+            revert InvalidProtocolFeeSweeper();
+        }
+
         composableCow = _composableCow;
+        protocolFeeSweeper = _protocolFeeSweeper;
         vaultRelayer = _vaultRelayer;
         appData = _appData;
     }
@@ -81,7 +102,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Reentra
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external authenticate {
+    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipient {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -100,7 +121,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Reentra
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function cancelOrder(IERC20 tokenIn, address receiver) external authenticate {
+    function cancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipient {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -111,7 +132,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Reentra
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external authenticate {
+    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipient {
         _cancelOrder(tokenIn, receiver, tokenIn.balanceOf(address(this)));
     }
 
@@ -137,7 +158,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Reentra
         uint256 minTargetTokenAmountOut,
         address recipient,
         uint256 deadline
-    ) external virtual authenticate nonReentrant {
+    ) external virtual onlyProtocolFeeSweeper nonReentrant {
         _burn(
             pool,
             feeToken,
