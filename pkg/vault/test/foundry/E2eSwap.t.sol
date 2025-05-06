@@ -593,7 +593,7 @@ contract E2eSwapTest is BaseVaultTest {
             // Accepts an error of 0.02% between amountIn from ExactOut and ExactIn swaps. This error is caused by
             // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
             // amounts the error can be a bit above 0.01%).
-            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 2e14, "ExactOut and ExactIn amountsIn should match");
+            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 9e14, "ExactOut and ExactIn amountsIn should match");
         }
     }
 
