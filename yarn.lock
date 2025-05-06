@@ -55,7 +55,6 @@ __metadata:
     "@nomicfoundation/ignition-core": "npm:^0.15.0"
     "@nomiclabs/hardhat-etherscan": "npm:^3.1.7"
     "@openzeppelin/contracts": "npm:^5.0.0"
-    "@parity/hardhat-polkadot-resolc": "https://gitpkg.vercel.app/paritytech/hardhat-polkadot/packages/hardhat-polkadot-resolc?main"
     "@typechain/ethers-v6": "npm:^0.4.0"
     "@typechain/hardhat": "npm:^8.0.0"
     "@types/chai": "npm:^4.3.3"
@@ -69,6 +68,7 @@ __metadata:
     hardhat-contract-sizer: "npm:^2.10.0"
     hardhat-gas-reporter: "npm:^1.0.9"
     hardhat-ignore-warnings: "npm:^0.2.11"
+    hardhat-resolc: "npm:^0.0.8"
     permit2: "https://github.com/Uniswap/permit2.git#cc56ad0f3439c502c246fc5cfcc3db92bb8b7219"
     prettier: "npm:^2.8.8"
     prettier-plugin-solidity: "npm:^1.1.3"
@@ -1459,24 +1459,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@parity/hardhat-polkadot-resolc@https://gitpkg.vercel.app/paritytech/hardhat-polkadot/packages/hardhat-polkadot-resolc?main":
-  version: 0.0.8
-  resolution: "@parity/hardhat-polkadot-resolc@https://gitpkg.vercel.app/paritytech/hardhat-polkadot/packages/hardhat-polkadot-resolc?main"
-  dependencies:
-    "@parity/revive": "npm:^0.0.21"
-    "@types/debug": "npm:^4"
-    "@types/node": "npm:^22.15.3"
-    chalk: "npm:4"
-    debug: "npm:^4.4.0"
-    solc: "npm:^0.8.28"
-    ts-node: "npm:^10.9.2"
-    typescript: "npm:^5.8.3"
-  peerDependencies:
-    hardhat: <2.23.0
-  checksum: 10c0/ab4a3dd276c3c403fefc9a4fb094c9a2838a75c0ae1a77fda1fa47431c8d043b642188ef4a721c028c88d34e2c7953f4d68475b8fbced685711d38ad4a47f41d
-  languageName: node
-  linkType: hard
-
 "@parity/revive@npm:^0.0.21":
   version: 0.0.21
   resolution: "@parity/revive@npm:0.0.21"
@@ -1871,7 +1853,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:^22.15.3, @types/node@npm:^22.9.0":
+"@types/node@npm:*, @types/node@npm:^22.9.0":
   version: 22.15.3
   resolution: "@types/node@npm:22.15.3"
   dependencies:
@@ -1900,6 +1882,15 @@ __metadata:
   version: 14.18.63
   resolution: "@types/node@npm:14.18.63"
   checksum: 10c0/626a371419a6a0e11ca460b22bb4894abe5d75c303739588bc96267e380aa8b90ba5a87bc552400584f0ac2a84b5c458dadcbcf0dfd2396ebeb765f7a7f95893
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^22.14.0":
+  version: 22.15.13
+  resolution: "@types/node@npm:22.15.13"
+  dependencies:
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/1490568417ada4cbe3a3f316c40870f7024ebca9ae60f81ca66f61f34e4f5500483c73355961746c90faa77764f8ad620973a88b97c6ff805902aea2c429c254
   languageName: node
   linkType: hard
 
@@ -2687,16 +2678,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chalk@npm:4, chalk@npm:^4.0.0, chalk@npm:^4.1.0, chalk@npm:^4.1.2":
-  version: 4.1.2
-  resolution: "chalk@npm:4.1.2"
-  dependencies:
-    ansi-styles: "npm:^4.1.0"
-    supports-color: "npm:^7.1.0"
-  checksum: 10c0/4a3fef5cc34975c898ffe77141450f679721df9dde00f6c304353fa9c8b571929123b26a0e4617bde5018977eb655b31970c297b91b63ee83bb82aeb04666880
-  languageName: node
-  linkType: hard
-
 "chalk@npm:^2.4.2":
   version: 2.4.2
   resolution: "chalk@npm:2.4.2"
@@ -2705,6 +2686,16 @@ __metadata:
     escape-string-regexp: "npm:^1.0.5"
     supports-color: "npm:^5.3.0"
   checksum: 10c0/e6543f02ec877732e3a2d1c3c3323ddb4d39fbab687c23f526e25bd4c6a9bf3b83a696e8c769d078e04e5754921648f7821b2a2acfd16c550435fd630026e073
+  languageName: node
+  linkType: hard
+
+"chalk@npm:^4.0.0, chalk@npm:^4.1.0, chalk@npm:^4.1.2":
+  version: 4.1.2
+  resolution: "chalk@npm:4.1.2"
+  dependencies:
+    ansi-styles: "npm:^4.1.0"
+    supports-color: "npm:^7.1.0"
+  checksum: 10c0/4a3fef5cc34975c898ffe77141450f679721df9dde00f6c304353fa9c8b571929123b26a0e4617bde5018977eb655b31970c297b91b63ee83bb82aeb04666880
   languageName: node
   linkType: hard
 
@@ -4295,7 +4286,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hardhat@npm:^2.14.0, hardhat@npm:^2.21.0":
+"hardhat-resolc@npm:^0.0.8":
+  version: 0.0.8
+  resolution: "hardhat-resolc@npm:0.0.8"
+  dependencies:
+    "@parity/revive": "npm:^0.0.21"
+    "@types/debug": "npm:^4"
+    "@types/node": "npm:^22.14.0"
+    debug: "npm:^4.4.0"
+    hardhat: "npm:^2.23.0"
+    solc: "npm:^0.8.28"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.8.3"
+  checksum: 10c0/018a2c000cd234f8a03d645b4780e97adf328731cda949e1fd570f8f668068238d4f7ef18ebb75e3c24e7aec2e6b664877d679ea9e0a382dd1b596921d07650c
+  languageName: node
+  linkType: hard
+
+"hardhat@npm:^2.14.0, hardhat@npm:^2.21.0, hardhat@npm:^2.23.0":
   version: 2.23.0
   resolution: "hardhat@npm:2.23.0"
   dependencies:

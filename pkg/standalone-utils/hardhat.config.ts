@@ -5,7 +5,7 @@ import '@typechain/hardhat';
 
 import 'hardhat-contract-sizer';
 import 'hardhat-gas-reporter';
-import '@parity/hardhat-polkadot-resolc';
+import 'hardhat-resolc';
 
 import { hardhatBaseConfig } from '@balancer-labs/v3-common';
 import { task } from 'hardhat/config';
@@ -50,7 +50,7 @@ task(
 
 const resolc: ResolcConfig = {
   version: '0.8.27',
-  compilerSource: 'npm',
+  compilerSource: 'binary',
   settings: {
     overwrite: true,
     optimizer: {
@@ -58,6 +58,8 @@ const resolc: ResolcConfig = {
       parameters: 'z',
       fallbackOz: true,
     },
+    compilerPath: '../../resolc-x86_64-unknown-linux-musl',
+    standardJson: true,
   },
 };
 
