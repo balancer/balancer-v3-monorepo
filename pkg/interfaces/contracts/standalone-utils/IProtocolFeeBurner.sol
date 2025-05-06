@@ -36,7 +36,7 @@ interface IProtocolFeeBurner {
 
     /**
      * @notice Swap an exact amount of `feeToken` for the `targetToken`, and send proceeds to the `recipient`.
-     * @dev Assumes the sweeper has transferred the tokens to the burner prior to the call.
+     * @dev Assumes the sweeper has granted allowance for the fee tokens to the burner prior to the call.
      * @param pool The pool the fees came from (only used for documentation in the event)
      * @param feeToken The token collected from the pool
      * @param exactFeeTokenAmountIn The number of fee tokens collected

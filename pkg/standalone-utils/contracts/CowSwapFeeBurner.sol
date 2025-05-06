@@ -20,6 +20,9 @@ import {
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 // solhint-disable not-rely-on-time
@@ -30,7 +33,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Version {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, ReentrancyGuardTransient, Version {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -129,19 +132,41 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Version
     function burn(
         address pool,
         IERC20 feeToken,
-        uint256 feeTokenAmount,
+        uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,
-        uint256 minAmountOut,
+        uint256 minTargetTokenAmountOut,
         address recipient,
         uint256 deadline
-    ) external authenticate {
+    ) external virtual authenticate nonReentrant {
+        _burn(
+            pool,
+            feeToken,
+            exactFeeTokenAmountIn,
+            targetToken,
+            minTargetTokenAmountOut,
+            recipient,
+            deadline,
+            true // pullFeeToken
+        );
+    }
+
+    function _burn(
+        address pool,
+        IERC20 feeToken,
+        uint256 feeTokenAmount,
+        IERC20 targetToken,
+        uint256 minTargetTokenAmountOut,
+        address recipient,
+        uint256 deadline,
+        bool pullFeeToken
+    ) internal {
         if (targetToken == feeToken) {
             revert InvalidOrderParameters("Fee token and target token are the same");
         } else if (feeTokenAmount == 0) {
             revert InvalidOrderParameters("Fee token amount is zero");
         }
 
-        _checkMinAmountOut(minAmountOut);
+        _checkMinAmountOut(minTargetTokenAmountOut);
         _checkDeadline(deadline);
 
         (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken);
@@ -149,7 +174,9 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Version
             revert OrderHasUnexpectedStatus(status);
         }
 
-        feeToken.safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+        if (pullFeeToken) {
+            feeToken.safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+        }
 
         _createCowOrder(feeToken);
 
@@ -158,11 +185,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, SingletonAuthentication, Version
         _orders[feeToken] = ShortOrder({
             tokenOut: targetToken,
             receiver: recipient,
-            minAmountOut: minAmountOut,
+            minAmountOut: minTargetTokenAmountOut,
             deadline: uint32(deadline)
         });
 
-        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minAmountOut, recipient);
+        emit ProtocolFeeBurned(pool, feeToken, feeTokenAmount, targetToken, minTargetTokenAmountOut, recipient);
     }
 
     /***************************************************************************
