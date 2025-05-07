@@ -115,6 +115,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
         _orders[tokenIn].minAmountOut = minAmountOut;
         _orders[tokenIn].deadline = uint32(deadline);
 
+        // Refresh approval with current balance just in case.
+        if (tokenIn.allowance(address(this), vaultRelayer) < amount) {
+            tokenIn.forceApprove(vaultRelayer, amount);
+        }
+
         _createCowOrder(tokenIn);
 
         emit OrderRetried(tokenIn, amount, minAmountOut, deadline);
