@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IPoolHelperCommon } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolHelperCommon.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IPoolPauseHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolPauseHelper.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { PoolPauseHelper } from "../../contracts/PoolPauseHelper.sol";
 
@@ -36,7 +37,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
         address[] memory firstPools = _generatePools(10);
         for (uint256 i = 0; i < firstPools.length; i++) {
             vm.expectEmit();
-            emit IPoolPauseHelper.PoolAddedToPausableSet(firstPools[i]);
+            emit IPoolHelperCommon.PoolAddedToSet(firstPools[i]);
         }
 
         pauseHelper.addPools(firstPools);
@@ -50,7 +51,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
         address[] memory secondPools = _generatePools(10);
         for (uint256 i = 0; i < secondPools.length; i++) {
             vm.expectEmit();
-            emit IPoolPauseHelper.PoolAddedToPausableSet(secondPools[i]);
+            emit IPoolHelperCommon.PoolAddedToSet(secondPools[i]);
         }
 
         pauseHelper.addPools(secondPools);
@@ -67,11 +68,10 @@ contract PoolPauseHelperTest is BaseVaultTest {
     function testDoubleAddOnePool() public {
         assertEq(pauseHelper.getPoolCount(), 0, "Initial pool count non-zero");
 
-        address[] memory pools = new address[](2);
-        pools[0] = address(0x1);
-        pools[1] = address(0x1);
+        address[] memory pools = _generatePools(2);
+        pools[1] = pools[0];
 
-        vm.expectRevert(abi.encodeWithSelector(IPoolPauseHelper.PoolAlreadyInPausableSet.selector, pools[1]));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolAlreadyInSet.selector, pools[1]));
         pauseHelper.addPools(pools);
     }
 
@@ -90,7 +90,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
 
         for (uint256 i = 0; i < pools.length; i++) {
             vm.expectEmit();
-            emit IPoolPauseHelper.PoolRemovedFromPausableSet(pools[i]);
+            emit IPoolHelperCommon.PoolRemovedFromSet(pools[i]);
         }
 
         pauseHelper.removePools(pools);
@@ -105,7 +105,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
     function testRemoveNotExistingPool() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IPoolPauseHelper.PoolNotInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolNotInSet.selector, address(0x00)));
         pauseHelper.removePools(new address[](1));
     }
 
@@ -139,7 +139,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
     function testPauseIfPoolIsNotInList() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IPoolPauseHelper.PoolNotInPausableSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolNotInSet.selector, address(0x00)));
         pauseHelper.pausePools(new address[](1));
     }
 
@@ -194,13 +194,13 @@ contract PoolPauseHelperTest is BaseVaultTest {
         uint256 poolsNum = 10;
 
         _addPools(poolsNum);
-        vm.expectRevert(IPoolPauseHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         pauseHelper.getPools(2, 1);
 
-        vm.expectRevert(IPoolPauseHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         pauseHelper.getPools(2, poolsNum + 1);
 
-        vm.expectRevert(IPoolPauseHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         pauseHelper.getPools(poolsNum, poolsNum);
     }
 

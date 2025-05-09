@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IProtocolFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeHelper.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IPoolHelperCommon } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolHelperCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -47,7 +47,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
         address[] memory firstPools = _generatePools(10);
         for (uint256 i = 0; i < firstPools.length; i++) {
             vm.expectEmit();
-            emit IProtocolFeeHelper.PoolAddedToProtocolFeeSet(firstPools[i]);
+            emit IPoolHelperCommon.PoolAddedToSet(firstPools[i]);
         }
 
         feeHelper.addPools(firstPools);
@@ -61,7 +61,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
         address[] memory secondPools = _generatePools(10);
         for (uint256 i = 0; i < secondPools.length; i++) {
             vm.expectEmit();
-            emit IProtocolFeeHelper.PoolAddedToProtocolFeeSet(secondPools[i]);
+            emit IPoolHelperCommon.PoolAddedToSet(secondPools[i]);
         }
 
         feeHelper.addPools(secondPools);
@@ -81,7 +81,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
         address[] memory pools = _generatePools(2);
         pools[1] = pools[0];
 
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeHelper.PoolAlreadyInProtocolFeeSet.selector, pools[1]));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolAlreadyInSet.selector, pools[1]));
         feeHelper.addPools(pools);
     }
 
@@ -100,7 +100,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
 
         for (uint256 i = 0; i < pools.length; i++) {
             vm.expectEmit();
-            emit IProtocolFeeHelper.PoolRemovedFromProtocolFeeSet(pools[i]);
+            emit IPoolHelperCommon.PoolRemovedFromSet(pools[i]);
         }
 
         feeHelper.removePools(pools);
@@ -115,7 +115,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
     function testRemoveNotExistingPool() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeHelper.PoolNotInProtocolFeeSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolNotInSet.selector, address(0x00)));
         feeHelper.removePools(new address[](1));
     }
 
@@ -148,7 +148,7 @@ contract PoolPauseHelperTest is BaseVaultTest {
     function testSetProtocolFeeIfPoolIsNotInList() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeHelper.PoolNotInProtocolFeeSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolNotInSet.selector, address(0x00)));
         feeHelper.setProtocolSwapFeePercentage(address(0), NEW_SWAP_FEE_PERCENTAGE);
     }
 
@@ -206,13 +206,13 @@ contract PoolPauseHelperTest is BaseVaultTest {
         uint256 poolsNum = 10;
 
         _addPools(poolsNum);
-        vm.expectRevert(IProtocolFeeHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         feeHelper.getPools(2, 1);
 
-        vm.expectRevert(IProtocolFeeHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         feeHelper.getPools(2, poolsNum + 1);
 
-        vm.expectRevert(IProtocolFeeHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         feeHelper.getPools(poolsNum, poolsNum);
     }
 

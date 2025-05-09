@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import { IPoolSwapFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolSwapFeeHelper.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IPoolSwapFeeHelper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolSwapFeeHelper.sol";
+import { IPoolHelperCommon } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IPoolHelperCommon.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
@@ -37,7 +38,7 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
         address[] memory firstPools = _generatePools(10);
         for (uint256 i = 0; i < firstPools.length; i++) {
             vm.expectEmit();
-            emit IPoolSwapFeeHelper.PoolAddedToSwapFeeSet(firstPools[i]);
+            emit IPoolHelperCommon.PoolAddedToSet(firstPools[i]);
         }
 
         feeHelper.addPools(firstPools);
@@ -51,7 +52,7 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
         address[] memory secondPools = _generatePools(10);
         for (uint256 i = 0; i < secondPools.length; i++) {
             vm.expectEmit();
-            emit IPoolSwapFeeHelper.PoolAddedToSwapFeeSet(secondPools[i]);
+            emit IPoolHelperCommon.PoolAddedToSet(secondPools[i]);
         }
 
         feeHelper.addPools(secondPools);
@@ -71,7 +72,7 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
         address[] memory pools = _addPools(2);
         pools[1] = pools[0];
 
-        vm.expectRevert(abi.encodeWithSelector(IPoolSwapFeeHelper.PoolAlreadyInSwapFeeSet.selector, pools[1]));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolAlreadyInSet.selector, pools[1]));
         feeHelper.addPools(pools);
     }
 
@@ -111,7 +112,7 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
 
         for (uint256 i = 0; i < pools.length; i++) {
             vm.expectEmit();
-            emit IPoolSwapFeeHelper.PoolRemovedFromSwapFeeSet(pools[i]);
+            emit IPoolHelperCommon.PoolRemovedFromSet(pools[i]);
         }
 
         feeHelper.removePools(pools);
@@ -126,7 +127,7 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
     function testRemoveNotExistingPool() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IPoolSwapFeeHelper.PoolNotInSwapFeeSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolNotInSet.selector, address(0x00)));
         feeHelper.removePools(new address[](1));
     }
 
@@ -156,7 +157,7 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
     function testSetSwapFeeIfPoolIsNotInList() public {
         _addPools(10);
 
-        vm.expectRevert(abi.encodeWithSelector(IPoolSwapFeeHelper.PoolNotInSwapFeeSet.selector, address(0x00)));
+        vm.expectRevert(abi.encodeWithSelector(IPoolHelperCommon.PoolNotInSet.selector, address(0x00)));
         feeHelper.setStaticSwapFeePercentage(address(0), NEW_SWAP_FEE_PERCENTAGE);
     }
 
@@ -202,13 +203,13 @@ contract PoolSwapFeeHelperTest is BaseVaultTest {
         uint256 poolsNum = 10;
 
         _addPools(poolsNum);
-        vm.expectRevert(IPoolSwapFeeHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         feeHelper.getPools(2, 1);
 
-        vm.expectRevert(IPoolSwapFeeHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         feeHelper.getPools(2, poolsNum + 1);
 
-        vm.expectRevert(IPoolSwapFeeHelper.IndexOutOfBounds.selector);
+        vm.expectRevert(IPoolHelperCommon.IndexOutOfBounds.selector);
         feeHelper.getPools(poolsNum, poolsNum);
     }
 

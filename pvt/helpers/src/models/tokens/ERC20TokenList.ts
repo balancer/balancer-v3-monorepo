@@ -16,6 +16,12 @@ import { sortTokens } from './sortingHelper';
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
 export default class ERC20TokenList {
+  tokensParams: Record<
+    string,
+    {
+      mintable: boolean;
+    }
+  > = {};
   tokens: ERC20TestToken[];
 
   static async create(params: RawTokensDeployment, options: TokensDeploymentOptions = {}): Promise<ERC20TokenList> {
@@ -88,11 +94,24 @@ export default class ERC20TokenList {
     return new ERC20TokenList(this.tokens.slice(offset, offset + length));
   }
 
+  async push(token: ERC20TestToken, mintable = false): Promise<void> {
+    this.tokens.push(token);
+    this.tokensParams[await token.getAddress()] = {
+      mintable: mintable,
+    };
+  }
+
   async mint(rawParams: RawTokenMint): Promise<void> {
     const params: TokenMint[] = TypesConverter.toTokenMints(rawParams);
     await Promise.all(
-      params.flatMap(({ to, amount, from }) =>
-        this.tokens.map((token) => (from === undefined ? token : token.connect(from)).mint(to, amount))
+      params.flatMap(
+        async ({ to, amount, from }) =>
+          await this.tokens.map(async (token) =>
+            (from === undefined || this.tokensParams[await token.getAddress()].mintable == false
+              ? token
+              : token.connect(from)
+            ).mint(to, amount)
+          )
       )
     );
   }

@@ -37,7 +37,7 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         initialRate = vault.getBptRate(address(pool));
         // Set swap fee percentage to 0, which is the worst scenario since there's no LP fees. Circumvent minimum swap
         // fees, for testing purposes.
-        vault.manuallySetSwapFee(address(pool), 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(address(pool), 0);
     }
 
     /*******************************************************************************

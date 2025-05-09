@@ -196,7 +196,7 @@ abstract contract BasePoolTest is BaseVaultTest {
 
     function testSwap() public virtual {
         if (!isTestSwapFeeEnabled) {
-            vault.manuallySetSwapFee(pool, 0);
+            vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
         }
 
         IERC20 tokenIn = poolTokens[tokenIndexIn];

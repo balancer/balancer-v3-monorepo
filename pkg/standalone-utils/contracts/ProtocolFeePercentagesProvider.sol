@@ -17,8 +17,8 @@ import {
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { SingletonAuthentication } from "./SingletonAuthentication.sol";
-import { ProtocolFeeController } from "./ProtocolFeeController.sol";
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { ProtocolFeeController } from "@balancer-labs/v3-vault/contracts/ProtocolFeeController.sol";
 
 contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, SingletonAuthentication {
     using SafeCast for uint256;
@@ -46,14 +46,8 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     // Factory address => FactoryProtocolFees
     mapping(IBasePoolFactory => FactoryProtocolFees) private _factoryDefaultFeePercentages;
 
-    constructor(
-        IVault vault,
-        IProtocolFeeController protocolFeeController,
-        IBalancerContractRegistry trustedContractRegistry
-    ) SingletonAuthentication(vault) {
-        if (protocolFeeController.vault() != vault) {
-            revert WrongProtocolFeeControllerDeployment();
-        }
+    constructor(IVault vault, IBalancerContractRegistry trustedContractRegistry) SingletonAuthentication(vault) {
+        IProtocolFeeController protocolFeeController = vault.getProtocolFeeController();
 
         _protocolFeeController = protocolFeeController;
         _trustedContractRegistry = trustedContractRegistry;

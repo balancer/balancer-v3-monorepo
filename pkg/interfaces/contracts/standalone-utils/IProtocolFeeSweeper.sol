@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IProtocolFeeController } from "../vault/IProtocolFeeController.sol";
 import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
@@ -85,6 +86,9 @@ interface IProtocolFeeSweeper {
      */
     error BurnerDidNotConsumeAllowance();
 
+    /// @notice Unwrapping is not allowed for the operation.
+    error UnwrapIsNotAllowed();
+
     /**
      * @notice Withdraw, convert, and forward protocol fees for a given pool and token.
      * @dev This will withdraw the fee token from the controller to this contract, and attempt to convert and forward
@@ -106,6 +110,22 @@ interface IProtocolFeeSweeper {
      */
     function sweepProtocolFeesForToken(
         IERC20 feeToken,
+        uint256 exactFeeTokenAmountIn,
+        uint256 minTargetTokenAmountOut,
+        uint256 deadline,
+        IProtocolFeeBurner feeBurner
+    ) external;
+
+    /**
+     * @notice The same as `sweepProtocolFeesForToken`, but for wrapped tokens.
+     * @param feeToken The fee token in the pool
+     * @param exactFeeTokenAmountIn The amount of fee tokens we want to burn, or zero for the full balance
+     * @param minTargetTokenAmountOut The minimum number of target tokens to be received
+     * @param deadline Deadline for the burn operation (swap), after which it will revert
+     * @param feeBurner The protocol fee burner to be used (or the zero address to fall back on direct transfer)
+     */
+    function sweepProtocolFeesForWrappedToken(
+        IERC4626 feeToken,
         uint256 exactFeeTokenAmountIn,
         uint256 minTargetTokenAmountOut,
         uint256 deadline,

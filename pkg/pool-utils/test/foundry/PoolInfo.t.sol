@@ -161,7 +161,7 @@ contract PoolInfoTest is BaseTest, VaultContractsDeployer {
 
     function testGetStaticSwapFeePercentage() public {
         uint256 expectedSwapFeePercentage = 10e16; // 10%
-        vault.manuallySetSwapFee(address(poolInfo), expectedSwapFeePercentage);
+        vault.manualUnsafeSetStaticSwapFeePercentage(address(poolInfo), expectedSwapFeePercentage);
 
         uint256 swapFeePercentage = poolInfo.getStaticSwapFeePercentage();
         assertEq(swapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");

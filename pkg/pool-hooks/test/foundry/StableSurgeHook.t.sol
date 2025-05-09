@@ -247,7 +247,7 @@ contract StableSurgeHookTest is BaseVaultTest, StableSurgeHookDeployer {
         amountGivenScaled18 = bound(amountGivenScaled18, 1e18, poolInitAmount / 2);
         SwapKind kind = SwapKind(bound(kindRaw, 0, 1));
 
-        vault.manuallySetSwapFee(pool, bound(swapFeePercentageRaw, 0, 1e16));
+        vault.manualUnsafeSetStaticSwapFeePercentage(pool, bound(swapFeePercentageRaw, 0, 1e16));
         uint256 swapFeePercentage = vault.getStaticSwapFeePercentage(pool);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
