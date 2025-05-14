@@ -461,12 +461,15 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 exactAmountIn,
         uint256 poolSwapFeePercentage,
         uint256 newDecimalsTokenA,
-        uint256 newDecimalsTokenB
+        uint256 newDecimalsTokenB,
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
     ) public {
         decimalsTokenA = bound(newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
         decimalsTokenB = bound(newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
 
         _setTokenDecimalsInPool();
+
+        fuzzPoolParams(params);
 
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
@@ -485,6 +488,8 @@ contract E2eSwapTest is BaseVaultTest {
             false,
             bytes("")
         );
+
+        vm.assume(exactAmountOut > 0);
 
         vm.revertTo(snapshotId);
         uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
