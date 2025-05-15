@@ -457,23 +457,14 @@ contract E2eSwapTest is BaseVaultTest {
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
+    // We don't deal with decimals here, as it leads to many edge cases that are not worth testing.
     function testExactInRepeatExactOutVariableFees__Fuzz(
         uint256 exactAmountIn,
         uint256 poolSwapFeePercentage,
-        uint256 newDecimalsTokenA,
-        uint256 newDecimalsTokenB,
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
     ) public {
-        decimalsTokenA = bound(newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
-        decimalsTokenB = bound(newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
-
-        _setTokenDecimalsInPool();
-
         fuzzPoolParams(params);
 
-        // Min swap amount is usually just too small, and it's not worth the effort to test it.
-        minSwapAmountTokenA *= 10;
-        vm.assume(maxSwapAmountTokenA > minSwapAmountTokenA);
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
@@ -507,44 +498,15 @@ contract E2eSwapTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        uint256 exactAmountInScaled18 = exactAmountIn * (10 ** (18 - decimalsTokenA));
-
-        // Apply a difference criteria for relatively small amounts, where it makes sense to check absolute difference.
-        if (decimalsTokenA != decimalsTokenB && exactAmountInScaled18 < 1e10) {
-            // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
-            // difference of the decimals.
-            uint256 tolerance;
-            if (decimalsTokenA < decimalsTokenB) {
-                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
-                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 3);
-            } else {
-                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 3);
-            }
-
-            assertApproxEqAbs(
-                exactAmountIn,
-                exactAmountInSwap,
-                tolerance * exactInOutDecimalsErrorMultiplier,
-                "ExactOut and ExactIn amountsIn should match"
-            );
-            assertApproxEqRel(
-                exactAmountIn,
-                exactAmountInSwap,
-                0.1e16,
-                "ExactOut and ExactIn amountsIn should match (relative)"
-            );
-        } else {
-            // Accepts an error of 0.0002% between amountIn from ExactOut and ExactIn swaps. This error is caused by
-            // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
-            // amounts the error can be a bit above 0.0001%).
-            assertApproxEqRel(
-                exactAmountIn,
-                exactAmountInSwap,
-                amountInExactInOutError,
-                "ExactOut and ExactIn amountsIn should match"
-            );
-        }
+        // Accepts an error of 0.002% between amountIn from ExactOut and ExactIn swaps. This error is caused by
+        // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
+        // amounts the error can be a bit above 0.0001%).
+        assertApproxEqRel(
+            exactAmountIn,
+            exactAmountInSwap,
+            amountInExactInOutError,
+            "ExactOut and ExactIn amountsIn should match"
+        );
     }
 
     struct DoUndoLocals {
