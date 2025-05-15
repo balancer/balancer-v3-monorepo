@@ -31,7 +31,9 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         address _vaultRelayer,
         bytes32 _appData,
         string memory _version
-    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _vaultRelayer, _appData, _version) {}
+    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _vaultRelayer, _appData, _version) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /**
      * @notice Treats `feeToken` as an ERC4626, redeems `exactFeeTokenAmountIn`, swaps the underlying asset for
