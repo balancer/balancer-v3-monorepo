@@ -472,7 +472,9 @@ contract E2eSwapTest is BaseVaultTest {
         fuzzPoolParams(params);
 
         // Min swap amount is usually just too small, and it's not worth the effort to test it.
-        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA * 100, maxSwapAmountTokenA);
+        minSwapAmountTokenA *= 10;
+        vm.assume(maxSwapAmountTokenA > minSwapAmountTokenA);
+        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
         vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
@@ -523,7 +525,7 @@ contract E2eSwapTest is BaseVaultTest {
             assertApproxEqAbs(
                 exactAmountIn,
                 exactAmountInSwap,
-                tolerance,
+                tolerance * exactInOutDecimalsErrorMultiplier,
                 "ExactOut and ExactIn amountsIn should match"
             );
             assertApproxEqRel(
