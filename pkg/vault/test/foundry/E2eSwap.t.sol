@@ -498,9 +498,9 @@ contract E2eSwapTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        // Accepts an error of 0.002% between amountIn from ExactOut and ExactIn swaps. This error is caused by
-        // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
-        // amounts the error can be a bit above 0.0001%).
+        // Accepts an error of 0.0002% between amountIn from ExactOut and ExactIn swaps (or whatever pool 
+        // specializations override this value to). This error is caused by differences in the computeInGivenOut and
+        // computeOutGivenIn functions of the pool math (for small amounts the error can be a bit above 0.0001%).
         assertApproxEqRel(
             exactAmountIn,
             exactAmountInSwap,
