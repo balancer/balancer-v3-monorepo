@@ -37,6 +37,7 @@ contract E2eSwapRateProviderWeightedTest is
 
     function setUp() public override {
         super.setUp();
+        amountInExactInOutError = 0.05e16;
     }
 
     function createPoolFactory() internal override returns (address) {

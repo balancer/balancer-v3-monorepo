@@ -219,7 +219,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
     ) public {
         fuzzPoolParams(params);
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, getMaxBptOut());
-        console.log("totalSupply", IERC20(liquidityPool).totalSupply());
         setSwapFeePercentageInPools(0);
         addExactOutArbitraryBptOut(exactBptAmountOut);
         assertLiquidityOperationNoSwapFee();
