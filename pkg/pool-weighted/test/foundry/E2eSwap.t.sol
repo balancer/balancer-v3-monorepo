@@ -43,6 +43,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         // Weighted pools may be drained if there are no lp fees. So, set the creator fee to 99% to add some lp fee
         // back to the pool and ensure the invariant doesn't decrease.
         feeController.setPoolCreatorSwapFeePercentage(pool, 99e16);
+
+        amountInExactInOutError = 0.001e16;
     }
 
     function setUpVariables() internal override {

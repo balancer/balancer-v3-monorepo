@@ -504,7 +504,10 @@ contract E2eSwapTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        if (decimalsTokenA != decimalsTokenB || exactAmountIn < PRODUCTION_MIN_TRADE_AMOUNT) {
+        uint256 exactAmountInScaled18 = exactAmountIn * (10 ** (18 - decimalsTokenA));
+
+        // Apply a difference criteria for relatively small amounts, where it makes sense to check absolute difference.
+        if (decimalsTokenA != decimalsTokenB && exactAmountInScaled18 < 1e10) {
             // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
             // difference of the decimals.
             uint256 tolerance;
@@ -521,6 +524,12 @@ contract E2eSwapTest is BaseVaultTest {
                 exactAmountInSwap,
                 tolerance,
                 "ExactOut and ExactIn amountsIn should match"
+            );
+            assertApproxEqRel(
+                exactAmountIn,
+                exactAmountInSwap,
+                0.1e16,
+                "ExactOut and ExactIn amountsIn should match (relative)"
             );
         } else {
             // Accepts an error of 0.0002% between amountIn from ExactOut and ExactIn swaps. This error is caused by
