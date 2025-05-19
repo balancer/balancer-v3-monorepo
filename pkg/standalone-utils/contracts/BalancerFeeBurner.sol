@@ -110,7 +110,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
                     tokenOut: step.tokenOut,
                     amountGivenRaw: stepExactAmountIn,
                     limitRaw: (i == lastStepIndex) ? params.minAmountOut : 0,
-                    userData: new bytes(0)
+                    userData: bytes("")
                 })
             );
 
