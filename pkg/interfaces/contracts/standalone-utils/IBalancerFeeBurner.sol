@@ -52,7 +52,7 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
     function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external;
 
     /**
-     * @notice Get the burn path for a fee token
+     * @notice Get the burn path for a fee token.
      * @param feeToken The fee token to get the path for
      * @return steps The steps in the burn path
      */
