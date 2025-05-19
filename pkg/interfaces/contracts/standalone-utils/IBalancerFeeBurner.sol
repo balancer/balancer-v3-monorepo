@@ -41,7 +41,7 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
     /// @notice Burn path not set for the fee token.
     error BurnPathNotExists();
 
-    /// @notice The last token in the path is not the same as the target token
+    /// @notice The last token in the path is not the same as the target token.
     error TargetTokenInPathNotTheSame();
 
     /**
