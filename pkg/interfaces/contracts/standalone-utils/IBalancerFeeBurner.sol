@@ -45,7 +45,10 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
     error TargetTokenInPathNotTheSame();
 
     /**
-     * @notice Set the burn path for a fee token
+     * @notice Set the burn path for a fee token. 
+     * @dev This is the sequence of swaps required to convert the `feeToken` to the `targetToken`.
+     * This is a permissioned function.
+     *
      * @param feeToken The fee token to set the path for
      * @param steps The steps in the burn path
      */
