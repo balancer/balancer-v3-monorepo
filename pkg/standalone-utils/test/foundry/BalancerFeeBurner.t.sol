@@ -140,7 +140,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold USDC");
     }
 
-    function testBurnWithFewHops() external {
+    function testBurnWithMultiHop() external {
         IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](2);
         steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiWethPool, tokenOut: weth });
         steps[1] = IBalancerFeeBurner.SwapPathStep({ pool: wethUsdcPool, tokenOut: usdc });
