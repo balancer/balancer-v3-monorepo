@@ -38,7 +38,7 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
         uint256 deadline;
     }
 
-    /// @notice Burn path not set for the fee token
+    /// @notice Burn path not set for the fee token.
     error BurnPathNotExists();
 
     /// @notice The last token in the path is not the same as the target token
