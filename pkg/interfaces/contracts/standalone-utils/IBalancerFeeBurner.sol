@@ -17,7 +17,7 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
     }
 
     /**
-     * @notice Data for the burn hook
+     * @notice Data for the burn hook.
      * @param pool The pool the fees came from (only used for documentation in the event)
      * @param sender The sender of the call. In most cases, this is the sweeper.
      * @param feeToken The token collected from the pool
