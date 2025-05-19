@@ -30,6 +30,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
         _;
     }
 
+    /// @inheritdoc IBalancerFeeBurner
     function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external authenticate {
         delete _burnSteps[feeToken];
 
