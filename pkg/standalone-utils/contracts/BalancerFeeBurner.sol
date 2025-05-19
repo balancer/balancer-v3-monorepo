@@ -93,7 +93,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
 
         IVault vault = getVault();
 
-        // Transfer the token in to the vault.
+        // Transfer the `tokenIn` to the vault.
         feeToken.safeTransferFrom(params.sender, address(vault), feeTokenAmount);
         vault.settle(feeToken, feeTokenAmount);
 
