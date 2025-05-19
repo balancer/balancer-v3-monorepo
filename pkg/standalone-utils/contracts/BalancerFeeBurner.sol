@@ -39,6 +39,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
         }
     }
 
+    /// @inheritdoc IBalancerFeeBurner
     function getBurnPath(IERC20 feeToken) public view returns (SwapPathStep[] memory steps) {
         steps = _burnSteps[feeToken];
 
