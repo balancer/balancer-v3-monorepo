@@ -23,7 +23,7 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
      * @param feeToken The token collected from the pool
      * @param feeTokenAmount The number of fee tokens collected
      * @param targetToken The desired target token (`tokenOut` of the swap)
-     * @param minAmountOut The minimum amount out for the swap
+     * @param minAmountOut The minimum `amountOut` for the swap
      * @param recipient The recipient of the swap proceeds
      * @param deadline Deadline for the burn operation (i.e., swap), after which it will revert
      */
