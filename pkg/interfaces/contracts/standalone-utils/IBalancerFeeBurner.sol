@@ -7,9 +7,9 @@ import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 
 interface IBalancerFeeBurner is IProtocolFeeBurner {
     /**
-     * @notice Steps for the burn path
+     * @notice Steps for the burn path.
      * @param pool The pool for the swap
-     * @param tokenOut The token out of the swap
+     * @param tokenOut The `tokenOut` of the swap operation
      */
     struct SwapPathStep {
         address pool;
