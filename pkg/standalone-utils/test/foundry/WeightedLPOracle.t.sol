@@ -31,6 +31,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
     uint256 constant VERSION = 123;
 
     event Log(address indexed value);
+    event LogUint(uint256 indexed value);
 
     WeightedPoolFactory weightedPoolFactory;
     uint256 poolCreationNonce;
@@ -77,16 +78,18 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         uint256 lastIndex = totalTokens - 1;
         weights[lastIndex] = FixedPoint.ONE;
         for (uint256 i = 0; i < totalTokens; i++) {
-            weights[i] = FixedPoint.ONE / totalTokens;
             _tokens[i] = address(tokens[i]);
             poolInitAmounts[i] = poolInitAmount;
 
             emit Log(_tokens[i]);
 
+            emit LogUint(weights[i]);
+
             if (i == lastIndex) {
                 break;
             }
 
+            weights[i] = FixedPoint.ONE / totalTokens;
             weights[lastIndex] -= weights[i];
         }
 
@@ -176,11 +179,26 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
+    function testCalculateFeedTokenDecimalScalingFactor_Fuzz(uint256 totalTokens) public {
+        totalTokens = bound(totalTokens, 2, 8);
+
+        (IWeightedPool pool, ) = createAndInitPool(totalTokens);
+        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < feeds.length; i++) {
+            assertEq(
+                oracle.calculateFeedTokenDecimalScalingFactor(feeds[i]),
+                10 ** (18 - IERC20Metadata(address(feeds[i])).decimals()),
+                "Scaling factor does not match"
+            );
+        }
+    }
+
     function testGetWeights__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, 2, 8);
 
         (IWeightedPool pool, uint256[] memory weights) = createAndInitPool(totalTokens);
-        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
 
         uint256[] memory returnedWeights = oracle.getWeights();
 
