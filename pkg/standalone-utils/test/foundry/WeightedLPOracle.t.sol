@@ -29,6 +29,8 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
 
     uint256 constant VERSION = 123;
+    uint256 constant MAX_TOKENS = 8;
+    uint256 constant MIN_TOKENS = 2;
 
     event Log(address indexed value);
     event LogUint(uint256 indexed value);
@@ -80,10 +82,6 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         for (uint256 i = 0; i < totalTokens; i++) {
             _tokens[i] = address(tokens[i]);
             poolInitAmounts[i] = poolInitAmount;
-
-            emit Log(_tokens[i]);
-
-            emit LogUint(weights[i]);
 
             if (i == lastIndex) {
                 break;
@@ -148,7 +146,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
     }
 
     function testGetFeeds__Fuzz(uint256 totalTokens) public {
-        totalTokens = bound(totalTokens, 2, 8);
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
@@ -162,7 +160,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
     }
 
     function testGetFeedTokenDecimalScalingFactors__Fuzz(uint256 totalTokens) public {
-        totalTokens = bound(totalTokens, 2, 8);
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
@@ -180,7 +178,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
     }
 
     function testCalculateFeedTokenDecimalScalingFactor_Fuzz(uint256 totalTokens) public {
-        totalTokens = bound(totalTokens, 2, 8);
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
         (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
@@ -195,7 +193,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
     }
 
     function testGetWeights__Fuzz(uint256 totalTokens) public {
-        totalTokens = bound(totalTokens, 2, 8);
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, uint256[] memory weights) = createAndInitPool(totalTokens);
         (WeightedLPOracleMock oracle, ) = deployOracle(pool);
@@ -205,5 +203,42 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         for (uint256 i = 0; i < weights.length; i++) {
             assertEq(weights[i], returnedWeights[i], "Weight does not match");
         }
+    }
+
+    function testGetFeedData_Fuzz(
+        uint256 totalTokens,
+        uint256[MAX_TOKENS] memory answersRaw,
+        uint256[MAX_TOKENS] memory updateTimestampsRaw
+    ) public {
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+
+        uint256 minUpdateTimestamp = MAX_UINT256;
+        uint256[] memory answers = new uint256[](totalTokens);
+        uint256[] memory updateTimestamps = new uint256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            answers[i] = bound(answersRaw[i], 1, MAX_UINT128);
+            updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
+
+            if (updateTimestamps[i] < minUpdateTimestamp) {
+                minUpdateTimestamp = updateTimestamps[i];
+            }
+        }
+
+        (IWeightedPool pool, ) = createAndInitPool(totalTokens);
+        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
+        }
+
+        (int256[] memory returnedAnswers, uint256 returnedUpdateTimestamp) = oracle.getFeedData();
+        for (uint256 i = 0; i < totalTokens; i++) {
+            assertEq(
+                uint256(returnedAnswers[i]),
+                answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i],
+                "Answer does not match"
+            );
+        }
+        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 }
