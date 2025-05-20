@@ -15,19 +15,15 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 
-contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, SingletonAuthentication {
+contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, VaultGuard, SingletonAuthentication {
     using SafeERC20 for IERC20;
 
     mapping(IERC20 => SwapPathStep[] steps) internal _burnSteps;
 
-    constructor(IVault vault) SingletonAuthentication(vault) {
+    constructor(IVault vault) VaultGuard(vault) SingletonAuthentication(vault) {
         // solhint-disable-previous-line no-empty-blocks
-    }
-
-    modifier onlyVault() {
-        _ensureOnlyVault();
-        _;
     }
 
     /// @inheritdoc IBalancerFeeBurner
@@ -89,7 +85,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
         SwapPathStep[] memory steps = getBurnPath(feeToken);
         uint256 lastStepIndex = steps.length - 1;
         if (steps[lastStepIndex].tokenOut != targetToken) {
-            revert TargetTokenInPathNotTheSame();
+            revert TargetTokenOutMismatch();
         }
 
         IVault vault = getVault();
@@ -120,16 +116,9 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Sing
             stepExactAmountIn = amountOut;
         }
 
-        address recipient = params.recipient;
         // Last stepTokenIn is the final token out. Last stepExactAmountIn is the amount out.
-        vault.sendTo(stepTokenIn, recipient, stepExactAmountIn);
+        vault.sendTo(stepTokenIn, params.recipient, stepExactAmountIn);
 
-        emit ProtocolFeeBurned(params.pool, feeToken, feeTokenAmount, targetToken, stepExactAmountIn, recipient);
-    }
-
-    function _ensureOnlyVault() private view {
-        if (msg.sender != address(getVault())) {
-            revert IVaultErrors.SenderIsNotVault(msg.sender);
-        }
+        emit ProtocolFeeBurned(params.pool, feeToken, feeTokenAmount, targetToken, stepExactAmountIn, params.recipient);
     }
 }

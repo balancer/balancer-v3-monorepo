@@ -198,14 +198,14 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.startPrank(alice);
         feeBurner.setBurnPath(dai, steps);
 
-        vm.expectRevert(IBalancerFeeBurner.TargetTokenInPathNotTheSame.selector);
+        vm.expectRevert(IBalancerFeeBurner.TargetTokenOutMismatch.selector);
         feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
     }
 
     function testBurnHookRevertIfCallerNotVault() external {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        feeBurner.burnHook(
+        BalancerFeeBurner(address(feeBurner)).burnHook(
             IBalancerFeeBurner.BurnHookParams({
                 pool: address(0),
                 sender: address(0),

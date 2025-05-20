@@ -42,10 +42,10 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
     error BurnPathNotExists();
 
     /// @notice The last token in the path is not the same as the target token.
-    error TargetTokenInPathNotTheSame();
+    error TargetTokenOutMismatch();
 
     /**
-     * @notice Set the burn path for a fee token. 
+     * @notice Set the burn path for a fee token.
      * @dev This is the sequence of swaps required to convert the `feeToken` to the `targetToken`.
      * This is a permissioned function.
      *
@@ -60,10 +60,4 @@ interface IBalancerFeeBurner is IProtocolFeeBurner {
      * @return steps The steps in the burn path
      */
     function getBurnPath(IERC20 feeToken) external view returns (SwapPathStep[] memory steps);
-
-    /**
-     * @notice Burn hook for the fee burner
-     * @param params The parameters for the burn hook
-     */
-    function burnHook(BurnHookParams calldata params) external;
 }
