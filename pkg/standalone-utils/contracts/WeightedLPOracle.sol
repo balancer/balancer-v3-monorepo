@@ -14,13 +14,13 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IChainlinkAggregatorV3.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 contract WeightedLPOracle is IChainlinkAggregatorV3 {
     using FixedPoint for uint256;
     using SafeCast for *;
 
     error UnsupportedDecimals();
-    error InvalidFeedLength();
 
     uint256 internal constant _WAD_DECIMALS = 18;
 
@@ -71,9 +71,7 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         _totalTokens = totalTokens;
         _description = string.concat(IERC20Metadata(address(pool)).symbol(), "/USD");
 
-        if (feeds_.length != totalTokens) {
-            revert InvalidFeedLength();
-        }
+        InputHelpers.ensureInputLengthMatch(totalTokens, feeds_.length);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             if (i == 0) {
@@ -149,7 +147,7 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         return (0, lpPrice.toInt256(), 0, _updatedAt, 0);
     }
 
-    function _calculateTVL(int256[] memory prices) internal view virtual returns (uint256 tvl) {
+    function _calculateTVL(int256[] memory prices) internal view returns (uint256 tvl) {
         uint256 totalTokens = _totalTokens;
 
         uint256[] memory weights = _getWeights(totalTokens);
