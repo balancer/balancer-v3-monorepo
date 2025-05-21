@@ -238,6 +238,10 @@ abstract contract BaseTest is Test {
             deal(address(tokens[i]), user, defaultAccountBalance());
         }
 
+        for (uint256 i = 0; i < oddDecimalTokens.length; ++i) {
+            deal(address(oddDecimalTokens[i]), user, defaultAccountBalance());
+        }
+
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
             // Give underlying tokens to the user, for depositing in the wrapped token.
             if (erc4626Tokens[i].asset() == address(weth)) {
