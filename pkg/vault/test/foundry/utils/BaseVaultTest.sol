@@ -203,6 +203,19 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
             permit2.approve(address(tokens[i]), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
         }
 
+        for (uint256 i = 0; i < oddDecimalTokens.length; ++i) {
+            oddDecimalTokens[i].approve(address(permit2), type(uint256).max);
+            permit2.approve(address(oddDecimalTokens[i]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(oddDecimalTokens[i]), address(bufferRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(oddDecimalTokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(
+                address(oddDecimalTokens[i]),
+                address(compositeLiquidityRouter),
+                type(uint160).max,
+                type(uint48).max
+            );
+        }
+
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
             erc4626Tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);

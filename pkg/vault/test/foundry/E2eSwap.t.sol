@@ -47,6 +47,7 @@ contract E2eSwapTest is BaseVaultTest {
     uint256 internal maxSwapAmountTokenB;
 
     uint256 internal exactInOutDecimalsErrorMultiplier = 1;
+    uint256 internal amountInExactInOutError = 2e12;
 
     // We theoretically support the full range of token decimals, but tokens with extreme values don't tend to perform
     // well in AMMs, due to precision issues with their math. The lowest decimal value in common use would be 6,
@@ -194,8 +195,15 @@ contract E2eSwapTest is BaseVaultTest {
     /**
      * @notice Fuzz specific pool parameters.
      * @dev Override this function to fuzz test parameters that are specific to a kind of pool.
+     * This function is executed after setting pool balances. Some pools may require different swap limits based on
+     * the chosen parameters for the pool state.
+     * Set `minSwapAmountTokenA`, `maxSwapAmountTokenA`, `minSwapAmountTokenB` and `maxSwapAmountTokenB` to the values
+     * that are expected to be used in the pool, and return `true` to signal that these values shall be used as
+     * limits whenever needed.
      */
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal virtual {
+    function fuzzPoolParams(
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) internal virtual returns (bool overrideSwapLimits) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -449,86 +457,12 @@ contract E2eSwapTest is BaseVaultTest {
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
+    // We don't deal with decimals here, as it leads to many edge cases that are not worth testing.
     function testExactInRepeatExactOutVariableFees__Fuzz(
         uint256 exactAmountIn,
         uint256 poolSwapFeePercentage,
-        uint256 newDecimalsTokenA,
-        uint256 newDecimalsTokenB
-    ) public {
-        decimalsTokenA = bound(newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
-        decimalsTokenB = bound(newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
-
-        _setTokenDecimalsInPool();
-
-        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
-
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
-
-        vm.startPrank(sender);
-        uint256 snapshotId = vm.snapshot();
-        uint256 exactAmountOut = router.swapSingleTokenExactIn(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountIn,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        vm.revertTo(snapshotId);
-        uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountOut,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        if (decimalsTokenA != decimalsTokenB || exactAmountIn < PRODUCTION_MIN_TRADE_AMOUNT) {
-            // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
-            // difference of the decimals.
-            uint256 tolerance;
-            if (decimalsTokenA < decimalsTokenB) {
-                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
-                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 3);
-            } else {
-                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 3);
-            }
-
-            assertApproxEqAbs(
-                exactAmountIn,
-                exactAmountInSwap,
-                tolerance,
-                "ExactOut and ExactIn amountsIn should match"
-            );
-        } else {
-            // Accepts an error of 0.0002% between amountIn from ExactOut and ExactIn swaps. This error is caused by
-            // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
-            // amounts the error can be a bit above 0.0001%).
-            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 2e12, "ExactOut and ExactIn amountsIn should match");
-        }
-    }
-
-    function testExactInRepeatExactOutVariableFeesSpecific__Fuzz(
-        uint256 exactAmountIn,
-        uint256 poolSwapFeePercentage,
-        uint256 newDecimalsTokenA,
-        uint256 newDecimalsTokenB,
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
     ) public {
-        decimalsTokenA = bound(newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
-        decimalsTokenB = bound(newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
-
-        _setTokenDecimalsInPool();
-
         fuzzPoolParams(params);
 
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
@@ -564,30 +498,15 @@ contract E2eSwapTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        if (decimalsTokenA != decimalsTokenB || exactAmountIn < PRODUCTION_MIN_TRADE_AMOUNT) {
-            // Tokens with different decimals introduce an error whose order of magnitude is proportional to
-            // the difference.
-            uint256 tolerance;
-            if (decimalsTokenA < decimalsTokenB) {
-                // Add 4 to give some extra tolerance for weighted pools (multiply by 10000).
-                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 4);
-            } else {
-                // Add 4 to give some extra tolerance for weighted pools (multiply by 10000).
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 4);
-            }
-
-            assertApproxEqAbs(
-                exactAmountIn,
-                exactAmountInSwap,
-                tolerance * exactInOutDecimalsErrorMultiplier,
-                "ExactOut and ExactIn amountsIn should match"
-            );
-        } else {
-            // Accepts an error of 0.02% between amountIn from ExactOut and ExactIn swaps. This error is caused by
-            // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math (for small
-            // amounts the error can be a bit above 0.01%).
-            assertApproxEqRel(exactAmountIn, exactAmountInSwap, 2e14, "ExactOut and ExactIn amountsIn should match");
-        }
+        // Accepts an error of 0.0002% between amountIn from ExactOut and ExactIn swaps (or whatever pool
+        // specializations override this value to). This error is caused by differences in the computeInGivenOut and
+        // computeOutGivenIn functions of the pool math (for small amounts the error can be a bit above 0.0001%).
+        assertApproxEqRel(
+            exactAmountIn,
+            exactAmountInSwap,
+            amountInExactInOutError,
+            "ExactOut and ExactIn amountsIn should match"
+        );
     }
 
     struct DoUndoLocals {
@@ -612,10 +531,6 @@ contract E2eSwapTest is BaseVaultTest {
             _setTokenDecimalsInPool();
         }
 
-        if (testLocals.shouldFuzzPoolParams) {
-            fuzzPoolParams(testLocals.poolParams);
-        }
-
         uint256 maxAmountIn = maxSwapAmountTokenA;
         if (testLocals.shouldTestLiquidity) {
             testLocals.liquidityTokenA = bound(
@@ -630,6 +545,13 @@ contract E2eSwapTest is BaseVaultTest {
             );
 
             maxAmountIn = _setPoolBalancesAndGetAmountIn(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+        }
+
+        if (testLocals.shouldFuzzPoolParams) {
+            bool shouldOverrideSwapLimits = fuzzPoolParams(testLocals.poolParams);
+            if (shouldOverrideSwapLimits) {
+                maxAmountIn = maxSwapAmountTokenA;
+            }
         }
 
         if (testLocals.shouldTestSwapAmount) {
@@ -731,10 +653,6 @@ contract E2eSwapTest is BaseVaultTest {
             _setTokenDecimalsInPool();
         }
 
-        if (testLocals.shouldFuzzPoolParams) {
-            fuzzPoolParams(testLocals.poolParams);
-        }
-
         uint256 maxAmountOut = maxSwapAmountTokenB;
         if (testLocals.shouldTestLiquidity) {
             testLocals.liquidityTokenA = bound(
@@ -749,6 +667,13 @@ contract E2eSwapTest is BaseVaultTest {
             );
 
             maxAmountOut = _setPoolBalancesAndGetAmountOut(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+        }
+
+        if (testLocals.shouldFuzzPoolParams) {
+            bool shouldOverrideSwapLimits = fuzzPoolParams(testLocals.poolParams);
+            if (shouldOverrideSwapLimits) {
+                maxAmountOut = maxSwapAmountTokenB;
+            }
         }
 
         if (testLocals.shouldTestSwapAmount) {

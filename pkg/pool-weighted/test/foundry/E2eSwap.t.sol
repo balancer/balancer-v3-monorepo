@@ -43,6 +43,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         // Weighted pools may be drained if there are no lp fees. So, set the creator fee to 99% to add some lp fee
         // back to the pool and ensure the invariant doesn't decrease.
         feeController.setPoolCreatorSwapFeePercentage(pool, 99e16);
+
+        amountInExactInOutError = 0.001e16;
     }
 
     function setUpVariables() internal override {
@@ -65,7 +67,9 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         maxSwapAmountTokenB = poolInitAmountTokenB / 10;
     }
 
-    function fuzzPoolParams(uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params) internal override {
+    function fuzzPoolParams(
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
+    ) internal override returns (bool overrideSwapLimits) {
         uint256 weightTokenA = params[0];
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
@@ -77,6 +81,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther the weights are from 50/50, the bigger
         // the error.
         exactInOutDecimalsErrorMultiplier = 2000;
+
+        overrideSwapLimits = true;
     }
 
     function _setMinAndMaxSwapAmountExactIn(uint256[] memory poolBalancesRaw) private {
