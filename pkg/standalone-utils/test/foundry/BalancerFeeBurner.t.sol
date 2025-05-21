@@ -31,22 +31,22 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
     IAuthentication internal feeBurnerAuth;
     IAuthentication internal feeSweeperAuth;
 
-    address internal feeRecipient;
-
     IBalancerFeeBurner internal feeBurner;
     IProtocolFeeSweeper internal feeSweeper;
 
     address daiWethPool;
     address wethUsdcPool;
 
+    uint256 daiIdx = 0;
+    uint256 usdcIdx = 1;
+
     function setUp() public override {
         BaseVaultTest.setUp();
 
-        orderDeadline = block.timestamp + ORDER_LIFETIME;
-        feeBurner = new BalancerFeeBurner(vault);
-        (feeRecipient, ) = makeAddrAndKey("feeRecipient");
+        feeSweeper = new ProtocolFeeSweeper(vault, alice);
 
-        feeSweeper = new ProtocolFeeSweeper(vault, feeRecipient);
+        orderDeadline = block.timestamp + ORDER_LIFETIME;
+        feeBurner = new BalancerFeeBurner(vault, feeSweeper);
 
         feeBurnerAuth = IAuthentication(address(feeBurner));
         feeSweeperAuth = IAuthentication(address(feeSweeper));
@@ -63,12 +63,6 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
             ),
             address(feeSweeper)
         );
-
-        // Allow the fee sweeper to burn.
-        authorizer.grantRole(feeBurnerAuth.getActionId(IProtocolFeeBurner.burn.selector), address(feeSweeper));
-        authorizer.grantRole(feeBurnerAuth.getActionId(IProtocolFeeBurner.burn.selector), alice);
-
-        authorizer.grantRole(feeBurnerAuth.getActionId(IBalancerFeeBurner.setBurnPath.selector), alice);
 
         vm.prank(admin);
         feeSweeper.addProtocolFeeBurner(feeBurner);
@@ -90,6 +84,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
         steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: pool, tokenOut: usdc });
 
+        Balances memory balancesBefore = getBalances();
+
         vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
 
@@ -98,76 +94,123 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         feeSweeper.setTargetToken(usdc);
 
         // Put some fees in the Vault.
-        vault.manualSetAggregateSwapFeeAmount(pool, dai, DEFAULT_AMOUNT);
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, TEST_BURN_AMOUNT);
 
         vm.expectEmit();
-        emit IProtocolFeeBurner.ProtocolFeeBurned(pool, dai, DEFAULT_AMOUNT, usdc, DEFAULT_AMOUNT, feeRecipient);
+        emit IProtocolFeeBurner.ProtocolFeeBurned(pool, dai, TEST_BURN_AMOUNT, usdc, TEST_BURN_AMOUNT, alice);
 
-        feeSweeper.sweepProtocolFeesForToken(pool, dai, DEFAULT_AMOUNT, orderDeadline, feeBurner);
+        feeSweeper.sweepProtocolFeesForToken(pool, dai, TEST_BURN_AMOUNT, orderDeadline, feeBurner);
         vm.stopPrank();
+
+        Balances memory balancesAfter = getBalances();
+
+        assertEq(
+            balancesAfter.userTokens[daiIdx],
+            balancesBefore.userTokens[daiIdx],
+            "DAI balance should not change (feeSweeper)"
+        );
+        assertEq(
+            balancesAfter.aliceTokens[usdcIdx],
+            balancesBefore.aliceTokens[usdcIdx] + TEST_BURN_AMOUNT,
+            "USDC balance should increase (alice)"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx],
+            balancesBefore.vaultTokens[daiIdx],
+            "DAI balance should not change (vault)"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[usdcIdx],
+            balancesBefore.vaultTokens[usdcIdx] - TEST_BURN_AMOUNT,
+            "USDC balance should decrease (vault)"
+        );
+
+        assertEq(dai.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold DAI");
+        assertEq(usdc.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold USDC");
     }
 
     function testBurnWithOneHop() external {
+        vm.prank(alice);
+        IERC20(address(dai)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
+
         IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
         steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: pool, tokenOut: usdc });
 
-        uint256 daiBalanceBefore = dai.balanceOf(alice);
-        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
-        uint256 daiVaultBalanceBefore = dai.balanceOf(address(vault));
-        uint256 usdcVaultBalanceBefore = usdc.balanceOf(address(vault));
+        Balances memory balancesBefore = getBalances();
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
 
+        vm.startPrank(address(feeSweeper));
         IERC20(address(dai)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
         feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
 
-        uint256 daiBalanceAfter = dai.balanceOf(alice);
-        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
-        uint256 daiVaultBalanceAfter = dai.balanceOf(address(vault));
-        uint256 usdcVaultBalanceAfter = usdc.balanceOf(address(vault));
+        Balances memory balancesAfter = getBalances();
 
-        assertEq(daiBalanceAfter, daiBalanceBefore - TEST_BURN_AMOUNT, "DAI balance should decrease (alice)");
-        assertEq(usdcBalanceAfter, usdcBalanceBefore + TEST_BURN_AMOUNT, "USDC balance should increase (alice)");
-        assertEq(daiVaultBalanceAfter, daiVaultBalanceBefore + TEST_BURN_AMOUNT, "DAI balance should increase (vault)");
         assertEq(
-            usdcVaultBalanceAfter,
-            usdcVaultBalanceBefore - TEST_BURN_AMOUNT,
+            balancesAfter.userTokens[daiIdx],
+            balancesBefore.userTokens[daiIdx] - TEST_BURN_AMOUNT,
+            "DAI balance should decrease (feeSweeper)"
+        );
+        assertEq(
+            balancesAfter.aliceTokens[usdcIdx],
+            balancesBefore.aliceTokens[usdcIdx] + TEST_BURN_AMOUNT,
+            "USDC balance should increase (alice)"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx],
+            balancesBefore.vaultTokens[daiIdx] + TEST_BURN_AMOUNT,
+            "DAI balance should increase (vault)"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[usdcIdx],
+            balancesBefore.vaultTokens[usdcIdx] - TEST_BURN_AMOUNT,
             "USDC balance should decrease (vault)"
         );
+
         assertEq(dai.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold DAI");
         assertEq(usdc.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold USDC");
     }
 
     function testBurnWithMultiHop() external {
+        vm.prank(alice);
+        IERC20(address(dai)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
+
         IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](2);
         steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: daiWethPool, tokenOut: weth });
         steps[1] = IBalancerFeeBurner.SwapPathStep({ pool: wethUsdcPool, tokenOut: usdc });
 
-        uint256 daiBalanceBefore = dai.balanceOf(alice);
-        uint256 usdcBalanceBefore = usdc.balanceOf(alice);
-        uint256 daiVaultBalanceBefore = dai.balanceOf(address(vault));
-        uint256 usdcVaultBalanceBefore = usdc.balanceOf(address(vault));
+        Balances memory balancesBefore = getBalances();
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
 
+        vm.startPrank(address(feeSweeper));
         IERC20(address(dai)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
         feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
 
-        uint256 daiBalanceAfter = dai.balanceOf(alice);
-        uint256 usdcBalanceAfter = usdc.balanceOf(alice);
-        uint256 daiVaultBalanceAfter = dai.balanceOf(address(vault));
-        uint256 usdcVaultBalanceAfter = usdc.balanceOf(address(vault));
+        Balances memory balancesAfter = getBalances();
 
-        assertEq(daiBalanceAfter, daiBalanceBefore - TEST_BURN_AMOUNT, "DAI balance should decrease (alice)");
-        assertEq(usdcBalanceAfter, usdcBalanceBefore + TEST_BURN_AMOUNT, "USDC balance should increase (alice)");
-        assertEq(daiVaultBalanceAfter, daiVaultBalanceBefore + TEST_BURN_AMOUNT, "DAI balance should increase (vault)");
         assertEq(
-            usdcVaultBalanceAfter,
-            usdcVaultBalanceBefore - TEST_BURN_AMOUNT,
+            balancesAfter.userTokens[daiIdx],
+            balancesBefore.userTokens[daiIdx] - TEST_BURN_AMOUNT,
+            "DAI balance should decrease (feeSweeper)"
+        );
+        assertEq(
+            balancesAfter.aliceTokens[usdcIdx],
+            balancesBefore.aliceTokens[usdcIdx] + TEST_BURN_AMOUNT,
+            "USDC balance should increase (alice)"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx],
+            balancesBefore.vaultTokens[daiIdx] + TEST_BURN_AMOUNT,
+            "DAI balance should increase (vault)"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[usdcIdx],
+            balancesBefore.vaultTokens[usdcIdx] - TEST_BURN_AMOUNT,
             "USDC balance should decrease (vault)"
         );
         assertEq(dai.balanceOf(address(feeBurner)), 0, "FeeBurner should not hold DAI");
@@ -187,7 +230,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
     function testBurnRevertIfDeadlinePassed() external {
         vm.expectRevert(IProtocolFeeBurner.SwapDeadline.selector);
 
-        vm.prank(alice);
+        vm.prank(address(feeSweeper));
         feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, block.timestamp - 1);
     }
 
@@ -195,9 +238,10 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
         steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: pool, tokenOut: weth });
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         feeBurner.setBurnPath(dai, steps);
 
+        vm.startPrank(address(feeSweeper));
         vm.expectRevert(IBalancerFeeBurner.TargetTokenOutMismatch.selector);
         feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
         vm.stopPrank();
@@ -255,5 +299,13 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         assertEq(steps.length, newSteps.length);
         assertEq(steps[0].pool, newSteps[0].pool);
         assertEq(address(steps[0].tokenOut), address(newSteps[0].tokenOut));
+    }
+
+    function getBalances() internal view returns (Balances memory) {
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[daiIdx] = dai;
+        tokens[usdcIdx] = usdc;
+
+        return getBalances(address(feeSweeper), tokens);
     }
 }

@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeBurner.sol";
 import { IBalancerFeeBurner } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerFeeBurner.sol";
+import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -14,20 +15,28 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 
-contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, VaultGuard, SingletonAuthentication {
+import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
+
+contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, VaultGuard, FeeBurnerAuthentication {
     using SafeERC20 for IERC20;
 
     mapping(IERC20 => SwapPathStep[] steps) internal _burnSteps;
 
-    constructor(IVault vault) VaultGuard(vault) SingletonAuthentication(vault) {
-        // solhint-disable-previous-line no-empty-blocks
+    constructor(
+        IVault vault,
+        IProtocolFeeSweeper _protocolFeeSweeper
+    ) VaultGuard(vault) FeeBurnerAuthentication(vault, _protocolFeeSweeper) {
+        if (address(_protocolFeeSweeper) == address(0)) {
+            revert InvalidProtocolFeeSweeper();
+        }
+
+        protocolFeeSweeper = _protocolFeeSweeper;
     }
 
     /// @inheritdoc IBalancerFeeBurner
-    function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external authenticate {
+    function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external onlyFeeRecipientOrGovernance {
         delete _burnSteps[feeToken];
 
         for (uint256 i = 0; i < steps.length; i++) {
@@ -53,7 +62,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         uint256 minAmountOut,
         address recipient,
         uint256 deadline
-    ) external authenticate {
+    ) external onlyProtocolFeeSweeper {
         getVault().unlock(
             abi.encodeCall(
                 BalancerFeeBurner.burnHook,
