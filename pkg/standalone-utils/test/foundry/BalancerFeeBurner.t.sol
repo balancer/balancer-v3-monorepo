@@ -234,6 +234,26 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, block.timestamp - 1);
     }
 
+    function testBurnRevertIfOutLessThanMinAmount() external {
+        vm.prank(alice);
+        IERC20(address(dai)).transfer(address(feeSweeper), TEST_BURN_AMOUNT);
+
+        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
+        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: pool, tokenOut: usdc });
+
+        vm.prank(alice);
+        feeBurner.setBurnPath(dai, steps);
+
+        vm.startPrank(address(feeSweeper));
+        IERC20(address(dai)).forceApprove(address(feeBurner), TEST_BURN_AMOUNT);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, TEST_BURN_AMOUNT, TEST_BURN_AMOUNT + 1)
+        );
+        feeBurner.burn(address(0), dai, TEST_BURN_AMOUNT, usdc, TEST_BURN_AMOUNT + 1, alice, orderDeadline);
+        vm.stopPrank();
+    }
+
     function testBurnRevertIfLastPathStepNotTargetToken() external {
         IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
         steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: pool, tokenOut: weth });
