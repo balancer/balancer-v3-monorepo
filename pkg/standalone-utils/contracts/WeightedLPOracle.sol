@@ -24,12 +24,10 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
 
     uint256 internal constant _WAD_DECIMALS = 18;
 
-    uint256 internal immutable _version;
     IVault internal immutable _vault;
     IWeightedPool public immutable pool;
-
+    uint256 internal immutable _version;
     uint256 internal immutable _totalTokens;
-
     string internal _description;
 
     uint256 internal immutable _weight0;
@@ -110,18 +108,22 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         }
     }
 
+    /// @inheritdoc IChainlinkAggregatorV3
     function version() external view returns (uint256) {
         return _version;
     }
 
+    /// @inheritdoc IChainlinkAggregatorV3
     function decimals() external pure returns (uint8) {
         return 18;
     }
 
+    /// @inheritdoc IChainlinkAggregatorV3
     function description() external view returns (string memory) {
         return _description;
     }
 
+    /// @inheritdoc IChainlinkAggregatorV3
     function getRoundData(
         uint80
     )
@@ -132,6 +134,7 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         return (0, 0, 0, 0, 0);
     }
 
+    /// @inheritdoc IChainlinkAggregatorV3
     function latestRoundData()
         external
         view
@@ -152,6 +155,13 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
 
         uint256[] memory weights = _getWeights(totalTokens);
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
+
+        /**********************************************************************************************
+        // invariant                   _____                                                         //
+        // wi = weight index i          | |           wi                                             //
+        // pi = price index i      k *  | |  (pi/wi) ^   = tvl                                       //
+        // k = invariant                                                                             //
+        **********************************************************************************************/
 
         uint256 k = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP);
 
