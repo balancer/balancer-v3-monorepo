@@ -73,7 +73,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         vm.prank(admin);
         feeSweeper.addProtocolFeeBurner(feeBurner);
 
-        // Craate dai -> weth -> usdc path
+        // Create dai -> weth -> usdc path. Standard `pool` has [dai, usdc].
         (daiWethPool, ) = _createPool([address(dai), address(weth)].toMemoryArray(), "pool");
         (wethUsdcPool, ) = _createPool([address(weth), address(usdc)].toMemoryArray(), "pool");
 
