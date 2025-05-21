@@ -40,7 +40,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         steps = _burnSteps[feeToken];
 
         if (steps.length == 0) {
-            revert BurnPathNotExists();
+            revert BurnPathDoesNotExist();
         }
     }
 

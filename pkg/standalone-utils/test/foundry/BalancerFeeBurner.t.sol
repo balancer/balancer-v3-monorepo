@@ -220,7 +220,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
     }
 
     function testGetBurnPathRevertIfPathNotExists() external {
-        vm.expectRevert(IBalancerFeeBurner.BurnPathNotExists.selector);
+        vm.expectRevert(IBalancerFeeBurner.BurnPathDoesNotExist.selector);
         feeBurner.getBurnPath(dai);
     }
 
