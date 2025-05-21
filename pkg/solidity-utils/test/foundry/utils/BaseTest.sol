@@ -72,6 +72,9 @@ abstract contract BaseTest is Test {
     // List of all ERC4626 tokens
     IERC4626[] internal erc4626Tokens;
 
+    // List of all ERC20 odd decimal tokens
+    IERC20[] internal oddDecimalTokens;
+
     bool private _initialized;
 
     // Default balance for accounts
@@ -127,8 +130,8 @@ abstract contract BaseTest is Test {
         tokens.push(usdc);
         tokens.push(weth);
         tokens.push(wsteth);
-        tokens.push(usdc6Decimals);
-        tokens.push(wbtc8Decimals);
+        oddDecimalTokens.push(usdc6Decimals);
+        oddDecimalTokens.push(wbtc8Decimals);
 
         // Deploy ERC4626 tokens.
         waDAI = createERC4626("Wrapped aDAI", "waDAI", 18, dai);
