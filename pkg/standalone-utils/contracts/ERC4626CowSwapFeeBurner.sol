@@ -66,11 +66,12 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         uint256 minTargetTokenAmountOut = uint128(encodedMinAmountsOut >> 128);
         uint256 minERC4626AmountOut = uint128(encodedMinAmountsOut & type(uint128).max);
 
+        IERC4626 erc4626Token = IERC4626(address(feeToken));
+        // Redeem and overwrite inputs with new asset and unwrapped amount.
+        feeToken = IERC20(erc4626Token.asset());
+
         uint256 feeTokenBalanceBefore = feeToken.balanceOf(address(this));
 
-        // Redeem and overwrite inputs with new asset and unwrapped amount.
-        IERC4626 erc4626Token = IERC4626(address(feeToken));
-        feeToken = IERC20(erc4626Token.asset());
         exactFeeTokenAmountIn = erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
 
         uint256 feeTokenBalanceAfter = feeToken.balanceOf(address(this));
