@@ -55,7 +55,7 @@ contract WeightedLPOracle is AggregatorV3Interface {
     uint256 internal immutable _feedToken6DecimalScalingFactor;
     uint256 internal immutable _feedToken7DecimalScalingFactor;
 
-    constructor(IVault vault_, IWeightedPool pool_, AggregatorV3Interface[] memory feeds_, uint256 version_) {
+    constructor(IVault vault_, IWeightedPool pool_, AggregatorV3Interface[] memory feeds, uint256 version_) {
         _version = version_;
         _vault = vault_;
         pool = pool_;
@@ -67,41 +67,41 @@ contract WeightedLPOracle is AggregatorV3Interface {
         _totalTokens = totalTokens;
         _description = string.concat(IERC20Metadata(address(pool)).symbol(), "/USD");
 
-        InputHelpers.ensureInputLengthMatch(totalTokens, feeds_.length);
+        InputHelpers.ensureInputLengthMatch(totalTokens, feeds.length);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             if (i == 0) {
-                _feedToken0 = feeds_[i];
+                _feedToken0 = feeds[i];
                 _weight0 = weights[i];
-                _feedToken0DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken0DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 1) {
-                _feedToken1 = feeds_[i];
+                _feedToken1 = feeds[i];
                 _weight1 = weights[i];
-                _feedToken1DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken1DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 2) {
-                _feedToken2 = feeds_[i];
+                _feedToken2 = feeds[i];
                 _weight2 = weights[i];
-                _feedToken2DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken2DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 3) {
-                _feedToken3 = feeds_[i];
+                _feedToken3 = feeds[i];
                 _weight3 = weights[i];
-                _feedToken3DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken3DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 4) {
-                _feedToken4 = feeds_[i];
+                _feedToken4 = feeds[i];
                 _weight4 = weights[i];
-                _feedToken4DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken4DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 5) {
-                _feedToken5 = feeds_[i];
+                _feedToken5 = feeds[i];
                 _weight5 = weights[i];
-                _feedToken5DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken5DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 6) {
-                _feedToken6 = feeds_[i];
+                _feedToken6 = feeds[i];
                 _weight6 = weights[i];
-                _feedToken6DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken6DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 7) {
-                _feedToken7 = feeds_[i];
+                _feedToken7 = feeds[i];
                 _weight7 = weights[i];
-                _feedToken7DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken7DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             }
         }
     }
