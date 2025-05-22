@@ -2,26 +2,22 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { PoolRoleAccounts, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import {
     WeightedPoolContractsDeployer
 } from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
-
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { PoolRoleAccounts, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import {
-    IChainlinkAggregatorV3
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IChainlinkAggregatorV3.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { WeightedLPOracleMock } from "../../contracts/test/WeightedLPOracleMock.sol";
@@ -59,13 +55,13 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
     function deployOracle(
         IWeightedPool pool
-    ) internal returns (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) {
+    ) internal returns (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
-        feeds = new IChainlinkAggregatorV3[](tokens.length);
+        feeds = new AggregatorV3Interface[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            feeds[i] = IChainlinkAggregatorV3(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
+            feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
         oracle = new WeightedLPOracleMock(IVault(address(vault)), pool, feeds, VERSION);
@@ -154,9 +150,9 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
-        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
-        IChainlinkAggregatorV3[] memory returnedFeeds = oracle.getFeeds();
+        AggregatorV3Interface[] memory returnedFeeds = oracle.getFeeds();
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(address(feeds[i]), address(returnedFeeds[i]), "Feed does not match");
@@ -168,7 +164,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
-        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         uint256[] memory returnedScalingFactors = oracle.getFeedTokenDecimalScalingFactors();
 
@@ -185,7 +181,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
-        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
@@ -229,7 +225,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
-        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
@@ -333,7 +329,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-        (WeightedLPOracleMock oracle, IChainlinkAggregatorV3[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
