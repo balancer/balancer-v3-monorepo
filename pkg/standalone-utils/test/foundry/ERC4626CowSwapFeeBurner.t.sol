@@ -24,6 +24,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { ProtocolFeeSweeper } from "../../contracts/ProtocolFeeSweeper.sol";
 import { CowSwapFeeBurner } from "../../contracts/CowSwapFeeBurner.sol";
@@ -252,46 +253,11 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         );
     }
 
-    function testBurnFeeTokenIfRealUnwrappedTokenBelowMin() public {
-        // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
-        vm.prank(admin);
-        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
-
-        uint256 assetsAmount = waDAI.previewRedeem(TEST_BURN_AMOUNT);
-        require(assetsAmount != TEST_BURN_AMOUNT, "No point testing when rate is 1:1");
-
-        vm.mockCall(
-            address(waDAI),
-            abi.encodeWithSelector(
-                IERC4626.redeem.selector,
-                TEST_BURN_AMOUNT,
-                address(cowSwapFeeBurner),
-                address(cowSwapFeeBurner)
-            ),
-            abi.encode(type(uint128).max)
-        );
-
-        vm.expectRevert(
-            abi.encodeWithSelector(IProtocolFeeBurner.AmountOutBelowMin.selector, dai, 0, type(uint128).max)
-        );
-        // Target token is now DAI, which is waDAI.asset().
-        vm.prank(admin);
-        cowSwapFeeBurner.burn(
-            address(0),
-            waDAI,
-            TEST_BURN_AMOUNT,
-            dai,
-            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, type(uint128).max),
-            alice,
-            orderDeadline
-        );
-    }
-
     function _encodeMinAmountsOut(
         uint256 minTargetTokenAmountOut,
         uint256 minERC4626AmountOut
     ) internal pure returns (uint256) {
-        return (minTargetTokenAmountOut << 128) | minERC4626AmountOut;
+        return uint256(PackedTokenBalance.toPackedBalance(minTargetTokenAmountOut, minERC4626AmountOut));
     }
 
     function _mockComposableCowCreate(IERC20 sellToken) internal {

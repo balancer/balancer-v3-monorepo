@@ -13,6 +13,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { CowSwapFeeBurner } from "./CowSwapFeeBurner.sol";
 
@@ -63,8 +64,9 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         // the underlying token.
         feeToken.safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);
 
-        uint256 minTargetTokenAmountOut = uint128(encodedMinAmountsOut >> 128);
-        uint256 minERC4626AmountOut = uint128(encodedMinAmountsOut & type(uint128).max);
+        (uint256 minTargetTokenAmountOut, uint256 minERC4626AmountOut) = PackedTokenBalance.fromPackedBalance(
+            bytes32(encodedMinAmountsOut)
+        );
 
         IERC4626 erc4626Token = IERC4626(address(feeToken));
         // Redeem and overwrite inputs with new asset and unwrapped amount.
@@ -72,15 +74,13 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
 
         uint256 feeTokenBalanceBefore = feeToken.balanceOf(address(this));
 
-        exactFeeTokenAmountIn = erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
+        erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
 
         uint256 feeTokenBalanceAfter = feeToken.balanceOf(address(this));
-        uint256 redeemAmount = feeTokenBalanceAfter - feeTokenBalanceBefore;
+        exactFeeTokenAmountIn = feeTokenBalanceAfter - feeTokenBalanceBefore;
 
         if (exactFeeTokenAmountIn < minERC4626AmountOut) {
             revert AmountOutBelowMin(feeToken, exactFeeTokenAmountIn, minERC4626AmountOut);
-        } else if (redeemAmount < minERC4626AmountOut) {
-            revert AmountOutBelowMin(feeToken, redeemAmount, minERC4626AmountOut);
         }
 
         // This case is not handled by the internal `_burn` function, but it's valid: we can consider that the token
