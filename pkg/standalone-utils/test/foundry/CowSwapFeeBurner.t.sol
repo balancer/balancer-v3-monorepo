@@ -57,6 +57,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         orderDeadline = block.timestamp + ORDER_LIFETIME;
 
         cowSwapFeeBurner = new CowSwapFeeBurner(
+            vault,
             feeSweeper,
             IComposableCow(composableCowMock),
             vaultRelayerMock,

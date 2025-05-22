@@ -24,7 +24,8 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+
+import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -34,7 +35,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Version {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Version, FeeBurnerAuthentication {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -49,41 +50,22 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     bytes32 internal immutable _tokenBalance = keccak256("erc20");
 
     IComposableCow public immutable composableCow;
-    IProtocolFeeSweeper public immutable protocolFeeSweeper;
     address public immutable vaultRelayer;
     bytes32 public immutable appData;
 
     // Orders are identified by the tokenIn (often called the tokenIn).
     mapping(IERC20 token => ShortOrder order) internal _orders;
 
-    modifier onlyFeeRecipient() {
-        if (msg.sender != protocolFeeSweeper.getFeeRecipient()) {
-            revert SenderNotAllowed();
-        }
-        _;
-    }
-
-    modifier onlyProtocolFeeSweeper() {
-        if (msg.sender != address(protocolFeeSweeper)) {
-            revert SenderNotAllowed();
-        }
-        _;
-    }
-
     constructor(
+        IVault vault,
         IProtocolFeeSweeper _protocolFeeSweeper,
         IComposableCow _composableCow,
-        address _vaultRelayer,
+        address _cowVaultRelayer,
         bytes32 _appData,
         string memory _version
-    ) Version(_version) {
-        if (address(_protocolFeeSweeper) == address(0)) {
-            revert InvalidProtocolFeeSweeper();
-        }
-
+    ) Version(_version) FeeBurnerAuthentication(vault, _protocolFeeSweeper) {
         composableCow = _composableCow;
-        protocolFeeSweeper = _protocolFeeSweeper;
-        vaultRelayer = _vaultRelayer;
+        vaultRelayer = _cowVaultRelayer;
         appData = _appData;
     }
 
@@ -102,7 +84,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipient {
+    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipientOrGovernance {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -126,7 +108,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function cancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipient {
+    function cancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrGovernance {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -137,7 +119,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipient {
+    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrGovernance {
         _cancelOrder(tokenIn, receiver, tokenIn.balanceOf(address(this)));
     }
 
