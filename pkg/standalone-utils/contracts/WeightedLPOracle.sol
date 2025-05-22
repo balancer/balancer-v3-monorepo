@@ -111,19 +111,34 @@ contract WeightedLPOracle is AggregatorV3Interface {
         return _version;
     }
 
-    /// @inheritdoc AggregatorV3Interface
+    /**
+     * @notice Get the number of decimals present in the response value.
+     * @dev This is hard-coded to 18 decimals.
+     * @return decimals The number of decimals
+     */
     function decimals() external pure returns (uint8) {
         return 18;
     }
 
-    /// @inheritdoc AggregatorV3Interface
+    /**
+     * @notice Get the description of the underlying aggregator that the proxy points to.
+     * @return description The description as a string
+     */
     function description() external view returns (string memory) {
         return _description;
     }
 
-    /// @inheritdoc AggregatorV3Interface
+    /**
+     * @notice Get data about a specific round, using the roundId.
+     * @dev This is unused, and always returns all zeros.
+     * @return roundId The round ID
+     * @return answer The answer for this round
+     * @return startedAt Timestamp when the round started
+     * @return updatedAt Timestamp when the round was updated
+     * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
+     */
     function getRoundData(
-        uint80
+        uint80 /* _roundId */
     )
         external
         pure
@@ -132,7 +147,14 @@ contract WeightedLPOracle is AggregatorV3Interface {
         return (0, 0, 0, 0, 0);
     }
 
-    /// @inheritdoc AggregatorV3Interface
+    /**
+     * @notice Get the data from the latest round.
+     * @return roundId The round ID
+     * @return answer The answer for this round
+     * @return startedAt Timestamp when the round started
+     * @return updatedAt Timestamp when the round was updated
+     * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
+     */
     function latestRoundData()
         external
         view
