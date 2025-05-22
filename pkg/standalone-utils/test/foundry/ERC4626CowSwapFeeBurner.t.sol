@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -91,7 +92,15 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         emit IProtocolFeeBurner.ProtocolFeeBurned(address(0), dai, assetsAmount, usdc, MIN_TARGET_TOKEN_AMOUNT, alice);
 
         vm.prank(admin);
-        cowSwapFeeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            usdc,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, 0),
+            alice,
+            orderDeadline
+        );
 
         assertEq(
             waDAI.balanceOf(admin),
@@ -155,7 +164,15 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // Target token is now DAI, which is waDAI.asset().
         // Deadline doesn't matter in this case, as settlement is instant.
         vm.prank(admin);
-        cowSwapFeeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, dai, assetsAmount, alice, 0);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(assetsAmount, 0),
+            alice,
+            0
+        );
 
         assertEq(
             waDAI.balanceOf(admin),
@@ -200,7 +217,81 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         );
         // Target token is now DAI, which is waDAI.asset().
         vm.prank(admin);
-        cowSwapFeeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, dai, assetsAmount + 1, alice, orderDeadline);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(assetsAmount + 1, 0),
+            alice,
+            orderDeadline
+        );
+    }
+
+    function testBurnFeeTokenIfUnwrappedTokenBelowMin() public {
+        // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
+        vm.prank(admin);
+        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
+        uint256 assetsAmount = waDAI.previewRedeem(TEST_BURN_AMOUNT);
+        require(assetsAmount != TEST_BURN_AMOUNT, "No point testing when rate is 1:1");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeBurner.AmountOutBelowMin.selector, dai, assetsAmount, type(uint128).max)
+        );
+        // Target token is now DAI, which is waDAI.asset().
+        vm.prank(admin);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, type(uint128).max),
+            alice,
+            orderDeadline
+        );
+    }
+
+    function testBurnFeeTokenIfRealUnwrappedTokenBelowMin() public {
+        // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
+        vm.prank(admin);
+        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
+        uint256 assetsAmount = waDAI.previewRedeem(TEST_BURN_AMOUNT);
+        require(assetsAmount != TEST_BURN_AMOUNT, "No point testing when rate is 1:1");
+
+        vm.mockCall(
+            address(waDAI),
+            abi.encodeWithSelector(
+                IERC4626.redeem.selector,
+                TEST_BURN_AMOUNT,
+                address(cowSwapFeeBurner),
+                address(cowSwapFeeBurner)
+            ),
+            abi.encode(type(uint128).max)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeBurner.AmountOutBelowMin.selector, dai, 0, type(uint128).max)
+        );
+        // Target token is now DAI, which is waDAI.asset().
+        vm.prank(admin);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, type(uint128).max),
+            alice,
+            orderDeadline
+        );
+    }
+
+    function _encodeMinAmountsOut(
+        uint256 minTargetTokenAmountOut,
+        uint256 minERC4626AmountOut
+    ) internal pure returns (uint256) {
+        return (minTargetTokenAmountOut << 128) | minERC4626AmountOut;
     }
 
     function _mockComposableCowCreate(IERC20 sellToken) internal {

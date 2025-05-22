@@ -43,7 +43,10 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
      * @param feeToken The token collected from the pool
      * @param exactFeeTokenAmountIn The number of fee tokens collected
      * @param targetToken The desired target token (`tokenOut` of the swap)
-     * @param minTargetTokenAmountOut The minimum `amountOut` for the swap
+     * @param encodedMinAmountsOut The minimum amounts out for the swap, encoded as a 256-bit integer:
+     * - Upper 128 bits: the minimum amount of the target token to receive
+     * - Lower 128 bits: the minimum amount of ERC4626 token to receive
+     *
      * @param recipient The recipient of the swap proceeds
      * @param deadline Deadline for the burn operation (i.e., swap), after which it will revert
      */
@@ -52,7 +55,7 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         IERC20 feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,
-        uint256 minTargetTokenAmountOut,
+        uint256 encodedMinAmountsOut,
         address recipient,
         uint256 deadline
     ) external override onlyProtocolFeeSweeper nonReentrant {
@@ -60,10 +63,20 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         // the underlying token.
         feeToken.safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);
 
+        uint256 minTargetTokenAmountOut = uint128(encodedMinAmountsOut >> 128);
+        uint256 minERC4626AmountOut = uint128(encodedMinAmountsOut & type(uint128).max);
+
         // Redeem and overwrite inputs with new asset and unwrapped amount.
         IERC4626 erc4626Token = IERC4626(address(feeToken));
         feeToken = IERC20(erc4626Token.asset());
         exactFeeTokenAmountIn = erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
+
+        uint256 realBalance = feeToken.balanceOf(address(this));
+        if (exactFeeTokenAmountIn < minERC4626AmountOut) {
+            revert AmountOutBelowMin(feeToken, exactFeeTokenAmountIn, minERC4626AmountOut);
+        } else if (realBalance < minERC4626AmountOut) {
+            revert AmountOutBelowMin(feeToken, realBalance, minERC4626AmountOut);
+        }
 
         // This case is not handled by the internal `_burn` function, but it's valid: we can consider that the token
         // has already been converted to the correct token, so we just forward the result and finish.
