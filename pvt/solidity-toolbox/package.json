@@ -5,6 +5,7 @@
   "version": "1.0.0",
   "license": "GPL-3.0-only",
   "devDependencies": {
+    "@chainlink/contracts": "^1.2.0",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.6",

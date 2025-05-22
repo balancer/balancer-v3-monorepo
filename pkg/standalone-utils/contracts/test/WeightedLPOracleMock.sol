@@ -2,11 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    IChainlinkAggregatorV3
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IChainlinkAggregatorV3.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { WeightedLPOracle } from "../WeightedLPOracle.sol";
 
@@ -14,7 +13,7 @@ contract WeightedLPOracleMock is WeightedLPOracle {
     constructor(
         IVault vault,
         IWeightedPool pool,
-        IChainlinkAggregatorV3[] memory feeds,
+        AggregatorV3Interface[] memory feeds,
         uint256 version
     ) WeightedLPOracle(vault, pool, feeds, version) {}
 
@@ -26,7 +25,7 @@ contract WeightedLPOracleMock is WeightedLPOracle {
         return _getFeedData();
     }
 
-    function getFeeds() external view virtual returns (IChainlinkAggregatorV3[] memory) {
+    function getFeeds() external view virtual returns (AggregatorV3Interface[] memory) {
         return _getFeeds(_totalTokens);
     }
 
@@ -38,7 +37,7 @@ contract WeightedLPOracleMock is WeightedLPOracle {
         return _getWeights(_totalTokens);
     }
 
-    function calculateFeedTokenDecimalScalingFactor(IChainlinkAggregatorV3 feed) external view returns (uint256) {
+    function calculateFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) external view returns (uint256) {
         return _calculateFeedTokenDecimalScalingFactor(feed);
     }
 }
