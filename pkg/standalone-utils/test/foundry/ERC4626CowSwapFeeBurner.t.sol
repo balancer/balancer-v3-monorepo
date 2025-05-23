@@ -253,6 +253,39 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         );
     }
 
+    function testBurnFeeTokenIfUnwrappedTokenIsZero() public {
+        // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
+        vm.prank(admin);
+        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
+        uint256 assetsAmount = waDAI.previewRedeem(TEST_BURN_AMOUNT);
+        require(assetsAmount != TEST_BURN_AMOUNT, "No point testing when rate is 1:1");
+
+        vm.mockCall(
+            address(waDAI),
+            abi.encodeWithSelector(
+                IERC4626.redeem.selector,
+                TEST_BURN_AMOUNT,
+                address(cowSwapFeeBurner),
+                address(cowSwapFeeBurner)
+            ),
+            abi.encode(0)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(ICowSwapFeeBurner.AmountOutIsZero.selector, dai));
+        // Target token is now DAI, which is waDAI.asset().
+        vm.prank(admin);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, 0),
+            alice,
+            orderDeadline
+        );
+    }
+
     function _encodeMinAmountsOut(
         uint256 minTargetTokenAmountOut,
         uint256 minERC4626AmountOut
