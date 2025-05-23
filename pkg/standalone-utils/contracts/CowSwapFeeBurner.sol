@@ -172,7 +172,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
             minTargetTokenAmountOut,
             recipient,
             deadline,
-            0, // balanceDelta
             true // pullFeeToken
         );
     }
@@ -185,7 +184,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
         uint256 minTargetTokenAmountOut,
         address recipient,
         uint256 deadline,
-        uint256 balanceDelta,
         bool pullFeeToken
     ) internal {
         if (targetToken == feeToken) {
@@ -197,13 +195,13 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
         _checkMinAmountOut(minTargetTokenAmountOut);
         _checkDeadline(deadline);
 
-        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken, balanceDelta);
-        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
-            revert OrderHasUnexpectedStatus(status);
-        }
-
         if (pullFeeToken) {
             feeToken.safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+        }
+
+        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken, feeTokenAmount);
+        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
+            revert OrderHasUnexpectedStatus(status);
         }
 
         _createCowOrder(feeToken);

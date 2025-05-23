@@ -99,7 +99,6 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
                 minTargetTokenAmountOut,
                 recipient,
                 deadline,
-                exactFeeTokenAmountIn, // balanceDelta
                 false // pullToken
             );
         }

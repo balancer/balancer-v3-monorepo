@@ -84,7 +84,45 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         cowSwapFeeBurner.getOrder(dai);
 
         _testBurn();
+
+        uint256 balance = dai.balanceOf(address(cowSwapFeeBurner));
+        vm.prank(address(cowSwapFeeBurner));
+        IERC20(address(dai)).safeTransfer(alice, balance);
+
+        assertEq(
+            uint256(cowSwapFeeBurner.getOrderStatus(dai)),
+            uint256(ICowSwapFeeBurner.OrderStatus.Filled),
+            "Order status should be Filled"
+        );
+
         _testBurn();
+    }
+
+    function testBurnerIfOrdersExist() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+
+        vm.prank(admin);
+        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ICowSwapFeeBurner.OrderHasUnexpectedStatus.selector,
+                ICowSwapFeeBurner.OrderStatus.Active
+            )
+        );
+        vm.prank(admin);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            usdc,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, 0),
+            alice,
+            orderDeadline
+        );
     }
 
     function _testBurn() public {
@@ -158,6 +196,11 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         });
 
         assertEq(keccak256(abi.encode(order)), keccak256(abi.encode(expectedOrder)), "Order has incorrect values");
+        assertEq(
+            uint256(cowSwapFeeBurner.getOrderStatus(dai)),
+            uint256(ICowSwapFeeBurner.OrderStatus.Active),
+            "Order status should be Active"
+        );
     }
 
     /// @dev No order is created in this case; tokens are forwarded to the receiver directly.
