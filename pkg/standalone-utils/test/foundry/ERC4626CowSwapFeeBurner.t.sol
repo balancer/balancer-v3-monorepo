@@ -71,6 +71,21 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
     }
 
     function testBurn() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+    }
+
+    function testBurnDouble() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+        _testBurn();
+    }
+
+    function _testBurn() public {
         // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
         vm.prank(admin);
         waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
@@ -78,9 +93,6 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         uint256 cowSwapFeeBurnerWaDaiBalanceBefore = waDAI.balanceOf(address(cowSwapFeeBurner));
         uint256 cowSwapFeeBurnerDaiBalanceBefore = dai.balanceOf(address(cowSwapFeeBurner));
         uint256 callerWaDaiBalanceBefore = waDAI.balanceOf(address(admin));
-
-        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
-        cowSwapFeeBurner.getOrder(dai);
 
         _mockComposableCowCreate(dai);
 
