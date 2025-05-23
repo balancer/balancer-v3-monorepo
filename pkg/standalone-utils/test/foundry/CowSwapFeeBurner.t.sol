@@ -142,10 +142,50 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
     }
 
     function testBurn() public {
-        uint256 cowSwapFeeBurnerBalanceBefore = dai.balanceOf(address(cowSwapFeeBurner));
-
         vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
         cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+    }
+
+    function testBurnDouble() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+
+        uint256 balance = dai.balanceOf(address(cowSwapFeeBurner));
+        vm.prank(address(cowSwapFeeBurner));
+        IERC20(address(dai)).safeTransfer(alice, balance);
+
+        assertEq(
+            uint256(cowSwapFeeBurner.getOrderStatus(dai)),
+            uint256(ICowSwapFeeBurner.OrderStatus.Filled),
+            "Order status should be Filled"
+        );
+
+        _testBurn();
+    }
+
+    function testBurnerIfOrdersExist() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+
+        _approveForBurner(dai, TEST_BURN_AMOUNT);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ICowSwapFeeBurner.OrderHasUnexpectedStatus.selector,
+                ICowSwapFeeBurner.OrderStatus.Active
+            )
+        );
+        _burn();
+    }
+
+    function _testBurn() internal {
+        uint256 cowSwapFeeBurnerBalanceBefore = dai.balanceOf(address(cowSwapFeeBurner));
 
         _mockComposableCowCreate(dai);
         _approveForBurner(dai, TEST_BURN_AMOUNT);
@@ -191,6 +231,11 @@ contract CowSwapFeeBurnerTest is BaseVaultTest {
         });
 
         assertEq(order, expectedOrder, "Order has incorrect values");
+        assertEq(
+            uint256(cowSwapFeeBurner.getOrderStatus(dai)),
+            uint256(ICowSwapFeeBurner.OrderStatus.Active),
+            "Order status should be Active"
+        );
     }
 
     function testBurnWhenFeeTokenAsTargetToken() public {

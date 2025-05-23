@@ -195,13 +195,13 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
         _checkMinAmountOut(minTargetTokenAmountOut);
         _checkDeadline(deadline);
 
-        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken);
-        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
-            revert OrderHasUnexpectedStatus(status);
-        }
-
         if (pullFeeToken) {
             feeToken.safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+        }
+
+        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken, feeTokenAmount);
+        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
+            revert OrderHasUnexpectedStatus(status);
         }
 
         _createCowOrder(feeToken);
@@ -324,6 +324,13 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     function _getOrderStatusAndBalance(IERC20 tokenIn) private view returns (OrderStatus, uint256) {
+        return _getOrderStatusAndBalance(tokenIn, 0);
+    }
+
+    function _getOrderStatusAndBalance(
+        IERC20 tokenIn,
+        uint256 balanceDelta
+    ) private view returns (OrderStatus, uint256) {
         ShortOrder storage shortOrder = _orders[tokenIn];
 
         uint256 deadline = shortOrder.deadline;
@@ -332,7 +339,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
             return (OrderStatus.Nonexistent, 0);
         }
 
-        uint256 balance = tokenIn.balanceOf(address(this));
+        uint256 balance = tokenIn.balanceOf(address(this)) - balanceDelta;
         if (balance == 0) {
             return (OrderStatus.Filled, balance);
         } else if (block.timestamp > deadline) {
