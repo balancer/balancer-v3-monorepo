@@ -79,6 +79,8 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
 
         if (exactFeeTokenAmountIn < minERC4626AmountOut) {
             revert AmountOutBelowMin(underlyingToken, exactFeeTokenAmountIn, minERC4626AmountOut);
+        } else if (exactFeeTokenAmountIn == 0) {
+            revert AmountOutIsZero(underlyingToken);
         }
 
         // This case is not handled by the internal `_burn` function, but it's valid: we can consider that the token
