@@ -20,8 +20,9 @@ import {
     RemoveLiquidityKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+
+import { VaultGuard } from "./VaultGuard.sol";
 
 contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
     using SafeERC20 for IERC20;

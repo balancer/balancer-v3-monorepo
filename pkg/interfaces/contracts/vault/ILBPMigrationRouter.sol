@@ -4,10 +4,9 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-
 import { PoolRoleAccounts } from "./VaultTypes.sol";
 import { ILBPool } from "../pool-weighted/ILBPool.sol";
+import { IWeightedPool } from "../pool-weighted/IWeightedPool.sol";
 
 /// @notice Interface for migrating liquidity from a Liquidity Bootstrapping Pool (LBP) to new Weighted Pool with custom parameters.
 interface ILBPMigrationRouter {
