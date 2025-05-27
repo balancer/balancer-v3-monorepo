@@ -9,7 +9,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { ILBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ILBPMigrationRouter.sol";
+import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import {
     PoolConfig,
     TokenConfig,
@@ -18,15 +18,13 @@ import {
     PoolRoleAccounts
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { LBPMigrationRouter } from "@balancer-labs/v3-vault/contracts/LBPMigrationRouter.sol";
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { LBPMigrationRouter } from "../../contracts/LBPMigrationRouter.sol";
+import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
-import { BaseLBPTest } from "@balancer-labs/v3-pool-weighted/test/foundry/utils/BaseLBPTest.sol";
-import {
-    WeightedPoolContractsDeployer
-} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
+import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
+import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDeployer.sol";
 
 contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
