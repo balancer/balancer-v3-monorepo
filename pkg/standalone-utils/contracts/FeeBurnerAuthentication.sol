@@ -26,7 +26,7 @@ contract FeeBurnerAuthentication is SingletonAuthentication {
         _;
     }
 
-    constructor(IVault value, IProtocolFeeSweeper _protocolFeeSweeper) SingletonAuthentication(value) {
+    constructor(IVault vault, IProtocolFeeSweeper _protocolFeeSweeper) SingletonAuthentication(vault) {
         if (address(_protocolFeeSweeper) == address(0)) {
             revert InvalidProtocolFeeSweeper();
         }
