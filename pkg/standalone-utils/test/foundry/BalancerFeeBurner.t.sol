@@ -64,6 +64,8 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
             address(feeSweeper)
         );
 
+        authorizer.grantRole(feeBurnerAuth.getActionId(IBalancerFeeBurner.setBurnPath.selector), admin);
+
         vm.prank(admin);
         feeSweeper.addProtocolFeeBurner(feeBurner);
 
@@ -288,17 +290,14 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         feeBurner.getBurnPath(dai);
     }
 
-    function testSetBurnPath() external {
-        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
-        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: pool, tokenOut: usdc });
-
+    function testSetBurnPathIfSenderIsFeeRecipient() external {
         vm.prank(alice);
-        feeBurner.setBurnPath(dai, steps);
+        _testSetBurnPath();
+    }
 
-        IBalancerFeeBurner.SwapPathStep[] memory path = feeBurner.getBurnPath(dai);
-        assertEq(path.length, steps.length);
-        assertEq(path[0].pool, steps[0].pool);
-        assertEq(address(path[0].tokenOut), address(steps[0].tokenOut));
+    function testSetBurnPathIfSenderIsAuthorized() external {
+        vm.prank(admin);
+        _testSetBurnPath();
     }
 
     function testSetBurnPathDouble() external {
@@ -321,11 +320,30 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         assertEq(address(steps[0].tokenOut), address(newSteps[0].tokenOut));
     }
 
+    function testSetBurnPathRevertIfNotAuthorized() external {
+        IBalancerFeeBurner.SwapPathStep[] memory steps;
+
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        feeBurner.setBurnPath(dai, steps);
+    }
+
     function getBalances() internal view returns (Balances memory) {
         IERC20[] memory tokens = new IERC20[](2);
         tokens[daiIdx] = dai;
         tokens[usdcIdx] = usdc;
 
         return getBalances(address(feeSweeper), tokens);
+    }
+
+    function _testSetBurnPath() internal {
+        IBalancerFeeBurner.SwapPathStep[] memory steps = new IBalancerFeeBurner.SwapPathStep[](1);
+        steps[0] = IBalancerFeeBurner.SwapPathStep({ pool: pool, tokenOut: usdc });
+
+        feeBurner.setBurnPath(dai, steps);
+
+        IBalancerFeeBurner.SwapPathStep[] memory path = feeBurner.getBurnPath(dai);
+        assertEq(path.length, steps.length);
+        assertEq(path[0].pool, steps[0].pool);
+        assertEq(address(path[0].tokenOut), address(steps[0].tokenOut));
     }
 }

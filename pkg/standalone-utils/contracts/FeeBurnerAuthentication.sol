@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IProtocolFeeSweeper } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IProtocolFeeSweeper.sol";
+
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 contract FeeBurnerAuthentication is SingletonAuthentication {
     IProtocolFeeSweeper public immutable protocolFeeSweeper;
@@ -13,9 +14,7 @@ contract FeeBurnerAuthentication is SingletonAuthentication {
     error InvalidProtocolFeeSweeper();
 
     modifier onlyFeeRecipientOrGovernance() {
-        address roleAddress = protocolFeeSweeper.getFeeRecipient();
-
-        _ensureAuthenticatedByRole(address(this), roleAddress);
+        _ensureAuthenticatedByRole(address(this), protocolFeeSweeper.getFeeRecipient());
         _;
     }
 
