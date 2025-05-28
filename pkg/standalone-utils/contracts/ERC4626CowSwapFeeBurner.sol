@@ -31,8 +31,9 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         IComposableCow _composableCow,
         address _vaultRelayer,
         bytes32 _appData,
+        address _initialOwner,
         string memory _version
-    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _vaultRelayer, _appData, _version) {
+    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _vaultRelayer, _appData, _initialOwner, _version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

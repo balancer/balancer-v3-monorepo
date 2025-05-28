@@ -68,6 +68,7 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
             IComposableCow(composableCowMock),
             vaultRelayerMock,
             APP_DATA_HASH,
+            bob,
             VERSION
         );
     }
