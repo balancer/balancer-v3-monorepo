@@ -13,6 +13,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { CowSwapFeeBurner } from "./CowSwapFeeBurner.sol";
 
@@ -44,7 +45,9 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
      * @param feeToken The token collected from the pool
      * @param exactFeeTokenAmountIn The number of fee tokens collected
      * @param targetToken The desired target token (`tokenOut` of the swap)
-     * @param minTargetTokenAmountOut The minimum `amountOut` for the swap
+     * @param encodedMinAmountsOut The minimum amounts out for the swap, encoded as a 256-bit integer:
+     * - Upper 128 bits: the minimum amount of the target token to receive
+     * - Lower 128 bits: the minimum amount of the ERC4626 token to receive
      * @param recipient The recipient of the swap proceeds
      * @param deadline Deadline for the burn operation (i.e., swap), after which it will revert
      */
@@ -53,32 +56,47 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         IERC20 feeToken,
         uint256 exactFeeTokenAmountIn,
         IERC20 targetToken,
-        uint256 minTargetTokenAmountOut,
+        uint256 encodedMinAmountsOut,
         address recipient,
         uint256 deadline
     ) external override onlyProtocolFeeSweeper nonReentrant {
+        IERC4626 erc4626Token = IERC4626(address(feeToken));
+        IERC20 underlyingToken = IERC20(erc4626Token.asset());
+
         // In this case we first pull the wrapped token, unwrap, and then proceed to burn by creating an order for
         // the underlying token.
-        feeToken.safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);
+        IERC20(address(erc4626Token)).safeTransferFrom(msg.sender, address(this), exactFeeTokenAmountIn);
 
-        // Redeem and overwrite inputs with new asset and unwrapped amount.
-        IERC4626 erc4626Token = IERC4626(address(feeToken));
-        feeToken = IERC20(erc4626Token.asset());
-        exactFeeTokenAmountIn = erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
+        (uint256 minTargetTokenAmountOut, uint256 minERC4626AmountOut) = PackedTokenBalance.fromPackedBalance(
+            bytes32(encodedMinAmountsOut)
+        );
+
+        uint256 feeTokenBalanceBefore = underlyingToken.balanceOf(address(this));
+
+        erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
+
+        uint256 feeTokenBalanceAfter = underlyingToken.balanceOf(address(this));
+        exactFeeTokenAmountIn = feeTokenBalanceAfter - feeTokenBalanceBefore;
+
+        if (exactFeeTokenAmountIn < minERC4626AmountOut) {
+            revert AmountOutBelowMin(underlyingToken, exactFeeTokenAmountIn, minERC4626AmountOut);
+        } else if (exactFeeTokenAmountIn == 0) {
+            revert AmountOutIsZero(underlyingToken);
+        }
 
         // This case is not handled by the internal `_burn` function, but it's valid: we can consider that the token
         // has already been converted to the correct token, so we just forward the result and finish.
-        if (feeToken == targetToken) {
+        if (underlyingToken == targetToken) {
             // We apply the slippage check, but not deadline as the order settlement is instant in this case.
             if (exactFeeTokenAmountIn < minTargetTokenAmountOut) {
                 revert AmountOutBelowMin(targetToken, exactFeeTokenAmountIn, minTargetTokenAmountOut);
             }
 
-            feeToken.safeTransfer(recipient, exactFeeTokenAmountIn);
+            underlyingToken.safeTransfer(recipient, exactFeeTokenAmountIn);
         } else {
             _burn(
                 pool,
-                feeToken,
+                underlyingToken,
                 exactFeeTokenAmountIn,
                 targetToken,
                 minTargetTokenAmountOut,

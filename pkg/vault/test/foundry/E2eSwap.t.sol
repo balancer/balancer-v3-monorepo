@@ -59,8 +59,8 @@ contract E2eSwapTest is BaseVaultTest {
     uint256 internal constant POOL_SPECIFIC_PARAMS_SIZE = 5;
 
     function setUp() public virtual override {
-        // We will use min trade amount in this test.
-        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+        // We'll do best effort to be around the minimum trade amount, but things should work nonetheless.
+        vaultMockMinTradeAmount = 0;
 
         BaseVaultTest.setUp();
 
@@ -207,7 +207,7 @@ contract E2eSwapTest is BaseVaultTest {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function testDoUndoExactInSwapAmount__Fuzz(uint256 exactAmountIn) public {
+    function testDoUndoExactInSwapAmount__Fuzz(uint256 exactAmountIn) public virtual {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
 
@@ -237,7 +237,7 @@ contract E2eSwapTest is BaseVaultTest {
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
-    function testDoUndoExactInFees__Fuzz(uint256 poolSwapFeePercentage) public {
+    function testDoUndoExactInFees__Fuzz(uint256 poolSwapFeePercentage) public virtual {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestFee = true;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
@@ -332,7 +332,7 @@ contract E2eSwapTest is BaseVaultTest {
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
-    function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactAmountOut) public {
+    function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactAmountOut) public virtual {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
 
@@ -362,7 +362,7 @@ contract E2eSwapTest is BaseVaultTest {
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
-    function testDoUndoExactOutFees__Fuzz(uint256 poolSwapFeePercentage) public {
+    function testDoUndoExactOutFees__Fuzz(uint256 poolSwapFeePercentage) public virtual {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestFee = true;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;

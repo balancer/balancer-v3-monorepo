@@ -28,10 +28,6 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         IVault vault,
         IProtocolFeeSweeper _protocolFeeSweeper
     ) VaultGuard(vault) FeeBurnerAuthentication(vault, _protocolFeeSweeper) {
-        if (address(_protocolFeeSweeper) == address(0)) {
-            revert InvalidProtocolFeeSweeper();
-        }
-
         protocolFeeSweeper = _protocolFeeSweeper;
     }
 
