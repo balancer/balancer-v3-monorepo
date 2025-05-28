@@ -2,21 +2,19 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import {
-    IChainlinkAggregatorV3
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IChainlinkAggregatorV3.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract WeightedLPOracle is IChainlinkAggregatorV3 {
+contract WeightedLPOracle is AggregatorV3Interface {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -39,14 +37,14 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
     uint256 internal immutable _weight6;
     uint256 internal immutable _weight7;
 
-    IChainlinkAggregatorV3 internal immutable _feedToken0;
-    IChainlinkAggregatorV3 internal immutable _feedToken1;
-    IChainlinkAggregatorV3 internal immutable _feedToken2;
-    IChainlinkAggregatorV3 internal immutable _feedToken3;
-    IChainlinkAggregatorV3 internal immutable _feedToken4;
-    IChainlinkAggregatorV3 internal immutable _feedToken5;
-    IChainlinkAggregatorV3 internal immutable _feedToken6;
-    IChainlinkAggregatorV3 internal immutable _feedToken7;
+    AggregatorV3Interface internal immutable _feedToken0;
+    AggregatorV3Interface internal immutable _feedToken1;
+    AggregatorV3Interface internal immutable _feedToken2;
+    AggregatorV3Interface internal immutable _feedToken3;
+    AggregatorV3Interface internal immutable _feedToken4;
+    AggregatorV3Interface internal immutable _feedToken5;
+    AggregatorV3Interface internal immutable _feedToken6;
+    AggregatorV3Interface internal immutable _feedToken7;
 
     uint256 internal immutable _feedToken0DecimalScalingFactor;
     uint256 internal immutable _feedToken1DecimalScalingFactor;
@@ -57,7 +55,7 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
     uint256 internal immutable _feedToken6DecimalScalingFactor;
     uint256 internal immutable _feedToken7DecimalScalingFactor;
 
-    constructor(IVault vault_, IWeightedPool pool_, IChainlinkAggregatorV3[] memory feeds_, uint256 version_) {
+    constructor(IVault vault_, IWeightedPool pool_, AggregatorV3Interface[] memory feeds, uint256 version_) {
         _version = version_;
         _vault = vault_;
         pool = pool_;
@@ -69,63 +67,78 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         _totalTokens = totalTokens;
         _description = string.concat(IERC20Metadata(address(pool)).symbol(), "/USD");
 
-        InputHelpers.ensureInputLengthMatch(totalTokens, feeds_.length);
+        InputHelpers.ensureInputLengthMatch(totalTokens, feeds.length);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             if (i == 0) {
-                _feedToken0 = feeds_[i];
+                _feedToken0 = feeds[i];
                 _weight0 = weights[i];
-                _feedToken0DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken0DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 1) {
-                _feedToken1 = feeds_[i];
+                _feedToken1 = feeds[i];
                 _weight1 = weights[i];
-                _feedToken1DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken1DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 2) {
-                _feedToken2 = feeds_[i];
+                _feedToken2 = feeds[i];
                 _weight2 = weights[i];
-                _feedToken2DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken2DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 3) {
-                _feedToken3 = feeds_[i];
+                _feedToken3 = feeds[i];
                 _weight3 = weights[i];
-                _feedToken3DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken3DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 4) {
-                _feedToken4 = feeds_[i];
+                _feedToken4 = feeds[i];
                 _weight4 = weights[i];
-                _feedToken4DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken4DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 5) {
-                _feedToken5 = feeds_[i];
+                _feedToken5 = feeds[i];
                 _weight5 = weights[i];
-                _feedToken5DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken5DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 6) {
-                _feedToken6 = feeds_[i];
+                _feedToken6 = feeds[i];
                 _weight6 = weights[i];
-                _feedToken6DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken6DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             } else if (i == 7) {
-                _feedToken7 = feeds_[i];
+                _feedToken7 = feeds[i];
                 _weight7 = weights[i];
-                _feedToken7DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds_[i]);
+                _feedToken7DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
             }
         }
     }
 
-    /// @inheritdoc IChainlinkAggregatorV3
+    /// @inheritdoc AggregatorV3Interface
     function version() external view returns (uint256) {
         return _version;
     }
 
-    /// @inheritdoc IChainlinkAggregatorV3
+    /**
+     * @notice Get the number of decimals present in the response value.
+     * @dev This is hard-coded to 18 decimals.
+     * @return decimals The number of decimals
+     */
     function decimals() external pure returns (uint8) {
         return 18;
     }
 
-    /// @inheritdoc IChainlinkAggregatorV3
+    /**
+     * @notice Get the description of the underlying aggregator that the proxy points to.
+     * @return description The description as a string
+     */
     function description() external view returns (string memory) {
         return _description;
     }
 
-    /// @inheritdoc IChainlinkAggregatorV3
+    /**
+     * @notice Get data about a specific round, using the roundId.
+     * @dev This is unused, and always returns all zeros.
+     * @return roundId The round ID
+     * @return answer The answer for this round
+     * @return startedAt Timestamp when the round started
+     * @return updatedAt Timestamp when the round was updated
+     * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
+     */
     function getRoundData(
-        uint80
+        uint80 /* _roundId */
     )
         external
         pure
@@ -134,7 +147,14 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         return (0, 0, 0, 0, 0);
     }
 
-    /// @inheritdoc IChainlinkAggregatorV3
+    /**
+     * @notice Get the data from the latest round.
+     * @return roundId The round ID
+     * @return answer The answer for this round
+     * @return startedAt Timestamp when the round started
+     * @return updatedAt Timestamp when the round was updated
+     * @return answeredInRound [Deprecated] - Previously used when answers could take multiple rounds to be computed
+     */
     function latestRoundData()
         external
         view
@@ -175,7 +195,7 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
 
     function _getFeedData() internal view returns (int256[] memory prices, uint256 updatedAt) {
         uint256 totalTokens = _totalTokens;
-        IChainlinkAggregatorV3[] memory feeds = _getFeeds(totalTokens);
+        AggregatorV3Interface[] memory feeds = _getFeeds(totalTokens);
         uint256[] memory feedDecimalScalingFactors = _getFeedTokenDecimalScalingFactors(totalTokens);
 
         prices = new int256[](totalTokens);
@@ -189,8 +209,8 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         }
     }
 
-    function _getFeeds(uint256 totalTokens) internal view virtual returns (IChainlinkAggregatorV3[] memory) {
-        IChainlinkAggregatorV3[] memory feeds = new IChainlinkAggregatorV3[](totalTokens);
+    function _getFeeds(uint256 totalTokens) internal view virtual returns (AggregatorV3Interface[] memory) {
+        AggregatorV3Interface[] memory feeds = new AggregatorV3Interface[](totalTokens);
 
         // prettier-ignore
         {
@@ -248,7 +268,7 @@ contract WeightedLPOracle is IChainlinkAggregatorV3 {
         return weights;
     }
 
-    function _calculateFeedTokenDecimalScalingFactor(IChainlinkAggregatorV3 feed) internal view returns (uint256) {
+    function _calculateFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
         uint256 feedDecimals = feed.decimals();
 
         if (feedDecimals > _WAD_DECIMALS) {

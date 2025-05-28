@@ -2,11 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import {
-    IChainlinkAggregatorV3
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IChainlinkAggregatorV3.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-contract FeedMock is IChainlinkAggregatorV3 {
+contract FeedMock is AggregatorV3Interface {
     uint256 internal _decimals;
     uint256 internal _lastAnswer;
     uint256 internal _lastUpdatedAt;
