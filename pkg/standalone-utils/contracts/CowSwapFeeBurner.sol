@@ -201,6 +201,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
 
         (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken, feeTokenAmount);
         if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
+            // New order can only be created if no order exists or the previous one was completely filled.
+            // This prevents overlapping orders for the same token.
             revert OrderHasUnexpectedStatus(status);
         }
 
@@ -336,16 +338,22 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
         uint256 deadline = shortOrder.deadline;
 
         if (deadline == 0) {
+            // No order exists because it was never created before.
             return (OrderStatus.Nonexistent, 0);
         }
 
+        // We return the balance to the state before we received tokens for the new order
         uint256 balance = tokenIn.balanceOf(address(this)) - balanceDelta;
         if (balance == 0) {
+            // If no tokens remain, we assume the order was fully executed
+            // because all tokens are taken by the relayer when the order is filled.
             return (OrderStatus.Filled, balance);
         } else if (block.timestamp > deadline) {
+            // If tokens remain and the deadline passed, the order is considered failed.
             return (OrderStatus.Failed, balance);
         }
 
+        // Otherwise, the order is still active.
         return (OrderStatus.Active, balance);
     }
 
