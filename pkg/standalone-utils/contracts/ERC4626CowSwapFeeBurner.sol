@@ -26,6 +26,9 @@ import { CowSwapFeeBurner } from "./CowSwapFeeBurner.sol";
 contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
     using SafeERC20 for IERC20;
 
+    /// @notice The amount out is zero.
+    error AmountOutIsZero(IERC20 token);
+
     constructor(
         IVault _vault,
         IProtocolFeeSweeper _protocolFeeSweeper,
