@@ -26,13 +26,14 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
 
     constructor(
         IVault vault,
-        IProtocolFeeSweeper _protocolFeeSweeper
-    ) VaultGuard(vault) FeeBurnerAuthentication(vault, _protocolFeeSweeper) {
+        IProtocolFeeSweeper _protocolFeeSweeper,
+        address initialOwner
+    ) VaultGuard(vault) FeeBurnerAuthentication(_protocolFeeSweeper, initialOwner) {
         protocolFeeSweeper = _protocolFeeSweeper;
     }
 
     /// @inheritdoc IBalancerFeeBurner
-    function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external onlyFeeRecipientOrGovernance {
+    function setBurnPath(IERC20 feeToken, SwapPathStep[] calldata steps) external onlyFeeRecipientOrOwner {
         delete _burnSteps[feeToken];
 
         for (uint256 i = 0; i < steps.length; i++) {
@@ -59,7 +60,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         address recipient,
         uint256 deadline
     ) external onlyProtocolFeeSweeper {
-        getVault().unlock(
+        _vault.unlock(
             abi.encodeCall(
                 BalancerFeeBurner.burnHook,
                 BurnHookParams({
@@ -93,11 +94,9 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
             revert TargetTokenOutMismatch();
         }
 
-        IVault vault = getVault();
-
         // Transfer the `tokenIn` to the vault.
-        feeToken.safeTransferFrom(params.sender, address(vault), feeTokenAmount);
-        vault.settle(feeToken, feeTokenAmount);
+        feeToken.safeTransferFrom(params.sender, address(_vault), feeTokenAmount);
+        _vault.settle(feeToken, feeTokenAmount);
 
         // Swap the fee token for the target token through the steps.
         IERC20 stepTokenIn = feeToken;
@@ -105,7 +104,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         for (uint256 i = 0; i < steps.length; i++) {
             SwapPathStep memory step = steps[i];
 
-            (, , uint256 amountOut) = vault.swap(
+            (, , uint256 amountOut) = _vault.swap(
                 VaultSwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: step.pool,
@@ -122,7 +121,7 @@ contract BalancerFeeBurner is IBalancerFeeBurner, ReentrancyGuardTransient, Vaul
         }
 
         // Last stepTokenIn is the final token out. Last stepExactAmountIn is the amount out.
-        vault.sendTo(stepTokenIn, params.recipient, stepExactAmountIn);
+        _vault.sendTo(stepTokenIn, params.recipient, stepExactAmountIn);
 
         emit ProtocolFeeBurned(params.pool, feeToken, feeTokenAmount, targetToken, stepExactAmountIn, params.recipient);
     }

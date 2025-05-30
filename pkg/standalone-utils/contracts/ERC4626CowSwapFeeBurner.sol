@@ -30,13 +30,13 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
     error AmountOutIsZero(IERC20 token);
 
     constructor(
-        IVault _vault,
         IProtocolFeeSweeper _protocolFeeSweeper,
         IComposableCow _composableCow,
         address _cowVaultRelayer,
         bytes32 _appData,
+        address _initialOwner,
         string memory _version
-    ) CowSwapFeeBurner(_vault, _protocolFeeSweeper, _composableCow, _cowVaultRelayer, _appData, _version) {
+    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _cowVaultRelayer, _appData, _initialOwner, _version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

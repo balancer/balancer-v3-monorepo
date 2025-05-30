@@ -35,7 +35,7 @@ import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Version, FeeBurnerAuthentication {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, ReentrancyGuardTransient, Version {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -57,13 +57,13 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     mapping(IERC20 token => ShortOrder order) internal _orders;
 
     constructor(
-        IVault vault,
         IProtocolFeeSweeper _protocolFeeSweeper,
         IComposableCow _composableCow,
         address _cowVaultRelayer,
         bytes32 _appData,
+        address _initialOwner,
         string memory _version
-    ) Version(_version) FeeBurnerAuthentication(vault, _protocolFeeSweeper) {
+    ) Version(_version) FeeBurnerAuthentication(_protocolFeeSweeper, _initialOwner) {
         composableCow = _composableCow;
         vaultRelayer = _cowVaultRelayer;
         appData = _appData;
@@ -84,7 +84,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipientOrGovernance {
+    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipientOrOwner {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -108,7 +108,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function cancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrGovernance {
+    function cancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrOwner {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -119,7 +119,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrGovernance {
+    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrOwner {
         _cancelOrder(tokenIn, receiver, tokenIn.balanceOf(address(this)));
     }
 

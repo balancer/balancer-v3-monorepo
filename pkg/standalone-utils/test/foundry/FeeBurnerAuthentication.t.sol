@@ -17,14 +17,7 @@ contract FeeBurnerAuthenticationTest is BaseVaultTest {
     function setUp() public virtual override {
         super.setUp();
 
-        feeBurnerAuth = new FeeBurnerAuthenticationMock(vault, IProtocolFeeSweeper(protocolFeeSweeper));
-
-        authorizer.grantRole(
-            IAuthentication(address(feeBurnerAuth)).getActionId(
-                FeeBurnerAuthenticationMock.manualOnlyFeeRecipientOrGovernance.selector
-            ),
-            admin
-        );
+        feeBurnerAuth = new FeeBurnerAuthenticationMock(IProtocolFeeSweeper(protocolFeeSweeper), admin);
     }
 
     function testOnlyProtocolFeeSweeper() external {
@@ -41,21 +34,21 @@ contract FeeBurnerAuthenticationTest is BaseVaultTest {
         _mockGetFeeRecipient();
 
         vm.prank(alice);
-        feeBurnerAuth.manualOnlyFeeRecipientOrGovernance();
+        feeBurnerAuth.manualOnlyFeeRecipientOrOwner();
     }
 
-    function testOnlyGovernance() external {
+    function testOnlyOwner() external {
         _mockGetFeeRecipient();
 
         vm.prank(admin);
-        feeBurnerAuth.manualOnlyFeeRecipientOrGovernance();
+        feeBurnerAuth.manualOnlyFeeRecipientOrOwner();
     }
 
-    function testOnlyFeeRecipientOrGovernanceRevertIfSenderIsWrong() external {
+    function testOnlyFeeRecipientOrOwnerRevertIfSenderIsWrong() external {
         _mockGetFeeRecipient();
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        feeBurnerAuth.manualOnlyFeeRecipientOrGovernance();
+        feeBurnerAuth.manualOnlyFeeRecipientOrOwner();
     }
 
     function _mockGetFeeRecipient() internal {

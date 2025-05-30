@@ -9,13 +9,13 @@ import { FeeBurnerAuthentication } from "../FeeBurnerAuthentication.sol";
 
 contract FeeBurnerAuthenticationMock is FeeBurnerAuthentication {
     constructor(
-        IVault vault,
-        IProtocolFeeSweeper protocolFeeSweeper
-    ) FeeBurnerAuthentication(vault, protocolFeeSweeper) {
+        IProtocolFeeSweeper protocolFeeSweeper,
+        address initialOwner
+    ) FeeBurnerAuthentication(protocolFeeSweeper, initialOwner) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function manualOnlyProtocolFeeSweeper() external onlyProtocolFeeSweeper {}
 
-    function manualOnlyFeeRecipientOrGovernance() external onlyFeeRecipientOrGovernance {}
+    function manualOnlyFeeRecipientOrOwner() external onlyFeeRecipientOrOwner {}
 }

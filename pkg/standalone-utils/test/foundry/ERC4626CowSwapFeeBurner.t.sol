@@ -64,11 +64,11 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // Only fee sweeper can call `burn`, so for simplicity we just make the admin the fee sweeper for the purpose
         // of this test.
         cowSwapFeeBurner = new ERC4626CowSwapFeeBurner(
-            vault,
             IProtocolFeeSweeper(admin),
             IComposableCow(composableCowMock),
             vaultRelayerMock,
             APP_DATA_HASH,
+            bob,
             VERSION
         );
     }

@@ -46,7 +46,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         feeSweeper = new ProtocolFeeSweeper(vault, alice);
 
         orderDeadline = block.timestamp + ORDER_LIFETIME;
-        feeBurner = new BalancerFeeBurner(vault, feeSweeper);
+        feeBurner = new BalancerFeeBurner(vault, feeSweeper, admin);
 
         feeBurnerAuth = IAuthentication(address(feeBurner));
         feeSweeperAuth = IAuthentication(address(feeSweeper));
@@ -63,8 +63,6 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
             ),
             address(feeSweeper)
         );
-
-        authorizer.grantRole(feeBurnerAuth.getActionId(IBalancerFeeBurner.setBurnPath.selector), admin);
 
         vm.prank(admin);
         feeSweeper.addProtocolFeeBurner(feeBurner);
@@ -295,7 +293,7 @@ contract BalancerFeeBurnerTest is BaseVaultTest {
         _testSetBurnPath();
     }
 
-    function testSetBurnPathIfSenderIsAuthorized() external {
+    function testSetBurnPathIfSenderIsOwner() external {
         vm.prank(admin);
         _testSetBurnPath();
     }
