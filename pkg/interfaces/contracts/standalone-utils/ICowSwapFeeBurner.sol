@@ -17,15 +17,6 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
         Failed
     }
 
-    /// @notice The fee protocol is invalid.
-    error InvalidProtocolFeeSweeper();
-
-    /// @notice The sender does not have permission to call a function.
-    error SenderNotAllowed();
-
-    /// @notice The amount out is zero.
-    error AmountOutIsZero(IERC20 token);
-
     /**
      * @notice An order was retried after failing.
      * @param tokenIn The token used to identify the order

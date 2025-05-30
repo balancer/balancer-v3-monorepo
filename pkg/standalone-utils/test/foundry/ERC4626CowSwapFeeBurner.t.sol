@@ -328,7 +328,7 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
             abi.encode(0)
         );
 
-        vm.expectRevert(abi.encodeWithSelector(ICowSwapFeeBurner.AmountOutIsZero.selector, dai));
+        vm.expectRevert(abi.encodeWithSelector(ERC4626CowSwapFeeBurner.AmountOutIsZero.selector, dai));
         // Target token is now DAI, which is waDAI.asset().
         vm.prank(admin);
         cowSwapFeeBurner.burn(
