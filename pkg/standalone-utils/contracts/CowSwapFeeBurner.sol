@@ -198,13 +198,15 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
         _checkMinAmountOut(minTargetTokenAmountOut);
         _checkDeadline(deadline);
 
-        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken);
-        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
-            revert OrderHasUnexpectedStatus(status);
-        }
-
         if (pullFeeToken) {
             feeToken.safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+        }
+
+        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken, feeTokenAmount);
+        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
+            // New order can only be created if no order exists or the previous one was completely filled.
+            // This prevents overlapping orders for the same token.
+            revert OrderHasUnexpectedStatus(status);
         }
 
         _createCowOrder(feeToken);
@@ -327,21 +329,34 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
     }
 
     function _getOrderStatusAndBalance(IERC20 tokenIn) private view returns (OrderStatus, uint256) {
+        return _getOrderStatusAndBalance(tokenIn, 0);
+    }
+
+    function _getOrderStatusAndBalance(
+        IERC20 tokenIn,
+        uint256 balanceDelta
+    ) private view returns (OrderStatus, uint256) {
         ShortOrder storage shortOrder = _orders[tokenIn];
 
         uint256 deadline = shortOrder.deadline;
 
         if (deadline == 0) {
+            // No order exists because it was never created before.
             return (OrderStatus.Nonexistent, 0);
         }
 
-        uint256 balance = tokenIn.balanceOf(address(this));
+        // We return the balance to the state before we received tokens for the new order
+        uint256 balance = tokenIn.balanceOf(address(this)) - balanceDelta;
         if (balance == 0) {
+            // If no tokens remain, we assume the order was fully executed
+            // because all tokens are taken by the relayer when the order is filled.
             return (OrderStatus.Filled, balance);
         } else if (block.timestamp > deadline) {
+            // If tokens remain and the deadline passed, the order is considered failed.
             return (OrderStatus.Failed, balance);
         }
 
+        // Otherwise, the order is still active.
         return (OrderStatus.Active, balance);
     }
 
