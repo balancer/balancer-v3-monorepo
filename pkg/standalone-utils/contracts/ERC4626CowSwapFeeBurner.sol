@@ -71,15 +71,12 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
             bytes32(encodedMinAmountsOut)
         );
 
-        uint256 feeTokenBalanceBefore = underlyingToken.balanceOf(address(this));
-
-        ShortOrder memory order = _orders[feeToken];
+        ShortOrder memory order = _orders[underlyingToken];
 
         // Check the status before unwrapping; if it's filled, the balance should be zero at this point.
-        _updateOrderStatus(order, OrderStatus.Active);
+        _updateOrderStatus(order, underlyingToken, OrderStatus.Active);
 
-        // Update the status in storage. When checked below in `_burn`, it will be a no-op, as it's already active.
-        _orders[feeToken] = order;
+        uint256 feeTokenBalanceBefore = underlyingToken.balanceOf(address(this));
 
         erc4626Token.redeem(exactFeeTokenAmountIn, address(this), address(this));
 
