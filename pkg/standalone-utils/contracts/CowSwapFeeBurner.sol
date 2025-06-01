@@ -365,7 +365,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
         order.state = newState;
     }
 
-    // 
     /**
      * @dev Refresh the order status based on conditions that can change asynchronously (e.g., deadline, balances).
      * @param order The current state of the order, from storage
