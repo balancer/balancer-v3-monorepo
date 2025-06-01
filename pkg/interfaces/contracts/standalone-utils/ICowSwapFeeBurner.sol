@@ -68,6 +68,9 @@ interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrde
 
     /**
      * @notice Get the status of the order at the sell token.
+     * @dev Cow does not provide an interface to query the status directly. We must infer it from the order fields
+     * and token balance.
+     *
      * @param tokenIn The token used to identify the order
      * @return orderStatus The status of the order for the given token
      */
