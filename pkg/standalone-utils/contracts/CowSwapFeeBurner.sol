@@ -104,7 +104,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
     function getOrderStatus(IERC20 tokenIn) external view returns (OrderStatus) {
         ShortOrder memory order = _orders[tokenIn];
 
-        _refreshOrderStatus(order, tokenIn);
+        _refreshOrderState(order, tokenIn);
 
         return order.status;
     }
@@ -113,11 +113,11 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
     function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipientOrOwner {
         ShortOrder memory order = _orders[tokenIn];
 
-        // Status must be failed in order to retry. Can't handle this through the usual `_updateOrderStatus` mechanism,
-        // because "Retried" is not a status we can transition to. It goes to Active, and that is ambiguous: i.e., it's
-        // normally ok to go from non-existent to Active, but not if we're calling `retryOrder`. The only valid status
-        // here is `Failed`.
-        _refreshOrderStatus(order, tokenIn);
+        // Status must be failed in order to retry. Can't handle this through the usual `_transitionOrderState`
+        // mechanism, because "Retried" is not a status we can transition to. It goes to Active, and that is
+        // ambiguous: i.e., it's normally ok to go from non-existent to Active, but not if we're calling
+        // `retryOrder`. The only valid status here is `Failed`.
+        _refreshOrderState(order, tokenIn);
 
         if (order.status != OrderStatus.Failed) {
             revert OrderHasUnexpectedStatus(order.status);
@@ -150,7 +150,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
 
         // Canceling an order deletes the storage, so the status will be Nonexistent.
         // No need to update the storage, as it's about to be deleted.
-        _updateOrderStatus(order, tokenIn, OrderStatus.Nonexistent);
+        _transitionOrderState(order, tokenIn, OrderStatus.Nonexistent);
 
         uint256 amount = tokenIn.balanceOf(address(this));
 
@@ -189,7 +189,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
         ShortOrder memory order = _orders[feeToken];
 
         // We will create a new order.
-        _updateOrderStatus(order, feeToken, OrderStatus.Active);
+        _transitionOrderState(order, feeToken, OrderStatus.Active);
 
         _burn(
             pool,
@@ -348,8 +348,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
 
     // Call this when changing the status due to user action. This function will set the status in the order
     // to `newStatus`, or revert.
-    function _updateOrderStatus(ShortOrder memory order, IERC20 token, OrderStatus newStatus) internal view {
-        _refreshOrderStatus(order, token);
+    function _transitionOrderState(ShortOrder memory order, IERC20 token, OrderStatus newStatus) internal view {
+        _refreshOrderState(order, token);
 
         OrderStatus oldStatus = order.status;
 
@@ -382,7 +382,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
     }
 
     // Refresh the order status based on conditions (e.g., deadline, balances).
-    function _refreshOrderStatus(ShortOrder memory order, IERC20 token) internal view {
+    function _refreshOrderState(ShortOrder memory order, IERC20 token) internal view {
         uint256 deadline = order.deadline;
 
         if (deadline == 0) {

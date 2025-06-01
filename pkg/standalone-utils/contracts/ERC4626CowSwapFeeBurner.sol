@@ -74,7 +74,7 @@ contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
         ShortOrder memory order = _orders[underlyingToken];
 
         // Check the status before unwrapping; if it's filled, the balance should be zero at this point.
-        _updateOrderStatus(order, underlyingToken, OrderStatus.Active);
+        _transitionOrderState(order, underlyingToken, OrderStatus.Active);
 
         uint256 feeTokenBalanceBefore = underlyingToken.balanceOf(address(this));
 
