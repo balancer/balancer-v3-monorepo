@@ -39,8 +39,10 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTransient, Version {
     using SafeERC20 for IERC20;
 
+    // The state field is the storage for a state machine, with orderly transitions between states.
+    // The enum is still called `OrderStatus`, to preserve the interface.
     struct ShortOrder {
-        OrderStatus status;
+        OrderStatus state;
         IERC20 tokenOut;
         address receiver;
         uint256 minAmountOut;
@@ -106,7 +108,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
 
         _refreshOrderState(order, tokenIn);
 
-        return order.status;
+        return order.state;
     }
 
     /// @inheritdoc ICowSwapFeeBurner
@@ -119,8 +121,8 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
         // `retryOrder`. The only valid status here is `Failed`.
         _refreshOrderState(order, tokenIn);
 
-        if (order.status != OrderStatus.Failed) {
-            revert OrderHasUnexpectedStatus(order.status);
+        if (order.state != OrderStatus.Failed) {
+            revert OrderHasUnexpectedStatus(order.state);
         }
 
         _checkMinAmountOut(minAmountOut);
@@ -128,7 +130,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
 
         order.minAmountOut = minAmountOut;
         order.deadline = uint32(deadline);
-        order.status = OrderStatus.Active;
+        order.state = OrderStatus.Active;
 
         _orders[tokenIn] = order;
 
@@ -231,7 +233,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
         feeToken.forceApprove(vaultRelayer, feeTokenAmount);
 
         _orders[feeToken] = ShortOrder({
-            status: OrderStatus.Active,
+            state: OrderStatus.Active,
             tokenOut: targetToken,
             receiver: recipient,
             minAmountOut: minTargetTokenAmountOut,
@@ -319,8 +321,78 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
     }
 
     /***************************************************************************
-                                Private Functions
+                                Internal Functions
     ***************************************************************************/
+
+    /**
+     * @dev Call this when changing the status due to user action. This function will set the status in the order to
+     * `newStatus`, or revert. If successful, mutates the state field inside the order.
+     *
+     * @param order The current state of the order, from storage
+     * @param token The associated token (orders are keyed by token)
+     * @param newState The new state we are transitioning to
+     */
+    function _transitionOrderState(ShortOrder memory order, IERC20 token, OrderStatus newState) internal view {
+        // Refresh first, as it might have changed since the last time it was saved.
+        _refreshOrderState(order, token);
+
+        OrderStatus oldState = order.state;
+        bool valid;
+
+        if (oldState == OrderStatus.Nonexistent || oldState == OrderStatus.Filled) {
+            // If an order doesn't exist, all you can do is create it.
+            // If an order was successfully filled, you can create a new order for the same token.
+            // If an order failed, you can retry it (making it active again).
+            valid = newState == OrderStatus.Active;
+        } else if (oldState == OrderStatus.Failed) {
+            // You can either create a new order or cancel an order if it's failed.
+            valid = newState == OrderStatus.Active || newState == OrderStatus.Nonexistent;
+        } else if (oldState == OrderStatus.Active) {
+            // If an order is active, it can be:
+            // 1) Filled: indicated by a zero balance)
+            // 2) Failed: indicated by a non-zero balance and a timestamp past the deadline
+            // 3) Nonexistent: canceling an active order deletes the storage
+            valid =
+                newState == OrderStatus.Filled ||
+                newState == OrderStatus.Failed ||
+                newState == OrderStatus.Nonexistent;
+        }
+
+        if (valid == false) {
+            revert OrderHasUnexpectedStatus(oldState);
+        }
+
+        order.state = newState;
+    }
+
+    // 
+    /**
+     * @dev Refresh the order status based on conditions that can change asynchronously (e.g., deadline, balances).
+     * @param order The current state of the order, from storage
+     * @param token The associated token (orders are keyed by token)
+     */
+    function _refreshOrderState(ShortOrder memory order, IERC20 token) internal view {
+        uint256 deadline = order.deadline;
+
+        if (deadline == 0) {
+            // No order exists because it was never created.
+            order.state = OrderStatus.Nonexistent;
+        } else {
+            uint256 balance = token.balanceOf(address(this));
+
+            if (balance == 0) {
+                // If no tokens remain, we assume the order was fully executed; all tokens are pulled by the relayer
+                // when the order is filled.
+                order.state = OrderStatus.Filled;
+            } else if (block.timestamp > deadline) {
+                // If tokens remain and the deadline passed, the order is considered failed.
+                order.state = OrderStatus.Failed;
+            } else {
+                // Otherwise, the order is still active.
+                order.state = OrderStatus.Active;
+            }
+        }
+    }
 
     function _getOrder(IERC20 tokenIn) private view returns (GPv2Order memory) {
         ShortOrder memory shortOrder = _orders[tokenIn];
@@ -344,65 +416,6 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
                 sellTokenBalance: _tokenBalance,
                 buyTokenBalance: _tokenBalance
             });
-    }
-
-    // Call this when changing the status due to user action. This function will set the status in the order
-    // to `newStatus`, or revert.
-    function _transitionOrderState(ShortOrder memory order, IERC20 token, OrderStatus newStatus) internal view {
-        _refreshOrderState(order, token);
-
-        OrderStatus oldStatus = order.status;
-
-        bool valid;
-
-        if (oldStatus == OrderStatus.Nonexistent || oldStatus == OrderStatus.Filled) {
-            // If an order doesn't exist, all you can do is create it.
-            // If an order was successfully filled, you can create a new order for the same token.
-            // If an order failed, you can retry it (making it active again).
-            valid = newStatus == OrderStatus.Active;
-        } else if (oldStatus == OrderStatus.Failed) {
-            // You can either create a new order or cancel an order if it's failed.
-            valid = newStatus == OrderStatus.Active || newStatus == OrderStatus.Nonexistent;
-        } else if (oldStatus == OrderStatus.Active) {
-            // If an order is active, it can be:
-            // 1) Filled: indicated by a zero balance)
-            // 2) Failed: indicated by a non-zero balance and a timestamp past the deadline
-            // 3) Nonexistent: canceling an active order deletes the storage
-            valid =
-                newStatus == OrderStatus.Filled ||
-                newStatus == OrderStatus.Failed ||
-                newStatus == OrderStatus.Nonexistent;
-        }
-
-        if (valid == false) {
-            revert OrderHasUnexpectedStatus(oldStatus);
-        }
-
-        order.status = newStatus;
-    }
-
-    // Refresh the order status based on conditions (e.g., deadline, balances).
-    function _refreshOrderState(ShortOrder memory order, IERC20 token) internal view {
-        uint256 deadline = order.deadline;
-
-        if (deadline == 0) {
-            // No order exists because it was never created.
-            order.status = OrderStatus.Nonexistent;
-        } else {
-            uint256 balance = token.balanceOf(address(this));
-
-            if (balance == 0) {
-                // If no tokens remain, we assume the order was fully executed; all tokens are pulled by the relayer
-                // when the order is filled.
-                order.status = OrderStatus.Filled;
-            } else if (block.timestamp > deadline) {
-                // If tokens remain and the deadline passed, the order is considered failed.
-                order.status = OrderStatus.Failed;
-            } else {
-                // Otherwise, the order is still active.
-                order.status = OrderStatus.Active;
-            }
-        }
     }
 
     function _checkDeadline(uint256 deadline) private view {
