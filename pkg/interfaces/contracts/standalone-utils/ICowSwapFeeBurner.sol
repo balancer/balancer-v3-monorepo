@@ -12,9 +12,9 @@ import { IProtocolFeeBurner } from "./IProtocolFeeBurner.sol";
 interface ICowSwapFeeBurner is IERC1271, IProtocolFeeBurner, ICowConditionalOrder, ICowConditionalOrderGenerator {
     enum OrderStatus {
         Nonexistent, // No order exists (initialized state)
-        Active,      // Order created, waiting for execution
-        Filled,      // Order successfully executed
-        Failed       // Order failed (deadline passed)
+        Active, // Order created, waiting for execution
+        Filled, // Order successfully executed
+        Failed // Order failed (deadline passed)
     }
 
     /// @notice The fee protocol is invalid.
