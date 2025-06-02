@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -26,7 +24,8 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+
+import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -36,7 +35,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTransient, Version {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, ReentrancyGuardTransient, Version {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -51,42 +50,22 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, Ownable2Step, ReentrancyGuardTra
     bytes32 internal immutable _tokenBalance = keccak256("erc20");
 
     IComposableCow public immutable composableCow;
-    IProtocolFeeSweeper public immutable protocolFeeSweeper;
     address public immutable vaultRelayer;
     bytes32 public immutable appData;
 
     // Orders are identified by the tokenIn (often called the tokenIn).
     mapping(IERC20 token => ShortOrder order) internal _orders;
 
-    modifier onlyFeeRecipientOrOwner() {
-        if (msg.sender != protocolFeeSweeper.getFeeRecipient() && msg.sender != owner()) {
-            revert SenderNotAllowed();
-        }
-        _;
-    }
-
-    modifier onlyProtocolFeeSweeper() {
-        if (msg.sender != address(protocolFeeSweeper)) {
-            revert SenderNotAllowed();
-        }
-        _;
-    }
-
     constructor(
         IProtocolFeeSweeper _protocolFeeSweeper,
         IComposableCow _composableCow,
-        address _vaultRelayer,
+        address _cowVaultRelayer,
         bytes32 _appData,
         address _initialOwner,
         string memory _version
-    ) Version(_version) Ownable(_initialOwner) {
-        if (address(_protocolFeeSweeper) == address(0)) {
-            revert InvalidProtocolFeeSweeper();
-        }
-
+    ) Version(_version) FeeBurnerAuthentication(_protocolFeeSweeper, _initialOwner) {
         composableCow = _composableCow;
-        protocolFeeSweeper = _protocolFeeSweeper;
-        vaultRelayer = _vaultRelayer;
+        vaultRelayer = _cowVaultRelayer;
         appData = _appData;
     }
 
