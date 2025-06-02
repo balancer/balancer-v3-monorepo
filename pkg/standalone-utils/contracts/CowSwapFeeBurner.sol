@@ -342,7 +342,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
             return (OrderStatus.Nonexistent, 0);
         }
 
-        // We return the balance to the state before we received tokens for the new order
+        // We return the balance to the state before we received tokens for the new order.
         uint256 balance = tokenIn.balanceOf(address(this)) - balanceDelta;
         if (balance == 0) {
             // If no tokens remain, we assume the order was fully executed
