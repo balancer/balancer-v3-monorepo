@@ -242,7 +242,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
-    function testCalculateTVL_Fuzz(
+    function testCalculateTVL__Fuzz(
         uint256 totalTokens,
         uint256[MAX_TOKENS] memory weightsRaw,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
