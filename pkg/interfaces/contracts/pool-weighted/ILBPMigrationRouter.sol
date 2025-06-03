@@ -18,7 +18,7 @@ interface ILBPMigrationRouter {
 
     /**
      * @notice Thrown when the actual input amount of a token is less than required.
-     * @param token The token with insufficient input amount
+     * @param token The token with an insufficient input amount
      * @param actualAmount The actual amount of the token provided
      */
     error InsufficientInputAmount(IERC20 token, uint256 actualAmount);
