@@ -177,7 +177,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
-    function testCalculateFeedTokenDecimalScalingFactor_Fuzz(uint256 totalTokens) public {
+    function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
