@@ -65,8 +65,16 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
         uint256[] memory exactAmountsIn,
         address sender,
         WeightedPoolParams memory params
-    ) external returns (IWeightedPool, uint256) {
-        return _migrateLiquidity(lbp, exactAmountsIn, 0, new uint256[](exactAmountsIn.length), sender, params, true);
+    ) external returns (uint256 bptAmountOut) {
+        (, bptAmountOut) = _migrateLiquidity(
+            lbp,
+            exactAmountsIn,
+            0,
+            new uint256[](exactAmountsIn.length),
+            sender,
+            params,
+            true
+        );
     }
 
     function migrateLiquidityHook(MigrationHookParams memory params) external onlyVault returns (uint256) {
