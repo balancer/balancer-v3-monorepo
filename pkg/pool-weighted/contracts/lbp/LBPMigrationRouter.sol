@@ -12,10 +12,7 @@ import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weigh
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import {
-    IBalancerContractRegistry,
-    ContractType
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import {
     PoolRoleAccounts,
     TokenConfig,
@@ -26,6 +23,7 @@ import {
 
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 
 import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
 
@@ -36,22 +34,36 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
     WeightedPoolFactory internal immutable _weightedPoolFactory;
 
     modifier onlyLBPOwner(ILBPool lbp) {
-        {
-            address lbpOwner = Ownable(address(lbp)).owner();
-            if (msg.sender != lbpOwner) {
-                revert SenderIsNotLBPOwner(lbpOwner);
-            }
+        address lbpOwner = Ownable(address(lbp)).owner();
+        if (msg.sender != lbpOwner) {
+            revert SenderIsNotLBPOwner();
         }
+
         _;
     }
 
     constructor(
-        IBalancerContractRegistry contractRegistry,
-        address treasury,
+        BalancerContractRegistry contractRegistry,
         string memory version
-    ) Version(version) VaultGuard(contractRegistry.getBalancerContract(ContractType.VAULT, "Vault")) {
+    ) Version(version) VaultGuard(contractRegistry.getVault()) {
+        (address weightedPoolFactoryAddress, bool isWeightedPoolFactoryActive) = contractRegistry.getBalancerContract(
+            ContractType.POOL_FACTORY,
+            "WeightedPoolFactory"
+        );
+        if (!isWeightedPoolFactoryActive) {
+            revert ContractIsNotActiveInRegistry("WeightedPoolFactory");
+        }
+
+        (address treasury, bool isTreasuryActive) = contractRegistry.getBalancerContract(
+            ContractType.OTHER,
+            "BalancerTreasury"
+        );
+        if (!isTreasuryActive) {
+            revert ContractIsNotActiveInRegistry("BalancerTreasury");
+        }
+
         _treasury = treasury;
-        _weightedPoolFactory = contractRegistry.getBalancerContract(ContractType.POOL_FACTORY, "WeightedPoolFactory");
+        _weightedPoolFactory = WeightedPoolFactory(weightedPoolFactoryAddress);
     }
 
     /// @inheritdoc ILBPMigrationRouter
@@ -72,8 +84,16 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
         uint256[] memory exactAmountsIn,
         address sender,
         WeightedPoolParams memory params
-    ) external returns (IWeightedPool, uint256) {
-        return _migrateLiquidity(lbp, exactAmountsIn, 0, new uint256[](exactAmountsIn.length), sender, params, true);
+    ) external returns (uint256 bptAmountOut) {
+        (, bptAmountOut) = _migrateLiquidity(
+            lbp,
+            exactAmountsIn,
+            0,
+            new uint256[](exactAmountsIn.length),
+            sender,
+            params,
+            true
+        );
     }
 
     function migrateLiquidityHook(MigrationHookParams memory params) external onlyVault returns (uint256) {
@@ -106,7 +126,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
                 params.tokens,
                 params.exactAmountsIn,
                 params.minAddBptAmountOut,
-                new bytes(0)
+                bytes("")
             );
     }
 
@@ -119,26 +139,19 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
         WeightedPoolParams memory params,
         bool isQuery
     ) internal returns (IWeightedPool weightedPool, uint256 bptAmountOut) {
-        {
-            LBPoolImmutableData memory lbpImmutableData = lbp.getLBPoolImmutableData();
+        LBPoolImmutableData memory lbpImmutableData = lbp.getLBPoolImmutableData();
 
-            // solhint-disable-next-line not-rely-on-time
-            if (block.timestamp <= lbpImmutableData.endTime) {
-                revert LBPWeightsNotFinalized(lbp);
-            }
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp <= lbpImmutableData.endTime) {
+            revert LBPWeightsNotFinalized(lbp);
         }
 
-        IERC20[] memory tokens = _vault.getPoolTokens(address(lbp));
-        TokenConfig[] memory tokensConfig = new TokenConfig[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokensConfig[i] = TokenConfig({
-                token: tokens[i],
-                tokenType: TokenType.STANDARD,
-                rateProvider: IRateProvider(address(0)),
-                paysYieldFees: false
-            });
+        TokenConfig[] memory tokensConfig = new TokenConfig[](lbpImmutableData.tokens.length);
+        for (uint256 i = 0; i < lbpImmutableData.tokens.length; i++) {
+            tokensConfig[i].token = lbpImmutableData.tokens[i];
         }
 
+        // Stack too deep issue workaround
         WeightedPoolParams memory _params = params;
         weightedPool = IWeightedPool(
             _weightedPoolFactory.create(
@@ -158,7 +171,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
         MigrationHookParams memory migrateHookParams = MigrationHookParams({
             lbp: lbp,
             weightedPool: weightedPool,
-            tokens: tokens,
+            tokens: lbpImmutableData.tokens,
             sender: sender,
             exactAmountsIn: exactAmountsIn,
             minAddBptAmountOut: minAddBptAmountOut,

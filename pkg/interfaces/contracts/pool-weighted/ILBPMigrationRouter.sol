@@ -8,7 +8,7 @@ import { PoolRoleAccounts } from "../vault/VaultTypes.sol";
 import { ILBPool } from "./ILBPool.sol";
 import { IWeightedPool } from "./IWeightedPool.sol";
 
-/// @notice Interface for migrating liquidity from a Liquidity Bootstrapping Pool (LBP) to new Weighted Pool with custom parameters.
+/// @notice Interface for migrating liquidity from an LBP to a new Weighted Pool with custom parameters.
 interface ILBPMigrationRouter {
     /**
      * @notice The pool was successfully migrated from an LBP to a new weighted pool.
@@ -19,23 +19,29 @@ interface ILBPMigrationRouter {
     event PoolMigrated(ILBPool indexed lbp, IWeightedPool indexed weightedPool, uint256 bptAmountOut);
 
     /**
-     * @notice Thrown when trying to migrate liquidity, but the LBP weights are not yet finalized.
+     * @notice A contract returned from the Balancer Contract Registry is not active.
+     * @param contractName The name of the contract that is not active
+     */
+    error ContractIsNotActiveInRegistry(string contractName);
+
+
+    /**
+     * @notice `migrateLiquidity` was called before the sale completed.
      * @param lbp The Liquidity Bootstrapping Pool with unfinalized weights
      */
     error LBPWeightsNotFinalized(ILBPool lbp);
 
     /**
-     * @notice Thrown when the actual input amount of a token is less than required.
-     * @param token The token with insufficient input amount
+     * @notice Input amount of a token is less than existing amounts in the LBP.
+     * @param token The token with an insufficient input amount
      * @param actualAmount The actual amount of the token provided
      */
     error InsufficientInputAmount(IERC20 token, uint256 actualAmount);
 
     /**
-     * @notice Thrown when the caller is not the owner of the LBP.
-     * @param lbpOwner The actual owner of the LBP
+     * @notice The caller is not the owner of the LBP.
      */
-    error SenderIsNotLBPOwner(address lbpOwner);
+    error SenderIsNotLBPOwner();
 
     struct MigrationHookParams {
         ILBPool lbp;
@@ -83,7 +89,6 @@ interface ILBPMigrationRouter {
      * @param exactAmountsIn The exact amounts of each token to add to the weighted pool
      * @param sender Sender address
      * @param params Parameters for creating the new weighted pool
-     * @return weightedPool The newly created weighted pool
      * @return bptAmountOut The amount of BPT tokens received from the weighted pool after migration
      */
     function queryMigrateLiquidity(
@@ -91,5 +96,5 @@ interface ILBPMigrationRouter {
         uint256[] memory exactAmountsIn,
         address sender,
         WeightedPoolParams memory params
-    ) external returns (IWeightedPool weightedPool, uint256 bptAmountOut);
+    ) external returns (uint256 bptAmountOut);
 }
