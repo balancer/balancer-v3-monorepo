@@ -77,7 +77,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
                 maxBptAmountIn: IERC20(address(params.lbp)).balanceOf(params.sender),
                 minAmountsOut: params.minRemoveAmountsOut,
                 kind: RemoveLiquidityKind.PROPORTIONAL,
-                userData: new bytes(0)
+                userData: bytes("")
             })
         );
 
