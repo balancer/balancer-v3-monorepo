@@ -205,7 +205,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
-    function testGetFeedData_Fuzz(
+    function testGetFeedData__Fuzz(
         uint256 totalTokens,
         uint256[MAX_TOKENS] memory answersRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
