@@ -179,7 +179,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
-    function testCalculateFeedTokenDecimalScalingFactor_Fuzz(uint256 totalTokens) public {
+    function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
@@ -207,7 +207,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
-    function testGetFeedData_Fuzz(
+    function testGetFeedData__Fuzz(
         uint256 totalTokens,
         uint256[MAX_TOKENS] memory answersRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
@@ -244,7 +244,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
-    function testCalculateTVL_Fuzz(
+    function testCalculateTVL__Fuzz(
         uint256 totalTokens,
         uint256[MAX_TOKENS] memory weightsRaw,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
@@ -288,7 +288,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         assertEq(tvl, expectedTVL, "TVL does not match");
     }
 
-    function testLatestRoundData_Fuzz(
+    function testLatestRoundData__Fuzz(
         uint256 totalTokens,
         uint256[MAX_TOKENS] memory weightsRaw,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
