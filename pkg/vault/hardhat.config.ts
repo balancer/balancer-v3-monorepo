@@ -7,10 +7,9 @@ import '@nomicfoundation/hardhat-toolbox';
 import '@nomicfoundation/hardhat-ethers';
 import '@typechain/hardhat';
 
-import 'hardhat-ignore-warnings';
 import 'hardhat-gas-reporter';
 import 'hardhat-contract-sizer';
-import 'hardhat-resolc';
+import '@parity/hardhat-polkadot-resolc';
 
 import { warnings } from '@balancer-labs/v3-common/hardhat-base-config';
 import { ResolcConfig } from 'hardhat-resolc/dist/types';
