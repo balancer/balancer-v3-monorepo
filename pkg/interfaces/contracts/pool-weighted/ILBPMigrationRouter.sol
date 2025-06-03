@@ -24,7 +24,7 @@ interface ILBPMigrationRouter {
     error InsufficientInputAmount(IERC20 token, uint256 actualAmount);
 
     /**
-     * @notice Thrown when the caller is not the owner of the LBP.
+     * @notice The caller is not the owner of the LBP.
      * @param lbpOwner The actual owner of the LBP
      */
     error SenderIsNotLBPOwner(address lbpOwner);
