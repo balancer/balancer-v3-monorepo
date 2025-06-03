@@ -286,7 +286,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         assertEq(tvl, expectedTVL, "TVL does not match");
     }
 
-    function testLatestRoundData_Fuzz(
+    function testLatestRoundData__Fuzz(
         uint256 totalTokens,
         uint256[MAX_TOKENS] memory weightsRaw,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
