@@ -113,9 +113,9 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
                 revert InsufficientInputAmount(params.tokens[i], removeAmountsOut[i]);
             }
 
-            uint256 restAmount = removeAmountsOut[i] - params.exactAmountsIn[i];
-            if (restAmount > 0) {
-                _vault.sendTo(params.tokens[i], _treasury, restAmount);
+            uint256 remainingBalance = removeAmountsOut[i] - params.exactAmountsIn[i];
+            if (remainingBalance > 0) {
+                _vault.sendTo(params.tokens[i], _treasury, remainingBalance);
             }
         }
 
