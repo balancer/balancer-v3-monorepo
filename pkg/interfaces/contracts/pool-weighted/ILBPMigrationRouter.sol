@@ -8,7 +8,7 @@ import { PoolRoleAccounts } from "../vault/VaultTypes.sol";
 import { ILBPool } from "./ILBPool.sol";
 import { IWeightedPool } from "./IWeightedPool.sol";
 
-/// @notice Interface for migrating liquidity from a Liquidity Bootstrapping Pool (LBP) to new Weighted Pool with custom parameters.
+/// @notice Interface for migrating liquidity from an LBP to a new Weighted Pool with custom parameters.
 interface ILBPMigrationRouter {
     /**
      * @notice Thrown when trying to migrate liquidity, but the LBP weights are not yet finalized.
