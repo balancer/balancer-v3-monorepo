@@ -99,7 +99,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
                 params.tokens,
                 params.exactAmountsIn,
                 params.minAddBptAmountOut,
-                new bytes(0)
+                bytes("")
             );
     }
 
