@@ -20,10 +20,10 @@ import {
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { WeightedLPOracleMock } from "../../contracts/test/WeightedLPOracleMock.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
+import { WeightedLPOracle } from "../../contracts/WeightedLPOracle.sol";
 
-contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
+contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
     using FixedPoint for uint256;
     using CastingHelpers for address[];
     using ArrayHelpers for *;
@@ -55,7 +55,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
     function deployOracle(
         IWeightedPool pool
-    ) internal returns (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
+    ) internal returns (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         feeds = new AggregatorV3Interface[](tokens.length);
@@ -64,7 +64,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
-        oracle = new WeightedLPOracleMock(IVault(address(vault)), pool, feeds, VERSION);
+        oracle = new WeightedLPOracle(IVault(address(vault)), pool, feeds, VERSION);
     }
 
     function createAndInitPool() internal returns (IWeightedPool) {
@@ -126,21 +126,21 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
     function testDecimals() public {
         IWeightedPool pool = createAndInitPool();
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (WeightedLPOracle oracle, ) = deployOracle(pool);
 
         assertEq(oracle.decimals(), 18, "Decimals does not match");
     }
 
     function testVersion() public {
         IWeightedPool pool = createAndInitPool();
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (WeightedLPOracle oracle, ) = deployOracle(pool);
 
         assertEq(oracle.version(), VERSION, "Version does not match");
     }
 
     function testDescription() public {
         IWeightedPool pool = createAndInitPool();
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (WeightedLPOracle oracle, ) = deployOracle(pool);
 
         assertEq(oracle.description(), "WEIGHTED-TEST/USD", "Description does not match");
     }
@@ -150,7 +150,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
-        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         AggregatorV3Interface[] memory returnedFeeds = oracle.getFeeds();
 
@@ -164,7 +164,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
-        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         uint256[] memory returnedScalingFactors = oracle.getFeedTokenDecimalScalingFactors();
 
@@ -181,7 +181,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
-        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
@@ -196,7 +196,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, uint256[] memory weights) = createAndInitPool(totalTokens);
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (WeightedLPOracle oracle, ) = deployOracle(pool);
 
         uint256[] memory returnedWeights = oracle.getWeights();
 
@@ -225,7 +225,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
-        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
@@ -271,7 +271,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        (WeightedLPOracle oracle, ) = deployOracle(pool);
 
         uint256 tvl = oracle.calculateTVL(prices);
 
@@ -279,9 +279,9 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         uint256 expectedTVL = FixedPoint.ONE;
         for (uint256 i = 0; i < totalTokens; i++) {
-            expectedTVL = expectedTVL.mulUp(uint256(prices[i]).divDown(weights[i]).powUp(weights[i]));
+            expectedTVL = expectedTVL.mulDown(uint256(prices[i]).divDown(weights[i]).powDown(weights[i]));
         }
-        expectedTVL = expectedTVL.mulUp(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
+        expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
 
         assertEq(tvl, expectedTVL, "TVL does not match");
     }
@@ -329,7 +329,7 @@ contract CowSwapFeeBurnerTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);

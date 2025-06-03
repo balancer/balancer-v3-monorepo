@@ -8,13 +8,14 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IWeightedLPOracle.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract WeightedLPOracle is AggregatorV3Interface {
+contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -69,39 +70,45 @@ contract WeightedLPOracle is AggregatorV3Interface {
 
         InputHelpers.ensureInputLengthMatch(totalTokens, feeds.length);
 
-        for (uint256 i = 0; i < totalTokens; i++) {
-            if (i == 0) {
-                _feedToken0 = feeds[i];
-                _weight0 = weights[i];
-                _feedToken0DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
-            } else if (i == 1) {
-                _feedToken1 = feeds[i];
-                _weight1 = weights[i];
-                _feedToken1DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
-            } else if (i == 2) {
-                _feedToken2 = feeds[i];
-                _weight2 = weights[i];
-                _feedToken2DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
-            } else if (i == 3) {
-                _feedToken3 = feeds[i];
-                _weight3 = weights[i];
-                _feedToken3DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
-            } else if (i == 4) {
-                _feedToken4 = feeds[i];
-                _weight4 = weights[i];
-                _feedToken4DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
-            } else if (i == 5) {
-                _feedToken5 = feeds[i];
-                _weight5 = weights[i];
-                _feedToken5DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
-            } else if (i == 6) {
-                _feedToken6 = feeds[i];
-                _weight6 = weights[i];
-                _feedToken6DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
-            } else if (i == 7) {
-                _feedToken7 = feeds[i];
-                _weight7 = weights[i];
-                _feedToken7DecimalScalingFactor = _calculateFeedTokenDecimalScalingFactor(feeds[i]);
+        // prettier-ignore
+        {
+            _feedToken0 = feeds[0];
+            _weight0 = weights[0];
+            _feedToken0DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[0]);
+
+            _feedToken1 = feeds[1];
+            _weight1 = weights[1];
+            _feedToken1DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[1]);
+        
+            if (totalTokens > 2) { 
+                _feedToken2 = feeds[2];
+                _weight2 = weights[2];
+                _feedToken2DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[2]);
+            }
+            if (totalTokens > 3) { 
+                _feedToken3 = feeds[3];
+                _weight3 = weights[3];
+                _feedToken3DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[3]);
+            }
+            if (totalTokens > 4) {
+                _feedToken4 = feeds[4];
+                _weight4 = weights[4];
+                _feedToken4DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[4]);
+            }
+            if (totalTokens > 5) {
+                _feedToken5 = feeds[5];
+                _weight5 = weights[5];
+                _feedToken5DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[5]);
+            }
+            if (totalTokens > 6) {
+                _feedToken6 = feeds[6];
+                _weight6 = weights[6];
+                _feedToken6DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[6]);
+            }
+            if (totalTokens > 7) {
+                _feedToken7 = feeds[7];
+                _weight7 = weights[7];
+                _feedToken7DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[7]);
             }
         }
     }
@@ -160,17 +167,17 @@ contract WeightedLPOracle is AggregatorV3Interface {
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
-        (int256[] memory prices, uint256 _updatedAt) = _getFeedData();
+        (int256[] memory prices, uint256 _updatedAt) = getFeedData();
 
-        uint256 tvl = _calculateTVL(prices);
-        uint256 totalSupply = IERC20(address(pool)).totalSupply();
+        uint256 tvl = calculateTVL(prices);
+        uint256 totalSupply = _vault.totalSupply(address(pool));
 
-        uint256 lpPrice = tvl.divDown(totalSupply);
+        uint256 lpPrice = tvl.divUp(totalSupply);
 
         return (0, lpPrice.toInt256(), 0, _updatedAt, 0);
     }
 
-    function _calculateTVL(int256[] memory prices) internal view returns (uint256 tvl) {
+    function calculateTVL(int256[] memory prices) public view returns (uint256 tvl) {
         uint256 totalTokens = _totalTokens;
 
         uint256[] memory weights = _getWeights(totalTokens);
@@ -187,13 +194,13 @@ contract WeightedLPOracle is AggregatorV3Interface {
 
         tvl = FixedPoint.ONE;
         for (uint256 i = 0; i < totalTokens; i++) {
-            tvl = tvl.mulUp(prices[i].toUint256().divDown(weights[i]).powUp(weights[i]));
+            tvl = tvl.mulDown(prices[i].toUint256().divDown(weights[i]).powDown(weights[i]));
         }
 
-        tvl = tvl.mulUp(k);
+        tvl = tvl.mulDown(k);
     }
 
-    function _getFeedData() internal view returns (int256[] memory prices, uint256 updatedAt) {
+    function getFeedData() public view returns (int256[] memory prices, uint256 updatedAt) {
         uint256 totalTokens = _totalTokens;
         AggregatorV3Interface[] memory feeds = _getFeeds(totalTokens);
         uint256[] memory feedDecimalScalingFactors = _getFeedTokenDecimalScalingFactors(totalTokens);
@@ -207,6 +214,28 @@ contract WeightedLPOracle is AggregatorV3Interface {
 
             updatedAt = updatedAt < feedUpdatedAt ? updatedAt : feedUpdatedAt;
         }
+    }
+
+    function getFeeds() external view returns (AggregatorV3Interface[] memory) {
+        return _getFeeds(_totalTokens);
+    }
+
+    function getFeedTokenDecimalScalingFactors() external view returns (uint256[] memory) {
+        return _getFeedTokenDecimalScalingFactors(_totalTokens);
+    }
+
+    function getWeights() external view returns (uint256[] memory) {
+        return _getWeights(_totalTokens);
+    }
+
+    function calculateFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) public view returns (uint256) {
+        uint256 feedDecimals = feed.decimals();
+
+        if (feedDecimals > _WAD_DECIMALS) {
+            revert UnsupportedDecimals();
+        }
+
+        return 10 ** (_WAD_DECIMALS - feedDecimals);
     }
 
     function _getFeeds(uint256 totalTokens) internal view virtual returns (AggregatorV3Interface[] memory) {
@@ -266,15 +295,5 @@ contract WeightedLPOracle is AggregatorV3Interface {
         }
 
         return weights;
-    }
-
-    function _calculateFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
-        uint256 feedDecimals = feed.decimals();
-
-        if (feedDecimals > _WAD_DECIMALS) {
-            revert UnsupportedDecimals();
-        }
-
-        return 10 ** (_WAD_DECIMALS - feedDecimals);
     }
 }
