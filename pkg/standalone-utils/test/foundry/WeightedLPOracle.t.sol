@@ -154,6 +154,8 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         AggregatorV3Interface[] memory returnedFeeds = oracle.getFeeds();
 
+        assertEq(feeds.length, returnedFeeds.length, "Feeds length does not match");
+
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(address(feeds[i]), address(returnedFeeds[i]), "Feed does not match");
         }
@@ -341,9 +343,9 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         uint256 expectedTVL = FixedPoint.ONE;
         for (uint256 i = 0; i < _totalTokens; i++) {
             uint256 price = answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
-            expectedTVL = expectedTVL.mulUp(uint256(price).divDown(weights[i]).powUp(weights[i]));
+            expectedTVL = expectedTVL.mulDown(uint256(price).divDown(weights[i]).powDown(weights[i]));
         }
-        expectedTVL = expectedTVL.mulUp(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
+        expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
 
         (
             uint80 roundId,
@@ -354,7 +356,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         ) = oracle.latestRoundData();
 
         assertEq(uint256(roundId), 0, "Round ID does not match");
-        assertEq(uint256(lpPrice), expectedTVL.divDown(IERC20(address(pool)).totalSupply()), "LP price does not match");
+        assertEq(uint256(lpPrice), expectedTVL.divUp(IERC20(address(pool)).totalSupply()), "LP price does not match");
         assertEq(startedAt, 0, "Started at does not match");
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
         assertEq(answeredInRound, 0, "Answered in round does not match");
