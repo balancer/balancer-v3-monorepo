@@ -11,6 +11,14 @@ import { IWeightedPool } from "./IWeightedPool.sol";
 /// @notice Interface for migrating liquidity from a Liquidity Bootstrapping Pool (LBP) to new Weighted Pool with custom parameters.
 interface ILBPMigrationRouter {
     /**
+     * @notice The pool was successfully migrated from an LBP to a new weighted pool.
+     * @param lbp The LB Pool that was migrated
+     * @param weightedPool The newly created weighted pool
+     * @param bptAmountOut The amount of BPT tokens received from the weighted pool after migration
+     */
+    event PoolMigrated(ILBPool indexed lbp, IWeightedPool indexed weightedPool, uint256 bptAmountOut);
+
+    /**
      * @notice Thrown when trying to migrate liquidity, but the LBP weights are not yet finalized.
      * @param lbp The Liquidity Bootstrapping Pool with unfinalized weights
      */
