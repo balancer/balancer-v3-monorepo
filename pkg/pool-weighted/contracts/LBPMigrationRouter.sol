@@ -124,11 +124,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
         IERC20[] memory tokens = _vault.getPoolTokens(address(lbp));
         TokenConfig[] memory tokensConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            tokensConfig[i] = TokenConfig({
-                token: tokens[i],
-                tokenType: TokenType.STANDARD,
-                rateProvider: IRateProvider(address(0)),
-                paysYieldFees: false
+            tokensConfig[i].token = tokens[i];
             });
         }
 
