@@ -13,6 +13,10 @@ import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool
 import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import {
+    IBalancerContractRegistry,
+    ContractType
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
+import {
     PoolRoleAccounts,
     TokenConfig,
     TokenType,
@@ -21,15 +25,15 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
-import { WeightedPoolFactory } from "./WeightedPoolFactory.sol";
+import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
 
-contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
+contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
     using SafeERC20 for IERC20;
 
-    IVault public immutable vault;
-    address public immutable treasury;
-    WeightedPoolFactory public immutable weightedPoolFactory;
+    address internal immutable _treasury;
+    WeightedPoolFactory internal immutable _weightedPoolFactory;
 
     modifier onlyLBPOwner(ILBPool lbp) {
         {
@@ -41,10 +45,13 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
         _;
     }
 
-    constructor(IVault _vault, WeightedPoolFactory _weightedPoolFactory, address _treasury) VaultGuard(_vault) {
-        vault = _vault;
-        treasury = _treasury;
-        weightedPoolFactory = _weightedPoolFactory;
+    constructor(
+        IBalancerContractRegistry contractRegistry,
+        address treasury,
+        string memory version
+    ) Version(version) VaultGuard(contractRegistry.getBalancerContract(ContractType.VAULT, "Vault")) {
+        _treasury = treasury;
+        _weightedPoolFactory = contractRegistry.getBalancerContract(ContractType.POOL_FACTORY, "WeightedPoolFactory");
     }
 
     /// @inheritdoc ILBPMigrationRouter
@@ -77,7 +84,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
                 maxBptAmountIn: IERC20(address(params.lbp)).balanceOf(params.sender),
                 minAmountsOut: params.minRemoveAmountsOut,
                 kind: RemoveLiquidityKind.PROPORTIONAL,
-                userData: bytes("")
+                userData: new bytes(0)
             })
         );
 
@@ -88,7 +95,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
 
             uint256 restAmount = removeAmountsOut[i] - params.exactAmountsIn[i];
             if (restAmount > 0) {
-                _vault.sendTo(params.tokens[i], treasury, restAmount);
+                _vault.sendTo(params.tokens[i], _treasury, restAmount);
             }
         }
 
@@ -134,7 +141,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
 
         WeightedPoolParams memory _params = params;
         weightedPool = IWeightedPool(
-            weightedPoolFactory.create(
+            _weightedPoolFactory.create(
                 _params.name,
                 _params.symbol,
                 tokensConfig,
@@ -157,14 +164,15 @@ contract LBPMigrationRouter is ILBPMigrationRouter, VaultGuard {
             minAddBptAmountOut: minAddBptAmountOut,
             minRemoveAmountsOut: minRemoveAmountsOut
         });
+
         if (isQuery) {
             bptAmountOut = abi.decode(
-                vault.quote(abi.encodeCall(LBPMigrationRouter.migrateLiquidityHook, migrateHookParams)),
+                _vault.quote(abi.encodeCall(LBPMigrationRouter.migrateLiquidityHook, migrateHookParams)),
                 (uint256)
             );
         } else {
             bptAmountOut = abi.decode(
-                vault.unlock(abi.encodeCall(LBPMigrationRouter.migrateLiquidityHook, migrateHookParams)),
+                _vault.unlock(abi.encodeCall(LBPMigrationRouter.migrateLiquidityHook, migrateHookParams)),
                 (uint256)
             );
         }
