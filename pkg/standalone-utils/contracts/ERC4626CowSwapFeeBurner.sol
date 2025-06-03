@@ -26,13 +26,17 @@ import { CowSwapFeeBurner } from "./CowSwapFeeBurner.sol";
 contract ERC4626CowSwapFeeBurner is CowSwapFeeBurner {
     using SafeERC20 for IERC20;
 
+    /// @notice The amount out is zero.
+    error AmountOutIsZero(IERC20 token);
+
     constructor(
         IProtocolFeeSweeper _protocolFeeSweeper,
         IComposableCow _composableCow,
-        address _vaultRelayer,
+        address _cowVaultRelayer,
         bytes32 _appData,
+        address _initialOwner,
         string memory _version
-    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _vaultRelayer, _appData, _version) {
+    ) CowSwapFeeBurner(_protocolFeeSweeper, _composableCow, _cowVaultRelayer, _appData, _initialOwner, _version) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
