@@ -11,7 +11,7 @@ import { IWeightedPool } from "./IWeightedPool.sol";
 /// @notice Interface for migrating liquidity from an LBP to a new Weighted Pool with custom parameters.
 interface ILBPMigrationRouter {
     /**
-     * @notice Thrown when trying to migrate liquidity, but the LBP weights are not yet finalized.
+     * @notice `migrateLiquidity` was called before the sale completed.
      * @param lbp The Liquidity Bootstrapping Pool with unfinalized weights
      */
     error LBPWeightsNotFinalized(ILBPool lbp);
