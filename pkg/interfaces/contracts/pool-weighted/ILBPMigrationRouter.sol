@@ -24,7 +24,6 @@ interface ILBPMigrationRouter {
      */
     error ContractIsNotActiveInRegistry(string contractName);
 
-
     /**
      * @notice `migrateLiquidity` was called before the sale completed.
      * @param lbp The Liquidity Bootstrapping Pool with unfinalized weights
