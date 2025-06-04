@@ -31,49 +31,46 @@ contract StableLPOracle is LPOracleBase {
         // TODO: Implement
     }
 
-    struct TVLLocals {
-        uint256 D;
-        uint256 n;
-        uint256 A;
-        uint256 nn;
-        uint256 n2n;
-        uint256 Dn;
-        uint256 a;
-        uint256 minusb;
-    }
-
     /// @inheritdoc ILPOracleBase
     function calculateTVL(int256[] memory prices) public view override returns (uint256 tvl) {
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
 
         // TODO add description
 
-        TVLLocals memory locals;
+        uint256 D = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        locals.D = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP);
-        locals.n = _totalTokens * FixedPoint.ONE;
-        (locals.A, , ) = IStablePool(address(pool)).getAmplificationParameter();
-
-        locals.nn = locals.n.powDown(locals.n);
-        locals.n2n = locals.nn.mulDown(locals.nn);
-        locals.Dn = locals.D.powDown(locals.n);
-
-        locals.a = (locals.A * locals.n2n) / locals.Dn.divDown(locals.D);
-        locals.minusb = (((locals.A * locals.n2n) / (locals.Dn.divDown(locals.D).divDown(locals.D))) -
-            locals.D.mulDown(locals.nn));
+        uint256 a;
+        uint256 b;
+        uint256 ampPrecision;
+        {
+            uint256 n = _totalTokens * FixedPoint.ONE;
+            (uint256 A, , uint256 precision) = IStablePool(address(pool)).getAmplificationParameter();
+            uint256 nn = n.powDown(n);
+            a = A.mulDown(nn).mulDown(nn);
+            b = nn.mulDown((FixedPoint.ONE * precision) - A.mulDown(nn));
+            ampPrecision = precision;
+        }
 
         uint256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += FixedPoint.ONE.divDown(locals.a - prices[i].toUint256());
+            // Round down, so balanceGradients is rounded down, which rounds the TVL down.
+            sumPriceDivision += FixedPoint.ONE.divDown((prices[i].toUint256() * ampPrecision) - a);
         }
-        sumPriceDivision = locals.a.mulDown(sumPriceDivision);
+        sumPriceDivision = a.mulDown(sumPriceDivision);
+
+        uint256[] memory balanceGradients = new uint256[](_totalTokens);
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            balanceGradients[i] = (b.divDown((prices[i].toUint256() * ampPrecision) - a)).divDown(
+                FixedPoint.ONE - sumPriceDivision
+            );
+        }
+
+        // Round Up, so the TVL is rounded down.
+        uint256 Dgradient = pool.computeInvariant(balanceGradients, Rounding.ROUND_UP);
 
         tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            uint256 balanceGradient = ((locals.minusb * locals.D) / (locals.a - prices[i].toUint256())).divDown(
-                FixedPoint.ONE + sumPriceDivision
-            );
-            tvl += prices[i].toUint256() * balanceGradient;
+            tvl += prices[i].toUint256().mulDown((balanceGradients[i] * D) / Dgradient);
         }
 
         return tvl;

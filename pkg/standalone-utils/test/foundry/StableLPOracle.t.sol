@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -14,11 +16,12 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import {
     StablePoolContractsDeployer
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 import { StableLPOracle } from "../../contracts/StableLPOracle.sol";
@@ -220,119 +223,214 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
-    // function testCalculateTVL__Fuzz(
-    //     uint256 totalTokens,
-    //     uint256[MAX_TOKENS] memory poolInitAmountsRaw,
-    //     uint256[MAX_TOKENS] memory pricesRaw
-    // ) public {
-    //     totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+    function testCalculateTVL2Tokens__Fuzz(uint256 amplificationFactor) public {
+        // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000 (the pool is balanced, so the
+        // amp factor doesn't matter).
+        uint256 expectedTVL = 2000e18;
 
-    //     address[] memory _tokens = new address[](totalTokens);
-    //     uint256[] memory poolInitAmounts = new uint256[](totalTokens);
-    //     int256[] memory prices = new int256[](totalTokens);
-    //     uint256[] memory weights = new uint256[](totalTokens);
+        uint256 totalTokens = 2;
+        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
-    //     uint256 restWeight = FixedPoint.ONE;
-    //     for (uint256 i = 0; i < totalTokens; i++) {
-    //         _tokens[i] = address(sortedTokens[i]);
-    //         poolInitAmounts[i] = bound(poolInitAmountsRaw[i], defaultAccountBalance() / 10, defaultAccountBalance());
-    //         prices[i] = int256(bound(pricesRaw[i], FixedPoint.ONE, MAX_UINT128 / 10));
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        int256[] memory prices = new int256[](totalTokens);
 
-    //         if (i == totalTokens - 1) {
-    //             weights[i] = restWeight;
-    //         } else {
-    //             uint256 maxWeight = restWeight / (totalTokens - i);
-    //             weights[i] = bound(weightsRaw[i], MIN_WEIGHT, maxWeight);
-    //             restWeight -= weights[i];
-    //         }
-    //     }
+        for (uint256 i = 0; i < totalTokens; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
+            prices[i] = int256(FixedPoint.ONE);
+        }
 
-    //     IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-    //     (WeightedLPOracle oracle, ) = deployOracle(pool);
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        (StableLPOracle oracle, ) = deployOracle(pool);
 
-    //     uint256 tvl = oracle.calculateTVL(prices);
+        uint256 tvl = oracle.calculateTVL(prices);
 
-    //     (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
+        assertEq(tvl, expectedTVL, "TVL does not match");
+    }
 
-    //     uint256 expectedTVL = FixedPoint.ONE;
-    //     for (uint256 i = 0; i < totalTokens; i++) {
-    //         expectedTVL = expectedTVL.mulDown(uint256(prices[i]).divDown(weights[i]).powDown(weights[i]));
-    //     }
-    //     expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
+    function testCalculateTVL2TokensUnbalanced__Fuzz(uint256 amplificationFactor) public {
+        // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000. However, this test will
+        // simulate a big swap that takes the pool out of balance, and the expected TVL should still be 2000,
+        // given that the invariant is the same.
+        uint256 expectedTVL = 2000e18;
 
-    //     assertEq(tvl, expectedTVL, "TVL does not match");
-    // }
+        uint256 totalTokens = 2;
+        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
-    // function testLatestRoundData__Fuzz(
-    //     uint256 totalTokens,
-    //     uint256[MAX_TOKENS] memory poolInitAmountsRaw,
-    //     uint256[MAX_TOKENS] memory answersRaw,
-    //     uint256[MAX_TOKENS] memory updateTimestampsRaw
-    // ) public {
-    //     totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        int256[] memory prices = new int256[](totalTokens);
 
-    //     address[] memory _tokens = new address[](totalTokens);
-    //     uint256[] memory poolInitAmounts = new uint256[](totalTokens);
-    //     uint256[] memory weights = new uint256[](totalTokens);
-    //     uint256[] memory answers = new uint256[](totalTokens);
-    //     uint256[] memory updateTimestamps = new uint256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
+            prices[i] = int256(FixedPoint.ONE);
+        }
 
-    //     uint256 minUpdateTimestamp = MAX_UINT256;
-    //     {
-    //         uint256 restWeight = FixedPoint.ONE;
-    //         for (uint256 i = 0; i < totalTokens; i++) {
-    //             _tokens[i] = address(sortedTokens[i]);
-    //             poolInitAmounts[i] = bound(
-    //                 poolInitAmountsRaw[i],
-    //                 defaultAccountBalance() / 10,
-    //                 defaultAccountBalance()
-    //             );
-    //             answers[i] = bound(answersRaw[i], 1, MAX_UINT128 / 10);
-    //             updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        (StableLPOracle oracle, ) = deployOracle(pool);
 
-    //             if (updateTimestamps[i] < minUpdateTimestamp) {
-    //                 minUpdateTimestamp = updateTimestamps[i];
-    //             }
+        // Remove the swap fee.
+        vault.manualUnsafeSetStaticSwapFeePercentage(address(pool), 0);
 
-    //             if (i == totalTokens - 1) {
-    //                 weights[i] = restWeight;
-    //             } else {
-    //                 uint256 maxWeight = restWeight / (totalTokens - i);
-    //                 weights[i] = bound(weightsRaw[i], MIN_WEIGHT, maxWeight);
-    //                 restWeight -= weights[i];
-    //             }
-    //         }
-    //     }
+        // Execute a swap to try to take the pool out of balance and affect the TVL calculation.
+        vm.prank(lp);
+        router.swapSingleTokenExactOut(
+            address(pool),
+            sortedTokens[0],
+            sortedTokens[1],
+            poolInitAmounts[1].mulDown(99e16), // Leave only 1% of token out in the pool
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
-    //     IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-    //     (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        uint256 tvl = oracle.calculateTVL(prices);
 
-    //     for (uint256 i = 0; i < totalTokens; i++) {
-    //         FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
-    //     }
+        assertEq(tvl, expectedTVL, "TVL does not match");
+    }
 
-    //     (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
+    function testCalculateTVL2TokensWithRates__Fuzz(uint256 amplificationFactor) public {
+        // For a pool with 2 tokens, 1000 balance, rate = 2 and 3, the expected TVL is 4800. Since the pool doesn't
+        // know what are the rates, the invariant is 2000. The oracle knows that the rate of token 1 in terms of
+        // token 0 is 1.5 (3 / 2). So, the oracle will find balances in the stable invariant curve where the rate is
+        // 1.5 and the invariant is 2000, which are [1200, 800]. 1200 * 2 + 800 * 3 = 4800.
+        uint256 expectedTVL = 4800e18;
 
-    //     uint256 _totalTokens = totalTokens;
-    //     uint256 expectedTVL = FixedPoint.ONE;
-    //     for (uint256 i = 0; i < _totalTokens; i++) {
-    //         uint256 price = answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
-    //         expectedTVL = expectedTVL.mulDown(uint256(price).divDown(weights[i]).powDown(weights[i]));
-    //     }
-    //     expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
+        uint256 totalTokens = 2;
+        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
-    //     (
-    //         uint80 roundId,
-    //         int256 lpPrice,
-    //         uint256 startedAt,
-    //         uint256 returnedUpdateTimestamp,
-    //         uint80 answeredInRound
-    //     ) = oracle.latestRoundData();
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        int256[] memory prices = new int256[](totalTokens);
 
-    //     assertEq(uint256(roundId), 0, "Round ID does not match");
-    //     assertEq(uint256(lpPrice), expectedTVL.divUp(IERC20(address(pool)).totalSupply()), "LP price does not match");
-    //     assertEq(startedAt, 0, "Started at does not match");
-    //     assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
-    //     assertEq(answeredInRound, 0, "Answered in round does not match");
-    // }
+        for (uint256 i = 0; i < totalTokens; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
+            prices[i] = int256((i + 2) * FixedPoint.ONE);
+        }
+
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        (StableLPOracle oracle, ) = deployOracle(pool);
+
+        uint256 tvl = oracle.calculateTVL(prices);
+
+        // Allow an error of 0.05%.
+        assertApproxEqRel(tvl, expectedTVL, 0.05e16, "TVL does not match");
+    }
+
+    function testCalculateTVL2TokensUnbalancedWithRates__Fuzz(uint256 amplificationFactor) public {
+        // For a pool with 2 tokens, 1000 balance, rate = 2 and 3, the expected TVL is 4800. Since the pool doesn't
+        // know what are the rates, the invariant is 2000. The oracle knows that the rate of token 1 in terms of
+        // token 0 is 1.5 (3 / 2). So, the oracle will find balances in the stable invariant curve where the rate is
+        // 1.5 and the invariant is 2000, which are [1200, 800]. 1200 * 2 + 800 * 3 = 4800. However, this test will
+        // simulate a big swap that takes the pool out of balance, and the expected TVL should still be 4800, given
+        // that the invariant is the same.
+        uint256 expectedTVL = 4800e18;
+
+        uint256 totalTokens = 2;
+        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        int256[] memory prices = new int256[](totalTokens);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
+            prices[i] = int256((i + 2) * FixedPoint.ONE);
+        }
+
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        (StableLPOracle oracle, ) = deployOracle(pool);
+
+        // Remove the swap fee.
+        vault.manualUnsafeSetStaticSwapFeePercentage(address(pool), 0);
+
+        // Execute a swap to try to take the pool out of balance and affect the TVL calculation.
+        vm.prank(lp);
+        router.swapSingleTokenExactOut(
+            address(pool),
+            sortedTokens[0],
+            sortedTokens[1],
+            poolInitAmounts[1].mulDown(99e16), // Leave only 1% of token out in the pool
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        uint256 tvl = oracle.calculateTVL(prices);
+
+        // Allow an error of 0.05%.
+        assertApproxEqRel(tvl, expectedTVL, 0.05e16, "TVL does not match");
+    }
+
+    function testLatestRoundData__Fuzz(
+        uint256 totalTokens,
+        uint256 amplificationFactor,
+        uint256[MAX_TOKENS] memory poolInitAmountsRaw,
+        uint256[MAX_TOKENS] memory pricesRaw,
+        uint256[MAX_TOKENS] memory updateTimestampsRaw
+    ) public {
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        uint256[] memory prices = new uint256[](totalTokens);
+        uint256[] memory updateTimestamps = new uint256[](totalTokens);
+        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+
+        uint256 minUpdateTimestamp = MAX_UINT256;
+        {
+            for (uint256 i = 0; i < totalTokens; i++) {
+                _tokens[i] = address(sortedTokens[i]);
+                uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+                poolInitAmounts[i] = bound(
+                    poolInitAmountsRaw[i],
+                    defaultAccountBalance() / (10 ** (18 - decimalsToken + 4)),
+                    defaultAccountBalance() / (10 ** (18 - decimalsToken + 1))
+                );
+                prices[i] = bound(pricesRaw[i], 1, MAX_UINT128 / 10);
+                updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
+
+                if (updateTimestamps[i] < minUpdateTimestamp) {
+                    minUpdateTimestamp = updateTimestamps[i];
+                }
+            }
+        }
+
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        (StableLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(prices[i], updateTimestamps[i]);
+        }
+
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            pricesInt[i] = int256(prices[i]);
+        }
+        uint256 expectedTVL = oracle.calculateTVL(pricesInt);
+
+        (
+            uint80 roundId,
+            int256 lpPrice,
+            uint256 startedAt,
+            uint256 returnedUpdateTimestamp,
+            uint80 answeredInRound
+        ) = oracle.latestRoundData();
+
+        assertEq(uint256(roundId), 0, "Round ID does not match");
+        assertEq(uint256(lpPrice), expectedTVL.divUp(IERC20(address(pool)).totalSupply()), "LP price does not match");
+        assertEq(startedAt, 0, "Started at does not match");
+        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
+        assertEq(answeredInRound, 0, "Answered in round does not match");
+    }
 }
