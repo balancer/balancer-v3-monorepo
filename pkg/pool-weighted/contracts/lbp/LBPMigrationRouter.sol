@@ -33,9 +33,11 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
     WeightedPoolFactory internal immutable _weightedPoolFactory;
 
     modifier onlyLBPOwner(ILBPool lbp) {
-        address lbpOwner = Ownable(address(lbp)).owner();
-        if (msg.sender != lbpOwner) {
-            revert SenderIsNotLBPOwner();
+        {
+            address lbpOwner = Ownable(address(lbp)).owner();
+            if (msg.sender != lbpOwner) {
+                revert SenderIsNotLBPOwner();
+            }
         }
 
         _;
@@ -154,7 +156,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
         for (uint256 i = 0; i < lbpImmutableData.tokens.length; i++) {
             tokensConfig[i].token = lbpImmutableData.tokens[i];
         }
-
         // Stack too deep issue workaround
         WeightedPoolParams memory _params = params;
         weightedPool = IWeightedPool(
@@ -172,16 +173,16 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
             )
         );
 
-        MigrationHookParams memory migrateHookParams = MigrationHookParams({
-            lbp: lbp,
-            weightedPool: weightedPool,
-            tokens: lbpImmutableData.tokens,
-            sender: sender,
-            excessReceiver: excessReceiver,
-            exactAmountsIn: exactAmountsIn,
-            minAddBptAmountOut: minAddBptAmountOut,
-            minRemoveAmountsOut: minRemoveAmountsOut
-        });
+        MigrationHookParams memory migrateHookParams;
+        // via-IR Stack too deep issue workaround
+        migrateHookParams.lbp = lbp;
+        migrateHookParams.weightedPool = weightedPool;
+        migrateHookParams.tokens = lbpImmutableData.tokens;
+        migrateHookParams.sender = sender;
+        migrateHookParams.excessReceiver = excessReceiver;
+        migrateHookParams.exactAmountsIn = exactAmountsIn;
+        migrateHookParams.minAddBptAmountOut = minAddBptAmountOut;
+        migrateHookParams.minRemoveAmountsOut = minRemoveAmountsOut;
 
         if (isQuery) {
             bptAmountOut = abi.decode(
