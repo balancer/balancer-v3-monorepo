@@ -49,10 +49,10 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
     ) Version(version) VaultGuard(contractRegistry.getVault()) {
         (address weightedPoolFactoryAddress, bool isWeightedPoolFactoryActive) = contractRegistry.getBalancerContract(
             ContractType.POOL_FACTORY,
-            "WeightedPoolFactory"
+            "WeightedPool"
         );
         if (!isWeightedPoolFactoryActive) {
-            revert ContractIsNotActiveInRegistry("WeightedPoolFactory");
+            revert ContractIsNotActiveInRegistry("WeightedPool");
         }
 
         _weightedPoolFactory = WeightedPoolFactory(weightedPoolFactoryAddress);

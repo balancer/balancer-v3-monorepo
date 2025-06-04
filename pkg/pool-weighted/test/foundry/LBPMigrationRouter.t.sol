@@ -66,7 +66,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         vm.prank(admin);
         balancerContractRegistry.registerBalancerContract(
             ContractType.POOL_FACTORY,
-            "WeightedPoolFactory",
+            "WeightedPool",
             address(weightedPoolFactory)
         );
 
@@ -78,7 +78,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         balancerContractRegistry.deprecateBalancerContract(address(weightedPoolFactory));
 
         vm.expectRevert(
-            abi.encodeWithSelector(ILBPMigrationRouter.ContractIsNotActiveInRegistry.selector, "WeightedPoolFactory")
+            abi.encodeWithSelector(ILBPMigrationRouter.ContractIsNotActiveInRegistry.selector, "WeightedPool")
         );
         new LBPMigrationRouter(balancerContractRegistry, VERSION);
     }
