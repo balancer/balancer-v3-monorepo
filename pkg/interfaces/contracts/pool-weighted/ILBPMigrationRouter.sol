@@ -47,6 +47,7 @@ interface ILBPMigrationRouter {
         IWeightedPool weightedPool;
         IERC20[] tokens;
         address sender;
+        address excessReceiver;
         uint256[] exactAmountsIn;
         uint256 minAddBptAmountOut;
         uint256[] minRemoveAmountsOut;
@@ -70,6 +71,7 @@ interface ILBPMigrationRouter {
      * @param exactAmountsIn The exact amounts of each token to add to the weighted pool
      * @param minAddBptAmountOut Minimum amount of BPT tokens expected to receive
      * @param minRemoveAmountsOut Minimum token amounts expected when removing from the LBP
+     * @param excessReceiver Address to receive excess tokens after migration
      * @param params Parameters for creating the new weighted pool
      * @return weightedPool The newly created weighted pool
      * @return bptAmountOut The amount of BPT tokens received from the weighted pool after migration
@@ -79,6 +81,7 @@ interface ILBPMigrationRouter {
         uint256[] memory exactAmountsIn,
         uint256 minAddBptAmountOut,
         uint256[] memory minRemoveAmountsOut,
+        address excessReceiver,
         WeightedPoolParams memory params
     ) external returns (IWeightedPool weightedPool, uint256 bptAmountOut);
 
@@ -87,6 +90,7 @@ interface ILBPMigrationRouter {
      * @param lbp Liquidity Bootstrapping Pool
      * @param exactAmountsIn The exact amounts of each token to add to the weighted pool
      * @param sender Sender address
+     * @param excessReceiver Address to receive excess tokens after migration
      * @param params Parameters for creating the new weighted pool
      * @return bptAmountOut The amount of BPT tokens received from the weighted pool after migration
      */
@@ -94,6 +98,7 @@ interface ILBPMigrationRouter {
         ILBPool lbp,
         uint256[] memory exactAmountsIn,
         address sender,
+        address excessReceiver,
         WeightedPoolParams memory params
     ) external returns (uint256 bptAmountOut);
 }

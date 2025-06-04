@@ -32,14 +32,16 @@ import { WeightedPoolContractsDeployer } from "./utils/WeightedPoolContractsDepl
 contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
 
-    string internal constant POOL_NAME = "Weighted Pool";
-    string internal constant POOL_SYMBOL = "WP";
-    string internal constant VERSION = "LBP Migration Router v1";
+    uint256 constant DELTA = 1e7;
+
+    string constant POOL_NAME = "Weighted Pool";
+    string constant POOL_SYMBOL = "WP";
+    string constant VERSION = "LBP Migration Router v1";
 
     WeightedPoolFactory weightedPoolFactory;
     BalancerContractRegistry balancerContractRegistry;
     LBPMigrationRouter lbpMigrationRouter;
-    address treasury = makeAddr("treasury");
+    address excessReceiver = makeAddr("excessReceiver");
 
     function setUp() public override {
         super.setUp();
@@ -61,14 +63,12 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             admin
         );
 
-        vm.startPrank(admin);
+        vm.prank(admin);
         balancerContractRegistry.registerBalancerContract(
             ContractType.POOL_FACTORY,
             "WeightedPoolFactory",
             address(weightedPoolFactory)
         );
-        balancerContractRegistry.registerBalancerContract(ContractType.OTHER, "BalancerTreasury", treasury);
-        vm.stopPrank();
 
         lbpMigrationRouter = new LBPMigrationRouter(balancerContractRegistry, VERSION);
     }
@@ -83,25 +83,8 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         new LBPMigrationRouter(balancerContractRegistry, VERSION);
     }
 
-    function testConstructorWithIncorrectTreasury() external {
-        vm.prank(admin);
-        balancerContractRegistry.deprecateBalancerContract(treasury);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(ILBPMigrationRouter.ContractIsNotActiveInRegistry.selector, "BalancerTreasury")
-        );
-        new LBPMigrationRouter(balancerContractRegistry, VERSION);
-    }
-
     function testMigrateLiquidity() external {
         vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
-
-        uint256[] memory weights = [50e16, uint256(50e16)].toMemoryArray();
-        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
-            pauseManager: makeAddr("pauseManager"),
-            swapFeeManager: makeAddr("swapFeeManager"),
-            poolCreator: address(0)
-        });
 
         vm.startPrank(bob);
 
@@ -111,12 +94,20 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         (IERC20[] memory lbpTokens, TokenInfo[] memory lbpTokenInfo, , uint256[] memory lbpBalancesBefore) = vault
             .getPoolTokenInfo(pool);
 
+        uint256[] memory weights = [50e16, uint256(50e16)].toMemoryArray();
         uint256[] memory initBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: makeAddr("pauseManager"),
+            swapFeeManager: makeAddr("swapFeeManager"),
+            poolCreator: address(0)
+        });
+
         (IWeightedPool weightedPool, ) = lbpMigrationRouter.migrateLiquidity(
             ILBPool(pool),
             initBalances,
             0, // minAddBptAmountOut
             new uint256[](2), // minRemoveAmountsOut
+            excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
                 symbol: POOL_SYMBOL,
@@ -216,19 +207,19 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
                 "Router should not hold any reserve tokens after migration"
             );
 
-            console.log(lbpBalancesBefore[projectIdx] - initBalances[projectIdx]);
-
-            // // Check treasury balances
-            // assertEq(
-            //     tokens[projectIdx].balanceOf(address(treasury)),
-            //     lbpBalancesBefore[projectIdx] - initBalances[projectIdx],
-            //     "Treasury should hold the correct amount of project tokens after migration"
-            // );
-            // assertEq(
-            //     tokens[reserveIdx].balanceOf(address(treasury)),
-            //     lbpBalancesBefore[reserveIdx] - initBalances[reserveIdx],
-            //     "Treasury should hold the correct amount of reserve tokens after migration"
-            // );
+            // Check excessReceiver balances
+            assertApproxEqAbs(
+                tokens[projectIdx].balanceOf(excessReceiver),
+                lbpBalancesBefore[projectIdx] - initBalances[projectIdx],
+                DELTA,
+                "excessReceiver should hold the correct amount of project tokens after migration"
+            );
+            assertApproxEqAbs(
+                tokens[reserveIdx].balanceOf(excessReceiver),
+                lbpBalancesBefore[reserveIdx] - initBalances[reserveIdx],
+                DELTA,
+                "excessReceiver should hold the correct amount of reserve tokens after migration"
+            );
         }
     }
 
@@ -242,6 +233,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             [poolInitAmount, poolInitAmount].toMemoryArray(),
             0, // minAddBptAmountOut
             new uint256[](2), // minRemoveAmountsOut
+            excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
                 symbol: POOL_SYMBOL,
@@ -283,6 +275,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             [poolInitAmount * 2, poolInitAmount * 2].toMemoryArray(),
             0, // minAddBptAmountOut
             new uint256[](2), // minRemoveAmountsOut
+            excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
                 symbol: POOL_SYMBOL,
@@ -310,6 +303,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             [poolInitAmount * 2, poolInitAmount * 2].toMemoryArray(),
             0, // minAddBptAmountOut
             new uint256[](2), // minRemoveAmountsOut
+            excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
                 symbol: POOL_SYMBOL,
@@ -352,6 +346,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             [poolInitAmount, poolInitAmount].toMemoryArray(),
             0, // minAddBptAmountOut
             [MAX_UINT128, MAX_UINT128].toMemoryArray(), // minRemoveAmountsOut
+            excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
                 symbol: POOL_SYMBOL,
@@ -395,6 +390,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             ILBPool(pool),
             exactAmountsIn,
             bob,
+            excessReceiver,
             weightedPoolParams
         );
         vm.revertTo(snapshotId);
@@ -406,6 +402,7 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             exactAmountsIn,
             MAX_UINT128, // minAddBptAmountOut
             new uint256[](2), // minRemoveAmountsOut
+            excessReceiver,
             weightedPoolParams
         );
     }

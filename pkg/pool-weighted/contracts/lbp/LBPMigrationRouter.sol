@@ -30,7 +30,6 @@ import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
 contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
     using SafeERC20 for IERC20;
 
-    address internal immutable _treasury;
     WeightedPoolFactory internal immutable _weightedPoolFactory;
 
     modifier onlyLBPOwner(ILBPool lbp) {
@@ -54,15 +53,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
             revert ContractIsNotActiveInRegistry("WeightedPoolFactory");
         }
 
-        (address treasury, bool isTreasuryActive) = contractRegistry.getBalancerContract(
-            ContractType.OTHER,
-            "BalancerTreasury"
-        );
-        if (!isTreasuryActive) {
-            revert ContractIsNotActiveInRegistry("BalancerTreasury");
-        }
-
-        _treasury = treasury;
         _weightedPoolFactory = WeightedPoolFactory(weightedPoolFactoryAddress);
     }
 
@@ -72,10 +62,20 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
         uint256[] memory exactAmountsIn,
         uint256 minAddBptAmountOut,
         uint256[] memory minRemoveAmountsOut,
+        address excessReceiver,
         WeightedPoolParams memory params
     ) external onlyLBPOwner(lbp) returns (IWeightedPool, uint256) {
         return
-            _migrateLiquidity(lbp, exactAmountsIn, minAddBptAmountOut, minRemoveAmountsOut, msg.sender, params, false);
+            _migrateLiquidity(
+                lbp,
+                exactAmountsIn,
+                minAddBptAmountOut,
+                minRemoveAmountsOut,
+                msg.sender,
+                excessReceiver,
+                params,
+                false
+            );
     }
 
     /// @inheritdoc ILBPMigrationRouter
@@ -83,6 +83,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
         ILBPool lbp,
         uint256[] memory exactAmountsIn,
         address sender,
+        address excessReceiver,
         WeightedPoolParams memory params
     ) external returns (uint256 bptAmountOut) {
         (, bptAmountOut) = _migrateLiquidity(
@@ -91,12 +92,13 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
             0,
             new uint256[](exactAmountsIn.length),
             sender,
+            excessReceiver,
             params,
             true
         );
     }
 
-    function migrateLiquidityHook(MigrationHookParams memory params) external onlyVault returns (uint256) {
+    function migrateLiquidityHook(MigrationHookParams memory params) external onlyVault returns (uint256 bptAmountOut) {
         (, uint256[] memory removeAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: address(params.lbp),
@@ -115,19 +117,20 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
 
             uint256 remainingBalance = removeAmountsOut[i] - params.exactAmountsIn[i];
             if (remainingBalance > 0) {
-                _vault.sendTo(params.tokens[i], _treasury, remainingBalance);
+                _vault.sendTo(params.tokens[i], params.excessReceiver, remainingBalance);
             }
         }
 
-        return
-            _vault.initialize(
-                address(params.weightedPool),
-                params.sender,
-                params.tokens,
-                params.exactAmountsIn,
-                params.minAddBptAmountOut,
-                bytes("")
-            );
+        bptAmountOut = _vault.initialize(
+            address(params.weightedPool),
+            params.sender,
+            params.tokens,
+            params.exactAmountsIn,
+            params.minAddBptAmountOut,
+            bytes("")
+        );
+
+        emit PoolMigrated(params.lbp, params.weightedPool, bptAmountOut);
     }
 
     function _migrateLiquidity(
@@ -136,6 +139,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
         uint256 minAddBptAmountOut,
         uint256[] memory minRemoveAmountsOut,
         address sender,
+        address excessReceiver,
         WeightedPoolParams memory params,
         bool isQuery
     ) internal returns (IWeightedPool weightedPool, uint256 bptAmountOut) {
@@ -173,6 +177,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Version, VaultGuard {
             weightedPool: weightedPool,
             tokens: lbpImmutableData.tokens,
             sender: sender,
+            excessReceiver: excessReceiver,
             exactAmountsIn: exactAmountsIn,
             minAddBptAmountOut: minAddBptAmountOut,
             minRemoveAmountsOut: minRemoveAmountsOut
