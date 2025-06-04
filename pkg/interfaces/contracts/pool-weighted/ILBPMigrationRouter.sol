@@ -16,7 +16,7 @@ interface ILBPMigrationRouter {
      * @param weightedPool The newly created weighted pool
      * @param bptAmountOut The amount of BPT tokens received from the weighted pool after migration
      */
-    event PoolMigrated(ILBPool indexed lbp, IWeightedPool indexed weightedPool, uint256 bptAmountOut);
+    event PoolMigrated(ILBPool indexed lbp, IWeightedPool weightedPool, uint256 bptAmountOut);
 
     /**
      * @notice A contract returned from the Balancer Contract Registry is not active.
