@@ -113,7 +113,11 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
         }
     }
 
-    /// @inheritdoc AggregatorV3Interface
+    /**
+     * @notice Get the version of the oracle.
+     * @dev Declared in AggregatorV3Interface.
+     * @return version The numerical version number
+     */
     function version() external view returns (uint256) {
         return _version;
     }
