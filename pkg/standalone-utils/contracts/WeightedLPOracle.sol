@@ -137,7 +137,7 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
 
     /**
      * @notice Get data about a specific round, using the roundId.
-     * @dev This is unused, and always returns all zeros.
+     * @dev Declared in AggregatorV3Interface. This is unused, and always returns all zeros.
      * @return roundId The round ID
      * @return answer The answer for this round
      * @return startedAt Timestamp when the round started
