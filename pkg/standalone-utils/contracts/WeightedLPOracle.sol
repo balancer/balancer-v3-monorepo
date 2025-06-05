@@ -7,8 +7,8 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IWeightedLPOracle.sol";
+import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
