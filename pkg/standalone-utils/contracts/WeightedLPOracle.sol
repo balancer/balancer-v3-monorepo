@@ -156,6 +156,7 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
 
     /**
      * @notice Get the data from the latest round.
+     * @dev Declared in AggregatorV3Interface.
      * @return roundId The round ID
      * @return answer The answer for this round
      * @return startedAt Timestamp when the round started
