@@ -37,11 +37,4 @@ interface IWeightedLPOracle {
      * @return An array of weights corresponding to each token in the pool.
      */
     function getWeights() external view returns (uint256[] memory);
-
-    /**
-     * @notice Calculates the decimal scaling factor for a specific feed.
-     * @param feed The AggregatorV3Interface instance for which to calculate the scaling factor.
-     * @return The scaling factor as a uint256.
-     */
-    function calculateFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) external view returns (uint256);
 }

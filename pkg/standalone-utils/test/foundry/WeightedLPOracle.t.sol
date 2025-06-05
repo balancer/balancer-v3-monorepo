@@ -6,8 +6,15 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolRoleAccounts, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    PoolRoleAccounts,
+    Rounding,
+    TokenConfig,
+    TokenType
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
@@ -21,7 +28,7 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
-import { WeightedLPOracle } from "../../contracts/WeightedLPOracle.sol";
+import { WeightedLPOracleMock } from "../../contracts/test/WeightedLPOracleMock.sol";
 
 contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
     using FixedPoint for uint256;
@@ -55,7 +62,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
     function deployOracle(
         IWeightedPool pool
-    ) internal returns (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) {
+    ) internal returns (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         feeds = new AggregatorV3Interface[](tokens.length);
@@ -64,7 +71,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
-        oracle = new WeightedLPOracle(IVault(address(vault)), pool, feeds, VERSION);
+        oracle = new WeightedLPOracleMock(IVault(address(vault)), pool, feeds, VERSION);
     }
 
     function createAndInitPool() internal returns (IWeightedPool) {
@@ -99,6 +106,14 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         uint256[] memory initAmounts,
         uint256[] memory weights
     ) internal returns (IWeightedPool) {
+        return createAndInitPool(initAmounts, weights, vault.buildTokenConfig(_tokens.asIERC20()));
+    }
+
+    function createAndInitPool(
+        uint256[] memory initAmounts,
+        uint256[] memory weights,
+        TokenConfig[] memory tokenConfigs
+    ) internal returns (IWeightedPool) {
         string memory name = "Weighted Pool Test";
         string memory symbol = "WEIGHTED-TEST";
 
@@ -107,7 +122,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         address newPool = weightedPoolFactory.create(
             name,
             symbol,
-            vault.buildTokenConfig(_tokens.asIERC20()),
+            tokenConfigs,
             weights,
             roleAccounts,
             DEFAULT_SWAP_FEE_PERCENTAGE,
@@ -121,26 +136,28 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         _initPool(newPool, initAmounts, 0);
         vm.stopPrank();
 
+        _setSwapFeePercentage(newPool, 0);
+
         return IWeightedPool(newPool);
     }
 
     function testDecimals() public {
         IWeightedPool pool = createAndInitPool();
-        (WeightedLPOracle oracle, ) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
 
         assertEq(oracle.decimals(), 18, "Decimals does not match");
     }
 
     function testVersion() public {
         IWeightedPool pool = createAndInitPool();
-        (WeightedLPOracle oracle, ) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
 
         assertEq(oracle.version(), VERSION, "Version does not match");
     }
 
     function testDescription() public {
         IWeightedPool pool = createAndInitPool();
-        (WeightedLPOracle oracle, ) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
 
         assertEq(oracle.description(), "WEIGHTED-TEST/USD", "Description does not match");
     }
@@ -150,7 +167,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
-        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         AggregatorV3Interface[] memory returnedFeeds = oracle.getFeeds();
 
@@ -166,7 +183,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
 
-        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         uint256[] memory returnedScalingFactors = oracle.getFeedTokenDecimalScalingFactors();
 
@@ -183,7 +200,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
-        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
@@ -198,7 +215,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, uint256[] memory weights) = createAndInitPool(totalTokens);
-        (WeightedLPOracle oracle, ) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
 
         uint256[] memory returnedWeights = oracle.getWeights();
 
@@ -227,7 +244,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
-        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
@@ -273,11 +290,11 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-        (WeightedLPOracle oracle, ) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
 
         uint256 tvl = oracle.calculateTVL(prices);
 
-        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
+        uint256[] memory lastBalancesLiveScaled18 = vault.getCurrentLiveBalances(address(pool));
 
         uint256 expectedTVL = FixedPoint.ONE;
         for (uint256 i = 0; i < totalTokens; i++) {
@@ -286,6 +303,60 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
 
         assertEq(tvl, expectedTVL, "TVL does not match");
+    }
+
+    function testCalculateTVLAfterSwap() public {
+        IWeightedPool pool = createAndInitPool(
+            [address(dai), address(usdc)].toMemoryArray(),
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            [50e16, uint256(50e16)].toMemoryArray() // 50% weight for each token
+        );
+
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
+
+        uint256 tvlBefore = oracle.calculateTVL(prices);
+
+        uint256 swapAmount = poolInitAmount / 10;
+
+        vm.prank(lp);
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        uint256 tvlAfter = oracle.calculateTVL(prices);
+
+        assertApproxEqAbs(tvlAfter, tvlBefore, 1e3, "TVL should not change after swap");
+    }
+
+    function testCalculateTVLAfterSwapWithRates() public {
+        TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
+        IERC20[] memory tokens = InputHelpers.sortTokens([address(usdc), address(dai)].toMemoryArray().asIERC20());
+        for (uint256 i = 0; i < tokens.length; i++) {
+            tokenConfigs[i].token = tokens[i];
+            tokenConfigs[i].tokenType = TokenType.WITH_RATE;
+            RateProviderMock rateProvider = new RateProviderMock();
+            rateProvider.mockRate(1e18 + (1 + i) * 1e17);
+            tokenConfigs[i].rateProvider = IRateProvider(address(rateProvider));
+        }
+
+        IWeightedPool pool = createAndInitPool(
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            [50e16, uint256(50e16)].toMemoryArray(), // 50% weight for each token
+            tokenConfigs
+        );
+
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+        int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
+
+        uint256 tvlBefore = oracle.calculateTVL(prices);
+
+        uint256 swapAmount = poolInitAmount / 10;
+
+        vm.prank(lp);
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        uint256 tvlAfter = oracle.calculateTVL(prices);
+
+        assertApproxEqAbs(tvlAfter, tvlBefore, 1e3, "TVL should not change after swap");
     }
 
     function testLatestRoundData__Fuzz(
@@ -331,13 +402,13 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
 
         IWeightedPool pool = createAndInitPool(_tokens, poolInitAmounts, weights);
-        (WeightedLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (WeightedLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(pool));
+        uint256[] memory lastBalancesLiveScaled18 = vault.getCurrentLiveBalances(address(pool));
 
         uint256 _totalTokens = totalTokens;
         uint256 expectedTVL = FixedPoint.ONE;
