@@ -120,6 +120,7 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
 
     /**
      * @notice Get the number of decimals present in the response value.
+     * @dev Declared in AggregatorV3Interface.
      * @dev This is hard-coded to 18 decimals.
      * @return decimals The number of decimals
      */
