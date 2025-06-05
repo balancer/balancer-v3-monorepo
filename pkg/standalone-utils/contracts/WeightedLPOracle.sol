@@ -129,7 +129,7 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
      * @return decimals The number of decimals
      */
     function decimals() external pure returns (uint8) {
-        return 18;
+        return _WAD_DECIMALS;
     }
 
     /**
