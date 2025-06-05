@@ -7,6 +7,7 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 interface IWeightedLPOracle {
     /**
      * @notice Calculates the tvl based on the provided prices.
+     * @dev Prices are defined the same way as in the oracle feed, and scaled to 18-decimal FP values.
      * @param prices An array of prices for the tokens in the pool.
      * @return tvl TVL calculated from the prices and current weights.
      */
