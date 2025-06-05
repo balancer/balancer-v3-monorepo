@@ -129,6 +129,7 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
 
     /**
      * @notice Get the description of the underlying aggregator that the proxy points to.
+     * @dev Declared in AggregatorV3Interface.
      * @return description The description as a string
      */
     function description() external view returns (string memory) {
