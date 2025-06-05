@@ -8,8 +8,8 @@ interface IWeightedLPOracle {
     /**
      * @notice Calculates the tvl based on the provided prices.
      * @dev Prices are defined the same way as in the oracle feed, and scaled to 18-decimal FP values.
-     * @param prices An array of prices for the tokens in the pool.
-     * @return tvl TVL calculated from the prices and current weights.
+     * @param prices An array of prices for the tokens in the pool
+     * @return tvl TVL calculated from the prices and current weights
      */
     function calculateTVL(int256[] memory prices) external view returns (uint256 tvl);
 
