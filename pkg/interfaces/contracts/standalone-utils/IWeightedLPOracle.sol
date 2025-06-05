@@ -15,8 +15,8 @@ interface IWeightedLPOracle {
 
     /**
      * @notice Gets the latest feed data.
-     * @return prices An array of latest prices from the feeds.
-     * @return updatedAt The timestamp of the last update.
+     * @return prices An array of latest prices from the feeds
+     * @return updatedAt The timestamp of the last update
      */
     function getFeedData() external view returns (int256[] memory prices, uint256 updatedAt);
 
