@@ -63,12 +63,17 @@ abstract contract BaseTest is Test {
     ERC4626TestToken internal waDAI;
     ERC4626TestToken internal waWETH;
     ERC4626TestToken internal waUSDC;
+    ERC20TestToken internal usdc6Decimals;
+    ERC20TestToken internal wbtc8Decimals;
 
     // List of all ERC20 tokens
     IERC20[] internal tokens;
 
     // List of all ERC4626 tokens
     IERC4626[] internal erc4626Tokens;
+
+    // List of all ERC20 odd decimal tokens
+    IERC20[] internal oddDecimalTokens;
 
     bool private _initialized;
 
@@ -116,11 +121,17 @@ abstract contract BaseTest is Test {
         vm.label(address(weth), "WETH");
         veBAL = createERC20("veBAL", 18);
 
+        // Tokens with different decimals.
+        usdc6Decimals = createERC20("USDC-6", 6);
+        wbtc8Decimals = createERC20("WBTC", 8);
+
         // Fill the token list.
         tokens.push(dai);
         tokens.push(usdc);
         tokens.push(weth);
         tokens.push(wsteth);
+        oddDecimalTokens.push(usdc6Decimals);
+        oddDecimalTokens.push(wbtc8Decimals);
 
         // Deploy ERC4626 tokens.
         waDAI = createERC4626("Wrapped aDAI", "waDAI", 18, dai);
@@ -225,6 +236,10 @@ abstract contract BaseTest is Test {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             deal(address(tokens[i]), user, defaultAccountBalance());
+        }
+
+        for (uint256 i = 0; i < oddDecimalTokens.length; ++i) {
+            deal(address(oddDecimalTokens[i]), user, defaultAccountBalance());
         }
 
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {

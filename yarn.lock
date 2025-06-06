@@ -101,7 +101,7 @@ __metadata:
     dotenv: "npm:^16.4.7"
     ds-test: "https://github.com/dapphub/ds-test#e282159d5170298eb2455a6c05280ab5a73a4ef0"
     ethers: "npm:^6.13.5"
-    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.8.1"
+    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.9.7"
     hardhat-contract-sizer: "npm:^2.10.0"
     hardhat-gas-reporter: "npm:^1.0.9"
     hardhat-ignore-warnings: "npm:^0.2.11"
@@ -4816,10 +4816,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"forge-std@https://github.com/foundry-rs/forge-std.git#v1.8.1":
-  version: 1.7.6
-  resolution: "forge-std@https://github.com/foundry-rs/forge-std.git#commit=bb4ceea94d6f10eeb5b41dc2391c6c8bf8e734ef"
-  checksum: f9e1156973bdc360989275bdc43b8745f388017eb97c4a0e4b7b55e944a497b5cdbef0a483c1f7a852f93f0cff45d0c9dba05f6331125da9f369c3297f5347b0
+"forge-std@https://github.com/foundry-rs/forge-std.git#v1.9.7":
+  version: 1.9.7
+  resolution: "forge-std@https://github.com/foundry-rs/forge-std.git#commit=77041d2ce690e692d6e03cc812b57d1ddaa4d505"
+  checksum: a55e3b46b86a6f851a2c2354d8519f7bcb03dd7191e832c02dd029d9775ce0bf7154688936855e5bb5a9538d7bbdd6fb6a480d1d675af1a7c848a199992f31ca
   languageName: node
   linkType: hard
 

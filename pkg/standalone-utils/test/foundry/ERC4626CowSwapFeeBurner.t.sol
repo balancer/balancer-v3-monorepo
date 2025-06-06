@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -23,6 +24,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ICowConditionalOrder.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { ProtocolFeeSweeper } from "../../contracts/ProtocolFeeSweeper.sol";
 import { CowSwapFeeBurner } from "../../contracts/CowSwapFeeBurner.sol";
@@ -63,15 +65,68 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // of this test.
         cowSwapFeeBurner = new ERC4626CowSwapFeeBurner(
             IProtocolFeeSweeper(admin),
-            vault,
             IComposableCow(composableCowMock),
             vaultRelayerMock,
             APP_DATA_HASH,
+            bob,
             VERSION
         );
     }
 
     function testBurn() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+    }
+
+    function testBurnDouble() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+
+        uint256 balance = dai.balanceOf(address(cowSwapFeeBurner));
+        vm.prank(address(cowSwapFeeBurner));
+        IERC20(address(dai)).safeTransfer(alice, balance);
+
+        assertEq(
+            uint256(cowSwapFeeBurner.getOrderStatus(dai)),
+            uint256(ICowSwapFeeBurner.OrderStatus.Filled),
+            "Order status should be Filled"
+        );
+
+        _testBurn();
+    }
+
+    function testBurnerIfOrdersExist() public {
+        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
+        cowSwapFeeBurner.getOrder(dai);
+
+        _testBurn();
+
+        vm.prank(admin);
+        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ICowSwapFeeBurner.OrderHasUnexpectedStatus.selector,
+                ICowSwapFeeBurner.OrderStatus.Active
+            )
+        );
+        vm.prank(admin);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            usdc,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, 0),
+            alice,
+            orderDeadline
+        );
+    }
+
+    function _testBurn() public {
         // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
         vm.prank(admin);
         waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
@@ -79,9 +134,6 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         uint256 cowSwapFeeBurnerWaDaiBalanceBefore = waDAI.balanceOf(address(cowSwapFeeBurner));
         uint256 cowSwapFeeBurnerDaiBalanceBefore = dai.balanceOf(address(cowSwapFeeBurner));
         uint256 callerWaDaiBalanceBefore = waDAI.balanceOf(address(admin));
-
-        vm.expectRevert(abi.encodeWithSelector(ICowConditionalOrder.OrderNotValid.selector, "Order does not exist"));
-        cowSwapFeeBurner.getOrder(dai);
 
         _mockComposableCowCreate(dai);
 
@@ -92,7 +144,15 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         emit IProtocolFeeBurner.ProtocolFeeBurned(address(0), dai, assetsAmount, usdc, MIN_TARGET_TOKEN_AMOUNT, alice);
 
         vm.prank(admin);
-        cowSwapFeeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, usdc, MIN_TARGET_TOKEN_AMOUNT, alice, orderDeadline);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            usdc,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, 0),
+            alice,
+            orderDeadline
+        );
 
         assertEq(
             waDAI.balanceOf(admin),
@@ -137,6 +197,11 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         });
 
         assertEq(keccak256(abi.encode(order)), keccak256(abi.encode(expectedOrder)), "Order has incorrect values");
+        assertEq(
+            uint256(cowSwapFeeBurner.getOrderStatus(dai)),
+            uint256(ICowSwapFeeBurner.OrderStatus.Active),
+            "Order status should be Active"
+        );
     }
 
     /// @dev No order is created in this case; tokens are forwarded to the receiver directly.
@@ -156,7 +221,15 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         // Target token is now DAI, which is waDAI.asset().
         // Deadline doesn't matter in this case, as settlement is instant.
         vm.prank(admin);
-        cowSwapFeeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, dai, assetsAmount, alice, 0);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(assetsAmount, 0),
+            alice,
+            0
+        );
 
         assertEq(
             waDAI.balanceOf(admin),
@@ -201,7 +274,79 @@ contract ERC4626CowSwapFeeBurnerTest is BaseVaultTest {
         );
         // Target token is now DAI, which is waDAI.asset().
         vm.prank(admin);
-        cowSwapFeeBurner.burn(address(0), waDAI, TEST_BURN_AMOUNT, dai, assetsAmount + 1, alice, orderDeadline);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(assetsAmount + 1, 0),
+            alice,
+            orderDeadline
+        );
+    }
+
+    function testBurnFeeTokenIfUnwrappedTokenBelowMin() public {
+        // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
+        vm.prank(admin);
+        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
+        uint256 assetsAmount = waDAI.previewRedeem(TEST_BURN_AMOUNT);
+        require(assetsAmount != TEST_BURN_AMOUNT, "No point testing when rate is 1:1");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IProtocolFeeBurner.AmountOutBelowMin.selector, dai, assetsAmount, type(uint128).max)
+        );
+        // Target token is now DAI, which is waDAI.asset().
+        vm.prank(admin);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, type(uint128).max),
+            alice,
+            orderDeadline
+        );
+    }
+
+    function testBurnFeeTokenIfUnwrappedTokenIsZero() public {
+        // Admin will call `burn` acting as the fee sweeper. The burner will pull tokens from them.
+        vm.prank(admin);
+        waDAI.approve(address(cowSwapFeeBurner), TEST_BURN_AMOUNT);
+
+        uint256 assetsAmount = waDAI.previewRedeem(TEST_BURN_AMOUNT);
+        require(assetsAmount != TEST_BURN_AMOUNT, "No point testing when rate is 1:1");
+
+        vm.mockCall(
+            address(waDAI),
+            abi.encodeWithSelector(
+                IERC4626.redeem.selector,
+                TEST_BURN_AMOUNT,
+                address(cowSwapFeeBurner),
+                address(cowSwapFeeBurner)
+            ),
+            abi.encode(0)
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(ERC4626CowSwapFeeBurner.AmountOutIsZero.selector, dai));
+        // Target token is now DAI, which is waDAI.asset().
+        vm.prank(admin);
+        cowSwapFeeBurner.burn(
+            address(0),
+            waDAI,
+            TEST_BURN_AMOUNT,
+            dai,
+            _encodeMinAmountsOut(MIN_TARGET_TOKEN_AMOUNT, 0),
+            alice,
+            orderDeadline
+        );
+    }
+
+    function _encodeMinAmountsOut(
+        uint256 minTargetTokenAmountOut,
+        uint256 minERC4626AmountOut
+    ) internal pure returns (uint256) {
+        return uint256(PackedTokenBalance.toPackedBalance(minTargetTokenAmountOut, minERC4626AmountOut));
     }
 
     function _mockComposableCowCreate(IERC20 sellToken) internal {
