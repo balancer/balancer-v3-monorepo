@@ -69,7 +69,7 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
 
     /// @inheritdoc ILPOracleBase
     function calculateTVL(int256[] memory prices) public view override returns (uint256 tvl) {
-        uint256[] memory weights = _getWeights(_totalTokens);
+        uint256[] memory weights = _getWeights();
         uint256[] memory lastBalancesLiveScaled18 = _vault.getCurrentLiveBalances(address(pool));
 
         /**********************************************************************************************
