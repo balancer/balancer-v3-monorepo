@@ -69,8 +69,43 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
 
     /// @inheritdoc ILPOracleBase
     function calculateTVL(int256[] memory prices) public view override returns (uint256 tvl) {
-        uint256[] memory weights = _getWeights();
-        (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
+        uint256[] memory weights = _getWeights(_totalTokens);
+        uint256[] memory lastBalancesLiveScaled18 = _vault.getCurrentLiveBalances(address(pool));
+
+        /**********************************************************************************************
+        // We know that the normalized value of each token in the pool is equal:
+        // C = (P1 * B1 / W1) = (P2 * B2 / W2) = ... = (Pn * Bn / Wn)
+        //
+        // Where:
+        // n  = number of tokens
+        // Pi = market price of token i
+        // Bi = balance of token i
+        // Wi = normalized weight of token i (sum of all Wi == 1)
+        // C  = common normalized value across tokens
+        //
+        // From this, we can express the balance of token i:
+        // Bi = (C * Wi) / Pi
+        //
+        // The total value locked (TVL) is the sum of all token values:
+        // TVL = Σ (Bi * Pi)
+        // Substituting Bi:
+        // TVL = Σ ((C * Wi / Pi) * Pi) = C * Σ(Wi) = C
+        // C = TVL
+        //
+        // So:
+        // Bi = (TVL * Wi) / Pi
+        //
+        // The invariant of the WeightedPool pool is defined as:
+        // k = Π (Bi^Wi)
+        //
+        // Substituting Bi and using the fact that Σ(Wi) = 1:
+        // k = Π ((TVL * Wi / Pi)^Wi)
+        //   = TVL^Σ(Wi) * Π((Wi / Pi)^Wi)
+        //   = TVL * Π((Wi / Pi)^Wi)
+        //
+        // Solving for TVL:
+        // TVL = k * Π((Pi / Wi)^Wi)
+        **********************************************************************************************/
 
         /**********************************************************************************************
         // invariant                   _____                                                         //

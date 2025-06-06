@@ -61,54 +61,60 @@ contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
         // prettier-ignore
         {
             _feedToken0 = feeds[0];
-            _feedToken0DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[0]);
+            _feedToken0DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[0]);
 
             _feedToken1 = feeds[1];
-            _feedToken1DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[1]);
+            _feedToken1DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[1]);
         
             if (totalTokens > 2) { 
                 _feedToken2 = feeds[2];
-                _feedToken2DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[2]);
+                _feedToken2DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[2]);
             }
             if (totalTokens > 3) { 
                 _feedToken3 = feeds[3];
-                _feedToken3DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[3]);
+                _feedToken3DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[3]);
             }
             if (totalTokens > 4) {
                 _feedToken4 = feeds[4];
-                _feedToken4DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[4]);
+                _feedToken4DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[4]);
             }
             if (totalTokens > 5) {
                 _feedToken5 = feeds[5];
-                _feedToken5DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[5]);
+                _feedToken5DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[5]);
             }
             if (totalTokens > 6) {
                 _feedToken6 = feeds[6];
-                _feedToken6DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[6]);
+                _feedToken6DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[6]);
             }
             if (totalTokens > 7) {
                 _feedToken7 = feeds[7];
-                _feedToken7DecimalScalingFactor = calculateFeedTokenDecimalScalingFactor(feeds[7]);
+                _feedToken7DecimalScalingFactor = _computeFeedTokenDecimalScalingFactor(feeds[7]);
             }
         }
     }
 
-    /// @inheritdoc AggregatorV3Interface
+    /**
+     * @notice Get the version of the oracle.
+     * @dev Declared in AggregatorV3Interface.
+     * @return version The numerical version number
+     */
     function version() external view returns (uint256) {
         return _version;
     }
 
     /**
      * @notice Get the number of decimals present in the response value.
+     * @dev Declared in AggregatorV3Interface.
      * @dev This is hard-coded to 18 decimals.
      * @return decimals The number of decimals
      */
     function decimals() external pure returns (uint8) {
-        return 18;
+        return uint8(_WAD_DECIMALS);
     }
 
     /**
      * @notice Get the description of the underlying aggregator that the proxy points to.
+     * @dev Declared in AggregatorV3Interface.
      * @return description The description as a string
      */
     function description() external view returns (string memory) {
@@ -117,7 +123,7 @@ contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
 
     /**
      * @notice Get data about a specific round, using the roundId.
-     * @dev This is unused, and always returns all zeros.
+     * @dev Declared in AggregatorV3Interface. This is unused, and always returns all zeros.
      * @return roundId The round ID
      * @return answer The answer for this round
      * @return startedAt Timestamp when the round started
@@ -136,6 +142,7 @@ contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
 
     /**
      * @notice Get the data from the latest round.
+     * @dev Declared in AggregatorV3Interface.
      * @return roundId The round ID
      * @return answer The answer for this round
      * @return startedAt Timestamp when the round started
@@ -191,8 +198,7 @@ contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
         return _getFeedTokenDecimalScalingFactors(_totalTokens);
     }
 
-    /// @inheritdoc ILPOracleBase
-    function calculateFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) public view returns (uint256) {
+    function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
         uint256 feedDecimals = feed.decimals();
 
         if (feedDecimals > _WAD_DECIMALS) {
