@@ -43,36 +43,121 @@ contract StableLPOracle is LPOracleBase {
         uint256 b;
         uint256 ampPrecision;
         {
-            uint256 n = _totalTokens * FixedPoint.ONE;
             (uint256 A, , uint256 precision) = IStablePool(address(pool)).getAmplificationParameter();
-            uint256 nn = n.powDown(n);
-            a = A.mulDown(nn).mulDown(nn);
-            b = nn.mulDown((FixedPoint.ONE * precision) - A.mulDown(nn));
+            uint256 nn = _totalTokens ** _totalTokens;
+            a = A * (nn ** 2);
+            b = (nn ** 2) * FixedPoint.ONE * precision - a;
             ampPrecision = precision;
         }
 
-        uint256 sumPriceDivision = 0;
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            // Round down, so balanceGradients is rounded down, which rounds the TVL down.
-            sumPriceDivision += FixedPoint.ONE.divDown((prices[i].toUint256() * ampPrecision) - a);
-        }
-        sumPriceDivision = a.mulDown(sumPriceDivision);
-
-        uint256[] memory balanceGradients = new uint256[](_totalTokens);
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            balanceGradients[i] = (b.divDown((prices[i].toUint256() * ampPrecision) - a)).divDown(
-                FixedPoint.ONE - sumPriceDivision
-            );
-        }
-
-        // Round Up, so the TVL is rounded down.
-        uint256 Dgradient = pool.computeInvariant(balanceGradients, Rounding.ROUND_UP);
+        uint256[] memory balancesForPrices = computeBalancesForPrices(D, a, b, prices, ampPrecision);
 
         tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            tvl += prices[i].toUint256().mulDown((balanceGradients[i] * D) / Dgradient);
+            tvl += prices[i].toUint256().mulDown(balancesForPrices[i]);
         }
 
         return tvl;
+    }
+
+    function computeBalancesForPrices(
+        uint256 invariant,
+        uint256 a,
+        uint256 b,
+        int256[] memory prices,
+        uint256 ampPrecision
+    ) internal view returns (uint256[] memory balancesForPrices) {
+        uint256 k = computeK(a, b, prices, ampPrecision);
+
+        uint256 sumPriceDivision = 0;
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            sumPriceDivision += a.divDown(k.mulDown(prices[i].toUint256()) * ampPrecision - a);
+        }
+
+        balancesForPrices = new uint256[](_totalTokens);
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            balancesForPrices[i] = ((b * invariant) / (k.mulDown(prices[i].toUint256()) * ampPrecision - a)).divDown(
+                FixedPoint.ONE - sumPriceDivision
+            );
+        }
+    }
+
+    function computeK(
+        uint256 a,
+        uint256 b,
+        int256[] memory prices,
+        uint256 ampPrecision
+    ) internal view returns (uint256 k) {
+        k = 10000e18;
+        for (uint256 i = 0; i < 255; i++) {
+            KParams memory kParams = computeKParams(k, a, b, prices, ampPrecision);
+
+            // Calculate f(k).
+            uint256 fk = kParams.Tn1.mulDown(kParams.P);
+            if (_totalTokens % 2 == 1) {
+                fk += kParams.alpha;
+            } else {
+                fk -= kParams.alpha;
+            }
+
+            // Calculate derivative of f(k) (`f'(k)`).
+            uint256 flk = kParams.Tn.mulDown(
+                (_totalTokens + 1) * kParams.Tl.mulDown(kParams.P) + kParams.T.mulDown(kParams.Pl)
+            );
+
+            uint256 newK = k - (fk.divDown(flk));
+
+            if (newK > k && (newK - k) <= 1) {
+                return newK;
+            } else if (newK < k && (k - newK) <= 1) {
+                return newK;
+            }
+            k = newK;
+        }
+
+        // TODO Raise Exception
+    }
+
+    struct KParams {
+        uint256 T;
+        uint256 Tl;
+        uint256 P;
+        uint256 Pl;
+        uint256 Tn;
+        uint256 Tn1;
+        uint256 alpha;
+    }
+
+    function computeKParams(
+        uint256 k,
+        uint256 a,
+        uint256 b,
+        int256[] memory prices,
+        uint256 ampPrecision
+    ) internal view returns (KParams memory kParams) {
+        kParams.T = FixedPoint.ONE;
+        kParams.Tl = 0;
+        kParams.P = FixedPoint.ONE;
+        kParams.Pl = 0;
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            uint256 ri = (prices[i].toUint256() * ampPrecision).divDown(a);
+            uint256 den = (k.mulDown(ri) - FixedPoint.ONE);
+            kParams.T -= FixedPoint.ONE.divDown(den);
+            kParams.Tl += ri.divDown(den.mulDown(den));
+            kParams.P = kParams.P.mulDown(den);
+            kParams.Pl += ri.divDown(den);
+        }
+
+        kParams.Pl = kParams.Pl.mulDown(kParams.P);
+
+        uint256 c = b.divDown(a);
+        kParams.Tn = FixedPoint.ONE;
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            kParams.Tn = kParams.Tn.mulDown(kParams.T);
+            c = (c * b) / a;
+        }
+
+        kParams.Tn1 = kParams.Tn.mulDown(kParams.T);
+        kParams.alpha = a.mulDown(c) / ampPrecision;
     }
 }

@@ -23,8 +23,8 @@ import {
     StablePoolContractsDeployer
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
 
+import { StableLPOracleMock } from "../../contracts/test/StableLPOracleMock.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
-import { StableLPOracle } from "../../contracts/StableLPOracle.sol";
 
 contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     using FixedPoint for uint256;
@@ -57,7 +57,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
     function deployOracle(
         IStablePool pool
-    ) internal returns (StableLPOracle oracle, AggregatorV3Interface[] memory feeds) {
+    ) internal returns (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
 
         feeds = new AggregatorV3Interface[](tokens.length);
@@ -66,7 +66,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
         }
 
-        oracle = new StableLPOracle(IVault(address(vault)), pool, feeds, VERSION);
+        oracle = new StableLPOracleMock(IVault(address(vault)), pool, feeds, VERSION);
     }
 
     function createAndInitPool() internal returns (IStablePool) {
@@ -118,21 +118,21 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
     function testDecimals() public {
         IStablePool pool = createAndInitPool();
-        (StableLPOracle oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         assertEq(oracle.decimals(), 18, "Decimals does not match");
     }
 
     function testVersion() public {
         IStablePool pool = createAndInitPool();
-        (StableLPOracle oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         assertEq(oracle.version(), VERSION, "Version does not match");
     }
 
     function testDescription() public {
         IStablePool pool = createAndInitPool();
-        (StableLPOracle oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         assertEq(oracle.description(), "STABLE-TEST/USD", "Description does not match");
     }
@@ -142,7 +142,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         IStablePool pool = createAndInitPool(totalTokens, 100);
 
-        (StableLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         AggregatorV3Interface[] memory returnedFeeds = oracle.getFeeds();
 
@@ -158,7 +158,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         IStablePool pool = createAndInitPool(totalTokens, 100);
 
-        (StableLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         uint256[] memory returnedScalingFactors = oracle.getFeedTokenDecimalScalingFactors();
 
@@ -175,7 +175,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         IStablePool pool = createAndInitPool(totalTokens, 100);
-        (StableLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
@@ -206,7 +206,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(totalTokens, 100);
-        (StableLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
@@ -243,7 +243,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
-        (StableLPOracle oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         uint256 tvl = oracle.calculateTVL(prices);
 
@@ -271,7 +271,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
-        (StableLPOracle oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         // Remove the swap fee.
         vault.manualUnsafeSetStaticSwapFeePercentage(address(pool), 0);
@@ -316,7 +316,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
-        (StableLPOracle oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         uint256 tvl = oracle.calculateTVL(prices);
 
@@ -348,7 +348,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
-        (StableLPOracle oracle, ) = deployOracle(pool);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         // Remove the swap fee.
         vault.manualUnsafeSetStaticSwapFeePercentage(address(pool), 0);
@@ -407,7 +407,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
-        (StableLPOracle oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             FeedMock(address(feeds[i])).setLastRoundData(prices[i], updateTimestamps[i]);
