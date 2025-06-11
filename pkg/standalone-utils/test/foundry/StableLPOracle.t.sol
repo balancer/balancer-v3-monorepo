@@ -397,7 +397,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
                     defaultAccountBalance() / (10 ** (18 - decimalsToken + 4)),
                     defaultAccountBalance() / (10 ** (18 - decimalsToken + 1))
                 );
-                prices[i] = bound(pricesRaw[i], 1, MAX_UINT128 / 10);
+                prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24);
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
@@ -415,7 +415,8 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         int256[] memory pricesInt = new int256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
-            pricesInt[i] = int256(prices[i]);
+            uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
         }
         uint256 expectedTVL = oracle.calculateTVL(pricesInt);
 

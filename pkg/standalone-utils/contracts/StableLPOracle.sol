@@ -92,20 +92,26 @@ contract StableLPOracle is LPOracleBase {
         for (uint256 i = 0; i < 255; i++) {
             KParams memory kParams = computeKParams(k, a, b, prices, ampPrecision);
 
-            // Calculate f(k).
-            uint256 fk = kParams.Tn1.mulDown(kParams.P);
-            if (_totalTokens % 2 == 1) {
-                fk += kParams.alpha / FixedPoint.ONE;
-            } else {
-                fk -= kParams.alpha / FixedPoint.ONE;
-            }
-
             // Calculate derivative of f(k) (`f'(k)`).
             uint256 flk = kParams.Tn.mulDown(
                 ((_totalTokens + 1) * kParams.Tl.mulDown(kParams.P)) + kParams.T.mulDown(kParams.Pl)
             );
 
-            uint256 newK = k - (fk.divDown(flk));
+            // Calculate f(k).
+            uint256 fk = kParams.Tn1.mulDown(kParams.P);
+            uint256 newK;
+            if (_totalTokens % 2 == 1) {
+                fk = fk + kParams.alpha;
+                newK = k - (fk.divDown(flk));
+            } else {
+                if (kParams.alpha > fk) {
+                    fk = kParams.alpha - fk;
+                    newK = k + (fk.divDown(flk));
+                } else {
+                    fk = fk - kParams.alpha;
+                    newK = k - (fk.divDown(flk));
+                }
+            }
 
             if (newK > k && (newK - k) <= 1e10) {
                 return newK;
@@ -149,7 +155,7 @@ contract StableLPOracle is LPOracleBase {
             kParams.P = kParams.P.mulDown(den);
             kParams.Pl += ri.divDown(den);
         }
-
+        // The `deposit` function fails with an amount greater than 1e4 * 1e18, because of a boundary in the wrapped token.
         kParams.Pl = kParams.Pl.mulDown(kParams.P);
 
         uint256 c = b.divDown(a);
@@ -160,6 +166,7 @@ contract StableLPOracle is LPOracleBase {
         }
 
         kParams.Tn1 = kParams.Tn.mulDown(kParams.T);
-        kParams.alpha = a.mulDown(c) / ampPrecision;
+        // Since the precision of P was removed, remove the precision of alpha dividing by FP.ONE.
+        kParams.alpha = a.mulDown(c) / (ampPrecision * FixedPoint.ONE);
     }
 }
