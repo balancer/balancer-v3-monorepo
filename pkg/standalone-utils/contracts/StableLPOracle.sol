@@ -46,7 +46,7 @@ contract StableLPOracle is LPOracleBase {
             (uint256 A, , uint256 precision) = IStablePool(address(pool)).getAmplificationParameter();
             uint256 nn = _totalTokens ** _totalTokens;
             a = A * (nn ** 2);
-            b = (nn ** 2) * FixedPoint.ONE * precision - a;
+            b = nn * FixedPoint.ONE * precision - a;
             ampPrecision = precision;
         }
 
@@ -71,12 +71,12 @@ contract StableLPOracle is LPOracleBase {
 
         uint256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += a.divDown(k.mulDown(prices[i].toUint256()) * ampPrecision - a);
+            sumPriceDivision += a.divUp(k.mulUp(prices[i].toUint256()) * ampPrecision - a);
         }
 
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
-            balancesForPrices[i] = ((b * invariant) / (k.mulDown(prices[i].toUint256()) * ampPrecision - a)).divDown(
+            balancesForPrices[i] = ((b * invariant) / (k.mulUp(prices[i].toUint256()) * ampPrecision - a)).divDown(
                 FixedPoint.ONE - sumPriceDivision
             );
         }
@@ -95,21 +95,21 @@ contract StableLPOracle is LPOracleBase {
             // Calculate f(k).
             uint256 fk = kParams.Tn1.mulDown(kParams.P);
             if (_totalTokens % 2 == 1) {
-                fk += kParams.alpha;
+                fk += kParams.alpha / FixedPoint.ONE;
             } else {
-                fk -= kParams.alpha;
+                fk -= kParams.alpha / FixedPoint.ONE;
             }
 
             // Calculate derivative of f(k) (`f'(k)`).
             uint256 flk = kParams.Tn.mulDown(
-                (_totalTokens + 1) * kParams.Tl.mulDown(kParams.P) + kParams.T.mulDown(kParams.Pl)
+                ((_totalTokens + 1) * kParams.Tl.mulDown(kParams.P)) + kParams.T.mulDown(kParams.Pl)
             );
 
             uint256 newK = k - (fk.divDown(flk));
 
-            if (newK > k && (newK - k) <= 1) {
+            if (newK > k && (newK - k) <= 1e10) {
                 return newK;
-            } else if (newK < k && (k - newK) <= 1) {
+            } else if (newK < k && (k - newK) <= 1e10) {
                 return newK;
             }
             k = newK;
@@ -137,13 +137,15 @@ contract StableLPOracle is LPOracleBase {
     ) internal view returns (KParams memory kParams) {
         kParams.T = FixedPoint.ONE;
         kParams.Tl = 0;
-        kParams.P = FixedPoint.ONE;
+        // P overflows for small amplification factors
+        kParams.P = 1;
         kParams.Pl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
             uint256 ri = (prices[i].toUint256() * ampPrecision).divDown(a);
             uint256 den = (k.mulDown(ri) - FixedPoint.ONE);
-            kParams.T -= FixedPoint.ONE.divDown(den);
-            kParams.Tl += ri.divDown(den.mulDown(den));
+            kParams.T -= (FixedPoint.ONE).divDown(den);
+            // den is a very large number, so we divide twice to avoid overflows.
+            kParams.Tl += ri.divDown(den).divDown(den);
             kParams.P = kParams.P.mulDown(den);
             kParams.Pl += ri.divDown(den);
         }
