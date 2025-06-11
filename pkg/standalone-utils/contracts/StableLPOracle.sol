@@ -143,8 +143,9 @@ contract StableLPOracle is LPOracleBase {
     ) internal view returns (KParams memory kParams) {
         kParams.T = FixedPoint.ONE;
         kParams.Tl = 0;
-        // P overflows for small amplification factors
-        kParams.P = 1;
+        // P overflows with small amp factor, or small prices, or number of tokens. So, we don't use FP.ONE.
+        // Instead, we scale the calculation of f(k) down by FP.ONE, by dividing alpha by FP.ONE.
+        kParams.P = FixedPoint.ONE;
         kParams.Pl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
             uint256 ri = (prices[i].toUint256() * ampPrecision).divDown(a);
@@ -152,13 +153,14 @@ contract StableLPOracle is LPOracleBase {
             kParams.T -= (FixedPoint.ONE).divDown(den);
             // den is a very large number, so we divide twice to avoid overflows.
             kParams.Tl += ri.divDown(den).divDown(den);
-            kParams.P = kParams.P.mulDown(den);
+            kParams.P = (kParams.P / FixedPoint.ONE) * den;
             kParams.Pl += ri.divDown(den);
         }
-        // The `deposit` function fails with an amount greater than 1e4 * 1e18, because of a boundary in the wrapped token.
-        kParams.Pl = kParams.Pl.mulDown(kParams.P);
+        kParams.P = kParams.P / FixedPoint.ONE;
+        kParams.Pl = (kParams.P / FixedPoint.ONE) * kParams.Pl;
 
-        uint256 c = b.divDown(a);
+        // Since the precision of P was removed, remove the precision of c dividing using a raw division.
+        uint256 c = b / a;
         kParams.Tn = FixedPoint.ONE;
         for (uint256 i = 0; i < _totalTokens; i++) {
             kParams.Tn = kParams.Tn.mulDown(kParams.T);
@@ -166,7 +168,7 @@ contract StableLPOracle is LPOracleBase {
         }
 
         kParams.Tn1 = kParams.Tn.mulDown(kParams.T);
-        // Since the precision of P was removed, remove the precision of alpha dividing by FP.ONE.
-        kParams.alpha = a.mulDown(c) / (ampPrecision * FixedPoint.ONE);
+
+        kParams.alpha = a.mulDown(c) / (ampPrecision);
     }
 }

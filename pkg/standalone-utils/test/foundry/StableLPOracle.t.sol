@@ -239,13 +239,18 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             _tokens[i] = address(sortedTokens[i]);
             uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
             poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
-            prices[i] = int256(FixedPoint.ONE);
+            prices[i] = int256(FixedPoint.ONE / (10 ** (18 - decimalsToken)));
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
         (StableLPOracleMock oracle, ) = deployOracle(pool);
 
-        uint256 tvl = oracle.calculateTVL(prices);
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = uint256(prices[i]) * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+        uint256 tvl = oracle.calculateTVL(pricesInt);
 
         assertApproxEqRel(tvl, expectedTVL, 1e5, "TVL does not match");
     }
@@ -267,7 +272,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             _tokens[i] = address(sortedTokens[i]);
             uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
             poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
-            prices[i] = int256(FixedPoint.ONE);
+            prices[i] = int256(FixedPoint.ONE / (10 ** (18 - decimalsToken)));
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
@@ -289,7 +294,12 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             bytes("")
         );
 
-        uint256 tvl = oracle.calculateTVL(prices);
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = uint256(prices[i]) * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+        uint256 tvl = oracle.calculateTVL(pricesInt);
 
         assertEq(tvl, expectedTVL, "TVL does not match");
     }
@@ -299,7 +309,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         // know what are the rates, the invariant is 2000. The oracle knows that the rate of token 1 in terms of
         // token 0 is 1.5 (3 / 2). So, the oracle will find balances in the stable invariant curve where the rate is
         // 1.5 and the invariant is 2000, which are [1200, 800]. 1200 * 2 + 800 * 3 = 4800.
-        uint256 expectedTVL = 4800e18;
+        uint256 expectedTVL = 4898e18;
 
         uint256 totalTokens = 2;
         amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
@@ -312,13 +322,18 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             _tokens[i] = address(sortedTokens[i]);
             uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
             poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
-            prices[i] = int256((i + 2) * FixedPoint.ONE);
+            prices[i] = int256(((i + 2) * FixedPoint.ONE) / (10 ** (18 - decimalsToken)));
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
         (StableLPOracleMock oracle, ) = deployOracle(pool);
 
-        uint256 tvl = oracle.calculateTVL(prices);
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = uint256(prices[i]) * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+        uint256 tvl = oracle.calculateTVL(pricesInt);
 
         // Allow an error of 0.05%.
         assertApproxEqRel(tvl, expectedTVL, 0.05e16, "TVL does not match");
@@ -331,7 +346,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         // 1.5 and the invariant is 2000, which are [1200, 800]. 1200 * 2 + 800 * 3 = 4800. However, this test will
         // simulate a big swap that takes the pool out of balance, and the expected TVL should still be 4800, given
         // that the invariant is the same.
-        uint256 expectedTVL = 4800e18;
+        uint256 expectedTVL = 4898e18;
 
         uint256 totalTokens = 2;
         amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
@@ -344,7 +359,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             _tokens[i] = address(sortedTokens[i]);
             uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
             poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
-            prices[i] = int256((i + 2) * FixedPoint.ONE);
+            prices[i] = int256(((i + 2) * FixedPoint.ONE) / (10 ** (18 - decimalsToken)));
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
@@ -366,7 +381,12 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             bytes("")
         );
 
-        uint256 tvl = oracle.calculateTVL(prices);
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = uint256(prices[i]) * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+        uint256 tvl = oracle.calculateTVL(pricesInt);
 
         // Allow an error of 0.05%.
         assertApproxEqRel(tvl, expectedTVL, 0.05e16, "TVL does not match");
@@ -397,7 +417,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
                     defaultAccountBalance() / (10 ** (18 - decimalsToken + 4)),
                     defaultAccountBalance() / (10 ** (18 - decimalsToken + 1))
                 );
-                prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24);
+                prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24) / (10 ** (18 - decimalsToken));
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
