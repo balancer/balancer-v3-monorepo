@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -44,10 +46,17 @@ contract StableLPOracle is LPOracleBase {
         uint256 ampPrecision;
         {
             (uint256 A, , uint256 precision) = IStablePool(address(pool)).getAmplificationParameter();
+            console2.log("A", A);
             uint256 nn = _totalTokens ** _totalTokens;
             a = A * (nn ** 2);
             b = nn * FixedPoint.ONE * precision - a;
             ampPrecision = precision;
+        }
+
+        console2.log("D", D);
+        console2.log("n", _totalTokens);
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            console2.log("prices[i]", prices[i]);
         }
 
         uint256[] memory balancesForPrices = computeBalancesForPrices(D, a, b, prices, ampPrecision);
@@ -67,7 +76,9 @@ contract StableLPOracle is LPOracleBase {
         int256[] memory prices,
         uint256 ampPrecision
     ) internal view returns (uint256[] memory balancesForPrices) {
+        console2.log("Start K");
         uint256 k = computeK(a, b, prices, ampPrecision);
+        console2.log("k", k);
 
         uint256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
@@ -90,27 +101,26 @@ contract StableLPOracle is LPOracleBase {
     ) internal view returns (uint256 k) {
         k = 10000e18;
         for (uint256 i = 0; i < 255; i++) {
+            console2.log("current k", k);
             KParams memory kParams = computeKParams(k, a, b, prices, ampPrecision);
 
             // Calculate derivative of f(k) (`f'(k)`).
-            uint256 flk = kParams.Tn.mulDown(
-                ((_totalTokens + 1) * kParams.Tl.mulDown(kParams.P)) + kParams.T.mulDown(kParams.Pl)
+            uint256 flk = mulDownReductionFactor(
+                kParams.Tn,
+                (_totalTokens + 1) * kParams.Tl.mulDown(kParams.P) + kParams.T.mulDown(kParams.Pl),
+                kParams.reductionFactor
             );
 
             // Calculate f(k).
-            uint256 fk = kParams.Tn1.mulDown(kParams.P);
+            uint256 fk = mulDownReductionFactor(kParams.Tn1, kParams.P, kParams.reductionFactor);
             uint256 newK;
-            if (_totalTokens % 2 == 1) {
-                fk = fk + kParams.alpha;
-                newK = k - (fk.divDown(flk));
+
+            if (kParams.alpha > fk) {
+                fk = kParams.alpha - fk;
+                newK = k + (fk.divDown(flk));
             } else {
-                if (kParams.alpha > fk) {
-                    fk = kParams.alpha - fk;
-                    newK = k + (fk.divDown(flk));
-                } else {
-                    fk = fk - kParams.alpha;
-                    newK = k - (fk.divDown(flk));
-                }
+                fk = fk - kParams.alpha;
+                newK = k - (fk.divDown(flk));
             }
 
             if (newK > k && (newK - k) <= 1e10) {
@@ -132,6 +142,7 @@ contract StableLPOracle is LPOracleBase {
         uint256 Tn;
         uint256 Tn1;
         uint256 alpha;
+        uint256 reductionFactor;
     }
 
     function computeKParams(
@@ -141,6 +152,8 @@ contract StableLPOracle is LPOracleBase {
         int256[] memory prices,
         uint256 ampPrecision
     ) internal view returns (KParams memory kParams) {
+        // It'll reduce numbers by reductionFactor^n, so operations won't overflow.
+        kParams.reductionFactor = 1;
         kParams.T = FixedPoint.ONE;
         kParams.Tl = 0;
         // P overflows with small amp factor, or small prices, or number of tokens. So, we don't use FP.ONE.
@@ -153,7 +166,7 @@ contract StableLPOracle is LPOracleBase {
             kParams.T -= (FixedPoint.ONE).divDown(den);
             // den is a very large number, so we divide twice to avoid overflows.
             kParams.Tl += ri.divDown(den).divDown(den);
-            kParams.P = (kParams.P / FixedPoint.ONE) * den;
+            kParams.P = ((kParams.P / FixedPoint.ONE) * den) / kParams.reductionFactor;
             kParams.Pl += ri.divDown(den);
         }
         kParams.P = kParams.P / FixedPoint.ONE;
@@ -163,12 +176,16 @@ contract StableLPOracle is LPOracleBase {
         uint256 c = b / a;
         kParams.Tn = FixedPoint.ONE;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            kParams.Tn = kParams.Tn.mulDown(kParams.T);
-            c = (c * b) / a;
+            kParams.Tn = kParams.Tn.mulDown(kParams.T) / kParams.reductionFactor;
+            c = ((c * b) / a) / kParams.reductionFactor;
         }
 
         kParams.Tn1 = kParams.Tn.mulDown(kParams.T);
 
         kParams.alpha = a.mulDown(c) / (ampPrecision);
+    }
+
+    function mulDownReductionFactor(uint256 a, uint256 b, uint256 reductionFactor) internal view returns (uint256) {
+        return (a * b) / (FixedPoint.ONE / (reductionFactor ** _totalTokens));
     }
 }

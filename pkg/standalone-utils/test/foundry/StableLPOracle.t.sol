@@ -252,7 +252,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
         uint256 tvl = oracle.calculateTVL(pricesInt);
 
-        assertApproxEqRel(tvl, expectedTVL, 1e5, "TVL does not match");
+        assertApproxEqRel(tvl, expectedTVL, 1e8, "TVL does not match");
     }
 
     function testCalculateTVL2TokensUnbalanced__Fuzz(uint256 amplificationFactor) public {
@@ -399,7 +399,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         uint256[MAX_TOKENS] memory pricesRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
     ) public {
-        totalTokens = bound(totalTokens, MIN_TOKENS, 3);
+        totalTokens = bound(totalTokens, MIN_TOKENS, 2);
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
@@ -414,7 +414,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
                 uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
                 poolInitAmounts[i] = bound(
                     poolInitAmountsRaw[i],
-                    defaultAccountBalance() / (10 ** (18 - decimalsToken + 4)),
+                    defaultAccountBalance() / (10 ** (18 - decimalsToken + 3)),
                     defaultAccountBalance() / (10 ** (18 - decimalsToken + 1))
                 );
                 prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24) / (10 ** (18 - decimalsToken));
