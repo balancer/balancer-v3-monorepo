@@ -73,10 +73,10 @@ contract StableLPOracle is LPOracleBase {
     function _computeK(uint256 a, uint256 b, int256[] memory prices) internal view returns (uint256 k) {
         k = 10000e18;
         for (uint256 i = 0; i < 255; i++) {
-            (uint256 T, uint256 dTdK, uint256 dPdk, uint256 Tn, uint256 alpha) = _computeKParams(k, a, b, prices);
+            (uint256 T, uint256 dTdk, uint256 dPdk, uint256 Tn, uint256 alpha) = _computeKParams(k, a, b, prices);
 
             // Alpha is actually alpha / P, to avoid overflows. So, P is not used.
-            uint256 flk = (_totalTokens + 1) * Tn.divDown(T).mulDown(dTdK) + T.mulDown(dPdk);
+            uint256 flk = (_totalTokens + 1) * Tn.divDown(T).mulDown(dTdk) + T.mulDown(dPdk);
 
             uint256 newK;
 
@@ -102,33 +102,29 @@ contract StableLPOracle is LPOracleBase {
         uint256 a,
         uint256 b,
         int256[] memory prices
-    ) internal view returns (uint256 T, uint256 dTdK, uint256 dPdk, uint256 Tn, uint256 alpha) {
+    ) internal view returns (uint256 T, uint256 dTdk, uint256 dPdk, uint256 Tn, uint256 alpha) {
         uint256 i;
-        uint256 ri;
         uint256 den;
 
         // TODO explain that P is a very large number, so we divided f(k) and f'(k) by P to avoid overflows.
         T = FixedPoint.ONE;
-        dTdK = 0;
+        dTdk = 0;
         dPdk = 0;
         for (i = 0; i < _totalTokens; i++) {
-            ri = (prices[i].toUint256() * StableMath.AMP_PRECISION).divDown(a);
-            den = (k.mulDown(ri) - FixedPoint.ONE);
-            T -= (FixedPoint.ONE).divDown(den);
-            // den is a very large number, so we divide twice to avoid overflows.
-            dTdK += ri.divDown(den).divDown(den);
-            dPdk += ri.divDown(den);
+            den = ((k * StableMath.AMP_PRECISION).mulDown(prices[i].toUint256()) - a);
+            T -= a.divDown(den);
+            dTdk += ((StableMath.AMP_PRECISION * (prices[i].toUint256() * a)) / (den.mulDown(den)));
+            dPdk += (StableMath.AMP_PRECISION * prices[i].toUint256()).divDown(den);
         }
 
         alpha = b;
-        Tn = FixedPoint.ONE;
-        for (i = 0; i < _totalTokens; i++) {
-            ri = (prices[i].toUint256() * StableMath.AMP_PRECISION).divDown(a);
-            den = (k.mulDown(ri) - FixedPoint.ONE);
-            Tn = Tn.mulDown(T);
-            alpha = 1 + ((alpha * b).divUp(a) / den);
-        }
+        Tn = T;
 
+        for (i = 0; i < _totalTokens; i++) {
+            den = ((k * StableMath.AMP_PRECISION).mulDown(prices[i].toUint256()) - a);
+            Tn = Tn.mulDown(T);
+            alpha = (alpha * b) / den;
+        }
         alpha = alpha / StableMath.AMP_PRECISION;
     }
 
