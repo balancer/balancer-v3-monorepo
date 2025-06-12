@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -58,13 +60,17 @@ contract StableLPOracle is LPOracleBase {
 
         uint256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += a.divUp(k.mulUp(prices[i].toUint256()) * StableMath.AMP_PRECISION - a);
+            sumPriceDivision += (FixedPoint.ONE).divDown(
+                (k * StableMath.AMP_PRECISION).mulDown(prices[i].toUint256()) - a
+            );
         }
+        sumPriceDivision = sumPriceDivision.mulDown(a);
 
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
-            balancesForPrices[i] = ((b * invariant) / (k.mulUp(prices[i].toUint256()) * StableMath.AMP_PRECISION - a))
-                .divDown(FixedPoint.ONE - sumPriceDivision);
+            balancesForPrices[i] =
+                (b * invariant).divDown((k * StableMath.AMP_PRECISION).mulUp(prices[i].toUint256()) - a) /
+                (FixedPoint.ONE - sumPriceDivision);
         }
     }
 
