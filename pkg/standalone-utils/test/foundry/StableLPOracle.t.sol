@@ -225,52 +225,114 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
     function testComputeBalancesForPrices__Fuzz(
         uint256 totalTokens,
-        uint256 amplificationFactor,
+        uint256 amplificationParameter,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
         uint256[MAX_TOKENS] memory pricesRaw
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
-        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
-        address[] memory _tokens = new address[](totalTokens);
-        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
         uint256[] memory prices = new uint256[](totalTokens);
+        IStablePool pool;
+        StableLPOracleMock oracle;
+        {
+            uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+            address[] memory _tokens = new address[](totalTokens);
+            for (uint256 i = 0; i < totalTokens; i++) {
+                _tokens[i] = address(sortedTokens[i]);
+                uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+                poolInitAmounts[i] = bound(
+                    poolInitAmountsRaw[i],
+                    defaultAccountBalance() / (10 ** (18 - decimalsToken + 3)),
+                    defaultAccountBalance() / (10 ** (18 - decimalsToken + 1))
+                );
+                prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24) / (10 ** (18 - decimalsToken));
+            }
 
-        for (uint256 i = 0; i < totalTokens; i++) {
-            _tokens[i] = address(sortedTokens[i]);
-            uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
-            poolInitAmounts[i] = bound(
-                poolInitAmountsRaw[i],
-                defaultAccountBalance() / (10 ** (18 - decimalsToken + 3)),
-                defaultAccountBalance() / (10 ** (18 - decimalsToken + 1))
-            );
-            prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24) / (10 ** (18 - decimalsToken));
+            pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+            (oracle, ) = deployOracle(pool);
         }
 
-        IStablePool pool = createAndInitPool(totalTokens, amplificationFactor);
-        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+        uint256 invariant = _getInvariant(address(pool));
+        int256[] memory pricesInt = _getFixedPrices(totalTokens, prices, oracle);
 
-        (, , , uint256[] memory liveBalancesScaled18) = vault.getPoolTokenInfo(address(pool));
-        uint256 invariant = pool.computeInvariant(liveBalancesScaled18, Rounding.ROUND_DOWN);
-
-        int256[] memory pricesInt = new int256[](totalTokens);
-        for (uint256 i = 0; i < totalTokens; i++) {
-            uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
-            pricesInt[i] = int256(price);
-        }
         uint256[] memory balancesForPricesScaled18 = oracle.computeBalancesForPrices(invariant, pricesInt);
         uint256 invariantForPrices = pool.computeInvariant(balancesForPricesScaled18, Rounding.ROUND_DOWN);
 
-        assertEq(invariantForPrices, invariant, "Invariant does not match");
+        // assertEq(invariantForPrices, invariant, "Invariant does not match");
+        _checkPrices(
+            amplificationParameter,
+            balancesForPricesScaled18,
+            invariant,
+            invariantForPrices,
+            totalTokens,
+            oracle,
+            prices
+        );
     }
 
-    function testCalculateTVL2Tokens__Fuzz(uint256 amplificationFactor) public {
+    function _getInvariant(address pool) private view returns (uint256 invariant) {
+        (, , , uint256[] memory liveBalancesScaled18) = vault.getPoolTokenInfo(pool);
+        invariant = IStablePool(pool).computeInvariant(liveBalancesScaled18, Rounding.ROUND_DOWN);
+    }
+
+    function _getFixedPrices(
+        uint256 totalTokens,
+        uint256[] memory prices,
+        StableLPOracleMock oracle
+    ) private view returns (int256[] memory pricesInt) {
+        pricesInt = new int256[](totalTokens);
+        {
+            for (uint256 i = 0; i < totalTokens; i++) {
+                uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
+                pricesInt[i] = int256(price);
+            }
+        }
+    }
+
+    function _checkPrices(
+        uint256 amplificationParameter,
+        uint256[] memory balancesForPricesScaled18,
+        uint256 invariant,
+        uint256 invariantForPrices,
+        uint256 totalTokens,
+        StableLPOracleMock oracle,
+        uint256[] memory prices
+    ) private view {
+        console2.log("amplificationParameter", amplificationParameter);
+        console2.log("invariant", invariant);
+        console2.log("invariantForPrices", invariantForPrices);
+        console2.log("totalTokens", totalTokens);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            console2.log("balancesForPricesScaled18[i]", i, balancesForPricesScaled18[i]);
+            console2.log("prices[i]", i, prices[i]);
+        }
+
+        for (uint256 i = 1; i < totalTokens; i++) {
+            uint256 amountOut = StableMath.computeOutGivenExactIn(
+                amplificationParameter,
+                balancesForPricesScaled18,
+                0,
+                i,
+                1e9,
+                invariantForPrices
+            );
+
+            uint256 priceBase = prices[0] * oracle.getFeedTokenDecimalScalingFactors()[i];
+            uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
+
+            assertEq(price, (priceBase * 1e9) / amountOut, "Price does not match");
+        }
+    }
+
+    function testCalculateTVL2Tokens__Fuzz(uint256 amplificationParameter) public {
         // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000 (the pool is balanced, so the
         // amp factor doesn't matter).
         uint256 expectedTVL = 2000e18;
 
         uint256 totalTokens = 2;
-        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
@@ -283,7 +345,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             prices[i] = int256(FixedPoint.ONE / (10 ** (18 - decimalsToken)));
         }
 
-        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
         (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         int256[] memory pricesInt = new int256[](totalTokens);
@@ -294,16 +356,24 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         uint256 tvl = oracle.calculateTVL(pricesInt);
 
         assertApproxEqRel(tvl, expectedTVL, 1e8, "TVL does not match");
+
+        (, , , uint256[] memory liveBalancesScaled18) = vault.getPoolTokenInfo(address(pool));
+        uint256 invariant = pool.computeInvariant(liveBalancesScaled18, Rounding.ROUND_DOWN);
+
+        uint256[] memory balancesForPricesScaled18 = oracle.computeBalancesForPrices(invariant, pricesInt);
+        uint256 invariantForPrices = pool.computeInvariant(balancesForPricesScaled18, Rounding.ROUND_DOWN);
+
+        assertEq(invariantForPrices, invariant, "Invariant does not match");
     }
 
-    function testCalculateTVL2TokensUnbalanced__Fuzz(uint256 amplificationFactor) public {
+    function testCalculateTVL2TokensUnbalanced__Fuzz(uint256 amplificationParameter) public {
         // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000. However, this test will
         // simulate a big swap that takes the pool out of balance, and the expected TVL should still be 2000,
         // given that the invariant is the same.
         uint256 expectedTVL = 2000e18;
 
         uint256 totalTokens = 2;
-        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
@@ -316,7 +386,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             prices[i] = int256(FixedPoint.ONE / (10 ** (18 - decimalsToken)));
         }
 
-        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
         (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         // Remove the swap fee.
@@ -345,7 +415,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertEq(tvl, expectedTVL, "TVL does not match");
     }
 
-    function testCalculateTVL2TokensWithRates__Fuzz(uint256 amplificationFactor) public {
+    function testCalculateTVL2TokensWithRates__Fuzz(uint256 amplificationParameter) public {
         // For a pool with 2 tokens, 1000 balance, rate = 2 and 3, the expected TVL is 4800. Since the pool doesn't
         // know what are the rates, the invariant is 2000. The oracle knows that the rate of token 1 in terms of
         // token 0 is 1.5 (3 / 2). So, the oracle will find balances in the stable invariant curve where the rate is
@@ -353,7 +423,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         uint256 expectedTVL = 4898e18;
 
         uint256 totalTokens = 2;
-        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
@@ -366,7 +436,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             prices[i] = int256(((i + 2) * FixedPoint.ONE) / (10 ** (18 - decimalsToken)));
         }
 
-        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
         (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         int256[] memory pricesInt = new int256[](totalTokens);
@@ -380,7 +450,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertApproxEqRel(tvl, expectedTVL, 0.05e16, "TVL does not match");
     }
 
-    function testCalculateTVL2TokensUnbalancedWithRates__Fuzz(uint256 amplificationFactor) public {
+    function testCalculateTVL2TokensUnbalancedWithRates__Fuzz(uint256 amplificationParameter) public {
         // For a pool with 2 tokens, 1000 balance, rate = 2 and 3, the expected TVL is 4800. Since the pool doesn't
         // know what are the rates, the invariant is 2000. The oracle knows that the rate of token 1 in terms of
         // token 0 is 1.5 (3 / 2). So, the oracle will find balances in the stable invariant curve where the rate is
@@ -390,7 +460,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         uint256 expectedTVL = 4898e18;
 
         uint256 totalTokens = 2;
-        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
@@ -403,7 +473,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             prices[i] = int256(((i + 2) * FixedPoint.ONE) / (10 ** (18 - decimalsToken)));
         }
 
-        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
         (StableLPOracleMock oracle, ) = deployOracle(pool);
 
         // Remove the swap fee.
@@ -435,7 +505,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
     function testLatestRoundData__Fuzz(
         uint256 totalTokens,
-        uint256 amplificationFactor,
+        uint256 amplificationParameter,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
         uint256[MAX_TOKENS] memory pricesRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
@@ -446,7 +516,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
         uint256[] memory prices = new uint256[](totalTokens);
         uint256[] memory updateTimestamps = new uint256[](totalTokens);
-        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         uint256 minUpdateTimestamp = MAX_UINT256;
         {
@@ -467,7 +537,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             }
         }
 
-        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationFactor);
+        IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
         (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
         for (uint256 i = 0; i < totalTokens; i++) {

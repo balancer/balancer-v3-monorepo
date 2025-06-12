@@ -107,7 +107,7 @@ contract StableLPOracle is LPOracleBase {
         uint256 ri;
         uint256 den;
 
-        // TODO exdPdkain that P is a very large number, so we divided f(k) and f'(k) by P to avoid overflows.
+        // TODO explain that P is a very large number, so we divided f(k) and f'(k) by P to avoid overflows.
         T = FixedPoint.ONE;
         dTdK = 0;
         dPdk = 0;
@@ -126,7 +126,7 @@ contract StableLPOracle is LPOracleBase {
             ri = (prices[i].toUint256() * StableMath.AMP_PRECISION).divDown(a);
             den = (k.mulDown(ri) - FixedPoint.ONE);
             Tn = Tn.mulDown(T);
-            alpha = ((alpha * b) / a).divDown(den);
+            alpha = 1 + ((alpha * b).divUp(a) / den);
         }
 
         alpha = alpha / StableMath.AMP_PRECISION;
