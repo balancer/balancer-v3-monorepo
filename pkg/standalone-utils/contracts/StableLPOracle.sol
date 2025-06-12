@@ -129,8 +129,7 @@ contract StableLPOracle is LPOracleBase {
             Pl += ri.divDown(den);
         }
 
-        // Since the precision of P was removed, remove the precision of c dividing using a raw division.
-        alpha = b / a;
+        alpha = b;
         Tn = FixedPoint.ONE;
         for (i = 0; i < _totalTokens; i++) {
             ri = (prices[i].toUint256() * StableMath.AMP_PRECISION).divDown(a);
