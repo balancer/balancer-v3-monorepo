@@ -90,22 +90,23 @@ contract StableLPOracle is LPOracleBase {
     ) internal view returns (uint256 k) {
         k = 10000e18;
         for (uint256 i = 0; i < 255; i++) {
-            KParams memory kParams = computeKParams(k, a, b, prices, ampPrecision);
+            (uint256 T, uint256 Tl, uint256 Pl, uint256 Tn, uint256 alpha) = computeKParams(
+                k,
+                a,
+                b,
+                prices,
+                ampPrecision
+            );
 
             // Alpha is actually alpha / P, to avoid overflows. So, P is not used.
-            uint256 flk = (_totalTokens + 1) *
-                kParams.Tn.divDown(kParams.T).mulDown(kParams.Tl) +
-                kParams.T.mulDown(kParams.Pl);
-            uint256 fk = kParams.Tn;
+            uint256 flk = (_totalTokens + 1) * Tn.divDown(T).mulDown(Tl) + T.mulDown(Pl);
 
             uint256 newK;
 
-            if (kParams.alpha > fk) {
-                fk = kParams.alpha - fk;
-                newK = k + (fk.divDown(flk));
+            if (alpha > Tn) {
+                newK = k + ((alpha - Tn).divDown(flk));
             } else {
-                fk = fk - kParams.alpha;
-                newK = k - (fk.divDown(flk));
+                newK = k - ((Tn - alpha).divDown(flk));
             }
 
             if (newK > k && (newK - k) <= 1e10) {
@@ -119,44 +120,40 @@ contract StableLPOracle is LPOracleBase {
         // TODO Raise Exception
     }
 
-    struct KParams {
-        uint256 T;
-        uint256 Tl;
-        uint256 Pl;
-        uint256 Tn;
-        uint256 alpha;
-    }
-
     function computeKParams(
         uint256 k,
         uint256 a,
         uint256 b,
         int256[] memory prices,
         uint256 ampPrecision
-    ) internal view returns (KParams memory kParams) {
+    ) internal view returns (uint256 T, uint256 Tl, uint256 Pl, uint256 Tn, uint256 alpha) {
+        uint256 i;
+        uint256 ri;
+        uint256 den;
+
         // TODO explain that P is a very large number, so we divided f(k) and f'(k) by P to avoid overflows.
-        kParams.T = FixedPoint.ONE;
-        kParams.Tl = 0;
-        kParams.Pl = 0;
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            uint256 ri = (prices[i].toUint256() * ampPrecision).divDown(a);
-            uint256 den = (k.mulDown(ri) - FixedPoint.ONE);
-            kParams.T -= (FixedPoint.ONE).divDown(den);
+        T = FixedPoint.ONE;
+        Tl = 0;
+        Pl = 0;
+        for (i = 0; i < _totalTokens; i++) {
+            ri = (prices[i].toUint256() * ampPrecision).divDown(a);
+            den = (k.mulDown(ri) - FixedPoint.ONE);
+            T -= (FixedPoint.ONE).divDown(den);
             // den is a very large number, so we divide twice to avoid overflows.
-            kParams.Tl += ri.divDown(den).divDown(den);
-            kParams.Pl += ri.divDown(den);
+            Tl += ri.divDown(den).divDown(den);
+            Pl += ri.divDown(den);
         }
 
         // Since the precision of P was removed, remove the precision of c dividing using a raw division.
-        uint256 c = b / a;
-        kParams.Tn = FixedPoint.ONE;
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            uint256 ri = (prices[i].toUint256() * ampPrecision).divDown(a);
-            uint256 den = (k.mulDown(ri) - FixedPoint.ONE);
-            kParams.Tn = kParams.Tn.mulDown(kParams.T);
-            kParams.alpha = ((c * b) / a).divDown(den);
+        alpha = b / a;
+        Tn = FixedPoint.ONE;
+        for (i = 0; i < _totalTokens; i++) {
+            ri = (prices[i].toUint256() * ampPrecision).divDown(a);
+            den = (k.mulDown(ri) - FixedPoint.ONE);
+            Tn = Tn.mulDown(T);
+            alpha = ((alpha * b) / a).divDown(den);
         }
 
-        kParams.alpha = kParams.alpha / (ampPrecision);
+        alpha = alpha / ampPrecision;
     }
 }
