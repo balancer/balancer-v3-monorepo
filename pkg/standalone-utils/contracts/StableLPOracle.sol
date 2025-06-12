@@ -86,13 +86,18 @@ contract StableLPOracle is LPOracleBase {
                 newK = k - ((Tn - alpha).divDown(flk));
             }
 
-            if (newK > k && (newK - k) <= 1e10) {
-                return newK;
-            } else if (newK < k && (k - newK) <= 1e10) {
+            if (newK > k) {
+                if ((newK - k) <= 1) {
+                    return newK;
+                }
+            } else if ((k - newK) <= 1) {
                 return newK;
             }
+
             k = newK;
         }
+
+        revert();
 
         // TODO Raise Exception
     }
@@ -106,22 +111,27 @@ contract StableLPOracle is LPOracleBase {
         uint256 i;
         uint256 den;
 
+        uint256[] memory p = new uint256[](_totalTokens);
+        for (i = 0; i < _totalTokens; i++) {
+            p[i] = prices[i].toUint256();
+        }
+
         // TODO explain that P is a very large number, so we divided f(k) and f'(k) by P to avoid overflows.
         T = FixedPoint.ONE;
         dTdk = 0;
         dPdk = 0;
         for (i = 0; i < _totalTokens; i++) {
-            den = ((k * StableMath.AMP_PRECISION).mulDown(prices[i].toUint256()) - a);
+            den = ((k * StableMath.AMP_PRECISION).mulDown(p[i]) - a);
             T -= a.divDown(den);
-            dTdk += ((StableMath.AMP_PRECISION * (prices[i].toUint256() * a)) / (den.mulDown(den)));
-            dPdk += (StableMath.AMP_PRECISION * prices[i].toUint256()).divDown(den);
+            dTdk += ((StableMath.AMP_PRECISION * (p[i] * a)) / (den.mulDown(den)));
+            dPdk += (StableMath.AMP_PRECISION * p[i]).divDown(den);
         }
 
         alpha = b;
-        Tn = T;
+        Tn = FixedPoint.ONE;
 
         for (i = 0; i < _totalTokens; i++) {
-            den = ((k * StableMath.AMP_PRECISION).mulDown(prices[i].toUint256()) - a);
+            den = ((k * StableMath.AMP_PRECISION).mulDown(p[i]) - a);
             Tn = Tn.mulDown(T);
             alpha = (alpha * b) / den;
         }
