@@ -223,6 +223,47 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
+    function testComputeBalancesForPrices__Fuzz(
+        uint256 totalTokens,
+        uint256 amplificationFactor,
+        uint256[MAX_TOKENS] memory poolInitAmountsRaw,
+        uint256[MAX_TOKENS] memory pricesRaw
+    ) public {
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+        amplificationFactor = bound(amplificationFactor, StableMath.MIN_AMP, StableMath.MAX_AMP);
+
+        address[] memory _tokens = new address[](totalTokens);
+        uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+        uint256[] memory prices = new uint256[](totalTokens);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = bound(
+                poolInitAmountsRaw[i],
+                defaultAccountBalance() / (10 ** (18 - decimalsToken + 3)),
+                defaultAccountBalance() / (10 ** (18 - decimalsToken + 1))
+            );
+            prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24) / (10 ** (18 - decimalsToken));
+        }
+
+        IStablePool pool = createAndInitPool(totalTokens, amplificationFactor);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        (, , , uint256[] memory liveBalancesScaled18) = vault.getPoolTokenInfo(address(pool));
+        uint256 invariant = pool.computeInvariant(liveBalancesScaled18, Rounding.ROUND_DOWN);
+
+        int256[] memory pricesInt = new int256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
+            pricesInt[i] = int256(price);
+        }
+        uint256[] memory balancesForPricesScaled18 = oracle.computeBalancesForPrices(invariant, pricesInt);
+        uint256 invariantForPrices = pool.computeInvariant(balancesForPricesScaled18, Rounding.ROUND_DOWN);
+
+        assertEq(invariantForPrices, invariant, "Invariant does not match");
+    }
+
     function testCalculateTVL2Tokens__Fuzz(uint256 amplificationFactor) public {
         // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000 (the pool is balanced, so the
         // amp factor doesn't matter).

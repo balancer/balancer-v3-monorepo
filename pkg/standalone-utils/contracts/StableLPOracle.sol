@@ -40,16 +40,7 @@ contract StableLPOracle is LPOracleBase {
 
         uint256 D = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        uint256 a;
-        uint256 b;
-        {
-            (uint256 A, , ) = IStablePool(address(pool)).getAmplificationParameter();
-            uint256 nn = _totalTokens ** _totalTokens;
-            a = A * (nn ** 2);
-            b = nn * FixedPoint.ONE * StableMath.AMP_PRECISION - a;
-        }
-
-        uint256[] memory balancesForPrices = computeBalancesForPrices(D, a, b, prices);
+        uint256[] memory balancesForPrices = _computeBalancesForPrices(D, prices);
 
         tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
@@ -59,13 +50,13 @@ contract StableLPOracle is LPOracleBase {
         return tvl;
     }
 
-    function computeBalancesForPrices(
+    function _computeBalancesForPrices(
         uint256 invariant,
-        uint256 a,
-        uint256 b,
         int256[] memory prices
     ) internal view returns (uint256[] memory balancesForPrices) {
-        uint256 k = computeK(a, b, prices);
+        (uint256 a, uint256 b) = _computeAAndBForPool(IStablePool(address(pool)));
+
+        uint256 k = _computeK(a, b, prices);
 
         uint256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
@@ -79,13 +70,13 @@ contract StableLPOracle is LPOracleBase {
         }
     }
 
-    function computeK(uint256 a, uint256 b, int256[] memory prices) internal view returns (uint256 k) {
+    function _computeK(uint256 a, uint256 b, int256[] memory prices) internal view returns (uint256 k) {
         k = 10000e18;
         for (uint256 i = 0; i < 255; i++) {
-            (uint256 T, uint256 Tl, uint256 Pl, uint256 Tn, uint256 alpha) = computeKParams(k, a, b, prices);
+            (uint256 T, uint256 dTdK, uint256 dPdk, uint256 Tn, uint256 alpha) = _computeKParams(k, a, b, prices);
 
             // Alpha is actually alpha / P, to avoid overflows. So, P is not used.
-            uint256 flk = (_totalTokens + 1) * Tn.divDown(T).mulDown(Tl) + T.mulDown(Pl);
+            uint256 flk = (_totalTokens + 1) * Tn.divDown(T).mulDown(dTdK) + T.mulDown(dPdk);
 
             uint256 newK;
 
@@ -106,27 +97,27 @@ contract StableLPOracle is LPOracleBase {
         // TODO Raise Exception
     }
 
-    function computeKParams(
+    function _computeKParams(
         uint256 k,
         uint256 a,
         uint256 b,
         int256[] memory prices
-    ) internal view returns (uint256 T, uint256 Tl, uint256 Pl, uint256 Tn, uint256 alpha) {
+    ) internal view returns (uint256 T, uint256 dTdK, uint256 dPdk, uint256 Tn, uint256 alpha) {
         uint256 i;
         uint256 ri;
         uint256 den;
 
-        // TODO explain that P is a very large number, so we divided f(k) and f'(k) by P to avoid overflows.
+        // TODO exdPdkain that P is a very large number, so we divided f(k) and f'(k) by P to avoid overflows.
         T = FixedPoint.ONE;
-        Tl = 0;
-        Pl = 0;
+        dTdK = 0;
+        dPdk = 0;
         for (i = 0; i < _totalTokens; i++) {
             ri = (prices[i].toUint256() * StableMath.AMP_PRECISION).divDown(a);
             den = (k.mulDown(ri) - FixedPoint.ONE);
             T -= (FixedPoint.ONE).divDown(den);
             // den is a very large number, so we divide twice to avoid overflows.
-            Tl += ri.divDown(den).divDown(den);
-            Pl += ri.divDown(den);
+            dTdK += ri.divDown(den).divDown(den);
+            dPdk += ri.divDown(den);
         }
 
         alpha = b;
@@ -139,5 +130,12 @@ contract StableLPOracle is LPOracleBase {
         }
 
         alpha = alpha / StableMath.AMP_PRECISION;
+    }
+
+    function _computeAAndBForPool(IStablePool pool) internal view returns (uint256 a, uint256 b) {
+        (uint256 amplificationFactor, , ) = pool.getAmplificationParameter();
+        uint256 nn = _totalTokens ** _totalTokens;
+        a = amplificationFactor * (nn ** 2);
+        b = nn * FixedPoint.ONE * StableMath.AMP_PRECISION - a;
     }
 }
