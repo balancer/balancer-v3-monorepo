@@ -399,7 +399,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         uint256[MAX_TOKENS] memory pricesRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
     ) public {
-        totalTokens = bound(totalTokens, MIN_TOKENS, 2);
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
