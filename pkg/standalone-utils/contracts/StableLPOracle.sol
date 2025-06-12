@@ -15,6 +15,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { LPOracleBase } from "./LPOracleBase.sol";
 
@@ -41,16 +42,14 @@ contract StableLPOracle is LPOracleBase {
 
         uint256 a;
         uint256 b;
-        uint256 ampPrecision;
         {
-            (uint256 A, , uint256 precision) = IStablePool(address(pool)).getAmplificationParameter();
+            (uint256 A, , ) = IStablePool(address(pool)).getAmplificationParameter();
             uint256 nn = _totalTokens ** _totalTokens;
             a = A * (nn ** 2);
-            b = nn * FixedPoint.ONE * precision - a;
-            ampPrecision = precision;
+            b = nn * FixedPoint.ONE * StableMath.AMP_PRECISION - a;
         }
 
-        uint256[] memory balancesForPrices = computeBalancesForPrices(D, a, b, prices, ampPrecision);
+        uint256[] memory balancesForPrices = computeBalancesForPrices(D, a, b, prices);
 
         tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
@@ -64,39 +63,26 @@ contract StableLPOracle is LPOracleBase {
         uint256 invariant,
         uint256 a,
         uint256 b,
-        int256[] memory prices,
-        uint256 ampPrecision
+        int256[] memory prices
     ) internal view returns (uint256[] memory balancesForPrices) {
-        uint256 k = computeK(a, b, prices, ampPrecision);
+        uint256 k = computeK(a, b, prices);
 
         uint256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += a.divUp(k.mulUp(prices[i].toUint256()) * ampPrecision - a);
+            sumPriceDivision += a.divUp(k.mulUp(prices[i].toUint256()) * StableMath.AMP_PRECISION - a);
         }
 
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
-            balancesForPrices[i] = ((b * invariant) / (k.mulUp(prices[i].toUint256()) * ampPrecision - a)).divDown(
-                FixedPoint.ONE - sumPriceDivision
-            );
+            balancesForPrices[i] = ((b * invariant) / (k.mulUp(prices[i].toUint256()) * StableMath.AMP_PRECISION - a))
+                .divDown(FixedPoint.ONE - sumPriceDivision);
         }
     }
 
-    function computeK(
-        uint256 a,
-        uint256 b,
-        int256[] memory prices,
-        uint256 ampPrecision
-    ) internal view returns (uint256 k) {
+    function computeK(uint256 a, uint256 b, int256[] memory prices) internal view returns (uint256 k) {
         k = 10000e18;
         for (uint256 i = 0; i < 255; i++) {
-            (uint256 T, uint256 Tl, uint256 Pl, uint256 Tn, uint256 alpha) = computeKParams(
-                k,
-                a,
-                b,
-                prices,
-                ampPrecision
-            );
+            (uint256 T, uint256 Tl, uint256 Pl, uint256 Tn, uint256 alpha) = computeKParams(k, a, b, prices);
 
             // Alpha is actually alpha / P, to avoid overflows. So, P is not used.
             uint256 flk = (_totalTokens + 1) * Tn.divDown(T).mulDown(Tl) + T.mulDown(Pl);
@@ -124,8 +110,7 @@ contract StableLPOracle is LPOracleBase {
         uint256 k,
         uint256 a,
         uint256 b,
-        int256[] memory prices,
-        uint256 ampPrecision
+        int256[] memory prices
     ) internal view returns (uint256 T, uint256 Tl, uint256 Pl, uint256 Tn, uint256 alpha) {
         uint256 i;
         uint256 ri;
@@ -136,7 +121,7 @@ contract StableLPOracle is LPOracleBase {
         Tl = 0;
         Pl = 0;
         for (i = 0; i < _totalTokens; i++) {
-            ri = (prices[i].toUint256() * ampPrecision).divDown(a);
+            ri = (prices[i].toUint256() * StableMath.AMP_PRECISION).divDown(a);
             den = (k.mulDown(ri) - FixedPoint.ONE);
             T -= (FixedPoint.ONE).divDown(den);
             // den is a very large number, so we divide twice to avoid overflows.
@@ -148,12 +133,12 @@ contract StableLPOracle is LPOracleBase {
         alpha = b / a;
         Tn = FixedPoint.ONE;
         for (i = 0; i < _totalTokens; i++) {
-            ri = (prices[i].toUint256() * ampPrecision).divDown(a);
+            ri = (prices[i].toUint256() * StableMath.AMP_PRECISION).divDown(a);
             den = (k.mulDown(ri) - FixedPoint.ONE);
             Tn = Tn.mulDown(T);
             alpha = ((alpha * b) / a).divDown(den);
         }
 
-        alpha = alpha / ampPrecision;
+        alpha = alpha / StableMath.AMP_PRECISION;
     }
 }
