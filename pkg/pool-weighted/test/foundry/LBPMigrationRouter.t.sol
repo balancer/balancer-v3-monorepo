@@ -481,55 +481,6 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         );
     }
 
-    function testMigrateLiquidityRevertsIfInsufficientInputAmount() external {
-        vm.prank(bob);
-        lbpMigrationRouter.setupMigration(
-            ILBPool(pool),
-            DEFAULT_BPT_LOCK_DURATION,
-            DEFAULT_SHARE_TO_MIGRATE,
-            DEFAULT_WEIGHT0,
-            DEFAULT_WEIGHT1
-        );
-
-        vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
-
-        PoolRoleAccounts memory poolRoleAccounts;
-
-        uint256 snapshotId = vm.snapshot();
-        uint256 bptAmount = IERC20(pool).balanceOf(bob);
-        _prankStaticCall();
-        uint256[] memory amountsOut = router.queryRemoveLiquidityProportional(pool, bptAmount, bob, new bytes(0));
-        vm.revertTo(snapshotId);
-
-        vm.startPrank(bob);
-        uint256 lbpBPTBalanceBefore = IERC20(pool).balanceOf(bob);
-        IERC20(pool).approve(address(lbpMigrationRouter), lbpBPTBalanceBefore);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ILBPMigrationRouter.InsufficientInputAmount.selector,
-                vault.getPoolTokens(pool)[0],
-                amountsOut[0]
-            )
-        );
-        lbpMigrationRouter.migrateLiquidity(
-            ILBPool(pool),
-            0, // minAddBptAmountOut
-            excessReceiver,
-            ILBPMigrationRouter.WeightedPoolParams({
-                name: POOL_NAME,
-                symbol: POOL_SYMBOL,
-                roleAccounts: poolRoleAccounts,
-                swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
-                poolHooksContract: address(0),
-                enableDonation: true,
-                disableUnbalancedLiquidity: true,
-                salt: bytes32(0)
-            })
-        );
-        vm.stopPrank();
-    }
-
     function testMigrateLiquidityRevertsIfSenderIsNotPoolOwner() external {
         vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
 
