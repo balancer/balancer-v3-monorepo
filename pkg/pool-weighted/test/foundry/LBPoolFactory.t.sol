@@ -52,12 +52,17 @@ contract LBPoolFactoryTest is BaseLBPTest {
             365 days,
             factoryVersion,
             poolVersion,
-            address(0) // invalid trusted router address
+            address(0), // invalid trusted router address
+            address(0) // migration router address
         );
     }
 
     function testGetTrustedRouter() public view {
         assertEq(lbPoolFactory.getTrustedRouter(), address(router), "Wrong trusted router");
+    }
+
+    function testGetMigrationRouter() public view {
+        assertEq(lbPoolFactory.getMigrationRouter(), migrationRouter(), "Wrong migration router");
     }
 
     function testFactoryPausedState() public view {

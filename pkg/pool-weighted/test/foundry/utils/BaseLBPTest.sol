@@ -25,11 +25,14 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     string public constant factoryVersion = "Factory v1";
     string public constant poolVersion = "Pool v1";
 
+    uint256 internal constant TOKEN_COUNT = 2;
     uint256 internal constant HIGH_WEIGHT = uint256(70e16);
     uint256 internal constant LOW_WEIGHT = uint256(30e16);
     uint32 internal constant DEFAULT_START_OFFSET = 100;
     uint32 internal constant DEFAULT_END_OFFSET = 200;
     bool internal constant DEFAULT_PROJECT_TOKENS_SWAP_IN = true;
+
+    address private _migrationRouter;
 
     IERC20 internal projectToken;
     IERC20 internal reserveToken;
@@ -42,6 +45,14 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     uint256 private _saltCounter;
 
     LBPoolFactory internal lbPoolFactory;
+
+    function setMigrationRouter(address router) internal {
+        _migrationRouter = router;
+    }
+
+    function migrationRouter() internal view returns (address) {
+        return _migrationRouter;
+    }
 
     function onAfterDeployMainContracts() internal override {
         projectToken = dai;
@@ -64,7 +75,8 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
             365 days,
             factoryVersion,
             poolVersion,
-            address(router)
+            address(router),
+            migrationRouter()
         );
         vm.label(address(lbPoolFactory), "LB pool factory");
 
@@ -130,6 +142,6 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
 
         newPool = lbPoolFactory.create(name, symbol, lbpParams, swapFee, bytes32(_saltCounter++));
 
-        poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(lbPoolFactory), poolVersion);
+        poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(_migrationRouter), poolVersion);
     }
 }

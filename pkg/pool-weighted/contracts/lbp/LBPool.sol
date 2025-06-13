@@ -15,6 +15,7 @@ import {
     WeightedPoolDynamicData,
     WeightedPoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
+import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import {
     ILBPool,
     LBPoolImmutableData,
@@ -46,6 +47,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
     // LBPools are deployed with the Balancer standard router address, which we know reliably reports the true sender.
     address private immutable _trustedRouter;
+    address private immutable _migrationRouter;
 
     // The project token is the one being launched; the reserve token is the token used to buy them (usually
     // a stablecoin or WETH).
@@ -110,6 +112,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         LBPParams memory lbpParams,
         IVault vault,
         address trustedRouter,
+        address migrationRouter,
         string memory version
     ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) Ownable(lbpParams.owner) {
         // Checks that the weights are valid and `endTime` is after `startTime`. If `startTime` is in the past,
@@ -126,6 +129,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
         // Set the trusted router (passed down from the factory), and the rest of the immutable variables.
         _trustedRouter = trustedRouter;
+        _migrationRouter = migrationRouter;
 
         _projectToken = lbpParams.projectToken;
         _reserveToken = lbpParams.reserveToken;
@@ -161,6 +165,14 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
      */
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
+    }
+
+    /**
+     * @notice Returns the migration router, which is used to migrate LBPs to Weighted Pools.
+     * @return migrationRouter Address of the migration router (i.e., one that can migrate LBPs to Weighted Pools)
+     */
+    function getMigrationRouter() external view returns (address) {
+        return _migrationRouter;
     }
 
     /// @inheritdoc ILBPool
@@ -358,7 +370,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault onlyBeforeSale returns (bool) {
-        return ISenderGuard(_trustedRouter).getSender() == owner();
+        return
+            ISenderGuard(_trustedRouter).getSender() == owner() &&
+            (_migrationRouter == address(0) || ILBPMigrationRouter(_migrationRouter).isMigrationSetup(this));
     }
 
     /**
@@ -383,20 +397,20 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
      * @return success Always true; if removing liquidity is not allowed, revert here with a more specific error
      */
     function onBeforeRemoveLiquidity(
-        address,
+        address router,
         address,
         RemoveLiquidityKind,
         uint256,
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) public view override onlyVault returns (bool) {
+    ) public view virtual override onlyVault returns (bool) {
         // Only allow removing liquidity after end time.
         if (block.timestamp <= _endTime) {
             revert RemovingLiquidityNotAllowed();
         }
 
-        return true;
+        return _migrationRouter == address(0) || ISenderGuard(router).getSender() == _migrationRouter;
     }
 
     /*******************************************************************************

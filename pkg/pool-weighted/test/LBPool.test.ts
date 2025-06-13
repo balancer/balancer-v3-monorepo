@@ -6,7 +6,13 @@ import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ONES_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
+import {
+  MAX_UINT256,
+  MAX_UINT160,
+  MAX_UINT48,
+  ONES_BYTES32,
+  ZERO_ADDRESS,
+} from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -131,7 +137,7 @@ describe('LBPool', function () {
 
   sharedBeforeEach('create pool and grant approvals', async () => {
     factory = await deploy('LBPoolFactory', {
-      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router],
+      args: [await vault.getAddress(), bn(MONTH) * 12n, FACTORY_VERSION, POOL_VERSION, router, ZERO_ADDRESS],
     });
     poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 

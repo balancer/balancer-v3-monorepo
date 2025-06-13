@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
+import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -30,6 +31,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     string private _poolVersion;
 
     address internal immutable _trustedRouter;
+    address internal immutable _migrationRouter;
 
     /**
      * @notice Emitted on deployment so that offchain processes know which token is which from the beginning.
@@ -51,7 +53,8 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address trustedRouter
+        address trustedRouter,
+        address migrationRouter
     ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
         if (trustedRouter == address(0)) {
             revert InvalidTrustedRouter();
@@ -60,6 +63,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         // LBPools are deployed with a router known to reliably report the originating address on operations.
         // This is used to ensure that only the owner can add liquidity to an LBP.
         _trustedRouter = trustedRouter;
+        _migrationRouter = migrationRouter;
 
         _poolVersion = poolVersion;
     }
@@ -72,6 +76,11 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     /// @notice Returns trusted router, which is the gateway to add liquidity to the pool.
     function getTrustedRouter() external view returns (address) {
         return _trustedRouter;
+    }
+
+    /// @notice Returns the migration router, which is used to migrate liquidity from an LBP to a new weighted pool.
+    function getMigrationRouter() external view returns (address) {
+        return _migrationRouter;
     }
 
     /**
@@ -89,7 +98,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         LBPParams memory lbpParams,
         uint256 swapFeePercentage,
         bytes32 salt
-    ) external nonReentrant returns (address pool) {
+    ) public nonReentrant returns (address pool) {
         if (lbpParams.owner == address(0)) {
             revert InvalidOwner();
         }
@@ -111,7 +120,10 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             lbpParams.reserveTokenEndWeight
         );
 
-        pool = _create(abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _poolVersion), salt);
+        pool = _create(
+            abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _migrationRouter, _poolVersion),
+            salt
+        );
 
         emit LBPoolCreated(pool, lbpParams.projectToken, lbpParams.reserveToken);
 
