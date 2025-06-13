@@ -251,7 +251,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
                 prices[i] = bound(pricesRaw[i], 10 ** (17), 10 ** 19) / (10 ** (18 - decimalsToken));
                 pricesEqual[i] = int256(FixedPoint.ONE);
                 uint256 price = prices[i] * (10 ** (18 - decimalsToken));
-                pricesInt[i] = int256(price);=
+                pricesInt[i] = int256(price);
             }
 
             pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
@@ -406,8 +406,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         uint256 amountInScaled18 = balancesForPricesScaled18[0].mulDown(0.001e18); // 0.1% of first token balance.
         for (uint256 i = 1; i < totalTokens; i++) {
-
-            // Even though python finds the right prices, and the balances found by solidity are virtually the same 
+            // Even though python finds the right prices, and the balances found by solidity are virtually the same
             // found in the python script, the solidity version of the computeOutGivenExactIn has some imprecision
             // and the prices don't match.
             uint256 amountOutScaled18 = StableMath.computeOutGivenExactIn(
