@@ -2,26 +2,16 @@
 
 pragma solidity ^0.8.24;
 
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
+import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import {
-    ILBPool,
-    LBPoolImmutableData,
-    LBPParams
-} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
-import {
-    PoolRoleAccounts,
     TokenConfig,
-    TokenType,
     RemoveLiquidityParams,
     RemoveLiquidityKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -29,10 +19,13 @@ import {
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import {
+    BalancerContractRegistry,
+    ContractType
+} from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 
 import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
 
@@ -159,7 +152,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         uint256 minAddBptAmountOut,
         address excessReceiver,
         WeightedPoolParams memory params
-    ) external onlyLBPOwner(lbp) returns (IWeightedPool, uint256) {
+    ) external onlyLBPOwner(lbp) nonReentrant returns (IWeightedPool, uint256) {
         return _migrateLiquidity(lbp, minAddBptAmountOut, msg.sender, excessReceiver, params, false);
     }
 
