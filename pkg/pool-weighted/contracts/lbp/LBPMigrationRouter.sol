@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -75,25 +74,28 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         _weightedPoolFactory = WeightedPoolFactory(weightedPoolFactoryAddress);
     }
 
-    function getTimeLockedAmount(address sender, uint256 index) external view returns (TimeLockedAmount memory) {
-        return _timeLockedAmounts[sender][index];
+    /// @inheritdoc ILBPMigrationRouter
+    function getTimeLockedAmount(address owner, uint256 index) external view returns (TimeLockedAmount memory) {
+        return _timeLockedAmounts[owner][index];
     }
 
-    function getTimeLockedAmountsCount(address sender) external view returns (uint256) {
-        return _timeLockedAmounts[sender].length;
+    /// @inheritdoc ILBPMigrationRouter
+    function getTimeLockedAmountsCount(address owner) external view returns (uint256) {
+        return _timeLockedAmounts[owner].length;
     }
 
+    /// @inheritdoc ILBPMigrationRouter
     function unlockTokens(uint256[] memory timeLockedIndexes) external {
         uint256 length = timeLockedIndexes.length;
         for (uint256 i = 0; i < length; i++) {
             uint256 index = timeLockedIndexes[i];
 
             TimeLockedAmount memory timeLockedAmount = _timeLockedAmounts[msg.sender][index];
-            console.log(timeLockedAmount.amount);
             if (timeLockedAmount.amount == 0) {
-                revert NoTimeLockedAmount(index);
+                revert TimeLockedAmountNotFound(index);
             }
 
+            // solhint-disable-next-line not-rely-on-time
             if (timeLockedAmount.unlockTimestamp > block.timestamp) {
                 revert TimeLockedAmountNotUnlockedYet(index, timeLockedAmount.unlockTimestamp);
             }
@@ -121,6 +123,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         }
 
         LBPoolImmutableData memory lbpImmutableData = lbp.getLBPoolImmutableData();
+        // solhint-disable-next-line not-rely-on-time
         if (block.timestamp >= lbpImmutableData.startTime) {
             revert LBPAlreadyStarted(lbpImmutableData.startTime);
         }
@@ -282,24 +285,31 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
         uint256[] memory currentWeights = params.lbp.getLBPoolDynamicData().normalizedWeights;
 
+        // Compute the spot price based on the current weights and the amounts out from the LBP.
         uint256 price = (removeAmountsOut[0] * currentWeights[1]).divDown(removeAmountsOut[1] * currentWeights[0]);
 
+        // Calculate balance1 based on the price and the new weights.
+        // We start from the b0 balance because we treat it as the maximum.
+        // If that's not the case, then b1 will end up being greater than amountOut0.
         uint256 b1 = (removeAmountsOut[0] * params.migrationParams.weight1).divDown(
             price * params.migrationParams.weight0
         );
         uint256 b0 = removeAmountsOut[0];
 
+        // If b1 is greater than the amountOut1, we need to calculate b0 based on the price and the new weights.
         if (b1 > removeAmountsOut[1]) {
             b1 = removeAmountsOut[1];
             b0 = price.mulDown(b1).mulDown(params.migrationParams.weight0).divDown(params.migrationParams.weight1);
         }
 
+        // Calculate the exact amounts in based on the share to migrate.
         uint256 shareToMigrate = params.migrationParams.shareToMigrate;
         exactAmountsIn[0] = b0.mulDown(shareToMigrate);
         exactAmountsIn[1] = b1.mulDown(shareToMigrate);
     }
 
     function _lockAmount(MigrationHookParams memory params, uint256 bptAmountOut) internal {
+        // solhint-disable-next-line not-rely-on-time
         uint256 unlockTimestamp = block.timestamp + params.migrationParams.bptLockDuration;
 
         _timeLockedAmounts[params.sender].push(

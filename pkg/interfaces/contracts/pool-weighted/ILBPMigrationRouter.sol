@@ -19,6 +19,15 @@ interface ILBPMigrationRouter {
     event PoolMigrated(ILBPool indexed lbp, IWeightedPool weightedPool, uint256 bptAmountOut);
 
     /**
+     * @notice A time-locked amount of tokens was locked for a specific owner.
+     * @param owner The address of the owner of the locked tokens
+     * @param token The address of the token that was locked
+     * @param amount The amount of tokens that were locked
+     * @param unlockTimestamp The timestamp when the locked tokens can be unlocked
+     */
+    event AmountLocked(address indexed owner, address token, uint256 amount, uint256 unlockTimestamp);
+
+    /**
      * @notice A contract returned from the Balancer Contract Registry is not active.
      * @param contractName The name of the contract that is not active
      */
@@ -30,17 +39,36 @@ interface ILBPMigrationRouter {
      */
     error LBPWeightsNotFinalized(ILBPool lbp);
 
-    /**
-     * @notice Input amount of a token is less than existing amounts in the LBP.
-     * @param token The token with an insufficient input amount
-     * @param actualAmount The actual amount of the token provided
-     */
-    error InsufficientInputAmount(IERC20 token, uint256 actualAmount);
-
-    /**
-     * @notice The caller is not the owner of the LBP.
-     */
+    /// @notice The caller is not the owner of the LBP.
     error SenderIsNotLBPOwner();
+
+    /// @notice Migration was already set up for the LBP.
+    error MigrationAlreadySetup();
+
+    /// @notice The LBP does not have a migration set up.
+    error MigrationDoesNotExist();
+
+    /// @notice The weights provided for migration are invalid.
+    error InvalidMigrationWeights();
+
+    /// @notice The LBP is not registered in the Vault.
+    error PoolNotRegistered();
+
+    /// @notice The LBP has already started, migration cannot be set up.
+    error LBPAlreadyStarted(uint256 startTime);
+
+    /// @notice Locked amount not found for the given index.
+    error TimeLockedAmountNotFound(uint256 index);
+
+    /// @notice The locked amount is not yet unlocked.
+    error TimeLockedAmountNotUnlockedYet(uint256 index, uint256 unlockTimestamp);
+
+    struct MigrationParams {
+        uint64 bptLockDuration;
+        uint64 shareToMigrate;
+        uint64 weight0;
+        uint64 weight1;
+    }
 
     struct MigrationHookParams {
         ILBPool lbp;
@@ -48,15 +76,13 @@ interface ILBPMigrationRouter {
         IERC20[] tokens;
         address sender;
         address excessReceiver;
-        uint256[] exactAmountsIn;
         uint256 minAddBptAmountOut;
-        uint256[] minRemoveAmountsOut;
+        MigrationParams migrationParams;
     }
 
     struct WeightedPoolParams {
         string name;
         string symbol;
-        uint256[] normalizedWeights;
         PoolRoleAccounts roleAccounts;
         uint256 swapFeePercentage;
         address poolHooksContract;
@@ -65,12 +91,67 @@ interface ILBPMigrationRouter {
         bytes32 salt;
     }
 
+    struct TimeLockedAmount {
+        address token;
+        uint256 amount;
+        uint256 unlockTimestamp;
+    }
+
+    /**
+     * @notice Returns the time-locked amount of tokens for a specific owner and index.
+     * @param owner The address of the owner of the time-locked amount
+     * @param index The index of the time-locked amount
+     * @return TimeLockedAmount The owner's time-locked amount
+     */
+    function getTimeLockedAmount(address owner, uint256 index) external view returns (TimeLockedAmount memory);
+
+    /**
+     * @notice Returns the count of time-locked amounts for a specific owner.
+     * @param owner The address of the owner of the time-locked amounts
+     * @return uint256 The count of time-locked amounts for the owner
+     */
+    function getTimeLockedAmountsCount(address owner) external view returns (uint256);
+
+    /**
+     * @notice Unlock the locked tokens for the caller.
+     * @param timeLockedIndexes The indexes of the time-locked amounts to unlock
+     */
+    function unlockTokens(uint256[] memory timeLockedIndexes) external;
+
+    /**
+     * @notice Checks if the migration is set up for a given LBP.
+     * @param lbp Liquidity Bootstrapping Pool
+     * @return bool True if migration is set up, false otherwise
+     */
+    function isMigrationSetup(ILBPool lbp) external view returns (bool);
+
+    /**
+     * @notice Returns the migration parameters for a given LBP.
+     * @param lbp Liquidity Bootstrapping Pool
+     * @return MigrationParams The migration parameters for the LBP
+     */
+    function getMigrationParams(ILBPool lbp) external view returns (MigrationParams memory);
+
+    /**
+     * @notice Sets up migration for the LBP
+     * @param lbp Liquidity Bootstrapping Pool
+     * @param bptLockDuration Duration for which BPT tokens will be locked
+     * @param shareToMigrate Percentage of shares to migrate
+     * @param newWeight0 New weight for the first token in the weighted pool
+     * @param newWeight1 New weight for the second token in the weighted pool
+     */
+    function setupMigration(
+        ILBPool lbp,
+        uint256 bptLockDuration,
+        uint256 shareToMigrate,
+        uint256 newWeight0,
+        uint256 newWeight1
+    ) external;
+
     /**
      * @notice Migrates liquidity from an LBP to a new weighted pool with custom parameters.
      * @param lbp Liquidity Bootstrapping Pool
-     * @param exactAmountsIn The exact amounts of each token to add to the weighted pool
      * @param minAddBptAmountOut Minimum amount of BPT tokens expected to receive
-     * @param minRemoveAmountsOut Minimum token amounts expected when removing from the LBP
      * @param excessReceiver Address to receive excess tokens after migration
      * @param params Parameters for creating the new weighted pool
      * @return weightedPool The newly created weighted pool
@@ -78,9 +159,7 @@ interface ILBPMigrationRouter {
      */
     function migrateLiquidity(
         ILBPool lbp,
-        uint256[] memory exactAmountsIn,
         uint256 minAddBptAmountOut,
-        uint256[] memory minRemoveAmountsOut,
         address excessReceiver,
         WeightedPoolParams memory params
     ) external returns (IWeightedPool weightedPool, uint256 bptAmountOut);
@@ -88,15 +167,12 @@ interface ILBPMigrationRouter {
     /**
      * @notice Simulates a liquidity migration to estimate results before execution.
      * @param lbp Liquidity Bootstrapping Pool
-     * @param exactAmountsIn The exact amounts of each token to add to the weighted pool
      * @param sender Sender address
-     * @param excessReceiver Address to receive excess tokens after migration
      * @param params Parameters for creating the new weighted pool
      * @return bptAmountOut The amount of BPT tokens received from the weighted pool after migration
      */
     function queryMigrateLiquidity(
         ILBPool lbp,
-        uint256[] memory exactAmountsIn,
         address sender,
         address excessReceiver,
         WeightedPoolParams memory params
