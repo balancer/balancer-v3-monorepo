@@ -38,8 +38,8 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
     uint256 private constant _TWO_TOKENS = 2;
     WeightedPoolFactory internal immutable _weightedPoolFactory;
 
-    mapping(ILBPool => MigrationParams) private _migrationParams;
-    mapping(address => TimeLockedAmount[]) private _timeLockedAmounts;
+    mapping(ILBPool => MigrationParams) internal _migrationParams;
+    mapping(address => TimeLockedAmount[]) internal _timeLockedAmounts;
 
     modifier onlyLBPOwner(ILBPool lbp) {
         {

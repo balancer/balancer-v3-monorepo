@@ -24,4 +24,10 @@ contract LBPMigrationRouterMock is LBPMigrationRouter {
     function manualLockAmount(MigrationHookParams memory params, uint256 bptAmountOut) external {
         _lockAmount(params, bptAmountOut);
     }
+
+    function manualAddLockedAmount(address owner, address token, uint256 amount, uint256 unlockTimestamp) external {
+        _timeLockedAmounts[owner].push(
+            TimeLockedAmount({ token: token, amount: amount, unlockTimestamp: unlockTimestamp })
+        );
+    }
 }

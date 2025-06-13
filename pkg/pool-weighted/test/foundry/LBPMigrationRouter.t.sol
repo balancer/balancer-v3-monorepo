@@ -254,6 +254,25 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         lbpMigrationRouter.unlockTokens([uint256(1), uint256(2)].toMemoryArray());
     }
 
+    function testUnlockAmountRevertsIfAmountIsZero() external {
+        lbpMigrationRouter.manualAddLockedAmount(bob, makeAddr("pool"), 0, block.timestamp + DEFAULT_BPT_LOCK_DURATION);
+
+        vm.expectRevert(abi.encodeWithSelector(ILBPMigrationRouter.TimeLockedAmountNotFound.selector, 0));
+        vm.prank(bob);
+        lbpMigrationRouter.unlockTokens([uint256(0)].toMemoryArray());
+    }
+
+    function testUnlockAmountRevertsIfUnlockTimestampNotReached() external {
+        uint256 unlockTimestamp = block.timestamp + DEFAULT_BPT_LOCK_DURATION;
+        lbpMigrationRouter.manualAddLockedAmount(bob, makeAddr("pool"), 100e18, unlockTimestamp);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBPMigrationRouter.TimeLockedAmountNotUnlockedYet.selector, 0, unlockTimestamp)
+        );
+        vm.prank(bob);
+        lbpMigrationRouter.unlockTokens([uint256(0)].toMemoryArray());
+    }
+
     function testMigrateLiquidity_Fuzz(uint256 weight0, uint256 shareToMigrate) external {
         weight0 = bound(weight0, 10e16, 90e16);
         uint256 weight1 = FixedPoint.ONE - weight0;
