@@ -15,16 +15,12 @@ interface IWeightedLPOracleFactory {
     /// @notice Oracle already exists for the given pool.
     error OracleAlreadyExists();
 
-    /// @notice Oracle does not exist for the given pool.
-    error OracleDoesNotExist();
-
     /**
      * @notice New oracle is created for a Weighted Pool.
      * @param pool The address of the Weighted Pool.
      * @param oracle The address of the deployed oracle.
      */
     event WeightedLPOracleCreated(IWeightedPool indexed pool, IWeightedLPOracle oracle);
-    event WeightedLPOracleRemoved(IWeightedPool indexed pool, IWeightedLPOracle oracle);
 
     /**
      * @notice Creates a new oracle for the given Weighted Pool.
@@ -38,15 +34,16 @@ interface IWeightedLPOracleFactory {
     ) external returns (IWeightedLPOracle oracle);
 
     /**
-     * @notice Removes the oracle for the given Weighted Pool.
-     * @param pool The address of the Weighted Pool.
-     */
-    function removeOracle(IWeightedPool pool) external;
-
-    /**
      * @notice Gets the oracle for the given Weighted Pool.
      * @param pool The address of the Weighted Pool.
      * @return oracle The address of the oracle for the pool.
      */
     function getOracle(IWeightedPool pool) external view returns (IWeightedLPOracle oracle);
+
+    /**
+     * @notice Checks if the given oracle was created by this factory.
+     * @param oracle The oracle to check.
+     * @return success True if the oracle was created by this factory, false otherwise.
+     */
+    function isOracleFromFactory(IWeightedLPOracle oracle) external view returns (bool success);
 }

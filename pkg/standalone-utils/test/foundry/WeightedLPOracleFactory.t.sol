@@ -41,10 +41,6 @@ contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDepl
         _weightedLPOracleFactory = new WeightedLPOracleFactory(vault, ORACLE_VERSION);
 
         authorizer.grantRole(_weightedLPOracleFactory.getActionId(IWeightedLPOracleFactory.create.selector), admin);
-        authorizer.grantRole(
-            _weightedLPOracleFactory.getActionId(IWeightedLPOracleFactory.removeOracle.selector),
-            admin
-        );
 
         _weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
     }
@@ -115,6 +111,7 @@ contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDepl
         _weightedLPOracleFactory.create(pool, feeds);
 
         assertEq(address(oracle), address(_weightedLPOracleFactory.getOracle(pool)), "Oracle address mismatch");
+        assertTrue(_weightedLPOracleFactory.isOracleFromFactory(oracle), "Oracle should be from factory");
     }
 
     function testCreateOracleRevertsWhenOracleAlreadyExists() external {
@@ -127,28 +124,5 @@ contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDepl
         vm.expectRevert(IWeightedLPOracleFactory.OracleAlreadyExists.selector);
         vm.prank(admin);
         _weightedLPOracleFactory.create(pool, feeds);
-    }
-
-    function testRemoveOracle() external {
-        IWeightedPool pool = createAndInitPool();
-        AggregatorV3Interface[] memory feeds = createFeeds(pool);
-
-        vm.prank(admin);
-        IWeightedLPOracle oracle = _weightedLPOracleFactory.create(pool, feeds);
-
-        vm.expectEmit();
-        emit IWeightedLPOracleFactory.WeightedLPOracleRemoved(pool, oracle);
-        vm.prank(admin);
-        _weightedLPOracleFactory.removeOracle(pool);
-
-        assertEq(address(_weightedLPOracleFactory.getOracle(pool)), address(0), "Oracle not removed");
-    }
-
-    function testRemoveOracleRevertsWhenOracleDoesNotExist() external {
-        IWeightedPool pool = createAndInitPool();
-
-        vm.expectRevert(IWeightedLPOracleFactory.OracleDoesNotExist.selector);
-        vm.prank(admin);
-        _weightedLPOracleFactory.removeOracle(pool);
     }
 }

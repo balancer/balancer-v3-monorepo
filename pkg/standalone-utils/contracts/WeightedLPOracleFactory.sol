@@ -9,20 +9,24 @@ import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/standa
 import {
     IWeightedLPOracleFactory
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IWeightedLPOracleFactory.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
 import { WeightedLPOracle } from "./WeightedLPOracle.sol";
 
 contract WeightedLPOracleFactory is IWeightedLPOracleFactory, SingletonAuthentication {
     uint256 internal _oracleVersion;
     mapping(IWeightedPool => IWeightedLPOracle) internal _oracles;
+    mapping(IWeightedLPOracle => bool) internal _isOracleFromFactory;
 
     constructor(IVault vault, uint256 oracleVersion) SingletonAuthentication(vault) {
         _oracleVersion = oracleVersion;
     }
 
+    /// @inheritdoc IWeightedLPOracleFactory
     function create(
         IWeightedPool pool,
         AggregatorV3Interface[] memory feeds
@@ -31,24 +35,25 @@ contract WeightedLPOracleFactory is IWeightedLPOracleFactory, SingletonAuthentic
             revert OracleAlreadyExists();
         }
 
-        oracle = new WeightedLPOracle(getVault(), pool, feeds, _oracleVersion);
+        IVault vault = getVault();
+        IERC20[] memory tokens = vault.getPoolTokens(address(pool));
+
+        InputHelpers.ensureInputLengthMatch(tokens.length, feeds.length);
+
+        oracle = new WeightedLPOracle(vault, pool, feeds, _oracleVersion);
 
         _oracles[pool] = oracle;
+        _isOracleFromFactory[oracle] = true;
         emit WeightedLPOracleCreated(pool, oracle);
     }
 
-    function removeOracle(IWeightedPool pool) external authenticate {
-        IWeightedLPOracle oracle = _oracles[pool];
-        if (oracle == IWeightedLPOracle(address(0))) {
-            revert OracleDoesNotExist();
-        }
-
-        delete _oracles[pool];
-
-        emit WeightedLPOracleRemoved(pool, oracle);
-    }
-
+    /// @inheritdoc IWeightedLPOracleFactory
     function getOracle(IWeightedPool pool) external view returns (IWeightedLPOracle oracle) {
         oracle = _oracles[pool];
+    }
+
+    /// @inheritdoc IWeightedLPOracleFactory
+    function isOracleFromFactory(IWeightedLPOracle oracle) external view returns (bool success) {
+        success = _isOracleFromFactory[oracle];
     }
 }
