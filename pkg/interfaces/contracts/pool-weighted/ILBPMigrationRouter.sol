@@ -76,7 +76,6 @@ interface ILBPMigrationRouter {
         IERC20[] tokens;
         address sender;
         address excessReceiver;
-        uint256 minAddBptAmountOut;
         MigrationParams migrationParams;
     }
 
@@ -151,7 +150,6 @@ interface ILBPMigrationRouter {
     /**
      * @notice Migrates liquidity from an LBP to a new weighted pool with custom parameters.
      * @param lbp Liquidity Bootstrapping Pool
-     * @param minAddBptAmountOut Minimum amount of BPT tokens expected to receive
      * @param excessReceiver Address to receive excess tokens after migration
      * @param params Parameters for creating the new weighted pool
      * @return weightedPool The newly created weighted pool
@@ -159,7 +157,6 @@ interface ILBPMigrationRouter {
      */
     function migrateLiquidity(
         ILBPool lbp,
-        uint256 minAddBptAmountOut,
         address excessReceiver,
         WeightedPoolParams memory params
     ) external returns (IWeightedPool weightedPool, uint256 bptAmountOut);

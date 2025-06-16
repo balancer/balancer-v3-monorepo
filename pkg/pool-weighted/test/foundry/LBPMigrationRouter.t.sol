@@ -299,7 +299,6 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
 
         (IWeightedPool weightedPool, uint256 bptAmountOut) = lbpMigrationRouter.migrateLiquidity(
             ILBPool(pool),
-            0, // minAddBptAmountOut
             excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
@@ -307,8 +306,8 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
                 roleAccounts: poolRoleAccounts,
                 swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
                 poolHooksContract: address(0),
-                enableDonation: true,
-                disableUnbalancedLiquidity: true,
+                enableDonation: false,
+                disableUnbalancedLiquidity: false,
                 salt: bytes32(0)
             })
         );
@@ -340,10 +339,10 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
             assertEq(poolConfig.staticSwapFeePercentage, DEFAULT_SWAP_FEE_PERCENTAGE, "Incorrect swap fee percentage");
             assertEq(
                 poolConfig.liquidityManagement.disableUnbalancedLiquidity,
-                true,
-                "Disable unbalanced liquidity should be true"
+                false,
+                "Disable unbalanced liquidity should be false"
             );
-            assertEq(poolConfig.liquidityManagement.enableDonation, true, "Enable donation should be true");
+            assertEq(poolConfig.liquidityManagement.enableDonation, false, "Enable donation should be false");
 
             assertEq(
                 vault.getHooksConfig(address(weightedPool)).hooksContract,
@@ -462,7 +461,6 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         vm.prank(bob);
         lbpMigrationRouter.migrateLiquidity(
             ILBPool(pool),
-            0, // minAddBptAmountOut
             excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
@@ -484,7 +482,6 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         vm.prank(bob);
         lbpMigrationRouter.migrateLiquidity(
             ILBPool(pool),
-            0, // minAddBptAmountOut
             excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
@@ -508,7 +505,6 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         vm.prank(alice);
         lbpMigrationRouter.migrateLiquidity(
             ILBPool(pool),
-            0, // minAddBptAmountOut
             excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
@@ -521,49 +517,6 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
                 salt: bytes32(0)
             })
         );
-    }
-
-    function testMigrateLiquidityRevertsIfAddBptAmountOutBelowMin() external {
-        vm.prank(bob);
-        lbpMigrationRouter.setupMigration(
-            ILBPool(pool),
-            DEFAULT_BPT_LOCK_DURATION,
-            DEFAULT_SHARE_TO_MIGRATE,
-            DEFAULT_WEIGHT0,
-            DEFAULT_WEIGHT1
-        );
-
-        vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
-
-        PoolRoleAccounts memory poolRoleAccounts;
-        ILBPMigrationRouter.WeightedPoolParams memory weightedPoolParams = ILBPMigrationRouter.WeightedPoolParams({
-            name: POOL_NAME,
-            symbol: POOL_SYMBOL,
-            roleAccounts: poolRoleAccounts,
-            swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
-            poolHooksContract: address(0),
-            enableDonation: true,
-            disableUnbalancedLiquidity: true,
-            salt: bytes32(0)
-        });
-
-        vm.startPrank(bob);
-        IERC20(pool).approve(address(lbpMigrationRouter), IERC20(pool).balanceOf(bob));
-        vm.stopPrank();
-
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        uint256 bptAmountOut = lbpMigrationRouter.queryMigrateLiquidity(
-            ILBPool(pool),
-            bob,
-            excessReceiver,
-            weightedPoolParams
-        );
-        vm.revertTo(snapshotId);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BptAmountOutBelowMin.selector, bptAmountOut, MAX_UINT128));
-        vm.prank(bob);
-        lbpMigrationRouter.migrateLiquidity(ILBPool(pool), MAX_UINT128, excessReceiver, weightedPoolParams);
     }
 
     /// @dev The same logic as in `migrateLiquidityHook`, but uses b1 as the base calculation amount.

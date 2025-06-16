@@ -149,11 +149,10 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
     /// @inheritdoc ILBPMigrationRouter
     function migrateLiquidity(
         ILBPool lbp,
-        uint256 minAddBptAmountOut,
         address excessReceiver,
         WeightedPoolParams memory params
     ) external onlyLBPOwner(lbp) nonReentrant returns (IWeightedPool, uint256) {
-        return _migrateLiquidity(lbp, minAddBptAmountOut, msg.sender, excessReceiver, params, false);
+        return _migrateLiquidity(lbp, msg.sender, excessReceiver, params, false);
     }
 
     /// @inheritdoc ILBPMigrationRouter
@@ -163,7 +162,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         address excessReceiver,
         WeightedPoolParams memory params
     ) external returns (uint256 bptAmountOut) {
-        (, bptAmountOut) = _migrateLiquidity(lbp, 0, sender, excessReceiver, params, true);
+        (, bptAmountOut) = _migrateLiquidity(lbp, sender, excessReceiver, params, true);
     }
 
     function migrateLiquidityHook(MigrationHookParams memory params) external onlyVault returns (uint256 bptAmountOut) {
@@ -192,7 +191,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             address(this),
             params.tokens,
             exactAmountsIn,
-            params.minAddBptAmountOut,
+            0,
             bytes("")
         );
 
@@ -203,7 +202,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
     function _migrateLiquidity(
         ILBPool lbp,
-        uint256 minAddBptAmountOut,
         address sender,
         address excessReceiver,
         WeightedPoolParams memory params,
@@ -254,7 +252,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         migrateHookParams.tokens = lbpImmutableData.tokens;
         migrateHookParams.sender = sender;
         migrateHookParams.excessReceiver = excessReceiver;
-        migrateHookParams.minAddBptAmountOut = minAddBptAmountOut;
         migrateHookParams.migrationParams = migrationParams;
 
         if (isQuery) {
