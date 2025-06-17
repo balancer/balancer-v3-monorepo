@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
@@ -25,6 +26,34 @@ import { LBPool } from "./LBPool.sol";
  * with parameters specified on deployment.
  */
 contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactory, Version {
+    using SafeCast for uint256;
+
+    /// @notice The weights provided for migration are invalid.
+    error InvalidMigrationWeights();
+
+    /**
+     * @notice Emitted when migration is set up for an LBP.
+     * @param lbp The LB Pool for which migration is set up
+     * @param bptLockDuration Duration for which BPT tokens will be locked after migration
+     * @param shareToMigrate Percentage of shares to migrate
+     * @param newWeight0 New weight for the first token in the weighted pool
+     * @param newWeight1 New weight for the second token in the weighted pool
+     */
+    event MigrationSetup(
+        ILBPool indexed lbp,
+        uint256 bptLockDuration,
+        uint256 shareToMigrate,
+        uint256 newWeight0,
+        uint256 newWeight1
+    );
+
+    struct MigrationParams {
+        uint64 bptLockDuration;
+        uint64 shareToMigrate;
+        uint64 weight0;
+        uint64 weight1;
+    }
+
     // LBPs are constrained to two tokens: project (the token being sold), and reserve (e.g., USDC or WETH).
     uint256 private constant _TWO_TOKENS = 2;
 
@@ -32,6 +61,8 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
 
     address internal immutable _trustedRouter;
     address internal immutable _migrationRouter;
+
+    mapping(ILBPool => MigrationParams) internal _migrationParams;
 
     /**
      * @notice Emitted on deployment so that offchain processes know which token is which from the beginning.
@@ -99,6 +130,50 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         uint256 swapFeePercentage,
         bytes32 salt
     ) public nonReentrant returns (address pool) {
+        (pool, ) = _createPool(name, symbol, lbpParams, swapFeePercentage, salt, false, 0, 0, 0, 0);
+    }
+
+    function getMigrationParams(ILBPool lbp) external view returns (MigrationParams memory) {
+        return _migrationParams[lbp];
+    }
+
+    function createWithMigration(
+        string memory name,
+        string memory symbol,
+        LBPParams memory lbpParams,
+        uint256 swapFeePercentage,
+        bytes32 salt,
+        uint256 bptLockDuration,
+        uint256 shareToMigrate,
+        uint256 migratedWeight0,
+        uint256 migratedWeight1
+    ) public nonReentrant returns (address pool) {
+        (pool, ) = _createPool(
+            name,
+            symbol,
+            lbpParams,
+            swapFeePercentage,
+            salt,
+            true,
+            bptLockDuration,
+            shareToMigrate,
+            migratedWeight0,
+            migratedWeight1
+        );
+    }
+
+    function _createPool(
+        string memory name,
+        string memory symbol,
+        LBPParams memory lbpParams,
+        uint256 swapFeePercentage,
+        bytes32 salt,
+        bool hasMigration,
+        uint256 bptLockDuration,
+        uint256 shareToMigrate,
+        uint256 migratedWeight0,
+        uint256 migratedWeight1
+    ) internal override returns (address pool) {
         if (lbpParams.owner == address(0)) {
             revert InvalidOwner();
         }
@@ -120,8 +195,10 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             lbpParams.reserveTokenEndWeight
         );
 
+        address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
+
         pool = _create(
-            abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, _migrationRouter, _poolVersion),
+            abi.encode(name, symbol, lbpParams, getVault(), _trustedRouter, migrationRouterOrZero, _poolVersion),
             salt
         );
 
@@ -136,6 +213,34 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             pool, // register the pool itself as the hook contract
             getDefaultLiquidityManagement()
         );
+
+        if (migrationRouterOrZero != address(0)) {
+            _setMigrationParams(pool, bptLockDuration, shareToMigrate, migratedWeight0, migratedWeight1);
+        }
+    }
+
+    function _setMigrationParams(
+        address pool,
+        uint256 bptLockDuration,
+        uint256 shareToMigrate,
+        uint256 migratedWeight0,
+        uint256 migratedWeight1
+    ) internal {
+        uint64 weight0Uint64 = weight0.toUint64();
+        uint64 weight1Uint64 = weight1.toUint64();
+
+        if (weight0Uint64 == 0 || weight1Uint64 == 0 || weight0Uint64 + weight1Uint64 != FixedPoint.ONE) {
+            revert InvalidMigrationWeights();
+        }
+
+        _migrationParams[pool] = MigrationParams({
+            bptLockDuration: bptLockDuration.toUint64(),
+            shareToMigrate: shareToMigrate.toUint64(),
+            weight0: weight0Uint64,
+            weight1: weight1Uint64
+        });
+
+        emit MigrationSetup(pool, bptLockDuration, shareToMigrate, weight0Uint64, weight1Uint64);
     }
 
     function _buildTokenConfig(

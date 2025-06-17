@@ -15,7 +15,6 @@ import {
     WeightedPoolDynamicData,
     WeightedPoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import {
     ILBPool,
     LBPoolImmutableData,
@@ -370,9 +369,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         bytes memory
     ) public view override onlyVault onlyBeforeSale returns (bool) {
-        return
-            ISenderGuard(_trustedRouter).getSender() == owner() &&
-            (_migrationRouter == address(0) || ILBPMigrationRouter(_migrationRouter).isMigrationSetup(this));
+        return ISenderGuard(_trustedRouter).getSender() == owner();
     }
 
     /**

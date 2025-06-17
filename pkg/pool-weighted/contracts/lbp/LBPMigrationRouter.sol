@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
@@ -28,18 +27,16 @@ import {
 } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 
 import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
+import { Timelock } from "./Timelock.sol";
 
-contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Version, VaultGuard {
+contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTransient, Version, VaultGuard {
     using FixedPoint for uint256;
     using SafeCast for uint256;
-    using SafeERC20 for IERC20;
 
     // LBPs are constrained to two tokens: project and reserve.
     uint256 private constant _TWO_TOKENS = 2;
+    address internal immutable _trustedFactory;
     WeightedPoolFactory internal immutable _weightedPoolFactory;
-
-    mapping(ILBPool => MigrationParams) internal _migrationParams;
-    mapping(address => TimeLockedAmount[]) internal _timeLockedAmounts;
 
     modifier onlyLBPOwner(ILBPool lbp) {
         {
@@ -47,6 +44,14 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             if (msg.sender != lbpOwner) {
                 revert SenderIsNotLBPOwner();
             }
+        }
+
+        _;
+    }
+
+    modifier onlyTrustedFactory() {
+        if (msg.sender != _trustedFactory) {
+            revert SenderIsNotTrustedFactory();
         }
 
         _;
@@ -65,85 +70,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         }
 
         _weightedPoolFactory = WeightedPoolFactory(weightedPoolFactoryAddress);
-    }
-
-    /// @inheritdoc ILBPMigrationRouter
-    function getTimeLockedAmount(address owner, uint256 index) external view returns (TimeLockedAmount memory) {
-        return _timeLockedAmounts[owner][index];
-    }
-
-    /// @inheritdoc ILBPMigrationRouter
-    function getTimeLockedAmountsCount(address owner) external view returns (uint256) {
-        return _timeLockedAmounts[owner].length;
-    }
-
-    /// @inheritdoc ILBPMigrationRouter
-    function unlockTokens(uint256[] memory timeLockedIndexes) external {
-        uint256 length = timeLockedIndexes.length;
-        for (uint256 i = 0; i < length; i++) {
-            uint256 index = timeLockedIndexes[i];
-
-            TimeLockedAmount memory timeLockedAmount = _timeLockedAmounts[msg.sender][index];
-            if (timeLockedAmount.amount == 0) {
-                revert TimeLockedAmountNotFound(index);
-            }
-
-            // solhint-disable-next-line not-rely-on-time
-            if (timeLockedAmount.unlockTimestamp > block.timestamp) {
-                revert TimeLockedAmountNotUnlockedYet(index, timeLockedAmount.unlockTimestamp);
-            }
-
-            delete _timeLockedAmounts[msg.sender][index];
-
-            IERC20(timeLockedAmount.token).safeTransfer(msg.sender, timeLockedAmount.amount);
-        }
-    }
-
-    /// @inheritdoc ILBPMigrationRouter
-    function setupMigration(
-        ILBPool lbp,
-        uint256 bptLockDuration,
-        uint256 shareToMigrate,
-        uint256 weight0,
-        uint256 weight1
-    ) external onlyLBPOwner(lbp) {
-        if (_migrationParams[lbp].weight0 != 0) {
-            revert MigrationAlreadySetup();
-        }
-
-        if (_vault.isPoolRegistered(address(lbp)) == false) {
-            revert PoolNotRegistered();
-        }
-
-        LBPoolImmutableData memory lbpImmutableData = lbp.getLBPoolImmutableData();
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp >= lbpImmutableData.startTime) {
-            revert LBPAlreadyStarted(lbpImmutableData.startTime);
-        }
-
-        uint64 weight0Uint64 = weight0.toUint64();
-        uint64 weight1Uint64 = weight1.toUint64();
-
-        if (weight0Uint64 == 0 || weight1Uint64 == 0 || weight0Uint64 + weight1Uint64 != FixedPoint.ONE) {
-            revert InvalidMigrationWeights();
-        }
-
-        _migrationParams[lbp] = MigrationParams({
-            bptLockDuration: bptLockDuration.toUint64(),
-            shareToMigrate: shareToMigrate.toUint64(),
-            weight0: weight0Uint64,
-            weight1: weight1Uint64
-        });
-    }
-
-    /// @inheritdoc ILBPMigrationRouter
-    function getMigrationParams(ILBPool lbp) external view returns (MigrationParams memory) {
-        return _migrationParams[lbp];
-    }
-
-    /// @inheritdoc ILBPMigrationRouter
-    function isMigrationSetup(ILBPool lbp) external view returns (bool) {
-        return _migrationParams[lbp].weight0 != 0;
     }
 
     /// @inheritdoc ILBPMigrationRouter
@@ -194,8 +120,12 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             0,
             bytes("")
         );
-
-        _lockAmount(params, bptAmountOut);
+        _lockAmount(
+            IERC20(address(params.weightedPool)),
+            params.sender,
+            bptAmountOut,
+            params.migrationParams.bptLockDuration
+        );
 
         emit PoolMigrated(params.lbp, params.weightedPool, bptAmountOut);
     }
@@ -296,20 +226,5 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         uint256 shareToMigrate = params.migrationParams.shareToMigrate;
         exactAmountsIn[0] = b0.mulDown(shareToMigrate);
         exactAmountsIn[1] = b1.mulDown(shareToMigrate);
-    }
-
-    function _lockAmount(MigrationHookParams memory params, uint256 bptAmountOut) internal {
-        // solhint-disable-next-line not-rely-on-time
-        uint256 unlockTimestamp = block.timestamp + params.migrationParams.bptLockDuration;
-
-        _timeLockedAmounts[params.sender].push(
-            TimeLockedAmount({
-                token: address(params.weightedPool),
-                amount: bptAmountOut,
-                unlockTimestamp: unlockTimestamp
-            })
-        );
-
-        emit AmountLocked(params.sender, address(params.weightedPool), bptAmountOut, unlockTimestamp);
     }
 }
