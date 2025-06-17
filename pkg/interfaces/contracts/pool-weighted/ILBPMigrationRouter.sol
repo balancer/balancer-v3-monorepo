@@ -11,6 +11,22 @@ import { IWeightedPool } from "./IWeightedPool.sol";
 /// @notice Interface for migrating liquidity from an LBP to a new Weighted Pool with custom parameters.
 interface ILBPMigrationRouter {
     /**
+     * @notice Migration was set up for the LBP.
+     * @param lbp The LB Pool
+     * @param bptLockDuration The duration for which the BPT tokens will be locked
+     * @param shareToMigrate The share of the pool to migrate
+     * @param newWeight0 The new weight for token0 in the weighted pool
+     * @param newWeight1 The new weight for token1 in the weighted pool
+     */
+    event MigrationSetup(
+        ILBPool indexed lbp,
+        uint256 bptLockDuration,
+        uint256 shareToMigrate,
+        uint256 newWeight0,
+        uint256 newWeight1
+    );
+
+    /**
      * @notice The pool was successfully migrated from an LBP to a new weighted pool.
      * @param lbp The LB Pool that was migrated
      * @param weightedPool The newly created weighted pool

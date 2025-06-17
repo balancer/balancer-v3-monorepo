@@ -134,6 +134,8 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             weight0: weight0Uint64,
             weight1: weight1Uint64
         });
+
+        emit MigrationSetup(lbp, bptLockDuration.toUint64(), shareToMigrate.toUint64(), weight0Uint64, weight1Uint64);
     }
 
     /// @inheritdoc ILBPMigrationRouter
@@ -267,6 +269,15 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         }
     }
 
+    /**
+     * @dev Computes the exact token amounts to initialize the new pool
+     * while preserving the spot price from the LBP.
+     * Since the target pool may have different weights, we adjust the token
+     * amounts accordingly. We treat token0's amount as the maximum and compute
+     * the required amount of token1 to match the price. If token1's required
+     * amount exceeds what's available, we instead base the calculation on token1.
+     * This ensures price consistency across pools even with different weights.
+     */
     function _computeExactAmountsIn(
         MigrationHookParams memory params,
         uint256[] memory removeAmountsOut

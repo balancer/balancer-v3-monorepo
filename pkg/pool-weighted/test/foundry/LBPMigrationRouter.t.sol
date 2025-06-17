@@ -273,7 +273,73 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         lbpMigrationRouter.unlockTokens([uint256(0)].toMemoryArray());
     }
 
-    function testMigrateLiquidity_Fuzz(uint256 weight0, uint256 shareToMigrate) external {
+    function testMigrateLiquidityWithSpecificParameters() external {
+        uint256 weight0 = 80e16;
+        uint256 weight1 = 20e16;
+        uint256 shareToMigrate = 50e16;
+
+        vm.startPrank(bob);
+
+        lbpMigrationRouter.setupMigration(ILBPool(pool), DEFAULT_BPT_LOCK_DURATION, shareToMigrate, weight0, weight1);
+
+        vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
+
+        uint256 lbpBPTBalanceBefore = IERC20(pool).balanceOf(bob);
+        IERC20(pool).approve(address(lbpMigrationRouter), lbpBPTBalanceBefore);
+
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: makeAddr("pauseManager"),
+            swapFeeManager: makeAddr("swapFeeManager"),
+            poolCreator: address(0)
+        });
+
+        (, , , uint256[] memory balances) = vault.getPoolTokenInfo(pool);
+
+        (IWeightedPool weightedPool, ) = lbpMigrationRouter.migrateLiquidity(
+            ILBPool(pool),
+            excessReceiver,
+            ILBPMigrationRouter.WeightedPoolParams({
+                name: POOL_NAME,
+                symbol: POOL_SYMBOL,
+                roleAccounts: poolRoleAccounts,
+                swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
+                poolHooksContract: address(0),
+                enableDonation: false,
+                disableUnbalancedLiquidity: false,
+                salt: bytes32(0)
+            })
+        );
+
+        vm.stopPrank();
+
+        uint256[] memory lbpWeights = ILBPool(pool).getLBPoolDynamicData().normalizedWeights;
+
+        uint256 price = (balances[0] * lbpWeights[1]).divDown(balances[1] * lbpWeights[0]);
+
+        uint256 b0 = balances[0];
+        uint256 b1 = (balances[0] * weight1).divDown(price * weight0);
+
+        uint256[] memory expectedBalances = new uint256[](TOKEN_COUNT);
+        expectedBalances[0] = b0.mulDown(shareToMigrate);
+        expectedBalances[1] = b1.mulDown(shareToMigrate);
+
+        // Check that the weighted pool balance is correct
+        uint256[] memory balancesLiveScaled18 = vault.getCurrentLiveBalances(address(weightedPool));
+        assertApproxEqAbs(
+            balancesLiveScaled18[projectIdx],
+            expectedBalances[projectIdx],
+            DELTA,
+            "Live balance mismatch for project token"
+        );
+        assertApproxEqAbs(
+            balancesLiveScaled18[reserveIdx],
+            expectedBalances[reserveIdx],
+            DELTA,
+            "Live balance mismatch for reserve token"
+        );
+    }
+
+    function testMigrateLiquidity__Fuzz(uint256 weight0, uint256 shareToMigrate) external {
         weight0 = bound(weight0, 10e16, 90e16);
         uint256 weight1 = FixedPoint.ONE - weight0;
         shareToMigrate = bound(shareToMigrate, 10e16, 100e16);

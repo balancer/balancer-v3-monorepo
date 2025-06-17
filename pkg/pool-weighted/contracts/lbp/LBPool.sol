@@ -169,6 +169,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
 
     /**
      * @notice Returns the migration router, which is used to migrate LBPs to Weighted Pools.
+     * @dev This is not required when the LBP does not use migration.
      * @return migrationRouter Address of the migration router (i.e., one that can migrate LBPs to Weighted Pools)
      */
     function getMigrationRouter() external view returns (address) {
