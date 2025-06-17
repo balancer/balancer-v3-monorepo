@@ -95,6 +95,14 @@ contract LBPMigrationRouterTest is BaseLBPTest, WeightedPoolContractsDeployer {
         assertEq(lbpMigrationRouter.isMigrationSetup(ILBPool(pool)), false, "Migration should not be marked as setup");
 
         vm.prank(bob);
+        vm.expectEmit();
+        emit ILBPMigrationRouter.MigrationSetup(
+            ILBPool(pool),
+            DEFAULT_BPT_LOCK_DURATION,
+            DEFAULT_SHARE_TO_MIGRATE,
+            DEFAULT_WEIGHT0,
+            DEFAULT_WEIGHT1
+        );
         lbpMigrationRouter.setupMigration(
             ILBPool(pool),
             DEFAULT_BPT_LOCK_DURATION,
