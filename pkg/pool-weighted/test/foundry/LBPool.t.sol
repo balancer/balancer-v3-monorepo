@@ -804,6 +804,76 @@ contract LBPoolTest is BaseLBPTest {
         router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
     }
 
+    function testOnBeforeRemoveLiquidity() public {
+        // Warp to after end time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(router),
+            address(0),
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
+    }
+
+    function testOnBeforeRemoveLiquidityWithMigrationRouter() public {
+        (pool, ) = _createLBPoolWithMigration(
+            30 days, // BPT lock duration
+            50e16, // Share to migrate (50%)
+            60e16, // New weight for project token (60%)
+            40e16 // New weight for reserve token (40%)
+        );
+        initPool();
+
+        // Warp to after end time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(migrationRouter),
+            address(0),
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertTrue(success, "onBeforeRemoveLiquidity should return true with migration router");
+    }
+
+    function testOnBeforeRemoveLiquidityWithMigrationRevertWithWrongRouter() public {
+        (pool, ) = _createLBPoolWithMigration(
+            30 days, // BPT lock duration
+            50e16, // Share to migrate (50%)
+            60e16, // New weight for project token (60%)
+            40e16 // New weight for reserve token (40%)
+        );
+        initPool();
+
+        // Warp to after end time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(router),
+            address(0),
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertFalse(success, "onBeforeRemoveLiquidity should return false with wrong migration router");
+    }
+
     /*******************************************************************************
                                    Private Helpers
     *******************************************************************************/
