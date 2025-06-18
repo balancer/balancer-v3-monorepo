@@ -14,7 +14,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { ITimelock } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ITimelock.sol";
 import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import {
     TokenConfig,
@@ -37,41 +36,77 @@ import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-contract Timelock is ERC6909, ERC6909Metadata, Multicall {
+contract Timelocker is ERC6909, ERC6909Metadata, Multicall {
     using SafeERC20 for IERC20;
 
+    /**
+     * @dev Emitted when the unlock timestamp is set for a locked amount.
+     * @param id The ID of the locked tokens, which is derived from the token address
+     */
     event SetUnlockTimestamp(uint256 indexed id, uint256 unlockTimestamp);
 
-    error TimeLockedAmountNotUnlockedYet(uint256 id, uint256 unlockTimestamp);
+    /**
+     * @dev Amount is not unlocked yet.
+     * @param unlockTimestamp The timestamp when the locked amount can be unlocked
+     */
+    error AmountNotUnlockedYet(uint256 unlockTimestamp);
 
-    mapping(uint256 => uint256) private _unlockTimestamps;
+    /// @dev The amount to burn is not locked.
+    error NoLockedAmount();
 
+    mapping(uint256 => uint256) internal _unlockTimestamps;
+
+    /**
+     * @notice Burn the locked tokens for the caller.
+     * @param id The ID of the locked tokens, which is derived from the token address
+     */
     function burn(uint256 id) public {
         uint256 amount = balanceOf(msg.sender, id);
         if (amount == 0) {
-            return;
+            revert NoLockedAmount();
         }
 
         uint256 unlockTimestamp = _unlockTimestamps[id];
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp < unlockTimestamp) {
-            revert TimeLockedAmountNotUnlockedYet(id, unlockTimestamp);
+            revert AmountNotUnlockedYet(unlockTimestamp);
         }
 
         _burn(msg.sender, id, amount);
         delete _unlockTimestamps[id];
+
+        IERC20(address(uint160(id))).safeTransfer(msg.sender, amount);
     }
 
+    /**
+     * @notice Get the ID of the locked tokens, which is derived from the token address.
+     * @param token The address of the token to lock
+     * @return id The ID of the locked tokens
+     */
+    function getId(address token) public pure returns (uint256) {
+        return uint256(uint160(address(token)));
+    }
+
+    /**
+     * @notice Get the unlock timestamp for a given locked token ID.
+     * @param id The ID of the locked tokens, which is derived from the token address
+     * @return unlockTimestamp The timestamp when the locked amount can be unlocked
+     */
+    function getUnlockTimestamp(uint256 id) external view returns (uint256) {
+        return _unlockTimestamps[id];
+    }
+
+    /// @dev Locks an amount of tokens, locked amount is represented as an ERC6909 token.
     function _lockAmount(IERC20 token, address owner, uint256 amount, uint256 duration) internal {
-        uint256 id = uint256(uint160(address(token)));
+        uint256 id = getId(address(token));
 
         // solhint-disable-next-line not-rely-on-time
         uint256 unlockTimestamp = block.timestamp + duration;
 
         IERC20Metadata tokenWithMetadata = IERC20Metadata(address(token));
-        _setName(uint256(uint160(owner)), string(abi.encodePacked("Locked ", tokenWithMetadata.name())));
-        _setSymbol(uint256(uint160(owner)), string(abi.encodePacked("L-", tokenWithMetadata.symbol())));
-        _setDecimals(uint256(uint160(owner)), tokenWithMetadata.decimals());
+        _setName(id, string(abi.encodePacked("Locked ", tokenWithMetadata.name())));
+        _setSymbol(id, string(abi.encodePacked("LOCKED-", tokenWithMetadata.symbol())));
+        _setDecimals(id, tokenWithMetadata.decimals());
 
         _unlockTimestamps[id] = unlockTimestamp;
 

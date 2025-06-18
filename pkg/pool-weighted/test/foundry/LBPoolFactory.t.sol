@@ -6,10 +6,11 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { ILBPool, LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
@@ -62,7 +63,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
     }
 
     function testGetMigrationRouter() public view {
-        assertEq(lbPoolFactory.getMigrationRouter(), migrationRouter(), "Wrong migration router");
+        assertEq(lbPoolFactory.getMigrationRouter(), address(migrationRouter), "Wrong migration router");
     }
 
     function testFactoryPausedState() public view {
@@ -96,6 +97,65 @@ contract LBPoolFactoryTest is BaseLBPTest {
         // Verify pool was created and initialized correctly
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
         assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
+
+        (
+            address migrationRouter,
+            uint256 bptLockDuration,
+            uint256 shareToMigrate,
+            uint256 weight0,
+            uint256 weight1
+        ) = LBPool(pool).getMigrationParams();
+
+        assertEq(bptLockDuration, 0, "BPT lock duration should be zero");
+        assertEq(shareToMigrate, 0, "Share to migrate should be zero");
+        assertEq(weight0, 0, "Weight0 should be zero");
+        assertEq(weight1, 0, "Weight1 should be zero");
+        assertEq(migrationRouter, address(0), "Migration router should be zero address");
+    }
+
+    function testCreatePoolWithMigrationParams() public {
+        // Set migration parameters
+        uint256 initBptLockDuration = 30 days;
+        uint256 initShareToMigrate = 50e16; // 50%
+        uint256 initNewWeight0 = 60e16; // 60%
+        uint256 initNewWeight1 = 40e16; // 40%
+
+        (pool, ) = _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, initNewWeight0, initNewWeight1);
+        initPool();
+
+        assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
+        assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
+
+        (
+            address migrationRouter,
+            uint256 bptLockDuration,
+            uint256 shareToMigrate,
+            uint256 weight0,
+            uint256 weight1
+        ) = LBPool(pool).getMigrationParams();
+
+        assertEq(migrationRouter, address(migrationRouter), "Migration router mismatch");
+        assertEq(bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
+        assertEq(shareToMigrate, initShareToMigrate, "Share to migrate mismatch");
+        assertEq(weight0, initNewWeight0, "New weight0 mismatch");
+        assertEq(weight1, initNewWeight1, "New weight1 mismatch");
+    }
+
+    function testCreatePoolWithInvalidMigrationParams() public {
+        uint256 initBptLockDuration = 30 days;
+        uint256 initShareToMigrate = 50e16; // 50%
+
+        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 0, 100e16);
+
+        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 100e16, 0);
+
+        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 100e16, 100e16);
+
+        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 100e16, 50e16);
     }
 
     function testAddLiquidityPermission() public {

@@ -28,7 +28,6 @@ import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/con
 
 import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
 import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
-import { LBPMigrationRouterPureMock } from "../../contracts/test/LBPMigrationRouterPureMock.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
 import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
@@ -37,13 +36,6 @@ contract LBMigrationPoolTest is BaseLBPTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
-
-    function setUp() public override {
-        LBPMigrationRouterPureMock migrationRouter = new LBPMigrationRouterPureMock();
-        setMigrationRouter(address(migrationRouter));
-        migrationRouter.setMigrationSetup(true);
-        super.setUp();
-    }
 
     /*******************************************************************************
                                       Pool Hooks
@@ -62,29 +54,11 @@ contract LBMigrationPoolTest is BaseLBPTest {
         );
     }
 
-    function testOnBeforeInitializeWithoutMigrationSetup() public {
-        // Warp to before start time (initialization is allowed before start time)
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
-
-        address migrationRouter = migrationRouter();
-        LBPMigrationRouterPureMock migrationRouterMock = LBPMigrationRouterPureMock(migrationRouter);
-        migrationRouterMock.setMigrationSetup(false);
-
-        vm.prank(address(vault));
-        _mockGetSender(migrationRouter);
-
-        assertFalse(
-            LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
-            "onBeforeInitialize should return false without migration setup"
-        );
-    }
-
     function testOnBeforeRemoveLiquidity() public {
         // Warp to after end time, where removing liquidity is allowed.
         vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
 
         vm.prank(address(vault));
-        _mockGetSender(migrationRouter());
         bool success = LBPool(pool).onBeforeRemoveLiquidity(
             address(router),
             address(0),
@@ -96,6 +70,24 @@ contract LBMigrationPoolTest is BaseLBPTest {
         );
 
         assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
+    }
+
+    function testOnBeforeRemoveLiquidityWithMigrationRouter() public {
+        // Warp to before start time, where removing liquidity is not allowed.
+        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(migrationRouter),
+            address(0),
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertFalse(success, "onBeforeRemoveLiquidity should return false before start time");
     }
 
     function testOnBeforeRemoveLiquidityWithWrongSender() public {

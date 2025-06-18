@@ -27,15 +27,15 @@ import {
 } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 
 import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
-import { Timelock } from "./Timelock.sol";
+import { LBPool } from "./LBPool.sol";
+import { Timelocker } from "./Timelocker.sol";
 
-contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTransient, Version, VaultGuard {
+contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Version, VaultGuard, Timelocker {
     using FixedPoint for uint256;
     using SafeCast for uint256;
 
     // LBPs are constrained to two tokens: project and reserve.
     uint256 private constant _TWO_TOKENS = 2;
-    address internal immutable _trustedFactory;
     WeightedPoolFactory internal immutable _weightedPoolFactory;
 
     modifier onlyLBPOwner(ILBPool lbp) {
@@ -44,14 +44,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTra
             if (msg.sender != lbpOwner) {
                 revert SenderIsNotLBPOwner();
             }
-        }
-
-        _;
-    }
-
-    modifier onlyTrustedFactory() {
-        if (msg.sender != _trustedFactory) {
-            revert SenderIsNotTrustedFactory();
         }
 
         _;
@@ -103,7 +95,13 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTra
             })
         );
 
-        uint256[] memory exactAmountsIn = _computeExactAmountsIn(params, removeAmountsOut);
+        uint256[] memory exactAmountsIn = _computeExactAmountsIn(
+            params.lbp,
+            params.shareToMigrate,
+            params.migrationWeight0,
+            params.migrationWeight1,
+            removeAmountsOut
+        );
 
         for (uint256 i = 0; i < removeAmountsOut.length; i++) {
             uint256 remainingBalance = removeAmountsOut[i] - exactAmountsIn[i];
@@ -120,12 +118,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTra
             0,
             bytes("")
         );
-        _lockAmount(
-            IERC20(address(params.weightedPool)),
-            params.sender,
-            bptAmountOut,
-            params.migrationParams.bptLockDuration
-        );
+        _lockAmount(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.lockDuration);
 
         emit PoolMigrated(params.lbp, params.weightedPool, bptAmountOut);
     }
@@ -139,9 +132,16 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTra
     ) internal returns (IWeightedPool weightedPool, uint256 bptAmountOut) {
         LBPoolImmutableData memory lbpImmutableData = lbp.getLBPoolImmutableData();
 
-        MigrationParams memory migrationParams = _migrationParams[lbp];
-        if (migrationParams.weight0 == 0) {
-            revert MigrationDoesNotExist();
+        (
+            address migrationRouter,
+            uint256 lockDuration,
+            uint256 shareToMigrate,
+            uint256 migrationWeight0,
+            uint256 migrationWeight1
+        ) = LBPool(address(lbp)).getMigrationParams();
+
+        if (migrationRouter != address(this)) {
+            revert IncorrectMigrationRouter(migrationRouter);
         }
 
         // solhint-disable-next-line not-rely-on-time
@@ -150,39 +150,44 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTra
         }
 
         uint256[] memory normalizedWeights = new uint256[](_TWO_TOKENS);
-        normalizedWeights[0] = migrationParams.weight0;
-        normalizedWeights[1] = migrationParams.weight1;
+        normalizedWeights[0] = migrationWeight0;
+        normalizedWeights[1] = migrationWeight1;
 
-        TokenConfig[] memory tokensConfig = new TokenConfig[](lbpImmutableData.tokens.length);
-        for (uint256 i = 0; i < lbpImmutableData.tokens.length; i++) {
+        TokenConfig[] memory tokensConfig = new TokenConfig[](_TWO_TOKENS);
+        for (uint256 i = 0; i < _TWO_TOKENS; i++) {
             tokensConfig[i].token = lbpImmutableData.tokens[i];
         }
 
-        // Stack too deep issue workaround
-        WeightedPoolParams memory _params = params;
-        weightedPool = IWeightedPool(
-            _weightedPoolFactory.create(
-                _params.name,
-                _params.symbol,
-                tokensConfig,
-                normalizedWeights,
-                _params.roleAccounts,
-                _params.swapFeePercentage,
-                _params.poolHooksContract,
-                _params.enableDonation,
-                _params.disableUnbalancedLiquidity,
-                _params.salt
-            )
-        );
+        {
+            // Stack too deep issue workaround
+            WeightedPoolParams memory _params = params;
+            weightedPool = IWeightedPool(
+                _weightedPoolFactory.create(
+                    _params.name,
+                    _params.symbol,
+                    tokensConfig,
+                    normalizedWeights,
+                    _params.roleAccounts,
+                    _params.swapFeePercentage,
+                    _params.poolHooksContract,
+                    _params.enableDonation,
+                    _params.disableUnbalancedLiquidity,
+                    _params.salt
+                )
+            );
+        }
 
-        MigrationHookParams memory migrateHookParams;
         // via-IR Stack too deep issue workaround
+        MigrationHookParams memory migrateHookParams;
         migrateHookParams.lbp = lbp;
         migrateHookParams.weightedPool = weightedPool;
         migrateHookParams.tokens = lbpImmutableData.tokens;
         migrateHookParams.sender = sender;
         migrateHookParams.excessReceiver = excessReceiver;
-        migrateHookParams.migrationParams = migrationParams;
+        migrateHookParams.lockDuration = lockDuration;
+        migrateHookParams.shareToMigrate = shareToMigrate;
+        migrateHookParams.migrationWeight0 = migrationWeight0;
+        migrateHookParams.migrationWeight1 = migrationWeight1;
 
         if (isQuery) {
             bptAmountOut = abi.decode(
@@ -198,12 +203,15 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTra
     }
 
     function _computeExactAmountsIn(
-        MigrationHookParams memory params,
+        ILBPool lbp,
+        uint256 shareToMigrate,
+        uint256 migrationWeight0,
+        uint256 migrationWeight1,
         uint256[] memory removeAmountsOut
     ) internal view returns (uint256[] memory exactAmountsIn) {
         exactAmountsIn = new uint256[](_TWO_TOKENS);
 
-        uint256[] memory currentWeights = params.lbp.getLBPoolDynamicData().normalizedWeights;
+        uint256[] memory currentWeights = lbp.getLBPoolDynamicData().normalizedWeights;
 
         // Compute the spot price based on the current weights and the amounts out from the LBP.
         uint256 price = (removeAmountsOut[0] * currentWeights[1]).divDown(removeAmountsOut[1] * currentWeights[0]);
@@ -211,19 +219,16 @@ contract LBPMigrationRouter is ILBPMigrationRouter, Timelock, ReentrancyGuardTra
         // Calculate balance1 based on the price and the new weights.
         // We start from the b0 balance because we treat it as the maximum.
         // If that's not the case, then b1 will end up being greater than amountOut0.
-        uint256 b1 = (removeAmountsOut[0] * params.migrationParams.weight1).divDown(
-            price * params.migrationParams.weight0
-        );
+        uint256 b1 = (removeAmountsOut[0] * migrationWeight1).divDown(price * migrationWeight0);
         uint256 b0 = removeAmountsOut[0];
 
         // If b1 is greater than the amountOut1, we need to calculate b0 based on the price and the new weights.
         if (b1 > removeAmountsOut[1]) {
             b1 = removeAmountsOut[1];
-            b0 = price.mulDown(b1).mulDown(params.migrationParams.weight0).divDown(params.migrationParams.weight1);
+            b0 = price.mulDown(b1).mulDown(migrationWeight0).divDown(migrationWeight1);
         }
 
         // Calculate the exact amounts in based on the share to migrate.
-        uint256 shareToMigrate = params.migrationParams.shareToMigrate;
         exactAmountsIn[0] = b0.mulDown(shareToMigrate);
         exactAmountsIn[1] = b1.mulDown(shareToMigrate);
     }

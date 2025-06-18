@@ -6,17 +6,22 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ContractType } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IBalancerContractRegistry.sol";
 import { LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { LBPoolFactory } from "../../../contracts/lbp/LBPoolFactory.sol";
+import { WeightedPoolFactory } from "../../../contracts/WeightedPoolFactory.sol";
+import { LBPMigrationRouterMock } from "../../../contracts/test/LBPMigrationRouterMock.sol";
 import { LBPoolContractsDeployer } from "./LBPoolContractsDeployer.sol";
+import { WeightedPoolContractsDeployer } from "./WeightedPoolContractsDeployer.sol";
 
-contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
+contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolContractsDeployer {
     using ArrayHelpers for *;
     using CastingHelpers for *;
 
@@ -24,6 +29,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
 
     string public constant factoryVersion = "Factory v1";
     string public constant poolVersion = "Pool v1";
+    string public constant migrationRouterVersion = "Migration Router v1";
 
     uint256 internal constant TOKEN_COUNT = 2;
     uint256 internal constant HIGH_WEIGHT = uint256(70e16);
@@ -31,8 +37,6 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     uint32 internal constant DEFAULT_START_OFFSET = 100;
     uint32 internal constant DEFAULT_END_OFFSET = 200;
     bool internal constant DEFAULT_PROJECT_TOKENS_SWAP_IN = true;
-
-    address private _migrationRouter;
 
     IERC20 internal projectToken;
     IERC20 internal reserveToken;
@@ -44,14 +48,13 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
 
     uint256 private _saltCounter;
 
+    WeightedPoolFactory internal weightedPoolFactory;
+    BalancerContractRegistry internal balancerContractRegistry;
     LBPoolFactory internal lbPoolFactory;
+    LBPMigrationRouterMock internal migrationRouter;
 
-    function setMigrationRouter(address router) internal {
-        _migrationRouter = router;
-    }
-
-    function migrationRouter() internal view returns (address) {
-        return _migrationRouter;
+    function setUp() public virtual override {
+        super.setUp();
     }
 
     function onAfterDeployMainContracts() internal override {
@@ -70,20 +73,47 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
     }
 
     function createPoolFactory() internal override returns (address) {
+        weightedPoolFactory = deployWeightedPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Weighted Factory v1",
+            "Weighted Pool v1"
+        );
+
+        balancerContractRegistry = new BalancerContractRegistry(IVault(address(vault)));
+        authorizer.grantRole(
+            balancerContractRegistry.getActionId(BalancerContractRegistry.registerBalancerContract.selector),
+            admin
+        );
+        authorizer.grantRole(
+            balancerContractRegistry.getActionId(BalancerContractRegistry.deprecateBalancerContract.selector),
+            admin
+        );
+
+        vm.prank(admin);
+        balancerContractRegistry.registerBalancerContract(
+            ContractType.POOL_FACTORY,
+            "WeightedPool",
+            address(weightedPoolFactory)
+        );
+
+        migrationRouter = deployLBPMigrationRouterMock(balancerContractRegistry, migrationRouterVersion);
+        vm.label(address(migrationRouter), "LBP migration router");
+
         lbPoolFactory = deployLBPoolFactory(
             IVault(address(vault)),
             365 days,
             factoryVersion,
             poolVersion,
             address(router),
-            migrationRouter()
+            address(migrationRouter)
         );
         vm.label(address(lbPoolFactory), "LB pool factory");
 
         return address(lbPoolFactory);
     }
 
-    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
+    function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
         return
             _createLBPool(
                 uint32(block.timestamp + DEFAULT_START_OFFSET),
@@ -115,6 +145,45 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
             );
     }
 
+    function _createLBPoolWithMigration(
+        uint256 bptLockDuration,
+        uint256 shareToMigrate,
+        uint256 migrationWeight0,
+        uint256 migrationWeight1
+    ) internal returns (address newPool, bytes memory poolArgs) {
+        string memory name = "LBPool";
+        string memory symbol = "LBP";
+
+        LBPParams memory lbpParams = LBPParams({
+            owner: bob,
+            projectToken: projectToken,
+            reserveToken: reserveToken,
+            projectTokenStartWeight: startWeights[projectIdx],
+            reserveTokenStartWeight: startWeights[reserveIdx],
+            projectTokenEndWeight: endWeights[projectIdx],
+            reserveTokenEndWeight: endWeights[reserveIdx],
+            startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
+            endTime: uint32(block.timestamp + DEFAULT_END_OFFSET),
+            blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
+        });
+
+        newPool = lbPoolFactory.createWithMigration(
+            name,
+            symbol,
+            lbpParams,
+            swapFee,
+            bytes32(_saltCounter++),
+            bptLockDuration,
+            shareToMigrate,
+            migrationWeight0,
+            migrationWeight1
+        );
+
+        poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(migrationRouter), poolVersion);
+
+        return (newPool, poolArgs);
+    }
+
     function _createLBPoolWithCustomWeights(
         uint256 projectTokenStartWeight,
         uint256 reserveTokenStartWeight,
@@ -142,6 +211,6 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer {
 
         newPool = lbPoolFactory.create(name, symbol, lbpParams, swapFee, bytes32(_saltCounter++));
 
-        poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(_migrationRouter), poolVersion);
+        poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(migrationRouter), poolVersion);
     }
 }

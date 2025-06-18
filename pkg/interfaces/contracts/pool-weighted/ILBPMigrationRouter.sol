@@ -33,8 +33,8 @@ interface ILBPMigrationRouter {
     /// @notice The caller is not the owner of the LBP.
     error SenderIsNotLBPOwner();
 
-    /// @notice The sender is not a trusted factory.
-    error SenderIsNotTrustedFactory();
+    /// @notice Pool have incorrect migration router.
+    error IncorrectMigrationRouter(address currentRouter);
 
     struct MigrationHookParams {
         ILBPool lbp;
@@ -42,7 +42,10 @@ interface ILBPMigrationRouter {
         IERC20[] tokens;
         address sender;
         address excessReceiver;
-        MigrationParams migrationParams;
+        uint256 lockDuration;
+        uint256 shareToMigrate;
+        uint256 migrationWeight0;
+        uint256 migrationWeight1;
     }
 
     struct WeightedPoolParams {

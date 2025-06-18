@@ -28,7 +28,6 @@ import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/con
 
 import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
 import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
-import { LBPMigrationRouterPureMock } from "../../contracts/test/LBPMigrationRouterPureMock.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
 import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
@@ -228,8 +227,44 @@ contract LBPoolTest is BaseLBPTest {
         assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
-    function testGetMigrationRouter() public view {
-        assertEq(LBPool(pool).getMigrationRouter(), migrationRouter(), "Wrong migration router");
+    function testGetMigrationParams() public view {
+        (
+            address migrationRouter,
+            uint256 bptLockDuration,
+            uint256 shareToMigrate,
+            uint256 migrationWeight0,
+            uint256 migrationWeight1
+        ) = LBPool(pool).getMigrationParams();
+
+        assertEq(migrationRouter, address(0), "Migration router should be zero address");
+        assertEq(bptLockDuration, 0, "BPT lock duration should be zero");
+        assertEq(shareToMigrate, 0, "Share to migrate should be zero");
+        assertEq(migrationWeight0, 0, "Migration weight 0 should be zero");
+        assertEq(migrationWeight1, 0, "Migration weight 1 should be zero");
+    }
+
+    function testGetMigrationParamsWithMigration() public {
+        uint256 initBptLockDuration = 30 days;
+        uint256 initShareToMigrate = 50e16; // 50%
+        uint256 initNewWeight0 = 60e16; // 60%
+        uint256 initNewWeight1 = 40e16; // 40%
+
+        (pool, ) = _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, initNewWeight0, initNewWeight1);
+        initPool();
+
+        (
+            address migrationRouter,
+            uint256 bptLockDuration,
+            uint256 shareToMigrate,
+            uint256 migrationWeight0,
+            uint256 migrationWeight1
+        ) = LBPool(pool).getMigrationParams();
+
+        assertEq(migrationRouter, address(migrationRouter), "Migration router mismatch");
+        assertEq(bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
+        assertEq(shareToMigrate, initShareToMigrate, "Share to migrate mismatch");
+        assertEq(migrationWeight0, initNewWeight0, "New weight0 mismatch");
+        assertEq(migrationWeight1, initNewWeight1, "New weight1 mismatch");
     }
 
     function testGetProjectToken() public view {
