@@ -53,8 +53,8 @@ contract LBPoolFactoryTest is BaseLBPTest {
             365 days,
             factoryVersion,
             poolVersion,
-            address(0), // invalid trusted router address
-            address(0) // migration router address
+            ZERO_ADDRESS, // invalid trusted router address
+            ZERO_ADDRESS // migration router address
         );
     }
 
@@ -74,7 +74,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
     function testCreatePoolWithInvalidOwner() public {
         // Create LBP params with owner set to zero address
         LBPParams memory params = LBPParams({
-            owner: address(0),
+            owner: ZERO_ADDRESS,
             projectToken: projectToken,
             reserveToken: reserveToken,
             startTime: uint32(block.timestamp + DEFAULT_START_OFFSET),
@@ -87,7 +87,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         });
 
         vm.expectRevert(LBPoolFactory.InvalidOwner.selector);
-        lbPoolFactory.create("LBPool", "LBP", params, swapFee, bytes32(0));
+        lbPoolFactory.create("LBPool", "LBP", params, swapFee, ZERO_BYTES32);
     }
 
     function testCreatePool() public {
@@ -101,26 +101,31 @@ contract LBPoolFactoryTest is BaseLBPTest {
         (
             address migrationRouter,
             uint256 bptLockDuration,
-            uint256 shareToMigrate,
-            uint256 weight0,
-            uint256 weight1
+            uint256 bptPercentageToMigrate,
+            uint256 projectTokenWeight,
+            uint256 reserveTokenWeight
         ) = LBPool(pool).getMigrationParams();
 
         assertEq(bptLockDuration, 0, "BPT lock duration should be zero");
-        assertEq(shareToMigrate, 0, "Share to migrate should be zero");
-        assertEq(weight0, 0, "Weight0 should be zero");
-        assertEq(weight1, 0, "Weight1 should be zero");
-        assertEq(migrationRouter, address(0), "Migration router should be zero address");
+        assertEq(bptPercentageToMigrate, 0, "Share to migrate should be zero");
+        assertEq(projectTokenWeight, 0, "Project token weight should be zero");
+        assertEq(reserveTokenWeight, 0, "Reserve token weight should be zero");
+        assertEq(migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
     }
 
     function testCreatePoolWithMigrationParams() public {
         // Set migration parameters
         uint256 initBptLockDuration = 30 days;
-        uint256 initShareToMigrate = 50e16; // 50%
-        uint256 initNewWeight0 = 60e16; // 60%
-        uint256 initNewWeight1 = 40e16; // 40%
+        uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 initNewWeightProjectToken = 60e16; // 60%
+        uint256 initNewWeightReserveToken = 40e16; // 40%
 
-        (pool, ) = _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, initNewWeight0, initNewWeight1);
+        (pool, ) = _createLBPoolWithMigration(
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
         initPool();
 
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
@@ -129,33 +134,33 @@ contract LBPoolFactoryTest is BaseLBPTest {
         (
             address migrationRouter,
             uint256 bptLockDuration,
-            uint256 shareToMigrate,
-            uint256 weight0,
-            uint256 weight1
+            uint256 bptPercentageToMigrate,
+            uint256 weightProjectToken,
+            uint256 weightReserveToken
         ) = LBPool(pool).getMigrationParams();
 
         assertEq(migrationRouter, address(migrationRouter), "Migration router mismatch");
         assertEq(bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
-        assertEq(shareToMigrate, initShareToMigrate, "Share to migrate mismatch");
-        assertEq(weight0, initNewWeight0, "New weight0 mismatch");
-        assertEq(weight1, initNewWeight1, "New weight1 mismatch");
+        assertEq(bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
+        assertEq(weightProjectToken, initNewWeightProjectToken, "New weightProjectToken mismatch");
+        assertEq(weightReserveToken, initNewWeightReserveToken, "New weightReserveToken mismatch");
     }
 
     function testCreatePoolWithInvalidMigrationParams() public {
         uint256 initBptLockDuration = 30 days;
-        uint256 initShareToMigrate = 50e16; // 50%
+        uint256 initBptPercentageToMigrate = 50e16; // 50%
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 0, 100e16);
+        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 0, 100e16);
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 100e16, 0);
+        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 100e16, 0);
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 100e16, 100e16);
+        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 100e16, 100e16);
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initShareToMigrate, 100e16, 50e16);
+        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 100e16, 50e16);
     }
 
     function testAddLiquidityPermission() public {

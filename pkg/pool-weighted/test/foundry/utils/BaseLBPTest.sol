@@ -147,9 +147,9 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
 
     function _createLBPoolWithMigration(
         uint256 bptLockDuration,
-        uint256 shareToMigrate,
-        uint256 migrationWeight0,
-        uint256 migrationWeight1
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken
     ) internal returns (address newPool, bytes memory poolArgs) {
         string memory name = "LBPool";
         string memory symbol = "LBP";
@@ -174,9 +174,9 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
             swapFee,
             bytes32(_saltCounter++),
             bptLockDuration,
-            shareToMigrate,
-            migrationWeight0,
-            migrationWeight1
+            bptPercentageToMigrate,
+            migrationWeightProjectToken,
+            migrationWeightReserveToken
         );
 
         poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(migrationRouter), poolVersion);
