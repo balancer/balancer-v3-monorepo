@@ -7,7 +7,6 @@ import { deploy, deployedAt, getArtifact } from '@balancer-labs/v3-helpers/src/c
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import { takeSnapshot } from '@nomicfoundation/hardhat-network-helpers';
-import { MockFactoryCreatedContract__factory } from '../typechain-types';
 
 describe('BasePoolCodeFactory', function () {
   let factory: Contract;
