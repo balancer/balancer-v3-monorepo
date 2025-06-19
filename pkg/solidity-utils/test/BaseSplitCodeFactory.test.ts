@@ -82,7 +82,7 @@ describe('BasePoolCodeFactory', function () {
         {
           interface: Create2__factory.createInterface(),
         },
-        'Create2FailedDeployment'
+        'FailedDeployment'
       );
     });
   });

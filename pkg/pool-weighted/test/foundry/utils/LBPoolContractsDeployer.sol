@@ -54,7 +54,7 @@ contract LBPoolContractsDeployer is BaseContractsDeployer {
             return
                 LBPMigrationRouterMock(
                     deployCode(
-                        _computeLBPoolPath(type(LBPMigrationRouterMock).name),
+                        _computeLBPTestPath(type(LBPMigrationRouterMock).name),
                         abi.encode(contractRegistry, version)
                     )
                 );
@@ -65,5 +65,9 @@ contract LBPoolContractsDeployer is BaseContractsDeployer {
 
     function _computeLBPoolPath(string memory name) private view returns (string memory) {
         return string(abi.encodePacked(artifactsRootDir, "contracts/lbp/", name, ".sol/", name, ".json"));
+    }
+
+    function _computeLBPTestPath(string memory name) private view returns (string memory) {
+        return string(abi.encodePacked(artifactsRootDir, "contracts/test/", name, ".sol/", name, ".json"));
     }
 }
