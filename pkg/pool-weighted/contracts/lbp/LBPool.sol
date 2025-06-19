@@ -65,9 +65,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     uint256 private immutable _reserveTokenEndWeight;
 
     uint256 private immutable _lockDurationAfterMigration;
-    uint256 private immutable _shareToMigrate;
-    uint256 private immutable _migrationWeight0;
-    uint256 private immutable _migrationWeight1;
+    uint256 private immutable _bptPercentageToMigrate;
+    uint256 private immutable _migrationWeightProjectToken;
+    uint256 private immutable _migrationWeightReserveToken;
 
     // If true, project tokens can only be bought, not sold back to the pool (i.e., they cannot be the `tokenIn`
     // of a swap)
@@ -119,9 +119,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         address migrationRouter,
         string memory version,
         uint256 lockDurationAfterMigration,
-        uint256 shareToMigrate,
-        uint256 migrationWeight0,
-        uint256 migrationWeight1
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken
     ) WeightedPool(_buildWeightedPoolParams(name, symbol, version, lbpParams), vault) Ownable(lbpParams.owner) {
         // Checks that the weights are valid and `endTime` is after `startTime`. If `startTime` is in the past,
         // avoid abrupt weight changes by overriding it with the current block time.
@@ -165,9 +165,9 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         );
 
         _lockDurationAfterMigration = lockDurationAfterMigration;
-        _shareToMigrate = shareToMigrate;
-        _migrationWeight0 = migrationWeight0;
-        _migrationWeight1 = migrationWeight1;
+        _bptPercentageToMigrate = bptPercentageToMigrate;
+        _migrationWeightProjectToken = migrationWeightProjectToken;
+        _migrationWeightReserveToken = migrationWeightReserveToken;
 
         emit GradualWeightUpdateScheduled(_startTime, _endTime, startWeights, endWeights);
     }
@@ -181,13 +181,13 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     }
 
     /**
-     * @notice Returns the migration parameters, which are used to migrate liquidity
+     * @notice Returns the migration parameters, which are used to migrate liquidity.
      * @dev The migration parameters are set at deployment and cannot be changed later.
-     * @return migrationRouter The address of the migration router that can migrate this LBP
+     * @return migrationRouter The address of the migration router allowed to migrate this LBP
      * @return lockDuration The duration for which the BPTs will be locked after migration
-     * @return shareToMigrate The share of the BPT to migrate from the LBP to the new weighted pool
-     * @return weight0 The weight of the first token in the new weighted pool
-     * @return weight1 The weight of the second token in the new weighted pool
+     * @return bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
+     * @return weightProjectToken The weight of the project token in the new weighted pool
+     * @return weightReserveToken The weight of the reserve token in the new weighted pool
      */
     function getMigrationParams()
         external
@@ -195,16 +195,16 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         returns (
             address migrationRouter,
             uint256 lockDuration,
-            uint256 shareToMigrate,
-            uint256 weight0,
-            uint256 weight1
+            uint256 bptPercentageToMigrate,
+            uint256 weightProjectToken,
+            uint256 weightReserveToken
         )
     {
         migrationRouter = _migrationRouter;
         lockDuration = _lockDurationAfterMigration;
-        shareToMigrate = _shareToMigrate;
-        weight0 = _migrationWeight0;
-        weight1 = _migrationWeight1;
+        bptPercentageToMigrate = _bptPercentageToMigrate;
+        weightProjectToken = _migrationWeightProjectToken;
+        weightReserveToken = _migrationWeightReserveToken;
     }
 
     /// @inheritdoc ILBPool
@@ -218,8 +218,8 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     }
 
     /**
-     * @notice Return start time, end time, and endWeights as an array.
-     * @dev Current weights should be retrieved via `getNormalizedWeights()`.
+     * @notice Return start time and end time, as well as starting and ending weights as arrays.
+     * @dev The current weights should be retrieved via `getNormalizedWeights()`.
      * @return startTime The starting timestamp of any ongoing weight change
      * @return endTime The ending timestamp of any ongoing weight change
      * @return startWeights The "initial" weights, sorted in token registration order
