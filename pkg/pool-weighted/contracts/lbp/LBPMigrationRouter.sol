@@ -2,33 +2,33 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { ILBPool, LBPoolImmutableData } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import {
     TokenConfig,
     RemoveLiquidityParams,
     RemoveLiquidityKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
     BalancerContractRegistry,
     ContractType
 } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 
 import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
-import { LBPool } from "./LBPool.sol";
 import { Timelocker } from "./Timelocker.sol";
+import { LBPool } from "./LBPool.sol";
 
 contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Version, VaultGuard, Timelocker {
     using FixedPoint for uint256;
@@ -53,12 +53,12 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         BalancerContractRegistry contractRegistry,
         string memory version
     ) Version(version) VaultGuard(contractRegistry.getVault()) {
-        (address weightedPoolFactoryAddress, bool isWeightedPoolFactoryActive) = contractRegistry.getBalancerContract(
+        (address weightedPoolFactoryAddress, bool isActive) = contractRegistry.getBalancerContract(
             ContractType.POOL_FACTORY,
             "WeightedPool"
         );
-        if (!isWeightedPoolFactoryActive) {
-            revert ContractIsNotActiveInRegistry("WeightedPool");
+        if (isActive == false) {
+            revert NoRegisteredWeightedPoolFactory();
         }
 
         _weightedPoolFactory = WeightedPoolFactory(weightedPoolFactoryAddress);
@@ -91,19 +91,19 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
                 maxBptAmountIn: IERC20(address(params.lbp)).balanceOf(params.sender),
                 minAmountsOut: new uint256[](_TWO_TOKENS),
                 kind: RemoveLiquidityKind.PROPORTIONAL,
-                userData: new bytes(0)
+                userData: bytes("")
             })
         );
 
         uint256[] memory exactAmountsIn = _computeExactAmountsIn(
             params.lbp,
-            params.shareToMigrate,
-            params.migrationWeight0,
-            params.migrationWeight1,
+            params.bptPercentageToMigrate,
+            params.migrationWeightProjectToken,
+            params.migrationWeightReserveToken,
             removeAmountsOut
         );
 
-        for (uint256 i = 0; i < removeAmountsOut.length; i++) {
+        for (uint256 i = 0; i < _TWO_TOKENS; i++) {
             uint256 remainingBalance = removeAmountsOut[i] - exactAmountsIn[i];
             if (remainingBalance > 0) {
                 _vault.sendTo(params.tokens[i], params.excessReceiver, remainingBalance);
@@ -135,9 +135,9 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         (
             address migrationRouter,
             uint256 lockDuration,
-            uint256 shareToMigrate,
-            uint256 migrationWeight0,
-            uint256 migrationWeight1
+            uint256 bptPercentageToMigrate,
+            uint256 migrationWeightProjectToken,
+            uint256 migrationWeightReserveToken
         ) = LBPool(address(lbp)).getMigrationParams();
 
         if (migrationRouter != address(this)) {
@@ -146,12 +146,12 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp <= lbpImmutableData.endTime) {
-            revert LBPWeightsNotFinalized(lbp);
+            revert RemovingLiquidityNotAllowed(lbp);
         }
 
         uint256[] memory normalizedWeights = new uint256[](_TWO_TOKENS);
-        normalizedWeights[0] = migrationWeight0;
-        normalizedWeights[1] = migrationWeight1;
+        normalizedWeights[lbpImmutableData.projectTokenIndex] = migrationWeightProjectToken;
+        normalizedWeights[lbpImmutableData.reserveTokenIndex] = migrationWeightReserveToken;
 
         TokenConfig[] memory tokensConfig = new TokenConfig[](_TWO_TOKENS);
         for (uint256 i = 0; i < _TWO_TOKENS; i++) {
@@ -185,9 +185,9 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         migrateHookParams.sender = sender;
         migrateHookParams.excessReceiver = excessReceiver;
         migrateHookParams.lockDuration = lockDuration;
-        migrateHookParams.shareToMigrate = shareToMigrate;
-        migrateHookParams.migrationWeight0 = migrationWeight0;
-        migrateHookParams.migrationWeight1 = migrationWeight1;
+        migrateHookParams.bptPercentageToMigrate = bptPercentageToMigrate;
+        migrateHookParams.migrationWeightProjectToken = migrationWeightProjectToken;
+        migrateHookParams.migrationWeightReserveToken = migrationWeightReserveToken;
 
         if (isQuery) {
             bptAmountOut = abi.decode(
@@ -204,32 +204,41 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
     function _computeExactAmountsIn(
         ILBPool lbp,
-        uint256 shareToMigrate,
-        uint256 migrationWeight0,
-        uint256 migrationWeight1,
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken,
         uint256[] memory removeAmountsOut
     ) internal view returns (uint256[] memory exactAmountsIn) {
         exactAmountsIn = new uint256[](_TWO_TOKENS);
 
         uint256[] memory currentWeights = lbp.getLBPoolDynamicData().normalizedWeights;
+        LBPoolImmutableData memory data = lbp.getLBPoolImmutableData();
 
-        // Compute the spot price based on the current weights and the amounts out from the LBP.
-        uint256 price = (removeAmountsOut[0] * currentWeights[1]).divDown(removeAmountsOut[1] * currentWeights[0]);
+        // Compute the spot price (reserve tokens per project token) based on the current weights and the amounts out
+        // from the LBP.
+        uint256 price = (removeAmountsOut[data.projectTokenIndex] * currentWeights[data.reserveTokenIndex]).divDown(
+            removeAmountsOut[data.reserveTokenIndex] * currentWeights[data.projectTokenIndex]
+        );
 
-        // Calculate balance1 based on the price and the new weights.
-        // We start from the b0 balance because we treat it as the maximum.
-        // If that's not the case, then b1 will end up being greater than amountOut0.
-        uint256 b1 = (removeAmountsOut[0] * migrationWeight1).divDown(price * migrationWeight0);
-        uint256 b0 = removeAmountsOut[0];
+        // Calculate reserve based on the price and the new weights.
+        // We start from the project balance because we treat it as the maximum.
+        // If that's not the case, then b1 will end up being greater than project token amountOut.
+        uint256 reserveAmountOut = (removeAmountsOut[data.projectTokenIndex] * migrationWeightReserveToken).divDown(
+            price * migrationWeightProjectToken
+        );
+        uint256 projectAmountOut = removeAmountsOut[data.projectTokenIndex];
 
-        // If b1 is greater than the amountOut1, we need to calculate b0 based on the price and the new weights.
-        if (b1 > removeAmountsOut[1]) {
-            b1 = removeAmountsOut[1];
-            b0 = price.mulDown(b1).mulDown(migrationWeight0).divDown(migrationWeight1);
+        // If the reserveAmountOut is greater than the amount of reserve tokens removed, we need to calculate
+        // projectAmountOut based on the price and the new weights.
+        if (reserveAmountOut > removeAmountsOut[data.reserveTokenIndex]) {
+            reserveAmountOut = removeAmountsOut[data.reserveTokenIndex];
+            projectAmountOut = price.mulDown(reserveAmountOut).mulDown(migrationWeightProjectToken).divDown(
+                migrationWeightReserveToken
+            );
         }
 
         // Calculate the exact amounts in based on the share to migrate.
-        exactAmountsIn[0] = b0.mulDown(shareToMigrate);
-        exactAmountsIn[1] = b1.mulDown(shareToMigrate);
+        exactAmountsIn[data.projectTokenIndex] = projectAmountOut.mulDown(bptPercentageToMigrate);
+        exactAmountsIn[data.reserveTokenIndex] = reserveAmountOut.mulDown(bptPercentageToMigrate);
     }
 }
