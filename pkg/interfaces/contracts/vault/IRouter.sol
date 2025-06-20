@@ -5,10 +5,27 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
 /// @notice User-friendly interface to basic Vault operations: swap, add/remove liquidity, and associated queries.
 interface IRouter {
+    /// @notice The sender does not transfer the correct amount of tokens to the Vault.
+    error InsufficientPayment();
+
+    /// @notice Contract does not support the ETH operation.
+    error DontSupportETH();
+
+    /// @notice Contract cannot receive ETH.
+    error CannotReceiveEth();
+
+    /**
+        @notice Get the address of the Balancer Vault.
+        @return vault Address of the Balancer Vault
+     */
+    function getVault() external view returns (IVault);
+
     /***************************************************************************
                                 Pool Initialization
     ***************************************************************************/

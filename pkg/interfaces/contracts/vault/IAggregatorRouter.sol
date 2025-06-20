@@ -8,15 +8,6 @@ import { IVault } from "./IVault.sol";
 import { SwapKind } from "./VaultTypes.sol";
 
 interface IAggregatorRouter {
-    /// @notice Thrown if native eth is received.
-    error CannotReceiveEth();
-
-    /// @notice Thrown when the sender does not transfer the correct amount of tokens to the Vault.
-    error SwapInsufficientPayment();
-
-    /// @notice Get the address of the Balancer Vault.
-    function getVault() external view returns (IVault);
-
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
      * @param pool Address of the liquidity pool
@@ -59,44 +50,6 @@ interface IAggregatorRouter {
         uint256 exactAmountOut,
         uint256 maxAmountIn,
         uint256 deadline,
-        bytes calldata userData
-    ) external returns (uint256 amountIn);
-
-    /**
-     * @notice Queries a swap operation specifying an exact input token amount without actually executing it.
-     * @param pool Address of the liquidity pool
-     * @param tokenIn Token to be swapped from
-     * @param tokenOut Token to be swapped to
-     * @param exactAmountIn Exact amounts of input tokens to send
-     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data sent with the query request
-     * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
-     */
-    function querySwapSingleTokenExactIn(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        address sender,
-        bytes calldata userData
-    ) external returns (uint256 amountOut);
-
-    /**
-     * @notice Queries a swap operation specifying an exact output token amount without actually executing it.
-     * @param pool Address of the liquidity pool
-     * @param tokenIn Token to be swapped from
-     * @param tokenOut Token to be swapped to
-     * @param exactAmountOut Exact amounts of output tokens to receive
-     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
-     * @param userData Additional (optional) data sent with the query request
-     * @return amountIn Calculated amount of input tokens to be sent in exchange for the given output tokens
-     */
-    function querySwapSingleTokenExactOut(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        address sender,
         bytes calldata userData
     ) external returns (uint256 amountIn);
 }
