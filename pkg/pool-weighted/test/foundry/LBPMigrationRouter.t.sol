@@ -40,8 +40,8 @@ contract LBPMigrationRouterTest is BaseLBPTest {
     uint256 constant DELTA = 1e7;
     uint256 constant DEFAULT_BPT_LOCK_DURATION = 10 days;
     uint256 constant DEFAULT_SHARE_TO_MIGRATE = 70e16; // 70% of the pool
-    uint256 constant DEFAULT_WEIGHT0 = 30e16; // 30% for project token
-    uint256 constant DEFAULT_WEIGHT1 = 70e16; // 70% for reserve token
+    uint256 constant DEFAULT_WEIGHT_PROJECT_TOKEN = 30e16; // 30% for project token
+    uint256 constant DEFAULT_WEIGHT_RESERVE_TOKEN = 70e16; // 70% for reserve token
 
     string constant POOL_NAME = "Weighted Pool";
     string constant POOL_SYMBOL = "WP";
@@ -53,9 +53,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         vm.prank(admin);
         balancerContractRegistry.deprecateBalancerContract(address(weightedPoolFactory));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(ILBPMigrationRouter.ContractIsNotActiveInRegistry.selector, "WeightedPool")
-        );
+        vm.expectRevert(ILBPMigrationRouter.NoRegisteredWeightedPoolFactory.selector);
         new LBPMigrationRouter(balancerContractRegistry, VERSION);
     }
 
@@ -102,7 +100,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
     }
 
     function testUnlockAmountRevertsIfAmountIsZero() external {
-        vm.expectRevert(Timelocker.NoLockedAmount.selector);
+        vm.expectRevert(Timelocker.NoLockedBPT.selector);
         migrationRouter.burn(0);
     }
 
@@ -112,22 +110,27 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256 unlockTimestamp = block.timestamp + DEFAULT_BPT_LOCK_DURATION;
         migrationRouter.manualLockAmount(pool, alice, 1e10, DEFAULT_BPT_LOCK_DURATION);
 
-        vm.expectRevert(abi.encodePacked(Timelocker.AmountNotUnlockedYet.selector, unlockTimestamp));
+        vm.expectRevert(abi.encodePacked(Timelocker.BPTStillLocked.selector, unlockTimestamp));
         vm.prank(alice);
         migrationRouter.burn(id);
     }
 
-    function testMigrateLiquidity_Fuzz(uint256 weight0, uint256 shareToMigrate) external {
-        weight0 = bound(weight0, 10e16, 90e16);
-        uint256 weight1 = FixedPoint.ONE - weight0;
-        shareToMigrate = bound(shareToMigrate, 10e16, 100e16);
+    function testMigrateLiquidity_Fuzz(uint256 weightProjectToken, uint256 bptPercentageToMigrate) external {
+        weightProjectToken = bound(weightProjectToken, 10e16, 90e16);
+        uint256 weight1 = FixedPoint.ONE - weightProjectToken;
+        bptPercentageToMigrate = bound(bptPercentageToMigrate, 10e16, 100e16);
 
-        (pool, ) = _createLBPoolWithMigration(DEFAULT_BPT_LOCK_DURATION, shareToMigrate, weight0, weight1);
+        (pool, ) = _createLBPoolWithMigration(
+            DEFAULT_BPT_LOCK_DURATION,
+            bptPercentageToMigrate,
+            weightProjectToken,
+            weight1
+        );
         initPool();
 
         vm.startPrank(bob);
 
-        uint256[] memory weights = [weight0, weight1].toMemoryArray();
+        uint256[] memory weights = [weightProjectToken, weight1].toMemoryArray();
 
         vm.warp(ILBPool(pool).getLBPoolImmutableData().endTime + 1);
 
@@ -140,7 +143,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
             pauseManager: makeAddr("pauseManager"),
             swapFeeManager: makeAddr("swapFeeManager"),
-            poolCreator: address(0)
+            poolCreator: ZERO_ADDRESS
         });
 
         (IWeightedPool weightedPool, uint256 bptAmountOut) = migrationRouter.migrateLiquidity(
@@ -151,10 +154,10 @@ contract LBPMigrationRouterTest is BaseLBPTest {
                 symbol: POOL_SYMBOL,
                 roleAccounts: poolRoleAccounts,
                 swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
-                poolHooksContract: address(0),
+                poolHooksContract: ZERO_ADDRESS,
                 enableDonation: false,
                 disableUnbalancedLiquidity: false,
-                salt: bytes32(0)
+                salt: ZERO_BYTES32
             })
         );
 
@@ -192,7 +195,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
 
             assertEq(
                 vault.getHooksConfig(address(weightedPool)).hooksContract,
-                address(0),
+                ZERO_ADDRESS,
                 "Pool hooks contract should be zero address"
             );
 
@@ -204,13 +207,13 @@ contract LBPMigrationRouterTest is BaseLBPTest {
 
         // Check the liquidity migration result
         {
-            uint256 _shareToMigrate = shareToMigrate;
+            uint256 _bptPercentageToMigrate = bptPercentageToMigrate;
             uint256[] memory lbpWeights = ILBPool(pool).getLBPoolDynamicData().normalizedWeights;
             uint256[] memory expectedBalances = _calculateExactAmountsIn(
                 lbpWeights,
                 lbpBalancesBefore,
                 weights,
-                _shareToMigrate
+                _bptPercentageToMigrate
             );
 
             // Check that the weighted pool balance is correct
@@ -289,12 +292,12 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         (pool, ) = _createLBPoolWithMigration(
             DEFAULT_BPT_LOCK_DURATION,
             DEFAULT_SHARE_TO_MIGRATE,
-            DEFAULT_WEIGHT0,
-            DEFAULT_WEIGHT1
+            DEFAULT_WEIGHT_PROJECT_TOKEN,
+            DEFAULT_WEIGHT_RESERVE_TOKEN
         );
         initPool();
 
-        vm.expectRevert(abi.encodeWithSelector(ILBPMigrationRouter.LBPWeightsNotFinalized.selector, pool));
+        vm.expectRevert(abi.encodeWithSelector(ILBPMigrationRouter.RemovingLiquidityNotAllowed.selector, pool));
         vm.prank(bob);
         migrationRouter.migrateLiquidity(
             ILBPool(pool),
@@ -304,10 +307,10 @@ contract LBPMigrationRouterTest is BaseLBPTest {
                 symbol: POOL_SYMBOL,
                 roleAccounts: poolRoleAccounts,
                 swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
-                poolHooksContract: address(0),
+                poolHooksContract: ZERO_ADDRESS,
                 enableDonation: true,
                 disableUnbalancedLiquidity: true,
-                salt: bytes32(0)
+                salt: ZERO_BYTES32
             })
         );
     }
@@ -315,7 +318,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
     function testMigrationLiquidityRevertsIfMigrationNotSetup() external {
         PoolRoleAccounts memory poolRoleAccounts;
 
-        vm.expectRevert(abi.encodeWithSelector(ILBPMigrationRouter.IncorrectMigrationRouter.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(ILBPMigrationRouter.IncorrectMigrationRouter.selector, ZERO_ADDRESS));
         vm.prank(bob);
         migrationRouter.migrateLiquidity(
             ILBPool(pool),
@@ -325,10 +328,10 @@ contract LBPMigrationRouterTest is BaseLBPTest {
                 symbol: POOL_SYMBOL,
                 roleAccounts: poolRoleAccounts,
                 swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
-                poolHooksContract: address(0),
+                poolHooksContract: ZERO_ADDRESS,
                 enableDonation: true,
                 disableUnbalancedLiquidity: true,
-                salt: bytes32(0)
+                salt: ZERO_BYTES32
             })
         );
     }
@@ -348,10 +351,10 @@ contract LBPMigrationRouterTest is BaseLBPTest {
                 symbol: POOL_SYMBOL,
                 roleAccounts: poolRoleAccounts,
                 swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
-                poolHooksContract: address(0),
+                poolHooksContract: ZERO_ADDRESS,
                 enableDonation: true,
                 disableUnbalancedLiquidity: true,
-                salt: bytes32(0)
+                salt: ZERO_BYTES32
             })
         );
     }
@@ -362,20 +365,24 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256[] memory weights,
         uint256[] memory balances,
         uint256[] memory newWeights,
-        uint256 shareToMigrate
-    ) internal pure returns (uint256[] memory exactAmountsIn) {
-        uint256 price = (balances[0] * weights[1]).divDown(balances[1] * weights[0]);
+        uint256 bptPercentageToMigrate
+    ) internal view returns (uint256[] memory exactAmountsIn) {
+        uint256 price = (balances[projectIdx] * weights[reserveIdx]).divDown(
+            balances[reserveIdx] * weights[projectIdx]
+        );
 
-        uint256 b0 = price.mulDown(balances[1]).mulDown(newWeights[0]).divDown(newWeights[1]);
-        uint256 b1 = balances[1];
+        uint256 projectAmountOut = price.mulDown(balances[reserveIdx]).mulDown(newWeights[projectIdx]).divDown(
+            newWeights[reserveIdx]
+        );
+        uint256 reserveAmountOut = balances[reserveIdx];
 
-        if (b0 > balances[0]) {
-            b0 = balances[0];
-            b1 = (balances[0] * newWeights[1]).divDown(price * newWeights[0]);
+        if (projectAmountOut > balances[projectIdx]) {
+            projectAmountOut = balances[projectIdx];
+            reserveAmountOut = (balances[projectIdx] * newWeights[reserveIdx]).divDown(price * newWeights[projectIdx]);
         }
 
         exactAmountsIn = new uint256[](TOKEN_COUNT);
-        exactAmountsIn[0] = b0.mulDown(shareToMigrate);
-        exactAmountsIn[1] = b1.mulDown(shareToMigrate);
+        exactAmountsIn[projectIdx] = projectAmountOut.mulDown(bptPercentageToMigrate);
+        exactAmountsIn[reserveIdx] = reserveAmountOut.mulDown(bptPercentageToMigrate);
     }
 }

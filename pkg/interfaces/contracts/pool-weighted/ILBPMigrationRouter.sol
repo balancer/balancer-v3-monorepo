@@ -5,8 +5,8 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { PoolRoleAccounts } from "../vault/VaultTypes.sol";
-import { ILBPool } from "./ILBPool.sol";
 import { IWeightedPool } from "./IWeightedPool.sol";
+import { ILBPool } from "./ILBPool.sol";
 
 /// @notice Interface for migrating liquidity from an LBP to a new Weighted Pool with custom parameters.
 interface ILBPMigrationRouter {
@@ -18,22 +18,19 @@ interface ILBPMigrationRouter {
      */
     event PoolMigrated(ILBPool indexed lbp, IWeightedPool weightedPool, uint256 bptAmountOut);
 
-    /**
-     * @notice A contract returned from the Balancer Contract Registry is not active.
-     * @param contractName The name of the contract that is not active
-     */
-    error ContractIsNotActiveInRegistry(string contractName);
+    /// @notice The Balancer Contract Registry did not return an active address for the "WeightedPool" alias.
+    error NoRegisteredWeightedPoolFactory();
 
     /**
      * @notice `migrateLiquidity` was called before the sale completed.
-     * @param lbp The Liquidity Bootstrapping Pool with unfinalized weights
+     * @param lbp The address of the Liquidity Bootstrapping Pool
      */
-    error LBPWeightsNotFinalized(ILBPool lbp);
+    error RemovingLiquidityNotAllowed(ILBPool lbp);
 
     /// @notice The caller is not the owner of the LBP.
     error SenderIsNotLBPOwner();
 
-    /// @notice Pool have incorrect migration router.
+    /// @notice Pool has an incorrect migration router.
     error IncorrectMigrationRouter(address currentRouter);
 
     struct MigrationHookParams {
@@ -43,9 +40,9 @@ interface ILBPMigrationRouter {
         address sender;
         address excessReceiver;
         uint256 lockDuration;
-        uint256 shareToMigrate;
-        uint256 migrationWeight0;
-        uint256 migrationWeight1;
+        uint256 bptPercentageToMigrate;
+        uint256 migrationWeightProjectToken;
+        uint256 migrationWeightReserveToken;
     }
 
     struct WeightedPoolParams {
