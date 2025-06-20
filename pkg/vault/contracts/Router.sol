@@ -26,13 +26,31 @@ contract Router is IRouter, RouterCommon {
     using RouterWethLib for IWETH;
     using SafeCast for *;
 
+    bool internal immutable _isAggregator;
+
+    receive() external payable override {
+        if (_isAggregator) {
+            revert CannotReceiveEth();
+        } else {
+            if (msg.sender != address(_weth)) {
+                revert EthTransfer();
+            }
+        }
+    }
+
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
+        bool isAggregator,
         string memory routerVersion
     ) RouterCommon(vault, weth, permit2, routerVersion) {
-        // solhint-disable-previous-line no-empty-blocks
+        _isAggregator = isAggregator;
+    }
+
+    /// @inheritdoc IRouter
+    function getVault() public view returns (IVault) {
+        return _vault;
     }
 
     /*******************************************************************************
@@ -276,6 +294,32 @@ contract Router is IRouter, RouterCommon {
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
+        if (_isAggregator && params.wethIsEth) {
+            revert DontSupportETH();
+        }
+
+        uint256[] memory tokensInCredit;
+        // maxAmountsIn length is checked against tokens length at the Vault.
+        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
+
+        if (_isAggregator) {
+            uint256 length = params.maxAmountsIn.length;
+            tokensInCredit = new uint256[](length);
+
+            for (uint256 i = 0; i < length; i++) {
+                // `amountInHint` represents the amount supposedly paid upfront by the sender.
+                uint256 amountInHint = params.maxAmountsIn[i];
+
+                // Always settle the amount paid first to prevent potential underflows at the vault. `tokenInCredit`
+                // represents the amount actually paid by the sender, which can be at most `amountInHint`.
+                // If the user paid less than what was expected, revert early.
+                tokensInCredit[i] = _vault.settle(tokens[i], amountInHint);
+                if (tokensInCredit[i] < amountInHint) {
+                    revert InsufficientPayment();
+                }
+            }
+        }
+
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -287,9 +331,6 @@ contract Router is IRouter, RouterCommon {
             })
         );
 
-        // maxAmountsIn length is checked against tokens length at the Vault.
-        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
-
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
@@ -298,19 +339,29 @@ contract Router is IRouter, RouterCommon {
                 continue;
             }
 
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.wrapEthAndSettle(_vault, amountIn);
+            if (_isAggregator == false) {
+                // There can be only one WETH token in the pool.
+                if (params.wethIsEth && address(token) == address(_weth)) {
+                    _weth.wrapEthAndSettle(_vault, amountIn);
+                } else {
+                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                    // necessary. Done out of an abundance of caution.
+                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+                    _vault.settle(token, amountIn);
+                }
             } else {
-                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                _vault.settle(token, amountIn);
+                uint256 tokenInCredit = tokensInCredit[i];
+                uint256 amountOut = tokenInCredit - amountIn;
+                if (amountOut > 0) {
+                    _sendTokenOut(params.sender, tokens[i], tokenInCredit - amountIn, false);
+                }
             }
         }
 
-        // Send remaining ETH to the user.
-        _returnEth(params.sender);
+        if (_isAggregator == false) {
+            // Send remaining ETH to the user.
+            _returnEth(params.sender);
+        }
     }
 
     /***************************************************************************
@@ -553,7 +604,7 @@ contract Router is IRouter, RouterCommon {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender(msg.sender) returns (uint256) {
+    ) public payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -587,7 +638,7 @@ contract Router is IRouter, RouterCommon {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender(msg.sender) returns (uint256) {
+    ) public payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -620,14 +671,41 @@ contract Router is IRouter, RouterCommon {
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
+        if (_isAggregator && params.wethIsEth) {
+            revert DontSupportETH();
+        }
+
+        uint256 tokenInCredit;
+        if (_isAggregator) {
+            // `amountInHint` represents the amount supposedly paid upfront by the sender.
+            uint256 amountInHint;
+            if (params.kind == SwapKind.EXACT_IN) {
+                amountInHint = params.amountGiven;
+            } else {
+                amountInHint = params.limit;
+            }
+
+            // Always settle the amount paid first to prevent potential underflows at the vault. `tokenInCredit`
+            // represents the amount actually paid by the sender, which can be at most `amountInHint`.
+            // If the user paid less than what was expected, revert early.
+            tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
+            if (tokenInCredit < amountInHint) {
+                revert InsufficientPayment();
+            }
+        }
+
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        IERC20 tokenIn = params.tokenIn;
+        if (_isAggregator == false) {
+            _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
+        } else if (params.kind == SwapKind.EXACT_OUT) {
+            // Transfer any leftovers back to the sender (amount actually paid minus amount required for the swap).
+            // At this point, the Vault already validated that `tokenInCredit > amountIn`.
+            _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
+        }
 
-        _takeTokenIn(params.sender, tokenIn, amountIn, params.wethIsEth);
         _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
-
-        if (tokenIn == _weth) {
+        if (_isAggregator == false && params.tokenIn == _weth) {
             // Return the rest of ETH to sender
             _returnEth(params.sender);
         }
