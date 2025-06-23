@@ -115,7 +115,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         migrationRouter.burn(id);
     }
 
-    function testMigrateLiquidity_Fuzz(uint256 weightProjectToken, uint256 bptPercentageToMigrate) external {
+    function testMigrateLiquidity__Fuzz(uint256 weightProjectToken, uint256 bptPercentageToMigrate) external {
         weightProjectToken = bound(weightProjectToken, 10e16, 90e16);
         uint256 weightReserveToken = FixedPoint.ONE - weightProjectToken;
         bptPercentageToMigrate = bound(bptPercentageToMigrate, 10e16, 100e16);
