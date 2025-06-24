@@ -36,7 +36,7 @@ import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-contract Timelocker is ERC6909, ERC6909Metadata, Multicall {
+contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     using SafeERC20 for IERC20;
 
     /**
@@ -58,9 +58,10 @@ contract Timelocker is ERC6909, ERC6909Metadata, Multicall {
 
     /**
      * @notice Burn the locked tokens for the caller.
-     * @param id The ID of the locked tokens, which is derived from the token address
+     * @param bptAddress The address of the BPT to burn
      */
-    function burn(uint256 id) public {
+    function burn(address bptAddress) public {
+        uint256 id = getId(bptAddress);
         uint256 amount = balanceOf(msg.sender, id);
         if (amount == 0) {
             revert NoLockedAmount();

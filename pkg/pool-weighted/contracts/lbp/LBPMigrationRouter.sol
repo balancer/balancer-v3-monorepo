@@ -28,9 +28,9 @@ import {
 
 import { WeightedPoolFactory } from "../WeightedPoolFactory.sol";
 import { LBPool } from "./LBPool.sol";
-import { Timelocker } from "./Timelocker.sol";
+import { BPTTimeLocker } from "./BPTTimeLocker.sol";
 
-contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Version, VaultGuard, Timelocker {
+contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Version, VaultGuard, BPTTimeLocker {
     using FixedPoint for uint256;
     using SafeCast for uint256;
 
@@ -142,11 +142,6 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
 
         if (migrationRouter != address(this)) {
             revert IncorrectMigrationRouter(migrationRouter);
-        }
-
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp <= lbpImmutableData.endTime) {
-            revert LBPWeightsNotFinalized(lbp);
         }
 
         uint256[] memory normalizedWeights = new uint256[](_TWO_TOKENS);

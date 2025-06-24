@@ -203,6 +203,12 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             revert InvalidMigrationWeights();
         }
 
+        if (shareToMigrate > FixedPoint.ONE) {
+            revert InvalidShareToMigrate();
+        }
+
+        
+
         pool = _create(
             abi.encode(
                 name,
