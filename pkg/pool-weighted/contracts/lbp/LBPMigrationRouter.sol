@@ -144,6 +144,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             revert IncorrectMigrationRouter(migrationRouter);
         }
 
+        // WeightedPool ensures the weights sum up to FP(1), reverting otherwise
         uint256[] memory normalizedWeights = new uint256[](_TWO_TOKENS);
         normalizedWeights[lbpImmutableData.projectTokenIndex] = migrationWeightProjectToken;
         normalizedWeights[lbpImmutableData.reserveTokenIndex] = migrationWeightReserveToken;
