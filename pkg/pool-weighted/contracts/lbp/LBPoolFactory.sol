@@ -30,6 +30,8 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
     // LBPs are constrained to two tokens: project (the token being sold), and reserve (e.g., USDC or WETH).
     uint256 private constant _TWO_TOKENS = 2;
 
+    uint256 private constant _MAX_BPT_LOCK_DURATION = 365 days;
+
     string private _poolVersion;
 
     address internal immutable _trustedRouter;
@@ -49,16 +51,16 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
      * @dev This event is emitted when a pool is created with migration parameters.
      * @param pool Liquidity Bootstrapping Pool
      * @param bptLockDuration The duration for which the BPT will be locked after migration
-     * @param shareToMigrate The share of the BPT to migrate from the LBP to the new weighted pool
-     * @param migrationWeight0 The weight of the first token
-     * @param migrationWeight1 The weight of the second token
+     * @param bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
+     * @param migrationWeightProjectToken The weight of the project token
+     * @param migrationWeightReserveToken The weight of the reserve token
      */
     event MigrationParamsSet(
         address indexed pool,
         uint256 bptLockDuration,
-        uint256 shareToMigrate,
-        uint256 migrationWeight0,
-        uint256 migrationWeight1
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken
     );
 
     /// @notice The zero address was given for the trusted router.
@@ -69,6 +71,12 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
 
     /// @notice The sum of migrated weights is not equal to 1.
     error InvalidMigrationWeights();
+
+    /// @notice The percentage of BPT to migrate is greater than 100%.
+    error InvalidBptPercentageToMigrate();
+
+    /// @notice The BPT lock duration is greater than the maximum allowed.
+    error InvalidBptLockDuration();
 
     constructor(
         IVault vault,
@@ -133,9 +141,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
      * @param bptLockDuration The duration for which the BPT will be locked after migration
-     * @param shareToMigrate The share of the BPT to migrate from the LBP to the new weighted pool
-     * @param migrationWeight0 The weight of the first token
-     * @param migrationWeight1 The weight of the second token
+     * @param bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
+     * @param migrationWeightProjectToken The weight of the project token
+     * @param migrationWeightReserve The weight of the reserve token
      */
     function createWithMigration(
         string memory name,
@@ -144,9 +152,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         uint256 swapFeePercentage,
         bytes32 salt,
         uint256 bptLockDuration,
-        uint256 shareToMigrate,
-        uint256 migrationWeight0,
-        uint256 migrationWeight1
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserve
     ) public nonReentrant returns (address pool) {
         pool = _createPool(
             name,
@@ -156,9 +164,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             salt,
             true,
             bptLockDuration,
-            shareToMigrate,
-            migrationWeight0,
-            migrationWeight1
+            bptPercentageToMigrate,
+            migrationWeightProjectToken,
+            migrationWeightReserve
         );
     }
 
@@ -170,9 +178,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         bytes32 salt,
         bool hasMigration,
         uint256 bptLockDuration,
-        uint256 shareToMigrate,
-        uint256 migrationWeight0,
-        uint256 migrationWeight1
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserve
     ) internal returns (address pool) {
         if (lbpParams.owner == address(0)) {
             revert InvalidOwner();
@@ -198,16 +206,20 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
         if (
             hasMigration &&
-            (migrationWeight0 + migrationWeight1 != FixedPoint.ONE || migrationWeight0 == 0 || migrationWeight1 == 0)
+            (migrationWeightProjectToken + migrationWeightReserve != FixedPoint.ONE ||
+                migrationWeightProjectToken == 0 ||
+                migrationWeightReserve == 0)
         ) {
             revert InvalidMigrationWeights();
         }
 
-        if (shareToMigrate > FixedPoint.ONE) {
-            revert InvalidShareToMigrate();
+        if (bptPercentageToMigrate > FixedPoint.ONE) {
+            revert InvalidBptPercentageToMigrate();
         }
 
-        
+        if (bptLockDuration > _MAX_BPT_LOCK_DURATION) {
+            revert InvalidBptLockDuration();
+        }
 
         pool = _create(
             abi.encode(
@@ -219,9 +231,9 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
                 migrationRouterOrZero,
                 _poolVersion,
                 bptLockDuration,
-                shareToMigrate,
-                migrationWeight0,
-                migrationWeight1
+                bptPercentageToMigrate,
+                migrationWeightProjectToken,
+                migrationWeightReserve
             ),
             salt
         );
@@ -229,7 +241,13 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
         emit LBPoolCreated(pool, lbpParams.projectToken, lbpParams.reserveToken);
 
         if (hasMigration) {
-            emit MigrationParamsSet(pool, bptLockDuration, shareToMigrate, migrationWeight0, migrationWeight1);
+            emit MigrationParamsSet(
+                pool,
+                bptLockDuration,
+                bptPercentageToMigrate,
+                migrationWeightProjectToken,
+                migrationWeightReserve
+            );
         }
 
         _registerPoolWithVault(
