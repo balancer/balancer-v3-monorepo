@@ -24,6 +24,7 @@ import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { SimpleEIP7702Contract } from "./utils/SimpleEIP7702Contract.sol";
 
 contract AggregatorRouterTest is BaseVaultTest {
     using Address for address payable;
@@ -34,6 +35,7 @@ contract AggregatorRouterTest is BaseVaultTest {
     string constant version = "test";
 
     AggregatorRouter internal aggregatorRouter;
+    SimpleEIP7702Contract internal delegatedContractCode;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -44,6 +46,8 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         BaseVaultTest.setUp();
         aggregatorRouter = deployAggregatorRouter(IVault(address(vault)), version);
+
+        delegatedContractCode = new SimpleEIP7702Contract();
     }
 
     function createPool() internal override returns (address newPool, bytes memory poolArgs) {
@@ -431,6 +435,15 @@ contract AggregatorRouterTest is BaseVaultTest {
         );
         vm.stopPrank();
 
+        _checkAddLiquidityProportional(balancesBefore, exactBptAmountOut, amountsIn, maxAmountsIn);
+    }
+
+    function _checkAddLiquidityProportional(
+        BaseVaultTest.Balances memory balancesBefore,
+        uint256 exactBptAmountOut,
+        uint256[] memory amountsIn,
+        uint256[] memory maxAmountsIn
+    ) internal {
         BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
 
         assertGt(
@@ -550,5 +563,43 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.expectRevert(IRouter.InsufficientPayment.selector);
         aggregatorRouter.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, bytes(""));
         vm.stopPrank();
+    }
+
+    function testAddLiquidityProportionalWithERC7702() public {
+        vm.signAndAttachDelegation(address(delegatedContractCode), aliceKey);
+
+        uint256 exactBptAmountOut = IERC20(pool).totalSupply() / 5;
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx];
+        maxAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx];
+
+        SimpleEIP7702Contract simpleAliceContract = SimpleEIP7702Contract(alice);
+        SimpleEIP7702Contract.Call[] memory calls = new SimpleEIP7702Contract.Call[](3);
+        calls[0] = SimpleEIP7702Contract.Call({
+            to: address(usdc),
+            data: abi.encodeCall(IERC20.transfer, (address(vault), maxAmountsIn[usdcIdx])),
+            value: 0
+        });
+        calls[1] = SimpleEIP7702Contract.Call({
+            to: address(dai),
+            data: abi.encodeCall(IERC20.transfer, (address(vault), maxAmountsIn[daiIdx])),
+            value: 0
+        });
+        calls[2] = SimpleEIP7702Contract.Call({
+            to: address(aggregatorRouter),
+            data: abi.encodeCall(
+                IRouter.addLiquidityProportional,
+                (pool, maxAmountsIn, exactBptAmountOut, false, bytes(""))
+            ),
+            value: 0
+        });
+
+        bytes[] memory results = simpleAliceContract.execute(calls);
+        uint256[] memory amountsIn = abi.decode(results[2], (uint256[]));
+
+        _checkAddLiquidityProportional(balancesBefore, exactBptAmountOut, amountsIn, maxAmountsIn);
     }
 }
