@@ -30,7 +30,7 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     mapping(uint256 => uint256) internal _unlockTimestamps;
 
     /**
-     * @notice Burn the locked tokens for the caller.
+     * @notice Burn the locked tokens for the caller, and return the underlying BPT.
      * @param bptAddress The address of the BPT to burn
      */
     function burn(address bptAddress) public {
