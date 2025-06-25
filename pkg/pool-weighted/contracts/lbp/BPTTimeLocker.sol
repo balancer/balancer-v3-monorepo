@@ -53,7 +53,7 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     }
 
     /**
-     * @notice Get the ID of the locked tokens, which is derived from the token address.
+     * @notice Get the ID of the lock token, which is derived from the BPT address.
      * @param token The address of the token to lock
      * @return id The ID of the locked tokens
      */
