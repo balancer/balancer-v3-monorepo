@@ -14,7 +14,8 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
 
     /**
      * @notice Emitted when the unlock timestamp is set for a locked amount.
-     * @param bptAddress The address of the
+     * @dev The underlying BPT can be withdrawn when this timelock expires.
+     * @param bptAddress The address of the locked BPT
      */
     event BPTTimelockSet(IERC20 indexed bptAddress, uint256 unlockTimestamp);
 
@@ -27,10 +28,11 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     /// @notice The caller has no balance of the locked BPT.
     error NoLockedBPT();
 
-    mapping(uint256 => uint256) internal _unlockTimestamps;
+    // The bptId is the numeric equivalent of the BPT address.
+    mapping(uint256 bptId => uint256 unlockTimestamp) internal _unlockTimestamps;
 
     /**
-     * @notice Withdraw the locked tokens for the caller.
+     * @notice Withdraw the locked tokens for the caller, and return the underlying BPT.
      * @param bptAddress The address of the BPT to withdraw
      */
     function withdrawBPT(address bptAddress) public {
@@ -53,18 +55,18 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     }
 
     /**
-     * @notice Get the ID of the locked tokens, which is derived from the token address.
+     * @notice Get the ID of the lock token, which is derived from the BPT address.
      * @param token The address of the token to lock
-     * @return id The ID of the locked tokens
+     * @return id The ID of the lock token representing the BPT
      */
     function getId(address token) public pure returns (uint256) {
         return uint256(uint160(address(token)));
     }
 
     /**
-     * @notice Get the unlock timestamp for a given locked token ID.
+     * @notice Get the unlock timestamp for a given lock token ID.
      * @dev The owner can withdraw the underlying BPT at any time after this timestamp.
-     * @param id The ID of the locked tokens, which is derived from the token address
+     * @param id The ID of the lock token, which is derived from the BPT address
      * @return unlockTimestamp The timestamp when the locked BPT can be withdrawn
      */
     function getUnlockTimestamp(uint256 id) external view returns (uint256) {
@@ -78,7 +80,7 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
         // solhint-disable-next-line not-rely-on-time
         uint256 unlockTimestamp = block.timestamp + duration;
 
-        IERC20Metadata tokenWithMetadata = IERC20Metadata(address(token));
+        IERC20Metadata tokenWithMetadata = IERC20Metadata(address(bptAddress));
         _setName(id, string(abi.encodePacked("Locked ", tokenWithMetadata.name())));
         _setSymbol(id, string(abi.encodePacked("LOCKED-", tokenWithMetadata.symbol())));
         _setDecimals(id, tokenWithMetadata.decimals());
@@ -87,6 +89,6 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
 
         _mint(owner, id, amount);
 
-        emit BPTTimelockSet(token, unlockTimestamp);
+        emit BPTTimelockSet(bptAddress, unlockTimestamp);
     }
 }

@@ -85,7 +85,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
 
         vm.warp(block.timestamp + duration);
         vm.prank(alice);
-        migrationRouter.burn(address(pool));
+        migrationRouter.withdrawBPT(address(pool));
 
         uint256 aliceWrappedTokenBalanceAfter = migrationRouter.balanceOf(alice, id);
         uint256 aliceTokenBalanceAfter = IERC20(pool).balanceOf(alice);
@@ -98,7 +98,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
 
     function testUnlockAmountRevertsIfAmountIsZero() external {
         vm.expectRevert(BPTTimeLocker.NoLockedBPT.selector);
-        migrationRouter.burn(address(0));
+        migrationRouter.withdrawBPT(address(0));
     }
 
     function testUnlockAmountRevertsIfUnlockTimestampNotReached() external {
@@ -108,7 +108,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
 
         vm.expectRevert(abi.encodePacked(BPTTimeLocker.BPTStillLocked.selector, unlockTimestamp));
         vm.prank(alice);
-        migrationRouter.burn(address(pool));
+        migrationRouter.withdrawBPT(address(pool));
     }
 
     function testMigrateLiquidityWithSpecificParameters() external {
@@ -156,15 +156,28 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         vm.stopPrank();
 
         uint256[] memory lbpWeights = ILBPool(pool).getLBPoolDynamicData().normalizedWeights;
+        assertEq(lbpWeights[projectIdx], 30e16, "LBP weight for project token should be 30%");
+        assertEq(lbpWeights[reserveIdx], 70e16, "LBP weight for reserve token should be 70%");
 
-        uint256 price = (balances[0] * lbpWeights[1]).divDown(balances[1] * lbpWeights[0]);
+        // New project token weight is > LBP project token weight, so we use all of the project token balance.
+        uint256 newBalanceProjectToken = balances[projectIdx];
+        // Project token balance represents 30% of the TVL of the LBP, and reserve token balance represents 70%.
+        // In the new pool, project token balance represents 80% of the TVL, and reserve token balance represents 20%.
+        // Then, 3/10 * TVL1 = 8/10 * TVL2, where TVL1 is the LBP TVL and TVL2 is the new pool TVL.
+        // On the other hand, balance[reserve] = 7/10 * TVL1, and newBalance[reserve] = 2/10 * TVL2.
+        // Solving for newBalance[reserve], we get:
+        // newBalance[reserve] =
+        //                 balance[reserve] * newWeightReserve / newWeightProject * oldWeightProject / oldWeightReserve
 
-        uint256 b0 = balances[0];
-        uint256 b1 = (balances[0] * weightReserveToken).divDown(price * weightProjectToken);
+        uint256 newBalanceReserveToken = balances[reserveIdx]
+            .mulDown(weightReserveToken)
+            .divDown(weightProjectToken)
+            .mulDown(lbpWeights[projectIdx])
+            .divDown(lbpWeights[reserveIdx]);
 
         uint256[] memory expectedBalances = new uint256[](TOKEN_COUNT);
-        expectedBalances[0] = b0.mulDown(bptPercentageToMigrate);
-        expectedBalances[1] = b1.mulDown(bptPercentageToMigrate);
+        expectedBalances[projectIdx] = newBalanceProjectToken.mulDown(bptPercentageToMigrate);
+        expectedBalances[reserveIdx] = newBalanceReserveToken.mulDown(bptPercentageToMigrate);
 
         // Check that the weighted pool balance is correct
         uint256[] memory balancesLiveScaled18 = vault.getCurrentLiveBalances(address(weightedPool));
