@@ -28,7 +28,8 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     /// @notice The caller has no balance of the locked BPT.
     error NoLockedBPT();
 
-    mapping(uint256 => uint256) internal _unlockTimestamps;
+    // The bptId is the numeric equivalent of the BPT address.
+    mapping(uint256 bptId => uint256 unlockTimestamp) internal _unlockTimestamps;
 
     /**
      * @notice Burn the locked tokens for the caller, and return the underlying BPT.
