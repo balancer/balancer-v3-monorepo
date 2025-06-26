@@ -7,7 +7,6 @@ import { deploy, deployedAt, getArtifact } from '@balancer-labs/v3-helpers/src/c
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import { takeSnapshot } from '@nomicfoundation/hardhat-network-helpers';
-import { Create2__factory } from '../typechain-types';
 
 describe('BasePoolCodeFactory', function () {
   let factory: Contract;
@@ -78,12 +77,7 @@ describe('BasePoolCodeFactory', function () {
 
   context('when the creation reverts', () => {
     it('reverts and bubbles up revert reasons', async () => {
-      await expect(factory.create(INVALID_ID, ZERO_BYTES32)).to.be.revertedWithCustomError(
-        {
-          interface: Create2__factory.createInterface(),
-        },
-        'Create2FailedDeployment'
-      );
+      await expect(factory.create(INVALID_ID, ZERO_BYTES32)).to.be.revertedWith('NON_ZERO_ID');
     });
   });
 
