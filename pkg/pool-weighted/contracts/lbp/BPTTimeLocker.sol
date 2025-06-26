@@ -64,9 +64,9 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     }
 
     /**
-     * @notice Get the unlock timestamp for a given locked token ID.
+     * @notice Get the unlock timestamp for a given lock token ID.
      * @dev The owner can withdraw the underlying BPT at any time after this timestamp.
-     * @param id The ID of the locked tokens, which is derived from the token address
+     * @param id The ID of the lock token, which is derived from the BPT address
      * @return unlockTimestamp The timestamp when the locked BPT can be withdrawn
      */
     function getUnlockTimestamp(uint256 id) external view returns (uint256) {
