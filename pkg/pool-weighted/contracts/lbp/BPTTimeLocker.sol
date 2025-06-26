@@ -14,7 +14,8 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
 
     /**
      * @notice Emitted when the unlock timestamp is set for a locked amount.
-     * @param bptAddress The address of the
+     * @dev The underlying BPT can be withdrawn when this timelock expires.
+     * @param bptAddress The address of the locked BPT
      */
     event BPTTimelockSet(IERC20 indexed bptAddress, uint256 unlockTimestamp);
 
