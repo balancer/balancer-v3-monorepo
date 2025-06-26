@@ -35,7 +35,7 @@ contract LBPMigrationRouterMock is LBPMigrationRouter {
             );
     }
 
-    function manualLockAmount(IERC20 token, address owner, uint256 amount, uint256 duration) external {
-        _lockAmount(token, owner, amount, duration);
+    function manualLockBPT(IERC20 token, address owner, uint256 amount, uint256 duration) external {
+        _lockBPT(token, owner, amount, duration);
     }
 }

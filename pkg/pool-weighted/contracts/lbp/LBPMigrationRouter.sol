@@ -118,7 +118,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             0,
             bytes("")
         );
-        _lockAmount(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.lockDuration);
+        _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.lockDuration);
 
         emit PoolMigrated(params.lbp, params.weightedPool, bptAmountOut);
     }

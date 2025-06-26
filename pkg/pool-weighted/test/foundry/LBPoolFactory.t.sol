@@ -184,7 +184,6 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
-        // BPT lock duration cannot be zero
         vm.expectRevert(LBPoolFactory.InvalidBptLockDuration.selector);
         _createLBPoolWithMigration(
             366 days,

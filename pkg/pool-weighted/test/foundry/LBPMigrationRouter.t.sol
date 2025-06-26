@@ -62,7 +62,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256 duration = 1 days;
         address pool = address(new ERC20TestToken("Pool Token", "PT", 12));
 
-        migrationRouter.manualLockAmount(IERC20(pool), alice, amount, duration);
+        migrationRouter.manualLockBPT(IERC20(pool), alice, amount, duration);
 
         uint256 id = migrationRouter.getId(pool);
         uint256 balance = migrationRouter.balanceOf(alice, id);
@@ -81,7 +81,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256 id = migrationRouter.getId(address(pool));
 
         pool.mint(address(migrationRouter), amount);
-        migrationRouter.manualLockAmount(IERC20(pool), alice, amount, duration);
+        migrationRouter.manualLockBPT(IERC20(pool), alice, amount, duration);
 
         vm.warp(block.timestamp + duration);
         vm.prank(alice);
@@ -104,7 +104,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
     function testUnlockAmountRevertsIfUnlockTimestampNotReached() external {
         ERC20TestToken pool = new ERC20TestToken("Pool Token", "PT", 12);
         uint256 unlockTimestamp = block.timestamp + DEFAULT_BPT_LOCK_DURATION;
-        migrationRouter.manualLockAmount(pool, alice, 1e10, DEFAULT_BPT_LOCK_DURATION);
+        migrationRouter.manualLockBPT(pool, alice, 1e10, DEFAULT_BPT_LOCK_DURATION);
 
         vm.expectRevert(abi.encodePacked(BPTTimeLocker.BPTStillLocked.selector, unlockTimestamp));
         vm.prank(alice);

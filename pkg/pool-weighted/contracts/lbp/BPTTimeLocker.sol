@@ -30,10 +30,10 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     mapping(uint256 => uint256) internal _unlockTimestamps;
 
     /**
-     * @notice Burn the locked tokens for the caller.
-     * @param bptAddress The address of the BPT to burn
+     * @notice Withdraw the locked tokens for the caller.
+     * @param bptAddress The address of the BPT to withdraw
      */
-    function burn(address bptAddress) public {
+    function withdrawBPT(address bptAddress) public {
         uint256 id = getId(bptAddress);
         uint256 amount = balanceOf(msg.sender, id);
         if (amount == 0) {
@@ -46,10 +46,10 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
             revert BPTStillLocked(unlockTimestamp);
         }
 
-        _burn(msg.sender, id, amount);
         delete _unlockTimestamps[id];
+        _burn(msg.sender, id, amount);
 
-        IERC20(address(uint160(id))).safeTransfer(msg.sender, amount);
+        IERC20(bptAddress).safeTransfer(msg.sender, amount);
     }
 
     /**
@@ -72,8 +72,8 @@ contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     }
 
     /// @dev Locks an amount of tokens, locked amount is represented as an ERC6909 token.
-    function _lockAmount(IERC20 token, address owner, uint256 amount, uint256 duration) internal {
-        uint256 id = getId(address(token));
+    function _lockBPT(IERC20 bptAddress, address owner, uint256 amount, uint256 duration) internal {
+        uint256 id = getId(address(bptAddress));
 
         // solhint-disable-next-line not-rely-on-time
         uint256 unlockTimestamp = block.timestamp + duration;
