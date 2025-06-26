@@ -24,7 +24,8 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+
+import { FeeBurnerAuthentication } from "./FeeBurnerAuthentication.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -34,7 +35,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * @dev The Cow Watchtower (https://github.com/cowprotocol/watch-tower) must be running for the burner to function.
  * Only one order per token is allowed at a time.
  */
-contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Version {
+contract CowSwapFeeBurner is ICowSwapFeeBurner, FeeBurnerAuthentication, ReentrancyGuardTransient, Version {
     using SafeERC20 for IERC20;
 
     struct ShortOrder {
@@ -49,41 +50,22 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     bytes32 internal immutable _tokenBalance = keccak256("erc20");
 
     IComposableCow public immutable composableCow;
-    IProtocolFeeSweeper public immutable protocolFeeSweeper;
     address public immutable vaultRelayer;
     bytes32 public immutable appData;
 
     // Orders are identified by the tokenIn (often called the tokenIn).
     mapping(IERC20 token => ShortOrder order) internal _orders;
 
-    modifier onlyFeeRecipient() {
-        if (msg.sender != protocolFeeSweeper.getFeeRecipient()) {
-            revert SenderNotAllowed();
-        }
-        _;
-    }
-
-    modifier onlyProtocolFeeSweeper() {
-        if (msg.sender != address(protocolFeeSweeper)) {
-            revert SenderNotAllowed();
-        }
-        _;
-    }
-
     constructor(
         IProtocolFeeSweeper _protocolFeeSweeper,
         IComposableCow _composableCow,
-        address _vaultRelayer,
+        address _cowVaultRelayer,
         bytes32 _appData,
+        address _initialOwner,
         string memory _version
-    ) Version(_version) {
-        if (address(_protocolFeeSweeper) == address(0)) {
-            revert InvalidProtocolFeeSweeper();
-        }
-
+    ) Version(_version) FeeBurnerAuthentication(_protocolFeeSweeper, _initialOwner) {
         composableCow = _composableCow;
-        protocolFeeSweeper = _protocolFeeSweeper;
-        vaultRelayer = _vaultRelayer;
+        vaultRelayer = _cowVaultRelayer;
         appData = _appData;
     }
 
@@ -102,7 +84,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipient {
+    function retryOrder(IERC20 tokenIn, uint256 minAmountOut, uint256 deadline) external onlyFeeRecipientOrOwner {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -126,7 +108,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function cancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipient {
+    function cancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrOwner {
         (OrderStatus status, uint256 amount) = _getOrderStatusAndBalance(tokenIn);
 
         if (status != OrderStatus.Failed) {
@@ -137,7 +119,7 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     /// @inheritdoc ICowSwapFeeBurner
-    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipient {
+    function emergencyCancelOrder(IERC20 tokenIn, address receiver) external onlyFeeRecipientOrOwner {
         _cancelOrder(tokenIn, receiver, tokenIn.balanceOf(address(this)));
     }
 
@@ -192,13 +174,15 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
         _checkMinAmountOut(minTargetTokenAmountOut);
         _checkDeadline(deadline);
 
-        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken);
-        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
-            revert OrderHasUnexpectedStatus(status);
-        }
-
         if (pullFeeToken) {
             feeToken.safeTransferFrom(msg.sender, address(this), feeTokenAmount);
+        }
+
+        (OrderStatus status, ) = _getOrderStatusAndBalance(feeToken, feeTokenAmount);
+        if (status != OrderStatus.Nonexistent && status != OrderStatus.Filled) {
+            // New order can only be created if no order exists or the previous one was completely filled.
+            // This prevents overlapping orders for the same token.
+            revert OrderHasUnexpectedStatus(status);
         }
 
         _createCowOrder(feeToken);
@@ -321,21 +305,34 @@ contract CowSwapFeeBurner is ICowSwapFeeBurner, ReentrancyGuardTransient, Versio
     }
 
     function _getOrderStatusAndBalance(IERC20 tokenIn) private view returns (OrderStatus, uint256) {
+        return _getOrderStatusAndBalance(tokenIn, 0);
+    }
+
+    function _getOrderStatusAndBalance(
+        IERC20 tokenIn,
+        uint256 balanceDelta
+    ) private view returns (OrderStatus, uint256) {
         ShortOrder storage shortOrder = _orders[tokenIn];
 
         uint256 deadline = shortOrder.deadline;
 
         if (deadline == 0) {
+            // No order exists because it was never created before.
             return (OrderStatus.Nonexistent, 0);
         }
 
-        uint256 balance = tokenIn.balanceOf(address(this));
+        // We return the balance to the state before we received tokens for the new order.
+        uint256 balance = tokenIn.balanceOf(address(this)) - balanceDelta;
         if (balance == 0) {
+            // If no tokens remain, we assume the order was fully executed
+            // because all tokens are taken by the relayer when the order is filled.
             return (OrderStatus.Filled, balance);
         } else if (block.timestamp > deadline) {
+            // If tokens remain and the deadline passed, the order is considered failed.
             return (OrderStatus.Failed, balance);
         }
 
+        // Otherwise, the order is still active.
         return (OrderStatus.Active, balance);
     }
 
