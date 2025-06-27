@@ -6,14 +6,18 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {
+    ILBPool,
+    LBPParams,
+    LBPoolImmutableData
+} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 import { ILBPMigrationRouter } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPMigrationRouter.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { ILBPool, LBPParams } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
@@ -99,19 +103,13 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
         assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
 
-        (
-            address migrationRouter,
-            uint256 bptLockDuration,
-            uint256 bptPercentageToMigrate,
-            uint256 projectTokenWeight,
-            uint256 reserveTokenWeight
-        ) = LBPool(pool).getMigrationParams();
+        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
 
-        assertEq(bptLockDuration, 0, "BPT lock duration should be zero");
-        assertEq(bptPercentageToMigrate, 0, "Share to migrate should be zero");
-        assertEq(projectTokenWeight, 0, "Project token weight should be zero");
-        assertEq(reserveTokenWeight, 0, "Reserve token weight should be zero");
-        assertEq(migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
+        assertEq(data.bptLockDuration, 0, "BPT lock duration should be zero");
+        assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
+        assertEq(data.migrationWeightProjectToken, 0, "Project token weight should be zero");
+        assertEq(data.migrationWeightReserveToken, 0, "Reserve token weight should be zero");
+        assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
     }
 
     function testCreatePoolWithMigrationParams() public {
@@ -132,19 +130,13 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertTrue(vault.isPoolRegistered(pool), "Pool not registered in the vault");
         assertTrue(vault.isPoolInitialized(pool), "Pool not initialized");
 
-        (
-            address migrationRouter,
-            uint256 bptLockDuration,
-            uint256 bptPercentageToMigrate,
-            uint256 weightProjectToken,
-            uint256 weightReserveToken
-        ) = LBPool(pool).getMigrationParams();
+        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
 
-        assertEq(migrationRouter, address(migrationRouter), "Migration router mismatch");
-        assertEq(bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
-        assertEq(bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
-        assertEq(weightProjectToken, initNewWeightProjectToken, "New weightProjectToken mismatch");
-        assertEq(weightReserveToken, initNewWeightReserveToken, "New weightReserveToken mismatch");
+        assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
+        assertEq(data.bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
+        assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
+        assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New weightProjectToken mismatch");
+        assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New weightReserveToken mismatch");
     }
 
     function testCreatePoolWithInvalidMigrationWeights() public {
@@ -164,7 +156,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 100e16, 50e16);
     }
 
-    function testCreatePoolWithInvalidBptPercentageToMigrate() public {
+    function testCreatePoolWithInvalidBptPercentageToMigrateTooHigh() public {
         uint256 initBptLockDuration = 30 days;
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
@@ -179,7 +171,17 @@ contract LBPoolFactoryTest is BaseLBPTest {
         );
     }
 
-    function testCreatePoolWithInvalidBptLockDuration() public {
+    function testCreatePoolWithInvalidBptPercentageToMigrateZero() public {
+        uint256 initBptLockDuration = 30 days;
+        uint256 initNewWeightProjectToken = 60e16; // 60%
+        uint256 initNewWeightReserveToken = 40e16; // 40%
+
+        // BPT percentage to migrate cannot be zero
+        vm.expectRevert(LBPoolFactory.InvalidBptPercentageToMigrate.selector);
+        _createLBPoolWithMigration(initBptLockDuration, 0, initNewWeightProjectToken, initNewWeightReserveToken);
+    }
+
+    function testCreatePoolWithInvalidBptLockDurationTooHigh() public {
         uint256 initBptPercentageToMigrate = 50e16; // 50%
         uint256 initNewWeightProjectToken = 60e16; // 60%
         uint256 initNewWeightReserveToken = 40e16; // 40%
@@ -191,6 +193,15 @@ contract LBPoolFactoryTest is BaseLBPTest {
             initNewWeightProjectToken,
             initNewWeightReserveToken
         );
+    }
+
+    function testCreatePoolWithInvalidBptLockDurationTooZero() public {
+        uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 initNewWeightProjectToken = 60e16; // 60%
+        uint256 initNewWeightReserveToken = 40e16; // 40%
+
+        vm.expectRevert(LBPoolFactory.InvalidBptLockDuration.selector);
+        _createLBPoolWithMigration(0, initBptPercentageToMigrate, initNewWeightProjectToken, initNewWeightReserveToken);
     }
 
     function testAddLiquidityPermission() public {

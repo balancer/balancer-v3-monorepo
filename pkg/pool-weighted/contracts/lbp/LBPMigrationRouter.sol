@@ -118,7 +118,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             0,
             bytes("")
         );
-        _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.lockDuration);
+        _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.bptLockDuration);
 
         emit PoolMigrated(params.lbp, params.weightedPool, bptAmountOut);
     }
@@ -132,58 +132,47 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
     ) internal returns (IWeightedPool weightedPool, uint256 bptAmountOut) {
         LBPoolImmutableData memory lbpImmutableData = lbp.getLBPoolImmutableData();
 
-        (
-            address migrationRouter,
-            uint256 lockDuration,
-            uint256 bptPercentageToMigrate,
-            uint256 migrationWeightProjectToken,
-            uint256 migrationWeightReserveToken
-        ) = LBPool(address(lbp)).getMigrationParams();
-
-        if (migrationRouter != address(this)) {
-            revert IncorrectMigrationRouter(migrationRouter);
+        if (lbpImmutableData.migrationRouter != address(this)) {
+            revert IncorrectMigrationRouter(lbpImmutableData.migrationRouter, address(this));
         }
 
         // WeightedPool ensures the weights sum up to FP(1), reverting otherwise
         uint256[] memory normalizedWeights = new uint256[](_TWO_TOKENS);
-        normalizedWeights[lbpImmutableData.projectTokenIndex] = migrationWeightProjectToken;
-        normalizedWeights[lbpImmutableData.reserveTokenIndex] = migrationWeightReserveToken;
+        normalizedWeights[lbpImmutableData.projectTokenIndex] = lbpImmutableData.migrationWeightProjectToken;
+        normalizedWeights[lbpImmutableData.reserveTokenIndex] = lbpImmutableData.migrationWeightReserveToken;
 
         TokenConfig[] memory tokensConfig = new TokenConfig[](_TWO_TOKENS);
         for (uint256 i = 0; i < _TWO_TOKENS; i++) {
             tokensConfig[i].token = lbpImmutableData.tokens[i];
         }
 
-        {
-            // Stack too deep issue workaround
-            WeightedPoolParams memory _params = params;
-            weightedPool = IWeightedPool(
-                _weightedPoolFactory.create(
-                    _params.name,
-                    _params.symbol,
-                    tokensConfig,
-                    normalizedWeights,
-                    _params.roleAccounts,
-                    _params.swapFeePercentage,
-                    _params.poolHooksContract,
-                    _params.enableDonation,
-                    _params.disableUnbalancedLiquidity,
-                    _params.salt
-                )
-            );
-        }
+        WeightedPoolParams memory _params = params;
+        weightedPool = IWeightedPool(
+            _weightedPoolFactory.create(
+                _params.name,
+                _params.symbol,
+                tokensConfig,
+                normalizedWeights,
+                _params.roleAccounts,
+                _params.swapFeePercentage,
+                _params.poolHooksContract,
+                _params.enableDonation,
+                _params.disableUnbalancedLiquidity,
+                _params.salt
+            )
+        );
 
-        // via-IR Stack too deep issue workaround
-        MigrationHookParams memory migrateHookParams;
-        migrateHookParams.lbp = lbp;
-        migrateHookParams.weightedPool = weightedPool;
-        migrateHookParams.tokens = lbpImmutableData.tokens;
-        migrateHookParams.sender = sender;
-        migrateHookParams.excessReceiver = excessReceiver;
-        migrateHookParams.lockDuration = lockDuration;
-        migrateHookParams.bptPercentageToMigrate = bptPercentageToMigrate;
-        migrateHookParams.migrationWeightProjectToken = migrationWeightProjectToken;
-        migrateHookParams.migrationWeightReserveToken = migrationWeightReserveToken;
+        MigrationHookParams memory migrateHookParams = MigrationHookParams({
+            lbp: lbp,
+            weightedPool: weightedPool,
+            tokens: lbpImmutableData.tokens,
+            sender: sender,
+            excessReceiver: excessReceiver,
+            bptLockDuration: lbpImmutableData.bptLockDuration,
+            bptPercentageToMigrate: lbpImmutableData.bptPercentageToMigrate,
+            migrationWeightProjectToken: lbpImmutableData.migrationWeightProjectToken,
+            migrationWeightReserveToken: lbpImmutableData.migrationWeightReserveToken
+        });
 
         if (isQuery) {
             bptAmountOut = abi.decode(
@@ -216,13 +205,16 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             removeAmountsOut[data.reserveTokenIndex] * currentWeights[data.projectTokenIndex]
         );
 
-        // Calculate reserve based on the price and the new weights.
-        // We start from the project balance because we treat it as the maximum.
-        // If that's not the case, then b1 will end up being greater than project token amountOut.
+        // Calculate the reserve amount for the weighted pool based on the LBP ending price and the new weights.
+        // We start by assuming we can withdraw the entire project token balance. We want to use as much as possible,
+        // as the purpose of the weighted pool is to provide post-sale liquidity for the project token.
+        //
+        // If this isn't possible, since using the full project balance would require more reserve tokens than we have
+        // available, we fall back on using the full reserve balance and calculating the project amount instead.
         uint256 reserveAmountOut = (removeAmountsOut[data.projectTokenIndex] * migrationWeightReserveToken).divDown(
             price * migrationWeightProjectToken
         );
-        uint256 projectAmountOut = removeAmountsOut[data.projectTokenIndex];
+        uint256 projectAmountOut;
 
         // If the reserveAmountOut is greater than the amount of reserve tokens removed, we need to calculate
         // projectAmountOut based on the price and the new weights.
@@ -231,6 +223,8 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             projectAmountOut = price.mulDown(reserveAmountOut).mulDown(migrationWeightProjectToken).divDown(
                 migrationWeightReserveToken
             );
+        } else {
+            projectAmountOut = removeAmountsOut[data.projectTokenIndex];
         }
 
         // Calculate the exact amounts in based on the share to migrate.

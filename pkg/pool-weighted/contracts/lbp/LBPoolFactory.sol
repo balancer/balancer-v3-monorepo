@@ -203,23 +203,28 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             lbpParams.reserveTokenEndWeight
         );
 
+        // If there is no migration, the migration parameters don't need to be validated.
+        if (hasMigration) {
+            if (
+                (migrationWeightProjectToken + migrationWeightReserve != FixedPoint.ONE ||
+                    migrationWeightProjectToken == 0 ||
+                    migrationWeightReserve == 0)
+            ) {
+                revert InvalidMigrationWeights();
+            }
+
+            // Must be a valid percentage, and doesn't make sense to be zero if there is a migration.
+            if (bptPercentageToMigrate > FixedPoint.ONE || bptPercentageToMigrate == 0) {
+                revert InvalidBptPercentageToMigrate();
+            }
+
+            // Cannot go over the maximum duration. There is no minimum duration, but it shouldn't be zero.
+            if (bptLockDuration > _MAX_BPT_LOCK_DURATION || bptLockDuration == 0) {
+                revert InvalidBptLockDuration();
+            }
+        }
+
         address migrationRouterOrZero = hasMigration ? _migrationRouter : address(0);
-        if (
-            hasMigration &&
-            (migrationWeightProjectToken + migrationWeightReserve != FixedPoint.ONE ||
-                migrationWeightProjectToken == 0 ||
-                migrationWeightReserve == 0)
-        ) {
-            revert InvalidMigrationWeights();
-        }
-
-        if (bptPercentageToMigrate > FixedPoint.ONE) {
-            revert InvalidBptPercentageToMigrate();
-        }
-
-        if (bptLockDuration > _MAX_BPT_LOCK_DURATION) {
-            revert InvalidBptLockDuration();
-        }
 
         pool = _create(
             abi.encode(
