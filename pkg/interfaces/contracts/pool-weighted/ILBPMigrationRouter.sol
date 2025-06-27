@@ -24,8 +24,12 @@ interface ILBPMigrationRouter {
     /// @notice The caller is not the owner of the LBP.
     error SenderIsNotLBPOwner();
 
-    /// @notice Pool has an incorrect migration router.
-    error IncorrectMigrationRouter(address currentRouter);
+    /**
+     * @notice A router called `migrate` on a pool that was not the one specified on deployment.
+     * @param expectedRouter The migration router address set by the pool on deployment
+     * @param actualRouter The address of the router that tried to migrate it
+     */
+    error IncorrectMigrationRouter(address expectedRouter, address actualRouter);
 
     struct MigrationHookParams {
         ILBPool lbp;
@@ -33,7 +37,7 @@ interface ILBPMigrationRouter {
         IERC20[] tokens;
         address sender;
         address excessReceiver;
-        uint256 lockDuration;
+        uint256 bptLockDuration;
         uint256 bptPercentageToMigrate;
         uint256 migrationWeightProjectToken;
         uint256 migrationWeightReserveToken;
