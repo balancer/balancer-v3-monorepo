@@ -9,6 +9,18 @@ import { ERC6909 } from "@openzeppelin/contracts/token/ERC6909/draft-ERC6909.sol
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 
+/**
+ * @notice Timelock for WeightedPool BPT created during an LBP migration.
+ * @dev The migration router creates and initializes a new weighted pool upon completion of an LBP sale, sending the
+ * BPT to this contract, and calls `_lockBPT` with an amount and lock duration (read from immutable LBP parameters)
+ * to mint an amount of fungible ERC6909 tokens to the caller corresponding to the BPT amount, with an id that is the
+ * numeric equivalent of the BPT address. After the timelock expires, a "lock token" holder can call `withdrawBPT` to
+ * burn them and recover the original BPT.
+ *
+ * This contract uses ERC-6909, a token standard that allows a single smart contract to manage multiple fungible and
+ * non-fungible tokens efficiently. ERC6909Metadata is an extension similar to ERC20Metadata that supports name,
+ * symbol, and decimals.
+ */
 contract BPTTimeLocker is ERC6909, ERC6909Metadata, Multicall {
     using SafeERC20 for IERC20;
 
