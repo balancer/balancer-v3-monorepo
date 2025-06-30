@@ -28,7 +28,6 @@ import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/con
 
 import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
 import { GradualValueChange } from "../../contracts/lib/GradualValueChange.sol";
-import { LBPMigrationRouterPureMock } from "../../contracts/test/LBPMigrationRouterPureMock.sol";
 import { LBPoolFactory } from "../../contracts/lbp/LBPoolFactory.sol";
 import { LBPool } from "../../contracts/lbp/LBPool.sol";
 import { BaseLBPTest } from "./utils/BaseLBPTest.sol";
@@ -228,8 +227,37 @@ contract LBPoolTest is BaseLBPTest {
         assertEq(LBPool(pool).getTrustedRouter(), address(router), "Wrong trusted router");
     }
 
-    function testGetMigrationRouter() public view {
-        assertEq(LBPool(pool).getMigrationRouter(), migrationRouter(), "Wrong migration router");
+    function testGetMigrationParams() public view {
+        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+
+        assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
+        assertEq(data.bptLockDuration, 0, "BPT lock duration should be zero");
+        assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
+        assertEq(data.migrationWeightProjectToken, 0, "Migration weight of project token should be zero");
+        assertEq(data.migrationWeightReserveToken, 0, "Migration weight of reserve token should be zero");
+    }
+
+    function testGetMigrationParamsWithMigration() public {
+        uint256 initBptLockDuration = 30 days;
+        uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 initNewWeightProjectToken = 60e16; // 60%
+        uint256 initNewWeightReserveToken = 40e16; // 40%
+
+        (pool, ) = _createLBPoolWithMigration(
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
+        initPool();
+
+        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
+
+        assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
+        assertEq(data.bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
+        assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
+        assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New project token weight mismatch");
+        assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New reserve token weight mismatch");
     }
 
     function testGetProjectToken() public view {
@@ -709,8 +737,8 @@ contract LBPoolTest is BaseLBPTest {
         vm.prank(address(vault));
         vm.expectRevert(LBPool.RemovingLiquidityNotAllowed.selector);
         LBPool(pool).onBeforeRemoveLiquidity(
-            address(0),
-            address(0),
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
             RemoveLiquidityKind.PROPORTIONAL,
             0,
             new uint256[](0),
@@ -725,8 +753,8 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.prank(address(vault));
         bool success = LBPool(pool).onBeforeRemoveLiquidity(
-            address(0),
-            address(0),
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
             RemoveLiquidityKind.PROPORTIONAL,
             0,
             new uint256[](0),
@@ -767,6 +795,76 @@ contract LBPoolTest is BaseLBPTest {
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
         router.donate(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
+    }
+
+    function testOnBeforeRemoveLiquidity() public {
+        // Warp to after end time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(router),
+            ZERO_ADDRESS,
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
+    }
+
+    function testOnBeforeRemoveLiquidityWithMigrationRouter() public {
+        (pool, ) = _createLBPoolWithMigration(
+            30 days, // BPT lock duration
+            50e16, // Share to migrate (50%)
+            60e16, // New weight for project token (60%)
+            40e16 // New weight for reserve token (40%)
+        );
+        initPool();
+
+        // Warp to after end time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(migrationRouter),
+            ZERO_ADDRESS,
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertTrue(success, "onBeforeRemoveLiquidity should return true with migration router");
+    }
+
+    function testOnBeforeRemoveLiquidityWithMigrationRevertWithWrongRouter() public {
+        (pool, ) = _createLBPoolWithMigration(
+            30 days, // BPT lock duration
+            50e16, // Share to migrate (50%)
+            60e16, // New weight for project token (60%)
+            40e16 // New weight for reserve token (40%)
+        );
+        initPool();
+
+        // Warp to after end time, where removing liquidity is allowed.
+        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
+
+        vm.prank(address(vault));
+        bool success = LBPool(pool).onBeforeRemoveLiquidity(
+            address(router),
+            ZERO_ADDRESS,
+            RemoveLiquidityKind.PROPORTIONAL,
+            0,
+            new uint256[](0),
+            new uint256[](0),
+            bytes("")
+        );
+
+        assertFalse(success, "onBeforeRemoveLiquidity should return false with wrong migration router");
     }
 
     /*******************************************************************************

@@ -59,6 +59,12 @@ struct LBPoolImmutableData {
     uint256 projectTokenIndex;
     uint256 reserveTokenIndex;
     bool isProjectTokenSwapInBlocked;
+    // Migration parameters (if migrationRouter == address(0), the pool does not support migration).
+    address migrationRouter;
+    uint256 bptLockDuration;
+    uint256 bptPercentageToMigrate;
+    uint256 migrationWeightProjectToken;
+    uint256 migrationWeightReserveToken;
 }
 
 /**
