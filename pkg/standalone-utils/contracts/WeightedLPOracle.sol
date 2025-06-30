@@ -275,6 +275,11 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
         return _getWeights(_totalTokens);
     }
 
+    /// @inheritdoc IWeightedLPOracle
+    function getTokens() external view returns (IERC20[] memory) {
+        return _vault.getPoolTokens(address(pool));
+    }
+
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
         uint256 feedDecimals = feed.decimals();
 

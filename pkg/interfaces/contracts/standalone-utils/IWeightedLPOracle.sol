@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IWeightedLPOracle {
     /**
@@ -37,4 +38,10 @@ interface IWeightedLPOracle {
      * @return An array of weights corresponding to each token in the pool.
      */
     function getWeights() external view returns (uint256[] memory);
+
+    /**
+     * @notice Gets the tokens in the pool.
+     * @return An array of addresses corresponding to each token in the pool.
+     */
+    function getTokens() external view returns (IERC20[] memory);
 }
