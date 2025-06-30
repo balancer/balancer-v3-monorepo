@@ -171,7 +171,7 @@ interface ICompositeLiquidityRouter {
      * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
-     * @return bptAmountOut Expected amount of parent pool tokens to receive
+     * @return bptAmountOut Actual amount of parent pool token received
      */
     function addLiquidityUnbalancedNestedPool(
         address parentPool,
@@ -234,7 +234,7 @@ interface ICompositeLiquidityRouter {
      * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
+     * @return amountsOut Amounts of tokens expected to be received, parallel to `tokensOut`
      */
     function queryRemoveLiquidityProportionalNestedPool(
         address parentPool,
