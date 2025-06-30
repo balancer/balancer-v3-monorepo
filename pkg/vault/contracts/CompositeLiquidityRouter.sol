@@ -766,8 +766,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
             childBptAmountOut = exactChildBptAmountOut;
 
-            // Since the BPT will be inserted into the parent pool, get the credit from the inserted BPTs in
-            // advance.
+            // Since the BPT will be add to the parent pool, get the credit from the inserted BPT in advance.
             _vault.settle(IERC20(childPool), exactChildBptAmountOut);
         }
 
