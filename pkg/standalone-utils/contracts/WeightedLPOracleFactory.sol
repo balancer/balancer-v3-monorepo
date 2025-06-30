@@ -30,7 +30,7 @@ contract WeightedLPOracleFactory is IWeightedLPOracleFactory, SingletonAuthentic
     function create(
         IWeightedPool pool,
         AggregatorV3Interface[] memory feeds
-    ) external authenticate returns (IWeightedLPOracle oracle) {
+    ) external returns (IWeightedLPOracle oracle) {
         if (_oracles[pool] != IWeightedLPOracle(address(0))) {
             revert OracleAlreadyExists();
         }
