@@ -32,10 +32,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    // The level is 1-based, so the outermost pool (level 1) can contain a nested BPT, but any pool tokens in the child
-    // pool (level 2) will not be expanded further, but simply treated as standard tokens.
-    uint256 internal constant _MAX_LEVEL_IN_NESTED_OPERATIONS = 2;
-
     constructor(
         IVault vault,
         IWETH weth,
@@ -645,7 +641,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate in the tokens
+        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
         // array to find the child pool amounts to insert.
         for (uint256 i = 0; i < tokensIn.length; ++i) {
             if (params.maxAmountsIn[i] == 0) {
@@ -680,20 +676,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address pool,
         AddLiquidityHookParams calldata params
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
-        return _addLiquidityRecursive(pool, params, 1);
-    }
-
-    function _addLiquidityRecursive(
-        address currentPool,
-        AddLiquidityHookParams calldata params,
-        uint256 level
-    ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
         allAmountsEmpty = true;
 
-        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(currentPool);
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
         amountsIn = new uint256[](parentPoolTokens.length);
 
-        // Iterate over each token of the parent pool. If it's a BPT, add liquidity unbalanced to it.
+        // Iterate over each token of the parent pool. If it's a BPT, add liquidity unbalanced.
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address childToken = address(parentPoolTokens[i]);
 
@@ -701,45 +689,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             // This case is impossible and does not require handling.
 
             if (_vault.isPoolRegistered(childToken)) {
-                // Token is a BPT, so add liquidity to the child pool.
-
-                if (level > _MAX_LEVEL_IN_NESTED_OPERATIONS) {
-                    // If we have exceeded the maximum level of nested operations,
-                    // the token will be considered a standard ERC20.
-                    if (_settledTokenAmounts().tGet(childToken) == 0) {
-                        amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
-                        _settledTokenAmounts().tSet(childToken, amountsIn[i]);
-                    }
-                    continue;
-                }
-
-                address nextPool = childToken;
-                (uint256[] memory childPoolAmountsIn, bool childPoolAmountsEmpty) = _addLiquidityRecursive(
-                    nextPool,
-                    params,
-                    level + 1
-                );
-
-                if (childPoolAmountsEmpty == false) {
-                    // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent
-                    // pool will be a logic insertion, not a token transfer.
-                    (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
-                        AddLiquidityParams({
-                            pool: childToken,
-                            to: address(_vault),
-                            maxAmountsIn: childPoolAmountsIn,
-                            minBptAmountOut: 0,
-                            kind: params.kind,
-                            userData: params.userData
-                        })
-                    );
-
-                    amountsIn[i] = exactChildBptAmountOut;
-
-                    // Since the BPT will be inserted into the parent pool, gets the credit from the inserted BPTs in
-                    // advance.
-                    _vault.settle(IERC20(childToken), exactChildBptAmountOut);
-                }
+                // Token is a BPT, so add liquidity to the child pool (only one level deep).
+                amountsIn[i] = _addLiquidityToChildPool(childToken, params);
             } else if (
                 _vault.isERC4626BufferInitialized(IERC4626(childToken)) &&
                 _currentSwapTokenInAmounts().tGet(childToken) == 0 // wrapped amount in was not specified
@@ -758,6 +709,69 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 allAmountsEmpty = false;
             }
         }
+    }
+
+    function _addLiquidityToChildPool(
+        address childPool,
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256 childBptAmountOut) {
+        IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
+        uint256[] memory childPoolAmountsIn = new uint256[](childPoolTokens.length);
+        bool childPoolAmountsEmpty = true;
+
+        // Process tokens in the child pool (no further nesting allowed).
+        for (uint256 j = 0; j < childPoolTokens.length; j++) {
+            address childPoolToken = address(childPoolTokens[j]);
+
+            if (_vault.isPoolRegistered(childPoolToken)) {
+                // This would be a second level of nesting, which is not supported. Process as a standard ERC20 token.
+                if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
+                    childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(childPoolToken);
+                    _settledTokenAmounts().tSet(childPoolToken, childPoolAmountsIn[j]);
+                }
+            } else if (
+                _vault.isERC4626BufferInitialized(IERC4626(childPoolToken)) &&
+                _currentSwapTokenInAmounts().tGet(childPoolToken) == 0 // wrapped amount in was not specified
+            ) {
+                // Handle ERC4626 token wrapping at child pool level.
+                childPoolAmountsIn[j] = _wrapAndUpdateTokenInAmounts(
+                    IERC4626(childPoolToken),
+                    params.sender,
+                    params.wethIsEth
+                );
+            } else if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
+                // Set this token's amountIn if it's a standard token that was not previously settled.
+                childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(childPoolToken);
+                _settledTokenAmounts().tSet(childPoolToken, childPoolAmountsIn[j]);
+            }
+
+            if (childPoolAmountsIn[j] > 0) {
+                childPoolAmountsEmpty = false;
+            }
+        }
+
+        if (childPoolAmountsEmpty == false) {
+            // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent
+            // pool will be an accounting adjustment, not a token transfer.
+            (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
+                AddLiquidityParams({
+                    pool: childPool,
+                    to: address(_vault),
+                    maxAmountsIn: childPoolAmountsIn,
+                    minBptAmountOut: 0,
+                    kind: params.kind,
+                    userData: params.userData
+                })
+            );
+
+            childBptAmountOut = exactChildBptAmountOut;
+
+            // Since the BPT will be inserted into the parent pool, get the credit from the inserted BPTs in
+            // advance.
+            _vault.settle(IERC20(childPool), exactChildBptAmountOut);
+        }
+
+        return childBptAmountOut;
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
