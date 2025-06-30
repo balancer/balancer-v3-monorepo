@@ -40,8 +40,6 @@ contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDepl
         BaseVaultTest.setUp();
         _weightedLPOracleFactory = new WeightedLPOracleFactory(vault, ORACLE_VERSION);
 
-        authorizer.grantRole(_weightedLPOracleFactory.getActionId(IWeightedLPOracleFactory.create.selector), admin);
-
         _weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
     }
 
@@ -101,13 +99,11 @@ contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDepl
         AggregatorV3Interface[] memory feeds = createFeeds(pool);
 
         uint256 snapshot = vm.snapshot();
-        vm.prank(admin);
         IWeightedLPOracle oracle = _weightedLPOracleFactory.create(pool, feeds);
         vm.revertTo(snapshot);
 
         vm.expectEmit();
         emit IWeightedLPOracleFactory.WeightedLPOracleCreated(pool, oracle);
-        vm.prank(admin);
         _weightedLPOracleFactory.create(pool, feeds);
 
         assertEq(address(oracle), address(_weightedLPOracleFactory.getOracle(pool)), "Oracle address mismatch");
@@ -118,11 +114,9 @@ contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDepl
         IWeightedPool pool = createAndInitPool();
         AggregatorV3Interface[] memory feeds = createFeeds(pool);
 
-        vm.prank(admin);
         _weightedLPOracleFactory.create(pool, feeds);
 
         vm.expectRevert(IWeightedLPOracleFactory.OracleAlreadyExists.selector);
-        vm.prank(admin);
         _weightedLPOracleFactory.create(pool, feeds);
     }
 }
