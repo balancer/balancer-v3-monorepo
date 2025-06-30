@@ -228,19 +228,13 @@ contract LBPoolTest is BaseLBPTest {
     }
 
     function testGetMigrationParams() public view {
-        (
-            address migrationRouter,
-            uint256 bptLockDuration,
-            uint256 bptPercentageToMigrate,
-            uint256 migrationWeightProjectToken,
-            uint256 migrationWeightReserveToken
-        ) = LBPool(pool).getMigrationParams();
+        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
 
-        assertEq(migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
-        assertEq(bptLockDuration, 0, "BPT lock duration should be zero");
-        assertEq(bptPercentageToMigrate, 0, "Share to migrate should be zero");
-        assertEq(migrationWeightProjectToken, 0, "Migration weight of project token should be zero");
-        assertEq(migrationWeightReserveToken, 0, "Migration weight of reserve token should be zero");
+        assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
+        assertEq(data.bptLockDuration, 0, "BPT lock duration should be zero");
+        assertEq(data.bptPercentageToMigrate, 0, "Share to migrate should be zero");
+        assertEq(data.migrationWeightProjectToken, 0, "Migration weight of project token should be zero");
+        assertEq(data.migrationWeightReserveToken, 0, "Migration weight of reserve token should be zero");
     }
 
     function testGetMigrationParamsWithMigration() public {
@@ -257,19 +251,13 @@ contract LBPoolTest is BaseLBPTest {
         );
         initPool();
 
-        (
-            address migrationRouter,
-            uint256 bptLockDuration,
-            uint256 bptPercentageToMigrate,
-            uint256 migrationWeight,
-            uint256 migrationWeightReserveToken
-        ) = LBPool(pool).getMigrationParams();
+        LBPoolImmutableData memory data = LBPool(pool).getLBPoolImmutableData();
 
-        assertEq(migrationRouter, address(migrationRouter), "Migration router mismatch");
-        assertEq(bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
-        assertEq(bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
-        assertEq(migrationWeight, initNewWeightProjectToken, "New project token weight mismatch");
-        assertEq(migrationWeightReserveToken, initNewWeightReserveToken, "New reserve token weight mismatch");
+        assertEq(data.migrationRouter, address(migrationRouter), "Migration router mismatch");
+        assertEq(data.bptLockDuration, initBptLockDuration, "BPT lock duration mismatch");
+        assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
+        assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New project token weight mismatch");
+        assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New reserve token weight mismatch");
     }
 
     function testGetProjectToken() public view {

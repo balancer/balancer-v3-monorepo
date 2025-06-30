@@ -369,7 +369,9 @@ contract LBPMigrationRouterTest is BaseLBPTest {
     function testMigrationLiquidityRevertsIfMigrationNotSetup() external {
         PoolRoleAccounts memory poolRoleAccounts;
 
-        vm.expectRevert(abi.encodeWithSelector(ILBPMigrationRouter.IncorrectMigrationRouter.selector, ZERO_ADDRESS));
+        vm.expectRevert(
+            abi.encodeWithSelector(ILBPMigrationRouter.IncorrectMigrationRouter.selector, ZERO_ADDRESS, migrationRouter)
+        );
         vm.prank(bob);
         migrationRouter.migrateLiquidity(
             ILBPool(pool),

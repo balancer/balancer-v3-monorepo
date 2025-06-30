@@ -180,33 +180,6 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         return _trustedRouter;
     }
 
-    /**
-     * @notice Returns the migration parameters, which are used to migrate liquidity.
-     * @dev The migration parameters are set at deployment and cannot be changed later.
-     * @return migrationRouter The address of the migration router allowed to migrate this LBP
-     * @return lockDuration The duration for which the BPTs will be locked after migration
-     * @return bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
-     * @return weightProjectToken The weight of the project token in the new weighted pool
-     * @return weightReserveToken The weight of the reserve token in the new weighted pool
-     */
-    function getMigrationParams()
-        external
-        view
-        returns (
-            address migrationRouter,
-            uint256 lockDuration,
-            uint256 bptPercentageToMigrate,
-            uint256 weightProjectToken,
-            uint256 weightReserveToken
-        )
-    {
-        migrationRouter = _migrationRouter;
-        lockDuration = _lockDurationAfterMigration;
-        bptPercentageToMigrate = _bptPercentageToMigrate;
-        weightProjectToken = _migrationWeightProjectToken;
-        weightReserveToken = _migrationWeightReserveToken;
-    }
-
     /// @inheritdoc ILBPool
     function getProjectToken() external view returns (IERC20) {
         return _projectToken;
@@ -323,6 +296,13 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         data.endWeights = new uint256[](_TWO_TOKENS);
         data.endWeights[_projectTokenIndex] = _projectTokenEndWeight;
         data.endWeights[_reserveTokenIndex] = _reserveTokenEndWeight;
+
+        // Migration-related params, non-zero if the pool supports migration.
+        data.migrationRouter = _migrationRouter;
+        data.bptLockDuration = _lockDurationAfterMigration;
+        data.bptPercentageToMigrate = _bptPercentageToMigrate;
+        data.migrationWeightProjectToken = _migrationWeightProjectToken;
+        data.migrationWeightReserveToken = _migrationWeightReserveToken;
     }
 
     /*******************************************************************************
