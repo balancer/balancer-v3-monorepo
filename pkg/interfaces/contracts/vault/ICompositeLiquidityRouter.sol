@@ -161,17 +161,15 @@ interface ICompositeLiquidityRouter {
     /**
      * @notice Adds liquidity unbalanced to a nested pool.
      * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
-     * the token in amounts.
+     * multiple pools involved, the token order is not well-defined, and must be specified by the caller.
      *
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
+     * @param parentPool The address of the parent pool (which contains BPTs of other pools)
+     * @param tokensIn An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
+     * @param exactAmountsIn An array with the amountIn of each token, sorted in the same order as tokensIn
      * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
-     * @return bptAmountOut Actual amount of parent pool token received
+     * @return bptAmountOut The actual amount of parent pool tokens received
      */
     function addLiquidityUnbalancedNestedPool(
         address parentPool,
@@ -184,13 +182,12 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Queries an `addLiquidityUnbalancedNestedPool` operation without actually executing it.
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param tokensIn Input token addresses, sorted by user preference. `tokensIn` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool).
-     * @param exactAmountsIn Amount of each token in, corresponding to `tokensIn`
+     * @param parentPool The address of the parent pool (which contains BPTs of other pools)
+     * @param tokensIn An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
+     * @param exactAmountsIn An array with the amountIn of each token, sorted in the same order as tokensIn
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
-     * @return bptAmountOut Expected amount of parent pool tokens to receive
+     * @return bptAmountOut The actual amount of parent pool tokens received
      */
     function queryAddLiquidityUnbalancedNestedPool(
         address parentPool,
@@ -201,20 +198,17 @@ interface ICompositeLiquidityRouter {
     ) external returns (uint256 bptAmountOut);
 
     /**
-     * @notice Removes liquidity of a nested pool.
+     * @notice Removes liquidity from a nested pool.
      * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not given, so the user must specify the preferred order to inform
-     * the token out amounts.
+     * multiple pools involved, the token order is not well-defined, and must be specified by the caller.
      *
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
-     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
-     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
-     * @param minAmountsOut Minimum amounts of each outgoing token, corresponding to `tokensOut`
+     * @param parentPool The address of the parent pool (which contains BPTs of other pools)
+     * @param exactBptAmountIn The exact amount of `parentPool` tokens provided
+     * @param tokensOut An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
+     * @param minAmountsOut An array with the minimum amountOut of each token, sorted in the same order as tokensOut
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
+     * @return amountsOut An array with the actual amountOut of each token, sorted in the same order as tokensOut
      */
     function removeLiquidityProportionalNestedPool(
         address parentPool,
@@ -227,14 +221,12 @@ interface ICompositeLiquidityRouter {
 
     /**
      * @notice Queries an `removeLiquidityProportionalNestedPool` operation without actually executing it.
-     * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
-     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
-     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
-     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
+     * @param parentPool The address of the parent pool (which contains BPTs of other pools)
+     * @param exactBptAmountIn The exact amount of `parentPool` tokens provided
+     * @param tokensOut An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
-     * @return amountsOut Amounts of tokens expected to be received, parallel to `tokensOut`
+     * @return amountsOut An array with the expected amountOut of each token, sorted in the same order as tokensOut
      */
     function queryRemoveLiquidityProportionalNestedPool(
         address parentPool,
