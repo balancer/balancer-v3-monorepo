@@ -32,19 +32,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    // Factor out common parameters used in internal functions.
+    enum CompositeTokenType {
+        ERC20,
+        BPT,
+        ERC4626
+    }
+
+    // Factor out common parameters used in internal liquidity functions.
     struct RouterCallParams {
         address sender;
         bool wethIsEth;
         bool isStaticCall;
     }
 
-    enum CompositeTokenType {
-        ERC20, // Must be first, so that the default is ERC20
-        BPT,
-        ERC4626
-    }
-
+    // Factor out common parameters used for adding liquidity.
     struct CompositeTokenInfo {
         address token;
         CompositeTokenType tokenType;
@@ -570,6 +571,23 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
+    function _processNestedPoolToken(
+        CompositeTokenInfo memory tokenInfo,
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256 amountOut) {
+        address token = tokenInfo.token;
+
+        if (tokenInfo.tokenType == CompositeTokenType.BPT) {
+            amountOut = _addLiquidityToChildPool(token, params);
+        } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.needToWrap) {
+            amountOut = _wrapAndUpdateTokenInAmounts(IERC4626(token), params.sender, params.wethIsEth);
+        } else {
+            amountOut = _currentSwapTokenInAmounts().tGet(token);
+        }
+
+        _settledTokenAmounts().tSet(token, amountOut);
+    }
+
     function _addLiquidityToChildPool(
         address childPool,
         AddLiquidityHookParams calldata params
@@ -983,13 +1001,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             });
     }
 
+    // Helper for add liquidity functions; determine the token type to direct execution.
     function _computeCompositeTokenInfo(
         address token,
         uint256 amount
     ) private view returns (CompositeTokenInfo memory info) {
         info.token = token;
         info.amount = amount;
-        // Note that the nested token type defaults to ERC20.
 
         if (_vault.isPoolRegistered(token)) {
             info.tokenType = CompositeTokenType.BPT;
@@ -998,23 +1016,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             // Wrap if no wrapped amount specified but underlying is available.
             info.needToWrap = (amount == 0 &&
                 _currentSwapTokenInAmounts().tGet(_vault.getBufferAsset(IERC4626(token))) > 0);
-        }
-    }
-
-    function _processNestedPoolToken(
-        CompositeTokenInfo memory tokenInfo,
-        AddLiquidityHookParams calldata params
-    ) internal returns (uint256 amountOut) {
-        address token = tokenInfo.token;
-
-        if (tokenInfo.tokenType == CompositeTokenType.BPT) {
-            amountOut = _addLiquidityToChildPool(token, params);
-        } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.needToWrap) {
-            amountOut = _wrapAndUpdateTokenInAmounts(IERC4626(token), params.sender, params.wethIsEth);
         } else {
-            amountOut = _currentSwapTokenInAmounts().tGet(token);
+            // This clause could be avoided, as the default is ERC20; kept for clarity and enum order-independence.
+            info.tokenType = CompositeTokenType.ERC20;
         }
-
-        _settledTokenAmounts().tSet(token, amountOut);
     }
 }
