@@ -582,15 +582,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         for (uint256 j = 0; j < childPoolTokens.length; j++) {
             address childPoolToken = address(childPoolTokens[j]);
 
-            if (_vault.isPoolRegistered(childPoolToken)) {
+            CompositeTokenInfo memory tokenInfo = _computeCompositeTokenInfo(
+                childPoolToken,
+                _currentSwapTokenInAmounts().tGet(childPoolToken)
+            );
+
+            if (tokenInfo.tokenType == CompositeTokenType.BPT) {
                 // This would be a second level of nesting, which is not supported. Process as a standard ERC20 token.
                 if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
-                    childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(childPoolToken);
-                    _settledTokenAmounts().tSet(childPoolToken, childPoolAmountsIn[j]);
+                    childPoolAmountsIn[j] = tokenInfo.amount;
+                    _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
                 }
             } else if (
-                _vault.isERC4626BufferInitialized(IERC4626(childPoolToken)) &&
-                _currentSwapTokenInAmounts().tGet(childPoolToken) == 0 // wrapped amount in was not specified
+                // wrapped amount in was not specified
+                tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.amount == 0
             ) {
                 // Handle ERC4626 token wrapping at child pool level.
                 childPoolAmountsIn[j] = _wrapAndUpdateTokenInAmounts(
@@ -600,8 +605,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 );
             } else if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
                 // Set this token's amountIn if it's a standard token that was not previously settled.
-                childPoolAmountsIn[j] = _currentSwapTokenInAmounts().tGet(childPoolToken);
-                _settledTokenAmounts().tSet(childPoolToken, childPoolAmountsIn[j]);
+                childPoolAmountsIn[j] = tokenInfo.amount;
+                _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
             }
 
             if (childPoolAmountsIn[j] > 0) {
