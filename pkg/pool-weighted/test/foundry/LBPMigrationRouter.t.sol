@@ -117,6 +117,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256 bptPercentageToMigrate = 50e16;
 
         (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
             DEFAULT_BPT_LOCK_DURATION,
             bptPercentageToMigrate,
             weightProjectToken,
@@ -201,6 +202,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         bptPercentageToMigrate = bound(bptPercentageToMigrate, 10e16, 100e16);
 
         (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
             DEFAULT_BPT_LOCK_DURATION,
             bptPercentageToMigrate,
             weightProjectToken,

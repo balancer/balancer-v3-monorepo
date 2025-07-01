@@ -47,6 +47,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             wrongWeight,
             wrongWeight.complement(),
             endWeights[projectIdx],
@@ -63,6 +64,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             wrongWeight.complement(),
             wrongWeight,
             endWeights[projectIdx],
@@ -79,6 +81,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             wrongWeight,
@@ -95,6 +98,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.expectRevert(IWeightedPool.MinWeight.selector);
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             wrongWeight.complement(),
@@ -108,6 +112,7 @@ contract LBPoolTest is BaseLBPTest {
     function testCreatePoolNotNormalizedStartWeights() public {
         vm.expectRevert(IWeightedPool.NormalizedWeightInvariant.selector);
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx] - 1,
             endWeights[projectIdx],
@@ -121,6 +126,7 @@ contract LBPoolTest is BaseLBPTest {
     function testCreatePoolNotNormalizedEndWeights() public {
         vm.expectRevert(IWeightedPool.NormalizedWeightInvariant.selector);
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -137,6 +143,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -153,6 +160,7 @@ contract LBPoolTest is BaseLBPTest {
 
         vm.expectRevert(abi.encodeWithSelector(GradualValueChange.InvalidStartTime.selector, startTime, endTime));
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -173,6 +181,7 @@ contract LBPoolTest is BaseLBPTest {
         emit LBPool.GradualWeightUpdateScheduled(block.timestamp, endTime, startWeights, endWeights);
 
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -193,6 +202,7 @@ contract LBPoolTest is BaseLBPTest {
         emit LBPool.GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
 
         (address newPool, ) = _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -209,6 +219,7 @@ contract LBPoolTest is BaseLBPTest {
 
         // Should create the same pool address again.
         _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -244,6 +255,7 @@ contract LBPoolTest is BaseLBPTest {
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
         (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
             initBptLockDuration,
             initBptPercentageToMigrate,
             initNewWeightProjectToken,
@@ -275,6 +287,7 @@ contract LBPoolTest is BaseLBPTest {
         uint256[] memory customEndWeights = [uint256(65e16), uint256(35e16)].toMemoryArray();
 
         (address newPool, ) = _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             customStartWeights[projectIdx],
             customStartWeights[reserveIdx],
             customEndWeights[projectIdx],
@@ -317,6 +330,7 @@ contract LBPoolTest is BaseLBPTest {
 
     function testIsProjectTokenSwapInBlocked() public {
         (address newPoolSwapDisabled, ) = _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -329,6 +343,7 @@ contract LBPoolTest is BaseLBPTest {
         assertFalse(LBPool(newPoolSwapDisabled).isProjectTokenSwapInBlocked(), "Swap of Project Token in is blocked");
 
         (address newPoolSwapEnabled, ) = _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -530,6 +545,7 @@ contract LBPoolTest is BaseLBPTest {
     function testOnSwapProjectTokenInAllowed() public {
         // Deploy a new pool with project token swaps enabled
         (pool, ) = _createLBPoolWithCustomWeights(
+            address(0), // Pool creator
             startWeights[projectIdx],
             startWeights[reserveIdx],
             endWeights[projectIdx],
@@ -817,6 +833,7 @@ contract LBPoolTest is BaseLBPTest {
 
     function testOnBeforeRemoveLiquidityWithMigrationRouter() public {
         (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
             30 days, // BPT lock duration
             50e16, // Share to migrate (50%)
             60e16, // New weight for project token (60%)
@@ -843,6 +860,7 @@ contract LBPoolTest is BaseLBPTest {
 
     function testOnBeforeRemoveLiquidityWithMigrationRevertWithWrongRouter() public {
         (pool, ) = _createLBPoolWithMigration(
+            address(0), // Pool creator
             30 days, // BPT lock duration
             50e16, // Share to migrate (50%)
             60e16, // New weight for project token (60%)
