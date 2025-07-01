@@ -23,25 +23,25 @@ interface IWeightedLPOracle {
 
     /**
      * @notice Gets the list of feeds used by the oracle.
-     * @return An array of AggregatorV3Interface instances representing the feeds.
+     * @return An array of AggregatorV3Interface instances representing the feeds
      */
     function getFeeds() external view returns (AggregatorV3Interface[] memory);
 
     /**
      * @notice Gets the decimal scaling factors for each feed token.
-     * @return An array of scaling factors corresponding to each feed.
+     * @return An array of scaling factors corresponding to each feed
      */
     function getFeedTokenDecimalScalingFactors() external view returns (uint256[] memory);
 
     /**
      * @notice Gets the current weights of the tokens in the pool.
-     * @return An array of weights corresponding to each token in the pool.
+     * @return An array of weights corresponding to each token in the pool
      */
     function getWeights() external view returns (uint256[] memory);
 
     /**
      * @notice Gets the tokens in the pool.
-     * @return An array of addresses corresponding to each token in the pool.
+     * @return An array of token addresses, sorted in token registration order
      */
-    function getTokens() external view returns (IERC20[] memory);
+    function getPoolTokens() external view returns (IERC20[] memory);
 }

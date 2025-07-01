@@ -276,7 +276,7 @@ contract WeightedLPOracle is IWeightedLPOracle, AggregatorV3Interface {
     }
 
     /// @inheritdoc IWeightedLPOracle
-    function getTokens() external view returns (IERC20[] memory) {
+    function getPoolTokens() external view returns (IERC20[] memory) {
         return _vault.getPoolTokens(address(pool));
     }
 
