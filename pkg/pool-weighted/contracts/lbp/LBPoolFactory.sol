@@ -128,6 +128,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
      * @param lbpParams The LBP configuration (see ILBPool for the struct definition)
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
+     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
      */
     function create(
         string memory name,
@@ -149,6 +150,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
      * @param lbpParams The LBP configuration (see ILBPool for the struct definition)
      * @param swapFeePercentage Initial swap fee percentage (bound by the WeightedPool range)
      * @param salt The salt value that will be passed to create3 deployment
+     * @param poolCreator Address that will be registered as the pool creator, which receives a cut of the protocol fees
      * @param bptLockDuration The duration for which the BPT will be locked after migration
      * @param bptPercentageToMigrate The percentage of the BPT to migrate from the LBP to the new weighted pool
      * @param migrationWeightProjectToken The weight of the project token
