@@ -39,6 +39,19 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         bool isStaticCall;
     }
 
+    enum CompositeTokenType {
+        ERC20, // Must be first, so that the default is ERC20
+        BPT,
+        ERC4626
+    }
+
+    struct CompositeTokenInfo {
+        address token;
+        CompositeTokenType tokenType;
+        uint256 amount;
+        bool needToWrap;
+    }
+
     constructor(
         IVault vault,
         IWETH weth,
@@ -536,34 +549,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address pool,
         AddLiquidityHookParams calldata params
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
-        allAmountsEmpty = true;
-
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
         amountsIn = new uint256[](parentPoolTokens.length);
+        allAmountsEmpty = true;
 
-        // Iterate over each token of the parent pool. If it's a BPT, add liquidity unbalanced.
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
-            address childToken = address(parentPoolTokens[i]);
+            address token = address(parentPoolTokens[i]);
+            CompositeTokenInfo memory tokenInfo = _computeCompositeTokenInfo(
+                token,
+                _currentSwapTokenInAmounts().tGet(token)
+            );
 
-            // NOTE: Recursion involving a pool containing its own BPT is explicitly prohibited by the Vault.
-            // This case is impossible and does not require handling.
-
-            if (_vault.isPoolRegistered(childToken)) {
-                // Token is a BPT, so add liquidity to the child pool (only one level deep).
-                amountsIn[i] = _addLiquidityToChildPool(childToken, params);
-            } else if (
-                _vault.isERC4626BufferInitialized(IERC4626(childToken)) &&
-                _currentSwapTokenInAmounts().tGet(childToken) == 0 // wrapped amount in was not specified
-            ) {
-                // The ERC4626 token has a buffer initialized within the Vault. Additionally, since the sender did not
-                // specify an input amount for the wrapped token, the function will wrap the underlying asset and use
-                // the resulting wrapped tokens to add liquidity to the pool.
-                amountsIn[i] = _wrapAndUpdateTokenInAmounts(IERC4626(childToken), params.sender, params.wethIsEth);
-            } else if (_settledTokenAmounts().tGet(childToken) == 0) {
-                // Set this token's amountIn if it's a standard token that was not previously settled.
-                amountsIn[i] = _currentSwapTokenInAmounts().tGet(childToken);
-                _settledTokenAmounts().tSet(childToken, amountsIn[i]);
-            }
+            amountsIn[i] = _settledTokenAmounts().tGet(token) > 0
+                ? _settledTokenAmounts().tGet(token)
+                : _processNestedPoolToken(tokenInfo, params);
 
             if (amountsIn[i] > 0) {
                 allAmountsEmpty = false;
@@ -977,5 +976,40 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 wethIsEth: false, // Always false for queries
                 userData: userData
             });
+    }
+
+    function _computeCompositeTokenInfo(
+        address token,
+        uint256 amount
+    ) private view returns (CompositeTokenInfo memory info) {
+        info.token = token;
+        info.amount = amount;
+        // Note that the nested token type defaults to ERC20.
+
+        if (_vault.isPoolRegistered(token)) {
+            info.tokenType = CompositeTokenType.BPT;
+        } else if (_vault.isERC4626BufferInitialized(IERC4626(token))) {
+            info.tokenType = CompositeTokenType.ERC4626;
+            // Wrap if no wrapped amount specified but underlying is available.
+            info.needToWrap = (amount == 0 &&
+                _currentSwapTokenInAmounts().tGet(_vault.getBufferAsset(IERC4626(token))) > 0);
+        }
+    }
+
+    function _processNestedPoolToken(
+        CompositeTokenInfo memory tokenInfo,
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256 amountOut) {
+        address token = tokenInfo.token;
+
+        if (tokenInfo.tokenType == CompositeTokenType.BPT) {
+            amountOut = _addLiquidityToChildPool(token, params);
+        } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.needToWrap) {
+            amountOut = _wrapAndUpdateTokenInAmounts(IERC4626(token), params.sender, params.wethIsEth);
+        } else {
+            amountOut = _currentSwapTokenInAmounts().tGet(token);
+        }
+
+        _settledTokenAmounts().tSet(token, amountOut);
     }
 }
