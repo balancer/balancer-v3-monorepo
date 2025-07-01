@@ -227,13 +227,13 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
      * forge-config: default.fuzz.runs = 10
      * forge-config: intense.fuzz.runs = 50
      */
-    function testGetTokens(uint256 totalTokens) public {
+    function testGetPoolTokens(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
         (IWeightedPool pool, ) = createAndInitPool(totalTokens);
         (WeightedLPOracleMock oracle, ) = deployOracle(pool);
 
-        IERC20[] memory returnedTokens = oracle.getTokens();
+        IERC20[] memory returnedTokens = oracle.getPoolTokens();
         IERC20[] memory registeredTokens = vault.getPoolTokens(address(pool));
 
         assertEq(returnedTokens.length, registeredTokens.length, "Tokens length does not match");
