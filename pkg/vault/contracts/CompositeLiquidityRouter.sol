@@ -32,17 +32,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
+    // Token types for nested pools.
     enum CompositeTokenType {
         ERC20,
         BPT,
         ERC4626
-    }
-
-    // Factor out common parameters used in internal liquidity functions.
-    struct RouterCallParams {
-        address sender;
-        bool wethIsEth;
-        bool isStaticCall;
     }
 
     // Factor out common parameters used for adding liquidity.
@@ -51,6 +45,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         CompositeTokenType tokenType;
         uint256 amount;
         bool needToWrap;
+    }
+
+    // Factor out common parameters used in internal liquidity functions.
+    struct RouterCallParams {
+        address sender;
+        bool wethIsEth;
+        bool isStaticCall;
     }
 
     constructor(
@@ -396,7 +397,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @dev Then updates this set with the resulting amount of wrapped tokens from the operation.
      * @param wrappedToken The token to wrap
      * @param sender The address of the originator of the transaction
-     * @param wethIsEth Flag indicating whether the user using wrapping ETH
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @return wrappedAmountOut The amountOut of wrapped tokens
      */
     function _wrapAndUpdateTokenInAmounts(
@@ -455,6 +456,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
+    /**
+     * @notice Processes a single token for input during proportional add liquidity operations.
+     * @dev Handles wrapping and token transfers when not in a query context.
+     * @param token The incoming token
+     * @param amountIn The amount of incoming tokens
+     * @param needToWrap Flag indicating whether this token is an ERC4626 to be wrapped
+     * @param maxAmountIn The final token amount (of the underlying token if wrapped)
+     * @param callParams Common parameters from the main router call
+     * @return tokenIn The final incoming token (the underlying token if wrapped)
+     * @return actualAmountIn The final token amount (of the underlying token if wrapped)
+     */
     function _processTokenInExactOut(
         address token,
         uint256 amountIn,
@@ -748,9 +760,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
 
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
-
-        // Revert if tokensOut length does not match with minAmountsOut length.
         InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
         (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
@@ -772,12 +781,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // Token is a BPT, so remove liquidity from the child pool.
 
                 // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
-                // practice just use existing credit).
-                _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountsOut[i]);
+                // practice just use the existing credit).
+                _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountOut);
 
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                // Router is an intermediary in this case. The Vault will burn tokens from the Router, so Router is
-                // both owner and spender (which doesn't need approval).
+                // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
+                // is both owner and spender (which doesn't need approval).
                 (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
                     RemoveLiquidityParams({
                         pool: childToken,
@@ -817,12 +826,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         // The hook writes current swap token and token amounts out.
-        amountsOut = new uint256[](tokensOut.length);
-        // If a certain token index was already iterated on, reverts.
-        bool[] memory checkedTokenIndexes = new bool[](tokensOut.length);
-        for (uint256 i = 0; i < tokensOut.length; ++i) {
-            uint256 tokenIndex = _currentSwapTokensOut().indexOf(tokensOut[i]);
+        uint256 numTokensOut = tokensOut.length;
+        amountsOut = new uint256[](numTokensOut);
+
+        bool[] memory checkedTokenIndexes = new bool[](numTokensOut);
+        for (uint256 i = 0; i < numTokensOut; ++i) {
             address tokenOut = tokensOut[i];
+            uint256 tokenIndex = _currentSwapTokensOut().indexOf(tokenOut);
 
             if (_currentSwapTokensOut().contains(tokenOut) == false || checkedTokenIndexes[tokenIndex]) {
                 // If tokenOut is not in transient tokens out array or token is repeated, the tokensOut array is wrong.
@@ -839,7 +849,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        if (isStaticCall == false) {
+        if (EVMCallModeHelpers.isStaticCall() == false) {
             _settlePaths(params.sender, params.wethIsEth);
         }
     }
@@ -850,8 +860,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
         // Revert if tokensIn length does not match with maxAmountsIn length.
         InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
-
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
         // array to find the child pool amounts to insert.
@@ -865,6 +873,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         (uint256[] memory amountsIn, ) = _addLiquidity(params.pool, params);
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
@@ -991,11 +1000,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             // Since the BPT will be add to the parent pool, get the credit from the inserted BPT in advance.
             _vault.settle(IERC20(childPool), exactChildBptAmountOut);
         }
-
-        return childBptAmountOut;
     }
 
-    // Determine the token type to direct execution.
+    // Fill in the information needed to correctly process nested pool tokens.
     function _computeCompositeTokenInfo(
         address token,
         uint256 amount
@@ -1010,6 +1017,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
+    // Determine the token type to direct execution.
     function _getCompositeTokenType(address token) internal view returns (CompositeTokenType tokenType) {
         if (_vault.isPoolRegistered(token)) {
             tokenType = CompositeTokenType.BPT;
@@ -1022,6 +1030,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     // Common helper functions
 
+    // Construct a set of add liquidity hook params, adding in the invariant parameters.
     function _buildQueryAddLiquidityParams(
         address pool,
         uint256[] memory maxAmountsOrExactOut,
@@ -1041,7 +1050,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             });
     }
 
-    // Construct common parameters for remove liquidity operations.
+    // Construct a set of remove liquidity hook params, adding in the invariant parameters.
     function _buildQueryRemoveLiquidityParams(
         address pool,
         uint256 exactBptAmountIn,
