@@ -83,7 +83,9 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         (, exactAmountsIn, bptAmountOut) = _migrateLiquidity(lbp, sender, excessReceiver, params, true);
     }
 
-    function migrateLiquidityHook(MigrationHookParams memory params) external onlyVault returns (uint256[] memory exactAmountsIn, uint256 bptAmountOut) {
+    function migrateLiquidityHook(
+        MigrationHookParams memory params
+    ) external onlyVault returns (uint256[] memory exactAmountsIn, uint256 bptAmountOut) {
         (, uint256[] memory removeAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: address(params.lbp),
