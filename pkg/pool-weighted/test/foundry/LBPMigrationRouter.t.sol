@@ -222,7 +222,44 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         (IERC20[] memory lbpTokens, TokenInfo[] memory lbpTokenInfo, , uint256[] memory lbpBalancesBefore) = vault
             .getPoolTokenInfo(pool);
 
-        (IWeightedPool weightedPool, uint256[] memory exactAmountsIn, uint256 bptAmountOut) = migrationRouter
+        IWeightedPool weightedPool;
+        uint256[] memory exactAmountsIn;
+        uint256 bptAmountOut;
+        {
+            // Check event vs returned values first.
+            uint256 snapshotId = vm.snapshot();
+            (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter
+                .migrateLiquidity(
+                    ILBPool(pool),
+                    excessReceiver,
+                    ILBPMigrationRouter.WeightedPoolParams({
+                        name: POOL_NAME,
+                        symbol: POOL_SYMBOL,
+                        roleAccounts: PoolRoleAccounts({
+                            pauseManager: makeAddr("pauseManager"),
+                            swapFeeManager: makeAddr("swapFeeManager"),
+                            poolCreator: ZERO_ADDRESS
+                        }),
+                        swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
+                        poolHooksContract: ZERO_ADDRESS,
+                        enableDonation: false,
+                        disableUnbalancedLiquidity: false,
+                        salt: ZERO_BYTES32
+                    })
+                );
+
+            vm.revertTo(snapshotId);
+        }
+
+        vm.expectEmit();
+        emit ILBPMigrationRouter.PoolMigrated(
+            ILBPool(pool),
+            weightedPool,
+            exactAmountsIn,
+            bptAmountOut
+        );
+
+        (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter
             .migrateLiquidity(
                 ILBPool(pool),
                 excessReceiver,
