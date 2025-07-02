@@ -26,6 +26,8 @@ contract StableLPOracle is LPOracleBase {
     // Thrown when the k parameter did not converge to the positive root.
     error KDidntConverge();
 
+    int256 constant ONE_INT = 1e18;
+
     constructor(
         IVault vault_,
         IStablePool pool_,
@@ -43,40 +45,9 @@ contract StableLPOracle is LPOracleBase {
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
         // the invariant and the price vector.
 
-        // The invariant of the stable pool is not accurate, so it can increase in solidity when the pool is at the
-        // edge, even though using precision math the invariant is the same. So, we first compute the balances when
-        // the pool is perfectly balanced, then compute the invariant again and finally compute the balances that
-        // represents the price array.
         uint256 D = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        int256[] memory pricesEqual = new int256[](_totalTokens);
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            pricesEqual[i] = int256(FixedPoint.ONE);
-        }
-
-        uint256[] memory balancesForEquilibriumScaled18 = _computeBalancesForPrices(D, pricesEqual);
-
-        uint256 smallestD = pool.computeInvariant(balancesForEquilibriumScaled18, Rounding.ROUND_DOWN);
-        if (D < smallestD) {
-            smallestD = D;
-        }
-
-        // Normalizes the price array according to the first token price.
-        int256[] memory normalizedPrices = new int256[](_totalTokens);
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            normalizedPrices[i] = int256(prices[i].toUint256().divDown(prices[0].toUint256()));
-        }
-
-        uint256[] memory balancesForPricesScaled18 = _computeBalancesForPrices(smallestD, normalizedPrices);
-
-        uint256 newD = pool.computeInvariant(balancesForPricesScaled18, Rounding.ROUND_DOWN);
-
-        // The new invariant will be bigger than the previous one, since the computed balances are unbalanced according
-        // to the price vector. So, we normalize the balances according to the invariants, to make sure we're not
-        // inflating the value of the pool.
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            balancesForPricesScaled18[i] = (balancesForPricesScaled18[i] * smallestD) / newD;
-        }
+        uint256[] memory balancesForPricesScaled18 = _computeBalancesForPrices(D, prices);
 
         tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
@@ -106,26 +77,24 @@ contract StableLPOracle is LPOracleBase {
         // Then, solving this system of equations for every pj, we will have an array of balances that respect the
         // price vector.
 
-        (uint256 a, uint256 b) = _computeAAndBForPool(IStablePool(address(pool)));
+        (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
 
         // First, we need to compute the constant k that will multiply the prices.
-        uint256 k = _computeK(a, b, prices);
+        int256 k = _computeK(a, b, prices);
 
-        uint256 sumPriceDivision = 0;
+        int256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += (FixedPoint.ONE).divDown(k.mulDown(prices[i].toUint256()) - a);
+            sumPriceDivision += divDownInt(a, mulDownInt(k, prices[i]) - a);
         }
-        sumPriceDivision = sumPriceDivision.mulDown(a);
 
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
-            balancesForPrices[i] =
-                (b * invariant).divDown((k).mulUp(prices[i].toUint256()) - a) /
-                (FixedPoint.ONE - sumPriceDivision);
+            balancesForPrices[i] = ((-b * int256(invariant)) /
+                mulDownInt(a - mulDownInt(k, prices[i]), ONE_INT - sumPriceDivision)).toUint256();
         }
     }
 
-    function _computeK(uint256 a, uint256 b, int256[] memory prices) internal view returns (uint256 k) {
+    function _computeK(int256 a, int256 b, int256[] memory prices) internal view returns (int256 k) {
         // k is computed by solving the equation:
         //
         // f(k) = T^(n+1)P + alpha = 0
@@ -135,21 +104,21 @@ contract StableLPOracle is LPOracleBase {
         // the precision, we divide f(k) and f'(k) by P, which allow us to don't compute P at all, only the derivative.
 
         // We start with a guess for k. Using a big k will make sure it converges to the positive root.
-        k = 10000e18;
+        k = _findInitialGuessForK(a, b, prices);
         for (uint256 i = 0; i < 255; i++) {
             // dTdk and dPdk are the derivatives of T and P with respect to k.
-            (uint256 T, uint256 dTdk, uint256 dPdk, uint256 Tn, uint256 alpha) = _computeKParams(k, a, b, prices);
+            (int256 T, int256 dTdk, int256 PTn, int256 dPdk, int256 alpha) = _computeKParams(k, a, b, prices);
+            console2.log("---- k ----", k);
+            console2.log("T", T);
+            console2.log("dTdk", dTdk);
+            console2.log("PTn", PTn);
+            console2.log("dPdk", dPdk);
+            console2.log("alpha", alpha);
 
-            // Alpha is actually alpha / P, to avoid overflows. So, P is not used.
-            uint256 flk = (_totalTokens + 1) * Tn.divDown(T).mulDown(dTdk) + T.mulDown(dPdk);
+            int256 fk = mulDownInt(PTn, T) - alpha;
+            int256 dFkdk = mulDownInt(PTn, (int256(_totalTokens) + 1) * dTdk + mulDownInt(T, dPdk));
 
-            uint256 newK;
-
-            if (alpha > Tn) {
-                newK = k + ((alpha - Tn).divDown(flk));
-            } else {
-                newK = k - ((Tn - alpha).divDown(flk));
-            }
+            int256 newK = k - divDownInt(fk, dFkdk);
 
             if (newK > k) {
                 if ((newK - k) <= 1e7) {
@@ -165,45 +134,74 @@ contract StableLPOracle is LPOracleBase {
         revert KDidntConverge();
     }
 
-    function _computeKParams(
-        uint256 k,
-        uint256 a,
-        uint256 b,
-        int256[] memory prices
-    ) internal view returns (uint256 T, uint256 dTdk, uint256 dPdk, uint256 Tn, uint256 alpha) {
-        uint256 i;
-        uint256 den;
-
-        uint256[] memory p = new uint256[](_totalTokens);
-        for (i = 0; i < _totalTokens; i++) {
-            p[i] = prices[i].toUint256();
+    function _findInitialGuessForK(int256 a, int b, int256[] memory prices) internal view returns (int256 k) {
+        int256 minPrice = prices[0];
+        for (uint256 i = 1; i < _totalTokens; i++) {
+            if (prices[i] < minPrice) {
+                minPrice = prices[i];
+            }
         }
 
-        T = FixedPoint.ONE;
+        int256 term1 = ONE_INT + divDownInt(ONE_INT, (ONE_INT - b));
+        int256 term2 = 2 * ONE_INT + divDownInt(b, a);
+
+        if (term1 < term2) {
+            return (term1 * a) / minPrice;
+        } else {
+            return (term2 * a) / minPrice;
+        }
+    }
+
+    function _computeKParams(
+        int256 k,
+        int256 a,
+        int256 b,
+        int256[] memory prices
+    ) internal view returns (int256 T, int256 dTdk, int256 PTn, int256 dPdk, int256 alpha) {
+        uint256 i;
+        int256 den;
+
+        T = 0;
         dTdk = 0;
         dPdk = 0;
         for (i = 0; i < _totalTokens; i++) {
-            den = (k.mulDown(p[i]) - a);
-            T -= a.divDown(den);
-            dTdk += ((p[i] * a) / (den.mulDown(den)));
-            dPdk += (p[i]).divDown(den);
+            den = mulDownInt(k, prices[i]) - a;
+            T += divDownInt(a, den);
+            dTdk -= divDownInt((prices[i] * a) / den, den);
+            dPdk += divDownInt(prices[i], mulDownInt(k, prices[i]) - a);
         }
+        T -= ONE_INT;
 
-        alpha = b;
-        Tn = FixedPoint.ONE;
-
+        alpha = -b;
+        PTn = ONE_INT;
         for (i = 0; i < _totalTokens; i++) {
-            den = ((k).mulDown(p[i]) - a);
-            Tn = Tn.mulDown(T);
-            alpha = (alpha * b) / den;
+            int256 ri = divDownInt(prices[i], a);
+            den = mulDownInt(k, ri) - ONE_INT;
+            PTn = mulDownInt(mulDownInt(PTn, T), den);
+            alpha = (alpha * -b) / a;
         }
-        alpha = alpha;
     }
 
-    function _computeAAndBForPool(IStablePool pool) internal view returns (uint256 a, uint256 b) {
+    function _computeAAndBForPool(IStablePool pool) internal view returns (int256 a, int256 b) {
         (uint256 amplificationFactor, , ) = pool.getAmplificationParameter();
-        uint256 nn = _totalTokens ** _totalTokens;
-        a = (amplificationFactor * (nn ** 2)) / StableMath.AMP_PRECISION;
-        b = nn * FixedPoint.ONE - a;
+        // a = A * n^2n, but A = ampParameter * n^(n-1). So, a = ampParameter * n^(2n)/n^(n-1) = ampParameter * n^(n+1).
+        a = int256((amplificationFactor * (_totalTokens ** (_totalTokens + 1))).divDown(StableMath.AMP_PRECISION));
+        b = int256(FixedPoint.ONE * (_totalTokens ** _totalTokens)) - a;
+    }
+
+    function divDownInt(int256 a, int256 b) internal pure returns (int256) {
+        return (a * ONE_INT) / b;
+    }
+
+    function mulDownInt(int256 a, int256 b) internal pure returns (int256) {
+        return (a * b) / ONE_INT;
+    }
+
+    function powDownInt(int256 a, uint256 n) internal pure returns (int256) {
+        int256 result = ONE_INT;
+        for (uint256 i = 0; i < n; i++) {
+            result = mulDownInt(result, a);
+        }
+        return result;
     }
 }
