@@ -14,7 +14,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
+abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -164,11 +164,7 @@ contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     }
 
     /// @inheritdoc ILPOracleBase
-    function calculateTVL(int256[] memory) public view virtual returns (uint256) {
-        // Cannot revert, because solc won't compile the latestRoundData() function. That function is standard for any
-        // pool type, so it should be part of the Base contract.
-        return 0;
-    }
+    function calculateTVL(int256[] memory) public view virtual returns (uint256);
 
     /// @inheritdoc ILPOracleBase
     function getFeedData() public view returns (int256[] memory prices, uint256 updatedAt) {
