@@ -25,7 +25,7 @@ contract StableLPOracle is LPOracleBase {
     error KDidntConverge();
 
     int256 constant ONE_INT = 1e18;
-    int256 constant MAX_RELATIVE_ERROR = 0.000000000001e16; // 0.000000000001%
+    int256 constant K_MAX_ERROR = 0.000000000001e16; // 0.000000000001%
 
     constructor(
         IVault vault_,
@@ -113,10 +113,10 @@ contract StableLPOracle is LPOracleBase {
             int256 newK = k - divDownInt(fk, dFkdk);
 
             if (newK > k) {
-                if (divDownInt(newK - k, k) <= MAX_RELATIVE_ERROR) {
+                if (divDownInt(newK - k, k) <= K_MAX_ERROR) {
                     return newK;
                 }
-            } else if (divDownInt(k - newK, k) <= MAX_RELATIVE_ERROR) {
+            } else if (divDownInt(k - newK, k) <= K_MAX_ERROR) {
                 return newK;
             }
 

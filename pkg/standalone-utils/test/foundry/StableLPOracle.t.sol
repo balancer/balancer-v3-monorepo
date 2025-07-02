@@ -332,7 +332,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
                 // invariant, we don't need to fuzz it. Besides, fuzzing it causes the Stable Invariant to don't
                 // converge during initialization, which introduces unnecessary complexities in the test.
                 poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - decimalsToken));
-                prices[i] = bound(pricesRaw[i], 10 ** (14), 10 ** 24) / (10 ** (18 - decimalsToken));
+                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - decimalsToken));
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
