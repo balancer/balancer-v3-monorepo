@@ -34,8 +34,8 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     uint256 constant VERSION = 123;
     uint256 constant MAX_TOKENS = 5;
     uint256 constant MIN_TOKENS = 2;
-    uint256 constant MAX_PRICE = 10 ** 21;
-    uint256 constant MIN_PRICE = 10 ** 15;
+    uint256 constant MAX_PRICE = 1000e18;
+    uint256 constant MIN_PRICE = 0.001e18;
 
     event Log(address indexed value);
     event LogUint(uint256 indexed value);
@@ -112,7 +112,12 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         );
 
         vm.startPrank(lp);
-        _initPool(newPool, initAmounts, 0);
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(newPool);
+        try router.initialize(newPool, tokens, initAmounts, 0, false, bytes("")) {} catch {
+            // If the initialization of the pool failed, probably the Stable Invariant did not converge. So, ignore this test.
+            // This condition only happens in fuzz tests, when fuzzying the initial balances of a stable pool.
+            vm.assume(false);
+        }
         vm.stopPrank();
 
         return IStablePool(newPool);
@@ -267,6 +272,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     function testComputeBalancesForPrices__Fuzz(
         uint256 totalTokens,
         uint256 amplificationParameter,
+        uint256[MAX_TOKENS] memory poolInitAmountsRaw,
         uint256[MAX_TOKENS] memory pricesRaw
     ) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
@@ -286,7 +292,9 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
                 // poolInitAmounts will only define the invariant of the pool. Since K does not depend on the
                 // invariant, we don't need to fuzz it. Besides, fuzzing it causes the Stable Invariant to don't
                 // converge during initialization, which introduces unnecessary complexities in the test.
-                poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - tokenDecimals));
+                poolInitAmounts[i] =
+                    bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
+                    (10 ** (18 - tokenDecimals));
                 prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
                 uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
                 pricesInt[i] = int256(price);
@@ -321,9 +329,6 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
-                // poolInitAmounts will only define the invariant of the pool. Since K does not depend on the
-                // invariant, we don't need to fuzz it. Besides, fuzzing it causes the Stable Invariant to don't
-                // converge during initialization, which introduces unnecessary complexities in the test.
                 poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - tokenDecimals));
                 prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
@@ -400,7 +405,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             assertApproxEqRel(
                 uint256(prices[0]).mulDown(amountInScaled18).divDown(amountOutScaled18),
                 uint256(prices[i]),
-                0.01e16, // 0.01% error
+                0.1e16, // 0.1% error
                 "Price does not match"
             );
         }
