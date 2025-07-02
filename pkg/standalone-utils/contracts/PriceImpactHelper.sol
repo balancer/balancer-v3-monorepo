@@ -7,6 +7,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IBaseRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseRouter.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -71,7 +72,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        _router.queryAddLiquidityUnbalanced.selector,
+                        IBaseRouter.queryAddLiquidityUnbalanced.selector,
                         pool,
                         exactAmountsIn,
                         sender,
@@ -92,7 +93,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        _router.queryRemoveLiquidityProportional.selector,
+                        IBaseRouter.queryRemoveLiquidityProportional.selector,
                         pool,
                         bptAmountOut,
                         sender,
@@ -115,7 +116,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        _router.querySwapSingleTokenExactIn.selector,
+                        IBaseRouter.querySwapSingleTokenExactIn.selector,
                         pool,
                         tokenIn,
                         tokenOut,
@@ -140,7 +141,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        _router.querySwapSingleTokenExactOut.selector,
+                        IBaseRouter.querySwapSingleTokenExactOut.selector,
                         pool,
                         tokenIn,
                         tokenOut,

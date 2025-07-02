@@ -298,7 +298,7 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
      * result in locked funds, but are not otherwise a security or soundness issue. This check only exists as an attempt
      * to prevent user error.
      */
-    receive() external payable {
+    receive() external payable virtual {
         if (msg.sender != address(_weth)) {
             revert EthTransfer();
         }

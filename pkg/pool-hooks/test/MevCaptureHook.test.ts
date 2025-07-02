@@ -64,7 +64,9 @@ describe('MevCaptureHook', () => {
     WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
     router = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
-    untrustedRouter = await deploy('v3-vault/Router', { args: [vaultAddress, WETH, permit2, 'UNTRUSTED_VERSION'] });
+    untrustedRouter = await deploy('v3-vault/Router', {
+      args: [vaultAddress, WETH, permit2, 'UNTRUSTED_VERSION'],
+    });
     factory = await deploy('v3-vault/PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
     registry = await deploy('v3-standalone-utils/BalancerContractRegistry', { args: [vaultAddress] });
 
