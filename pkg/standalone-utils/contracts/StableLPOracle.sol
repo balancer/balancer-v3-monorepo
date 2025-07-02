@@ -56,6 +56,13 @@ contract StableLPOracle is LPOracleBase {
         return tvl;
     }
 
+    /**
+     * @dev Computes a set of balances for a given price vector and a given invariant. The set of balances should meet
+     * two conditions:
+     * 1. The invariant of the computed balances should be equal to the given invariant.
+     * 2. The spot prices of the computed balances should be equal to the given price vector. In other words:
+     *    `spotPrice(i, j) == prices[i] / prices[j]`
+     */
     function _computeBalancesForPrices(
         uint256 invariant,
         int256[] memory prices
