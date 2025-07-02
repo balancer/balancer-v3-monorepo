@@ -14,9 +14,10 @@ interface ILBPMigrationRouter {
      * @notice The pool was successfully migrated from an LBP to a new weighted pool.
      * @param lbp The LB Pool that was migrated
      * @param weightedPool The newly created weighted pool
+     * @param exactAmountsIn The amounts of tokens used to initialize the pool, sorted in token registration order
      * @param bptAmountOut The amount of BPT tokens received from the weighted pool after migration
      */
-    event PoolMigrated(ILBPool indexed lbp, IWeightedPool weightedPool, uint256 bptAmountOut);
+    event PoolMigrated(ILBPool indexed lbp, IWeightedPool weightedPool, uint256[] exactAmountsIn, uint256 bptAmountOut);
 
     /// @notice The Balancer Contract Registry did not return an active address for the "WeightedPool" alias.
     error NoRegisteredWeightedPoolFactory();
@@ -60,19 +61,21 @@ interface ILBPMigrationRouter {
      * @param excessReceiver Address to receive excess tokens after migration
      * @param params Parameters for creating the new weighted pool
      * @return weightedPool The newly created weighted pool
+     * @return exactAmountsIn The amounts of tokens used to initialize the pool, sorted in token registration order
      * @return bptAmountOut The amount of BPT tokens received from the weighted pool after migration
      */
     function migrateLiquidity(
         ILBPool lbp,
         address excessReceiver,
         WeightedPoolParams memory params
-    ) external returns (IWeightedPool weightedPool, uint256 bptAmountOut);
+    ) external returns (IWeightedPool weightedPool, uint256[] memory exactAmountsIn, uint256 bptAmountOut);
 
     /**
      * @notice Simulates a liquidity migration to estimate results before execution.
      * @param lbp Liquidity Bootstrapping Pool
      * @param sender Sender address
      * @param params Parameters for creating the new weighted pool
+     * @return exactAmountsIn The amounts of tokens used to initialize the pool, sorted in token registration order
      * @return bptAmountOut The amount of BPT tokens received from the weighted pool after migration
      */
     function queryMigrateLiquidity(
@@ -80,5 +83,5 @@ interface ILBPMigrationRouter {
         address sender,
         address excessReceiver,
         WeightedPoolParams memory params
-    ) external returns (uint256 bptAmountOut);
+    ) external returns (uint256[] memory exactAmountsIn, uint256 bptAmountOut);
 }
