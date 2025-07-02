@@ -263,13 +263,13 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         (, , , uint256[] memory liveBalancesScaled18) = vault.getPoolTokenInfo(address(pool));
         uint256 invariant = pool.computeInvariant(liveBalancesScaled18, Rounding.ROUND_DOWN);
 
-        uint256[] memory balancesForPricesScaled18 = oracle.computeBalancesForPrices(invariant, pricesInt);
-        uint256 invariantForPrices = pool.computeInvariant(balancesForPricesScaled18, Rounding.ROUND_DOWN);
+        uint256[] memory marketPriceBalancesScaled18 = oracle.computeMarketPriceBalances(invariant, pricesInt);
+        uint256 invariantForPrices = pool.computeInvariant(marketPriceBalancesScaled18, Rounding.ROUND_DOWN);
 
         assertApproxEqRel(invariantForPrices, invariant, 1e4, "Invariant does not match");
     }
 
-    function testComputeBalancesForPrices__Fuzz(
+    function testComputeMarketPriceBalances__Fuzz(
         uint256 totalTokens,
         uint256 amplificationParameter,
         uint256[MAX_TOKENS] memory poolInitAmountsRaw,
@@ -306,8 +306,8 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         uint256 D = _getInvariant(amplificationParameter * StableMath.AMP_PRECISION, address(pool));
 
-        uint256[] memory balancesForPricesScaled18 = oracle.computeBalancesForPrices(D, pricesInt);
-        _checkPricesAndInvariant(amplificationParameter, balancesForPricesScaled18, D, totalTokens, pricesInt);
+        uint256[] memory marketPriceBalancesScaled18 = oracle.computeMarketPriceBalances(D, pricesInt);
+        _checkPricesAndInvariant(amplificationParameter, marketPriceBalancesScaled18, D, totalTokens, pricesInt);
     }
 
     function testLatestRoundData__Fuzz(

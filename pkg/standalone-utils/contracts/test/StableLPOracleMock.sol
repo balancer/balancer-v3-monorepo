@@ -23,10 +23,10 @@ contract StableLPOracleMock is StableLPOracle {
         return _computeFeedTokenDecimalScalingFactor(feed);
     }
 
-    function computeBalancesForPrices(
+    function computeMarketPriceBalances(
         uint256 invariant,
         int256[] memory prices
     ) public view returns (uint256[] memory) {
-        return _computeBalancesForPrices(invariant, prices);
+        return _computeMarketPriceBalances(invariant, prices);
     }
 }

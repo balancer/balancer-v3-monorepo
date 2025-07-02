@@ -46,11 +46,11 @@ contract StableLPOracle is LPOracleBase {
 
         uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        uint256[] memory balancesForPricesScaled18 = _computeBalancesForPrices(invariant, prices);
+        uint256[] memory marketPriceBalancesScaled18 = _computeMarketPriceBalances(invariant, prices);
 
         tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            tvl += prices[i].toUint256().mulDown(balancesForPricesScaled18[i]);
+            tvl += prices[i].toUint256().mulDown(marketPriceBalancesScaled18[i]);
         }
 
         return tvl;
@@ -63,7 +63,7 @@ contract StableLPOracle is LPOracleBase {
      * 2. The spot prices of the computed balances should be equal to the given price vector. In other words:
      *    `spotPrice(i, j) == prices[i] / prices[j]`
      */
-    function _computeBalancesForPrices(
+    function _computeMarketPriceBalances(
         uint256 invariant,
         int256[] memory prices
     ) internal view returns (uint256[] memory balancesForPrices) {
