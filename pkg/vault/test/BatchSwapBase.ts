@@ -134,7 +134,7 @@ export class BatchSwapBaseTest {
       args: [this.vaultAddress, await WETH, this.permit2, ROUTER_VERSION],
     });
     this.basicRouter = await deploy('Router', {
-      args: [this.vaultAddress, WETH, this.permit2, false, ROUTER_VERSION],
+      args: [this.vaultAddress, WETH, this.permit2, ROUTER_VERSION],
     });
     this.router = await deploy('BatchRouter', {
       args: [this.vaultAddress, WETH, this.permit2, BATCH_ROUTER_VERSION],

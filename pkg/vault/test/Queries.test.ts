@@ -46,7 +46,7 @@ describe('Queries', function () {
     const vaultAddress = await vault.getAddress();
     WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('Router', { args: [vaultAddress, WETH, permit2, false, ROUTER_VERSION] });
+    router = await deploy('Router', { args: [vaultAddress, WETH, permit2, ROUTER_VERSION] });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
