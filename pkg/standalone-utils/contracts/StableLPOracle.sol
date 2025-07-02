@@ -106,10 +106,10 @@ contract StableLPOracle is LPOracleBase {
         for (uint256 i = 0; i < 255; i++) {
             // dTdk and dPdk are the derivatives of T and P with respect to k.
             // solhint-disable-next-line var-name-mixedcase
-            (int256 T, int256 dTdk, int256 dPdk, int256 alphaDivPTn) = _computeKParams(k, a, b, prices);
+            (int256 T, int256 dTdk, int256 dPdkDivP, int256 alphaDivPTn) = _computeKParams(k, a, b, prices);
 
             int256 fk = T - alphaDivPTn;
-            int256 dFkdk = (int256(_totalTokens) + 1) * dTdk + _mulDownInt(T, dPdk);
+            int256 dFkdk = (int256(_totalTokens) + 1) * dTdk + _mulDownInt(T, dPdkDivP);
 
             int256 newK = k - _divDownInt(fk, dFkdk);
 
@@ -154,20 +154,27 @@ contract StableLPOracle is LPOracleBase {
         int256 a,
         int256 b,
         int256[] memory prices
-    ) internal view returns (int256 T, int256 dTdk, int256 dPdk, int256 alphaDivPTn) {
+    ) internal view returns (int256 T, int256 dTdk, int256 dPdkDivP, int256 alphaDivPTn) {
         // solhint-disable-previous-line var-name-mixedcase
+
         uint256 i;
         int256 den;
 
+        // To avoid overflows, we divided f(k) and f'(k) by PT^n. That's why, instead of computing P, P' and alpha,
+        // we change the variables to compute P'/P and alpha/(PT^n).
+
         T = 0;
+        // dTdk = T', where T' is the derivative of T with respect to k.
         dTdk = 0;
-        dPdk = 0;
+        // dPdkDivP = P'/P, where P' is the derivative of P with respect to k.
+        dPdkDivP = 0;
+        // alphaDivPTn = alpha/(PT^n), where alpha is the constant term of the stable invariant.
         alphaDivPTn = b;
         for (i = 0; i < _totalTokens; i++) {
             den = _mulDownInt(k, prices[i]) - a;
             T += _divDownInt(a, den);
             dTdk -= _divDownInt((prices[i] * a) / den, den);
-            dPdk += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
+            dPdkDivP += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
             alphaDivPTn = (alphaDivPTn * b) / a;
         }
         T -= _ONE_INT;
