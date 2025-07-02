@@ -289,9 +289,6 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
-                // poolInitAmounts will only define the invariant of the pool. Since K does not depend on the
-                // invariant, we don't need to fuzz it. Besides, fuzzing it causes the Stable Invariant to don't
-                // converge during initialization, which introduces unnecessary complexities in the test.
                 poolInitAmounts[i] =
                     bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
                     (10 ** (18 - tokenDecimals));
@@ -313,6 +310,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     function testLatestRoundData__Fuzz(
         uint256 totalTokens,
         uint256 amplificationParameter,
+        uint256[MAX_TOKENS] memory poolInitAmountsRaw,
         uint256[MAX_TOKENS] memory pricesRaw,
         uint256[MAX_TOKENS] memory updateTimestampsRaw
     ) public {
@@ -329,7 +327,9 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
                 uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
-                poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - tokenDecimals));
+                poolInitAmounts[i] =
+                    bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
+                    (10 ** (18 - tokenDecimals));
                 prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
