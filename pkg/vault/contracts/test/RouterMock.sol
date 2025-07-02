@@ -9,13 +9,14 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IBaseRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import { Router } from "../Router.sol";
+import { BaseRouter } from "../BaseRouter.sol";
 
 string constant MOCK_ROUTER_VERSION = "Mock Router v1";
 
@@ -24,12 +25,12 @@ contract RouterMock is Router {
 
     error MockErrorCode();
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2, false, MOCK_ROUTER_VERSION) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2, MOCK_ROUTER_VERSION) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function manualReentrancyInitializeHook() external nonReentrant {
-        IRouter.InitializeHookParams memory hookParams;
+        IBaseRouter.InitializeHookParams memory hookParams;
         Router(payable(this)).initializeHook(hookParams);
     }
 
@@ -48,12 +49,12 @@ contract RouterMock is Router {
     }
 
     function manualReentrancySwapSingleTokenHook() external nonReentrant {
-        IRouter.SwapSingleTokenHookParams memory params;
+        IBaseRouter.SwapSingleTokenHookParams memory params;
         Router(payable(this)).swapSingleTokenHook(params);
     }
 
     function manualReentrancyQuerySwapHook() external nonReentrant {
-        IRouter.SwapSingleTokenHookParams memory params;
+        IBaseRouter.SwapSingleTokenHookParams memory params;
         Router(payable(this)).querySwapHook(params);
     }
 
@@ -75,7 +76,7 @@ contract RouterMock is Router {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
-                    Router.querySwapHook,
+                    BaseRouter.querySwapHook,
                     SwapSingleTokenHookParams({
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,
