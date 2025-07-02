@@ -139,7 +139,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
 
         (, , , uint256[] memory balances) = vault.getPoolTokenInfo(pool);
 
-        (IWeightedPool weightedPool, ) = migrationRouter.migrateLiquidity(
+        (IWeightedPool weightedPool, , ) = migrationRouter.migrateLiquidity(
             ILBPool(pool),
             excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
@@ -222,19 +222,48 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         (IERC20[] memory lbpTokens, TokenInfo[] memory lbpTokenInfo, , uint256[] memory lbpBalancesBefore) = vault
             .getPoolTokenInfo(pool);
 
-        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
-            pauseManager: makeAddr("pauseManager"),
-            swapFeeManager: makeAddr("swapFeeManager"),
-            poolCreator: ZERO_ADDRESS
-        });
+        IWeightedPool weightedPool;
+        uint256[] memory exactAmountsIn;
+        uint256 bptAmountOut;
+        {
+            // Check event vs returned values first.
+            uint256 snapshotId = vm.snapshot();
+            (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
+                ILBPool(pool),
+                excessReceiver,
+                ILBPMigrationRouter.WeightedPoolParams({
+                    name: POOL_NAME,
+                    symbol: POOL_SYMBOL,
+                    roleAccounts: PoolRoleAccounts({
+                        pauseManager: makeAddr("pauseManager"),
+                        swapFeeManager: makeAddr("swapFeeManager"),
+                        poolCreator: ZERO_ADDRESS
+                    }),
+                    swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
+                    poolHooksContract: ZERO_ADDRESS,
+                    enableDonation: false,
+                    disableUnbalancedLiquidity: false,
+                    salt: ZERO_BYTES32
+                })
+            );
 
-        (IWeightedPool weightedPool, uint256 bptAmountOut) = migrationRouter.migrateLiquidity(
+            vm.revertTo(snapshotId);
+        }
+
+        vm.expectEmit();
+        emit ILBPMigrationRouter.PoolMigrated(ILBPool(pool), weightedPool, exactAmountsIn, bptAmountOut);
+
+        (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
             ILBPool(pool),
             excessReceiver,
             ILBPMigrationRouter.WeightedPoolParams({
                 name: POOL_NAME,
                 symbol: POOL_SYMBOL,
-                roleAccounts: poolRoleAccounts,
+                roleAccounts: PoolRoleAccounts({
+                    pauseManager: makeAddr("pauseManager"),
+                    swapFeeManager: makeAddr("swapFeeManager"),
+                    poolCreator: ZERO_ADDRESS
+                }),
                 swapFeePercentage: DEFAULT_SWAP_FEE_PERCENTAGE,
                 poolHooksContract: ZERO_ADDRESS,
                 enableDonation: false,
@@ -312,6 +341,10 @@ contract LBPMigrationRouterTest is BaseLBPTest {
                 DELTA,
                 "Live balance mismatch for reserve token"
             );
+
+            assertEq(exactAmountsIn.length, 2, "Incorrect returned exact amounts in length");
+            assertEq(balancesLiveScaled18[projectIdx], exactAmountsIn[projectIdx], "Project token balance mismatch");
+            assertEq(balancesLiveScaled18[reserveIdx], exactAmountsIn[reserveIdx], "Reserve token balance mismatch");
 
             // Check bob's balances
             assertEq(IERC20(pool).balanceOf(bob), 0, "Bob should not hold any LBP BPT after migration");
