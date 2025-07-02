@@ -168,7 +168,7 @@ contract StableLPOracle is LPOracleBase {
         int256 den;
 
         // To avoid overflows, we divided f(k) and f'(k) by PT^n. That's why, instead of computing P, P' and alpha,
-        // we change the variables to compute P'/P and alpha/(PT^n).
+        // we change the variables to compute `dPdkDivP = P'/P` and `alphaDivPTn = alpha/(PT^n)`.
 
         T = 0;
         // dTdk = T', where T' is the derivative of T with respect to k.
