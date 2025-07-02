@@ -226,12 +226,11 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     }
 
     function testCalculateTVL2Tokens() public {
-        // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000 (the pool is balanced, so the
-        // amp factor doesn't matter).
+        // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000.
         uint256 expectedTVL = 2000e18;
 
         uint256 totalTokens = 2;
-        uint256 amplificationParameter = 100; //bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
+        uint256 amplificationParameter = 100;
 
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
@@ -239,9 +238,9 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         for (uint256 i = 0; i < totalTokens; i++) {
             _tokens[i] = address(sortedTokens[i]);
-            uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
-            poolInitAmounts[i] = 1000e18 / (10 ** (18 - decimalsToken));
-            prices[i] = int256(FixedPoint.ONE / (10 ** (18 - decimalsToken)));
+            uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+            poolInitAmounts[i] = 1000e18 / (10 ** (18 - tokenDecimals));
+            prices[i] = int256(FixedPoint.ONE / (10 ** (18 - tokenDecimals)));
         }
 
         IStablePool pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
@@ -283,13 +282,13 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
-                uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+                uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
                 // poolInitAmounts will only define the invariant of the pool. Since K does not depend on the
                 // invariant, we don't need to fuzz it. Besides, fuzzing it causes the Stable Invariant to don't
                 // converge during initialization, which introduces unnecessary complexities in the test.
-                poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - decimalsToken));
-                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - decimalsToken));
-                uint256 price = prices[i] * (10 ** (18 - decimalsToken));
+                poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - tokenDecimals));
+                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
+                uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
                 pricesInt[i] = int256(price);
             }
 
@@ -298,12 +297,6 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         }
 
         uint256 D = _getInvariant(amplificationParameter * StableMath.AMP_PRECISION, address(pool));
-
-        // console2.log("D", D);
-        // console2.log("A", amplificationParameter);
-        // for (uint256 i = 0; i < totalTokens; i++) {
-        //     console2.log("pricesInt[i]", pricesInt[i]);
-        // }
 
         uint256[] memory balancesForPricesScaled18 = oracle.computeBalancesForPrices(D, pricesInt);
         _checkPricesAndInvariant(amplificationParameter, balancesForPricesScaled18, D, totalTokens, pricesInt);
@@ -327,12 +320,12 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         {
             for (uint256 i = 0; i < totalTokens; i++) {
                 _tokens[i] = address(sortedTokens[i]);
-                uint256 decimalsToken = IERC20Metadata(address(sortedTokens[i])).decimals();
+                uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
                 // poolInitAmounts will only define the invariant of the pool. Since K does not depend on the
                 // invariant, we don't need to fuzz it. Besides, fuzzing it causes the Stable Invariant to don't
                 // converge during initialization, which introduces unnecessary complexities in the test.
-                poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - decimalsToken));
-                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - decimalsToken));
+                poolInitAmounts[i] = defaultAccountBalance() / 100 / (10 ** (18 - tokenDecimals));
+                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
@@ -393,6 +386,9 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         uint256 amountInScaled18 = balancesForPricesScaled18[0].mulDown(0.00001e16); // 0.00001% of first token balance.
         for (uint256 i = 1; i < totalTokens; i++) {
+            // `amountOutScaled18` is how much of token[i] you get for a tiny (infinitesimal) fraction of token[0].
+            // Therefore, `amountInScaled18 / amountOutScaled18` represents the spot price of token 0 wrt token i.
+            // Multiplying `spotPrice` by `price[0]` should result in `price[i]`.
             uint256 amountOutScaled18 = StableMath.computeOutGivenExactIn(
                 amplificationParameter * StableMath.AMP_PRECISION,
                 balancesForPricesScaled18,
