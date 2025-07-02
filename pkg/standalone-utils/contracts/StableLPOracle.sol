@@ -24,8 +24,8 @@ contract StableLPOracle is LPOracleBase {
     // Thrown when the k parameter did not converge to the positive root.
     error KDidntConverge();
 
-    int256 constant ONE_INT = 1e18;
-    int256 constant K_MAX_ERROR = 0.000000000001e16; // 0.000000000001%
+    int256 private constant _ONE_INT = 1e18;
+    int256 private constant _K_MAX_ERROR = 0.000000000001e16; // 0.000000000001%
 
     constructor(
         IVault vault_,
@@ -33,7 +33,7 @@ contract StableLPOracle is LPOracleBase {
         AggregatorV3Interface[] memory feeds,
         uint256 version_
     ) LPOracleBase(vault_, IBasePool(address(pool_)), feeds, version_) {
-        // TODO: Implement
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc ILPOracleBase
@@ -44,9 +44,9 @@ contract StableLPOracle is LPOracleBase {
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
         // the invariant and the price vector.
 
-        uint256 D = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+        uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        uint256[] memory balancesForPricesScaled18 = _computeBalancesForPrices(D, prices);
+        uint256[] memory balancesForPricesScaled18 = _computeBalancesForPrices(invariant, prices);
 
         tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
@@ -83,13 +83,13 @@ contract StableLPOracle is LPOracleBase {
 
         int256 sumPriceDivision = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
-            sumPriceDivision += divDownInt(a, mulDownInt(k, prices[i]) - a);
+            sumPriceDivision += _divDownInt(a, _mulDownInt(k, prices[i]) - a);
         }
 
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
             balancesForPrices[i] = ((b * int256(invariant)) /
-                mulDownInt(a - mulDownInt(k, prices[i]), ONE_INT - sumPriceDivision)).toUint256();
+                _mulDownInt(a - _mulDownInt(k, prices[i]), _ONE_INT - sumPriceDivision)).toUint256();
         }
     }
 
@@ -105,18 +105,19 @@ contract StableLPOracle is LPOracleBase {
         k = _findInitialGuessForK(a, b, prices);
         for (uint256 i = 0; i < 255; i++) {
             // dTdk and dPdk are the derivatives of T and P with respect to k.
+            // solhint-disable-next-line var-name-mixedcase
             (int256 T, int256 dTdk, int256 dPdk, int256 alphaDivPTn) = _computeKParams(k, a, b, prices);
 
             int256 fk = T - alphaDivPTn;
-            int256 dFkdk = (int256(_totalTokens) + 1) * dTdk + mulDownInt(T, dPdk);
+            int256 dFkdk = (int256(_totalTokens) + 1) * dTdk + _mulDownInt(T, dPdk);
 
-            int256 newK = k - divDownInt(fk, dFkdk);
+            int256 newK = k - _divDownInt(fk, dFkdk);
 
             if (newK > k) {
-                if (divDownInt(newK - k, k) <= K_MAX_ERROR) {
+                if (_divDownInt(newK - k, k) <= _K_MAX_ERROR) {
                     return newK;
                 }
-            } else if (divDownInt(k - newK, k) <= K_MAX_ERROR) {
+            } else if (_divDownInt(k - newK, k) <= _K_MAX_ERROR) {
                 return newK;
             }
 
@@ -138,8 +139,8 @@ contract StableLPOracle is LPOracleBase {
             }
         }
 
-        int256 term1 = ONE_INT + divDownInt(ONE_INT, (ONE_INT + b));
-        int256 term2 = 2 * ONE_INT - divDownInt(b, a);
+        int256 term1 = _ONE_INT + _divDownInt(_ONE_INT, (_ONE_INT + b));
+        int256 term2 = 2 * _ONE_INT - _divDownInt(b, a);
 
         if (term1 < term2) {
             return (term1 * a) / minPrice;
@@ -154,6 +155,7 @@ contract StableLPOracle is LPOracleBase {
         int256 b,
         int256[] memory prices
     ) internal view returns (int256 T, int256 dTdk, int256 dPdk, int256 alphaDivPTn) {
+        // solhint-disable-previous-line var-name-mixedcase
         uint256 i;
         int256 den;
 
@@ -162,20 +164,20 @@ contract StableLPOracle is LPOracleBase {
         dPdk = 0;
         alphaDivPTn = b;
         for (i = 0; i < _totalTokens; i++) {
-            den = mulDownInt(k, prices[i]) - a;
-            T += divDownInt(a, den);
-            dTdk -= divDownInt((prices[i] * a) / den, den);
-            dPdk += divDownInt(prices[i], mulDownInt(k, prices[i]) - a);
+            den = _mulDownInt(k, prices[i]) - a;
+            T += _divDownInt(a, den);
+            dTdk -= _divDownInt((prices[i] * a) / den, den);
+            dPdk += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
             alphaDivPTn = (alphaDivPTn * b) / a;
         }
-        T -= ONE_INT;
+        T -= _ONE_INT;
 
         // We need to calculate T and alpha first to be able to divide alpha by PT^n.
         for (i = 0; i < _totalTokens; i++) {
-            int256 ri = divDownInt(prices[i], a);
+            int256 ri = _divDownInt(prices[i], a);
             // P = \prod(k*ri - 1) . So, to divide alpha by PT^n, we can iteratively divide alpha by T and (k*ri - 1).
-            den = mulDownInt(k, ri) - ONE_INT;
-            alphaDivPTn = divDownInt(alphaDivPTn, mulDownInt(den, T));
+            den = _mulDownInt(k, ri) - _ONE_INT;
+            alphaDivPTn = _divDownInt(alphaDivPTn, _mulDownInt(den, T));
         }
     }
 
@@ -186,11 +188,11 @@ contract StableLPOracle is LPOracleBase {
         b = a - int256(FixedPoint.ONE * (_totalTokens ** _totalTokens));
     }
 
-    function divDownInt(int256 a, int256 b) internal pure returns (int256) {
-        return (a * ONE_INT) / b;
+    function _divDownInt(int256 a, int256 b) internal pure returns (int256) {
+        return (a * _ONE_INT) / b;
     }
 
-    function mulDownInt(int256 a, int256 b) internal pure returns (int256) {
-        return (a * b) / ONE_INT;
+    function _mulDownInt(int256 a, int256 b) internal pure returns (int256) {
+        return (a * b) / _ONE_INT;
     }
 }
