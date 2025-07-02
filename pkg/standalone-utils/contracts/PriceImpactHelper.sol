@@ -93,7 +93,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        IBaseRouter..queryRemoveLiquidityProportional.selector,
+                        IBaseRouter.queryRemoveLiquidityProportional.selector,
                         pool,
                         bptAmountOut,
                         sender,
@@ -116,7 +116,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        IBaseRouter..querySwapSingleTokenExactIn.selector,
+                        IBaseRouter.querySwapSingleTokenExactIn.selector,
                         pool,
                         tokenIn,
                         tokenOut,
@@ -141,7 +141,7 @@ contract PriceImpactHelper is CallAndRevert {
                 _callAndRevert(
                     address(_router),
                     abi.encodeWithSelector(
-                        IBaseRouter..querySwapSingleTokenExactOut.selector,
+                        IBaseRouter.querySwapSingleTokenExactOut.selector,
                         pool,
                         tokenIn,
                         tokenOut,
