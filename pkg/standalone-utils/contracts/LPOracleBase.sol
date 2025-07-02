@@ -9,7 +9,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -196,6 +195,11 @@ contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     /// @inheritdoc ILPOracleBase
     function getFeedTokenDecimalScalingFactors() external view returns (uint256[] memory) {
         return _getFeedTokenDecimalScalingFactors(_totalTokens);
+    }
+
+    /// @inheritdoc ILPOracleBase
+    function getPoolTokens() external view returns (IERC20[] memory) {
+        return _vault.getPoolTokens(address(pool));
     }
 
     function _computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) internal view returns (uint256) {
