@@ -16,6 +16,10 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
+/**
+ * @notice Base contract for the Router.
+ * @dev This contract have all nee
+ */
 contract BaseRouter is IBaseRouter, RouterCommon {
     using Address for address payable;
     using RouterWethLib for IWETH;

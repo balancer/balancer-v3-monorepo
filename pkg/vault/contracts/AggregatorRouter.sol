@@ -13,9 +13,10 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BaseRouter } from "./BaseRouter.sol";
 
 /**
- * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
+ * @notice Entrypoint for aggregators who want to swap without the standard permit2 payment logic.
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
- * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
+ * These interact with the Vault and settle accounting. This is not a full-featured Router; it only implements
+ * `swapSingleTokenExactIn`, `swapSingleTokenExactOut`, and the associated queries.
  */
 contract AggregatorRouter is IAggregatorRouter, BaseRouter {
     receive() external payable override {
