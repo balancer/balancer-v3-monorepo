@@ -367,6 +367,72 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     // ERC4626 Pool helper functions
 
     /**
+     * @notice Ensure parameters passed to hooks are valid, and return the set of tokens.
+     * @param pool The pool address
+     * @param amountsLength The length of the token (max) amounts array
+     * @param wrapLength The length of the wrap flag array
+     * @return poolTokens The pool tokens, sorted in pool registration order
+     * @return numTokens The token count
+     */
+    function _validateHookParams(
+        address pool,
+        uint256 amountsLength,
+        uint256 wrapLength
+    ) private view returns (IERC20[] memory poolTokens, uint256 numTokens) {
+        poolTokens = _vault.getPoolTokens(pool);
+        numTokens = poolTokens.length;
+
+        InputHelpers.ensureInputLengthMatch(numTokens, amountsLength, wrapLength);
+    }
+
+    /**
+     * @notice Wraps the underlying tokens specified in the transient set `_currentSwapTokenInAmounts`.
+     * @dev Then updates this set with the resulting amount of wrapped tokens from the operation.
+     * @param wrappedToken The token to wrap
+     * @param sender The address of the originator of the transaction
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @return wrappedAmountOut The amountOut of wrapped tokens
+     */
+    function _wrapAndUpdateTokenInAmounts(
+        IERC4626 wrappedToken,
+        address sender,
+        bool wethIsEth
+    ) private returns (uint256 wrappedAmountOut) {
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
+
+        // Get the amountIn of underlying tokens informed by the sender.
+        uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
+        if (underlyingAmountIn == 0) {
+            return 0;
+        }
+
+        if (isStaticCall == false) {
+            // Take the underlying token amount, required to wrap, in advance.
+            _takeTokenIn(sender, IERC20(underlyingToken), underlyingAmountIn, wethIsEth);
+        }
+
+        (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: SwapKind.EXACT_IN,
+                direction: WrappingDirection.WRAP,
+                wrappedToken: wrappedToken,
+                amountGivenRaw: underlyingAmountIn,
+                limitRaw: uint256(0)
+            })
+        );
+
+        // Remove the underlying token from `_currentSwapTokensIn` and zero out the amount, as these tokens were paid
+        // in advance and wrapped. Remaining tokens will be transferred in at the end of the calculation.
+        _currentSwapTokensIn().remove(underlyingToken);
+        _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
+
+        // Updates the reserves of the vault with the wrappedToken amount.
+        _vault.settle(IERC20(address(wrappedToken)), wrappedAmountOut);
+    }
+
+    /**
      * @notice Processes a single token for input during add liquidity operations.
      * @dev Handles wrapping and token transfers when not in a query context.
      * @param token The incoming token
@@ -383,25 +449,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) private returns (uint256 actualAmountIn) {
         if (needToWrap) {
             IERC4626 wrappedToken = IERC4626(token);
-            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
+            address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
 
-            if (address(underlyingToken) == address(0)) {
+            if (underlyingToken == address(0)) {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
             }
 
-            if (callParams.isStaticCall == false) {
-                _takeTokenIn(callParams.sender, underlyingToken, amountIn, callParams.wethIsEth);
-            }
-
-            (, , actualAmountIn) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_IN,
-                    direction: WrappingDirection.WRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: amountIn,
-                    limitRaw: 0
-                })
-            );
+            actualAmountIn = _executeWrapOperation(wrappedToken, underlyingToken, amountIn, callParams);
         } else {
             actualAmountIn = amountIn;
 
@@ -529,87 +583,38 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
-    function _validateHookParams(
-        address pool,
-        uint256 amountsLength,
-        uint256 wrapLength
-    ) private view returns (IERC20[] memory poolTokens, uint256 numTokens) {
-        poolTokens = _vault.getPoolTokens(pool);
-        numTokens = poolTokens.length;
-
-        InputHelpers.ensureInputLengthMatch(numTokens, amountsLength, wrapLength);
-    }
-
     /**
-     * @notice Wraps the underlying tokens specified in the transient set `_currentSwapTokenInAmounts`.
-     * @dev Then updates this set with the resulting amount of wrapped tokens from the operation.
-     * @param wrappedToken The token to wrap
-     * @param sender The address of the originator of the transaction
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @return wrappedAmountOut The amountOut of wrapped tokens
+     * @notice Centralized handler for ERC4626 wrapping operations.
+     * @param wrappedToken The ERC4626 token to wrap into
+     * @param underlyingAmount Amount of underlying tokens to wrap
+     * @param callParams Common parameters from the main router call
+     * @return wrappedAmount Amount of wrapped tokens received
      */
-    function _wrapAndUpdateTokenInAmounts(
+    function _executeWrapOperation(
         IERC4626 wrappedToken,
-        address sender,
-        bool wethIsEth
-    ) private returns (uint256 wrappedAmountOut) {
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
-
-        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
-
-        // Get the amountIn of underlying tokens informed by the sender.
-        uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
-        if (underlyingAmountIn == 0) {
+        address underlyingToken,
+        uint256 underlyingAmount,
+        RouterCallParams memory callParams
+    ) internal returns (uint256 wrappedAmount) {
+        if (underlyingAmount == 0) {
             return 0;
         }
 
-        if (isStaticCall == false) {
-            // Take the underlying token amount, required to wrap, in advance.
-            _takeTokenIn(sender, IERC20(underlyingToken), underlyingAmountIn, wethIsEth);
+        if (callParams.isStaticCall == false) {
+            _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmount, callParams.wethIsEth);
         }
 
-        (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
+        (, , wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
             BufferWrapOrUnwrapParams({
                 kind: SwapKind.EXACT_IN,
                 direction: WrappingDirection.WRAP,
                 wrappedToken: wrappedToken,
-                amountGivenRaw: underlyingAmountIn,
-                limitRaw: uint256(0)
+                amountGivenRaw: underlyingAmount,
+                limitRaw: 0
             })
         );
 
-        // Remove the underlying token from `_currentSwapTokensIn` and zero out the amount, as these tokens were paid
-        // in advance and wrapped. Remaining tokens will be transferred in at the end of the calculation.
-        _currentSwapTokensIn().remove(underlyingToken);
-        _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
-
-        // Updates the reserves of the vault with the wrappedToken amount.
-        _vault.settle(IERC20(address(wrappedToken)), wrappedAmountOut);
-    }
-
-    /**
-     * @notice Unwraps `wrappedAmountIn` tokens and updates the transient set `_currentSwapTokenOutAmounts`.
-     */
-    function _unwrapAndUpdateTokenOutAmounts(IERC4626 wrappedToken, uint256 wrappedAmountIn) private {
-        if (wrappedAmountIn == 0) {
-            return;
-        }
-
-        (, , uint256 underlyingAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: SwapKind.EXACT_IN,
-                direction: WrappingDirection.UNWRAP,
-                wrappedToken: wrappedToken,
-                amountGivenRaw: wrappedAmountIn,
-                limitRaw: uint256(0)
-            })
-        );
-
-        // The transient sets `_currentSwapTokensOut` and `_currentSwapTokenOutAmounts` must be updated, so
-        // `_settlePaths` function will be able to send the token out amounts to the sender.
-        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
-        _currentSwapTokensOut().add(underlyingToken);
-        _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmountOut);
+        _vault.settle(IERC20(address(wrappedToken)), wrappedAmount);
     }
 
     // Construct a set of add liquidity hook params, adding in the invariant parameters.
