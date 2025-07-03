@@ -32,7 +32,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    // Factor out common parameters used in internal functions.
+    // Factor out common parameters used in internal liquidity functions.
     struct RouterCallParams {
         address sender;
         bool wethIsEth;
@@ -209,7 +209,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             pool,
             exactBptAmountIn,
             new uint256[](erc4626PoolTokens.length),
-            RemoveLiquidityKind.PROPORTIONAL,
             userData
         );
 
@@ -412,6 +411,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
+    /**
+     * @notice Processes a single token for input during proportional add liquidity operations.
+     * @dev Handles wrapping and token transfers when not in a query context.
+     * @param token The incoming token
+     * @param amountIn The amount of incoming tokens
+     * @param needToWrap Flag indicating whether this token is an ERC4626 to be wrapped
+     * @param maxAmountIn The final token amount (of the underlying token if wrapped)
+     * @param callParams Common parameters from the main router call
+     * @return tokenIn The final incoming token (the underlying token if wrapped)
+     * @return actualAmountIn The final token amount (of the underlying token if wrapped)
+     */
     function _processTokenInExactOut(
         address token,
         uint256 amountIn,
@@ -520,8 +530,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     /**
-     * @notice Wraps the underlying tokens specified in the transient set `_currentSwapTokenInAmounts`, and updates
-     * this set with the resulting amount of wrapped tokens from the operation.
+     * @notice Wraps the underlying tokens specified in the transient set `_currentSwapTokenInAmounts`.
+     * @dev Then updates this set with the resulting amount of wrapped tokens from the operation.
+     * @param wrappedToken The token to wrap
+     * @param sender The address of the originator of the transaction
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @return wrappedAmountOut The amountOut of wrapped tokens
      */
     function _wrapAndUpdateTokenInAmounts(
         IERC4626 wrappedToken,
@@ -587,7 +601,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmountOut);
     }
 
-    // Construct common parameters for add liquidity operations.
+    // Construct a set of add liquidity hook params, adding in the invariant parameters.
     function _buildQueryAddLiquidityParams(
         address pool,
         uint256[] memory maxAmountsOrExactOut,
@@ -607,12 +621,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             });
     }
 
-    // Construct common parameters for remove liquidity operations.
+    // Construct a set of remove liquidity hook params, adding in the invariant parameters.
     function _buildQueryRemoveLiquidityParams(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
-        RemoveLiquidityKind kind,
         bytes memory userData
     ) private view returns (RemoveLiquidityHookParams memory) {
         return
@@ -621,7 +634,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 pool: pool,
                 minAmountsOut: minAmountsOut,
                 maxBptAmountIn: exactBptAmountIn,
-                kind: kind,
+                kind: RemoveLiquidityKind.PROPORTIONAL, // Always proportional for supported use cases
                 wethIsEth: false, // Always false for queries
                 userData: userData
             });
