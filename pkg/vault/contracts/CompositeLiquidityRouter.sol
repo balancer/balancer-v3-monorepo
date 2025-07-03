@@ -777,7 +777,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             address childToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
-            if (_vault.isPoolRegistered(childToken)) {
+            CompositeTokenType childTokenType = _getCompositeTokenType(childToken);
+
+            if (childTokenType == CompositeTokenType.BPT) {
                 // Token is a BPT, so remove liquidity from the child pool.
 
                 // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
@@ -797,12 +799,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         userData: params.userData
                     })
                 );
+
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
-                    if (_vault.isERC4626BufferInitialized(IERC4626(childPoolToken))) {
+                    CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
+                    if (childPoolTokenType == CompositeTokenType.ERC4626) {
                         // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
                         _executeUnwrapOperation(IERC4626(childPoolToken), childPoolAmountOut);
                     } else {
@@ -810,7 +814,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountOut);
                     }
                 }
-            } else if (_vault.isERC4626BufferInitialized(IERC4626(childToken))) {
+            } else if (childTokenType == CompositeTokenType.ERC4626) {
                 // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
                 _executeUnwrapOperation(IERC4626(childToken), parentPoolAmountOut);
             } else {
@@ -1013,7 +1017,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         if (info.tokenType == CompositeTokenType.ERC4626) {
             info.needToWrap = (amount == 0 &&
-                _currentSwapTokenInAmounts().tGet(_vault.getBufferAsset(IERC4626(token))) > 0);
+                _currentSwapTokenInAmounts().tGet(_vault.getERC4626BufferAsset(IERC4626(token))) > 0);
         }
     }
 
