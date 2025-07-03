@@ -229,6 +229,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         );
     }
 
+    // ERC4626 Pool Hooks
+
     function addLiquidityERC4626PoolUnbalancedHook(
         AddLiquidityHookParams calldata params,
         bool[] calldata wrapUnderlying
@@ -361,6 +363,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
     }
+
+    // ERC4626 Pool helper functions
 
     /// @dev Assumes array lengths have been checked externally.
     function _wrapTokensExactInIfRequired(
