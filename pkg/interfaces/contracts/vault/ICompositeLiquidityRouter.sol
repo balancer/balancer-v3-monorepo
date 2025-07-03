@@ -114,7 +114,7 @@ interface ICompositeLiquidityRouter {
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
-    * @param exactBptAmountOut Exact amount of pool tokens to be received
+     * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
      * @return tokensIn Expected tokens added to the pool
