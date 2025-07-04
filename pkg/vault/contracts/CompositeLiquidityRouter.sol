@@ -243,14 +243,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         uint256[] memory amountsIn = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            if (params.maxAmountsIn[i] > 0) {
-                amountsIn[i] = _processTokenIn(
-                    address(erc4626PoolTokens[i]),
-                    params.maxAmountsIn[i],
-                    wrapUnderlying[i],
-                    callParams
-                );
-            }
+            amountsIn[i] = _processTokenIn(
+                address(erc4626PoolTokens[i]),
+                params.maxAmountsIn[i],
+                wrapUnderlying[i],
+                callParams
+            );
         }
 
         // Add wrapped amounts to the ERC4626 pool.
