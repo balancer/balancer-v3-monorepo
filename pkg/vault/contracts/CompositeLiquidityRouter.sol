@@ -398,38 +398,22 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address sender,
         bool wethIsEth
     ) private returns (uint256 wrappedAmountOut) {
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
-
         address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
 
-        // Get the amountIn of underlying tokens informed by the sender.
+        // Get the amountIn of underlying tokens specified by the sender.
         uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
-        if (underlyingAmountIn == 0) {
-            return 0;
-        }
+        RouterCallParams memory callParams = RouterCallParams({
+            sender: sender,
+            wethIsEth: wethIsEth,
+            isStaticCall: EVMCallModeHelpers.isStaticCall()
+        });
 
-        if (isStaticCall == false) {
-            // Take the underlying token amount, required to wrap, in advance.
-            _takeTokenIn(sender, IERC20(underlyingToken), underlyingAmountIn, wethIsEth);
-        }
-
-        (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: SwapKind.EXACT_IN,
-                direction: WrappingDirection.WRAP,
-                wrappedToken: wrappedToken,
-                amountGivenRaw: underlyingAmountIn,
-                limitRaw: uint256(0)
-            })
-        );
+        wrappedAmountOut = _executeWrapOperation(wrappedToken, underlyingToken, underlyingAmountIn, callParams);
 
         // Remove the underlying token from `_currentSwapTokensIn` and zero out the amount, as these tokens were paid
         // in advance and wrapped. Remaining tokens will be transferred in at the end of the calculation.
         _currentSwapTokensIn().remove(underlyingToken);
         _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
-
-        // Updates the reserves of the vault with the wrappedToken amount.
-        _vault.settle(IERC20(address(wrappedToken)), wrappedAmountOut);
     }
 
     /**
