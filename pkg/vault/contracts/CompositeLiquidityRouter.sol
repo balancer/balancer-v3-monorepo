@@ -350,17 +350,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         amountsOut = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            if (wrappedAmountsOut[i] == 0) {
-                tokensOut[i] = address(erc4626PoolTokens[i]);
-            } else {
-                (tokensOut[i], amountsOut[i]) = _processTokenOut(
-                    address(erc4626PoolTokens[i]),
-                    wrappedAmountsOut[i],
-                    unwrapWrapped[i],
-                    params.minAmountsOut[i],
-                    callParams
-                );
-            }
+            (tokensOut[i], amountsOut[i]) = _processTokenOut(
+                address(erc4626PoolTokens[i]),
+                wrappedAmountsOut[i],
+                unwrapWrapped[i],
+                params.minAmountsOut[i],
+                callParams
+            );
         }
     }
 
@@ -522,19 +518,22 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
             }
 
-            (, , actualAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_IN,
-                    direction: WrappingDirection.UNWRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: amountOut,
-                    limitRaw: minAmountOut
-                })
-            );
             tokenOut = address(underlyingToken);
 
-            if (callParams.isStaticCall == false) {
-                _sendTokenOut(callParams.sender, underlyingToken, actualAmountOut, callParams.wethIsEth);
+            if (amountOut > 0) {
+                (, , actualAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: SwapKind.EXACT_IN,
+                        direction: WrappingDirection.UNWRAP,
+                        wrappedToken: wrappedToken,
+                        amountGivenRaw: amountOut,
+                        limitRaw: minAmountOut
+                    })
+                );
+
+                if (callParams.isStaticCall == false) {
+                    _sendTokenOut(callParams.sender, underlyingToken, actualAmountOut, callParams.wethIsEth);
+                }
             }
         } else {
             actualAmountOut = amountOut;
