@@ -220,7 +220,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         bytes memory userData
     ) external saveSender(sender) returns (address[] memory tokensOut, uint256[] memory amountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(pool);
-        RemoveLiquidityHookParams memory params = _buildQueryRemoveLiquidityParams(
+        RemoveLiquidityHookParams memory params = _buildQueryRemoveLiquidityProportionalParams(
             pool,
             exactBptAmountIn,
             erc4626PoolTokens.length,
@@ -612,8 +612,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 limitRaw: 0
             })
         );
-
-        _vault.settle(IERC20(address(wrappedToken)), wrappedAmount);
     }
 
     /**
@@ -745,7 +743,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256[] memory amountsOut) {
-        RemoveLiquidityHookParams memory params = _buildQueryRemoveLiquidityParams(
+        RemoveLiquidityHookParams memory params = _buildQueryRemoveLiquidityProportionalParams(
             parentPool,
             exactBptAmountIn,
             tokensOut.length,
@@ -1045,17 +1043,31 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     // Construct a set of add liquidity hook params, adding in the invariant parameters.
     function _buildQueryAddLiquidityParams(
         address pool,
-        uint256[] memory maxAmountsOrExactOut,
-        uint256 minBptOrExactBpt,
+        uint256[] memory maxOrExactAmountsOut,
+        uint256 minOrExactBpt,
         AddLiquidityKind kind,
         bytes memory userData
     ) private view returns (AddLiquidityHookParams memory) {
+        // `kind` will be either PROPORTIONAL or UNBALANCED, depending on the query.
+        uint256[] memory resolvedMaxAmounts;
+        uint256 resolvedBptAmount;
+        if (kind == AddLiquidityKind.PROPORTIONAL) {
+            resolvedMaxAmounts = _maxTokenLimits(pool);
+            resolvedBptAmount = minOrExactBpt;
+        } else if (kind == AddLiquidityKind.UNBALANCED) {
+            resolvedMaxAmounts = maxOrExactAmountsOut;
+            // resolvedBptAmount will be 0
+        } else {
+            // Should not happen.
+            revert IVaultErrors.InvalidAddLiquidityKind();
+        }
+
         return
             AddLiquidityHookParams({
                 sender: address(this), // Always use router address for queries
                 pool: pool,
-                maxAmountsIn: kind == AddLiquidityKind.PROPORTIONAL ? _maxTokenLimits(pool) : maxAmountsOrExactOut,
-                minBptAmountOut: kind == AddLiquidityKind.PROPORTIONAL ? minBptOrExactBpt : 0,
+                maxAmountsIn: resolvedMaxAmounts,
+                minBptAmountOut: resolvedBptAmount,
                 kind: kind,
                 wethIsEth: false, // Always false for queries
                 userData: userData
@@ -1063,7 +1075,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     // Construct a set of remove liquidity hook params, adding in the invariant parameters.
-    function _buildQueryRemoveLiquidityParams(
+    function _buildQueryRemoveLiquidityProportionalParams(
         address pool,
         uint256 exactBptAmountIn,
         uint256 numTokens,
