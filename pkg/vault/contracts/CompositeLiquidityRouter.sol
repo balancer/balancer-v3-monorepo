@@ -615,32 +615,27 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     /**
-     * @notice Centralized handler for ERC4626 unwrapping operations.
+     * @notice Centralized handler for ERC4626 unwrapping operations in nested pools.
+     * @dev Adds the token and amount to transient storage.
      * @param wrappedToken The ERC4626 token to unwrap from
      * @param wrappedAmount Amount of wrapped tokens to unwrap
-     * @return underlyingAmount Amount of underlying tokens received
      */
-    function _executeUnwrapOperation(
-        IERC4626 wrappedToken,
-        uint256 wrappedAmount
-    ) internal returns (uint256 underlyingAmount) {
-        if (wrappedAmount == 0) {
-            return 0;
+    function _executeUnwrapAndRecordUnderlying(IERC4626 wrappedToken, uint256 wrappedAmount) internal {
+        if (wrappedAmount > 0) {
+            (, , uint256 underlyingAmount) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.UNWRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: wrappedAmount,
+                    limitRaw: 0
+                })
+            );
+
+            address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
+            _currentSwapTokensOut().add(underlyingToken);
+            _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmount);
         }
-
-        (, , underlyingAmount) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: SwapKind.EXACT_IN,
-                direction: WrappingDirection.UNWRAP,
-                wrappedToken: wrappedToken,
-                amountGivenRaw: wrappedAmount,
-                limitRaw: 0
-            })
-        );
-
-        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
-        _currentSwapTokensOut().add(underlyingToken);
-        _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmount);
     }
 
     /***************************************************************************
@@ -814,7 +809,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
                     if (childPoolTokenType == CompositeTokenType.ERC4626) {
                         // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
-                        _executeUnwrapOperation(IERC4626(childPoolToken), childPoolAmountOut);
+                        _executeUnwrapAndRecordUnderlying(IERC4626(childPoolToken), childPoolAmountOut);
                     } else {
                         _currentSwapTokensOut().add(childPoolToken);
                         _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountOut);
@@ -822,7 +817,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 }
             } else if (childTokenType == CompositeTokenType.ERC4626) {
                 // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
-                _executeUnwrapOperation(IERC4626(childToken), parentPoolAmountOut);
+                _executeUnwrapAndRecordUnderlying(IERC4626(childToken), parentPoolAmountOut);
             } else {
                 // Token is neither a BPT nor ERC4626, so return the amount to the user.
                 _currentSwapTokensOut().add(childToken);
