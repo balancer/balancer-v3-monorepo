@@ -417,13 +417,22 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         // Get the amountIn of underlying tokens specified by the sender.
         uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
-        RouterCallParams memory callParams = RouterCallParams({
-            sender: sender,
-            wethIsEth: wethIsEth,
-            isStaticCall: EVMCallModeHelpers.isStaticCall()
-        });
 
-        wrappedAmountOut = _executeWrapOperation(wrappedToken, underlyingToken, underlyingAmountIn, callParams);
+        if (underlyingAmountIn > 0) {
+            if (EVMCallModeHelpers.isStaticCall() == false) {
+                _takeTokenIn(sender, IERC20(underlyingToken), underlyingAmountIn, wethIsEth);
+            }
+
+            (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: underlyingAmountIn,
+                    limitRaw: 0
+                })
+            );
+        }
 
         // Remove the underlying token from `_currentSwapTokensIn` and zero out the amount, as these tokens were paid
         // in advance and wrapped. Remaining tokens will be transferred in at the end of the calculation.
@@ -454,7 +463,21 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
             }
 
-            actualAmountIn = _executeWrapOperation(wrappedToken, underlyingToken, amountIn, callParams);
+            if (amountIn > 0) {
+                if (callParams.isStaticCall == false) {
+                    _takeTokenIn(callParams.sender, IERC20(underlyingToken), amountIn, callParams.wethIsEth);
+                }
+
+                (, , actualAmountIn) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: SwapKind.EXACT_IN,
+                        direction: WrappingDirection.WRAP,
+                        wrappedToken: wrappedToken,
+                        amountGivenRaw: amountIn,
+                        limitRaw: 0
+                    })
+                );
+            }
         } else {
             actualAmountIn = amountIn;
 
@@ -580,38 +603,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         if (actualAmountOut < minAmountOut) {
             revert IVaultErrors.AmountOutBelowMin(IERC20(tokenOut), actualAmountOut, minAmountOut);
         }
-    }
-
-    /**
-     * @notice Centralized handler for ERC4626 wrapping operations.
-     * @param wrappedToken The ERC4626 token to wrap into
-     * @param underlyingAmount Amount of underlying tokens to wrap
-     * @param callParams Common parameters from the main router call
-     * @return wrappedAmount Amount of wrapped tokens received
-     */
-    function _executeWrapOperation(
-        IERC4626 wrappedToken,
-        address underlyingToken,
-        uint256 underlyingAmount,
-        RouterCallParams memory callParams
-    ) internal returns (uint256 wrappedAmount) {
-        if (underlyingAmount == 0) {
-            return 0;
-        }
-
-        if (callParams.isStaticCall == false) {
-            _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmount, callParams.wethIsEth);
-        }
-
-        (, , wrappedAmount) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: SwapKind.EXACT_IN,
-                direction: WrappingDirection.WRAP,
-                wrappedToken: wrappedToken,
-                amountGivenRaw: underlyingAmount,
-                limitRaw: 0
-            })
-        );
     }
 
     /**
