@@ -208,7 +208,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         RemoveLiquidityHookParams memory params = _buildQueryRemoveLiquidityParams(
             pool,
             exactBptAmountIn,
-            new uint256[](erc4626PoolTokens.length),
+            erc4626PoolTokens.length,
             userData
         );
 
@@ -625,14 +625,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     function _buildQueryRemoveLiquidityParams(
         address pool,
         uint256 exactBptAmountIn,
-        uint256[] memory minAmountsOut,
+        uint256 numTokens,
         bytes memory userData
     ) private view returns (RemoveLiquidityHookParams memory) {
         return
             RemoveLiquidityHookParams({
                 sender: address(this), // Always use router address for queries
                 pool: pool,
-                minAmountsOut: minAmountsOut,
+                minAmountsOut: new uint256[](numTokens), // Always zero for supported use cases
                 maxBptAmountIn: exactBptAmountIn,
                 kind: RemoveLiquidityKind.PROPORTIONAL, // Always proportional for supported use cases
                 wethIsEth: false, // Always false for queries
