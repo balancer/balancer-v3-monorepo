@@ -20,8 +20,9 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
 
     uint256 internal constant _WAD_DECIMALS = 18;
 
-    IVault internal immutable _vault;
     IBasePool public immutable pool;
+    
+    IVault internal immutable _vault;
     uint256 internal immutable _version;
     uint256 internal immutable _totalTokens;
     string internal _description;

@@ -21,11 +21,11 @@ contract StableLPOracle is LPOracleBase {
     using FixedPoint for uint256;
     using SafeCast for *;
 
-    // Thrown when the k parameter did not converge to the positive root.
-    error KDidntConverge();
+    // The `k` parameter did not converge to the positive root.
+    error KDidNotConverge();
 
     int256 private constant _ONE_INT = 1e18;
-    int256 private constant _K_MAX_ERROR = 0.000000000001e16; // 0.000000000001%
+    int256 private constant _K_MAX_ERROR = 1e4;
 
     constructor(
         IVault vault_,
@@ -39,6 +39,7 @@ contract StableLPOracle is LPOracleBase {
     /// @inheritdoc ILPOracleBase
     function calculateTVL(int256[] memory prices) public view override returns (uint256 tvl) {
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
+        InputHelpers.ensureInputLengthMatch(prices.length, lastBalancesLiveScaled18.length);
 
         // The TVL of the stable pool is computed by calculating the balances for the stable pool that would represent
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
@@ -57,8 +58,8 @@ contract StableLPOracle is LPOracleBase {
     }
 
     /**
-     * @dev Computes a set of balances for a given price vector and a given invariant. The set of balances should meet
-     * two conditions:
+     * @notice Computes a set of balances for a given price vector and a given invariant.
+     * @dev The set of balances should meet two conditions:
      * 1. The invariant of the computed balances should be equal to the given invariant.
      * 2. The spot prices of the computed balances should be equal to the given price vector. In other words:
      *    `spotPrice(i, j) == prices[i] / prices[j]`
