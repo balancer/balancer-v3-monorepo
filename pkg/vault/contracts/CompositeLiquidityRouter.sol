@@ -833,7 +833,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         if (_currentSwapTokensOut().length() != tokensOut.length) {
-            // If tokensOut length does not match with transient tokens out length, the tokensOut array is wrong.
+            // If tokensOut length does not match transient tokens out length, the tokensOut array is wrong.
             revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
         }
 
@@ -851,7 +851,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
             }
 
-            // Informs that the token in the transient array index has already been checked.
+            // Note that the token in the transient array index has already been checked.
             checkedTokenIndexes[tokenIndex] = true;
 
             amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokenOut);
@@ -870,7 +870,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         address[] memory tokensIn
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
-        // Revert if tokensIn length does not match with maxAmountsIn length.
+        // Revert if tokensIn length does not match maxAmountsIn length.
         InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
@@ -884,10 +884,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             _currentSwapTokensIn().add(tokensIn[i]);
         }
 
-        (uint256[] memory amountsIn, ) = _addLiquidity(params.pool, params);
+        (uint256[] memory amountsIn, ) = _addLiquidityToNestedPool(params.pool, params);
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender and checks the minimum BPT out.
+        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
         (, exactBptAmountOut, ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -907,7 +907,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     // Nested Pool helper functions
 
-    function _addLiquidity(
+    function _addLiquidityToNestedPool(
         address pool,
         AddLiquidityHookParams calldata params
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
@@ -973,7 +973,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
                 }
             } else if (
-                // wrapped amount in was not specified
+                // wrapped amount in was not specified.
                 tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.amount == 0
             ) {
                 // Handle ERC4626 token wrapping at child pool level.
