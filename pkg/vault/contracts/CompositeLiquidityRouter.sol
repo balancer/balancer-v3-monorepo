@@ -533,7 +533,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) private returns (address tokenOut, uint256 actualAmountOut) {
         if (needToUnwrap) {
             IERC4626 wrappedToken = IERC4626(token);
-            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
+            IERC20 underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
 
             if (address(underlyingToken) == address(0)) {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
