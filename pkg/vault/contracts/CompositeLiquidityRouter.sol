@@ -386,37 +386,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     }
 
     /**
-     * @notice Wraps the underlying tokens specified in the transient set `_currentSwapTokenInAmounts`.
-     * @dev Then updates this set with the resulting amount of wrapped tokens from the operation.
-     * @param wrappedToken The token to wrap
-     * @param sender The address of the originator of the transaction
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @return wrappedAmountOut The amountOut of wrapped tokens
-     */
-    function _wrapAndUpdateTokenInAmounts(
-        IERC4626 wrappedToken,
-        address sender,
-        bool wethIsEth
-    ) private returns (uint256 wrappedAmountOut) {
-        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
-
-        // Get the amountIn of underlying tokens specified by the sender.
-        uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
-        RouterCallParams memory callParams = RouterCallParams({
-            sender: sender,
-            wethIsEth: wethIsEth,
-            isStaticCall: EVMCallModeHelpers.isStaticCall()
-        });
-
-        wrappedAmountOut = _executeWrapOperation(wrappedToken, underlyingToken, underlyingAmountIn, callParams);
-
-        // Remove the underlying token from `_currentSwapTokensIn` and zero out the amount, as these tokens were paid
-        // in advance and wrapped. Remaining tokens will be transferred in at the end of the calculation.
-        _currentSwapTokensIn().remove(underlyingToken);
-        _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
-    }
-
-    /**
      * @notice Processes a single token for input during add liquidity operations.
      * @dev Handles wrapping and token transfers when not in a query context.
      * @param token The incoming token
