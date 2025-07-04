@@ -1073,7 +1073,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             RemoveLiquidityHookParams({
                 sender: address(this), // Always use router address for queries
                 pool: pool,
-                minAmountsOut: new uint256[](numTokens),
+                minAmountsOut: new uint256[](numTokens), // Always zero for supported use cases
                 maxBptAmountIn: exactBptAmountIn,
                 kind: RemoveLiquidityKind.PROPORTIONAL, // Always proportional for supported use cases
                 wethIsEth: false, // Always false for queries
