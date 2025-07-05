@@ -32,7 +32,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
 
     uint256 private constant _MAX_BPT_LOCK_DURATION = 365 days;
 
-    uint256 private constant _MIN_PROJECT_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
+    uint256 private constant _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT = 20e16; // 20%
 
     string private _poolVersion;
 
@@ -219,7 +219,7 @@ contract LBPoolFactory is IPoolVersion, ReentrancyGuardTransient, BasePoolFactor
             if (
                 (totalTokenWeight != FixedPoint.ONE ||
                     migrationParams.migrationWeightProjectToken == 0 ||
-                    migrationParams.migrationWeightReserveToken < _MIN_PROJECT_TOKEN_MIGRATION_WEIGHT)
+                    migrationParams.migrationWeightReserveToken < _MIN_RESERVE_TOKEN_MIGRATION_WEIGHT)
             ) {
                 revert InvalidMigrationWeights();
             }
