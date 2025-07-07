@@ -146,12 +146,23 @@ contract LBPoolFactoryTest is BaseLBPTest {
     function testCreatePoolWithInvalidMigrationWeights() public {
         uint256 initBptLockDuration = 30 days;
         uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 minReserveTokenWeight = 20e16; // 20%
+        uint256 maxProjectTokenWeight = 100e16 - minReserveTokenWeight;
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 0, 100e16);
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 0);
+
+        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        _createLBPoolWithMigration(
+            address(0),
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            maxProjectTokenWeight + 1,
+            minReserveTokenWeight - 1
+        );
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
         _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 100e16);
