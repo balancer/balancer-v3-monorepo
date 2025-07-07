@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
@@ -24,8 +25,8 @@ contract StableLPOracle is LPOracleBase {
     // The `k` parameter did not converge to the positive root.
     error KDidNotConverge();
 
-    int256 private constant _ONE_INT = 1e18;
-    int256 private constant _K_MAX_ERROR = 1e4;
+    int256 private constant _POSITIVE_ONE_INT = 1e18;
+    uint256 private constant _K_MAX_ERROR = 1e4;
 
     constructor(
         IVault vault_,
@@ -97,7 +98,7 @@ contract StableLPOracle is LPOracleBase {
         balancesForPrices = new uint256[](_totalTokens);
         for (uint256 i = 0; i < _totalTokens; i++) {
             balancesForPrices[i] = ((b * int256(invariant)) /
-                _mulDownInt(a - _mulDownInt(k, prices[i]), _ONE_INT - sumPriceDivision)).toUint256();
+                _mulDownInt(a - _mulDownInt(k, prices[i]), _POSITIVE_ONE_INT - sumPriceDivision)).toUint256();
         }
     }
 
@@ -121,15 +122,15 @@ contract StableLPOracle is LPOracleBase {
 
             int256 newK = k - _divDownInt(fk, dFkdk);
 
-            uint256 error = Math.abs(_divDownInt(newK - k, k));
+            uint256 error = SignedMath.abs(_divDownInt(newK - k, k));
             if (error <= _K_MAX_ERROR) {
-                    return newK;
+                return newK;
             }
 
             k = newK;
         }
 
-        revert KDidntConverge();
+        revert KDidNotConverge();
     }
 
     function _findInitialGuessForK(int256 a, int256 b, int256[] memory prices) internal view returns (int256 k) {
@@ -144,10 +145,10 @@ contract StableLPOracle is LPOracleBase {
             }
         }
 
-        int256 term1 = _ONE_INT + _divDownInt(_ONE_INT, (_ONE_INT + b));
-        int256 term2 = 2 * _ONE_INT - _divDownInt(b, a);
+        int256 term1 = _POSITIVE_ONE_INT + _divDownInt(_POSITIVE_ONE_INT, (_POSITIVE_ONE_INT + b));
+        int256 term2 = 2 * _POSITIVE_ONE_INT - _divDownInt(b, a);
 
-        return (a * Math.min(term1, term2)) / minPrice;
+        return (a * SignedMath.min(term1, term2)) / minPrice;
     }
 
     function _computeKParams(
@@ -178,13 +179,13 @@ contract StableLPOracle is LPOracleBase {
             dPdkDivP += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
             alphaDivPTn = (alphaDivPTn * b) / a;
         }
-        T -= _ONE_INT;
+        T -= _POSITIVE_ONE_INT;
 
         // We need to calculate T and alpha first to be able to divide alpha by PT^n.
         for (i = 0; i < _totalTokens; i++) {
             int256 ri = _divDownInt(prices[i], a);
             // P = \prod(k*ri - 1) . So, to divide alpha by PT^n, we can iteratively divide alpha by T and (k*ri - 1).
-            den = _mulDownInt(k, ri) - _ONE_INT;
+            den = _mulDownInt(k, ri) - _POSITIVE_ONE_INT;
             alphaDivPTn = _divDownInt(alphaDivPTn, _mulDownInt(den, T));
         }
     }
@@ -197,10 +198,10 @@ contract StableLPOracle is LPOracleBase {
     }
 
     function _divDownInt(int256 a, int256 b) internal pure returns (int256) {
-        return (a * _ONE_INT) / b;
+        return (a * _POSITIVE_ONE_INT) / b;
     }
 
     function _mulDownInt(int256 a, int256 b) internal pure returns (int256) {
-        return (a * b) / _ONE_INT;
+        return (a * b) / _POSITIVE_ONE_INT;
     }
 }
