@@ -72,18 +72,25 @@ contract StableLPOracle is LPOracleBase {
         // To compute the balances for a given price vector, we need to compute the gradient of the stable invariant.
         // The stable invariant is:
         //
-        // a \sum{xi} \prod{xi} +bD \prod{xi} - D^(n+1) = 0
+        // a * S * P + b * D * P - D^(n+1) = 0
         //
-        // where `D` is the invariant, `n` is the number of tokens, `xi` is the balance of each token,
-        // `a = A*(n^2n)` and `b = a - n^n`.
+        // where:
+        // D = invariant
+        // S = sum of balances
+        // P = product of balances
+        // n = number of tokens
+        // A = amplification coefficient
+        // a = A*(n^2n)
+        // b = a - n^n
         //
         // The gradient in terms of xj (the balance of the j-th token) is:
         //
-        // a \prod{xi} + a \sum{xi} \prod_i!=j{xi} + bD \prod_i!=j{xi}
+        // a * P + a * S * P_notJ + b * D * P_notJ = 0
+        //
+        // where P_notJ is the product of all balances except the j-th token.
         //
         // We can make this gradient equal to k*pj, where pj is the price of the j-th token and k is a constant.
-        // Then, solving this system of equations for every pj, we will have an array of balances that respect the
-        // price vector.
+        // Then, solving this system of equations for every pj, we will have an array of balances that respect the price vector.
 
         (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
 
@@ -113,12 +120,17 @@ contract StableLPOracle is LPOracleBase {
 
         k = _findInitialGuessForK(a, b, prices);
         for (uint256 i = 0; i < 255; i++) {
-            // dTdk and dPdk are the derivatives of T and P with respect to k.
+            // TPrimeOverK and dPdk are the derivatives of T and P with respect to k.
             // solhint-disable-next-line var-name-mixedcase
-            (int256 T, int256 dTdk, int256 dPdkDivP, int256 alphaDivPTn) = _computeKParams(k, a, b, prices);
+            (int256 T, int256 TPrimeOverK, int256 PPrimeOverKDividedByP, int256 alphaDivPTn) = _computeKParams(
+                k,
+                a,
+                b,
+                prices
+            );
 
             int256 fk = T - alphaDivPTn;
-            int256 dFkdk = (int256(_totalTokens) + 1) * dTdk + _mulDownInt(T, dPdkDivP);
+            int256 dFkdk = (int256(_totalTokens) + 1) * TPrimeOverK + _mulDownInt(T, PPrimeOverKDividedByP);
 
             int256 newK = k - _divDownInt(fk, dFkdk);
 
@@ -156,27 +168,27 @@ contract StableLPOracle is LPOracleBase {
         int256 a,
         int256 b,
         int256[] memory prices
-    ) internal view returns (int256 T, int256 dTdk, int256 dPdkDivP, int256 alphaDivPTn) {
+    ) internal view returns (int256 T, int256 TPrimeOverK, int256 PPrimeOverKDividedByP, int256 alphaDivPTn) {
         // solhint-disable-previous-line var-name-mixedcase
 
         uint256 i;
         int256 den;
 
         // To avoid overflows, we divided f(k) and f'(k) by PT^n. That's why, instead of computing P, P' and alpha,
-        // we change the variables to compute `dPdkDivP = P'/P` and `alphaDivPTn = alpha/(PT^n)`.
+        // we change the variables to compute `PPrimeOverKDividedByP = P'/P` and `alphaDivPTn = alpha/(PT^n)`.
 
         T = 0;
-        // dTdk = T', where T' is the derivative of T with respect to k.
-        dTdk = 0;
-        // dPdkDivP = P'/P, where P' is the derivative of P with respect to k.
-        dPdkDivP = 0;
+        // TPrimeOverK = T', where T' is the derivative of T with respect to k.
+        TPrimeOverK = 0;
+        // PPrimeOverKDividedByP = P'/P, where P' is the derivative of P with respect to k.
+        PPrimeOverKDividedByP = 0;
         // alphaDivPTn = alpha/(PT^n), where alpha is the constant term of the stable invariant.
         alphaDivPTn = b;
         for (i = 0; i < _totalTokens; i++) {
             den = _mulDownInt(k, prices[i]) - a;
             T += _divDownInt(a, den);
-            dTdk -= _divDownInt((prices[i] * a) / den, den);
-            dPdkDivP += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
+            TPrimeOverK -= _divDownInt((prices[i] * a) / den, den);
+            PPrimeOverKDividedByP += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
             alphaDivPTn = (alphaDivPTn * b) / a;
         }
         T -= _POSITIVE_ONE_INT;
