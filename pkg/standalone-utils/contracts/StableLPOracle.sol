@@ -150,11 +150,7 @@ contract StableLPOracle is LPOracleBase {
         int256 term1 = _ONE_INT + _divDownInt(_ONE_INT, (_ONE_INT + b));
         int256 term2 = 2 * _ONE_INT - _divDownInt(b, a);
 
-        if (term1 < term2) {
-            return (term1 * a) / minPrice;
-        } else {
-            return (term2 * a) / minPrice;
-        }
+        return (a * Math.min(term1, term2)) / minPrice;
     }
 
     function _computeKParams(
