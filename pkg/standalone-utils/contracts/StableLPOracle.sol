@@ -121,12 +121,9 @@ contract StableLPOracle is LPOracleBase {
 
             int256 newK = k - _divDownInt(fk, dFkdk);
 
-            if (newK > k) {
-                if (_divDownInt(newK - k, k) <= _K_MAX_ERROR) {
+            uint256 error = Math.abs(_divDownInt(newK - k, k));
+            if (error <= _K_MAX_ERROR) {
                     return newK;
-                }
-            } else if (_divDownInt(k - newK, k) <= _K_MAX_ERROR) {
-                return newK;
             }
 
             k = newK;
