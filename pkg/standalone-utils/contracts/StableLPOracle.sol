@@ -82,7 +82,7 @@ contract StableLPOracle is LPOracleBase {
         // a \prod{xi} + a \sum{xi} \prod_i!=j{xi} + bD \prod_i!=j{xi}
         //
         // We can make this gradient equal to k*pj, where pj is the price of the j-th token and k is a constant.
-        // Then, solving this system of equations for every pj, we will have an array of balances that respect the
+        // Then, solving this system of equations for every pj, we will have an array of balances that reflect the
         // price vector.
 
         (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
