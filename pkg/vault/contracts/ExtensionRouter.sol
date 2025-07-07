@@ -276,12 +276,6 @@ contract Router is IRouter, RouterCommon {
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
-        return _addLiquidityHook(params);
-    }
-
-    function _addLiquidityHook(
-        AddLiquidityHookParams calldata params
-    ) internal returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -626,10 +620,6 @@ contract Router is IRouter, RouterCommon {
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
-        return _swapSingleTokenHook(params);
-    }
-
-    function _swapSingleTokenHook(SwapSingleTokenHookParams calldata params) internal returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
