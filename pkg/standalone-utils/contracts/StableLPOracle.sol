@@ -121,17 +121,12 @@ contract StableLPOracle is LPOracleBase {
 
         k = _findInitialGuessForK(a, b, prices);
         for (uint256 i = 0; i < 255; i++) {
-            // TPrimeOverK and dPdk are the derivatives of T and P with respect to k.
+            // dTdk and dPdk are the derivatives of T and P with respect to k.
             // solhint-disable-next-line var-name-mixedcase
-            (int256 T, int256 TPrimeOverK, int256 PPrimeOverKDividedByP, int256 alphaDivPTn) = _computeKParams(
-                k,
-                a,
-                b,
-                prices
-            );
+            (int256 T, int256 dTdk, int256 dPdkDivP, int256 alphaDivPTn) = _computeKParams(k, a, b, prices);
 
             int256 fk = T - alphaDivPTn;
-            int256 dFkdk = (int256(_totalTokens) + 1) * TPrimeOverK + _mulDownInt(T, PPrimeOverKDividedByP);
+            int256 dFkdk = (int256(_totalTokens) + 1) * dTdk + _mulDownInt(T, dPdkDivP);
 
             int256 newK = k - _divDownInt(fk, dFkdk);
 
@@ -169,27 +164,27 @@ contract StableLPOracle is LPOracleBase {
         int256 a,
         int256 b,
         int256[] memory prices
-    ) internal view returns (int256 T, int256 TPrimeOverK, int256 PPrimeOverKDividedByP, int256 alphaDivPTn) {
+    ) internal view returns (int256 T, int256 dTdk, int256 dPdkDivP, int256 alphaDivPTn) {
         // solhint-disable-previous-line var-name-mixedcase
 
         uint256 i;
         int256 den;
 
         // To avoid overflows, we divided f(k) and f'(k) by PT^n. That's why, instead of computing P, P' and alpha,
-        // we change the variables to compute `PPrimeOverKDividedByP = P'/P` and `alphaDivPTn = alpha/(PT^n)`.
+        // we change the variables to compute `dPdkDivP = P'/P` and `alphaDivPTn = alpha/(PT^n)`.
 
         T = 0;
-        // TPrimeOverK = T', where T' is the derivative of T with respect to k.
-        TPrimeOverK = 0;
-        // PPrimeOverKDividedByP = P'/P, where P' is the derivative of P with respect to k.
-        PPrimeOverKDividedByP = 0;
+        // dTdk = T', where T' is the derivative of T with respect to k.
+        dTdk = 0;
+        // dPdkDivP = P'/P, where P' is the derivative of P with respect to k.
+        dPdkDivP = 0;
         // alphaDivPTn = alpha/(PT^n), where alpha is the constant term of the stable invariant.
         alphaDivPTn = b;
         for (i = 0; i < _totalTokens; i++) {
             den = _mulDownInt(k, prices[i]) - a;
             T += _divDownInt(a, den);
-            TPrimeOverK -= _divDownInt((prices[i] * a) / den, den);
-            PPrimeOverKDividedByP += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
+            dTdk -= _divDownInt((prices[i] * a) / den, den);
+            dPdkDivP += _divDownInt(prices[i], _mulDownInt(k, prices[i]) - a);
             alphaDivPTn = (alphaDivPTn * b) / a;
         }
         T -= _POSITIVE_ONE_INT;
@@ -203,11 +198,19 @@ contract StableLPOracle is LPOracleBase {
         }
     }
 
+    /**
+     * @notice Computes `a` and `b` parameters used in the gradient function that determines the market-price balances.
+     * @dev This function returns scaled-18 values, and that's why we use FP math instead of raw math. During some
+     * computations (e.g. `b/a`) we need FP precision, so return these variables as scaled-18 is convenient.
+     */
     function _computeAAndBForPool(IStablePool pool) internal view returns (int256 a, int256 b) {
         (uint256 amplificationParameter, , ) = pool.getAmplificationParameter();
         // In the StableMath library, `amplificationParameter = A*n^(n-1)` (For more information, check the
-        // `computeInvariant` natspec of the StableMath library).
-        // a = A * n^2n, but A = ampParameter / n^(n-1). So, a = ampParameter * n^(2n)/n^(n-1) = ampParameter * n^(n+1).
+        // `computeInvariant` natspec of the StableMath library). `a = A * n^2n` and `A = ampParameter / n^(n-1)`. So,
+        // `a = ampParameter * n^(2n)/n^(n-1) = ampParameter * n^(n+1)`.
+        // Since `2 <= totalTokens <= 5`, and 1 <= amplificationParameter/AMP_PRECISION <= 50000, the max value of `a`
+        // is 5^6 * 50000 = 781,250,000, which multiplied by 1e18 is far from the int256 max positive value of 5.78e76.
+        // Since there's no risk of Underflow/Overflow, we don't need to use SafeCast.
         a = int256((amplificationParameter * (_totalTokens ** (_totalTokens + 1))).divDown(StableMath.AMP_PRECISION));
         b = a - int256(FixedPoint.ONE * (_totalTokens ** _totalTokens));
     }
