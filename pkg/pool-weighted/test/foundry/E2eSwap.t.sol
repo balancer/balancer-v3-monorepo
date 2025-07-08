@@ -68,24 +68,25 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
     }
 
     function fuzzPoolParams(
-        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
-    ) internal override returns (bool overrideSwapLimits) {
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params,
+        E2eTestState memory state
+    ) internal override returns (E2eTestState memory) {
         uint256 weightTokenA = params[0];
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
         uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);
-        _setMinAndMaxSwapAmountExactIn(newPoolBalances);
-        _setMinAndMaxSwapAmountExactOut(newPoolBalances);
+        (state.swapAmounts.minTokenA, state.swapAmounts.maxTokenA) = _setMinAndMaxSwapAmountExactIn(newPoolBalances);
+        (state.swapAmounts.minTokenB, state.swapAmounts.maxTokenB) = _setMinAndMaxSwapAmountExactOut(newPoolBalances);
 
         // Weighted Pool has rounding errors when token decimals are different, so the number below fixes the test
         // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther the weights are from 50/50, the bigger
         // the error.
         exactInOutDecimalsErrorMultiplier = 2000;
 
-        overrideSwapLimits = true;
+        return state;
     }
 
-    function _setMinAndMaxSwapAmountExactIn(uint256[] memory poolBalancesRaw) private {
+    function _setMinAndMaxSwapAmountExactIn(uint256[] memory poolBalancesRaw) private returns (uint256 minSwapAmountTokenA, uint256 maxSwapAmountTokenA) {
         // Since tokens can have different decimals and amountIn is in relation to tokenA, normalize tokenB liquidity.
         uint256 normalizedLiquidityTokenB = (poolBalancesRaw[tokenBIdx] * (10 ** decimalsTokenA)) /
             (10 ** decimalsTokenB);
@@ -102,7 +103,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         minSwapAmountTokenA = minSwapAmountTokenA > maxSwapAmountTokenA ? maxSwapAmountTokenA : minSwapAmountTokenA;
     }
 
-    function _setMinAndMaxSwapAmountExactOut(uint256[] memory poolBalancesRaw) private {
+    function _setMinAndMaxSwapAmountExactOut(uint256[] memory poolBalancesRaw) private returns (uint256 minSwapAmountTokenB, uint256 maxSwapAmountTokenB) {
         // Since tokens can have different decimals and amountOut is in relation to tokenB, normalize tokenA liquidity.
         uint256 normalizedLiquidityTokenA = (poolBalancesRaw[tokenAIdx] * (10 ** decimalsTokenB)) /
             (10 ** decimalsTokenA);

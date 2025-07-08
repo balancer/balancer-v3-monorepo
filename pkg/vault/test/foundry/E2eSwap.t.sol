@@ -20,6 +20,21 @@ import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
+struct SwapAmounts {
+    uint256 minTokenA;
+    uint256 maxTokenA;
+    uint256 minTokenB;
+    uint256 maxTokenB;
+}
+
+struct E2eTestState {
+    SwapAmounts swapAmounts;
+    uint256 minPoolSwapFeePercentage;
+    uint256 maxPoolSwapFeePercentage;
+    uint256 exactInOutDecimalsErrorMultiplier;
+    uint256 amountInExactInOutError;
+}
+
 contract E2eSwapTest is BaseVaultTest {
     using ScalingHelpers for uint256;
     using FixedPoint for uint256;
@@ -37,17 +52,7 @@ contract E2eSwapTest is BaseVaultTest {
     address internal sender;
     address internal poolCreator;
 
-    uint256 internal minPoolSwapFeePercentage;
-    uint256 internal maxPoolSwapFeePercentage;
-
-    uint256 internal minSwapAmountTokenA;
-    uint256 internal maxSwapAmountTokenA;
-
-    uint256 internal minSwapAmountTokenB;
-    uint256 internal maxSwapAmountTokenB;
-
-    uint256 internal exactInOutDecimalsErrorMultiplier = 1;
-    uint256 internal amountInExactInOutError = 2e12;
+    E2eTestState private $;
 
     // We theoretically support the full range of token decimals, but tokens with extreme values don't tend to perform
     // well in AMMs, due to precision issues with their math. The lowest decimal value in common use would be 6,
@@ -80,12 +85,15 @@ contract E2eSwapTest is BaseVaultTest {
         // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
         feeController.manualSetPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
 
-        minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
-        maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
+        $.minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
+        $.maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
 
         // These tests rely on a minimum fee to work; set something very small for pool mock.
-        minPoolSwapFeePercentage = (minPoolSwapFeePercentage == 0 ? 1e12 : minPoolSwapFeePercentage);
-        maxPoolSwapFeePercentage = (maxPoolSwapFeePercentage == 1e18 ? 10e16 : maxPoolSwapFeePercentage);
+        $.minPoolSwapFeePercentage = ($.minPoolSwapFeePercentage == 0 ? 1e12 : $.minPoolSwapFeePercentage);
+        $.maxPoolSwapFeePercentage = ($.maxPoolSwapFeePercentage == 1e18 ? 10e16 : $.maxPoolSwapFeePercentage);
+
+        $.exactInOutDecimalsErrorMultiplier = 1;
+        $.amountInExactInOutError = 2e12;
     }
 
     /**
@@ -108,7 +116,7 @@ contract E2eSwapTest is BaseVaultTest {
         setPoolInitAmounts();
 
         setUpVariables();
-        calculateMinAndMaxSwapAmounts();
+        $.swapAmounts = calculateMinAndMaxSwapAmounts();
 
         address[] memory tokens = new address[](2);
         tokens[tokenAIdx] = address(tokenA);
@@ -146,7 +154,7 @@ contract E2eSwapTest is BaseVaultTest {
         poolCreator = lp;
     }
 
-    function calculateMinAndMaxSwapAmounts() internal virtual {
+    function calculateMinAndMaxSwapAmounts() internal virtual returns (SwapAmounts memory swapAmounts) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -171,20 +179,20 @@ contract E2eSwapTest is BaseVaultTest {
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10 to account for
         // swap fees and compensate for rate rounding issues.
         uint256 feeFactor = 10;
-        minSwapAmountTokenA = (
+        swapAmounts.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? feeFactor * tokenAMinTradeAmount
                 : feeFactor * tokenACalculatedNotZero
         );
-        minSwapAmountTokenB = (
+        swapAmounts.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? feeFactor * tokenBMinTradeAmount
                 : feeFactor * tokenBCalculatedNotZero
         );
 
         // 99% of pool init amount, to avoid rounding issues near the full liquidity of the pool.
-        maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(99e16);
-        maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(99e16);
+        swapAmounts.maxTokenA = poolInitAmountTokenA.mulDown(99e16);
+        swapAmounts.maxTokenB = poolInitAmountTokenB.mulDown(99e16);
     }
 
     /// @dev Override this function to introduce custom rates and rate providers.
@@ -202,9 +210,10 @@ contract E2eSwapTest is BaseVaultTest {
      * limits whenever needed.
      */
     function fuzzPoolParams(
-        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
-    ) internal virtual returns (bool overrideSwapLimits) {
-        // solhint-disable-previous-line no-empty-blocks
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory,
+        E2eTestState memory state
+    ) internal virtual returns (E2eTestState memory) {
+        return state;
     }
 
     function testDoUndoExactInSwapAmount__Fuzz(uint256 exactAmountIn) public virtual {
@@ -220,7 +229,7 @@ contract E2eSwapTest is BaseVaultTest {
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.poolParams = params;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
@@ -232,7 +241,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.liquidityTokenA = liquidityTokenA;
         testLocals.liquidityTokenB = liquidityTokenB;
 
-        uint256 exactAmountIn = maxSwapAmountTokenA;
+        uint256 exactAmountIn = $.swapAmounts.maxTokenA;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
@@ -242,7 +251,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.shouldTestFee = true;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        uint256 exactAmountIn = maxSwapAmountTokenA;
+        uint256 exactAmountIn = $.swapAmounts.maxTokenA;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
@@ -253,11 +262,11 @@ contract E2eSwapTest is BaseVaultTest {
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestFee = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
         testLocals.poolParams = params;
 
-        uint256 exactAmountIn = maxSwapAmountTokenA;
+        uint256 exactAmountIn = $.swapAmounts.maxTokenA;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
@@ -268,7 +277,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.newDecimalsTokenA = newDecimalsTokenA;
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
 
-        uint256 exactAmountIn = maxSwapAmountTokenA;
+        uint256 exactAmountIn = $.swapAmounts.maxTokenA;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
@@ -280,12 +289,12 @@ contract E2eSwapTest is BaseVaultTest {
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.newDecimalsTokenA = newDecimalsTokenA;
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolParams = params;
 
-        uint256 exactAmountIn = maxSwapAmountTokenA;
+        uint256 exactAmountIn = $.swapAmounts.maxTokenA;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
@@ -323,7 +332,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.shouldTestDecimals = true;
         testLocals.shouldTestSwapAmount = true;
         testLocals.shouldTestFee = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.newDecimalsTokenA = newDecimalsTokenA;
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
@@ -345,7 +354,7 @@ contract E2eSwapTest is BaseVaultTest {
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.poolParams = params;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
@@ -357,7 +366,8 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.liquidityTokenA = liquidityTokenA;
         testLocals.liquidityTokenB = liquidityTokenB;
 
-        uint256 exactAmountOut = maxSwapAmountTokenB;
+        uint256 exactAmountOut = $.swapAmounts.maxTokenB;
+        console.log('exact amount out: ', exactAmountOut);
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
@@ -367,7 +377,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.shouldTestFee = true;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        uint256 exactAmountOut = maxSwapAmountTokenB;
+        uint256 exactAmountOut = $.swapAmounts.maxTokenB;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
@@ -378,11 +388,11 @@ contract E2eSwapTest is BaseVaultTest {
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestFee = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
         testLocals.poolParams = params;
 
-        uint256 exactAmountOut = maxSwapAmountTokenB;
+        uint256 exactAmountOut = $.swapAmounts.maxTokenB;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
@@ -393,7 +403,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.newDecimalsTokenA = newDecimalsTokenA;
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
 
-        uint256 exactAmountOut = maxSwapAmountTokenB;
+        uint256 exactAmountOut = $.swapAmounts.maxTokenB;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
@@ -405,12 +415,12 @@ contract E2eSwapTest is BaseVaultTest {
     ) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.newDecimalsTokenA = newDecimalsTokenA;
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolParams = params;
 
-        uint256 exactAmountOut = maxSwapAmountTokenB;
+        uint256 exactAmountOut = $.swapAmounts.maxTokenB;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
@@ -448,7 +458,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.shouldTestDecimals = true;
         testLocals.shouldTestSwapAmount = true;
         testLocals.shouldTestFee = true;
-        testLocals.shouldFuzzPoolParams = true;
+        testLocals.shouldFuzzPoolState = true;
         testLocals.newDecimalsTokenA = newDecimalsTokenA;
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
@@ -463,11 +473,11 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 poolSwapFeePercentage,
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
     ) public {
-        fuzzPoolParams(params);
+        $ = fuzzPoolParams(params, $);
 
-        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
+        exactAmountIn = bound(exactAmountIn, $.swapAmounts.minTokenA, $.swapAmounts.maxTokenA);
 
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+        poolSwapFeePercentage = bound(poolSwapFeePercentage, $.minPoolSwapFeePercentage, $.maxPoolSwapFeePercentage);
         vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
 
         vm.startPrank(sender);
@@ -504,7 +514,7 @@ contract E2eSwapTest is BaseVaultTest {
         assertApproxEqRel(
             exactAmountIn,
             exactAmountInSwap,
-            amountInExactInOutError,
+            $.amountInExactInOutError,
             "ExactOut and ExactIn amountsIn should match"
         );
     }
@@ -514,7 +524,7 @@ contract E2eSwapTest is BaseVaultTest {
         bool shouldTestLiquidity;
         bool shouldTestSwapAmount;
         bool shouldTestFee;
-        bool shouldFuzzPoolParams;
+        bool shouldFuzzPoolState;
         uint256 liquidityTokenA;
         uint256 liquidityTokenB;
         uint256 newDecimalsTokenA;
@@ -531,7 +541,6 @@ contract E2eSwapTest is BaseVaultTest {
             _setTokenDecimalsInPool();
         }
 
-        uint256 maxAmountIn = maxSwapAmountTokenA;
         if (testLocals.shouldTestLiquidity) {
             testLocals.liquidityTokenA = bound(
                 testLocals.liquidityTokenA,
@@ -544,23 +553,22 @@ contract E2eSwapTest is BaseVaultTest {
                 10 * poolInitAmountTokenB
             );
 
-            maxAmountIn = _setPoolBalancesAndGetAmountIn(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+            _setPoolBalancesAndGetAmountIn(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
         }
 
-        if (testLocals.shouldFuzzPoolParams) {
-            bool shouldOverrideSwapLimits = fuzzPoolParams(testLocals.poolParams);
-            if (shouldOverrideSwapLimits) {
-                maxAmountIn = maxSwapAmountTokenA;
-            }
+        if (testLocals.shouldFuzzPoolState) {
+            $ = fuzzPoolParams(testLocals.poolParams, $);
         }
+
+        uint256 maxAmountIn = $.swapAmounts.maxTokenA;
 
         if (testLocals.shouldTestSwapAmount) {
             // If the liquidity is very small for one of the tokens and decimals are small too, the maxAmountIn may be
             // smaller than minSwapAmount (usually 10^7), so just overwrite it.
-            if (minSwapAmountTokenA > maxAmountIn) {
+            if ($.swapAmounts.minTokenA > maxAmountIn) {
                 exactAmountIn = maxAmountIn;
             } else {
-                exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
+                exactAmountIn = bound(exactAmountIn, $.swapAmounts.minTokenA, maxAmountIn);
             }
         } else {
             exactAmountIn = maxAmountIn;
@@ -569,11 +577,11 @@ contract E2eSwapTest is BaseVaultTest {
         if (testLocals.shouldTestFee) {
             testLocals.poolSwapFeePercentage = bound(
                 testLocals.poolSwapFeePercentage,
-                minPoolSwapFeePercentage,
-                maxPoolSwapFeePercentage
+                $.minPoolSwapFeePercentage,
+                $.maxPoolSwapFeePercentage
             );
         } else {
-            testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
+            testLocals.poolSwapFeePercentage = $.minPoolSwapFeePercentage;
         }
 
         vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
@@ -653,7 +661,6 @@ contract E2eSwapTest is BaseVaultTest {
             _setTokenDecimalsInPool();
         }
 
-        uint256 maxAmountOut = maxSwapAmountTokenB;
         if (testLocals.shouldTestLiquidity) {
             testLocals.liquidityTokenA = bound(
                 testLocals.liquidityTokenA,
@@ -666,23 +673,22 @@ contract E2eSwapTest is BaseVaultTest {
                 10 * poolInitAmountTokenB
             );
 
-            maxAmountOut = _setPoolBalancesAndGetAmountOut(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+            _setPoolBalancesAndGetAmountOut(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
         }
 
-        if (testLocals.shouldFuzzPoolParams) {
-            bool shouldOverrideSwapLimits = fuzzPoolParams(testLocals.poolParams);
-            if (shouldOverrideSwapLimits) {
-                maxAmountOut = maxSwapAmountTokenB;
-            }
+        if (testLocals.shouldFuzzPoolState) {
+            $ = fuzzPoolParams(testLocals.poolParams, $);
         }
+
+        uint256 maxAmountOut = $.swapAmounts.maxTokenB;
 
         if (testLocals.shouldTestSwapAmount) {
             // If the liquidity is very small for one of the tokens and decimals are small too, the maxAmountOut may be
             // smaller than minSwapAmount (usually 10^7), so just overwrite it.
-            if (minSwapAmountTokenB > maxAmountOut) {
+            if ($.swapAmounts.minTokenB > maxAmountOut) {
                 exactAmountOut = maxAmountOut;
             } else {
-                exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
+                exactAmountOut = bound(exactAmountOut, $.swapAmounts.minTokenB, maxAmountOut);
             }
         } else {
             exactAmountOut = maxAmountOut;
@@ -691,11 +697,11 @@ contract E2eSwapTest is BaseVaultTest {
         if (testLocals.shouldTestFee) {
             testLocals.poolSwapFeePercentage = bound(
                 testLocals.poolSwapFeePercentage,
-                minPoolSwapFeePercentage,
-                maxPoolSwapFeePercentage
+                $.minPoolSwapFeePercentage,
+                $.maxPoolSwapFeePercentage
             );
         } else {
-            testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
+            testLocals.poolSwapFeePercentage = $.minPoolSwapFeePercentage;
         }
 
         vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
@@ -892,7 +898,7 @@ contract E2eSwapTest is BaseVaultTest {
         setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
 
         // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
-        calculateMinAndMaxSwapAmounts();
+        $.swapAmounts = calculateMinAndMaxSwapAmounts();
     }
 
     function setPoolInitAmounts() internal {
@@ -912,5 +918,9 @@ contract E2eSwapTest is BaseVaultTest {
         // Override vault liquidity, to make sure the extra liquidity is registered.
         vault.manualSetReservesOf(tokenA, 100 * poolInitAmountTokenA);
         vault.manualSetReservesOf(tokenB, 100 * poolInitAmountTokenB);
+    }
+
+    function _getTestState() internal view returns (E2eTestState memory) {
+        return $;
     }
 }

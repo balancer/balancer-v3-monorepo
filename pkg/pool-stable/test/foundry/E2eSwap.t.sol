@@ -135,13 +135,14 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
     }
 
     function fuzzPoolParams(
-        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
-    ) internal override returns (bool overrideSwapLimits) {
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params,
+        E2eTestState memory state
+    ) internal override returns (E2eTestState memory) {
         // Vary amplification parameter from 1 to 5000.
         uint256 newAmplificationParameter = bound(params[0], StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         _setAmplificationParameter(pool, newAmplificationParameter);
-        return false;
+        return state;
     }
 
     function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {

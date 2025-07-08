@@ -70,7 +70,7 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
         _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
-        uint256 exactAmountIn = maxSwapAmountTokenA;
+        uint256 exactAmountIn = _getTestState().swapAmounts.maxTokenA;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
@@ -105,7 +105,7 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
         _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
-        uint256 exactAmountOut = maxSwapAmountTokenB;
+        uint256 exactAmountOut = _getTestState().swapAmounts.maxTokenB;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
