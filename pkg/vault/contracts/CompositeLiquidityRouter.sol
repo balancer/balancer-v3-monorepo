@@ -243,7 +243,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         uint256[] memory amountsIn = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            amountsIn[i] = _processTokenIn(
+            amountsIn[i] = _processTokenInExactIn(
                 address(erc4626PoolTokens[i]),
                 params.maxAmountsIn[i],
                 wrapUnderlying[i],
@@ -282,8 +282,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             maxAmounts[i] = _MAX_AMOUNT;
         }
 
-        // Add wrapped amounts to the ERC4626 pool.
-        (uint256[] memory wrappedAmountsIn, , ) = _vault.addLiquidity(
+        // Add token amounts to the ERC4626 pool.
+        (uint256[] memory actualAmountsIn, , ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
@@ -306,7 +306,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         for (uint256 i = 0; i < numTokens; ++i) {
             (tokensIn[i], amountsIn[i]) = _processTokenInExactOut(
                 address(erc4626PoolTokens[i]),
-                wrappedAmountsIn[i],
+                actualAmountsIn[i],
                 wrapUnderlying[i],
                 params.maxAmountsIn[i],
                 callParams
@@ -327,7 +327,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             unwrapWrapped.length
         );
 
-        (, uint256[] memory wrappedAmountsOut, ) = _vault.removeLiquidity(
+        (, uint256[] memory actualAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
                 from: params.sender,
@@ -348,9 +348,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         amountsOut = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (tokensOut[i], amountsOut[i]) = _processTokenOut(
+            (tokensOut[i], amountsOut[i]) = _processTokenOutExactIn(
                 address(erc4626PoolTokens[i]),
-                wrappedAmountsOut[i],
+                actualAmountsOut[i],
                 unwrapWrapped[i],
                 params.minAmountsOut[i],
                 callParams
@@ -388,7 +388,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @param callParams Common parameters from the main router call
      * @return actualAmountIn The final token amount (of the underlying token if wrapped)
      */
-    function _processTokenIn(
+    function _processTokenInExactIn(
         address token,
         uint256 amountIn,
         bool needToWrap,
@@ -501,7 +501,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @return tokenOut The address of the actual outgoing token (underlying if unwrapped)
      * @return actualAmountOut The actual amountOut (in underlying token if unwrapped)
      */
-    function _processTokenOut(
+    function _processTokenOutExactIn(
         address token,
         uint256 amountOut,
         bool needToUnwrap,
