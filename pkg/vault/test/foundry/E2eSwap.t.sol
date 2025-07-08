@@ -368,6 +368,8 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountOut = $.swapAmounts.maxTokenB;
         console.log('exact amount out: ', exactAmountOut);
+        console.log('liquidity A: ', liquidityTokenA);
+        console.log('liquidity B: ', liquidityTokenB);
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
@@ -707,6 +709,10 @@ contract E2eSwapTest is BaseVaultTest {
         vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, Rounding.ROUND_DOWN);
+
+        console.log('exact amount out pre swap: ', exactAmountOut);
+        console.log('max amount pre swap: ', maxAmountOut);
+        console.log('min amount pre swap: ', $.swapAmounts.minTokenB);
 
         vm.startPrank(sender);
         uint256 exactAmountInDo = router.swapSingleTokenExactOut(
