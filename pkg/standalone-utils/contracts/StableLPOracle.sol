@@ -204,9 +204,11 @@ contract StableLPOracle is LPOracleBase {
     }
 
     function _computeAAndBForPool(IStablePool pool) internal view returns (int256 a, int256 b) {
-        (uint256 amplificationFactor, , ) = pool.getAmplificationParameter();
-        // a = A * n^2n, but A = ampParameter * n^(n-1). So, a = ampParameter * n^(2n)/n^(n-1) = ampParameter * n^(n+1).
-        a = int256((amplificationFactor * (_totalTokens ** (_totalTokens + 1))).divDown(StableMath.AMP_PRECISION));
+        (uint256 amplificationParameter, , ) = pool.getAmplificationParameter();
+        // In the StableMath library, `amplificationParameter = A*n^(n-1)` (For more information, check the
+        // `computeInvariant` natspec of the StableMath library).
+        // a = A * n^2n, but A = ampParameter / n^(n-1). So, a = ampParameter * n^(2n)/n^(n-1) = ampParameter * n^(n+1).
+        a = int256((amplificationParameter * (_totalTokens ** (_totalTokens + 1))).divDown(StableMath.AMP_PRECISION));
         b = a - int256(FixedPoint.ONE * (_totalTokens ** _totalTokens));
     }
 
