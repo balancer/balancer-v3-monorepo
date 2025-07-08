@@ -10,9 +10,6 @@ import { IVault } from "./IVault.sol";
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
 interface IBaseRouter {
-    /// @notice Contract does not support the ETH operation.
-    error DontSupportETH();
-
     /**
      * @notice The sender does not transfer the correct amount of tokens to the Vault.
      * @param token The address of the token that was expected to be transferred.
@@ -20,8 +17,8 @@ interface IBaseRouter {
     error InsufficientPayment(IERC20 token);
 
     /**
-        @notice Get the address of the Balancer Vault.
-        @return vault Address of the Balancer Vault
+     * @notice Get the address of the Balancer Vault.
+     * @return vault Address of the Balancer Vault
      */
     function getVault() external view returns (IVault);
 
