@@ -50,6 +50,15 @@ The gradient `∇ₓF` gives the **internal prices** between tokens. We want:
 
 This ensures that the internal pricing mechanism is aligned with **oracle prices**.
 
+Solving the gradient for each xⱼ, we have:
+
+-(∑xᵢ) + c \* D + (k \* rⱼ - 1) \* xⱼ = 0
+
+Where:
+
+- `rᵢ = pᵢ / a`
+- `c = b / a`
+
 ## Solving the System
 
 The gradient of the invariant is computed and leads to a **linear system**, which is transformed into:
@@ -60,20 +69,13 @@ xⱼ = ((kr₁ - 1) / (krⱼ - 1)) \* x₁
 
 Using this, you can express all `xⱼ` in terms of `x₁` and `k`.
 
-Substitute into one of the original equations to solve for `x₁`, giving:
+Substitute into the gradient equation for j = 1 equations to solve for `x₁`, giving:
 
 x₁ = [cD / (kr₁ - 1)] · [ (∑ 1 / (krᵢ - 1)) - 1 ]⁻¹
 
 And generalize to all `xⱼ`:
 
 xⱼ = [cD / (krⱼ - 1)] · [ (∑ 1 / (krᵢ - 1)) - 1 ]⁻¹
-
-Where:
-
-- `rᵢ = pᵢ / a`
-- `c = b / a`
-
----
 
 ## Final Root-Finding Equation
 
