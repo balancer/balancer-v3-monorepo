@@ -42,7 +42,7 @@ pool_value = ∑ pᵢ \* 𝑥̃ᵢ
 
 3. **Divide pool value by total supply of pool tokens** to get the price per LP token.
 
-## ⚙️ Matching Prices via Gradients
+## Matching Prices via Gradients
 
 The gradient `∇ₓF` gives the **internal prices** between tokens. We want:
 
