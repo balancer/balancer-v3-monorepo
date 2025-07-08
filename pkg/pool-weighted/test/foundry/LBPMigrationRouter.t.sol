@@ -196,9 +196,12 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         );
     }
 
-    function testMigrateLiquidity__Fuzz(uint256 weightProjectToken, uint256 bptPercentageToMigrate) external {
-        weightProjectToken = bound(weightProjectToken, 10e16, 90e16);
-        uint256 weightReserveToken = FixedPoint.ONE - weightProjectToken;
+    function testMigrateLiquidity__Fuzz(uint256 weightReserveToken, uint256 bptPercentageToMigrate) external {
+        uint256 minReserveTokenWeight = 20e16; // 20%
+        uint256 maxReserveTokenWeight = 100e16 - minReserveTokenWeight;
+
+        weightReserveToken = bound(weightReserveToken, minReserveTokenWeight, maxReserveTokenWeight);
+        uint256 weightProjectToken = FixedPoint.ONE - weightReserveToken;
         bptPercentageToMigrate = bound(bptPercentageToMigrate, 10e16, 100e16);
 
         (pool, ) = _createLBPoolWithMigration(
