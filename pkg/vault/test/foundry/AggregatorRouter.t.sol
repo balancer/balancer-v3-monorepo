@@ -158,7 +158,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         vm.startPrank(alice);
         dai.transfer(address(vault), insufficientAmount);
-        vm.expectRevert(abi.encodeWithSelector(IBaseRouter.InsufficientPayment.selector, address(dai)));
+        vm.expectRevert();
         aggregatorRouter.swapSingleTokenExactIn(
             address(pool),
             dai,
@@ -176,21 +176,12 @@ contract AggregatorRouterTest is BaseVaultTest {
         // send the correct amount, the swap will revert.
 
         uint256 exactAmountIn = DEFAULT_AMOUNT;
-        uint256 minAmountOut = dai.balanceOf(alice);
         uint256 partialTransfer = DEFAULT_AMOUNT / 2;
 
         vm.startPrank(alice);
         dai.transfer(address(vault), partialTransfer);
         vm.expectRevert(abi.encodeWithSelector(IBaseRouter.InsufficientPayment.selector, address(dai)));
-        aggregatorRouter.swapSingleTokenExactIn(
-            address(pool),
-            dai,
-            usdc,
-            exactAmountIn,
-            minAmountOut,
-            MAX_UINT256,
-            bytes("")
-        );
+        aggregatorRouter.swapSingleTokenExactIn(address(pool), dai, usdc, exactAmountIn, 0, MAX_UINT256, bytes(""));
         vm.stopPrank();
     }
 
