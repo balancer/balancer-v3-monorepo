@@ -18,22 +18,6 @@ import { BaseRouter } from "./BaseRouter.sol";
  * and interacting with external pools or Vaults. Designed to be extended with specific routing behavior.
  */
 contract Router is IRouter, BaseRouter {
-    /**
-     * @dev Enables the Router to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
-     * caller.
-     *
-     * Any ETH sent to the Router outside of the WETH unwrapping mechanism would be forever locked inside the Router, so
-     * we prevent that from happening. Other mechanisms used to send ETH to the Router (such as being the recipient of
-     * an ETH swap, Pool exit or withdrawal, contract self-destruction, or receiving the block mining reward) will
-     * result in locked funds, but are not otherwise a security or soundness issue. This check only exists as an attempt
-     * to prevent user error.
-     */
-    receive() external payable {
-        if (msg.sender != address(_weth)) {
-            revert EthTransfer();
-        }
-    }
-
     constructor(
         IVault vault,
         IWETH weth,
