@@ -805,6 +805,12 @@ contract Router is IRouter, RouterCommon {
     function queryAddLiquidityHook(
         AddLiquidityHookParams calldata params
     ) external onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+        return _queryAddLiquidityHook(params);
+    }
+
+    function _queryAddLiquidityHook(
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -1071,6 +1077,10 @@ contract Router is IRouter, RouterCommon {
     function querySwapHook(
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
+        return _querySwapHook(params);
+    }
+
+    function _querySwapHook(SwapSingleTokenHookParams calldata params) internal returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
         return amountCalculated;

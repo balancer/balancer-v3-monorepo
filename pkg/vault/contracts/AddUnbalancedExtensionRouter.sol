@@ -25,7 +25,7 @@ import {
 import { Router } from "./Router.sol";
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
-contract AddUnbalancedExtension is Router {
+contract AddUnbalancedExtensionRouter is Router {
     struct AddLiquidityProportionalParams {
         uint256[] maxAmountsIn;
         uint256 exactBptAmountOut;
@@ -55,10 +55,9 @@ contract AddUnbalancedExtension is Router {
 
     constructor(
         IVault vault,
-        IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) Router(vault, weth, permit2, routerVersion) {
+    ) Router(vault, IWETH(address(0)), permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -69,7 +68,6 @@ contract AddUnbalancedExtension is Router {
         SwapExactInParams calldata swapParams
     )
         external
-        payable
         saveSender(msg.sender)
         returns (
             uint256[] memory addLiquidityAmountsIn,
@@ -82,7 +80,7 @@ contract AddUnbalancedExtension is Router {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        AddUnbalancedExtension.addProportionalAndSwapHook,
+                        AddUnbalancedExtensionRouter.addProportionalAndSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
                                 sender: msg.sender,
@@ -119,7 +117,6 @@ contract AddUnbalancedExtension is Router {
         SwapExactOutParams calldata swapParams
     )
         external
-        payable
         saveSender(msg.sender)
         returns (
             uint256[] memory addLiquidityAmountsIn,
@@ -132,7 +129,7 @@ contract AddUnbalancedExtension is Router {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        AddUnbalancedExtension.addProportionalAndSwapHook,
+                        AddUnbalancedExtensionRouter.addProportionalAndSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
                                 sender: msg.sender,
@@ -181,10 +178,10 @@ contract AddUnbalancedExtension is Router {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        AddUnbalancedExtension.addProportionalAndSwapHook,
+                        AddUnbalancedExtensionRouter.queryAddProportionalAndSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
-                                sender: msg.sender,
+                                sender: address(this),
                                 pool: pool,
                                 maxAmountsIn: addLiquidityParams.maxAmountsIn,
                                 minBptAmountOut: addLiquidityParams.exactBptAmountOut,
@@ -193,7 +190,7 @@ contract AddUnbalancedExtension is Router {
                                 userData: addLiquidityParams.userData
                             }),
                             swapParams: SwapSingleTokenHookParams({
-                                sender: msg.sender,
+                                sender: address(this),
                                 kind: SwapKind.EXACT_IN,
                                 pool: pool,
                                 tokenIn: swapParams.tokenIn,
@@ -230,10 +227,10 @@ contract AddUnbalancedExtension is Router {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        AddUnbalancedExtension.addProportionalAndSwapHook,
+                        AddUnbalancedExtensionRouter.queryAddProportionalAndSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
-                                sender: msg.sender,
+                                sender: address(this),
                                 pool: pool,
                                 maxAmountsIn: addLiquidityParams.maxAmountsIn,
                                 minBptAmountOut: addLiquidityParams.exactBptAmountOut,
@@ -242,7 +239,7 @@ contract AddUnbalancedExtension is Router {
                                 userData: addLiquidityParams.userData
                             }),
                             swapParams: SwapSingleTokenHookParams({
-                                sender: msg.sender,
+                                sender: address(this),
                                 kind: SwapKind.EXACT_OUT,
                                 pool: pool,
                                 tokenIn: swapParams.tokenIn,
@@ -264,7 +261,8 @@ contract AddUnbalancedExtension is Router {
         AddLiquidityAndSwapHookParams calldata params
     )
         external
-        payable
+        nonReentrant
+        onlyVault
         returns (
             uint256[] memory addLiquidityAmountsIn,
             uint256 addLiquidityBptAmountOut,
@@ -276,5 +274,24 @@ contract AddUnbalancedExtension is Router {
             params.addLiquidityParams
         );
         swapAmountCalculated = _swapSingleTokenHook(params.swapParams);
+    }
+
+    function queryAddProportionalAndSwapHook(
+        AddLiquidityAndSwapHookParams calldata params
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (
+            uint256[] memory addLiquidityAmountsIn,
+            uint256 addLiquidityBptAmountOut,
+            uint256 swapAmountCalculated,
+            bytes memory addLiquidityReturnData
+        )
+    {
+        (addLiquidityAmountsIn, addLiquidityBptAmountOut, addLiquidityReturnData) = _queryAddLiquidityHook(
+            params.addLiquidityParams
+        );
+        swapAmountCalculated = _querySwapHook(params.swapParams);
     }
 }
