@@ -76,8 +76,14 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
         uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);
-        (state.swapAmounts.minTokenA, state.swapAmounts.maxTokenA) = _setMinAndMaxSwapAmountExactIn(newPoolBalances, state.swapAmounts.minTokenA);
-        (state.swapAmounts.minTokenB, state.swapAmounts.maxTokenB) = _setMinAndMaxSwapAmountExactOut(newPoolBalances, state.swapAmounts.minTokenB);
+        (state.swapAmounts.minTokenA, state.swapAmounts.maxTokenA) = _setMinAndMaxSwapAmountExactIn(
+            newPoolBalances,
+            state.swapAmounts.minTokenA
+        );
+        (state.swapAmounts.minTokenB, state.swapAmounts.maxTokenB) = _setMinAndMaxSwapAmountExactOut(
+            newPoolBalances,
+            state.swapAmounts.minTokenB
+        );
 
         // Weighted Pool has rounding errors when token decimals are different, so the number below fixes the test
         // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther the weights are from 50/50, the bigger
