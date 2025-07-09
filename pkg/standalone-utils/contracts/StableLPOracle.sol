@@ -50,7 +50,6 @@ contract StableLPOracle is LPOracleBase {
 
         uint256[] memory marketPriceBalancesScaled18 = _computeMarketPriceBalances(invariant, prices);
 
-        tvl = 0;
         for (uint256 i = 0; i < _totalTokens; i++) {
             tvl += prices[i].toUint256().mulDown(marketPriceBalancesScaled18[i]);
         }
