@@ -71,15 +71,12 @@ contract StableLPOracle is LPOracleBase {
         // To compute the balances for a given price vector, we need to compute the gradient of the stable invariant.
         // The stable invariant is:
         //
-        // a * S * P + b * D * P - D^(n+1) = 0
-        //
-        // where:
         // D = invariant
         // S = sum of balances
         // P = product of balances
-        // n = number of tokens
+        // n = number of tokens                 a * S * P + b * D * P - D^(n+1) = 0
         // A = amplification coefficient
-        // a = A*(n^2n)
+        // a = A * (n^2n)
         // b = a - n^n
         //
         // The gradient in terms of xj (the balance of the j-th token) is:
@@ -114,11 +111,12 @@ contract StableLPOracle is LPOracleBase {
     function _computeK(int256 a, int256 b, int256[] memory prices) internal view returns (int256 k) {
         // k is computed by solving the equation:
         //
-        // f(k) = T^(n+1)P - alpha = 0
+        // T = 1 + Σ (a/(a-k*pi))
+        // P = π ((a - k*pi)/a)         G(k) = T^(n+1)P - alpha = 0
+        // alpha = a * (b/a)^(n+1)
         //
-        // where `T=1+\sum{a/(a-k*pi)}`, `P = \prod{(a - k*pi)/a}` and `alpha=a*(b/a)^(n+1)`.
         // Notice that P*T^n can be a very big number. To avoid math overflows, but keep the precision, we divide
-        // f(k) and f'(k) by P*T^n.
+        // G(k) and G'(k) by P*T^n.
 
         k = _findInitialGuessForK(a, b, prices);
         for (uint256 i = 0; i < 255; i++) {
@@ -126,10 +124,10 @@ contract StableLPOracle is LPOracleBase {
             // solhint-disable-next-line var-name-mixedcase
             (int256 T, int256 dTdk, int256 dPdkDivP, int256 alphaDivPTn) = _computeKParams(k, a, b, prices);
 
-            int256 fk = T - alphaDivPTn;
-            int256 dFkdk = (int256(_totalTokens) + 1) * dTdk + _mulDownInt(T, dPdkDivP);
+            int256 gk = T - alphaDivPTn;
+            int256 dGkdk = (int256(_totalTokens) + 1) * dTdk + _mulDownInt(T, dPdkDivP);
 
-            int256 newK = k - _divDownInt(fk, dFkdk);
+            int256 newK = k - _divDownInt(gk, dGkdk);
 
             uint256 error = SignedMath.abs(_divDownInt(newK - k, k));
             if (error <= _K_MAX_ERROR) {
@@ -193,7 +191,7 @@ contract StableLPOracle is LPOracleBase {
         // We need to calculate T and alpha first to be able to divide alpha by PT^n.
         for (i = 0; i < _totalTokens; i++) {
             int256 ri = _divDownInt(prices[i], a);
-            // P = \prod(k*ri - 1) . So, to divide alpha by PT^n, we can iteratively divide alpha by T and (k*ri - 1).
+            // P = π (k*ri - 1) . So, to divide alpha by PT^n, we can iteratively divide alpha by T and (k*ri - 1).
             den = _mulDownInt(k, ri) - _POSITIVE_ONE_INT;
             alphaDivPTn = _divDownInt(alphaDivPTn, _mulDownInt(den, T));
         }
