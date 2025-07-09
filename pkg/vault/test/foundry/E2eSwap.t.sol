@@ -934,4 +934,8 @@ contract E2eSwapTest is BaseVaultTest {
     function _getTestState() internal view returns (E2eTestState memory) {
         return $;
     }
+
+    function _setTestState(E2eTestState memory newState) internal {
+        $ = newState;
+    }
 }
