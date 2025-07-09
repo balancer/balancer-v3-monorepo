@@ -216,7 +216,7 @@ contract StableLPOracle is LPOracleBase {
         //
         // We have: `a` = ampParameter * n^(2n) / n^(n-1) = ampParameter * n^(n+1)
         //
-        // Since `2 <= totalTokens <= 5`; and 
+        // Since `2 <= totalTokens <= 5`; and
         // 1 <= amplificationParameter / AMP_PRECISION <= 50,000
         //
         // The max value of `a` is given by: 5^6 * 50000 = 781,250,000
