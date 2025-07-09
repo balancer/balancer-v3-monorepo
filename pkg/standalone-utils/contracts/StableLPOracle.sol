@@ -89,13 +89,15 @@ contract StableLPOracle is LPOracleBase {
         //
         // where P_notJ is the product of all balances except the j-th token.
         //
-        // We can make this gradient equal to k*pj, where pj is the price of the j-th token and k is a constant.
+        // We can make this gradient equal to k * pj, where pj is the price of the j-th token and k is a constant.
         // Then, solving this system of equations for every pj, we will have an array of balances that reflect the
         // price vector.
 
         (int256 a, int256 b) = _computeAAndBForPool(IStablePool(address(pool)));
 
-        // First, we need to compute the constant k that will multiply the prices.
+        // First, we need to compute the constant k that will be used as a multiplier on all the prices.
+        // This factor adjusts the input prices to find the correct balance amounts that respect both the pool
+        // invariant and the desired token price ratios.
         int256 k = _computeK(a, b, prices);
 
         int256 sumPriceDivision = 0;
@@ -205,11 +207,20 @@ contract StableLPOracle is LPOracleBase {
      */
     function _computeAAndBForPool(IStablePool pool) internal view returns (int256 a, int256 b) {
         (uint256 amplificationParameter, , ) = pool.getAmplificationParameter();
-        // In the StableMath library, `amplificationParameter = A*n^(n-1)` (For more information, check the
-        // `computeInvariant` natspec of the StableMath library). `a = A * n^2n` and `A = ampParameter / n^(n-1)`. So,
-        // `a = ampParameter * n^(2n)/n^(n-1) = ampParameter * n^(n+1)`.
-        // Since `2 <= totalTokens <= 5`, and 1 <= amplificationParameter/AMP_PRECISION <= 50000, the max value of `a`
-        // is 5^6 * 50000 = 781,250,000, which multiplied by 1e18 is far from the int256 max positive value of 5.78e76.
+        // In the StableMath library, `amplificationParameter` = A * n^(n-1)
+        // (For more information, check the `computeInvariant` NatSpec of the StableMath library.)
+        //
+        // Given that:
+        // `A` = ampParameter / n^(n-1); and
+        // `a` = A * n^2n
+        //
+        // We have: `a` = ampParameter * n^(2n) / n^(n-1) = ampParameter * n^(n+1)
+        //
+        // Since `2 <= totalTokens <= 5`; and 
+        // 1 <= amplificationParameter / AMP_PRECISION <= 50,000
+        //
+        // The max value of `a` is given by: 5^6 * 50000 = 781,250,000
+        // This value, multiplied by 1e18, is far less than the int256 max positive value of 5.78e76.
         // Since there's no risk of Underflow/Overflow, we don't need to use SafeCast.
         a = int256((amplificationParameter * (_totalTokens ** (_totalTokens + 1))).divDown(StableMath.AMP_PRECISION));
         b = a - int256(FixedPoint.ONE * (_totalTokens ** _totalTokens));
