@@ -104,8 +104,7 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
 
     /**
      * @notice Get the number of decimals present in the response value.
-     * @dev Declared in AggregatorV3Interface.
-     * @dev This is hard-coded to 18 decimals.
+     * @dev Declared in AggregatorV3Interface. This is hard-coded to 18 decimals.
      * @return decimals The number of decimals
      */
     function decimals() external pure returns (uint8) {

@@ -25,19 +25,19 @@ interface ILPOracleBase {
 
     /**
      * @notice Gets the list of feeds used by the oracle.
-     * @return An array of AggregatorV3Interface instances representing the feeds
+     * @return feeds An array of AggregatorV3Interface instances representing the feeds
      */
-    function getFeeds() external view returns (AggregatorV3Interface[] memory);
+    function getFeeds() external view returns (AggregatorV3Interface[] memory feeds);
 
     /**
      * @notice Gets the decimal scaling factors for each feed token.
-     * @return An array of scaling factors corresponding to each feed
+     * @return feedScalingFactors An array of scaling factors corresponding to each feed
      */
-    function getFeedTokenDecimalScalingFactors() external view returns (uint256[] memory);
+    function getFeedTokenDecimalScalingFactors() external view returns (uint256[] memory feedScalingFactors);
 
     /**
      * @notice Gets the tokens in the pool.
-     * @return An array of token addresses, sorted in token registration order
+     * @return tokens An array of token addresses, sorted in token registration order
      */
-    function getPoolTokens() external view returns (IERC20[] memory);
+    function getPoolTokens() external view returns (IERC20[] memory tokens);
 }
