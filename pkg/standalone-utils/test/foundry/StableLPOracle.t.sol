@@ -8,6 +8,7 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { PoolRoleAccounts, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IStablePool } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -171,11 +172,21 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
-                oracle.calculateFeedTokenDecimalScalingFactor(feeds[i]),
+                oracle.computeFeedTokenDecimalScalingFactor(feeds[i]),
                 returnedScalingFactors[i],
                 "Scaling factor does not match"
             );
         }
+    }
+
+    function testUnsupportedDecimals() public {
+        IStablePool pool = createAndInitPool(2, 100);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        AggregatorV3Interface feedWith20Decimals = AggregatorV3Interface(address(new FeedMock(20)));
+
+        vm.expectRevert(ILPOracleBase.UnsupportedDecimals.selector);
+        oracle.computeFeedTokenDecimalScalingFactor(feedWith20Decimals);
     }
 
     function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
@@ -186,7 +197,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
-                oracle.calculateFeedTokenDecimalScalingFactor(feeds[i]),
+                oracle.computeFeedTokenDecimalScalingFactor(feeds[i]),
                 10 ** (18 - IERC20Metadata(address(feeds[i])).decimals()),
                 "Scaling factor does not match"
             );

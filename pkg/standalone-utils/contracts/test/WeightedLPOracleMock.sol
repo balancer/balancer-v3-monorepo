@@ -19,7 +19,7 @@ contract WeightedLPOracleMock is WeightedLPOracle {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function calculateFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) public view returns (uint256) {
+    function computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) public view returns (uint256) {
         return _computeFeedTokenDecimalScalingFactor(feed);
     }
 }
