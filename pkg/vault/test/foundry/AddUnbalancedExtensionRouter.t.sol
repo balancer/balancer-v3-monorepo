@@ -11,6 +11,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -23,6 +24,14 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
+    address internal weightedPoolFactory;
+    address internal wethPool;
+    IERC20[] internal wethDaiTokens;
+
+    uint256 internal daiIdxWethPool;
+    uint256 internal wethIdx;
+
+    uint256 constant WEIGHTED_SWAP_FEE = 1e16;
     string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant TOKEN_AMOUNT = 1e16;
@@ -55,10 +64,6 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest {
 
     function createPoolFactory() internal override returns (address) {
         return address(new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
-    }
-
-    function createWeightedPoolFactory() internal returns (address) {
-        return address(new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
     }
 
     function _createPool(
@@ -101,7 +106,9 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest {
         permit2.approve(address(weth), address(addUnbalancedExtensionRouter), type(uint160).max, type(uint48).max);
         vm.stopPrank();
 
-        weightedPoolFactory = createWeightedPoolFactory();
+        weightedPoolFactory = address(
+            new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION)
+        );
         wethPool = WeightedPoolFactory(weightedPoolFactory).create(
             name,
             symbol,
