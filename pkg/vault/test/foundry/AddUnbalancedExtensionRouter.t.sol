@@ -11,37 +11,21 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
-import {
-    StablePoolContractsDeployer
-} from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
-import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
-import {
-    WeightedPoolContractsDeployer
-} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
-import { AddUnbalancedExtensionRouter } from "@balancer-labs/v3-vault/contracts/AddUnbalancedExtensionRouter.sol";
-import { PoolFactoryMock, BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { AddUnbalancedExtensionRouter } from "../../contracts/AddUnbalancedExtensionRouter.sol";
 
-contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsDeployer, WeightedPoolContractsDeployer {
-    //using Address for address payable;
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+
+contract AddUnbalancedExtensionRouterTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
-    address internal weightedPoolFactory;
-    address internal wethPool;
-    IERC20[] internal wethDaiTokens;
-
-    uint256 internal daiIdxWethPool;
-    uint256 internal wethIdx;
-
-    uint256 constant WEIGHTED_SWAP_FEE = 1e16;
+    string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant TOKEN_AMOUNT = 1e16;
-    string constant POOL_VERSION = "Pool v1";
     uint256 constant DELTA = 1e11;
 
     string constant version = "Add Unbalanced Extension Router v1";
@@ -70,11 +54,11 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
     }
 
     function createPoolFactory() internal override returns (address) {
-        return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+        return address(new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
     }
 
     function createWeightedPoolFactory() internal returns (address) {
-        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+        return address(new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
     }
 
     function _createPool(
@@ -180,7 +164,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountOut,
 
-        ) = addUnbalancedExtensionRouter.addProportionalAndSwap{ value: TOKEN_AMOUNT / 2 }(
+        ) = addUnbalancedExtensionRouter.addLiquidityUnbalancedViaSwap{ value: TOKEN_AMOUNT / 2 }(
                 wethPool,
                 MAX_UINT256,
                 true, // Use native ETH
@@ -259,7 +243,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountOut,
 
-        ) = addUnbalancedExtensionRouter.addProportionalAndSwap(
+        ) = addUnbalancedExtensionRouter.addLiquidityUnbalancedViaSwap(
                 pool,
                 MAX_UINT256,
                 false,
@@ -333,7 +317,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountIn,
 
-        ) = addUnbalancedExtensionRouter.addProportionalAndSwap(
+        ) = addUnbalancedExtensionRouter.addLiquidityUnbalancedViaSwap(
                 pool,
                 MAX_UINT256,
                 false,

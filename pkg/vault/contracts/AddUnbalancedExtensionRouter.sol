@@ -52,7 +52,14 @@ contract AddUnbalancedExtensionRouter is Router {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function addProportionalAndSwap(
+    /**
+     * @notice Add liquidity unbalanced, by adding proportionally and then swapping.
+     * @param pool The pool receiving new liquidity
+     * @param deadline The timestamp after which the swap operation will revert
+     * @param addLiquidityParams Parameters for the proportional add liquidity operation
+     * @param swapParams Parameters for the subsequent swap
+     */
+    function addLiquidityUnbalancedViaSwap(
         address pool,
         uint256 deadline,
         bool wethIsEth,
