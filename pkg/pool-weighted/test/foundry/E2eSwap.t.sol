@@ -76,8 +76,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
         uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);
-        (state.swapAmounts.minTokenA, state.swapAmounts.maxTokenA) = _setMinAndMaxSwapAmountExactIn(newPoolBalances);
-        (state.swapAmounts.minTokenB, state.swapAmounts.maxTokenB) = _setMinAndMaxSwapAmountExactOut(newPoolBalances);
+        (state.swapAmounts.minTokenA, state.swapAmounts.maxTokenA) = _setMinAndMaxSwapAmountExactIn(newPoolBalances, state.swapAmounts.minTokenA);
+        (state.swapAmounts.minTokenB, state.swapAmounts.maxTokenB) = _setMinAndMaxSwapAmountExactOut(newPoolBalances, state.swapAmounts.minTokenB);
 
         // Weighted Pool has rounding errors when token decimals are different, so the number below fixes the test
         // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther the weights are from 50/50, the bigger
@@ -88,7 +88,8 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
     }
 
     function _setMinAndMaxSwapAmountExactIn(
-        uint256[] memory poolBalancesRaw
+        uint256[] memory poolBalancesRaw,
+        uint256 currentMinSwapAmountTokenA
     ) private view returns (uint256 minSwapAmountTokenA, uint256 maxSwapAmountTokenA) {
         // Since tokens can have different decimals and amountIn is in relation to tokenA, normalize tokenB liquidity.
         uint256 normalizedLiquidityTokenB = (poolBalancesRaw[tokenBIdx] * (10 ** decimalsTokenA)) /
@@ -103,11 +104,12 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             ) /
             4;
         // Makes sure minSwapAmount is smaller than maxSwapAmount.
-        minSwapAmountTokenA = minSwapAmountTokenA > maxSwapAmountTokenA ? maxSwapAmountTokenA : minSwapAmountTokenA;
+        minSwapAmountTokenA = Math.min(currentMinSwapAmountTokenA, maxSwapAmountTokenA);
     }
 
     function _setMinAndMaxSwapAmountExactOut(
-        uint256[] memory poolBalancesRaw
+        uint256[] memory poolBalancesRaw,
+        uint256 currentMinSwapAmountTokenB
     ) private view returns (uint256 minSwapAmountTokenB, uint256 maxSwapAmountTokenB) {
         // Since tokens can have different decimals and amountOut is in relation to tokenB, normalize tokenA liquidity.
         uint256 normalizedLiquidityTokenA = (poolBalancesRaw[tokenAIdx] * (10 ** decimalsTokenB)) /
@@ -122,7 +124,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             ) /
             4;
         // Makes sure minSwapAmount is smaller than maxSwapAmount.
-        minSwapAmountTokenB = minSwapAmountTokenB > maxSwapAmountTokenB ? maxSwapAmountTokenB : minSwapAmountTokenB;
+        minSwapAmountTokenB = Math.min(currentMinSwapAmountTokenB, maxSwapAmountTokenB);
     }
 
     function testSwapSymmetry__Fuzz(uint256 tokenAAmountIn, uint256 weightTokenA, uint256 swapFeePercentage) public {
