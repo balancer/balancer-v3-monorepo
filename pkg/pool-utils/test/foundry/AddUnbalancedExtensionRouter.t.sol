@@ -4,35 +4,23 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
-import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
-import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import {
     StablePoolContractsDeployer
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
-import { AddUnbalancedExtensionRouter } from "../../contracts/AddUnbalancedExtensionRouter.sol";
-import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
-
-import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { AddUnbalancedExtensionRouter } from "@balancer-labs/v3-vault/contracts/AddUnbalancedExtensionRouter.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsDeployer {
-    using Address for address payable;
+    //using Address for address payable;
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -125,12 +113,13 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
                 userData: bytes("")
             });
 
-        AddUnbalancedExtensionRouter.SwapExactInParams memory swapParams = AddUnbalancedExtensionRouter
-            .SwapExactInParams({
+        AddUnbalancedExtensionRouter.SwapParams memory swapParams = AddUnbalancedExtensionRouter
+            .SwapParams({
                 tokenIn: dai,
                 tokenOut: usdc,
-                exactAmountIn: TOKEN_AMOUNT / 2,
-                minAmountOut: 0,
+                kind: SwapKind.EXACT_IN,
+                amountGiven: TOKEN_AMOUNT / 2,
+                limit: 0,
                 userData: bytes("")
             });
 
@@ -141,7 +130,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountOut,
 
-        ) = addUnbalancedExtensionRouter.addProportionalAndSwapExactIn(
+        ) = addUnbalancedExtensionRouter.addProportionalAndSwap(
                 pool,
                 MAX_UINT256,
                 addLiquidityParams,
@@ -160,7 +149,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 queryAddLiquidityBptAmountOut,
             uint256 querySwapAmountOut,
 
-        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwapExactIn(
+        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwap(
                 pool,
                 alice,
                 addLiquidityParams,
@@ -203,12 +192,13 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
                 userData: bytes("")
             });
 
-        AddUnbalancedExtensionRouter.SwapExactOutParams memory swapParams = AddUnbalancedExtensionRouter
-            .SwapExactOutParams({
+        AddUnbalancedExtensionRouter.SwapParams memory swapParams = AddUnbalancedExtensionRouter
+            .SwapParams({
                 tokenIn: dai,
                 tokenOut: usdc,
-                exactAmountOut: TOKEN_AMOUNT / 2,
-                maxAmountIn: MAX_UINT256,
+                kind: SwapKind.EXACT_OUT,
+                amountGiven: TOKEN_AMOUNT / 2,
+                limit: MAX_UINT256,
                 userData: bytes("")
             });
 
@@ -219,7 +209,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountIn,
 
-        ) = addUnbalancedExtensionRouter.addProportionalAndSwapExactOut(
+        ) = addUnbalancedExtensionRouter.addProportionalAndSwap(
                 pool,
                 MAX_UINT256,
                 addLiquidityParams,
@@ -238,7 +228,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 queryAddLiquidityBptAmountOut,
             uint256 querySwapAmountIn,
 
-        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwapExactOut(
+        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwap(
                 pool,
                 alice,
                 addLiquidityParams,
