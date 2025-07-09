@@ -16,7 +16,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { E2eSwapTest, E2eTestState, SwapAmounts } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -43,28 +43,29 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         // Weighted pools may be drained if there are no lp fees. So, set the creator fee to 99% to add some lp fee
         // back to the pool and ensure the invariant doesn't decrease.
         feeController.setPoolCreatorSwapFeePercentage(pool, 99e16);
-
-        amountInExactInOutError = 0.001e16;
     }
 
     function setUpVariables() internal override {
         sender = lp;
         poolCreator = lp;
 
+        E2eTestState memory state = _getTestState();
+        state.amountInExactInOutError = 0.001e16;
         // 0.0001% max swap fee.
-        minPoolSwapFeePercentage = 1e12;
+        state.minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
+        state.maxPoolSwapFeePercentage = 10e16; // 10%
+        _setTestState(state);
     }
 
-    function calculateMinAndMaxSwapAmounts() internal override {
-        minSwapAmountTokenA = poolInitAmountTokenA / 1e3;
-        minSwapAmountTokenB = poolInitAmountTokenB / 1e3;
+    function calculateMinAndMaxSwapAmounts() internal view override returns (SwapAmounts memory swapAmounts) {
+        swapAmounts.minTokenA = poolInitAmountTokenA / 1e3;
+        swapAmounts.minTokenB = poolInitAmountTokenB / 1e3;
 
         // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // balance).
-        maxSwapAmountTokenA = poolInitAmountTokenA / 10;
-        maxSwapAmountTokenB = poolInitAmountTokenB / 10;
+        swapAmounts.maxTokenA = poolInitAmountTokenA / 10;
+        swapAmounts.maxTokenB = poolInitAmountTokenB / 10;
     }
 
     function fuzzPoolParams(
@@ -81,12 +82,14 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         // Weighted Pool has rounding errors when token decimals are different, so the number below fixes the test
         // `testExactInRepeatExactOutVariableFeesSpecific__Fuzz`. The farther the weights are from 50/50, the bigger
         // the error.
-        exactInOutDecimalsErrorMultiplier = 2000;
+        state.exactInOutDecimalsErrorMultiplier = 2000;
 
         return state;
     }
 
-    function _setMinAndMaxSwapAmountExactIn(uint256[] memory poolBalancesRaw) private returns (uint256 minSwapAmountTokenA, uint256 maxSwapAmountTokenA) {
+    function _setMinAndMaxSwapAmountExactIn(
+        uint256[] memory poolBalancesRaw
+    ) private view returns (uint256 minSwapAmountTokenA, uint256 maxSwapAmountTokenA) {
         // Since tokens can have different decimals and amountIn is in relation to tokenA, normalize tokenB liquidity.
         uint256 normalizedLiquidityTokenB = (poolBalancesRaw[tokenBIdx] * (10 ** decimalsTokenA)) /
             (10 ** decimalsTokenB);
@@ -103,7 +106,9 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         minSwapAmountTokenA = minSwapAmountTokenA > maxSwapAmountTokenA ? maxSwapAmountTokenA : minSwapAmountTokenA;
     }
 
-    function _setMinAndMaxSwapAmountExactOut(uint256[] memory poolBalancesRaw) private returns (uint256 minSwapAmountTokenB, uint256 maxSwapAmountTokenB) {
+    function _setMinAndMaxSwapAmountExactOut(
+        uint256[] memory poolBalancesRaw
+    ) private view returns (uint256 minSwapAmountTokenB, uint256 maxSwapAmountTokenB) {
         // Since tokens can have different decimals and amountOut is in relation to tokenB, normalize tokenA liquidity.
         uint256 normalizedLiquidityTokenA = (poolBalancesRaw[tokenAIdx] * (10 ** decimalsTokenB)) /
             (10 ** decimalsTokenA);
@@ -121,8 +126,9 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
     }
 
     function testSwapSymmetry__Fuzz(uint256 tokenAAmountIn, uint256 weightTokenA, uint256 swapFeePercentage) public {
+        E2eTestState memory $ = _getTestState();
         weightTokenA = bound(weightTokenA, 1e16, 99e16);
-        swapFeePercentage = bound(swapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, $.minPoolSwapFeePercentage, $.maxPoolSwapFeePercentage);
         _setSwapFeePercentage(pool, swapFeePercentage);
 
         uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);

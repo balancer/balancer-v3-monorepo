@@ -473,6 +473,8 @@ contract E2eSwapTest is BaseVaultTest {
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
     ) public {
         $ = fuzzPoolParams(params, $);
+        console.log('min token A: ', $.swapAmounts.minTokenA);
+        console.log('max token A: ', $.swapAmounts.maxTokenA);
 
         exactAmountIn = bound(exactAmountIn, $.swapAmounts.minTokenA, $.swapAmounts.maxTokenA);
 
