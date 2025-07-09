@@ -4,26 +4,41 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { SwapKind, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import {
     StablePoolContractsDeployer
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
+import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
+import {
+    WeightedPoolContractsDeployer
+} from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
-
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { AddUnbalancedExtensionRouter } from "@balancer-labs/v3-vault/contracts/AddUnbalancedExtensionRouter.sol";
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { PoolFactoryMock, BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
-contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsDeployer {
+contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsDeployer, WeightedPoolContractsDeployer {
     //using Address for address payable;
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
+    address internal weightedPoolFactory;
+    address internal wethPool;
+    IERC20[] internal wethDaiTokens;
+
+    uint256 internal daiIdxWethPool;
+    uint256 internal wethIdx;
+
+    uint256 constant WEIGHTED_SWAP_FEE = 1e16;
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant TOKEN_AMOUNT = 1e16;
     string constant POOL_VERSION = "Pool v1";
@@ -58,6 +73,10 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
         return address(deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
     }
 
+    function createWeightedPoolFactory() internal returns (address) {
+        return address(deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
+    }
+
     function _createPool(
         address[] memory tokens,
         string memory
@@ -89,6 +108,117 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             }),
             vault
         );
+
+        wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
+
+        vm.startPrank(alice);
+        weth.approve(address(permit2), type(uint256).max);
+        permit2.approve(address(weth), address(addUnbalancedExtensionRouter), type(uint160).max, type(uint48).max);
+        vm.stopPrank();
+
+        weightedPoolFactory = createWeightedPoolFactory();
+        wethPool = WeightedPoolFactory(weightedPoolFactory).create(
+            name,
+            symbol,
+            vault.buildTokenConfig(wethDaiTokens),
+            weights,
+            roleAccounts,
+            WEIGHTED_SWAP_FEE,
+            address(0), // no hook
+            false, // does not support donation
+            false, // supports unbalanced add/remove liquidity
+            ZERO_BYTES32
+        );
+    }
+
+    function testAddProportionalAndSwapExactInNative() public {
+        vm.prank(alice);
+        addUnbalancedExtensionRouter.initialize(
+            address(wethPool),
+            wethDaiTokens,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
+
+        uint256[] memory currentBalances = vault.getCurrentLiveBalances(wethPool);
+        uint256[] memory expectedBalances = currentBalances;
+        expectedBalances[daiIdx] = currentBalances[daiIdx] + TOKEN_AMOUNT;
+
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256 bptAmountOut = addUnbalancedExtensionRouter.queryAddLiquidityUnbalanced(
+            wethPool,
+            [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
+            alice,
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        AddUnbalancedExtensionRouter.AddLiquidityProportionalParams
+            memory addLiquidityParams = AddUnbalancedExtensionRouter.AddLiquidityProportionalParams({
+                maxAmountsIn: [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
+                exactBptAmountOut: bptAmountOut,
+                userData: bytes("")
+            });
+
+        AddUnbalancedExtensionRouter.SwapParams memory swapParams = AddUnbalancedExtensionRouter.SwapParams({
+            tokenIn: weth,
+            tokenOut: dai,
+            kind: SwapKind.EXACT_IN,
+            amountGiven: TOKEN_AMOUNT / 2,
+            limit: 0,
+            userData: bytes("")
+        });
+
+        snapshot = vm.snapshot();
+        vm.prank(alice);
+        (
+            uint256[] memory addLiquidityAmountsIn,
+            uint256 addLiquidityBptAmountOut,
+            uint256 swapAmountOut,
+
+        ) = addUnbalancedExtensionRouter.addProportionalAndSwap{ value: TOKEN_AMOUNT / 2 }(
+                wethPool,
+                MAX_UINT256,
+                true, // Use native ETH
+                addLiquidityParams,
+                swapParams
+            );
+
+        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(wethPool);
+
+        assertApproxEqAbs(
+            balancesAfter[daiIdxWethPool],
+            expectedBalances[daiIdxWethPool],
+            1e16,
+            "Dai balance mismatch"
+        );
+        assertApproxEqAbs(balancesAfter[wethIdx], expectedBalances[wethIdx], 1e16, "WETH balance mismatch");
+
+        vm.revertTo(snapshot);
+        _prankStaticCall();
+        (
+            uint256[] memory queryAddLiquidityAmountsIn,
+            uint256 queryAddLiquidityBptAmountOut,
+            uint256 querySwapAmountOut,
+
+        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwap(wethPool, alice, addLiquidityParams, swapParams);
+
+        assertEq(
+            addLiquidityAmountsIn[daiIdxWethPool],
+            queryAddLiquidityAmountsIn[daiIdxWethPool],
+            "query and real dai amounts in mismatch"
+        );
+        assertEq(
+            addLiquidityAmountsIn[wethIdx],
+            queryAddLiquidityAmountsIn[wethIdx],
+            "query and real usdc amounts in mismatch"
+        );
+        assertEq(addLiquidityBptAmountOut, queryAddLiquidityBptAmountOut, "query and real bpt amount out mismatch");
+        assertEq(swapAmountOut, querySwapAmountOut, "query and real swap amount out mismatch");
     }
 
     function testAddProportionalAndSwapExactIn() public {
@@ -113,15 +243,14 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
                 userData: bytes("")
             });
 
-        AddUnbalancedExtensionRouter.SwapParams memory swapParams = AddUnbalancedExtensionRouter
-            .SwapParams({
-                tokenIn: dai,
-                tokenOut: usdc,
-                kind: SwapKind.EXACT_IN,
-                amountGiven: TOKEN_AMOUNT / 2,
-                limit: 0,
-                userData: bytes("")
-            });
+        AddUnbalancedExtensionRouter.SwapParams memory swapParams = AddUnbalancedExtensionRouter.SwapParams({
+            tokenIn: dai,
+            tokenOut: usdc,
+            kind: SwapKind.EXACT_IN,
+            amountGiven: TOKEN_AMOUNT / 2,
+            limit: 0,
+            userData: bytes("")
+        });
 
         snapshot = vm.snapshot();
         vm.prank(alice);
@@ -133,6 +262,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
         ) = addUnbalancedExtensionRouter.addProportionalAndSwap(
                 pool,
                 MAX_UINT256,
+                false,
                 addLiquidityParams,
                 swapParams
             );
@@ -149,12 +279,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 queryAddLiquidityBptAmountOut,
             uint256 querySwapAmountOut,
 
-        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwap(
-                pool,
-                alice,
-                addLiquidityParams,
-                swapParams
-            );
+        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwap(pool, alice, addLiquidityParams, swapParams);
 
         assertEq(
             addLiquidityAmountsIn[daiIdx],
@@ -192,15 +317,14 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
                 userData: bytes("")
             });
 
-        AddUnbalancedExtensionRouter.SwapParams memory swapParams = AddUnbalancedExtensionRouter
-            .SwapParams({
-                tokenIn: dai,
-                tokenOut: usdc,
-                kind: SwapKind.EXACT_OUT,
-                amountGiven: TOKEN_AMOUNT / 2,
-                limit: MAX_UINT256,
-                userData: bytes("")
-            });
+        AddUnbalancedExtensionRouter.SwapParams memory swapParams = AddUnbalancedExtensionRouter.SwapParams({
+            tokenIn: dai,
+            tokenOut: usdc,
+            kind: SwapKind.EXACT_OUT,
+            amountGiven: TOKEN_AMOUNT / 2,
+            limit: MAX_UINT256,
+            userData: bytes("")
+        });
 
         snapshot = vm.snapshot();
         vm.prank(alice);
@@ -212,6 +336,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
         ) = addUnbalancedExtensionRouter.addProportionalAndSwap(
                 pool,
                 MAX_UINT256,
+                false,
                 addLiquidityParams,
                 swapParams
             );
@@ -228,12 +353,7 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest, StablePoolContractsD
             uint256 queryAddLiquidityBptAmountOut,
             uint256 querySwapAmountIn,
 
-        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwap(
-                pool,
-                alice,
-                addLiquidityParams,
-                swapParams
-            );
+        ) = addUnbalancedExtensionRouter.queryAddProportionalAndSwap(pool, alice, addLiquidityParams, swapParams);
 
         assertEq(
             addLiquidityAmountsIn[daiIdx],
