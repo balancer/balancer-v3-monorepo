@@ -126,7 +126,12 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest {
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountOut,
 
-        ) = addUnbalancedExtensionRouter.addProportionalAndSwap(pool, MAX_UINT256, addLiquidityParams, swapParams);
+        ) = addUnbalancedExtensionRouter.addLiquidityUnbalancedViaSwap(
+                pool,
+                MAX_UINT256,
+                addLiquidityParams,
+                swapParams
+            );
 
         uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
 
@@ -194,7 +199,12 @@ contract AddUnbalancedExtensionRouterTest is BaseVaultTest {
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountIn,
 
-        ) = addUnbalancedExtensionRouter.addProportionalAndSwap(pool, MAX_UINT256, addLiquidityParams, swapParams);
+        ) = addUnbalancedExtensionRouter.addLiquidityUnbalancedViaSwap(
+                pool,
+                MAX_UINT256,
+                addLiquidityParams,
+                swapParams
+            );
 
         uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
 

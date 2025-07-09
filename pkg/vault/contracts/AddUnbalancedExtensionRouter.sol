@@ -59,7 +59,7 @@ contract AddUnbalancedExtensionRouter is Router {
      * @param addLiquidityParams Parameters for the proportional add liquidity operation
      * @param swapParams Parameters for the subsequent swap
      */
-    function addProportionalAndSwap(
+    function addLiquidityUnbalancedViaSwap(
         address pool,
         uint256 deadline,
         AddLiquidityProportionalParams calldata addLiquidityParams,
