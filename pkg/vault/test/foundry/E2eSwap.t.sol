@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -835,9 +836,7 @@ contract E2eSwapTest is BaseVaultTest {
         ).mulDown(20e16);
 
         swapAmounts.maxTokenA = maxAmountIn;
-        if (swapAmounts.minTokenA > maxAmountIn) {
-            swapAmounts.minTokenA = maxAmountIn;
-        }
+        swapAmounts.minTokenA = Math.min(swapAmounts.minTokenA, maxAmountIn);
 
         return swapAmounts;
     }
@@ -863,9 +862,7 @@ contract E2eSwapTest is BaseVaultTest {
         ).mulDown(20e16);
 
         swapAmounts.maxTokenB = maxAmountOut;
-        if (swapAmounts.minTokenB > maxAmountOut) {
-            swapAmounts.minTokenB = maxAmountOut;
-        }
+        swapAmounts.minTokenB = Math.min(swapAmounts.minTokenB, maxAmountOut);
 
         return swapAmounts;
     }
