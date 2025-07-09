@@ -8,7 +8,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { E2eSwapTest, E2eTestState, SwapAmounts } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
 import { Gyro2CLPPoolMock } from "../../contracts/test/Gyro2CLPPoolMock.sol";
 import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
@@ -39,13 +39,15 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
         sender = lp;
         poolCreator = lp;
 
+        E2eTestState memory state = _getTestState();
         // 0.0001% min swap fee.
-        minPoolSwapFeePercentage = 1e12;
+        state.minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
+        state.maxPoolSwapFeePercentage = 10e16;
+        _setTestState(state);
     }
 
-    function calculateMinAndMaxSwapAmounts() internal virtual override {
+    function calculateMinAndMaxSwapAmounts() internal view virtual override returns (SwapAmounts memory swapAmounts) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -71,20 +73,20 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10 to account for
         // swap fees and compensate for rate rounding issues.
         uint256 mathFactor = 10;
-        minSwapAmountTokenA = (
+        swapAmounts.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? mathFactor * tokenAMinTradeAmount
                 : mathFactor * tokenACalculatedNotZero
         );
-        minSwapAmountTokenB = (
+        swapAmounts.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? mathFactor * tokenBMinTradeAmount
                 : mathFactor * tokenBCalculatedNotZero
         );
 
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(50e16);
-        maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
+        swapAmounts.maxTokenA = poolInitAmountTokenA.mulDown(50e16);
+        swapAmounts.maxTokenB = poolInitAmountTokenB.mulDown(50e16);
     }
 
     function fuzzPoolParams(
