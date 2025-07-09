@@ -155,6 +155,7 @@ interface ICompositeLiquidityRouter {
      * @notice Adds liquidity unbalanced to a nested pool.
      * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
      * multiple pools involved, the token order is not well-defined, and must be specified by the caller.
+     * ERC4626 tokens in the `tokensIn` list will be wrapped.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param tokensIn An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
@@ -194,6 +195,7 @@ interface ICompositeLiquidityRouter {
      * @notice Removes liquidity from a nested pool.
      * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
      * multiple pools involved, the token order is not well-defined, and must be specified by the caller.
+     * ERC4626 tokens in the `tokensOut` list will be unwrapped.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param exactBptAmountIn The exact amount of `parentPool` tokens provided
