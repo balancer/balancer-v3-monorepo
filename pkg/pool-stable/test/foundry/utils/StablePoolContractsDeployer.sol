@@ -55,16 +55,6 @@ contract StablePoolContractsDeployer is BaseContractsDeployer {
     }
 
     function _computeStablePoolPath(string memory name) private view returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    artifactsRootDir,
-                    "artifacts/@balancer-labs/v3-pool-stable/contracts/",
-                    name,
-                    ".sol/",
-                    name,
-                    ".json"
-                )
-            );
+        return string(abi.encodePacked(artifactsRootDir, "contracts/", name, ".sol/", name, ".json"));
     }
 }
