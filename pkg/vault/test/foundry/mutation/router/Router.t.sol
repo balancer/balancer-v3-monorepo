@@ -7,7 +7,6 @@ import "forge-std/Test.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRouterQueries } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterQueries.sol";
 import {
@@ -60,7 +59,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testAddLiquidityHookWhenNotVault() public {
-        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
+        AddLiquidityHookParams memory hookParams = AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -80,7 +79,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityHookWhenNotVault() public {
-        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
+        RemoveLiquidityHookParams memory params = RemoveLiquidityHookParams(
             msg.sender,
             pool,
             [uint256(0), uint256(0)].toMemoryArray(),
@@ -176,7 +175,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryAddLiquidityHookWhenNotVault() public {
-        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
+        AddLiquidityHookParams memory hookParams = AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -191,7 +190,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryRemoveLiquidityHookWhenNotVault() public {
-        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
+        RemoveLiquidityHookParams memory params = RemoveLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
