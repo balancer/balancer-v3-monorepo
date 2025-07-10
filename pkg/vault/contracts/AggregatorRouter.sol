@@ -13,7 +13,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterHooks } from "./RouterHooks.sol";
 import { RouterQueries } from "./RouterQueries.sol";
-import { RouterCommon } from "./RouterCommon.sol";
 
 /**
  * @notice Entrypoint for aggregators who want to swap without the standard permit2 payment logic.
@@ -23,7 +22,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
     constructor(
         IVault vault,
         string memory routerVersion
-    ) RouterHooks(true) RouterCommon(vault, IWETH(address(0)), IPermit2(address(0)), routerVersion) {
+    ) RouterQueries(vault, IWETH(address(0)), IPermit2(address(0)), true, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
