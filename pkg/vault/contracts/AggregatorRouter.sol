@@ -9,6 +9,7 @@ import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { BaseRouter } from "./BaseRouter.sol";
 

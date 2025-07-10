@@ -9,13 +9,14 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { BaseRouter } from "./BaseRouter.sol";
 
 /**
- * @notice Base contract for routing swaps and liquidity operations through custom logic.
- * @dev Provides shared functionality for derived routers, such as managing approvals, performing token transfers,
- * and interacting with external pools or Vaults. Designed to be extended with specific routing behavior.
+ * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
+ * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
+ * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
  */
 contract Router is IRouter, BaseRouter {
     constructor(
@@ -373,7 +374,7 @@ contract Router is IRouter, BaseRouter {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) public payable saveSender(msg.sender) returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -407,7 +408,7 @@ contract Router is IRouter, BaseRouter {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) public payable saveSender(msg.sender) returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(

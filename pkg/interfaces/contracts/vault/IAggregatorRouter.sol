@@ -6,11 +6,12 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { IRouterQueries } from "./IRouterQueries.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
-/// @notice User-friendly interface to basic Vault operations: swap, add/remove liquidity, and associated queries.
-interface IAggregatorRouter {
+/// @notice Interface to basic Vault operations for aggregators: swap, add/remove liquidity, and associated queries.
+interface IAggregatorRouter is IRouterQueries {
     /// @notice Contract cannot receive ETH.
     error CannotReceiveEth();
 
