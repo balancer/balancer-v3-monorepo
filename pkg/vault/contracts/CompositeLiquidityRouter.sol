@@ -445,9 +445,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 maxAmountIn,
         RouterCallParams memory callParams
     ) private returns (uint256 actualAmountIn) {
+        IERC20 underlyingToken;
+
         if (needToWrap) {
             IERC4626 wrappedToken = IERC4626(token);
-            IERC20 underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
+            underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
 
             if (address(underlyingToken) == address(0)) {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
@@ -476,15 +478,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _sendTokenOut(callParams.sender, underlyingToken, maxAmountIn - actualAmountIn, callParams.wethIsEth);
             }
         } else {
-            if (callParams.isStaticCall == false) {
-                _takeTokenIn(callParams.sender, IERC20(token), amountIn, callParams.wethIsEth);
-            }
-
             actualAmountIn = amountIn;
+
+            if (callParams.isStaticCall == false) {
+                _takeTokenIn(callParams.sender, IERC20(token), actualAmountIn, callParams.wethIsEth);
+            }
         }
 
         if (actualAmountIn > maxAmountIn) {
-            revert IVaultErrors.AmountInAboveMax(IERC20(token), amountIn, maxAmountIn);
+            IERC20 tokenIn = needToWrap ? underlyingToken : IERC20(token);
+
+            revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
         }
     }
 
