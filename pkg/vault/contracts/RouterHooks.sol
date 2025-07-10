@@ -25,13 +25,22 @@ contract RouterHooks is RouterCommon {
     using RouterWethLib for IWETH;
     using SafeCast for *;
 
+    /**
+     * @notice The sender does not transfer the correct amount of tokens to the Vault.
+     * @param token The address of the token that was expected to be transferred.
+     */
+    error InsufficientPayment(IERC20 token);
+
+    bool internal immutable _isAggregator;
+
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
+        bool isAggregator,
         string memory routerVersion
     ) RouterCommon(vault, weth, permit2, routerVersion) {
-        // solhint-disable-previous-line no-empty-blocks
+        _isAggregator = isAggregator;
     }
 
     /**
@@ -124,14 +133,26 @@ contract RouterHooks is RouterCommon {
                 continue;
             }
 
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.wrapEthAndSettle(_vault, amountIn);
+            if (_isAggregator) {
+                // `amountInHint` represents the amount supposedly paid upfront by the sender.
+                uint256 amountInHint = params.maxAmountsIn[i];
+
+                uint256 tokenInCredit = _vault.settle(token, amountInHint);
+                if (tokenInCredit < amountInHint) {
+                    revert InsufficientPayment(token);
+                }
+
+                _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
             } else {
-                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                _vault.settle(token, amountIn);
+                // There can be only one WETH token in the pool.
+                if (params.wethIsEth && address(token) == address(_weth)) {
+                    _weth.wrapEthAndSettle(_vault, amountIn);
+                } else {
+                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                    // necessary. Done out of an abundance of caution.
+                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+                    _vault.settle(token, amountIn);
+                }
             }
         }
 
@@ -349,7 +370,26 @@ contract RouterHooks is RouterCommon {
             })
         );
 
-        _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
+        if (_isAggregator == false) {
+            _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
+        } else {
+            // `amountInHint` represents the amount supposedly paid upfront by the sender.
+            uint256 amountInHint;
+            if (params.kind == SwapKind.EXACT_IN) {
+                amountInHint = params.amountGiven;
+            } else {
+                amountInHint = params.limit;
+            }
+
+            uint256 tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
+            if (tokenInCredit < amountInHint) {
+                revert InsufficientPayment(params.tokenIn);
+            }
+
+            if (params.kind == SwapKind.EXACT_OUT) {
+                _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
+            }
+        }
 
         _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
         if (params.tokenIn == _weth) {

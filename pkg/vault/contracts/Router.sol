@@ -25,7 +25,7 @@ contract Router is IRouter, RouterQueries {
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) RouterQueries(vault, weth, permit2, routerVersion) {
+    ) RouterQueries(vault, weth, permit2, false, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
