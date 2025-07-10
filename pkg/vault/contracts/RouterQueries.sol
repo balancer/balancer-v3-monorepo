@@ -8,38 +8,32 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IBaseRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseRouter.sol";
+import { IRouterQueries } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterQueries.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 /**
- * @notice Base contract for the Router.
- * @dev This contract have all nee
+ * @notice Router contract for simulating swaps and liquidity operations without state changes.
+ * @dev Implements read-only query functions that allow off-chain components to estimate results of Vault interactions.
+ * Designed to provide accurate previews of add/remove liquidity and swap outcomes using Vault quoting logic.
  */
-contract BaseRouter is IBaseRouter, RouterCommon {
+contract RouterQueries is IRouterQueries, RouterCommon {
     using Address for address payable;
     using RouterWethLib for IWETH;
     using SafeCast for *;
-
-    bool internal immutable _isAggregator;
 
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        bool isAggregator,
         string memory routerVersion
     ) RouterCommon(vault, weth, permit2, routerVersion) {
-        _isAggregator = isAggregator;
-    }
-
-    /// @inheritdoc IBaseRouter
-    function getVault() public view returns (IVault) {
-        return _vault;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -267,7 +261,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
                                       Queries
     *******************************************************************************/
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryAddLiquidityProportional(
         address pool,
         uint256 exactBptAmountOut,
@@ -277,7 +271,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         (amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    BaseRouter.queryAddLiquidityHook,
+                    RouterQueries.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -295,7 +289,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         );
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryAddLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
@@ -305,7 +299,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         (, bptAmountOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    BaseRouter.queryAddLiquidityHook,
+                    RouterQueries.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -323,7 +317,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         );
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryAddLiquiditySingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
@@ -340,7 +334,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    BaseRouter.queryAddLiquidityHook,
+                    RouterQueries.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -360,7 +354,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         return amountsIn[tokenIndex];
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryAddLiquidityCustom(
         address pool,
         uint256[] memory maxAmountsIn,
@@ -372,7 +366,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        BaseRouter.queryAddLiquidityHook,
+                        RouterQueries.queryAddLiquidityHook,
                         AddLiquidityHookParams({
                             // We use the Router as a sender to simplify basic query functions,
                             // but it is possible to add liquidity to any recipient.
@@ -390,7 +384,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
             );
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryRemoveLiquidityProportional(
         address pool,
         uint256 exactBptAmountIn,
@@ -401,7 +395,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         (, amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    BaseRouter.queryRemoveLiquidityHook,
+                    RouterQueries.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -419,7 +413,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         );
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryRemoveLiquiditySingleTokenExactIn(
         address pool,
         uint256 exactBptAmountIn,
@@ -433,7 +427,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    BaseRouter.queryRemoveLiquidityHook,
+                    RouterQueries.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -453,7 +447,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         return amountsOut[tokenIndex];
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryRemoveLiquiditySingleTokenExactOut(
         address pool,
         IERC20 tokenOut,
@@ -466,7 +460,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    BaseRouter.queryRemoveLiquidityHook,
+                    RouterQueries.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -486,7 +480,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         return bptAmountIn;
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryRemoveLiquidityCustom(
         address pool,
         uint256 maxBptAmountIn,
@@ -498,7 +492,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        BaseRouter.queryRemoveLiquidityHook,
+                        RouterQueries.queryRemoveLiquidityHook,
                         RemoveLiquidityHookParams({
                             // We use the Router as a sender to simplify basic query functions,
                             // but it is possible to remove liquidity from any sender.
@@ -516,7 +510,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
             );
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function queryRemoveLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn
@@ -524,13 +518,16 @@ contract BaseRouter is IBaseRouter, RouterCommon {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeCall(BaseRouter.queryRemoveLiquidityRecoveryHook, (pool, address(this), exactBptAmountIn))
+                    abi.encodeCall(
+                        RouterQueries.queryRemoveLiquidityRecoveryHook,
+                        (pool, address(this), exactBptAmountIn)
+                    )
                 ),
                 (uint256[])
             );
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function querySwapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -543,7 +540,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        BaseRouter.querySwapHook,
+                        RouterQueries.querySwapHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -562,7 +559,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
             );
     }
 
-    /// @inheritdoc IBaseRouter
+    /// @inheritdoc IRouterQueries
     function querySwapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
@@ -575,7 +572,7 @@ contract BaseRouter is IBaseRouter, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        BaseRouter.querySwapHook,
+                        RouterQueries.querySwapHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,

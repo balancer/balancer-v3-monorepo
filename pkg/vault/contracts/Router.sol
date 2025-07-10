@@ -9,21 +9,22 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { BaseRouter } from "./BaseRouter.sol";
+import { RouterQueries } from "./RouterQueries.sol";
 
 /**
- * @notice Base contract for routing swaps and liquidity operations through custom logic.
- * @dev Provides shared functionality for derived routers, such as managing approvals, performing token transfers,
- * and interacting with external pools or Vaults. Designed to be extended with specific routing behavior.
+ * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
+ * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
+ * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
  */
-contract Router is IRouter, BaseRouter {
+contract Router is IRouter, RouterQueries {
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) BaseRouter(vault, weth, permit2, false, routerVersion) {
+    ) RouterQueries(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -44,7 +45,7 @@ contract Router is IRouter, BaseRouter {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.initializeHook,
+                        RouterQueries.initializeHook,
                         InitializeHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -75,7 +76,7 @@ contract Router is IRouter, BaseRouter {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.addLiquidityHook,
+                    RouterQueries.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -102,7 +103,7 @@ contract Router is IRouter, BaseRouter {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.addLiquidityHook,
+                    RouterQueries.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -136,7 +137,7 @@ contract Router is IRouter, BaseRouter {
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.addLiquidityHook,
+                    RouterQueries.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -163,7 +164,7 @@ contract Router is IRouter, BaseRouter {
     ) external payable saveSender(msg.sender) {
         _vault.unlock(
             abi.encodeCall(
-                BaseRouter.addLiquidityHook,
+                RouterQueries.addLiquidityHook,
                 AddLiquidityHookParams({
                     sender: msg.sender,
                     pool: pool,
@@ -194,7 +195,7 @@ contract Router is IRouter, BaseRouter {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.addLiquidityHook,
+                        RouterQueries.addLiquidityHook,
                         AddLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -225,7 +226,7 @@ contract Router is IRouter, BaseRouter {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityHook,
+                    RouterQueries.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -259,7 +260,7 @@ contract Router is IRouter, BaseRouter {
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityHook,
+                    RouterQueries.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -291,7 +292,7 @@ contract Router is IRouter, BaseRouter {
         (bptAmountIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityHook,
+                    RouterQueries.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -326,7 +327,7 @@ contract Router is IRouter, BaseRouter {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.removeLiquidityHook,
+                        RouterQueries.removeLiquidityHook,
                         RemoveLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -351,7 +352,7 @@ contract Router is IRouter, BaseRouter {
         amountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityRecoveryHook,
+                    RouterQueries.removeLiquidityRecoveryHook,
                     (pool, msg.sender, exactBptAmountIn, minAmountsOut)
                 )
             ),
@@ -373,12 +374,12 @@ contract Router is IRouter, BaseRouter {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) public payable saveSender(msg.sender) returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.swapSingleTokenHook,
+                        RouterQueries.swapSingleTokenHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -407,12 +408,12 @@ contract Router is IRouter, BaseRouter {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) public payable saveSender(msg.sender) returns (uint256) {
+    ) external payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.swapSingleTokenHook,
+                        RouterQueries.swapSingleTokenHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,

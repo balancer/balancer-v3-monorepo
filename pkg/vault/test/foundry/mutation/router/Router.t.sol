@@ -9,13 +9,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBaseRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseRouter.sol";
+import { IRouterQueries } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterQueries.sol";
 import {
     AddLiquidityKind,
     RemoveLiquidityKind,
     SwapKind,
     HooksConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -39,7 +40,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testInitializeHookWhenNotVault() public {
-        IBaseRouter.InitializeHookParams memory hookParams = IBaseRouter.InitializeHookParams(
+        InitializeHookParams memory hookParams = InitializeHookParams(
             msg.sender,
             pool,
             tokens,
@@ -109,7 +110,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testSwapSingleTokenHookWhenNotVault() public {
-        IBaseRouter.SwapSingleTokenHookParams memory params = IBaseRouter.SwapSingleTokenHookParams(
+        SwapSingleTokenHookParams memory params = SwapSingleTokenHookParams(
             msg.sender,
             SwapKind.EXACT_IN,
             pool,
@@ -152,7 +153,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQuerySwapHookWhenNotVault() public {
-        IBaseRouter.SwapSingleTokenHookParams memory params = IBaseRouter.SwapSingleTokenHookParams(
+        SwapSingleTokenHookParams memory params = SwapSingleTokenHookParams(
             msg.sender,
             SwapKind.EXACT_IN,
             pool,

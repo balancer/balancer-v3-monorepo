@@ -8,10 +8,11 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IBaseRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseRouter.sol";
+import { IRouterQueries } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterQueries.sol";
 import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
@@ -57,7 +58,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.unlock(
                     abi.encodeCall(
                         AggregatorRouter.swapSingleTokenHook,
-                        IBaseRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
@@ -90,7 +91,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.unlock(
                     abi.encodeCall(
                         AggregatorRouter.swapSingleTokenHook,
-                        IBaseRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
                             pool: pool,
@@ -118,7 +119,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function swapSingleTokenHook(
-        IBaseRouter.SwapSingleTokenHookParams calldata params
+        SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
         // `amountInHint` represents the amount supposedly paid upfront by the sender.
         uint256 amountInHint;
@@ -151,7 +152,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
     }
 
     function _swapHook(
-        IBaseRouter.SwapSingleTokenHookParams calldata params
+        SwapSingleTokenHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -190,7 +191,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.quote(
                     abi.encodeCall(
                         AggregatorRouter.querySwapHook,
-                        IBaseRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
@@ -222,7 +223,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.quote(
                     abi.encodeCall(
                         AggregatorRouter.querySwapHook,
-                        IBaseRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
                             pool: pool,
@@ -247,7 +248,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function querySwapHook(
-        IBaseRouter.SwapSingleTokenHookParams calldata params
+        SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 

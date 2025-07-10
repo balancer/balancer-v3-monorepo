@@ -8,15 +8,15 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IBaseRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBaseRouter.sol";
+import { IRouterQueries } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterQueries.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import { Router } from "../Router.sol";
-import { BaseRouter } from "../BaseRouter.sol";
+import { RouterQueries } from "../RouterQueries.sol";
 
 string constant MOCK_ROUTER_VERSION = "Mock Router v1";
 
@@ -30,7 +30,7 @@ contract RouterMock is Router {
     }
 
     function manualReentrancyInitializeHook() external nonReentrant {
-        IBaseRouter.InitializeHookParams memory hookParams;
+        InitializeHookParams memory hookParams;
         Router(payable(this)).initializeHook(hookParams);
     }
 
@@ -49,12 +49,12 @@ contract RouterMock is Router {
     }
 
     function manualReentrancySwapSingleTokenHook() external nonReentrant {
-        IBaseRouter.SwapSingleTokenHookParams memory params;
+        SwapSingleTokenHookParams memory params;
         Router(payable(this)).swapSingleTokenHook(params);
     }
 
     function manualReentrancyQuerySwapHook() external nonReentrant {
-        IBaseRouter.SwapSingleTokenHookParams memory params;
+        SwapSingleTokenHookParams memory params;
         Router(payable(this)).querySwapHook(params);
     }
 
@@ -76,7 +76,7 @@ contract RouterMock is Router {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
-                    BaseRouter.querySwapHook,
+                    RouterQueries.querySwapHook,
                     SwapSingleTokenHookParams({
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,
