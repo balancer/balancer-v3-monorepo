@@ -2,6 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { ILBPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/ILBPool.sol";
+
 import { BalancerContractRegistry } from "@balancer-labs/v3-standalone-utils/contracts/BalancerContractRegistry.sol";
 
 import { LBPMigrationRouter } from "../../contracts/lbp/LBPMigrationRouter.sol";
@@ -15,19 +19,23 @@ contract LBPMigrationRouterMock is LBPMigrationRouter {
     }
 
     function manualComputeExactAmountsIn(
-        MigrationHookParams memory params,
+        ILBPool lbp,
+        uint256 bptPercentageToMigrate,
+        uint256 migrationWeightProjectToken,
+        uint256 migrationWeightReserveToken,
         uint256[] memory removeAmountsOut
     ) external view returns (uint256[] memory exactAmountsIn) {
-        return _computeExactAmountsIn(params, removeAmountsOut);
+        return
+            _computeExactAmountsIn(
+                lbp,
+                bptPercentageToMigrate,
+                migrationWeightProjectToken,
+                migrationWeightReserveToken,
+                removeAmountsOut
+            );
     }
 
-    function manualLockAmount(MigrationHookParams memory params, uint256 bptAmountOut) external {
-        _lockAmount(params, bptAmountOut);
-    }
-
-    function manualAddLockedAmount(address owner, address token, uint256 amount, uint256 unlockTimestamp) external {
-        _timeLockedAmounts[owner].push(
-            TimeLockedAmount({ token: token, amount: amount, unlockTimestamp: unlockTimestamp })
-        );
+    function manualLockBPT(IERC20 token, address owner, uint256 amount, uint256 duration) external {
+        _lockBPT(token, owner, amount, duration);
     }
 }

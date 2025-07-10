@@ -2,66 +2,34 @@
 
 pragma solidity ^0.8.24;
 
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    IAddUnbalancedLiquidityViaSwapRouter
+} from "@balancer-labs/v3-interfaces/contracts/vault/IAddUnbalancedLiquidityViaSwapRouter.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import {
-    TransientEnumerableSet
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
-import {
-    TransientStorageHelpers
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { RouterHooks } from "./RouterHooks.sol";
 
-import { Router } from "./Router.sol";
-import { BatchRouterCommon } from "./BatchRouterCommon.sol";
-
-contract AddUnbalancedExtensionRouter is Router {
-    struct AddLiquidityProportionalParams {
-        uint256[] maxAmountsIn;
-        uint256 exactBptAmountOut;
-        bytes userData;
-    }
-
-    struct SwapExactInParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 exactAmountIn;
-        uint256 minAmountOut;
-        bytes userData;
-    }
-
-    struct SwapExactOutParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 exactAmountOut;
-        uint256 maxAmountIn;
-        bytes userData;
-    }
-
-    struct AddLiquidityAndSwapHookParams {
-        AddLiquidityHookParams addLiquidityParams;
-        SwapSingleTokenHookParams swapParams;
-    }
-
+/**
+ * @notice Entrypoint for add unbalanced liquidity via swap operations.
+ * @dev Some pools don’t support non-proportional liquidity addition. This router helps to bypass that limitation.
+ */
+contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiquidityViaSwapRouter {
     constructor(
         IVault vault,
         IPermit2 permit2,
         string memory routerVersion
-    ) Router(vault, IWETH(address(0)), permit2, routerVersion) {
+    ) RouterHooks(vault, IWETH(address(0)), permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function addProportionalAndSwapExactIn(
+    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
+    function addUnbalancedLiquidityViaSwapExactIn(
         address pool,
         uint256 deadline,
         AddLiquidityProportionalParams calldata addLiquidityParams,
@@ -80,7 +48,7 @@ contract AddUnbalancedExtensionRouter is Router {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        AddUnbalancedExtensionRouter.addProportionalAndSwapHook,
+                        AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
                                 sender: msg.sender,
@@ -110,7 +78,8 @@ contract AddUnbalancedExtensionRouter is Router {
             );
     }
 
-    function addProportionalAndSwapExactOut(
+    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
+    function addUnbalancedLiquidityViaSwapExactOut(
         address pool,
         uint256 deadline,
         AddLiquidityProportionalParams calldata addLiquidityParams,
@@ -129,7 +98,7 @@ contract AddUnbalancedExtensionRouter is Router {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        AddUnbalancedExtensionRouter.addProportionalAndSwapHook,
+                        AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
                                 sender: msg.sender,
@@ -159,7 +128,8 @@ contract AddUnbalancedExtensionRouter is Router {
             );
     }
 
-    function queryAddProportionalAndSwapExactIn(
+    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
+    function queryAddUnbalancedLiquidityViaSwapExactIn(
         address pool,
         address sender,
         AddLiquidityProportionalParams calldata addLiquidityParams,
@@ -178,7 +148,7 @@ contract AddUnbalancedExtensionRouter is Router {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        AddUnbalancedExtensionRouter.queryAddProportionalAndSwapHook,
+                        AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
                                 sender: address(this),
@@ -208,7 +178,8 @@ contract AddUnbalancedExtensionRouter is Router {
             );
     }
 
-    function queryAddProportionalAndSwapExactOut(
+    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
+    function queryAddUnbalancedLiquidityViaSwapExactOut(
         address pool,
         address sender,
         AddLiquidityProportionalParams calldata addLiquidityParams,
@@ -227,7 +198,7 @@ contract AddUnbalancedExtensionRouter is Router {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        AddUnbalancedExtensionRouter.queryAddProportionalAndSwapHook,
+                        AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
                         AddLiquidityAndSwapHookParams({
                             addLiquidityParams: AddLiquidityHookParams({
                                 sender: address(this),
@@ -257,7 +228,7 @@ contract AddUnbalancedExtensionRouter is Router {
             );
     }
 
-    function addProportionalAndSwapHook(
+    function addUnbalancedLiquidityViaSwapHook(
         AddLiquidityAndSwapHookParams calldata params
     )
         external
@@ -276,7 +247,7 @@ contract AddUnbalancedExtensionRouter is Router {
         swapAmountCalculated = _swapSingleTokenHook(params.swapParams);
     }
 
-    function queryAddProportionalAndSwapHook(
+    function queryAddUnbalancedLiquidityViaSwapHook(
         AddLiquidityAndSwapHookParams calldata params
     )
         external
