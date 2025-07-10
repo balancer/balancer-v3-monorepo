@@ -446,10 +446,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         RouterCallParams memory callParams
     ) private returns (uint256 actualAmountIn) {
         IERC20 underlyingToken;
+        IERC20 tokenIn;
 
         if (needToWrap) {
             IERC4626 wrappedToken = IERC4626(token);
             underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
+            tokenIn = underlyingToken;
 
             if (address(underlyingToken) == address(0)) {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
@@ -479,15 +481,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         } else {
             actualAmountIn = amountIn;
+            tokenIn = IERC20(token);
 
             if (callParams.isStaticCall == false) {
-                _takeTokenIn(callParams.sender, IERC20(token), actualAmountIn, callParams.wethIsEth);
+                _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
             }
         }
 
         if (actualAmountIn > maxAmountIn) {
-            IERC20 tokenIn = needToWrap ? underlyingToken : IERC20(token);
-
             revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
         }
     }
@@ -510,10 +511,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         RouterCallParams memory callParams
     ) private returns (uint256 actualAmountOut) {
         IERC20 underlyingToken;
+        IERC20 tokenOut;
 
         if (needToUnwrap) {
             IERC4626 wrappedToken = IERC4626(token);
             underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
+            tokenOut = underlyingToken;
 
             if (address(underlyingToken) == address(0)) {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
@@ -536,15 +539,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         } else {
             actualAmountOut = amountOut;
+            tokenOut = IERC20(token);
 
             if (callParams.isStaticCall == false) {
-                _sendTokenOut(callParams.sender, IERC20(token), actualAmountOut, callParams.wethIsEth);
+                _sendTokenOut(callParams.sender, tokenOut, actualAmountOut, callParams.wethIsEth);
             }
         }
 
         if (actualAmountOut < minAmountOut) {
-            IERC20 tokenOut = needToUnwrap ? underlyingToken : IERC20(token);
-
             revert IVaultErrors.AmountOutBelowMin(tokenOut, actualAmountOut, minAmountOut);
         }
     }
