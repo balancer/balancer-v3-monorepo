@@ -16,7 +16,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 
 import { Router } from "../Router.sol";
-import { RouterQueries } from "../RouterQueries.sol";
+import { RouterHooks } from "../RouterHooks.sol";
 
 string constant MOCK_ROUTER_VERSION = "Mock Router v1";
 
@@ -55,7 +55,7 @@ contract RouterMock is Router {
 
     function manualReentrancyQuerySwapHook() external nonReentrant {
         SwapSingleTokenHookParams memory params;
-        RouterQueries(payable(this)).querySwapHook(params);
+        RouterHooks(payable(this)).querySwapHook(params);
     }
 
     function getSingleInputArrayAndTokenIndex(
@@ -76,7 +76,7 @@ contract RouterMock is Router {
         try
             _vault.quoteAndRevert(
                 abi.encodeCall(
-                    RouterQueries.querySwapHook,
+                    RouterHooks.querySwapHook,
                     SwapSingleTokenHookParams({
                         sender: msg.sender,
                         kind: SwapKind.EXACT_IN,

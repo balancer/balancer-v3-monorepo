@@ -13,20 +13,19 @@ import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterHooks } from "./RouterHooks.sol";
 import { RouterQueries } from "./RouterQueries.sol";
-import { RouterCommon } from "./RouterCommon.sol";
 
 /**
  * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
  */
-contract Router is IRouter, RouterHooks, RouterQueries {
+contract Router is IRouter, RouterQueries {
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) RouterHooks(false) RouterCommon(vault, weth, permit2, routerVersion) {
+    ) RouterQueries(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

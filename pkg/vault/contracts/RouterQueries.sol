@@ -15,17 +15,26 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
-import { RouterCommon } from "./RouterCommon.sol";
+import { RouterHooks } from "./RouterHooks.sol";
 
 /**
  * @notice Router contract for simulating swaps and liquidity operations without state changes.
  * @dev Implements read-only query functions that allow off-chain components to estimate results of Vault interactions.
  * Designed to provide accurate previews of add/remove liquidity and swap outcomes using Vault quoting logic.
  */
-abstract contract RouterQueries is IRouterQueries, RouterCommon {
+contract RouterQueries is IRouterQueries, RouterHooks {
     using Address for address payable;
     using RouterWethLib for IWETH;
     using SafeCast for *;
+
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory routerVersion
+    ) RouterHooks(vault, weth, permit2, routerVersion) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /***************************************************************************
                                     Add liquidity
@@ -41,7 +50,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
         (amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    RouterQueries.queryAddLiquidityHook,
+                    RouterHooks.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -69,7 +78,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
         (, bptAmountOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    RouterQueries.queryAddLiquidityHook,
+                    RouterHooks.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -104,7 +113,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    RouterQueries.queryAddLiquidityHook,
+                    RouterHooks.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -136,7 +145,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        RouterQueries.queryAddLiquidityHook,
+                        RouterHooks.queryAddLiquidityHook,
                         AddLiquidityHookParams({
                             // We use the Router as a sender to simplify basic query functions,
                             // but it is possible to add liquidity to any recipient.
@@ -154,29 +163,6 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
             );
     }
 
-    /**
-     * @notice Hook for add liquidity queries.
-     * @dev Can only be called by the Vault.
-     * @param params Add liquidity parameters (see IRouter for struct definition)
-     * @return amountsIn Actual token amounts in required as inputs
-     * @return bptAmountOut Expected pool tokens to be minted
-     * @return returnData Arbitrary (optional) data with an encoded response from the pool
-     */
-    function queryAddLiquidityHook(
-        AddLiquidityHookParams calldata params
-    ) external onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
-        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: params.sender,
-                maxAmountsIn: params.maxAmountsIn,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
-        );
-    }
-
     /***************************************************************************
                                     Remove liquidity
     ***************************************************************************/
@@ -192,7 +178,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
         (, amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    RouterQueries.queryRemoveLiquidityHook,
+                    RouterHooks.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -224,7 +210,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    RouterQueries.queryRemoveLiquidityHook,
+                    RouterHooks.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -257,7 +243,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeCall(
-                    RouterQueries.queryRemoveLiquidityHook,
+                    RouterHooks.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -289,7 +275,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        RouterQueries.queryRemoveLiquidityHook,
+                        RouterHooks.queryRemoveLiquidityHook,
                         RemoveLiquidityHookParams({
                             // We use the Router as a sender to simplify basic query functions,
                             // but it is possible to remove liquidity from any sender.
@@ -316,53 +302,12 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        RouterQueries.queryRemoveLiquidityRecoveryHook,
+                        RouterHooks.queryRemoveLiquidityRecoveryHook,
                         (pool, address(this), exactBptAmountIn)
                     )
                 ),
                 (uint256[])
             );
-    }
-
-    /**
-     * @notice Hook for remove liquidity queries.
-     * @dev Can only be called by the Vault.
-     * @param params Remove liquidity parameters (see IRouter for struct definition)
-     * @return bptAmountIn Pool token amount to be burned for the output tokens
-     * @return amountsOut Expected token amounts to be transferred to the sender
-     * @return returnData Arbitrary (optional) data with an encoded response from the pool
-     */
-    function queryRemoveLiquidityHook(
-        RemoveLiquidityHookParams calldata params
-    ) external onlyVault returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
-        return
-            _vault.removeLiquidity(
-                RemoveLiquidityParams({
-                    pool: params.pool,
-                    from: params.sender,
-                    maxBptAmountIn: params.maxBptAmountIn,
-                    minAmountsOut: params.minAmountsOut,
-                    kind: params.kind,
-                    userData: params.userData
-                })
-            );
-    }
-
-    /**
-     * @notice Hook for remove liquidity queries.
-     * @dev Can only be called by the Vault.
-     * @param pool The liquidity pool
-     * @param sender Account originating the remove liquidity operation
-     * @param exactBptAmountIn Pool token amount to be burned for the output tokens
-     * @return amountsOut Expected token amounts to be transferred to the sender
-     */
-    function queryRemoveLiquidityRecoveryHook(
-        address pool,
-        address sender,
-        uint256 exactBptAmountIn
-    ) external onlyVault returns (uint256[] memory amountsOut) {
-        uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
-        return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
     }
 
     /***************************************************************************
@@ -382,7 +327,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        RouterQueries.querySwapHook,
+                        RouterHooks.querySwapHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -414,7 +359,7 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
             abi.decode(
                 _vault.quote(
                     abi.encodeCall(
-                        RouterQueries.querySwapHook,
+                        RouterHooks.querySwapHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
@@ -431,35 +376,5 @@ abstract contract RouterQueries is IRouterQueries, RouterCommon {
                 ),
                 (uint256)
             );
-    }
-
-    /**
-     * @notice Hook for swap queries.
-     * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouter for struct definition)
-     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
-     */
-    function querySwapHook(
-        SwapSingleTokenHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256) {
-        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > params.deadline) {
-            revert SwapDeadline();
-        }
-
-        (uint256 amountCalculated, , ) = _vault.swap(
-            VaultSwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGiven,
-                limitRaw: params.limit,
-                userData: params.userData
-            })
-        );
-
-        return amountCalculated;
     }
 }
