@@ -19,7 +19,7 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
-import { BaseRouter } from "../../contracts/BaseRouter.sol";
+import { RouterHooks } from "../../contracts/RouterHooks.sol";
 import { AggregatorRouter } from "../../contracts/AggregatorRouter.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -175,7 +175,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         vm.startPrank(alice);
         dai.transfer(address(vault), partialTransfer);
-        vm.expectRevert(abi.encodeWithSelector(BaseRouter.InsufficientPayment.selector, address(dai)));
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
         aggregatorRouter.swapSingleTokenExactIn(address(pool), dai, usdc, exactAmountIn, 0, MAX_UINT256, bytes(""));
         vm.stopPrank();
     }
@@ -257,7 +257,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
     function testSwapExactOutWithoutPayment() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(BaseRouter.InsufficientPayment.selector, address(dai)));
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
         aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
@@ -311,7 +311,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         vm.startPrank(alice);
         dai.transfer(address(vault), insufficientAmount);
-        vm.expectRevert(abi.encodeWithSelector(BaseRouter.InsufficientPayment.selector, address(dai)));
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
         aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
@@ -334,7 +334,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         vm.startPrank(alice);
         dai.transfer(address(vault), partialTransfer);
-        vm.expectRevert(abi.encodeWithSelector(BaseRouter.InsufficientPayment.selector, address(dai)));
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
         aggregatorRouter.swapSingleTokenExactOut(
             address(pool),
             dai,
@@ -484,7 +484,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), maxAmountsIn[usdcIdx] / 2);
         dai.transfer(address(vault), maxAmountsIn[daiIdx] / 2);
 
-        vm.expectRevert(abi.encodeWithSelector(BaseRouter.InsufficientPayment.selector, address(usdc)));
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(usdc)));
         aggregatorRouter.addLiquidityProportional(pool, maxAmountsIn, exactBptAmountOut, bytes(""));
         vm.stopPrank();
     }
@@ -546,7 +546,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), exactAmountsIn[usdcIdx] / 2);
         dai.transfer(address(vault), exactAmountsIn[daiIdx] / 2);
 
-        vm.expectRevert(abi.encodeWithSelector(BaseRouter.InsufficientPayment.selector, address(usdc)));
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(usdc)));
         aggregatorRouter.addLiquidityUnbalanced(pool, exactAmountsIn, 0, bytes(""));
         vm.stopPrank();
     }

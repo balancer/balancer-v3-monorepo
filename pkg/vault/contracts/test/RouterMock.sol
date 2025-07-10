@@ -55,7 +55,7 @@ contract RouterMock is Router {
 
     function manualReentrancyQuerySwapHook() external nonReentrant {
         SwapSingleTokenHookParams memory params;
-        Router(payable(this)).querySwapHook(params);
+        RouterQueries(payable(this)).querySwapHook(params);
     }
 
     function getSingleInputArrayAndTokenIndex(

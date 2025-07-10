@@ -11,17 +11,19 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { BaseRouter } from "./BaseRouter.sol";
+import { RouterHooks } from "./RouterHooks.sol";
+import { RouterQueries } from "./RouterQueries.sol";
+import { RouterCommon } from "./RouterCommon.sol";
 
 /**
  * @notice Entrypoint for aggregators who want to swap without the standard permit2 payment logic.
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  */
-contract AggregatorRouter is IAggregatorRouter, BaseRouter {
+contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
     constructor(
         IVault vault,
         string memory routerVersion
-    ) BaseRouter(vault, IWETH(address(0)), IPermit2(address(0)), true, routerVersion) {
+    ) RouterHooks(true) RouterCommon(vault, IWETH(address(0)), IPermit2(address(0)), routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -39,7 +41,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.addLiquidityHook,
+                    RouterHooks.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -65,7 +67,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.addLiquidityHook,
+                    RouterHooks.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -98,7 +100,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.addLiquidityHook,
+                    RouterHooks.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -124,7 +126,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
     ) external payable saveSender(msg.sender) {
         _vault.unlock(
             abi.encodeCall(
-                BaseRouter.addLiquidityHook,
+                RouterHooks.addLiquidityHook,
                 AddLiquidityHookParams({
                     sender: msg.sender,
                     pool: pool,
@@ -154,7 +156,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.addLiquidityHook,
+                        RouterHooks.addLiquidityHook,
                         AddLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -184,7 +186,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityHook,
+                    RouterHooks.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -217,7 +219,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityHook,
+                    RouterHooks.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -248,7 +250,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
         (bptAmountIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityHook,
+                    RouterHooks.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -282,7 +284,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.removeLiquidityHook,
+                        RouterHooks.removeLiquidityHook,
                         RemoveLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -307,7 +309,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
         amountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
-                    BaseRouter.removeLiquidityRecoveryHook,
+                    RouterHooks.removeLiquidityRecoveryHook,
                     (pool, msg.sender, exactBptAmountIn, minAmountsOut)
                 )
             ),
@@ -333,7 +335,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.swapSingleTokenHook,
+                        RouterHooks.swapSingleTokenHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -366,7 +368,7 @@ contract AggregatorRouter is IAggregatorRouter, BaseRouter {
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        BaseRouter.swapSingleTokenHook,
+                        RouterHooks.swapSingleTokenHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,

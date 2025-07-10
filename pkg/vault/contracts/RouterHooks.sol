@@ -14,13 +14,13 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
-import { RouterQueries } from "./RouterQueries.sol";
+import { RouterCommon } from "./RouterCommon.sol";
 
 /**
  * @notice Base Router with hooks for swaps and liquidity operations via Vault.
  * @dev Implements hooks for init, add liquidity, remove liquidity, and swaps.
  */
-contract BaseRouter is RouterQueries {
+abstract contract RouterHooks is RouterCommon {
     using Address for address payable;
     using RouterWethLib for IWETH;
     using SafeCast for *;
@@ -33,13 +33,7 @@ contract BaseRouter is RouterQueries {
 
     bool internal immutable _isAggregator;
 
-    constructor(
-        IVault vault,
-        IWETH weth,
-        IPermit2 permit2,
-        bool isAggregator,
-        string memory routerVersion
-    ) RouterQueries(vault, weth, permit2, routerVersion) {
+    constructor(bool isAggregator) {
         _isAggregator = isAggregator;
     }
 
@@ -239,7 +233,23 @@ contract BaseRouter is RouterQueries {
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert SwapDeadline();
+        }
+
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _vault.swap(
+            VaultSwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                amountGivenRaw: params.amountGiven,
+                limitRaw: params.limit,
+                userData: params.userData
+            })
+        );
 
         if (_isAggregator == false) {
             _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
