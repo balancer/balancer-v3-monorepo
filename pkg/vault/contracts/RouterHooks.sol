@@ -25,12 +25,6 @@ contract RouterHooks is RouterCommon {
     using RouterWethLib for IWETH;
     using SafeCast for *;
 
-    /**
-     * @notice The sender does not transfer the correct amount of tokens to the Vault.
-     * @param token The address of the token that was expected to be transferred.
-     */
-    error InsufficientPayment(IERC20 token);
-
     constructor(
         IVault vault,
         IWETH weth,
@@ -108,9 +102,6 @@ contract RouterHooks is RouterCommon {
     function _addLiquidityHook(
         AddLiquidityHookParams calldata params
     ) internal returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
-        // maxAmountsIn length is checked against tokens length at the Vault.
-        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
-
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -122,6 +113,9 @@ contract RouterHooks is RouterCommon {
             })
         );
 
+        // maxAmountsIn length is checked against tokens length at the Vault.
+        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
@@ -130,15 +124,15 @@ contract RouterHooks is RouterCommon {
                 continue;
             }
 
-            // `amountInHint` represents the amount supposedly paid upfront by the sender.
-            uint256 amountInHint = params.maxAmountsIn[i];
-
-            uint256 tokenInCredit = _vault.settle(token, amountInHint);
-            if (tokenInCredit < amountInHint) {
-                revert InsufficientPayment(token);
+            // There can be only one WETH token in the pool.
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                _weth.wrapEthAndSettle(_vault, amountIn);
+            } else {
+                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+                _vault.settle(token, amountIn);
             }
-
-            _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
         }
 
         // Send remaining ETH to the user.
