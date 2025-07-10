@@ -20,7 +20,7 @@ import { RouterCommon } from "./RouterCommon.sol";
  * @notice Base Router with hooks for swaps and liquidity operations via Vault.
  * @dev Implements hooks for init, add liquidity, remove liquidity, and swaps.
  */
-abstract contract RouterHooks is RouterCommon {
+contract RouterHooks is RouterCommon {
     using Address for address payable;
     using RouterWethLib for IWETH;
     using SafeCast for *;
@@ -31,10 +31,13 @@ abstract contract RouterHooks is RouterCommon {
      */
     error InsufficientPayment(IERC20 token);
 
-    bool internal immutable _isAggregator;
-
-    constructor(bool isAggregator) {
-        _isAggregator = isAggregator;
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        string memory routerVersion
+    ) RouterCommon(vault, weth, permit2, routerVersion) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -46,6 +49,10 @@ abstract contract RouterHooks is RouterCommon {
     function initializeHook(
         InitializeHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
+        return _initializeHook(params);
+    }
+
+    function _initializeHook(InitializeHookParams calldata params) internal returns (uint256 bptAmountOut) {
         bptAmountOut = _vault.initialize(
             params.pool,
             params.sender,
@@ -95,6 +102,12 @@ abstract contract RouterHooks is RouterCommon {
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
+        return _addLiquidityHook(params);
+    }
+
+    function _addLiquidityHook(
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         // maxAmountsIn length is checked against tokens length at the Vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
@@ -117,31 +130,48 @@ abstract contract RouterHooks is RouterCommon {
                 continue;
             }
 
-            if (_isAggregator) {
-                // `amountInHint` represents the amount supposedly paid upfront by the sender.
-                uint256 amountInHint = params.maxAmountsIn[i];
+            // `amountInHint` represents the amount supposedly paid upfront by the sender.
+            uint256 amountInHint = params.maxAmountsIn[i];
 
-                uint256 tokenInCredit = _vault.settle(token, amountInHint);
-                if (tokenInCredit < amountInHint) {
-                    revert InsufficientPayment(token);
-                }
-
-                _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
-            } else {
-                // There can be only one WETH token in the pool.
-                if (params.wethIsEth && address(token) == address(_weth)) {
-                    _weth.wrapEthAndSettle(_vault, amountIn);
-                } else {
-                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                    // necessary. Done out of an abundance of caution.
-                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                    _vault.settle(token, amountIn);
-                }
+            uint256 tokenInCredit = _vault.settle(token, amountInHint);
+            if (tokenInCredit < amountInHint) {
+                revert InsufficientPayment(token);
             }
+
+            _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
         }
 
         // Send remaining ETH to the user.
         _returnEth(params.sender);
+    }
+
+    /**
+     * @notice Hook for add liquidity queries.
+     * @dev Can only be called by the Vault.
+     * @param params Add liquidity parameters (see IRouter for struct definition)
+     * @return amountsIn Actual token amounts in required as inputs
+     * @return bptAmountOut Expected pool tokens to be minted
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
+     */
+    function queryAddLiquidityHook(
+        AddLiquidityHookParams calldata params
+    ) external onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+        return _queryAddLiquidityHook(params);
+    }
+
+    function _queryAddLiquidityHook(
+        AddLiquidityHookParams calldata params
+    ) internal returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: params.maxAmountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
     }
 
     /**
@@ -160,6 +190,12 @@ abstract contract RouterHooks is RouterCommon {
         onlyVault
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
+        return _removeLiquidityHook(params);
+    }
+
+    function _removeLiquidityHook(
+        RemoveLiquidityHookParams calldata params
+    ) internal returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
@@ -209,6 +245,15 @@ abstract contract RouterHooks is RouterCommon {
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        return _removeLiquidityRecoveryHook(pool, sender, exactBptAmountIn, minAmountsOut);
+    }
+
+    function _removeLiquidityRecoveryHook(
+        address pool,
+        address sender,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
+    ) internal returns (uint256[] memory amountsOut) {
         amountsOut = _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
 
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
@@ -225,6 +270,61 @@ abstract contract RouterHooks is RouterCommon {
     }
 
     /**
+     * @notice Hook for remove liquidity queries.
+     * @dev Can only be called by the Vault.
+     * @param params Remove liquidity parameters (see IRouter for struct definition)
+     * @return bptAmountIn Pool token amount to be burned for the output tokens
+     * @return amountsOut Expected token amounts to be transferred to the sender
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
+     */
+    function queryRemoveLiquidityHook(
+        RemoveLiquidityHookParams calldata params
+    ) external onlyVault returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
+        return _queryRemoveLiquidityHook(params);
+    }
+
+    function _queryRemoveLiquidityHook(
+        RemoveLiquidityHookParams calldata params
+    ) internal returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
+        return
+            _vault.removeLiquidity(
+                RemoveLiquidityParams({
+                    pool: params.pool,
+                    from: params.sender,
+                    maxBptAmountIn: params.maxBptAmountIn,
+                    minAmountsOut: params.minAmountsOut,
+                    kind: params.kind,
+                    userData: params.userData
+                })
+            );
+    }
+
+    /**
+     * @notice Hook for remove liquidity queries.
+     * @dev Can only be called by the Vault.
+     * @param pool The liquidity pool
+     * @param sender Account originating the remove liquidity operation
+     * @param exactBptAmountIn Pool token amount to be burned for the output tokens
+     * @return amountsOut Expected token amounts to be transferred to the sender
+     */
+    function queryRemoveLiquidityRecoveryHook(
+        address pool,
+        address sender,
+        uint256 exactBptAmountIn
+    ) external onlyVault returns (uint256[] memory amountsOut) {
+        return _queryRemoveLiquidityRecoveryHook(pool, sender, exactBptAmountIn);
+    }
+
+    function _queryRemoveLiquidityRecoveryHook(
+        address pool,
+        address sender,
+        uint256 exactBptAmountIn
+    ) internal returns (uint256[] memory amountsOut) {
+        uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
+        return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
+    }
+
+    /**
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
@@ -233,6 +333,10 @@ abstract contract RouterHooks is RouterCommon {
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
+        return _swapSingleTokenHook(params);
+    }
+
+    function _swapSingleTokenHook(SwapSingleTokenHookParams calldata params) internal returns (uint256) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -251,26 +355,7 @@ abstract contract RouterHooks is RouterCommon {
             })
         );
 
-        if (_isAggregator == false) {
-            _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
-        } else {
-            // `amountInHint` represents the amount supposedly paid upfront by the sender.
-            uint256 amountInHint;
-            if (params.kind == SwapKind.EXACT_IN) {
-                amountInHint = params.amountGiven;
-            } else {
-                amountInHint = params.limit;
-            }
-
-            uint256 tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
-            if (tokenInCredit < amountInHint) {
-                revert InsufficientPayment(params.tokenIn);
-            }
-
-            if (params.kind == SwapKind.EXACT_OUT) {
-                _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
-            }
-        }
+        _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
 
         _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
         if (params.tokenIn == _weth) {
@@ -279,5 +364,45 @@ abstract contract RouterHooks is RouterCommon {
         }
 
         return amountCalculated;
+    }
+
+    /**
+     * @notice Hook for swap queries.
+     * @dev Can only be called by the Vault. Also handles native ETH.
+     * @param params Swap parameters (see IRouter for struct definition)
+     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
+     */
+    function querySwapHook(
+        SwapSingleTokenHookParams calldata params
+    ) external nonReentrant onlyVault returns (uint256) {
+        return _querySwapHook(params);
+    }
+
+    function _querySwapHook(SwapSingleTokenHookParams calldata params) internal returns (uint256) {
+        (uint256 amountCalculated, , ) = _swapHook(params);
+
+        return amountCalculated;
+    }
+
+    function _swapHook(
+        SwapSingleTokenHookParams calldata params
+    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert SwapDeadline();
+        }
+
+        (amountCalculated, amountIn, amountOut) = _vault.swap(
+            VaultSwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                amountGivenRaw: params.amountGiven,
+                limitRaw: params.limit,
+                userData: params.userData
+            })
+        );
     }
 }
