@@ -14,24 +14,27 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
-import { RouterQueries } from "./RouterQueries.sol";
+import { RouterCommon } from "./RouterCommon.sol";
 
 /**
  * @notice Base Router with hooks for swaps and liquidity operations via Vault.
  * @dev Implements hooks for init, add liquidity, remove liquidity, and swaps.
  */
-contract BaseRouter is RouterQueries {
+abstract contract RouterHooks is RouterCommon {
     using Address for address payable;
     using RouterWethLib for IWETH;
     using SafeCast for *;
 
-    constructor(
-        IVault vault,
-        IWETH weth,
-        IPermit2 permit2,
-        string memory routerVersion
-    ) RouterQueries(vault, weth, permit2, routerVersion) {
-        // solhint-disable-previous-line no-empty-blocks
+    /**
+     * @notice The sender does not transfer the correct amount of tokens to the Vault.
+     * @param token The address of the token that was expected to be transferred.
+     */
+    error InsufficientPayment(IERC20 token);
+
+    bool internal immutable _isAggregator;
+
+    constructor(bool isAggregator) {
+        _isAggregator = isAggregator;
     }
 
     /**
@@ -92,6 +95,9 @@ contract BaseRouter is RouterQueries {
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
+        // maxAmountsIn length is checked against tokens length at the Vault.
+        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
+
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -103,9 +109,6 @@ contract BaseRouter is RouterQueries {
             })
         );
 
-        // maxAmountsIn length is checked against tokens length at the Vault.
-        IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
-
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
@@ -114,14 +117,26 @@ contract BaseRouter is RouterQueries {
                 continue;
             }
 
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.wrapEthAndSettle(_vault, amountIn);
+            if (_isAggregator) {
+                // `amountInHint` represents the amount supposedly paid upfront by the sender.
+                uint256 amountInHint = params.maxAmountsIn[i];
+
+                uint256 tokenInCredit = _vault.settle(token, amountInHint);
+                if (tokenInCredit < amountInHint) {
+                    revert InsufficientPayment(token);
+                }
+
+                _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
             } else {
-                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                _vault.settle(token, amountIn);
+                // There can be only one WETH token in the pool.
+                if (params.wethIsEth && address(token) == address(_weth)) {
+                    _weth.wrapEthAndSettle(_vault, amountIn);
+                } else {
+                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                    // necessary. Done out of an abundance of caution.
+                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+                    _vault.settle(token, amountIn);
+                }
             }
         }
 
@@ -218,14 +233,47 @@ contract BaseRouter is RouterQueries {
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > params.deadline) {
+            revert SwapDeadline();
+        }
 
-        IERC20 tokenIn = params.tokenIn;
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _vault.swap(
+            VaultSwapParams({
+                kind: params.kind,
+                pool: params.pool,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                amountGivenRaw: params.amountGiven,
+                limitRaw: params.limit,
+                userData: params.userData
+            })
+        );
 
-        _takeTokenIn(params.sender, tokenIn, amountIn, params.wethIsEth);
+        if (_isAggregator == false) {
+            _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
+        } else {
+            // `amountInHint` represents the amount supposedly paid upfront by the sender.
+            uint256 amountInHint;
+            if (params.kind == SwapKind.EXACT_IN) {
+                amountInHint = params.amountGiven;
+            } else {
+                amountInHint = params.limit;
+            }
+
+            uint256 tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
+            if (tokenInCredit < amountInHint) {
+                revert InsufficientPayment(params.tokenIn);
+            }
+
+            if (params.kind == SwapKind.EXACT_OUT) {
+                _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
+            }
+        }
+
         _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
-
-        if (tokenIn == _weth) {
+        if (params.tokenIn == _weth) {
             // Return the rest of ETH to sender
             _returnEth(params.sender);
         }

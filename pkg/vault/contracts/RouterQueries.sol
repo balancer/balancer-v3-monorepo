@@ -22,19 +22,10 @@ import { RouterCommon } from "./RouterCommon.sol";
  * @dev Implements read-only query functions that allow off-chain components to estimate results of Vault interactions.
  * Designed to provide accurate previews of add/remove liquidity and swap outcomes using Vault quoting logic.
  */
-contract RouterQueries is IRouterQueries, RouterCommon {
+abstract contract RouterQueries is IRouterQueries, RouterCommon {
     using Address for address payable;
     using RouterWethLib for IWETH;
     using SafeCast for *;
-
-    constructor(
-        IVault vault,
-        IWETH weth,
-        IPermit2 permit2,
-        string memory routerVersion
-    ) RouterCommon(vault, weth, permit2, routerVersion) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
 
     /***************************************************************************
                                     Add liquidity
@@ -451,21 +442,13 @@ contract RouterQueries is IRouterQueries, RouterCommon {
     function querySwapHook(
         SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, , ) = _swapHook(params);
-
-        return amountCalculated;
-    }
-
-    function _swapHook(
-        SwapSingleTokenHookParams calldata params
-    ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
             revert SwapDeadline();
         }
 
-        (amountCalculated, amountIn, amountOut) = _vault.swap(
+        (uint256 amountCalculated, , ) = _vault.swap(
             VaultSwapParams({
                 kind: params.kind,
                 pool: params.pool,
@@ -476,5 +459,7 @@ contract RouterQueries is IRouterQueries, RouterCommon {
                 userData: params.userData
             })
         );
+
+        return amountCalculated;
     }
 }
