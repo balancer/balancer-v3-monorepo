@@ -24,10 +24,10 @@ contract BufferRouterMock is BufferRouter {
     }
 
     function manualReentrancyAddLiquidityToBufferHook() external nonReentrant {
-        BufferRouter(payable(this)).addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, 0, address(0));
+        BufferRouter(this).addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, 0, address(0));
     }
 
     function manualReentrancyInitializeBufferHook() external nonReentrant {
-        BufferRouter(payable(this)).initializeBufferHook(IERC4626(address(0)), 0, 0, 0, address(0));
+        BufferRouter(this).initializeBufferHook(IERC4626(address(0)), 0, 0, 0, address(0));
     }
 }
