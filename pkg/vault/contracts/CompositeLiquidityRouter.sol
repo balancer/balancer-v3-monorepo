@@ -91,27 +91,28 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (address[] memory tokensIn, uint256[] memory amountsIn) {
-        (tokensIn, amountsIn) = abi.decode(
-            _vault.unlock(
-                abi.encodeCall(
-                    CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
-                    (
-                        AddLiquidityHookParams({
-                            sender: msg.sender,
-                            pool: pool,
-                            maxAmountsIn: maxAmountsIn,
-                            minBptAmountOut: exactBptAmountOut,
-                            kind: AddLiquidityKind.PROPORTIONAL,
-                            wethIsEth: wethIsEth,
-                            userData: userData
-                        }),
-                        wrapUnderlying
+    ) external payable saveSender(msg.sender) returns (uint256[] memory) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
+                        (
+                            AddLiquidityHookParams({
+                                sender: msg.sender,
+                                pool: pool,
+                                maxAmountsIn: maxAmountsIn,
+                                minBptAmountOut: exactBptAmountOut,
+                                kind: AddLiquidityKind.PROPORTIONAL,
+                                wethIsEth: wethIsEth,
+                                userData: userData
+                            }),
+                            wrapUnderlying
+                        )
                     )
-                )
-            ),
-            (address[], uint256[])
-        );
+                ),
+                (uint256[])
+            );
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
@@ -122,27 +123,28 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (address[] memory tokensOut, uint256[] memory amountsOut) {
-        (tokensOut, amountsOut) = abi.decode(
-            _vault.unlock(
-                abi.encodeCall(
-                    CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
-                    (
-                        RemoveLiquidityHookParams({
-                            sender: msg.sender,
-                            pool: pool,
-                            minAmountsOut: minAmountsOut,
-                            maxBptAmountIn: exactBptAmountIn,
-                            kind: RemoveLiquidityKind.PROPORTIONAL,
-                            wethIsEth: wethIsEth,
-                            userData: userData
-                        }),
-                        unwrapWrapped
+    ) external payable saveSender(msg.sender) returns (uint256[] memory) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
+                        (
+                            RemoveLiquidityHookParams({
+                                sender: msg.sender,
+                                pool: pool,
+                                minAmountsOut: minAmountsOut,
+                                maxBptAmountIn: exactBptAmountIn,
+                                kind: RemoveLiquidityKind.PROPORTIONAL,
+                                wethIsEth: wethIsEth,
+                                userData: userData
+                            }),
+                            unwrapWrapped
+                        )
                     )
-                )
-            ),
-            (address[], uint256[])
-        );
+                ),
+                (uint256[])
+            );
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
@@ -176,7 +178,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 exactBptAmountOut,
         address sender,
         bytes memory userData
-    ) external saveSender(sender) returns (address[] memory tokensIn, uint256[] memory amountsIn) {
+    ) external saveSender(sender) returns (uint256[] memory) {
         AddLiquidityHookParams memory params = _buildQueryAddLiquidityParams(
             pool,
             new uint256[](0),
@@ -185,15 +187,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             userData
         );
 
-        (tokensIn, amountsIn) = abi.decode(
-            _vault.quote(
-                abi.encodeCall(
-                    CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
-                    (params, wrapUnderlying)
-                )
-            ),
-            (address[], uint256[])
-        );
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        CompositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook,
+                        (params, wrapUnderlying)
+                    )
+                ),
+                (uint256[])
+            );
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
@@ -203,7 +206,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 exactBptAmountIn,
         address sender,
         bytes memory userData
-    ) external saveSender(sender) returns (address[] memory tokensOut, uint256[] memory amountsOut) {
+    ) external saveSender(sender) returns (uint256[] memory) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(pool);
         RemoveLiquidityHookParams memory params = _buildQueryRemoveLiquidityProportionalParams(
             pool,
@@ -212,15 +215,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             userData
         );
 
-        (tokensOut, amountsOut) = abi.decode(
-            _vault.quote(
-                abi.encodeCall(
-                    CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
-                    (params, unwrapWrapped)
-                )
-            ),
-            (address[], uint256[])
-        );
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        CompositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook,
+                        (params, unwrapWrapped)
+                    )
+                ),
+                (uint256[])
+            );
     }
 
     // ERC4626 Pool Hooks
@@ -270,7 +274,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     function addLiquidityERC4626PoolProportionalHook(
         AddLiquidityHookParams calldata params,
         bool[] calldata wrapUnderlying
-    ) external nonReentrant onlyVault returns (address[] memory tokensIn, uint256[] memory amountsIn) {
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
         (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateHookParams(
             params.pool,
             params.maxAmountsIn.length,
@@ -300,11 +304,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             isStaticCall: EVMCallModeHelpers.isStaticCall()
         });
 
-        tokensIn = new address[](numTokens);
         amountsIn = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (tokensIn[i], amountsIn[i]) = _processTokenInExactOut(
+            amountsIn[i] = _processTokenInExactOut(
                 address(erc4626PoolTokens[i]),
                 actualAmountsIn[i],
                 wrapUnderlying[i],
@@ -320,7 +323,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     function removeLiquidityERC4626PoolProportionalHook(
         RemoveLiquidityHookParams calldata params,
         bool[] calldata unwrapWrapped
-    ) external nonReentrant onlyVault returns (address[] memory tokensOut, uint256[] memory amountsOut) {
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateHookParams(
             params.pool,
             params.minAmountsOut.length,
@@ -344,11 +347,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             isStaticCall: EVMCallModeHelpers.isStaticCall()
         });
 
-        tokensOut = new address[](numTokens);
         amountsOut = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (tokensOut[i], amountsOut[i]) = _processTokenOutExactIn(
+            amountsOut[i] = _processTokenOutExactIn(
                 address(erc4626PoolTokens[i]),
                 actualAmountsOut[i],
                 unwrapWrapped[i],
@@ -434,7 +436,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @param needToWrap Flag indicating whether this token is an ERC4626 to be wrapped
      * @param maxAmountIn The final token amount (of the underlying token if wrapped)
      * @param callParams Common parameters from the main router call
-     * @return tokenIn The final incoming token (the underlying token if wrapped)
      * @return actualAmountIn The final token amount (of the underlying token if wrapped)
      */
     function _processTokenInExactOut(
@@ -443,10 +444,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         bool needToWrap,
         uint256 maxAmountIn,
         RouterCallParams memory callParams
-    ) private returns (address tokenIn, uint256 actualAmountIn) {
+    ) private returns (uint256 actualAmountIn) {
+        IERC20 tokenIn;
+
         if (needToWrap) {
             IERC4626 wrappedToken = IERC4626(token);
             IERC20 underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
+            tokenIn = underlyingToken;
 
             if (address(underlyingToken) == address(0)) {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
@@ -474,19 +478,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 // `maxAmountsIn` and the exact underlying amount needs to be returned to the sender.
                 _sendTokenOut(callParams.sender, underlyingToken, maxAmountIn - actualAmountIn, callParams.wethIsEth);
             }
-
-            tokenIn = address(underlyingToken);
         } else {
-            if (callParams.isStaticCall == false) {
-                _takeTokenIn(callParams.sender, IERC20(token), amountIn, callParams.wethIsEth);
-            }
-
             actualAmountIn = amountIn;
-            tokenIn = token;
+            tokenIn = IERC20(token);
+
+            if (callParams.isStaticCall == false) {
+                _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
+            }
         }
 
         if (actualAmountIn > maxAmountIn) {
-            revert IVaultErrors.AmountInAboveMax(IERC20(token), amountIn, maxAmountIn);
+            revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
         }
     }
 
@@ -498,7 +500,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @param needToUnwrap Flag indicating whether this token is an ERC4626 to be unwrapped
      * @param minAmountOut The minimum token amountOut
      * @param callParams Common parameters from the main router call
-     * @return tokenOut The address of the actual outgoing token (underlying if unwrapped)
      * @return actualAmountOut The actual amountOut (in underlying token if unwrapped)
      */
     function _processTokenOutExactIn(
@@ -507,16 +508,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         bool needToUnwrap,
         uint256 minAmountOut,
         RouterCallParams memory callParams
-    ) private returns (address tokenOut, uint256 actualAmountOut) {
+    ) private returns (uint256 actualAmountOut) {
+        IERC20 tokenOut;
+
         if (needToUnwrap) {
             IERC4626 wrappedToken = IERC4626(token);
             IERC20 underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
+            tokenOut = underlyingToken;
 
             if (address(underlyingToken) == address(0)) {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
             }
-
-            tokenOut = address(underlyingToken);
 
             if (amountOut > 0) {
                 (, , actualAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
@@ -535,15 +537,15 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         } else {
             actualAmountOut = amountOut;
-            tokenOut = token;
+            tokenOut = IERC20(token);
 
             if (callParams.isStaticCall == false) {
-                _sendTokenOut(callParams.sender, IERC20(token), actualAmountOut, callParams.wethIsEth);
+                _sendTokenOut(callParams.sender, tokenOut, actualAmountOut, callParams.wethIsEth);
             }
         }
 
         if (actualAmountOut < minAmountOut) {
-            revert IVaultErrors.AmountOutBelowMin(IERC20(tokenOut), actualAmountOut, minAmountOut);
+            revert IVaultErrors.AmountOutBelowMin(tokenOut, actualAmountOut, minAmountOut);
         }
     }
 
