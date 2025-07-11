@@ -47,10 +47,12 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     function addUnbalancedLiquidityViaSwap(
         address pool,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapParams calldata swapParams
     )
         external
+        payable
         returns (
             uint256[] memory addLiquidityAmountsIn,
             uint256 addLiquidityBptAmountOut,
