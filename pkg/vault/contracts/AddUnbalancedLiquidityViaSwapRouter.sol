@@ -29,18 +29,18 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     }
 
     /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
-    function addUnbalancedLiquidityViaSwapExactIn(
+    function addUnbalancedLiquidityViaSwap(
         address pool,
         uint256 deadline,
         AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactInParams calldata swapParams
+        SwapParams calldata swapParams
     )
         external
         saveSender(msg.sender)
         returns (
             uint256[] memory addLiquidityAmountsIn,
             uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountOut,
+            uint256 swapAmountCalculated,
             bytes memory addLiquidityReturnData
         )
     {
@@ -61,12 +61,12 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                             }),
                             swapParams: SwapSingleTokenHookParams({
                                 sender: msg.sender,
-                                kind: SwapKind.EXACT_IN,
+                                kind: swapParams.kind,
                                 pool: pool,
                                 tokenIn: swapParams.tokenIn,
                                 tokenOut: swapParams.tokenOut,
-                                amountGiven: swapParams.exactAmountIn,
-                                limit: swapParams.minAmountOut,
+                                amountGiven: swapParams.amountGiven,
+                                limit: swapParams.limit,
                                 deadline: deadline,
                                 wethIsEth: false,
                                 userData: swapParams.userData
@@ -79,68 +79,18 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     }
 
     /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
-    function addUnbalancedLiquidityViaSwapExactOut(
-        address pool,
-        uint256 deadline,
-        AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactOutParams calldata swapParams
-    )
-        external
-        saveSender(msg.sender)
-        returns (
-            uint256[] memory addLiquidityAmountsIn,
-            uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountIn,
-            bytes memory addLiquidityReturnData
-        )
-    {
-        return
-            abi.decode(
-                _vault.unlock(
-                    abi.encodeCall(
-                        AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
-                        AddLiquidityAndSwapHookParams({
-                            addLiquidityParams: AddLiquidityHookParams({
-                                sender: msg.sender,
-                                pool: pool,
-                                maxAmountsIn: addLiquidityParams.maxAmountsIn,
-                                minBptAmountOut: addLiquidityParams.exactBptAmountOut,
-                                kind: AddLiquidityKind.PROPORTIONAL,
-                                wethIsEth: false,
-                                userData: addLiquidityParams.userData
-                            }),
-                            swapParams: SwapSingleTokenHookParams({
-                                sender: msg.sender,
-                                kind: SwapKind.EXACT_OUT,
-                                pool: pool,
-                                tokenIn: swapParams.tokenIn,
-                                tokenOut: swapParams.tokenOut,
-                                amountGiven: swapParams.exactAmountOut,
-                                limit: swapParams.maxAmountIn,
-                                deadline: deadline,
-                                wethIsEth: false,
-                                userData: swapParams.userData
-                            })
-                        })
-                    )
-                ),
-                (uint256[], uint256, uint256, bytes)
-            );
-    }
-
-    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
-    function queryAddUnbalancedLiquidityViaSwapExactIn(
+    function queryAddUnbalancedLiquidityViaSwap(
         address pool,
         address sender,
         AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactInParams calldata swapParams
+        SwapParams calldata swapParams
     )
         external
         saveSender(sender)
         returns (
             uint256[] memory addLiquidityAmountsIn,
             uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountOut,
+            uint256 swapAmountCalculated,
             bytes memory addLiquidityReturnData
         )
     {
@@ -161,62 +111,12 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                             }),
                             swapParams: SwapSingleTokenHookParams({
                                 sender: address(this),
-                                kind: SwapKind.EXACT_IN,
+                                kind: swapParams.kind,
                                 pool: pool,
                                 tokenIn: swapParams.tokenIn,
                                 tokenOut: swapParams.tokenOut,
-                                amountGiven: swapParams.exactAmountIn,
-                                limit: swapParams.minAmountOut,
-                                deadline: _MAX_AMOUNT,
-                                wethIsEth: false,
-                                userData: swapParams.userData
-                            })
-                        })
-                    )
-                ),
-                (uint256[], uint256, uint256, bytes)
-            );
-    }
-
-    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
-    function queryAddUnbalancedLiquidityViaSwapExactOut(
-        address pool,
-        address sender,
-        AddLiquidityProportionalParams calldata addLiquidityParams,
-        SwapExactOutParams calldata swapParams
-    )
-        external
-        saveSender(sender)
-        returns (
-            uint256[] memory addLiquidityAmountsIn,
-            uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountIn,
-            bytes memory addLiquidityReturnData
-        )
-    {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeCall(
-                        AddUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapHook,
-                        AddLiquidityAndSwapHookParams({
-                            addLiquidityParams: AddLiquidityHookParams({
-                                sender: address(this),
-                                pool: pool,
-                                maxAmountsIn: addLiquidityParams.maxAmountsIn,
-                                minBptAmountOut: addLiquidityParams.exactBptAmountOut,
-                                kind: AddLiquidityKind.PROPORTIONAL,
-                                wethIsEth: false,
-                                userData: addLiquidityParams.userData
-                            }),
-                            swapParams: SwapSingleTokenHookParams({
-                                sender: address(this),
-                                kind: SwapKind.EXACT_OUT,
-                                pool: pool,
-                                tokenIn: swapParams.tokenIn,
-                                tokenOut: swapParams.tokenOut,
-                                amountGiven: swapParams.exactAmountOut,
-                                limit: swapParams.maxAmountIn,
+                                amountGiven: swapParams.amountGiven,
+                                limit: swapParams.limit,
                                 deadline: _MAX_AMOUNT,
                                 wethIsEth: false,
                                 userData: swapParams.userData
