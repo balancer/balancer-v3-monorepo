@@ -11,7 +11,7 @@ import { IRouterQueries } from "./IRouterQueries.sol";
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import "./RouterTypes.sol";
 
-/// @notice Router interface for adding unbalanced liquidity via the Swap.
+/// @notice Router interface for adding unbalanced liquidity via a combination of a proportional add and a swap.
 interface IAddUnbalancedLiquidityViaSwapRouter {
     struct AddLiquidityProportionalParams {
         uint256[] maxAmountsIn;
@@ -19,21 +19,6 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         bytes userData;
     }
 
-    /*struct SwapExactInParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 exactAmountIn;
-        uint256 minAmountOut;
-        bytes userData;
-    }
-
-    struct SwapExactOutParams {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint256 exactAmountOut;
-        uint256 maxAmountIn;
-        bytes userData;
-    }*/
     struct SwapParams {
         IERC20 tokenIn;
         IERC20 tokenOut;
@@ -49,7 +34,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     }
 
     /**
-     * @notice Adds liquidity to a pool with proportional token amounts and swaps exact in in the same transaction.
+     * @notice Adds liquidity to a pool with proportional token amounts and a swap in the same transaction.
      * @param pool Address of the liquidity pool
      * @param deadline Timestamp after which the transaction will revert
      * @param addLiquidityParams Parameters for adding liquidity
@@ -74,7 +59,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         );
 
     /**
-     * @notice Queries an `addUnbalancedLiquidityViaSwapExactIn` operation without actually executing it.
+     * @notice Queries an `addUnbalancedLiquidityViaSwap` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param addLiquidityParams Parameters for adding liquidity
