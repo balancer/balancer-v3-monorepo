@@ -58,7 +58,6 @@ interface ICompositeLiquidityRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
-     * @return tokensIn Actual tokens added to the pool
      * @return amountsIn Actual amounts of tokens added to the pool
      */
     function addLiquidityProportionalToERC4626Pool(
@@ -68,7 +67,7 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (address[] memory tokensIn, uint256[] memory amountsIn);
+    ) external payable returns (uint256[] memory amountsIn);
 
     /**
      * @notice Remove proportional amounts of tokens from an ERC4626 pool, burning an exact pool token amount.
@@ -79,7 +78,6 @@ interface ICompositeLiquidityRouter {
      * @param minAmountsOut Minimum amounts of each token, corresponding to `tokensOut`
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
-     * @return tokensOut Actual tokens received
      * @return amountsOut Actual amounts of tokens received
      */
     function removeLiquidityProportionalFromERC4626Pool(
@@ -89,7 +87,7 @@ interface ICompositeLiquidityRouter {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (address[] memory tokensOut, uint256[] memory amountsOut);
+    ) external payable returns (uint256[] memory amountsOut);
 
     /**
      * @notice Queries an `addLiquidityUnbalancedToERC4626Pool` operation without actually executing it.
@@ -117,7 +115,6 @@ interface ICompositeLiquidityRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
-     * @return tokensIn Expected tokens added to the pool
      * @return amountsIn Expected amounts of tokens added to the pool
      */
     function queryAddLiquidityProportionalToERC4626Pool(
@@ -126,7 +123,7 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountOut,
         address sender,
         bytes memory userData
-    ) external returns (address[] memory tokensIn, uint256[] memory amountsIn);
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
@@ -136,7 +133,6 @@ interface ICompositeLiquidityRouter {
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
-     * @return tokensOut Expected tokens to receive
      * @return amountsOut Expected amounts of tokens to receive
      */
     function queryRemoveLiquidityProportionalFromERC4626Pool(
@@ -145,7 +141,7 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountIn,
         address sender,
         bytes memory userData
-    ) external returns (address[] memory tokensOut, uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                    Nested pools
