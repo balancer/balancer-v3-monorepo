@@ -69,7 +69,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         ILBPool lbp,
         address excessReceiver,
         WeightedPoolParams memory params
-    ) external onlyLBPOwner(lbp) nonReentrant returns (IWeightedPool, uint256) {
+    ) external onlyLBPOwner(lbp) nonReentrant returns (IWeightedPool, uint256[] memory, uint256) {
         return _migrateLiquidity(lbp, msg.sender, excessReceiver, params, false);
     }
 
@@ -79,11 +79,13 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         address sender,
         address excessReceiver,
         WeightedPoolParams memory params
-    ) external returns (uint256 bptAmountOut) {
-        (, bptAmountOut) = _migrateLiquidity(lbp, sender, excessReceiver, params, true);
+    ) external returns (uint256[] memory exactAmountsIn, uint256 bptAmountOut) {
+        (, exactAmountsIn, bptAmountOut) = _migrateLiquidity(lbp, sender, excessReceiver, params, true);
     }
 
-    function migrateLiquidityHook(MigrationHookParams memory params) external onlyVault returns (uint256 bptAmountOut) {
+    function migrateLiquidityHook(
+        MigrationHookParams memory params
+    ) external onlyVault returns (uint256[] memory exactAmountsIn, uint256 bptAmountOut) {
         (, uint256[] memory removeAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: address(params.lbp),
@@ -95,7 +97,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
             })
         );
 
-        uint256[] memory exactAmountsIn = _computeExactAmountsIn(
+        exactAmountsIn = _computeExactAmountsIn(
             params.lbp,
             params.bptPercentageToMigrate,
             params.migrationWeightProjectToken,
@@ -120,7 +122,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         );
         _lockBPT(IERC20(address(params.weightedPool)), params.sender, bptAmountOut, params.bptLockDuration);
 
-        emit PoolMigrated(params.lbp, params.weightedPool, bptAmountOut);
+        emit PoolMigrated(params.lbp, params.weightedPool, exactAmountsIn, bptAmountOut);
     }
 
     function _migrateLiquidity(
@@ -129,7 +131,7 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         address excessReceiver,
         WeightedPoolParams memory params,
         bool isQuery
-    ) internal returns (IWeightedPool weightedPool, uint256 bptAmountOut) {
+    ) internal returns (IWeightedPool weightedPool, uint256[] memory exactAmountsIn, uint256 bptAmountOut) {
         LBPoolImmutableData memory lbpImmutableData = lbp.getLBPoolImmutableData();
 
         if (lbpImmutableData.migrationRouter != address(this)) {
@@ -175,14 +177,14 @@ contract LBPMigrationRouter is ILBPMigrationRouter, ReentrancyGuardTransient, Ve
         });
 
         if (isQuery) {
-            bptAmountOut = abi.decode(
+            (exactAmountsIn, bptAmountOut) = abi.decode(
                 _vault.quote(abi.encodeCall(LBPMigrationRouter.migrateLiquidityHook, migrateHookParams)),
-                (uint256)
+                (uint256[], uint256)
             );
         } else {
-            bptAmountOut = abi.decode(
+            (exactAmountsIn, bptAmountOut) = abi.decode(
                 _vault.unlock(abi.encodeCall(LBPMigrationRouter.migrateLiquidityHook, migrateHookParams)),
-                (uint256)
+                (uint256[], uint256)
             );
         }
     }

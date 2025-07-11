@@ -116,6 +116,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
     function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
         return
             _createLBPool(
+                alice,
                 uint32(block.timestamp + DEFAULT_START_OFFSET),
                 uint32(block.timestamp + DEFAULT_END_OFFSET),
                 DEFAULT_PROJECT_TOKENS_SWAP_IN
@@ -129,12 +130,14 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
     }
 
     function _createLBPool(
+        address poolCreator,
         uint32 startTime,
         uint32 endTime,
         bool blockProjectTokenSwapsIn
     ) internal returns (address newPool, bytes memory poolArgs) {
         return
             _createLBPoolWithCustomWeights(
+                poolCreator,
                 startWeights[projectIdx],
                 startWeights[reserveIdx],
                 endWeights[projectIdx],
@@ -146,6 +149,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
     }
 
     function _createLBPoolWithMigration(
+        address poolCreator,
         uint256 bptLockDuration,
         uint256 bptPercentageToMigrate,
         uint256 migrationWeightProjectToken,
@@ -167,16 +171,25 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
             blockProjectTokenSwapsIn: DEFAULT_PROJECT_TOKENS_SWAP_IN
         });
 
+        // stack-too-deep
+        uint256 salt = _saltCounter++;
+        address poolCreator_ = poolCreator;
+        uint256 bptLockDuration_ = bptLockDuration;
+        uint256 bptPercentageToMigrate_ = bptPercentageToMigrate;
+        uint256 migrationWeightProjectToken_ = migrationWeightProjectToken;
+        uint256 migrationWeightReserveToken_ = migrationWeightReserveToken;
+
         newPool = lbPoolFactory.createWithMigration(
             name,
             symbol,
             lbpParams,
             swapFee,
-            bytes32(_saltCounter++),
-            bptLockDuration,
-            bptPercentageToMigrate,
-            migrationWeightProjectToken,
-            migrationWeightReserveToken
+            bytes32(salt),
+            poolCreator_,
+            bptLockDuration_,
+            bptPercentageToMigrate_,
+            migrationWeightProjectToken_,
+            migrationWeightReserveToken_
         );
 
         poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(migrationRouter), poolVersion);
@@ -185,6 +198,7 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
     }
 
     function _createLBPoolWithCustomWeights(
+        address poolCreator,
         uint256 projectTokenStartWeight,
         uint256 reserveTokenStartWeight,
         uint256 projectTokenEndWeight,
@@ -209,7 +223,11 @@ contract BaseLBPTest is BaseVaultTest, LBPoolContractsDeployer, WeightedPoolCont
             blockProjectTokenSwapsIn: blockProjectTokenSwapsIn
         });
 
-        newPool = lbPoolFactory.create(name, symbol, lbpParams, swapFee, bytes32(_saltCounter++));
+        // stack-too-deep
+        uint256 salt = _saltCounter++;
+        address poolCreator_ = poolCreator;
+
+        newPool = lbPoolFactory.create(name, symbol, lbpParams, swapFee, bytes32(salt), poolCreator_);
 
         poolArgs = abi.encode(name, symbol, lbpParams, vault, address(router), address(migrationRouter), poolVersion);
     }

@@ -14,6 +14,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -162,6 +163,10 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         assertEq(oracle.description(), "WEIGHTED-TEST/USD", "Description does not match");
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testGetFeeds__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
@@ -178,6 +183,10 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testGetFeedTokenDecimalScalingFactors__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
@@ -189,13 +198,27 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
-                oracle.calculateFeedTokenDecimalScalingFactor(feeds[i]),
+                oracle.computeFeedTokenDecimalScalingFactor(feeds[i]),
                 returnedScalingFactors[i],
                 "Scaling factor does not match"
             );
         }
     }
 
+    function testUnsupportedDecimals() public {
+        (IWeightedPool pool, ) = createAndInitPool(2);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+
+        AggregatorV3Interface feedWith20Decimals = AggregatorV3Interface(address(new FeedMock(20)));
+
+        vm.expectRevert(ILPOracleBase.UnsupportedDecimals.selector);
+        oracle.computeFeedTokenDecimalScalingFactor(feedWith20Decimals);
+    }
+
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
@@ -204,13 +227,36 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
-                oracle.calculateFeedTokenDecimalScalingFactor(feeds[i]),
+                oracle.computeFeedTokenDecimalScalingFactor(feeds[i]),
                 10 ** (18 - IERC20Metadata(address(feeds[i])).decimals()),
                 "Scaling factor does not match"
             );
         }
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
+    function testGetPoolTokens(uint256 totalTokens) public {
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+
+        (IWeightedPool pool, ) = createAndInitPool(totalTokens);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+
+        IERC20[] memory returnedTokens = oracle.getPoolTokens();
+        IERC20[] memory registeredTokens = vault.getPoolTokens(address(pool));
+
+        assertEq(returnedTokens.length, registeredTokens.length, "Tokens length does not match");
+        for (uint256 i = 0; i < returnedTokens.length; i++) {
+            assertEq(address(returnedTokens[i]), address(registeredTokens[i]), "Tokens does not match");
+        }
+    }
+
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testGetWeights__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 

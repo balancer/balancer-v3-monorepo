@@ -92,11 +92,11 @@ contract LBPoolFactoryTest is BaseLBPTest {
         });
 
         vm.expectRevert(LBPoolFactory.InvalidOwner.selector);
-        lbPoolFactory.create("LBPool", "LBP", params, swapFee, ZERO_BYTES32);
+        lbPoolFactory.create("LBPool", "LBP", params, swapFee, ZERO_BYTES32, address(0));
     }
 
     function testCreatePool() public {
-        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        (pool, ) = _createLBPool(bob, uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
         initPool();
 
         // Verify pool was created and initialized correctly
@@ -110,6 +110,8 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertEq(data.migrationWeightProjectToken, 0, "Project token weight should be zero");
         assertEq(data.migrationWeightReserveToken, 0, "Reserve token weight should be zero");
         assertEq(data.migrationRouter, ZERO_ADDRESS, "Migration router should be zero address");
+
+        assertEq(vault.getPoolRoleAccounts(pool).poolCreator, bob, "Incorrect pool creator");
     }
 
     function testCreatePoolWithMigrationParams() public {
@@ -120,6 +122,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
         (pool, ) = _createLBPoolWithMigration(
+            bob,
             initBptLockDuration,
             initBptPercentageToMigrate,
             initNewWeightProjectToken,
@@ -137,23 +140,35 @@ contract LBPoolFactoryTest is BaseLBPTest {
         assertEq(data.bptPercentageToMigrate, initBptPercentageToMigrate, "Share to migrate mismatch");
         assertEq(data.migrationWeightProjectToken, initNewWeightProjectToken, "New weightProjectToken mismatch");
         assertEq(data.migrationWeightReserveToken, initNewWeightReserveToken, "New weightReserveToken mismatch");
+        assertEq(vault.getPoolRoleAccounts(pool).poolCreator, bob, "Incorrect pool creator");
     }
 
     function testCreatePoolWithInvalidMigrationWeights() public {
         uint256 initBptLockDuration = 30 days;
         uint256 initBptPercentageToMigrate = 50e16; // 50%
+        uint256 minReserveTokenWeight = 20e16; // 20%
+        uint256 maxProjectTokenWeight = 100e16 - minReserveTokenWeight;
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 0, 100e16);
+        _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 0, 100e16);
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 100e16, 0);
+        _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 0);
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 100e16, 100e16);
+        _createLBPoolWithMigration(
+            address(0),
+            initBptLockDuration,
+            initBptPercentageToMigrate,
+            maxProjectTokenWeight + 1,
+            minReserveTokenWeight - 1
+        );
 
         vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
-        _createLBPoolWithMigration(initBptLockDuration, initBptPercentageToMigrate, 100e16, 50e16);
+        _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 100e16);
+
+        vm.expectRevert(LBPoolFactory.InvalidMigrationWeights.selector);
+        _createLBPoolWithMigration(address(0), initBptLockDuration, initBptPercentageToMigrate, 100e16, 50e16);
     }
 
     function testCreatePoolWithInvalidBptPercentageToMigrateTooHigh() public {
@@ -164,6 +179,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
         // BPT percentage to migrate cannot be zero
         vm.expectRevert(LBPoolFactory.InvalidBptPercentageToMigrate.selector);
         _createLBPoolWithMigration(
+            address(0),
             initBptLockDuration,
             FixedPoint.ONE + 1,
             initNewWeightProjectToken,
@@ -178,7 +194,13 @@ contract LBPoolFactoryTest is BaseLBPTest {
 
         // BPT percentage to migrate cannot be zero
         vm.expectRevert(LBPoolFactory.InvalidBptPercentageToMigrate.selector);
-        _createLBPoolWithMigration(initBptLockDuration, 0, initNewWeightProjectToken, initNewWeightReserveToken);
+        _createLBPoolWithMigration(
+            address(0),
+            initBptLockDuration,
+            0,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
     }
 
     function testCreatePoolWithInvalidBptLockDurationTooHigh() public {
@@ -188,6 +210,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
 
         vm.expectRevert(LBPoolFactory.InvalidBptLockDuration.selector);
         _createLBPoolWithMigration(
+            address(0),
             366 days,
             initBptPercentageToMigrate,
             initNewWeightProjectToken,
@@ -201,11 +224,17 @@ contract LBPoolFactoryTest is BaseLBPTest {
         uint256 initNewWeightReserveToken = 40e16; // 40%
 
         vm.expectRevert(LBPoolFactory.InvalidBptLockDuration.selector);
-        _createLBPoolWithMigration(0, initBptPercentageToMigrate, initNewWeightProjectToken, initNewWeightReserveToken);
+        _createLBPoolWithMigration(
+            address(0),
+            0,
+            initBptPercentageToMigrate,
+            initNewWeightProjectToken,
+            initNewWeightReserveToken
+        );
     }
 
     function testAddLiquidityPermission() public {
-        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        (pool, ) = _createLBPool(address(0), uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
         initPool();
 
         // Try to add to the pool without permission.
@@ -218,7 +247,7 @@ contract LBPoolFactoryTest is BaseLBPTest {
     }
 
     function testDonationNotAllowed() public {
-        (pool, ) = _createLBPool(uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
+        (pool, ) = _createLBPool(address(0), uint32(block.timestamp + 100), uint32(block.timestamp + 200), true);
         initPool();
 
         // Try to donate to the pool
