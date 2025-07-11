@@ -15,6 +15,7 @@ import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/uti
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
+import { SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
@@ -78,7 +79,7 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
         );
     }
 
-    function calculateMinAndMaxSwapAmounts() internal virtual override {
+    function computeSwapLimits() internal virtual override returns (SwapLimits memory swapLimits) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -104,19 +105,19 @@ contract E2eSwapRateProviderStableTest is VaultContractsDeployer, E2eSwapRatePro
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 100 to account for
         // swap fees and compensate for rate and math rounding issues.
         uint256 mathFactor = 100;
-        minSwapAmountTokenA = (
+        swapLimits.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? mathFactor * tokenAMinTradeAmount
                 : mathFactor * tokenACalculatedNotZero
         );
-        minSwapAmountTokenB = (
+        swapLimits.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? mathFactor * tokenBMinTradeAmount
                 : mathFactor * tokenBCalculatedNotZero
         );
 
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(50e16);
-        maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
+        swapLimits.maxTokenA = poolInitAmountTokenA.mulDown(50e16);
+        swapLimits.maxTokenB = poolInitAmountTokenB.mulDown(50e16);
     }
 }
