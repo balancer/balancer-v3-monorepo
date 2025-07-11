@@ -111,7 +111,7 @@ describe('LBPool', function () {
       blockProjectTokenSwapsIn,
     };
 
-    return factory.create('LBPool', 'Test', lbpParams, SWAP_FEE, ONES_BYTES32);
+    return factory.create('LBPool', 'Test', lbpParams, SWAP_FEE, ONES_BYTES32, ZERO_ADDRESS);
   }
 
   before('setup signers', async () => {
