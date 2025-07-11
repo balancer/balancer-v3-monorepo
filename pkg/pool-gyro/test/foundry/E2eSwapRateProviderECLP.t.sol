@@ -9,7 +9,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
-import { SwapAmounts } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 
@@ -36,7 +36,7 @@ contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProvi
         return createGyroEclpPool(tokens, rateProviders, label, vault, lp);
     }
 
-    function calculateMinAndMaxSwapAmounts() internal view virtual override returns (SwapAmounts memory swapAmounts) {
+    function computeSwapLimits() internal view virtual override returns (SwapLimits memory swapLimits) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -62,19 +62,19 @@ contract E2eSwapRateProviderECLPTest is VaultContractsDeployer, E2eSwapRateProvi
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 100 to account for
         // swap fees and compensate for rate and math rounding issues.
         uint256 mathFactor = 100;
-        swapAmounts.minTokenA = (
+        swapLimits.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? mathFactor * tokenAMinTradeAmount
                 : mathFactor * tokenACalculatedNotZero
         );
-        swapAmounts.minTokenB = (
+        swapLimits.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? mathFactor * tokenBMinTradeAmount
                 : mathFactor * tokenBCalculatedNotZero
         );
 
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        swapAmounts.maxTokenA = poolInitAmountTokenA.mulDown(50e16);
-        swapAmounts.maxTokenB = poolInitAmountTokenB.mulDown(50e16);
+        swapLimits.maxTokenA = poolInitAmountTokenA.mulDown(50e16);
+        swapLimits.maxTokenB = poolInitAmountTokenB.mulDown(50e16);
     }
 }

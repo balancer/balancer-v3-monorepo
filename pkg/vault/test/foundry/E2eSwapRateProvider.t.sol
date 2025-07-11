@@ -15,7 +15,7 @@ import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
-import { E2eSwapTest, E2eTestState, SwapAmounts } from "./E2eSwap.t.sol";
+import { E2eSwapTest, E2eTestState, SwapLimits } from "./E2eSwap.t.sol";
 
 contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
     using CastingHelpers for address[];
@@ -70,7 +70,7 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
         _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
-        uint256 exactAmountIn = _getTestState().swapAmounts.maxTokenA;
+        uint256 exactAmountIn = _getTestState().swapLimits.maxTokenA;
 
         testDoUndoExactInBase(exactAmountIn, testLocals);
     }
@@ -105,7 +105,7 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
         _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
-        uint256 exactAmountOut = _getTestState().swapAmounts.maxTokenB;
+        uint256 exactAmountOut = _getTestState().swapLimits.maxTokenB;
 
         testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
@@ -151,7 +151,7 @@ contract E2eSwapRateProviderTest is VaultContractsDeployer, E2eSwapTest {
         E2eTestState memory testState = _getTestState();
 
         // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
-        testState.swapAmounts = calculateMinAndMaxSwapAmounts();
+        testState.swapLimits = computeSwapLimits();
 
         _setTestState(testState);
     }

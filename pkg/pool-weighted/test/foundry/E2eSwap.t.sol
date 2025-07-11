@@ -16,7 +16,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { E2eSwapTest, E2eTestState, SwapAmounts } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { E2eSwapTest, E2eTestState, SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -58,17 +58,17 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         _setTestState(state);
     }
 
-    function calculateMinAndMaxSwapAmounts() internal view override returns (SwapAmounts memory swapAmounts) {
-        swapAmounts.minTokenA = poolInitAmountTokenA / 1e3;
-        swapAmounts.minTokenB = poolInitAmountTokenB / 1e3;
+    function computeSwapLimits() internal view override returns (SwapLimits memory swapLimits) {
+        swapLimits.minTokenA = poolInitAmountTokenA / 1e3;
+        swapLimits.minTokenB = poolInitAmountTokenB / 1e3;
 
         // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // balance).
-        swapAmounts.maxTokenA = poolInitAmountTokenA / 10;
-        swapAmounts.maxTokenB = poolInitAmountTokenB / 10;
+        swapLimits.maxTokenA = poolInitAmountTokenA / 10;
+        swapLimits.maxTokenB = poolInitAmountTokenB / 10;
     }
 
-    function fuzzPoolParams(
+    function fuzzPoolState(
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params,
         E2eTestState memory state
     ) internal override returns (E2eTestState memory) {
@@ -76,13 +76,13 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
         uint256[] memory newPoolBalances = _setPoolBalancesWithDifferentWeights(weightTokenA);
-        (state.swapAmounts.minTokenA, state.swapAmounts.maxTokenA) = _setMinAndMaxSwapAmountExactIn(
+        (state.swapLimits.minTokenA, state.swapLimits.maxTokenA) = _setSwapLimitsExactIn(
             newPoolBalances,
-            state.swapAmounts.minTokenA
+            state.swapLimits.minTokenA
         );
-        (state.swapAmounts.minTokenB, state.swapAmounts.maxTokenB) = _setMinAndMaxSwapAmountExactOut(
+        (state.swapLimits.minTokenB, state.swapLimits.maxTokenB) = _setSwapLimitsExactOut(
             newPoolBalances,
-            state.swapAmounts.minTokenB
+            state.swapLimits.minTokenB
         );
 
         // Weighted Pool has rounding errors when token decimals are different, so the number below fixes the test
@@ -93,7 +93,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         return state;
     }
 
-    function _setMinAndMaxSwapAmountExactIn(
+    function _setSwapLimitsExactIn(
         uint256[] memory poolBalancesRaw,
         uint256 currentMinSwapAmountTokenA
     ) private view returns (uint256 minSwapAmountTokenA, uint256 maxSwapAmountTokenA) {
@@ -113,7 +113,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         minSwapAmountTokenA = Math.min(currentMinSwapAmountTokenA, maxSwapAmountTokenA);
     }
 
-    function _setMinAndMaxSwapAmountExactOut(
+    function _setSwapLimitsExactOut(
         uint256[] memory poolBalancesRaw,
         uint256 currentMinSwapAmountTokenB
     ) private view returns (uint256 minSwapAmountTokenB, uint256 maxSwapAmountTokenB) {

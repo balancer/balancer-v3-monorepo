@@ -14,7 +14,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
-import { E2eTestState, SwapAmounts } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { E2eTestState, SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
@@ -97,7 +97,7 @@ contract E2eSwapRateProviderWeightedTest is
         );
     }
 
-    function calculateMinAndMaxSwapAmounts() internal view override returns (SwapAmounts memory swapAmounts) {
+    function computeSwapLimits() internal view override returns (SwapLimits memory swapLimits) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -124,12 +124,12 @@ contract E2eSwapRateProviderWeightedTest is
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10000 to account
         // for both swap fees, and compensate for approximation errors between weighted and linear math.
         uint256 weightedMathFactor = 1e4;
-        swapAmounts.minTokenA = (
+        swapLimits.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? weightedMathFactor * tokenAMinTradeAmount
                 : weightedMathFactor * tokenACalculatedNotZero
         );
-        swapAmounts.minTokenB = (
+        swapLimits.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? weightedMathFactor * tokenBMinTradeAmount
                 : weightedMathFactor * tokenBCalculatedNotZero
@@ -137,9 +137,9 @@ contract E2eSwapRateProviderWeightedTest is
 
         // 20% of initial liquidity to make sure weighted math ratios are respected.
         // We cannot trade more than 30% of pool liquidity.
-        swapAmounts.maxTokenA = poolInitAmountTokenA.mulDown(20e16);
-        swapAmounts.maxTokenB = poolInitAmountTokenB.mulDown(20e16);
+        swapLimits.maxTokenA = poolInitAmountTokenA.mulDown(20e16);
+        swapLimits.maxTokenB = poolInitAmountTokenB.mulDown(20e16);
 
-        return swapAmounts;
+        return swapLimits;
     }
 }

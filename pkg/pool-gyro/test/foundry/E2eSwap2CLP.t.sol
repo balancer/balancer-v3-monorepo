@@ -8,7 +8,7 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { E2eSwapTest, E2eTestState, SwapAmounts } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { E2eSwapTest, E2eTestState, SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
 import { Gyro2CLPPoolMock } from "../../contracts/test/Gyro2CLPPoolMock.sol";
 import { Gyro2ClpPoolDeployer } from "./utils/Gyro2ClpPoolDeployer.sol";
@@ -47,7 +47,7 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
         _setTestState(state);
     }
 
-    function calculateMinAndMaxSwapAmounts() internal view virtual override returns (SwapAmounts memory swapAmounts) {
+    function computeSwapLimits() internal view virtual override returns (SwapLimits memory swapLimits) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -73,23 +73,23 @@ contract E2eSwapGyro2CLPTest is E2eSwapTest, Gyro2ClpPoolDeployer {
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10 to account for
         // swap fees and compensate for rate rounding issues.
         uint256 mathFactor = 10;
-        swapAmounts.minTokenA = (
+        swapLimits.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? mathFactor * tokenAMinTradeAmount
                 : mathFactor * tokenACalculatedNotZero
         );
-        swapAmounts.minTokenB = (
+        swapLimits.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? mathFactor * tokenBMinTradeAmount
                 : mathFactor * tokenBCalculatedNotZero
         );
 
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        swapAmounts.maxTokenA = poolInitAmountTokenA.mulDown(50e16);
-        swapAmounts.maxTokenB = poolInitAmountTokenB.mulDown(50e16);
+        swapLimits.maxTokenA = poolInitAmountTokenA.mulDown(50e16);
+        swapLimits.maxTokenB = poolInitAmountTokenB.mulDown(50e16);
     }
 
-    function fuzzPoolParams(
+    function fuzzPoolState(
         uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params,
         E2eTestState memory state
     ) internal override returns (E2eTestState memory) {
