@@ -162,6 +162,10 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         assertEq(oracle.description(), "WEIGHTED-TEST/USD", "Description does not match");
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testGetFeeds__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
@@ -178,6 +182,10 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testGetFeedTokenDecimalScalingFactors__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
@@ -196,6 +204,10 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
@@ -211,6 +223,29 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
         }
     }
 
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
+    function testGetPoolTokens(uint256 totalTokens) public {
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+
+        (IWeightedPool pool, ) = createAndInitPool(totalTokens);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+
+        IERC20[] memory returnedTokens = oracle.getPoolTokens();
+        IERC20[] memory registeredTokens = vault.getPoolTokens(address(pool));
+
+        assertEq(returnedTokens.length, registeredTokens.length, "Tokens length does not match");
+        for (uint256 i = 0; i < returnedTokens.length; i++) {
+            assertEq(address(returnedTokens[i]), address(registeredTokens[i]), "Tokens does not match");
+        }
+    }
+
+    /**
+     * forge-config: default.fuzz.runs = 10
+     * forge-config: intense.fuzz.runs = 50
+     */
     function testGetWeights__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
