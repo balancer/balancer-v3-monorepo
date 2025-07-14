@@ -16,10 +16,22 @@ import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 import { RouterHooks } from "./RouterHooks.sol";
 
 /**
- * @notice Entrypoint for add unbalanced liquidity via swap operations.
- * @dev Some pools don’t support non-proportional liquidity addition. This router helps to bypass that limitation.
+ * @notice Enable adding and removing liquidity unbalanced on pools that do not support it natively.
+ * @dev This extends the standard `Router` in order to call shared internal hook implementation functions.
+ * It factors out the unbalanced adds into two operations: a proportional add and a swap, executes them using
+ * the standard router, then checks the limits.
  */
 contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiquidityViaSwapRouter {
+    // Generalized SwapParams to accommodate both ExactIn and ExactOut.
+    struct SwapParams {
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        SwapKind kind;
+        uint256 amountGiven;
+        uint256 limit;
+        bytes userData;
+    }
+
     constructor(
         IVault vault,
         IPermit2 permit2,
@@ -32,15 +44,17 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     function addUnbalancedLiquidityViaSwapExactIn(
         address pool,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactInParams calldata swapParams
     )
         external
+        payable
         saveSender(msg.sender)
         returns (
             uint256[] memory addLiquidityAmountsIn,
             uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountOut,
+            uint256 swapAmountCalculated,
             bytes memory addLiquidityReturnData
         )
     {
@@ -49,29 +63,13 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                 _vault.unlock(
                     abi.encodeCall(
                         AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
-                        AddLiquidityAndSwapHookParams({
-                            addLiquidityParams: AddLiquidityHookParams({
-                                sender: msg.sender,
-                                pool: pool,
-                                maxAmountsIn: addLiquidityParams.maxAmountsIn,
-                                minBptAmountOut: addLiquidityParams.exactBptAmountOut,
-                                kind: AddLiquidityKind.PROPORTIONAL,
-                                wethIsEth: false,
-                                userData: addLiquidityParams.userData
-                            }),
-                            swapParams: SwapSingleTokenHookParams({
-                                sender: msg.sender,
-                                kind: SwapKind.EXACT_IN,
-                                pool: pool,
-                                tokenIn: swapParams.tokenIn,
-                                tokenOut: swapParams.tokenOut,
-                                amountGiven: swapParams.exactAmountIn,
-                                limit: swapParams.minAmountOut,
-                                deadline: deadline,
-                                wethIsEth: false,
-                                userData: swapParams.userData
-                            })
-                        })
+                        _buildAddLiquidityParams(
+                            pool,
+                            deadline,
+                            wethIsEth,
+                            addLiquidityParams,
+                            _buildSwapExactInParams(swapParams)
+                        )
                     )
                 ),
                 (uint256[], uint256, uint256, bytes)
@@ -82,6 +80,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     function addUnbalancedLiquidityViaSwapExactOut(
         address pool,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactOutParams calldata swapParams
     )
@@ -99,36 +98,19 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                 _vault.unlock(
                     abi.encodeCall(
                         AddUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapHook,
-                        AddLiquidityAndSwapHookParams({
-                            addLiquidityParams: AddLiquidityHookParams({
-                                sender: msg.sender,
-                                pool: pool,
-                                maxAmountsIn: addLiquidityParams.maxAmountsIn,
-                                minBptAmountOut: addLiquidityParams.exactBptAmountOut,
-                                kind: AddLiquidityKind.PROPORTIONAL,
-                                wethIsEth: false,
-                                userData: addLiquidityParams.userData
-                            }),
-                            swapParams: SwapSingleTokenHookParams({
-                                sender: msg.sender,
-                                kind: SwapKind.EXACT_OUT,
-                                pool: pool,
-                                tokenIn: swapParams.tokenIn,
-                                tokenOut: swapParams.tokenOut,
-                                amountGiven: swapParams.exactAmountOut,
-                                limit: swapParams.maxAmountIn,
-                                deadline: deadline,
-                                wethIsEth: false,
-                                userData: swapParams.userData
-                            })
-                        })
+                        _buildAddLiquidityParams(
+                            pool,
+                            deadline,
+                            wethIsEth,
+                            addLiquidityParams,
+                            _buildSwapExactOutParams(swapParams)
+                        )
                     )
                 ),
                 (uint256[], uint256, uint256, bytes)
             );
     }
 
-    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
     function queryAddUnbalancedLiquidityViaSwapExactIn(
         address pool,
         address sender,
@@ -140,7 +122,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         returns (
             uint256[] memory addLiquidityAmountsIn,
             uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountOut,
+            uint256 swapAmountCalculated,
             bytes memory addLiquidityReturnData
         )
     {
@@ -178,7 +160,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
             );
     }
 
-    /// @inheritdoc IAddUnbalancedLiquidityViaSwapRouter
     function queryAddUnbalancedLiquidityViaSwapExactOut(
         address pool,
         address sender,
@@ -264,5 +245,63 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
             params.addLiquidityParams
         );
         swapAmountCalculated = _querySwapHook(params.swapParams);
+    }
+
+    // Required to avoid stack-too-deep in the caller.
+    function _buildAddLiquidityParams(
+        address pool,
+        uint256 deadline,
+        bool wethIsEth,
+        AddLiquidityProportionalParams calldata addLiquidityParams,
+        SwapParams memory swapParams
+    ) private view returns (AddLiquidityAndSwapHookParams memory params) {
+        return
+            AddLiquidityAndSwapHookParams({
+                addLiquidityParams: AddLiquidityHookParams({
+                    sender: msg.sender,
+                    pool: pool,
+                    maxAmountsIn: addLiquidityParams.maxAmountsIn,
+                    minBptAmountOut: addLiquidityParams.exactBptAmountOut,
+                    kind: AddLiquidityKind.PROPORTIONAL,
+                    wethIsEth: wethIsEth,
+                    userData: addLiquidityParams.userData
+                }),
+                swapParams: SwapSingleTokenHookParams({
+                    sender: msg.sender,
+                    kind: swapParams.kind,
+                    pool: pool,
+                    tokenIn: swapParams.tokenIn,
+                    tokenOut: swapParams.tokenOut,
+                    amountGiven: swapParams.amountGiven,
+                    limit: swapParams.limit,
+                    deadline: deadline,
+                    wethIsEth: wethIsEth,
+                    userData: swapParams.userData
+                })
+            });
+    }
+
+    function _buildSwapExactInParams(SwapExactInParams calldata swapParams) private pure returns (SwapParams memory) {
+        return
+            SwapParams({
+                tokenIn: swapParams.tokenIn,
+                tokenOut: swapParams.tokenOut,
+                kind: SwapKind.EXACT_IN,
+                amountGiven: swapParams.exactAmountIn,
+                limit: swapParams.minAmountOut,
+                userData: swapParams.userData
+            });
+    }
+
+    function _buildSwapExactOutParams(SwapExactOutParams calldata swapParams) private pure returns (SwapParams memory) {
+        return
+            SwapParams({
+                tokenIn: swapParams.tokenIn,
+                tokenOut: swapParams.tokenOut,
+                kind: SwapKind.EXACT_OUT,
+                amountGiven: swapParams.exactAmountOut,
+                limit: swapParams.maxAmountIn,
+                userData: swapParams.userData
+            });
     }
 }
