@@ -2594,7 +2594,7 @@ __metadata:
 "@zksync/contracts@github:matter-labs/era-contracts#446d391d34bdb48255d5f8fef8a8248925fc98b9":
   version: 0.1.0
   resolution: "@zksync/contracts@https://github.com/matter-labs/era-contracts.git#commit=446d391d34bdb48255d5f8fef8a8248925fc98b9"
-  checksum: 7bbea2ae280de77d50baec3e662f61f2074cb4d640ef87d32914940db935b2abf6f5e71dfa7ca019cb9a588cbc33c06ce3e4ec28cd510cf69767c61324646773
+  checksum: 30be544daacf0582c7ca553f155c5f2ac5680c95dbbfd409d8e1d961217a57e8b93ebadda4d31e36c7c86bc4755f22cd966d9888431d32b53455f66fc3efc14a
   languageName: node
   linkType: hard
 
