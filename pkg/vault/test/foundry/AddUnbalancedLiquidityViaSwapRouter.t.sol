@@ -10,15 +10,14 @@ import { SwapKind, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contrac
 import {
     IAddUnbalancedLiquidityViaSwapRouter
 } from "@balancer-labs/v3-interfaces/contracts/vault/IAddUnbalancedLiquidityViaSwapRouter.sol";
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { AddUnbalancedLiquidityViaSwapRouter } from "../../contracts/AddUnbalancedLiquidityViaSwapRouter.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -28,8 +27,8 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     address internal weightedPoolFactory;
-    address internal wethPool;
     IERC20[] internal wethDaiTokens;
+    address internal wethPool;
 
     uint256 internal daiIdxWethPool;
     uint256 internal wethIdx;
@@ -157,13 +156,12 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
                 userData: bytes("")
             });
 
-        IAddUnbalancedLiquidityViaSwapRouter.SwapParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapParams({
+        AddUnbalancedLiquidityViaSwapRouter.SwapExactInParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
+            .SwapExactInParams({
                 tokenIn: dai,
                 tokenOut: usdc,
-                kind: SwapKind.EXACT_IN,
-                amountGiven: TOKEN_AMOUNT / 2,
-                limit: 0,
+                exactAmountIn: TOKEN_AMOUNT / 2,
+                minAmountOut: 0,
                 userData: bytes("")
             });
 
@@ -174,7 +172,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountOut,
 
-        ) = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwap(
+        ) = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapExactIn(
                 pool,
                 MAX_UINT256,
                 false,
@@ -194,7 +192,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             uint256 queryAddLiquidityBptAmountOut,
             uint256 querySwapAmountOut,
 
-        ) = addUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwap(
+        ) = addUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapExactIn(
                 pool,
                 alice,
                 addLiquidityParams,
@@ -247,13 +245,12 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
                 userData: bytes("")
             });
 
-        IAddUnbalancedLiquidityViaSwapRouter.SwapParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapParams({
+        IAddUnbalancedLiquidityViaSwapRouter.SwapExactInParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
+            .SwapExactInParams({
                 tokenIn: weth,
                 tokenOut: dai,
-                kind: SwapKind.EXACT_IN,
-                amountGiven: TOKEN_AMOUNT / 2,
-                limit: 0,
+                exactAmountIn: TOKEN_AMOUNT / 2,
+                minAmountOut: 0,
                 userData: bytes("")
             });
 
@@ -276,7 +273,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountOut,
 
-        ) = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwap{ value: TOKEN_AMOUNT / 2 }(
+        ) = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapExactIn{ value: TOKEN_AMOUNT / 2 }(
                 wethPool,
                 MAX_UINT256,
                 true, // Use native ETH
@@ -301,7 +298,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             uint256 queryAddLiquidityBptAmountOut,
             uint256 querySwapAmountOut,
 
-        ) = addUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwap(
+        ) = addUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapExactIn(
                 wethPool,
                 alice,
                 addLiquidityParams,
@@ -344,13 +341,12 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
                 userData: bytes("")
             });
 
-        IAddUnbalancedLiquidityViaSwapRouter.SwapParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapParams({
+        IAddUnbalancedLiquidityViaSwapRouter.SwapExactOutParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
+            .SwapExactOutParams({
                 tokenIn: dai,
                 tokenOut: usdc,
-                kind: SwapKind.EXACT_OUT,
-                amountGiven: TOKEN_AMOUNT / 2,
-                limit: MAX_UINT256,
+                exactAmountOut: TOKEN_AMOUNT / 2,
+                maxAmountIn: MAX_UINT256,
                 userData: bytes("")
             });
 
@@ -361,7 +357,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             uint256 addLiquidityBptAmountOut,
             uint256 swapAmountIn,
 
-        ) = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwap(
+        ) = addUnbalancedLiquidityViaSwapRouter.addUnbalancedLiquidityViaSwapExactOut(
                 pool,
                 MAX_UINT256,
                 false,
@@ -381,7 +377,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             uint256 queryAddLiquidityBptAmountOut,
             uint256 querySwapAmountIn,
 
-        ) = addUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwap(
+        ) = addUnbalancedLiquidityViaSwapRouter.queryAddUnbalancedLiquidityViaSwapExactOut(
                 pool,
                 alice,
                 addLiquidityParams,
