@@ -10,8 +10,8 @@ import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.so
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { RouterHooks } from "./RouterHooks.sol";
 import { RouterQueries } from "./RouterQueries.sol";
+import { RouterHooks } from "./RouterHooks.sol";
 
 /**
  * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
