@@ -31,9 +31,9 @@ interface ILPOracleFactoryBase {
     function getOracle(IBasePool pool) external view returns (ILPOracleBase oracle);
 
     /**
-     * @notice Checks if the given oracle was created by this factory.
+     * @notice Checks whether the given oracle was created by this factory.
      * @param oracle The oracle to check
-     * @return success True if the oracle was created by this factory, false otherwise
+     * @return success True if the oracle was created by this factory; false otherwise
      */
     function isOracleFromFactory(ILPOracleBase oracle) external view returns (bool success);
 }

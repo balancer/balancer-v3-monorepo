@@ -14,7 +14,7 @@ import { StableLPOracle } from "./StableLPOracle.sol";
 
 contract StableLPOracleFactory is LPOracleFactoryBase {
     /**
-     * @notice New oracle is created for a Stable Pool.
+     * @notice A new Stable Pool oracle was created.
      * @param pool The address of the Stable Pool
      * @param oracle The address of the deployed oracle
      */

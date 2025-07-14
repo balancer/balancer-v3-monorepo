@@ -15,7 +15,7 @@ import { WeightedLPOracle } from "./WeightedLPOracle.sol";
 
 contract WeightedLPOracleFactory is LPOracleFactoryBase {
     /**
-     * @notice New oracle is created for a Weighted Pool.
+     * @notice A new Weighted Pool oracle was created.
      * @param pool The address of the Weighted Pool
      * @param oracle The address of the deployed oracle
      */
