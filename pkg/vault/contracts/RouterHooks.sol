@@ -17,8 +17,7 @@ import { RouterCommon } from "./RouterCommon.sol";
  * @notice Base Router with hooks for swaps and liquidity operations via the Vault.
  * @dev Implements hooks for init, add liquidity, remove liquidity, and swaps.
  */
-contract RouterHooks is RouterCommon {
-    using Address for address payable;
+abstract contract RouterHooks is RouterCommon {
     using RouterWethLib for IWETH;
     using SafeCast for *;
 
