@@ -3,10 +3,6 @@
 pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -23,9 +19,9 @@ import {
 } from "@balancer-labs/v3-pool-stable/test/foundry/utils/StablePoolContractsDeployer.sol";
 
 import { StableLPOracleFactory } from "../../contracts/StableLPOracleFactory.sol";
-import { FeedMock } from "../../contracts/test/FeedMock.sol";
+import { LPOracleFactoryBaseTest } from "./LPOracleFactoryBase.t.sol";
 
-contract StableLPOracleFactoryTest is BaseVaultTest, StablePoolContractsDeployer {
+contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFactoryBaseTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
@@ -33,39 +29,39 @@ contract StableLPOracleFactoryTest is BaseVaultTest, StablePoolContractsDeployer
     uint256 constant AMPLIFICATION_PARAMETER = 100;
 
     StablePoolFactory _stablePoolFactory;
-    StableLPOracleFactory _stableLPOracleFactory;
 
     function setUp() public virtual override {
-        BaseVaultTest.setUp();
-        _stableLPOracleFactory = new StableLPOracleFactory(vault, ORACLE_VERSION);
+        super.setUp();
 
         _stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
     }
 
-    function createFeeds(IStablePool pool) internal returns (AggregatorV3Interface[] memory feeds) {
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
+    function testCreateEmitsEvent() external {
+        IBasePool pool = _createAndInitPool();
+        AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        feeds = new AggregatorV3Interface[](tokens.length);
+        // Snapshot is needed to predict what will be the oracle address.
+        uint256 snapshot = vm.snapshot();
+        ILPOracleBase oracle = _factory.create(pool, feeds);
+        vm.revertTo(snapshot);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
-        }
+        vm.expectEmit();
+        emit StableLPOracleFactory.StableLPOracleCreated(IStablePool(address(pool)), oracle);
+        _factory.create(pool, feeds);
     }
 
-    function createAndInitPool() internal returns (IStablePool) {
+    function _createAndInitPool() internal override returns (IBasePool) {
         return
-            createAndInitPool(
+            _createAndInitPool(
                 [poolInitAmount, poolInitAmount].toMemoryArray(),
-                [50e16, uint256(50e16)].toMemoryArray(),
                 vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20())
             );
     }
 
-    function createAndInitPool(
+    function _createAndInitPool(
         uint256[] memory initAmounts,
-        uint256[] memory weights,
         TokenConfig[] memory tokenConfigs
-    ) internal returns (IStablePool) {
+    ) internal returns (IBasePool) {
         string memory name = "Stable Pool Test";
         string memory symbol = "STABLE-TEST";
 
@@ -90,36 +86,10 @@ contract StableLPOracleFactoryTest is BaseVaultTest, StablePoolContractsDeployer
 
         _setSwapFeePercentage(newPool, 0);
 
-        return IStablePool(newPool);
+        return IBasePool(newPool);
     }
 
-    function testCreateOracle() external {
-        IStablePool pool = createAndInitPool();
-        AggregatorV3Interface[] memory feeds = createFeeds(pool);
-
-        uint256 snapshot = vm.snapshot();
-        ILPOracleBase oracle = _stableLPOracleFactory.create(IBasePool(address(pool)), feeds);
-        vm.revertTo(snapshot);
-
-        vm.expectEmit();
-        emit StableLPOracleFactory.StableLPOracleCreated(pool, ILPOracleBase(address(oracle)));
-        _stableLPOracleFactory.create(IBasePool(address(pool)), feeds);
-
-        assertEq(
-            address(oracle),
-            address(_stableLPOracleFactory.getOracle(IBasePool(address(pool)))),
-            "Oracle address mismatch"
-        );
-        assertTrue(_stableLPOracleFactory.isOracleFromFactory(oracle), "Oracle should be from factory");
-    }
-
-    function testCreateOracleRevertsWhenOracleAlreadyExists() external {
-        IStablePool pool = createAndInitPool();
-        AggregatorV3Interface[] memory feeds = createFeeds(pool);
-
-        _stableLPOracleFactory.create(IBasePool(address(pool)), feeds);
-
-        vm.expectRevert(ILPOracleFactoryBase.OracleAlreadyExists.selector);
-        _stableLPOracleFactory.create(IBasePool(address(pool)), feeds);
+    function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
+        return ILPOracleFactoryBase(address(new StableLPOracleFactory(vault, ORACLE_VERSION)));
     }
 }

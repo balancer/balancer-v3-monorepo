@@ -6,8 +6,6 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-
 import { IWeightedLPOracle } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IWeightedLPOracle.sol";
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -25,47 +23,53 @@ import {
 
 import { WeightedLPOracleFactory } from "../../contracts/WeightedLPOracleFactory.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
+import { LPOracleFactoryBaseTest } from "./LPOracleFactoryBase.t.sol";
 
-contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDeployer {
+contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleFactoryBaseTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
     uint256 constant ORACLE_VERSION = 1;
 
     WeightedPoolFactory _weightedPoolFactory;
-    WeightedLPOracleFactory _weightedLPOracleFactory;
 
     function setUp() public virtual override {
-        BaseVaultTest.setUp();
-        _weightedLPOracleFactory = new WeightedLPOracleFactory(vault, ORACLE_VERSION);
+        super.setUp();
 
         _weightedPoolFactory = deployWeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
     }
 
-    function createFeeds(IWeightedPool pool) internal returns (AggregatorV3Interface[] memory feeds) {
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
+    function testCreateEmitsEvent() external {
+        IBasePool pool = _createAndInitPool();
+        AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        feeds = new AggregatorV3Interface[](tokens.length);
+        // Snapshot is needed to predict what will be the oracle address.
+        uint256 snapshot = vm.snapshot();
+        ILPOracleBase oracle = _factory.create(pool, feeds);
+        vm.revertTo(snapshot);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            feeds[i] = AggregatorV3Interface(address(new FeedMock(IERC20Metadata(address(tokens[i])).decimals())));
-        }
+        vm.expectEmit();
+        emit WeightedLPOracleFactory.WeightedLPOracleCreated(
+            IWeightedPool(address(pool)),
+            IWeightedLPOracle(address(oracle))
+        );
+        _factory.create(pool, feeds);
     }
 
-    function createAndInitPool() internal returns (IWeightedPool) {
+    function _createAndInitPool() internal override returns (IBasePool) {
         return
-            createAndInitPool(
+            _createAndInitPool(
                 [poolInitAmount, poolInitAmount].toMemoryArray(),
                 [50e16, uint256(50e16)].toMemoryArray(),
                 vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20())
             );
     }
 
-    function createAndInitPool(
+    function _createAndInitPool(
         uint256[] memory initAmounts,
         uint256[] memory weights,
         TokenConfig[] memory tokenConfigs
-    ) internal returns (IWeightedPool) {
+    ) internal returns (IBasePool) {
         string memory name = "Weighted Pool Test";
         string memory symbol = "WEIGHTED-TEST";
 
@@ -90,36 +94,10 @@ contract WeightedLPOracleFactoryTest is BaseVaultTest, WeightedPoolContractsDepl
 
         _setSwapFeePercentage(newPool, 0);
 
-        return IWeightedPool(newPool);
+        return IBasePool(newPool);
     }
 
-    function testCreateOracle() external {
-        IWeightedPool pool = createAndInitPool();
-        AggregatorV3Interface[] memory feeds = createFeeds(pool);
-
-        uint256 snapshot = vm.snapshot();
-        ILPOracleBase oracle = _weightedLPOracleFactory.create(IBasePool(address(pool)), feeds);
-        vm.revertTo(snapshot);
-
-        vm.expectEmit();
-        emit WeightedLPOracleFactory.WeightedLPOracleCreated(pool, IWeightedLPOracle(address(oracle)));
-        _weightedLPOracleFactory.create(IBasePool(address(pool)), feeds);
-
-        assertEq(
-            address(oracle),
-            address(_weightedLPOracleFactory.getOracle(IBasePool(address(pool)))),
-            "Oracle address mismatch"
-        );
-        assertTrue(_weightedLPOracleFactory.isOracleFromFactory(oracle), "Oracle should be from factory");
-    }
-
-    function testCreateOracleRevertsWhenOracleAlreadyExists() external {
-        IWeightedPool pool = createAndInitPool();
-        AggregatorV3Interface[] memory feeds = createFeeds(pool);
-
-        _weightedLPOracleFactory.create(IBasePool(address(pool)), feeds);
-
-        vm.expectRevert(ILPOracleFactoryBase.OracleAlreadyExists.selector);
-        _weightedLPOracleFactory.create(IBasePool(address(pool)), feeds);
+    function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
+        return ILPOracleFactoryBase(address(new WeightedLPOracleFactory(vault, ORACLE_VERSION)));
     }
 }

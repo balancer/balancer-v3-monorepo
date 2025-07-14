@@ -20,6 +20,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  */
 abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication {
     uint256 internal _oracleVersion;
+    bool internal _isDisabled;
 
     mapping(IBasePool pool => ILPOracleBase oracle) internal _oracles;
     mapping(ILPOracleBase oracle => bool creationFlag) internal _isOracleFromFactory;
@@ -32,6 +33,10 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
     function create(IBasePool pool, AggregatorV3Interface[] memory feeds) external returns (ILPOracleBase oracle) {
         if (address(_oracles[pool]) != address(0)) {
             revert OracleAlreadyExists();
+        }
+
+        if (_isDisabled) {
+            revert OracleFactoryDisabled();
         }
 
         IVault vault = getVault();
@@ -52,6 +57,11 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
     /// @inheritdoc ILPOracleFactoryBase
     function isOracleFromFactory(ILPOracleBase oracle) external view returns (bool success) {
         success = _isOracleFromFactory[oracle];
+    }
+
+    /// @inheritdoc ILPOracleFactoryBase
+    function disable() external authenticate {
+        _isDisabled = true;
     }
 
     function _create(

@@ -14,6 +14,9 @@ interface ILPOracleFactoryBase {
     /// @notice Oracle already exists for the given pool.
     error OracleAlreadyExists();
 
+    /// @notice Oracle factory is disabled.
+    error OracleFactoryDisabled();
+
     /**
      * @notice Creates a new oracle for the given pool.
      * @param pool The address of the pool
@@ -35,4 +38,11 @@ interface ILPOracleFactoryBase {
      * @return success True if the oracle was created by this factory; false otherwise
      */
     function isOracleFromFactory(ILPOracleBase oracle) external view returns (bool success);
+
+    /**
+     * @notice Disables the oracle factory.
+     * @dev A disabled oracle factory cannot create new oracles and cannot be re-enabled. However, already created oracles
+     * are still usable.
+     */
+    function disable() external;
 }
