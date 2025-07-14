@@ -75,7 +75,7 @@ interface ICompositeLiquidityRouter {
      * @param pool Address of the liquidity pool
      * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
      * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minAmountsOut Minimum amounts of each token, corresponding to `tokensOut`
+     * @param minAmountsOut Minimum amounts of each token, sorted in token registration order
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
      * @return amountsOut Actual amounts of tokens received
