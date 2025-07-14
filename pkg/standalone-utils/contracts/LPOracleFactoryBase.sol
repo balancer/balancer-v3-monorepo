@@ -64,6 +64,21 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
         _isDisabled = true;
     }
 
+    /// @inheritdoc ILPOracleFactoryBase
+    function disableOracleFromPool(IBasePool pool) external authenticate {
+        if (_isDisabled) {
+            revert OracleFactoryDisabled();
+        }
+
+        ILPOracleBase oracle = _oracles[pool];
+
+        if (address(oracle) == address(0)) {
+            revert OracleDoesNotExists(pool);
+        }
+
+        _oracles[pool] = ILPOracleBase(address(0));
+    }
+
     function _create(
         IVault vault,
         IBasePool pool,
