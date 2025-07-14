@@ -17,10 +17,7 @@ import { RouterHooks } from "./RouterHooks.sol";
  * @dev Implements read-only query functions that allow off-chain components to estimate results of Vault interactions.
  * Designed to provide accurate previews of add/remove liquidity and swap outcomes using Vault quoting logic.
  */
-contract RouterQueries is IRouterQueries, RouterHooks {
-    using Address for address payable;
-    using RouterWethLib for IWETH;
-    using SafeCast for *;
+abstract contract RouterQueries is IRouterQueries, RouterHooks {
 
     constructor(
         IVault vault,
