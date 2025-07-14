@@ -11,8 +11,12 @@ import { ILPOracleBase } from "./ILPOracleBase.sol";
  * @notice Factory contract for deploying and managing pool oracles.
  */
 interface ILPOracleFactoryBase {
-    /// @notice Oracle already exists for the given pool.
-    error OracleAlreadyExists();
+    /**
+     * @notice Oracle already exists for the given pool.
+     * @param pool The pool that already has an oracle
+     * @param oracle The oracle that already exists for the pool
+     */
+    error OracleAlreadyExists(IBasePool pool, ILPOracleBase oracle);
 
     /// @notice Oracle factory is disabled.
     error OracleFactoryDisabled();

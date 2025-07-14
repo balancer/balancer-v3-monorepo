@@ -32,7 +32,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
     /// @inheritdoc ILPOracleFactoryBase
     function create(IBasePool pool, AggregatorV3Interface[] memory feeds) external returns (ILPOracleBase oracle) {
         if (address(_oracles[pool]) != address(0)) {
-            revert OracleAlreadyExists();
+            revert OracleAlreadyExists(pool, _oracles[pool]);
         }
 
         if (_isDisabled) {

@@ -44,9 +44,10 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
-        _factory.create(pool, feeds);
+        ILPOracleBase oracle = _factory.create(pool, feeds);
 
-        vm.expectRevert(ILPOracleFactoryBase.OracleAlreadyExists.selector);
+        // Since there already is an oracle for the pool in the factory, reverts with the correct parameters.
+        vm.expectRevert(abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, oracle));
         _factory.create(pool, feeds);
     }
 
