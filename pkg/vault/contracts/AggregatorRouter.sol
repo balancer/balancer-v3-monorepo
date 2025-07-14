@@ -6,11 +6,21 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
+
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+
+import { SenderGuard } from "./SenderGuard.sol";
+import { VaultGuard } from "./VaultGuard.sol";
 
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import {
@@ -56,7 +66,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.unlock(
                     abi.encodeCall(
                         AggregatorRouter.swapSingleTokenHook,
-                        IRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
@@ -89,7 +99,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.unlock(
                     abi.encodeCall(
                         AggregatorRouter.swapSingleTokenHook,
-                        IRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
                             pool: pool,
@@ -117,7 +127,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function swapSingleTokenHook(
-        IRouter.SwapSingleTokenHookParams calldata params
+        SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
         // `amountInHint` represents the amount supposedly paid upfront by the sender.
         uint256 amountInHint;
@@ -150,7 +160,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
     }
 
     function _swapHook(
-        IRouter.SwapSingleTokenHookParams calldata params
+        SwapSingleTokenHookParams calldata params
     ) internal returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
@@ -189,7 +199,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.quote(
                     abi.encodeCall(
                         AggregatorRouter.querySwapHook,
-                        IRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
                             pool: pool,
@@ -221,7 +231,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
                 _vault.quote(
                     abi.encodeCall(
                         AggregatorRouter.querySwapHook,
-                        IRouter.SwapSingleTokenHookParams({
+                        SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
                             pool: pool,
@@ -246,7 +256,7 @@ contract AggregatorRouter is IAggregatorRouter, SenderGuard, VaultGuard, Reentra
      * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for an exact in swap)
      */
     function querySwapHook(
-        IRouter.SwapSingleTokenHookParams calldata params
+        SwapSingleTokenHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, , ) = _swapHook(params);
 
