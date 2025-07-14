@@ -13,6 +13,11 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 
+/**
+ * @notice Base contract for deploying and managing pool oracles.
+ * @dev The factories that inherit this contract must implement the `_create` function, which deploys a different
+ * oracle, depending on the pool.
+ */
 abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication {
     uint256 internal _oracleVersion;
 

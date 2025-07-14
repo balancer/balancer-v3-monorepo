@@ -13,6 +13,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { LPOracleFactoryBase } from "./LPOracleFactoryBase.sol";
 import { WeightedLPOracle } from "./WeightedLPOracle.sol";
 
+/**
+ * @notice Factory for deploying and managing Weighted Pool oracles.
+ */
 contract WeightedLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new Weighted Pool oracle was created.

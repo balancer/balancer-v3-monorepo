@@ -12,6 +12,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { LPOracleFactoryBase } from "./LPOracleFactoryBase.sol";
 import { StableLPOracle } from "./StableLPOracle.sol";
 
+/**
+ * @notice Factory for deploying and managing Stable Pool oracles.
+ */
 contract StableLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new Stable Pool oracle was created.
