@@ -8,8 +8,7 @@ import { IBasePool } from "../vault/IBasePool.sol";
 import { ILPOracleBase } from "./ILPOracleBase.sol";
 
 /**
- * @title LP Oracle Factory
- * @notice Factory contract for deploying and managing lp weighted pool oracles.
+ * @notice Factory contract for deploying and managing pool oracles.
  */
 interface ILPOracleFactoryBase {
     /// @notice Oracle already exists for the given pool.
