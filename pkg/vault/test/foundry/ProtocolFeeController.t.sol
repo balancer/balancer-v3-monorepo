@@ -799,9 +799,9 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolYieldFeeCollected(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
 
-        uint256[] memory swapAmounts = new uint256[](2);
+        uint256[] memory swapLimits = new uint256[](2);
         uint256[] memory yieldAmounts = new uint256[](2);
-        swapAmounts[daiIdx] = PROTOCOL_SWAP_FEE_AMOUNT;
+        swapLimits[daiIdx] = PROTOCOL_SWAP_FEE_AMOUNT;
         yieldAmounts[usdcIdx] = PROTOCOL_YIELD_FEE_AMOUNT;
 
         vm.expectCall(address(feeController), abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, pool));
