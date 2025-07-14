@@ -16,7 +16,7 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
 abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication {
     uint256 internal _oracleVersion;
 
-    mapping(IBasePool pool => ILPOracleBase) oracle internal _oracles;
+    mapping(IBasePool pool => ILPOracleBase oracle) internal _oracles;
     mapping(ILPOracleBase oracle => bool creationFlag) internal _isOracleFromFactory;
 
     constructor(IVault vault, uint256 oracleVersion) SingletonAuthentication(vault) {
