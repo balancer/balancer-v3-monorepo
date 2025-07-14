@@ -18,7 +18,6 @@ import { RouterHooks } from "./RouterHooks.sol";
  * Designed to provide accurate previews of add/remove liquidity and swap outcomes using Vault quoting logic.
  */
 abstract contract RouterQueries is IRouterQueries, RouterHooks {
-
     constructor(
         IVault vault,
         IWETH weth,

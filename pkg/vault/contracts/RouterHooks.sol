@@ -53,12 +53,12 @@ abstract contract RouterHooks is RouterCommon {
         );
 
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
-
             if (amountIn == 0) {
                 continue;
             }
+
+            IERC20 token = params.tokens[i];
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
@@ -333,17 +333,7 @@ abstract contract RouterHooks is RouterCommon {
             revert SwapDeadline();
         }
 
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _vault.swap(
-            VaultSwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGiven,
-                limitRaw: params.limit,
-                userData: params.userData
-            })
-        );
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
 
