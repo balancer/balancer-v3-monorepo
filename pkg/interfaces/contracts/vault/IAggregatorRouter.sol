@@ -6,9 +6,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRouterQueries } from "./IRouterQueries.sol";
 
-import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
-
-/// @notice Interface to basic Vault operations for aggregators: swap, add/remove liquidity, and associated queries.
+/**
+ * @notice This router supports basic Vault operations without requiring approvals or Permit2.
+ * @dev Designed for use by aggregators, it supports swap, add/remove/donate liquidity, and the corresponding queries.
+ */
 interface IAggregatorRouter is IRouterQueries {
     /// @notice Contract cannot receive ETH.
     error CannotReceiveEth();
