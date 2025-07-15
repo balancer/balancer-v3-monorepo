@@ -339,18 +339,14 @@ abstract contract RouterHooks is RouterCommon {
             _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
         } else {
             // `amountInHint` represents the amount supposedly paid upfront by the sender.
-            uint256 amountInHint;
-            if (params.kind == SwapKind.EXACT_IN) {
-                amountInHint = params.amountGiven;
-            } else {
-                amountInHint = params.limit;
-            }
+            uint256 amountInHint = params.kind == SwapKind.EXACT_IN ? params.amountGiven : params.limit;
 
             uint256 tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
             if (tokenInCredit < amountInHint) {
                 revert InsufficientPayment(params.tokenIn);
             }
 
+            // Return leftover to the sender.
             if (params.kind == SwapKind.EXACT_OUT) {
                 _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
             }
