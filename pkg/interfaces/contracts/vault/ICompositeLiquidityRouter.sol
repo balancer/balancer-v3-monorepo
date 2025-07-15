@@ -16,8 +16,20 @@ pragma solidity ^0.8.24;
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
  */
 interface ICompositeLiquidityRouter {
-    /// @notice `tokensOut` array does not have all the tokens from `expectedTokensOut`.
+    /**
+     * @notice The `tokensOut` array does not match the result of a liquidity operation.
+     * @dev It might be the wrong length, or contain an unexpected or repeated token.
+     * @param expectedTokensOut The token array passed in
+     * @param tokensOut The actual token array computed during the liquidity operation
+     */
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
+
+    /**
+     * @notice The expected output for a wrapped token is neither the wrapped nor the underlying token.
+     * @param wrappedPoolToken The IERC4626 token from the nested pool
+     * @param outputToken The corresponding output token, which must be either the same token or its underlying
+     */
+    error InvalidNestedToken(address wrappedPoolToken, address outputToken);
 
     /***************************************************************************
                                    ERC4626 Pools

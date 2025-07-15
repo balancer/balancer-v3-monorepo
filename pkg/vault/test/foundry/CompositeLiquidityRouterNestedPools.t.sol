@@ -40,7 +40,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         (childPoolA, ) = _createPool([address(usdc), address(weth)].toMemoryArray(), "childPoolA");
         (childPoolB, ) = _createPool([address(wsteth), address(dai)].toMemoryArray(), "childPoolB");
         (parentPool, ) = _createPool(
-            [address(childPoolA), address(childPoolB), address(dai)].toMemoryArray(),
+            [address(childPoolA), address(childPoolB), address(waDAI)].toMemoryArray(),
             "parentPool"
         );
 
@@ -125,13 +125,10 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
 
-        address[] memory tokensIn = new address[](4);
-        tokensIn[vars.daiIdx] = address(dai);
-        tokensIn[vars.usdcIdx] = address(usdc);
-        tokensIn[vars.wethIdx] = address(weth);
-        tokensIn[vars.wstethIdx] = address(wsteth);
+        // Set indexes in vars as a side effect.
+        address[] memory tokensIn = _computeFlattenedPoolTokens(parentPool, vars);
 
-        uint256[] memory amountsIn = new uint256[](4);
+        uint256[] memory amountsIn = new uint256[](tokensIn.length);
         amountsIn[vars.daiIdx] = daiAmount;
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
@@ -236,18 +233,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
     }
 
+    // fails
     function testAddLiquidityUnbalanceToOneChildNestedPool() public {
         uint256 usdcAmount = poolInitAmount;
 
         uint256 minBptOut = 0;
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+        address[] memory tokensIn = _computeFlattenedPoolTokens(parentPool, vars);
 
-        address[] memory tokensIn = new address[](1);
-        tokensIn[0] = address(usdc);
-
-        uint256[] memory amountsIn = new uint256[](1);
-        amountsIn[0] = usdcAmount;
+        uint256[] memory amountsIn = new uint256[](tokensIn.length);
+        amountsIn[vars.usdcIdx] = usdcAmount;
 
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
@@ -348,17 +344,18 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 minBptOut = 0;
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+        address[] memory tokensIn = _computeFlattenedPoolTokens(parentPoolWithoutWrapper, vars);
         // Override indexes, since wstEth is not used in this test.
-        vars.daiIdx = 0;
-        vars.usdcIdx = 1;
-        vars.wethIdx = 2;
+        //vars.daiIdx = 0;
+        //vars.usdcIdx = 1;
+        //vars.wethIdx = 2;
 
-        address[] memory tokensIn = new address[](3);
+        /*address[] memory tokensIn = new address[](3);
         tokensIn[vars.daiIdx] = address(dai);
         tokensIn[vars.usdcIdx] = address(usdc);
-        tokensIn[vars.wethIdx] = address(weth);
+        tokensIn[vars.wethIdx] = address(weth);*/
 
-        uint256[] memory amountsIn = new uint256[](3);
+        uint256[] memory amountsIn = new uint256[](tokensIn.length);
         amountsIn[vars.daiIdx] = daiAmount;
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
@@ -1193,7 +1190,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     /*******************************************************************************
                               Remove liquidity
     *******************************************************************************/
-
+//asdf
     function testRemoveLiquidityNestedPool__Fuzz(uint256 proportionToRemove) public {
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
@@ -1204,19 +1201,16 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 exactBptIn = totalPoolBPT.mulDown(proportionToRemove);
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+        
+        // Set indexes in vars as a side effect.
+        address[] memory tokensOut = _computeFlattenedPoolTokens(parentPool, vars);
 
         // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
         // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
         // we can extract from the child pools.
         uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
 
-        address[] memory tokensOut = new address[](4);
-        tokensOut[vars.daiIdx] = address(dai);
-        tokensOut[vars.wethIdx] = address(weth);
-        tokensOut[vars.wstethIdx] = address(wsteth);
-        tokensOut[vars.usdcIdx] = address(usdc);
-
-        uint256[] memory expectedAmountsOut = new uint256[](4);
+        uint256[] memory expectedAmountsOut = new uint256[](tokensOut.length);
         // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
         // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
         // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
@@ -2119,9 +2113,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function _createNestedPoolTestLocals() private view returns (NestedPoolTestLocals memory vars) {
-        // Create output token indexes, randomly chosen (no sort logic).
-        (vars.daiIdx, vars.wethIdx, vars.wstethIdx, vars.usdcIdx) = (0, 1, 2, 3);
-
         vars.lpBefore = _getBalances(lp);
         vars.vaultBefore = _getBalances(address(vault));
         vars.childPoolABefore = _getPoolBalances(childPoolA);
@@ -2188,5 +2179,72 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         }
 
         balances.totalSupply = BalancerPoolToken(pool).totalSupply();
+    }
+
+    function _computeFlattenedPoolTokens(
+        address pool,
+        NestedPoolTestLocals memory vars
+    ) internal view returns (address[] memory tokensIn) {
+        // Traverse the nested pool, filling in tokens, and setting indices in vars.
+        // First just count the tokens.
+        uint256 numTokens = 0;
+        IERC20[] memory tokens = vault.getPoolTokens(pool);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            address token = address(tokens[i]);
+            console.log("Parent pool[%s]=%s", i, token);
+
+            if (vault.isPoolRegistered(token)) {
+                (IERC20[] memory childTokens, , , ) = vault.getPoolTokenInfo(token);
+                for (uint256 j = 0; j < childTokens.length; ++j) {
+                    console.log("Child Pool[%s]=%s", j, address(childTokens[j]));
+                }
+                numTokens += childTokens.length;
+            } else {
+                numTokens++;
+            }
+        }
+
+        tokensIn = new address[](numTokens);
+        console.log("numTokens: %s", numTokens);
+
+        // Now fill them in.
+        uint256 tokenIdx = 0;
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            address token = address(tokens[i]);
+
+            if (vault.isPoolRegistered(token)) {
+                IERC20[] memory childTokens = vault.getPoolTokens(token);
+                console.log("%s is a %s-token pool", token, childTokens.length);
+                for (uint256 j = 0; j < childTokens.length; ++j) {
+                    address childToken = address(childTokens[j]);
+
+                    tokensIn[tokenIdx] = childToken;
+                    console.log("Child: Flattened[%s]=%s", tokenIdx, childToken);
+                    _setTokenIdx(childToken, tokenIdx++, vars);
+                }
+            } else {
+                tokensIn[tokenIdx] = token;
+                console.log("Parent: Flattened[%s]=%s", tokenIdx, token);
+                _setTokenIdx(token, tokenIdx++, vars);
+            }
+        }
+    }
+
+    function _setTokenIdx(address currentToken, uint256 currentIdx, NestedPoolTestLocals memory vars) internal view {
+        if (currentToken == address(dai)) {
+            vars.daiIdx = currentIdx;
+        } else if (currentToken == address(weth)) {
+            vars.wethIdx = currentIdx;
+        } else if (currentToken == address(wsteth)) {
+            vars.wstethIdx = currentIdx;
+        } else if (currentToken == address(waDAI)) {
+            vars.waDaiIdx = currentIdx;
+        } else if (currentToken == address(waUSDC)) {
+            vars.waUsdcIdx = currentIdx;
+        } else if (currentToken == address(waWETH)) {
+            vars.waWethIdx = currentIdx;
+        } else if (currentToken == address(usdc)) {
+            vars.usdcIdx = currentIdx;
+        }
     }
 }
