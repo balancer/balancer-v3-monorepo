@@ -66,23 +66,7 @@ abstract contract RouterHooks is RouterCommon {
         );
 
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            uint256 amountIn = params.exactAmountsIn[i];
-            if (amountIn == 0) {
-                continue;
-            }
-
-            IERC20 token = params.tokens[i];
-
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.wrapEthAndSettle(_vault, amountIn);
-            } else {
-                // Transfer tokens from the user to the Vault.
-                // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                _vault.settle(token, amountIn);
-            }
+            _takeTokenIn(params.sender, params.tokens[i], params.exactAmountsIn[i], params.wethIsEth);
         }
 
         // Return ETH dust.
@@ -148,15 +132,7 @@ abstract contract RouterHooks is RouterCommon {
 
                 _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
             } else {
-                // There can be only one WETH token in the pool.
-                if (params.wethIsEth && address(token) == address(_weth)) {
-                    _weth.wrapEthAndSettle(_vault, amountIn);
-                } else {
-                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                    // necessary. Done out of an abundance of caution.
-                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                    _vault.settle(token, amountIn);
-                }
+                _takeTokenIn(params.sender, token, amountIn, params.wethIsEth);
             }
         }
 
@@ -234,20 +210,7 @@ abstract contract RouterHooks is RouterCommon {
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountOut = amountsOut[i];
-            if (amountOut == 0) {
-                continue;
-            }
-
-            IERC20 token = tokens[i];
-
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.unwrapWethAndTransferToSender(_vault, params.sender, amountOut);
-            } else {
-                // Transfer the token to the sender (amountOut).
-                _vault.sendTo(token, params.sender, amountOut);
-            }
+            _sendTokenOut(params.sender, tokens[i], amountsOut[i], params.wethIsEth);
         }
 
         _returnEth(params.sender);

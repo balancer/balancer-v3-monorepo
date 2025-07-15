@@ -172,6 +172,8 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         vm.startPrank(alice);
         dai.transfer(address(vault), insufficientAmount);
+
+        // The operation is reverted because we’re trying to take more tokens out of the pool than it has in its balance.
         vm.expectRevert();
         aggregatorRouter.swapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, minAmountOut, MAX_UINT256, bytes(""));
         vm.stopPrank();
