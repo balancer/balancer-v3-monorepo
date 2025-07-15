@@ -13,7 +13,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { E2eSwapTest, E2eTestState, SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
@@ -35,13 +35,15 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
         sender = lp;
         poolCreator = lp;
 
+        E2eTestState memory state = _getTestState();
         // 0.0001% max swap fee.
-        minPoolSwapFeePercentage = 1e12;
+        state.minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
+        state.maxPoolSwapFeePercentage = 10e16;
+        _setTestState(state);
     }
 
-    function calculateMinAndMaxSwapAmounts() internal virtual override {
+    function computeSwapLimits() internal virtual override returns (SwapLimits memory swapLimits) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -67,20 +69,20 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10 to account for
         // swap fees and compensate for rate rounding issues.
         uint256 mathFactor = 10;
-        minSwapAmountTokenA = (
+        swapLimits.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? mathFactor * tokenAMinTradeAmount
                 : mathFactor * tokenACalculatedNotZero
         );
-        minSwapAmountTokenB = (
+        swapLimits.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? mathFactor * tokenBMinTradeAmount
                 : mathFactor * tokenBCalculatedNotZero
         );
 
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(50e16);
-        maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
+        swapLimits.maxTokenA = poolInitAmountTokenA.mulDown(50e16);
+        swapLimits.maxTokenB = poolInitAmountTokenB.mulDown(50e16);
     }
 
     function createPoolFactory() internal override returns (address) {
@@ -134,14 +136,15 @@ contract E2eSwapStableTest is E2eSwapTest, StablePoolContractsDeployer {
         );
     }
 
-    function fuzzPoolParams(
-        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params
-    ) internal override returns (bool overrideSwapLimits) {
+    function fuzzPoolState(
+        uint256[POOL_SPECIFIC_PARAMS_SIZE] memory params,
+        E2eTestState memory state
+    ) internal override returns (E2eTestState memory) {
         // Vary amplification parameter from 1 to 5000.
         uint256 newAmplificationParameter = bound(params[0], StableMath.MIN_AMP, StableMath.MAX_AMP);
 
         _setAmplificationParameter(pool, newAmplificationParameter);
-        return false;
+        return state;
     }
 
     function _setAmplificationParameter(address pool, uint256 newAmplificationParameter) private {

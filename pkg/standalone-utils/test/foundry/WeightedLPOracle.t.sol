@@ -14,6 +14,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IWeightedPool } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -197,11 +198,21 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
-                oracle.calculateFeedTokenDecimalScalingFactor(feeds[i]),
+                oracle.computeFeedTokenDecimalScalingFactor(feeds[i]),
                 returnedScalingFactors[i],
                 "Scaling factor does not match"
             );
         }
+    }
+
+    function testUnsupportedDecimals() public {
+        (IWeightedPool pool, ) = createAndInitPool(2);
+        (WeightedLPOracleMock oracle, ) = deployOracle(pool);
+
+        AggregatorV3Interface feedWith20Decimals = AggregatorV3Interface(address(new FeedMock(20)));
+
+        vm.expectRevert(ILPOracleBase.UnsupportedDecimals.selector);
+        oracle.computeFeedTokenDecimalScalingFactor(feedWith20Decimals);
     }
 
     /**
@@ -216,7 +227,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         for (uint256 i = 0; i < feeds.length; i++) {
             assertEq(
-                oracle.calculateFeedTokenDecimalScalingFactor(feeds[i]),
+                oracle.computeFeedTokenDecimalScalingFactor(feeds[i]),
                 10 ** (18 - IERC20Metadata(address(feeds[i])).decimals()),
                 "Scaling factor does not match"
             );
