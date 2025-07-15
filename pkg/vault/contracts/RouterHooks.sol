@@ -388,6 +388,7 @@ abstract contract RouterHooks is RouterCommon {
                 revert InsufficientPayment(params.tokenIn);
             }
 
+            // Return leftover to the sender.
             if (params.kind == SwapKind.EXACT_OUT) {
                 _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
             }
