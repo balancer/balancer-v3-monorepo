@@ -168,7 +168,8 @@ interface IAggregatorRouter is IRouterQueries {
     ) external payable returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
-     * @notice Removes liquidity proportionally, burning an exact pool token amount. Only available in Recovery Mode.
+     * @notice Removes liquidity proportionally, burning an exact pool token amount.
+     * @dev This function is only available in Recovery Mode.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
