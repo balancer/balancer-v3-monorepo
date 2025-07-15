@@ -386,6 +386,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
             );
     }
 
+    /// @inheritdoc RouterCommon
     receive() external payable override {
         revert CannotReceiveEth();
     }
