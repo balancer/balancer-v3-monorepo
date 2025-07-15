@@ -14,6 +14,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { VaultContractsDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultContractsDeployer.sol";
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
+import { E2eTestState, SwapLimits } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
@@ -37,7 +38,10 @@ contract E2eSwapRateProviderWeightedTest is
 
     function setUp() public override {
         super.setUp();
-        amountInExactInOutError = 0.05e16;
+
+        E2eTestState memory state = _getTestState();
+        state.amountInExactInOutError = 0.05e16;
+        _setTestState(state);
     }
 
     function createPoolFactory() internal override returns (address) {
@@ -93,7 +97,7 @@ contract E2eSwapRateProviderWeightedTest is
         );
     }
 
-    function calculateMinAndMaxSwapAmounts() internal override {
+    function computeSwapLimits() internal view override returns (SwapLimits memory swapLimits) {
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
 
@@ -120,12 +124,12 @@ contract E2eSwapRateProviderWeightedTest is
         // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10000 to account
         // for both swap fees, and compensate for approximation errors between weighted and linear math.
         uint256 weightedMathFactor = 1e4;
-        minSwapAmountTokenA = (
+        swapLimits.minTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? weightedMathFactor * tokenAMinTradeAmount
                 : weightedMathFactor * tokenACalculatedNotZero
         );
-        minSwapAmountTokenB = (
+        swapLimits.minTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
                 ? weightedMathFactor * tokenBMinTradeAmount
                 : weightedMathFactor * tokenBCalculatedNotZero
@@ -133,7 +137,9 @@ contract E2eSwapRateProviderWeightedTest is
 
         // 20% of initial liquidity to make sure weighted math ratios are respected.
         // We cannot trade more than 30% of pool liquidity.
-        maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(20e16);
-        maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(20e16);
+        swapLimits.maxTokenA = poolInitAmountTokenA.mulDown(20e16);
+        swapLimits.maxTokenB = poolInitAmountTokenB.mulDown(20e16);
+
+        return swapLimits;
     }
 }

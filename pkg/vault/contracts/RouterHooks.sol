@@ -2,26 +2,22 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { RouterWethLib } from "./lib/RouterWethLib.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 /**
- * @notice Base Router with hooks for swaps and liquidity operations via Vault.
+ * @notice Base Router with hooks for swaps and liquidity operations via the Vault.
  * @dev Implements hooks for init, add liquidity, remove liquidity, and swaps.
  */
-contract RouterHooks is RouterCommon {
-    using Address for address payable;
+abstract contract RouterHooks is RouterCommon {
     using RouterWethLib for IWETH;
     using SafeCast for *;
 
@@ -57,12 +53,12 @@ contract RouterHooks is RouterCommon {
         );
 
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
-
             if (amountIn == 0) {
                 continue;
             }
+
+            IERC20 token = params.tokens[i];
 
             // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
@@ -337,17 +333,7 @@ contract RouterHooks is RouterCommon {
             revert SwapDeadline();
         }
 
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _vault.swap(
-            VaultSwapParams({
-                kind: params.kind,
-                pool: params.pool,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
-                amountGivenRaw: params.amountGiven,
-                limitRaw: params.limit,
-                userData: params.userData
-            })
-        );
+        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
 

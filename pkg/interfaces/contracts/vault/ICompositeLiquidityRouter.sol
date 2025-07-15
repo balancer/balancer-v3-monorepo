@@ -30,8 +30,7 @@ interface ICompositeLiquidityRouter {
      * the "parent" pool, and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
-     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or
-     * used as a standard ERC20
+     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
      * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
@@ -54,14 +53,11 @@ interface ICompositeLiquidityRouter {
      * the "parent" pool, and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
-     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or
-     * used as a standard ERC20
+     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
      * @param maxAmountsIn Maximum amounts of underlying/wrapped tokens in, sorted in token registration order
-     * wrapped tokens in the pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
-     * @return tokensIn Actual tokens added to the pool
      * @return amountsIn Actual amounts of tokens added to the pool
      */
     function addLiquidityProportionalToERC4626Pool(
@@ -71,19 +67,17 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (address[] memory tokensIn, uint256[] memory amountsIn);
+    ) external payable returns (uint256[] memory amountsIn);
 
     /**
      * @notice Remove proportional amounts of tokens from an ERC4626 pool, burning an exact pool token amount.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or
-     * used as a standard ERC20
+     * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of each token, corresponding to `tokensOut`
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
-     * @return tokensOut Actual tokens received
      * @return amountsOut Actual amounts of tokens received
      */
     function removeLiquidityProportionalFromERC4626Pool(
@@ -93,14 +87,13 @@ interface ICompositeLiquidityRouter {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (address[] memory tokensOut, uint256[] memory amountsOut);
+    ) external payable returns (uint256[] memory amountsOut);
 
     /**
      * @notice Queries an `addLiquidityUnbalancedToERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or
-     * used as a standard ERC20
+     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
      * @param exactAmountsIn Exact amounts of underlying/wrapped tokens in, sorted in token registration order
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
@@ -118,12 +111,10 @@ interface ICompositeLiquidityRouter {
      * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or
-     * used as a standard ERC20
+     * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
-     * @return tokensIn Expected tokens added to the pool
      * @return amountsIn Expected amounts of tokens added to the pool
      */
     function queryAddLiquidityProportionalToERC4626Pool(
@@ -132,18 +123,16 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountOut,
         address sender,
         bytes memory userData
-    ) external returns (address[] memory tokensIn, uint256[] memory amountsIn);
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
      * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
      * @param pool Address of the liquidity pool
-     * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or
-     * used as a standard ERC20
+     * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the query
-     * @return tokensOut Expected tokens to receive
      * @return amountsOut Expected amounts of tokens to receive
      */
     function queryRemoveLiquidityProportionalFromERC4626Pool(
@@ -152,5 +141,5 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountIn,
         address sender,
         bytes memory userData
-    ) external returns (address[] memory tokensOut, uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 }
