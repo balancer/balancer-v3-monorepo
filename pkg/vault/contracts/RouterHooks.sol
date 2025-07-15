@@ -26,7 +26,7 @@ contract RouterHooks is RouterCommon {
     using SafeCast for *;
 
     /**
-     * @notice The sender does not transfer the correct amount of tokens to the Vault.
+     * @notice The sender has not transferred the correct amount of tokens to the Vault.
      * @param token The address of the token that was expected to be transferred.
      */
     error InsufficientPayment(IERC20 token);
