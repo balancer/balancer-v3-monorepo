@@ -31,7 +31,7 @@ interface IAggregatorRouter is IRouterQueries {
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn);
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @notice Adds liquidity to a pool with arbitrary token amounts.
@@ -46,7 +46,7 @@ interface IAggregatorRouter is IRouterQueries {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountOut);
+    ) external returns (uint256 bptAmountOut);
 
     /**
      * @notice Adds liquidity to a pool in a single token, receiving an exact amount of pool tokens.
@@ -63,7 +63,7 @@ interface IAggregatorRouter is IRouterQueries {
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 amountIn);
+    ) external returns (uint256 amountIn);
 
     /**
      * @notice Adds liquidity to a pool by donating the amounts in (no BPT out).
@@ -72,7 +72,7 @@ interface IAggregatorRouter is IRouterQueries {
      * @param amountsIn Amounts of tokens to be donated, sorted in token registration order
      * @param userData Additional (optional) data sent with the request to donate liquidity
      */
-    function donate(address pool, uint256[] memory amountsIn, bytes memory userData) external payable;
+    function donate(address pool, uint256[] memory amountsIn, bytes memory userData) external;
 
     /**
      * @notice Adds liquidity to a pool with a custom request.
@@ -92,7 +92,7 @@ interface IAggregatorRouter is IRouterQueries {
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+    ) external returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -111,7 +111,7 @@ interface IAggregatorRouter is IRouterQueries {
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     /**
      * @notice Removes liquidity from a pool via a single token, burning an exact pool token amount.
@@ -128,7 +128,7 @@ interface IAggregatorRouter is IRouterQueries {
         IERC20 tokenOut,
         uint256 minAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 amountOut);
+    ) external returns (uint256 amountOut);
 
     /**
      * @notice Removes liquidity from a pool via a single token, specifying the exact amount of tokens to receive.
@@ -145,7 +145,7 @@ interface IAggregatorRouter is IRouterQueries {
         IERC20 tokenOut,
         uint256 exactAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountIn);
+    ) external returns (uint256 bptAmountIn);
 
     /**
      * @notice Removes liquidity from a pool with a custom request.
@@ -165,7 +165,7 @@ interface IAggregatorRouter is IRouterQueries {
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
+    ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
 
     /**
      * @notice Removes liquidity proportionally, burning an exact pool token amount.
@@ -179,7 +179,7 @@ interface IAggregatorRouter is IRouterQueries {
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                        Swaps
@@ -204,7 +204,7 @@ interface IAggregatorRouter is IRouterQueries {
         uint256 minAmountOut,
         uint256 deadline,
         bytes calldata userData
-    ) external payable returns (uint256 amountOut);
+    ) external returns (uint256 amountOut);
 
     /**
      * @notice Executes a swap operation specifying an exact output token amount.
@@ -225,5 +225,5 @@ interface IAggregatorRouter is IRouterQueries {
         uint256 maxAmountIn,
         uint256 deadline,
         bytes calldata userData
-    ) external payable returns (uint256 amountIn);
+    ) external returns (uint256 amountIn);
 }

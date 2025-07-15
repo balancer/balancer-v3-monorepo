@@ -47,7 +47,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
+    ) external saveSender(msg.sender) returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -73,7 +73,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256 bptAmountOut) {
+    ) external saveSender(msg.sender) returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -100,7 +100,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256 amountIn) {
+    ) external saveSender(msg.sender) returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
@@ -129,11 +129,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
     }
 
     /// @inheritdoc IAggregatorRouter
-    function donate(
-        address pool,
-        uint256[] memory amountsIn,
-        bytes memory userData
-    ) external payable saveSender(msg.sender) {
+    function donate(address pool, uint256[] memory amountsIn, bytes memory userData) external saveSender(msg.sender) {
         _vault.unlock(
             abi.encodeCall(
                 RouterHooks.addLiquidityHook,
@@ -158,7 +154,6 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         bytes memory userData
     )
         external
-        payable
         saveSender(msg.sender)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
@@ -192,7 +187,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
+    ) external saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -219,7 +214,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         IERC20 tokenOut,
         uint256 minAmountOut,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256 amountOut) {
+    ) external saveSender(msg.sender) returns (uint256 amountOut) {
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenOut,
@@ -254,7 +249,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         IERC20 tokenOut,
         uint256 exactAmountOut,
         bytes memory userData
-    ) external payable saveSender(msg.sender) returns (uint256 bptAmountIn) {
+    ) external saveSender(msg.sender) returns (uint256 bptAmountIn) {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
@@ -286,7 +281,6 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         bytes memory userData
     )
         external
-        payable
         saveSender(msg.sender)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
@@ -315,7 +309,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
-    ) external payable returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -340,7 +334,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256 minAmountOut,
         uint256 deadline,
         bytes calldata userData
-    ) public payable saveSender(msg.sender) returns (uint256) {
+    ) public saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -373,7 +367,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256 maxAmountIn,
         uint256 deadline,
         bytes calldata userData
-    ) public payable saveSender(msg.sender) returns (uint256) {
+    ) public saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
