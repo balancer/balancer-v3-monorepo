@@ -14,7 +14,7 @@ import { RouterWethLib } from "./lib/RouterWethLib.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 /**
- * @notice Base Router with hooks for swaps and liquidity operations via the Vault.
+ * @notice Base Router contract with hooks for swaps and liquidity operations via the Vault.
  * @dev Implements hooks for init, add liquidity, remove liquidity, and swaps.
  */
 abstract contract RouterHooks is RouterCommon {
@@ -38,6 +38,10 @@ abstract contract RouterHooks is RouterCommon {
     ) RouterCommon(vault, weth, permit2, routerVersion) {
         _isAggregator = isAggregator;
     }
+
+    /***************************************************************************
+                                   Initialize
+    ***************************************************************************/
 
     /**
      * @notice Hook for initialization.
@@ -84,6 +88,10 @@ abstract contract RouterHooks is RouterCommon {
         // Return ETH dust.
         _returnEth(params.sender);
     }
+
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
 
     /**
      * @notice Hook for adding liquidity.
@@ -184,6 +192,10 @@ abstract contract RouterHooks is RouterCommon {
             })
         );
     }
+
+    /***************************************************************************
+                                   Remove Liquidity
+    ***************************************************************************/
 
     /**
      * @notice Hook for removing liquidity.
@@ -334,6 +346,10 @@ abstract contract RouterHooks is RouterCommon {
         uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
     }
+
+    /***************************************************************************
+                                   Swaps
+    ***************************************************************************/
 
     /**
      * @notice Hook for swaps.
