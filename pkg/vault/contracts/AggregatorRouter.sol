@@ -11,8 +11,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { RouterHooks } from "./RouterHooks.sol";
 import { RouterQueries } from "./RouterQueries.sol";
+import { RouterCommon } from "./RouterCommon.sol";
+import { RouterHooks } from "./RouterHooks.sol";
 
 /**
  * @notice Entrypoint for aggregators who want to swap without the standard permit2 payment logic.
