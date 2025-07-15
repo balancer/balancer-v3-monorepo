@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
+import { IVault } from "./IVault.sol";
 import "./RouterTypes.sol";
 
 import { IWETH } from "../solidity-utils/misc/IWETH.sol";
@@ -20,6 +21,9 @@ interface IRouterCommon {
 
     /// @notice Returns Permit2 contract address.
     function getPermit2() external view returns (IPermit2);
+
+    /// @notice Returns Vault contract address.
+    function getVault() external view returns (IVault);
 
     struct PermitApproval {
         address token;
