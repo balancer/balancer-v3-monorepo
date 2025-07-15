@@ -19,9 +19,10 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new Stable Pool oracle was created.
      * @param pool The address of the Stable Pool
+     * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The address of the deployed oracle
      */
-    event StableLPOracleCreated(IStablePool indexed pool, ILPOracleBase oracle);
+    event StableLPOracleCreated(IStablePool indexed pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
 
     constructor(IVault vault, uint256 oracleVersion) LPOracleFactoryBase(vault, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
@@ -33,6 +34,6 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
         AggregatorV3Interface[] memory feeds
     ) internal override returns (ILPOracleBase oracle) {
         oracle = new StableLPOracle(vault, IStablePool(address(pool)), feeds, _oracleVersion);
-        emit StableLPOracleCreated(IStablePool(address(pool)), oracle);
+        emit StableLPOracleCreated(IStablePool(address(pool)), feeds, oracle);
     }
 }

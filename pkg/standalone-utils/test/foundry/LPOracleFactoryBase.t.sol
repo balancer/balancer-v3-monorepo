@@ -28,11 +28,6 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
             IAuthentication(address(_factory)).getActionId(ILPOracleFactoryBase.disable.selector),
             admin
         );
-
-        authorizer.grantRole(
-            IAuthentication(address(_factory)).getActionId(ILPOracleFactoryBase.disableOracleFromPool.selector),
-            admin
-        );
     }
 
     function testCreateOracle() external {
@@ -41,8 +36,37 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
         ILPOracleBase oracle = _factory.create(pool, feeds);
 
-        assertEq(address(oracle), address(_factory.getOracle(IBasePool(address(pool)))), "Oracle address mismatch");
+        assertEq(
+            address(oracle),
+            address(_factory.getOracle(IBasePool(address(pool)), feeds)),
+            "Oracle address mismatch"
+        );
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
+    }
+
+    function testCreateOracleDifferentFeeds() external {
+        IBasePool pool = _createAndInitPool();
+        AggregatorV3Interface[] memory feeds = _createFeeds(pool);
+
+        ILPOracleBase oracle = _factory.create(pool, feeds);
+
+        assertEq(
+            address(oracle),
+            address(_factory.getOracle(IBasePool(address(pool)), feeds)),
+            "Oracle address mismatch"
+        );
+        assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
+
+        AggregatorV3Interface[] memory feeds2 = _createFeeds(pool);
+
+        ILPOracleBase oracle2 = _factory.create(pool, feeds2);
+
+        assertEq(
+            address(oracle2),
+            address(_factory.getOracle(IBasePool(address(pool)), feeds2)),
+            "Oracle address mismatch"
+        );
+        assertTrue(_factory.isOracleFromFactory(oracle2), "Oracle should be from factory");
     }
 
     function testCreateOracleRevertsWhenOracleAlreadyExists() external {
@@ -52,66 +76,11 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         ILPOracleBase oracle = _factory.create(pool, feeds);
 
         // Since there already is an oracle for the pool in the factory, reverts with the correct parameters.
-        vm.expectRevert(abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, oracle));
+        vm.expectRevert(abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, feeds, oracle));
         _factory.create(pool, feeds);
     }
 
-    function testDisableOracleFromPool() external {
-        IBasePool pool = _createAndInitPool();
-        AggregatorV3Interface[] memory feeds = _createFeeds(pool);
-
-        ILPOracleBase oracle = _factory.create(pool, feeds);
-
-        // Since there already is an oracle for the pool in the factory, reverts with the correct parameters.
-        vm.expectRevert(abi.encodeWithSelector(ILPOracleFactoryBase.OracleAlreadyExists.selector, pool, oracle));
-        _factory.create(pool, feeds);
-
-        vm.prank(admin);
-        _factory.disableOracleFromPool(pool);
-
-        assertEq(address(_factory.getOracle(pool)), address(0), "Oracle should not exist");
-
-        ILPOracleBase newOracle = _factory.create(pool, feeds);
-
-        assertEq(address(_factory.getOracle(pool)), address(newOracle), "Oracle should have been created");
-    }
-
-    function testDisableOracleFromPoolRevertsWhenOracleDoesNotExist() external {
-        IBasePool pool = _createAndInitPool();
-
-        // The oracle does not exist, so it should revert.
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(ILPOracleFactoryBase.OracleDoesNotExists.selector, pool));
-        _factory.disableOracleFromPool(pool);
-    }
-
-    function testDisableOracleFromPoolRevertsWhenFactoryIsDisabled() external {
-        IBasePool pool = _createAndInitPool();
-        AggregatorV3Interface[] memory feeds = _createFeeds(pool);
-
-        _factory.create(pool, feeds);
-
-        vm.prank(admin);
-        _factory.disable();
-
-        // Since the oracle factory is disabled, it should not be possible to disable oracles.
-        vm.prank(admin);
-        vm.expectRevert(ILPOracleFactoryBase.OracleFactoryDisabled.selector);
-        _factory.disableOracleFromPool(pool);
-    }
-
-    function testDisableOracleFromPoolIsAuthenticated() external {
-        IBasePool pool = _createAndInitPool();
-        AggregatorV3Interface[] memory feeds = _createFeeds(pool);
-
-        ILPOracleBase oracle = _factory.create(pool, feeds);
-
-        // Since the caller is not the admin, it should revert.
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        _factory.disableOracleFromPool(pool);
-    }
-
-    function testDisableIsDisabled() public {
+    function testDisable() public {
         vm.prank(admin);
         _factory.disable();
 

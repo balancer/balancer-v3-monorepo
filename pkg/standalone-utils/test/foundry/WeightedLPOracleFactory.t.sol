@@ -51,6 +51,7 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
         vm.expectEmit();
         emit WeightedLPOracleFactory.WeightedLPOracleCreated(
             IWeightedPool(address(pool)),
+            feeds,
             IWeightedLPOracle(address(oracle))
         );
         _factory.create(pool, feeds);

@@ -20,9 +20,10 @@ contract WeightedLPOracleFactory is LPOracleFactoryBase {
     /**
      * @notice A new Weighted Pool oracle was created.
      * @param pool The address of the Weighted Pool
+     * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The address of the deployed oracle
      */
-    event WeightedLPOracleCreated(IWeightedPool indexed pool, IWeightedLPOracle oracle);
+    event WeightedLPOracleCreated(IWeightedPool indexed pool, AggregatorV3Interface[] feeds, IWeightedLPOracle oracle);
 
     constructor(IVault vault, uint256 oracleVersion) LPOracleFactoryBase(vault, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
@@ -40,6 +41,6 @@ contract WeightedLPOracleFactory is LPOracleFactoryBase {
             _oracleVersion
         );
         oracle = ILPOracleBase(address(weightedOracle));
-        emit WeightedLPOracleCreated(IWeightedPool(address(pool)), weightedOracle);
+        emit WeightedLPOracleCreated(IWeightedPool(address(pool)), feeds, weightedOracle);
     }
 }

@@ -14,9 +14,10 @@ interface ILPOracleFactoryBase {
     /**
      * @notice Oracle already exists for the given pool.
      * @param pool The pool that already has an oracle
+     * @param feeds The array of price feeds for the tokens in the pool
      * @param oracle The oracle that already exists for the pool
      */
-    error OracleAlreadyExists(IBasePool pool, ILPOracleBase oracle);
+    error OracleAlreadyExists(IBasePool pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
 
     /// @notice Oracle factory is disabled.
     error OracleFactoryDisabled();
@@ -24,8 +25,9 @@ interface ILPOracleFactoryBase {
     /**
      * @notice Oracle does not exist for the given pool.
      * @param pool The pool that does not have an oracle
+     * @param feeds The array of price feeds for the tokens in the pool
      */
-    error OracleDoesNotExists(IBasePool pool);
+    error OracleDoesNotExists(IBasePool pool, AggregatorV3Interface[] feeds);
 
     /**
      * @notice Creates a new oracle for the given pool.
@@ -38,9 +40,10 @@ interface ILPOracleFactoryBase {
     /**
      * @notice Gets the oracle for the given pool.
      * @param pool The address of the pool
+     * @param feeds The array of price feeds for the tokens in the pool
      * @return oracle The address of the oracle for the pool
      */
-    function getOracle(IBasePool pool) external view returns (ILPOracleBase oracle);
+    function getOracle(IBasePool pool, AggregatorV3Interface[] memory feeds) external view returns (ILPOracleBase oracle);
 
     /**
      * @notice Checks whether the given oracle was created by this factory.
@@ -55,12 +58,4 @@ interface ILPOracleFactoryBase {
      * oracles are still usable.
      */
     function disable() external;
-
-    /**
-     * @notice Disables the oracle for the given pool.
-     * @dev A disabled oracle cannot be re-enabled. This is useful if a feed is corrupted/not valid and we need to
-     * create another oracle for a given pool.
-     * @param pool The address of the pool
-     */
-    function disableOracleFromPool(IBasePool pool) external;
 }

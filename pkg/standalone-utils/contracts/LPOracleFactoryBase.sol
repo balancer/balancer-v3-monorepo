@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
 
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
@@ -19,10 +20,12 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * oracle, depending on the pool.
  */
 abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication {
+    using Arrays for *;
+
     uint256 internal _oracleVersion;
     bool internal _isDisabled;
 
-    mapping(IBasePool pool => ILPOracleBase oracle) internal _oracles;
+    mapping(bytes32 poolAndFeeds => ILPOracleBase oracle) internal _oracles;
     mapping(ILPOracleBase oracle => bool creationFlag) internal _isOracleFromFactory;
 
     constructor(IVault vault, uint256 oracleVersion) SingletonAuthentication(vault) {
@@ -31,12 +34,14 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
 
     /// @inheritdoc ILPOracleFactoryBase
     function create(IBasePool pool, AggregatorV3Interface[] memory feeds) external returns (ILPOracleBase oracle) {
-        if (address(_oracles[pool]) != address(0)) {
-            revert OracleAlreadyExists(pool, _oracles[pool]);
-        }
-
         if (_isDisabled) {
             revert OracleFactoryDisabled();
+        }
+
+        bytes32 poolAndFeeds = _getHashPoolAndFeeds(pool, feeds);
+
+        if (address(_oracles[poolAndFeeds]) != address(0)) {
+            revert OracleAlreadyExists(pool, feeds, _oracles[poolAndFeeds]);
         }
 
         IVault vault = getVault();
@@ -45,13 +50,20 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
         InputHelpers.ensureInputLengthMatch(tokens.length, feeds.length);
 
         oracle = _create(vault, pool, feeds);
-        _oracles[pool] = oracle;
+        _oracles[poolAndFeeds] = oracle;
         _isOracleFromFactory[oracle] = true;
     }
 
     /// @inheritdoc ILPOracleFactoryBase
-    function getOracle(IBasePool pool) external view returns (ILPOracleBase oracle) {
-        oracle = ILPOracleBase(address(_oracles[pool]));
+    function getOracle(
+        IBasePool pool,
+        AggregatorV3Interface[] memory feeds
+    ) external view returns (ILPOracleBase oracle) {
+        bytes32 poolAndFeeds = _getHashPoolAndFeeds(pool, feeds);
+        oracle = ILPOracleBase(address(_oracles[poolAndFeeds]));
+        if (address(oracle) == address(0)) {
+            revert OracleDoesNotExists(pool, feeds);
+        }
     }
 
     /// @inheritdoc ILPOracleFactoryBase
@@ -64,19 +76,16 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
         _isDisabled = true;
     }
 
-    /// @inheritdoc ILPOracleFactoryBase
-    function disableOracleFromPool(IBasePool pool) external authenticate {
-        if (_isDisabled) {
-            revert OracleFactoryDisabled();
+    function _getHashPoolAndFeeds(
+        IBasePool pool,
+        AggregatorV3Interface[] memory feeds
+    ) internal view returns (bytes32) {
+        address[] memory feedAddresses = new address[](feeds.length);
+        for (uint256 i = 0; i < feeds.length; i++) {
+            feedAddresses[i] = address(feeds[i]);
         }
-
-        ILPOracleBase oracle = _oracles[pool];
-
-        if (address(oracle) == address(0)) {
-            revert OracleDoesNotExists(pool);
-        }
-
-        _oracles[pool] = ILPOracleBase(address(0));
+        feedAddresses = feedAddresses.sort();
+        return keccak256(abi.encode(pool, feedAddresses));
     }
 
     function _create(

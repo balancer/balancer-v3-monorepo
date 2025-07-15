@@ -46,7 +46,7 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
         vm.revertTo(snapshot);
 
         vm.expectEmit();
-        emit StableLPOracleFactory.StableLPOracleCreated(IStablePool(address(pool)), oracle);
+        emit StableLPOracleFactory.StableLPOracleCreated(IStablePool(address(pool)), feeds, oracle);
         _factory.create(pool, feeds);
     }
 
