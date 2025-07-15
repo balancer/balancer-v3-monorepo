@@ -27,7 +27,7 @@ contract RouterHooks is RouterCommon {
 
     /**
      * @notice The sender has not transferred the correct amount of tokens to the Vault.
-     * @param token The address of the token that was expected to be transferred.
+     * @param token The address of the token that should have been transferred
      */
     error InsufficientPayment(IERC20 token);
 
