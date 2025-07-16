@@ -79,7 +79,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
     function _getHashPoolAndFeeds(
         IBasePool pool,
         AggregatorV3Interface[] memory feeds
-    ) internal view returns (bytes32) {
+    ) internal pure returns (bytes32) {
         address[] memory feedAddresses = new address[](feeds.length);
         for (uint256 i = 0; i < feeds.length; i++) {
             feedAddresses[i] = address(feeds[i]);
