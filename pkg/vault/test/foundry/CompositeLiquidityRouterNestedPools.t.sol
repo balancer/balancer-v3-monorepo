@@ -137,11 +137,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.wethIdx] = wethAmount;
         amountsIn[vars.wstethIdx] = wstEthAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -254,6 +260,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPool,
             tokensIn,
             amountsIn,
+            new address[](0), // No tokens to wrap
             minBptOut,
             false,
             bytes("")
@@ -363,11 +370,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPoolWithoutWrapper,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -472,10 +485,15 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool{
             value: wethAmount + (forceEthLeftover ? 1e18 : 0)
-        }(parentPoolWithoutWrapper, tokensIn, amountsIn, minBptOut, true, bytes(""));
+        }(parentPoolWithoutWrapper, tokensIn, amountsIn, tokensToWrap, minBptOut, true, bytes(""));
 
         _fillNestedPoolTestLocalsAfter(vars);
         uint256 mintedChildPoolERC4626Bpt = vars.childPoolERC4626After.totalSupply -
@@ -578,11 +596,16 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
 
+        address[] memory tokensToWrap = new address[](2);
+        tokensToWrap[0] = address(waUSDC);
+        tokensToWrap[1] = address(waWETH);
+
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPoolWithoutWrapper,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -664,6 +687,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testAddLiquidityNestedERC4626InParentWithUnderlying__Fuzz(
+        //asdf
         uint256 daiAmount,
         uint256 usdcAmount,
         uint256 wethAmount
@@ -690,11 +714,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -806,6 +836,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
+            new address[](0), // No tokens to wrap
             minBptOut,
             false,
             bytes("")
@@ -925,11 +956,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         _prankStaticCall();
         uint256 queryBptOut = compositeLiquidityRouter.queryAddLiquidityUnbalancedNestedPool(
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             lp,
             bytes("")
         );
@@ -939,6 +976,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -976,11 +1014,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.usdcIdx] = usdcAmount;
         amountsIn[vars.wethIdx] = wethAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         vm.prank(lp);
         uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -1098,12 +1142,18 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.wethIdx] = wethAmount;
         amountsIn[vars.wstethIdx] = wstEthAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BptAmountOutBelowMin.selector, expectedBptOut, minBptOut));
         compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -1131,6 +1181,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.wethIdx] = wethAmount;
         amountsIn[vars.wstethIdx] = wstEthAmount;
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         vm.prank(lp);
         // Since tokensIn and amountsIn have different lengths, revert.
         vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
@@ -1138,6 +1193,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPool,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -1164,6 +1220,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensIn[vars.wstethIdx] = address(wsteth);
         tokensIn[4] = address(newToken);
 
+        address[] memory tokensToWrap = new address[](3);
+        tokensToWrap[0] = address(waDAI);
+        tokensToWrap[1] = address(waUSDC);
+        tokensToWrap[2] = address(waWETH);
+
         uint256[] memory amountsIn = new uint256[](5);
         amountsIn[vars.daiIdx] = daiAmount;
         amountsIn[vars.usdcIdx] = usdcAmount;
@@ -1183,6 +1244,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             parentPool,
             tokensIn,
             amountsIn,
+            tokensToWrap,
             minBptOut,
             false,
             bytes("")
@@ -1236,7 +1298,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             exactBptIn,
             tokensOut,
             expectedAmountsOut,
-            new address[](0), // wrapped tokens to unwrap
+            new address[](0), // No tokens to unwrap
             false,
             bytes("")
         );
@@ -1403,7 +1465,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             exactBptIn,
             tokensOut,
             expectedAmountsOut,
-            new address[](0), // wrapped tokens to unwrap
+            new address[](0), // No tokens to unwrap
             true,
             bytes("")
         );
@@ -2114,7 +2176,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             exactBptIn,
             tokensOut,
             minAmountsOut,
-            new address[](0), // wrapped tokens to unwrap
+            new address[](0), // No tokens to unwrap
             false,
             bytes("")
         );
@@ -2151,7 +2213,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             exactBptIn,
             tokensOut,
             minAmountsOut,
-            new address[](0), // wrapped tokens to unwrap
+            new address[](0), // No tokens to unwrap
             false,
             bytes("")
         );
@@ -2196,7 +2258,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             exactBptIn,
             tokensOut,
             minAmountsOut,
-            new address[](0), // wrapped tokens to unwrap
+            new address[](0), // No tokens to unwrap
             false,
             bytes("")
         );
@@ -2243,7 +2305,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             exactBptIn,
             tokensOut,
             minAmountsOut,
-            new address[](0), // wrapped tokens to unwrap
+            new address[](0), // No tokens to unwrap
             false,
             bytes("")
         );
