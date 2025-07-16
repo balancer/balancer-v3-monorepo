@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
 
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
@@ -20,8 +19,6 @@ import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/Singl
  * oracle, depending on the pool.
  */
 abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication {
-    using Arrays for *;
-
     uint256 internal _oracleVersion;
     bool internal _isDisabled;
 
