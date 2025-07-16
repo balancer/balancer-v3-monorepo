@@ -316,6 +316,86 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         _checkPricesAndInvariant(amplificationParameter, marketPriceBalancesScaled18, D, totalTokens, pricesInt);
     }
 
+    function testComputeMarketPriceBalancesEdges__Fuzz(
+        uint256 amplificationParameter,
+        uint256[3] memory poolInitAmountsRaw,
+        uint256[3] memory pricesRaw
+    ) public {
+        uint256 totalTokens = 3;
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
+
+        uint256[] memory prices = new uint256[](totalTokens);
+        int256[] memory pricesInt = new int256[](totalTokens);
+        IStablePool pool;
+        StableLPOracleMock oracle;
+        {
+            uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+            address[] memory _tokens = new address[](totalTokens);
+
+            for (uint256 i = 0; i < totalTokens; i++) {
+                _tokens[i] = address(sortedTokens[i]);
+                uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+                poolInitAmounts[i] =
+                    bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
+                    (10 ** (18 - tokenDecimals));
+                // Close prices, but large disparity between pool balances
+                prices[i] = bound(pricesRaw[i], 1e18, 1e18 + 1e15) / (10 ** (18 - tokenDecimals));
+                uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
+                pricesInt[i] = int256(price);
+            }
+
+            pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+            (oracle, ) = deployOracle(pool);
+        }
+
+        uint256 D = _getInvariant(amplificationParameter * StableMath.AMP_PRECISION, address(pool));
+
+        uint256[] memory marketPriceBalancesScaled18 = oracle.computeMarketPriceBalances(D, pricesInt);
+        _checkPricesAndInvariant(amplificationParameter, marketPriceBalancesScaled18, D, totalTokens, pricesInt);
+    }
+
+    function testComputeMarketPriceBalancesSpecific() public {
+        uint256 totalTokens = 2;
+        uint256 amplificationParameter = 5000;
+
+        uint256[] memory prices = new uint256[](totalTokens);
+        int256[] memory pricesInt = new int256[](totalTokens);
+        IStablePool pool;
+        StableLPOracleMock oracle;
+        {
+            uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+            address[] memory _tokens = new address[](totalTokens);
+
+            for (uint256 i = 0; i < totalTokens; i++) {
+                _tokens[i] = address(sortedTokens[i]);
+                uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+                console.log('token decimals: ', tokenDecimals);
+                poolInitAmounts[i] = (10e6 * FixedPoint.ONE) / (10 ** (18 - tokenDecimals));
+                // Close prices, but large disparity between pool balances
+                prices[i] = (i == 0 ? 1e18 : 1e18 + 1e12) / (10 ** (18 - tokenDecimals));
+                uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
+                pricesInt[i] = int256(price);
+            }
+
+            pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+            (oracle, ) = deployOracle(pool);
+
+            uint256 D = _getInvariant(amplificationParameter * StableMath.AMP_PRECISION, address(pool));
+            console.log('Initial invariant: \t%e', D);
+
+            vm.prank(alice);
+            router.swapSingleTokenExactOut(address(pool), IERC20(_tokens[0]), IERC20(_tokens[1]), poolInitAmounts[1] * 8999 / 9000, MAX_UINT128, MAX_UINT256, false, "");
+        }
+
+        uint256 D = _getInvariant(amplificationParameter * StableMath.AMP_PRECISION, address(pool));
+        console.log('Invariant after swap: \t%e', D);
+
+        uint256[] memory marketPriceBalancesScaled18 = oracle.computeMarketPriceBalances(D, pricesInt);
+        console.log('Market balances[0]: %e', marketPriceBalancesScaled18[0]);
+        console.log('Market balances[1]: %e', marketPriceBalancesScaled18[1]);
+        _checkPricesAndInvariant(amplificationParameter, marketPriceBalancesScaled18, D, totalTokens, pricesInt);
+    }
+
     function testLatestRoundData__Fuzz(
         uint256 totalTokens,
         uint256 amplificationParameter,
@@ -395,7 +475,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         } catch {
             vm.assume(false);
         }
-
+        console.log('New invariant: \t%e', newD);
         assertApproxEqRel(D, newD, 1e12, "Invariant does not match");
 
         uint256 amountInScaled18 = balancesForPricesScaled18[0].mulDown(0.00001e16); // 0.00001% of first token balance.
@@ -422,6 +502,9 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
     function _getInvariant(uint256 amplificationParameter, address pool) private view returns (uint256 invariant) {
         (, , , uint256[] memory liveBalancesScaled18) = vault.getPoolTokenInfo(pool);
+        console.log('Current live balances[0]: %e', liveBalancesScaled18[0]);
+        console.log('Current live balances[1]: %e', liveBalancesScaled18[1]);
+
         invariant = StableMath.computeInvariant(amplificationParameter, liveBalancesScaled18);
     }
 
