@@ -39,7 +39,10 @@ interface ILPOracleFactoryBase {
      * @param feeds The array of price feeds for the tokens in the pool
      * @return oracle The address of the oracle for the pool
      */
-    function getOracle(IBasePool pool, AggregatorV3Interface[] memory feeds) external view returns (ILPOracleBase oracle);
+    function getOracle(
+        IBasePool pool,
+        AggregatorV3Interface[] memory feeds
+    ) external view returns (ILPOracleBase oracle);
 
     /**
      * @notice Checks whether the given oracle was created by this factory.
