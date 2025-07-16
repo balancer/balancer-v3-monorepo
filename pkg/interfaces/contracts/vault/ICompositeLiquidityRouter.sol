@@ -155,11 +155,15 @@ interface ICompositeLiquidityRouter {
     /**
      * @notice Adds liquidity unbalanced to a nested pool.
      * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not well-defined, and must be specified by the caller.
+     * multiple pools involved, the token order is not well-defined, and must be specified by the caller. If the parent
+     * or nested pools contain ERC4626 tokens that appear in the `tokensToWrap` list, they will be wrapped and their
+     * underlying tokens pulled as input, and expected to appear in `tokensIn`. Otherwise, they will be treated as
+     * regular tokens.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param tokensIn An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
      * @param exactAmountsIn An array with the amountIn of each token, sorted in the same order as tokensIn
+     * @param tokensToWrap A list of ERC4626 tokens which should be wrapped if encountered during pool traversal
      * @param minBptAmountOut Expected minimum amount of parent pool tokens to receive
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
@@ -169,6 +173,7 @@ interface ICompositeLiquidityRouter {
         address parentPool,
         address[] memory tokensIn,
         uint256[] memory exactAmountsIn,
+        address[] memory tokensToWrap,
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -179,6 +184,7 @@ interface ICompositeLiquidityRouter {
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param tokensIn An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
      * @param exactAmountsIn An array with the amountIn of each token, sorted in the same order as tokensIn
+     * @param tokensToWrap A list of ERC4626 tokens which should be wrapped if encountered during pool traversal
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
      * @return bptAmountOut The actual amount of parent pool tokens received
@@ -187,6 +193,7 @@ interface ICompositeLiquidityRouter {
         address parentPool,
         address[] memory tokensIn,
         uint256[] memory exactAmountsIn,
+        address[] memory tokensToWrap,
         address sender,
         bytes memory userData
     ) external returns (uint256 bptAmountOut);
