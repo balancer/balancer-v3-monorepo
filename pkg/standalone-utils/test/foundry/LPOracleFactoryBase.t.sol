@@ -44,6 +44,10 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         assertTrue(_factory.isOracleFromFactory(oracle), "Oracle should be from factory");
     }
 
+    function testGetNonExistentOracle() external view {
+        assertEq(address(_factory.getOracle(IBasePool(address(0x123)), new AggregatorV3Interface[](0))), address(0));
+    }
+
     function testCreateOracleDifferentFeeds() external {
         IBasePool pool = _createAndInitPool();
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
@@ -84,8 +88,13 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
         vm.prank(admin);
         _factory.disable();
 
-        vm.expectRevert(ILPOracleFactoryBase.OracleFactoryDisabled.selector);
+        vm.expectRevert(ILPOracleFactoryBase.OracleFactoryIsDisabled.selector);
         _factory.create(IBasePool(address(123)), new AggregatorV3Interface[](0));
+
+        // Revert the second time
+        vm.prank(admin);
+        vm.expectRevert(ILPOracleFactoryBase.OracleFactoryIsDisabled.selector);
+        _factory.disable();
     }
 
     function testDisableIsAuthenticated() public {

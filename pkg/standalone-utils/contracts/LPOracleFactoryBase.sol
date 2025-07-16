@@ -25,7 +25,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
     uint256 internal _oracleVersion;
     bool internal _isDisabled;
 
-    mapping(bytes32 poolAndFeeds => ILPOracleBase oracle) internal _oracles;
+    mapping(bytes32 oracleId => ILPOracleBase oracle) internal _oracles;
     mapping(ILPOracleBase oracle => bool creationFlag) internal _isOracleFromFactory;
 
     constructor(IVault vault, uint256 oracleVersion) SingletonAuthentication(vault) {
@@ -34,14 +34,12 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
 
     /// @inheritdoc ILPOracleFactoryBase
     function create(IBasePool pool, AggregatorV3Interface[] memory feeds) external returns (ILPOracleBase oracle) {
-        if (_isDisabled) {
-            revert OracleFactoryDisabled();
-        }
+        _ensureEnabled();
 
-        bytes32 poolAndFeeds = _getHashPoolAndFeeds(pool, feeds);
+        bytes32 oracleId = _computeOracleId(pool, feeds);
 
-        if (address(_oracles[poolAndFeeds]) != address(0)) {
-            revert OracleAlreadyExists(pool, feeds, _oracles[poolAndFeeds]);
+        if (address(_oracles[oracleId]) != address(0)) {
+            revert OracleAlreadyExists(pool, feeds, _oracles[oracleId]);
         }
 
         IVault vault = getVault();
@@ -50,7 +48,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
         InputHelpers.ensureInputLengthMatch(tokens.length, feeds.length);
 
         oracle = _create(vault, pool, feeds);
-        _oracles[poolAndFeeds] = oracle;
+        _oracles[oracleId] = oracle;
         _isOracleFromFactory[oracle] = true;
     }
 
@@ -59,11 +57,8 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
         IBasePool pool,
         AggregatorV3Interface[] memory feeds
     ) external view returns (ILPOracleBase oracle) {
-        bytes32 poolAndFeeds = _getHashPoolAndFeeds(pool, feeds);
-        oracle = ILPOracleBase(address(_oracles[poolAndFeeds]));
-        if (address(oracle) == address(0)) {
-            revert OracleDoesNotExists(pool, feeds);
-        }
+        bytes32 oracleId = _computeOracleId(pool, feeds);
+        oracle = ILPOracleBase(address(_oracles[oracleId]));
     }
 
     /// @inheritdoc ILPOracleFactoryBase
@@ -73,21 +68,31 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
 
     /// @inheritdoc ILPOracleFactoryBase
     function disable() external authenticate {
+        _ensureEnabled();
+
         _isDisabled = true;
+        emit OracleFactoryDisabled();
     }
 
-    function _getHashPoolAndFeeds(
-        IBasePool pool,
-        AggregatorV3Interface[] memory feeds
-    ) internal pure returns (bytes32) {
-        address[] memory feedAddresses = new address[](feeds.length);
-        for (uint256 i = 0; i < feeds.length; i++) {
-            feedAddresses[i] = address(feeds[i]);
-        }
-        feedAddresses = feedAddresses.sort();
+    function _computeOracleId(IBasePool pool, AggregatorV3Interface[] memory feeds) internal pure returns (bytes32) {
+        address[] memory feedAddresses = asAddress(feeds);
         return keccak256(abi.encode(pool, feedAddresses));
     }
 
+    function _ensureEnabled() internal view {
+        if (_isDisabled) {
+            revert OracleFactoryIsDisabled();
+        }
+    }
+
+    function asAddress(AggregatorV3Interface[] memory feeds) internal pure returns (address[] memory addresses) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly ("memory-safe") {
+            addresses := feeds
+        }
+    }
+
+    /// @dev Implementations of this function should also emit a specific event according to the oracle type.
     function _create(
         IVault vault,
         IBasePool pool,

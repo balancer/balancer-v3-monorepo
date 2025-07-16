@@ -11,6 +11,9 @@ import { ILPOracleBase } from "./ILPOracleBase.sol";
  * @notice Factory contract for deploying and managing pool oracles.
  */
 interface ILPOracleFactoryBase {
+    // @notice Emitted when a the factory is disabled.
+    event OracleFactoryDisabled();
+
     /**
      * @notice Oracle already exists for the given pool.
      * @param pool The pool that already has an oracle
@@ -20,14 +23,7 @@ interface ILPOracleFactoryBase {
     error OracleAlreadyExists(IBasePool pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
 
     /// @notice Oracle factory is disabled.
-    error OracleFactoryDisabled();
-
-    /**
-     * @notice Oracle does not exist for the given pool.
-     * @param pool The pool that does not have an oracle
-     * @param feeds The array of price feeds for the tokens in the pool
-     */
-    error OracleDoesNotExists(IBasePool pool, AggregatorV3Interface[] feeds);
+    error OracleFactoryIsDisabled();
 
     /**
      * @notice Creates a new oracle for the given pool.
