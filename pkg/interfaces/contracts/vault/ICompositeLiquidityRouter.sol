@@ -16,7 +16,12 @@ pragma solidity ^0.8.24;
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
  */
 interface ICompositeLiquidityRouter {
-    /// @notice `tokensOut` array does not have all the tokens from `expectedTokensOut`.
+    /**
+     * @notice The `tokensOut` array does not match the result of a liquidity operation.
+     * @dev It might be the wrong length, or contain an unexpected or repeated token.
+     * @param expectedTokensOut The token array passed in
+     * @param tokensOut The actual token array computed during the liquidity operation
+     */
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
 
     /***************************************************************************
@@ -189,12 +194,15 @@ interface ICompositeLiquidityRouter {
     /**
      * @notice Removes liquidity from a nested pool.
      * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not well-defined, and must be specified by the caller.
+     * multiple pools involved, the token order is not well-defined, and must be specified by the caller. If the parent
+     * or nested pools contain ERC4626 tokens that appear in the `tokensToUnwrap` list, they will be unwrapped and
+     * their underlying tokens sent to the output. Otherwise, they will be treated as regular tokens.
      *
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param exactBptAmountIn The exact amount of `parentPool` tokens provided
      * @param tokensOut An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
      * @param minAmountsOut An array with the minimum amountOut of each token, sorted in the same order as tokensOut
+     * @param tokensToUnwrap A list of ERC4626 tokens which should be unwrapped if encountered during pool traversal
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the operation
      * @return amountsOut An array with the actual amountOut of each token, sorted in the same order as tokensOut
@@ -204,6 +212,7 @@ interface ICompositeLiquidityRouter {
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
         uint256[] memory minAmountsOut,
+        address[] memory tokensToUnwrap,
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut);
@@ -213,6 +222,7 @@ interface ICompositeLiquidityRouter {
      * @param parentPool The address of the parent pool (which contains BPTs of other pools)
      * @param exactBptAmountIn The exact amount of `parentPool` tokens provided
      * @param tokensOut An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
+     * @param tokensToUnwrap A list of ERC4626 tokens which should be unwrapped if encountered during pool traversal
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param userData Additional (optional) data required for the operation
      * @return amountsOut An array with the expected amountOut of each token, sorted in the same order as tokensOut
@@ -221,6 +231,7 @@ interface ICompositeLiquidityRouter {
         address parentPool,
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
+        address[] memory tokensToUnwrap,
         address sender,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);

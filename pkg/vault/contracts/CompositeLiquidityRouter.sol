@@ -656,10 +656,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
         uint256[] memory minAmountsOut,
+        address[] memory tokensToUnwrap,
         bool wethIsEth,
         bytes memory userData
     ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
-        (amountsOut) = abi.decode(
+        amountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
                     CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook,
@@ -673,7 +674,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                             wethIsEth: wethIsEth,
                             userData: userData
                         }),
-                        tokensOut
+                        tokensOut,
+                        tokensToUnwrap
                     )
                 )
             ),
@@ -686,6 +688,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address parentPool,
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
+        address[] memory tokensToUnwrap,
         address sender,
         bytes memory userData
     ) external saveSender(sender) returns (uint256[] memory amountsOut) {
@@ -696,9 +699,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             userData
         );
 
-        (amountsOut) = abi.decode(
+        amountsOut = abi.decode(
             _vault.quote(
-                abi.encodeCall(CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook, (params, tokensOut))
+                abi.encodeCall(
+                    CompositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook,
+                    (params, tokensOut, tokensToUnwrap)
+                )
             ),
             (uint256[])
         );
@@ -708,7 +714,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function removeLiquidityProportionalNestedPoolHook(
         RemoveLiquidityHookParams calldata params,
-        address[] memory tokensOut
+        address[] memory tokensOut,
+        address[] memory tokensToUnwrap
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
 
@@ -726,24 +733,24 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         );
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
-            address childToken = address(parentPoolTokens[i]);
+            address parentPoolToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
-            CompositeTokenType childTokenType = _getCompositeTokenType(childToken);
+            CompositeTokenType parentPoolTokenType = _getCompositeTokenType(parentPoolToken);
 
-            if (childTokenType == CompositeTokenType.BPT) {
+            if (parentPoolTokenType == CompositeTokenType.BPT) {
                 // Token is a BPT, so remove liquidity from the child pool.
 
                 // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
                 // practice just use the existing credit).
-                _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountOut);
+                _vault.sendTo(IERC20(parentPoolToken), address(this), parentPoolAmountOut);
 
-                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(parentPoolToken);
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
                 (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
                     RemoveLiquidityParams({
-                        pool: childToken,
+                        pool: parentPoolToken,
                         from: address(this),
                         maxBptAmountIn: parentPoolAmountOut,
                         minAmountsOut: new uint256[](childPoolTokens.length),
@@ -758,7 +765,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
                     CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
-                    if (childPoolTokenType == CompositeTokenType.ERC4626) {
+                    if (
+                        childPoolTokenType == CompositeTokenType.ERC4626 &&
+                        _needsWrapOperation(childPoolToken, tokensToUnwrap)
+                    ) {
                         // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
                         _executeUnwrapAndRecordUnderlying(IERC4626(childPoolToken), childPoolAmountOut);
                     } else {
@@ -766,13 +776,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountOut);
                     }
                 }
-            } else if (childTokenType == CompositeTokenType.ERC4626) {
+            } else if (
+                parentPoolTokenType == CompositeTokenType.ERC4626 &&
+                _needsWrapOperation(parentPoolToken, tokensToUnwrap)
+            ) {
                 // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
-                _executeUnwrapAndRecordUnderlying(IERC4626(childToken), parentPoolAmountOut);
+                _executeUnwrapAndRecordUnderlying(IERC4626(parentPoolToken), parentPoolAmountOut);
             } else {
                 // Token is neither a BPT nor ERC4626, so return the amount to the user.
-                _currentSwapTokensOut().add(childToken);
-                _currentSwapTokenOutAmounts().tAdd(childToken, parentPoolAmountOut);
+                _currentSwapTokensOut().add(parentPoolToken);
+                _currentSwapTokenOutAmounts().tAdd(parentPoolToken, parentPoolAmountOut);
             }
         }
 
@@ -1077,5 +1090,15 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 wethIsEth: false, // Always false for queries
                 userData: userData
             });
+    }
+
+    // Check the current token against the wrap
+    function _needsWrapOperation(address token, address[] memory wrappedTokens) internal pure returns (bool) {
+        for (uint256 i = 0; i < wrappedTokens.length; i++) {
+            if (wrappedTokens[i] == token) {
+                return true;
+            }
+        }
+        return false;
     }
 }
