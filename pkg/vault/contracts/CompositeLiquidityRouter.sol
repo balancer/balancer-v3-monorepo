@@ -1048,11 +1048,15 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     // Check the current token against the wrap
     function _needsWrapOperation(address token, address[] memory wrappedTokens) internal pure returns (bool) {
-        for (uint256 i = 0; i < wrappedTokens.length; i++) {
+        uint256 numTokens = wrappedTokens.length;
+        for (uint256 i = 0; i < numTokens; ) {
             if (wrappedTokens[i] == token) {
                 return true;
             }
+
+            unchecked { ++i; }
         }
+
         return false;
     }
 
