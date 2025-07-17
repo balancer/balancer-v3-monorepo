@@ -852,13 +852,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        if (_currentSwapTokensOut().length() != tokensOut.length) {
+        uint256 numTokensOut = tokensOut.length;
+
+        if (_currentSwapTokensOut().length() != numTokensOut) {
             // If tokensOut length does not match transient tokens out length, the tokensOut array is wrong.
             revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
         }
 
         // The hook writes current swap token and token amounts out.
-        uint256 numTokensOut = tokensOut.length;
         amountsOut = new uint256[](numTokensOut);
 
         bool[] memory checkedTokenIndexes = new bool[](numTokensOut);
