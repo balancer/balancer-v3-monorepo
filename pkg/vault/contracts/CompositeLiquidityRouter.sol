@@ -249,19 +249,15 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         bool[] calldata wrapUnderlying
     ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
-        (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateHookParams(
+        (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateERC4626HookParams(
             params.pool,
             params.maxAmountsIn.length,
             wrapUnderlying.length
         );
 
-        RouterCallParams memory callParams = RouterCallParams({
-            sender: params.sender,
-            wethIsEth: params.wethIsEth,
-            isStaticCall: EVMCallModeHelpers.isStaticCall()
-        });
-
+        RouterCallParams memory callParams = _buildRouterCallParamsFromHook(params);
         uint256[] memory amountsIn = new uint256[](numTokens);
+
         for (uint256 i = 0; i < numTokens; ++i) {
             amountsIn[i] = _processTokenInExactIn(
                 address(erc4626PoolTokens[i]),
@@ -291,7 +287,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         bool[] calldata wrapUnderlying
     ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
-        (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateHookParams(
+        (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateERC4626HookParams(
             params.pool,
             params.maxAmountsIn.length,
             wrapUnderlying.length
@@ -314,12 +310,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        RouterCallParams memory callParams = RouterCallParams({
-            sender: params.sender,
-            wethIsEth: params.wethIsEth,
-            isStaticCall: EVMCallModeHelpers.isStaticCall()
-        });
-
+        RouterCallParams memory callParams = _buildRouterCallParamsFromHook(params);
         amountsIn = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -340,7 +331,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         RemoveLiquidityHookParams calldata params,
         bool[] calldata unwrapWrapped
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
-        (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateHookParams(
+        (IERC20[] memory erc4626PoolTokens, uint256 numTokens) = _validateERC4626HookParams(
             params.pool,
             params.minAmountsOut.length,
             unwrapWrapped.length
@@ -357,12 +348,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        RouterCallParams memory callParams = RouterCallParams({
-            sender: params.sender,
-            wethIsEth: params.wethIsEth,
-            isStaticCall: EVMCallModeHelpers.isStaticCall()
-        });
-
+        RouterCallParams memory callParams = _buildRouterCallParamsFromHook(params);
         amountsOut = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -386,7 +372,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @return poolTokens The pool tokens, sorted in pool registration order
      * @return numTokens The token count
      */
-    function _validateHookParams(
+    function _validateERC4626HookParams(
         address pool,
         uint256 amountsLength,
         uint256 wrapLength
@@ -587,6 +573,35 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             _currentSwapTokensOut().add(underlyingToken);
             _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmount);
         }
+    }
+
+    function _buildRouterCallParamsFromHook(
+        AddLiquidityHookParams calldata params
+    ) private view returns (RouterCallParams memory) {
+        return _buildRouterCallParams(params.sender, params.wethIsEth);
+    }
+
+    function _buildRouterCallParamsFromHook(
+        RemoveLiquidityHookParams calldata params
+    ) private view returns (RouterCallParams memory) {
+        return _buildRouterCallParams(params.sender, params.wethIsEth);
+    }
+
+    /**
+     * @notice Creates RouterCallParams struct with common parameters
+     * @param sender The sender address
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @return callParams The constructed RouterCallParams
+     */
+    function _buildRouterCallParams(
+        address sender,
+        bool wethIsEth
+    ) private view returns (RouterCallParams memory callParams) {
+        callParams = RouterCallParams({
+            sender: sender,
+            wethIsEth: wethIsEth,
+            isStaticCall: EVMCallModeHelpers.isStaticCall()
+        });
     }
 
     /***************************************************************************
