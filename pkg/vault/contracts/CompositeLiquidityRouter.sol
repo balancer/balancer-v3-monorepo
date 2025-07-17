@@ -727,23 +727,21 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address[] memory tokensOut
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
-        uint256 numParentPoolTokens = parentPoolTokens.length;
-        uint256 numTokensOut = tokensOut.length;
 
-        InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, numTokensOut);
+        InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
         (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: new uint256[](numParentPoolTokens),
+                minAmountsOut: new uint256[](parentPoolTokens.length),
                 kind: params.kind,
                 userData: params.userData
             })
         );
 
-        for (uint256 i = 0; i < numParentPoolTokens; i++) {
+        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address childToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
@@ -757,7 +755,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountOut);
 
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
-                uint256 numChildPoolTokens = childPoolTokens.length;
 
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
@@ -766,14 +763,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         pool: childToken,
                         from: address(this),
                         maxBptAmountIn: parentPoolAmountOut,
-                        minAmountsOut: new uint256[](numChildPoolTokens),
+                        minAmountsOut: new uint256[](childPoolTokens.length),
                         kind: params.kind,
                         userData: params.userData
                     })
                 );
 
                 // Return amounts to user.
-                for (uint256 j = 0; j < numChildPoolTokens; j++) {
+                for (uint256 j = 0; j < childPoolTokens.length; j++) {
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
@@ -795,6 +792,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _currentSwapTokenOutAmounts().tAdd(childToken, parentPoolAmountOut);
             }
         }
+
+        uint256 numTokensOut = tokensOut.length;
 
         if (_currentSwapTokensOut().length() != numTokensOut) {
             // If tokensOut length does not match transient tokens out length, the tokensOut array is wrong.
