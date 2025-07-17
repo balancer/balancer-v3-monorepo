@@ -72,7 +72,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
     }
 
     function _computeOracleId(IBasePool pool, AggregatorV3Interface[] memory feeds) internal pure returns (bytes32) {
-        address[] memory feedAddresses = asAddress(feeds);
+        address[] memory feedAddresses = _asAddress(feeds);
         return keccak256(abi.encode(pool, feedAddresses));
     }
 
@@ -82,7 +82,7 @@ abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthenti
         }
     }
 
-    function asAddress(AggregatorV3Interface[] memory feeds) internal pure returns (address[] memory addresses) {
+    function _asAddress(AggregatorV3Interface[] memory feeds) internal pure returns (address[] memory addresses) {
         // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             addresses := feeds
