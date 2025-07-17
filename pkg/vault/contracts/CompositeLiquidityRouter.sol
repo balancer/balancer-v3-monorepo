@@ -897,6 +897,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
         uint256 numParentPoolTokens = parentPoolTokens.length;
+
         amountsIn = new uint256[](numParentPoolTokens);
         allAmountsEmpty = true;
 
@@ -941,6 +942,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) internal returns (uint256 childBptAmountOut) {
         IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
         uint256 numChildPoolTokens = childPoolTokens.length;
+
         uint256[] memory childPoolAmountsIn = new uint256[](numChildPoolTokens);
         bool childPoolAmountsEmpty = true;
 
