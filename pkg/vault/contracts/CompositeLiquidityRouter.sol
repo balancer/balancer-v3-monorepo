@@ -1054,7 +1054,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 return true;
             }
 
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         return false;
