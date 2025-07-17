@@ -726,21 +726,23 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         address[] memory tokensOut
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+        uint256 numParentPoolTokens = parentPoolTokens.length;
+        uint256 numTokensOut = tokensOut.length;
 
-        InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
+        InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, numTokensOut);
 
         (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: new uint256[](parentPoolTokens.length),
+                minAmountsOut: new uint256[](numParentPoolTokens),
                 kind: params.kind,
                 userData: params.userData
             })
         );
 
-        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
+        for (uint256 i = 0; i < numParentPoolTokens; i++) {
             address childToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
@@ -754,6 +756,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountOut);
 
                 IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
+                uint256 numChildPoolTokens = childPoolTokens.length;
+
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
                 (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
@@ -761,14 +765,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         pool: childToken,
                         from: address(this),
                         maxBptAmountIn: parentPoolAmountOut,
-                        minAmountsOut: new uint256[](childPoolTokens.length),
+                        minAmountsOut: new uint256[](numChildPoolTokens),
                         kind: params.kind,
                         userData: params.userData
                     })
                 );
 
                 // Return amounts to user.
-                for (uint256 j = 0; j < childPoolTokens.length; j++) {
+                for (uint256 j = 0; j < numChildPoolTokens; j++) {
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
@@ -791,13 +795,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        if (_currentSwapTokensOut().length() != tokensOut.length) {
+        if (_currentSwapTokensOut().length() != numTokensOut) {
             // If tokensOut length does not match transient tokens out length, the tokensOut array is wrong.
             revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
         }
 
         // The hook writes current swap token and token amounts out.
-        uint256 numTokensOut = tokensOut.length;
         amountsOut = new uint256[](numTokensOut);
 
         bool[] memory checkedTokenIndexes = new bool[](numTokensOut);
@@ -829,12 +832,14 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params,
         address[] memory tokensIn
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
+        uint256 numTokensIn = tokensIn.length;
+
         // Revert if tokensIn length does not match maxAmountsIn length.
-        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
+        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, numTokensIn);
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
         // array to find the child pool amounts to insert.
-        for (uint256 i = 0; i < tokensIn.length; ++i) {
+        for (uint256 i = 0; i < numTokensIn; ++i) {
             if (params.maxAmountsIn[i] == 0) {
                 continue;
             }
@@ -871,10 +876,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params
     ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
-        amountsIn = new uint256[](parentPoolTokens.length);
+        uint256 numParentPoolTokens = parentPoolTokens.length;
+        amountsIn = new uint256[](numParentPoolTokens);
         allAmountsEmpty = true;
 
-        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
+        for (uint256 i = 0; i < numParentPoolTokens; i++) {
             address token = address(parentPoolTokens[i]);
             CompositeTokenInfo memory tokenInfo = _computeCompositeTokenInfo(
                 token,
@@ -913,11 +919,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         AddLiquidityHookParams calldata params
     ) internal returns (uint256 childBptAmountOut) {
         IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
-        uint256[] memory childPoolAmountsIn = new uint256[](childPoolTokens.length);
+        uint256 numChildPoolTokens = childPoolTokens.length;
+        uint256[] memory childPoolAmountsIn = new uint256[](numChildPoolTokens);
         bool childPoolAmountsEmpty = true;
 
         // Process tokens in the child pool (no further nesting allowed).
-        for (uint256 j = 0; j < childPoolTokens.length; j++) {
+        for (uint256 j = 0; j < numChildPoolTokens; j++) {
             address childPoolToken = address(childPoolTokens[j]);
 
             CompositeTokenInfo memory tokenInfo = _computeCompositeTokenInfo(
