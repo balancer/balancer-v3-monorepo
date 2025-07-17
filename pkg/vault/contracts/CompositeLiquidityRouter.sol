@@ -718,6 +718,46 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     // Nested Pool Hooks
 
+    function addLiquidityUnbalancedNestedPoolHook(
+        AddLiquidityHookParams calldata params,
+        address[] memory tokensIn,
+        address[] memory tokensToWrap
+    ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
+        // Revert if tokensIn length does not match maxAmountsIn length.
+        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
+
+        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
+        // array to find the child pool amounts to insert.
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            if (params.maxAmountsIn[i] == 0) {
+                continue;
+            }
+
+            _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
+            _currentSwapTokensIn().add(tokensIn[i]);
+        }
+
+        (uint256[] memory amountsIn, ) = _addLiquidityToNestedPool(params.pool, tokensToWrap, params);
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
+        (, exactBptAmountOut, ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: isStaticCall ? address(this) : params.sender,
+                maxAmountsIn: amountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        // Settle the amounts in.
+        if (isStaticCall == false) {
+            _settlePaths(params.sender, params.wethIsEth);
+        }
+    }
+
     function removeLiquidityProportionalNestedPoolHook(
         RemoveLiquidityHookParams calldata params,
         address[] memory tokensOut,
@@ -825,46 +865,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         if (EVMCallModeHelpers.isStaticCall() == false) {
-            _settlePaths(params.sender, params.wethIsEth);
-        }
-    }
-
-    function addLiquidityUnbalancedNestedPoolHook(
-        AddLiquidityHookParams calldata params,
-        address[] memory tokensIn,
-        address[] memory tokensToWrap
-    ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
-        // Revert if tokensIn length does not match maxAmountsIn length.
-        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
-
-        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
-        // array to find the child pool amounts to insert.
-        for (uint256 i = 0; i < tokensIn.length; ++i) {
-            if (params.maxAmountsIn[i] == 0) {
-                continue;
-            }
-
-            _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
-            _currentSwapTokensIn().add(tokensIn[i]);
-        }
-
-        (uint256[] memory amountsIn, ) = _addLiquidityToNestedPool(params.pool, tokensToWrap, params);
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
-
-        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
-        (, exactBptAmountOut, ) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: isStaticCall ? address(this) : params.sender,
-                maxAmountsIn: amountsIn,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
-        );
-
-        // Settle the amounts in.
-        if (isStaticCall == false) {
             _settlePaths(params.sender, params.wethIsEth);
         }
     }
@@ -1028,6 +1028,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
+    // Check the current token against the wrap
+    function _needsWrapOperation(address token, address[] memory wrappedTokens) internal pure returns (bool) {
+        for (uint256 i = 0; i < wrappedTokens.length; i++) {
+            if (wrappedTokens[i] == token) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Common helper functions
 
     // Construct a set of add liquidity hook params, adding in the invariant parameters.
@@ -1081,15 +1091,5 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 wethIsEth: false, // Always false for queries
                 userData: userData
             });
-    }
-
-    // Check the current token against the wrap
-    function _needsWrapOperation(address token, address[] memory wrappedTokens) internal pure returns (bool) {
-        for (uint256 i = 0; i < wrappedTokens.length; i++) {
-            if (wrappedTokens[i] == token) {
-                return true;
-            }
-        }
-        return false;
     }
 }
