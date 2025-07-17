@@ -742,25 +742,25 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         );
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
-            address childToken = address(parentPoolTokens[i]);
+            address parentPoolToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
-            CompositeTokenType childTokenType = _getCompositeTokenType(childToken);
+            CompositeTokenType parentPoolTokenType = _getCompositeTokenType(parentPoolToken);
 
-            if (childTokenType == CompositeTokenType.BPT) {
+            if (parentPoolTokenType == CompositeTokenType.BPT) {
                 // Token is a BPT, so remove liquidity from the child pool.
 
                 // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
                 // practice just use the existing credit).
-                _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountOut);
+                _vault.sendTo(IERC20(parentPoolToken), address(this), parentPoolAmountOut);
 
-                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(parentPoolToken);
 
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
                 (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
                     RemoveLiquidityParams({
-                        pool: childToken,
+                        pool: parentPoolToken,
                         from: address(this),
                         maxBptAmountIn: parentPoolAmountOut,
                         minAmountsOut: new uint256[](childPoolTokens.length),
@@ -783,13 +783,13 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountOut);
                     }
                 }
-            } else if (childTokenType == CompositeTokenType.ERC4626) {
+            } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
                 // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
-                _executeUnwrapAndRecordUnderlying(IERC4626(childToken), parentPoolAmountOut);
+                _executeUnwrapAndRecordUnderlying(IERC4626(parentPoolToken), parentPoolAmountOut);
             } else {
                 // Token is neither a BPT nor ERC4626, so return the amount to the user.
-                _currentSwapTokensOut().add(childToken);
-                _currentSwapTokenOutAmounts().tAdd(childToken, parentPoolAmountOut);
+                _currentSwapTokensOut().add(parentPoolToken);
+                _currentSwapTokenOutAmounts().tAdd(parentPoolToken, parentPoolAmountOut);
             }
         }
 
