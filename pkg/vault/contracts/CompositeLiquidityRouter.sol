@@ -980,7 +980,10 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     /**
      * @notice Wraps the underlying tokens specified in the transient set `_currentSwapTokenInAmounts`.
-     * @dev Then updates this set with the resulting amount of wrapped tokens from the operation.
+     * @dev Afterward, it updates transient storage with the resulting amount of wrapped tokens from the operation.
+     * Note that the limit is set to 0 here; this is meant to be called mid-operation, and assumes final limits will
+     * be checked externally.
+     *
      * @param wrappedToken The token to wrap
      * @param sender The address of the originator of the transaction
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
