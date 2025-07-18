@@ -558,7 +558,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @param wrappedToken The ERC4626 token to unwrap from
      * @param wrappedAmount Amount of wrapped tokens to unwrap
      */
-    function _executeUnwrapAndRecordUnderlying(IERC4626 wrappedToken, uint256 wrappedAmount) internal {
+    function _unwrapExactInAndUpdateTokenOutData(IERC4626 wrappedToken, uint256 wrappedAmount) internal {
         if (wrappedAmount > 0) {
             (, , uint256 underlyingAmount) = _vault.erc4626BufferWrapOrUnwrap(
                 BufferWrapOrUnwrapParams({
@@ -777,7 +777,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
                     if (childPoolTokenType == CompositeTokenType.ERC4626) {
                         // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
-                        _executeUnwrapAndRecordUnderlying(IERC4626(childPoolToken), childPoolAmountOut);
+                        _unwrapExactInAndUpdateTokenOutData(IERC4626(childPoolToken), childPoolAmountOut);
                     } else {
                         _currentSwapTokensOut().add(childPoolToken);
                         _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountOut);
@@ -785,7 +785,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 }
             } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
                 // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
-                _executeUnwrapAndRecordUnderlying(IERC4626(parentPoolToken), parentPoolAmountOut);
+                _unwrapExactInAndUpdateTokenOutData(IERC4626(parentPoolToken), parentPoolAmountOut);
             } else {
                 // Token is neither a BPT nor ERC4626, so return the amount to the user.
                 _currentSwapTokensOut().add(parentPoolToken);
