@@ -18,6 +18,9 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 
 import { LPOracleBase } from "./LPOracleBase.sol";
 
+/**
+ * @notice Oracle for stable pools.
+ */
 contract StableLPOracle is LPOracleBase {
     using FixedPoint for uint256;
     using SafeCast for *;
