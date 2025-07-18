@@ -893,10 +893,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
     ) internal returns (uint256 amountOut) {
         address token = tokenInfo.token;
 
+        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
+
         if (tokenInfo.tokenType == CompositeTokenType.BPT) {
-            amountOut = _addLiquidityToChildPool(token, params);
+            amountOut = _addLiquidityToChildPool(token, params, callParams);
         } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.needToWrap) {
-            amountOut = _wrapExactInAndUpdateTokenInData(IERC4626(token), params.sender, params.wethIsEth);
+            amountOut = _wrapExactInAndUpdateTokenInData(IERC4626(token), callParams);
         } else {
             amountOut = _currentSwapTokenInAmounts().tGet(token);
         }
@@ -906,7 +908,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     function _addLiquidityToChildPool(
         address childPool,
-        AddLiquidityHookParams calldata params
+        AddLiquidityHookParams calldata liquidityParams,
+        RouterCallParams memory callParams
     ) internal returns (uint256 childBptAmountOut) {
         IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
         uint256 numChildPoolTokens = childPoolTokens.length;
@@ -931,11 +934,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626) {
                 if (tokenInfo.amount == 0) {
                     // Handle ERC4626 token wrapping at child pool level.
-                    childPoolAmountsIn[i] = _wrapExactInAndUpdateTokenInData(
-                        IERC4626(childPoolToken),
-                        params.sender,
-                        params.wethIsEth
-                    );
+                    childPoolAmountsIn[i] = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
                 } else if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
                     // Set this token's amountIn if it's a standard token that was not previously settled.
                     childPoolAmountsIn[i] = tokenInfo.amount;
@@ -948,7 +947,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
                 }
             } else {
-                // Should never happen.
+                // Should not happen.
                 revert IVaultErrors.InvalidTokenType();
             }
 
@@ -966,8 +965,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     to: address(_vault),
                     maxAmountsIn: childPoolAmountsIn,
                     minBptAmountOut: 0,
-                    kind: params.kind,
-                    userData: params.userData
+                    kind: liquidityParams.kind,
+                    userData: liquidityParams.userData
                 })
             );
 
@@ -985,14 +984,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * be checked externally.
      *
      * @param wrappedToken The token to wrap
-     * @param sender The address of the originator of the transaction
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param callParams The router call parameters (sender, static, and weth flag)
      * @return wrappedAmountOut The amountOut of wrapped tokens
      */
     function _wrapExactInAndUpdateTokenInData(
         IERC4626 wrappedToken,
-        address sender,
-        bool wethIsEth
+        RouterCallParams memory callParams
     ) private returns (uint256 wrappedAmountOut) {
         address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
 
@@ -1000,8 +997,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
 
         if (underlyingAmountIn > 0) {
-            if (EVMCallModeHelpers.isStaticCall() == false) {
-                _takeTokenIn(sender, IERC20(underlyingToken), underlyingAmountIn, wethIsEth);
+            if (callParams.isStaticCall == false) {
+                _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
             }
 
             (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
