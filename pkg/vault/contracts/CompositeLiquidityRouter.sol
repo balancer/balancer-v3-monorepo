@@ -255,7 +255,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             wrapUnderlying.length
         );
 
-        RouterCallParams memory callParams = _buildRouterCallParamsFromHook(params);
+        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         uint256[] memory amountsIn = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -310,7 +310,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        RouterCallParams memory callParams = _buildRouterCallParamsFromHook(params);
+        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         amountsIn = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -348,7 +348,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             })
         );
 
-        RouterCallParams memory callParams = _buildRouterCallParamsFromHook(params);
+        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         amountsOut = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -554,7 +554,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     /**
      * @notice Centralized handler for ERC4626 unwrapping operations in nested pools.
-     * @dev Adds the token and amount to transient storage.
+     * @dev Adds the token and amount to transient storage. Note that the limit is set to 0 here; this is meant to be
+     * called mid-operation, and assumes final limits will be checked externally.
+     *
      * @param wrappedToken The ERC4626 token to unwrap from
      * @param wrappedAmount Amount of wrapped tokens to unwrap
      */
@@ -574,18 +576,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             _currentSwapTokensOut().add(underlyingToken);
             _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmount);
         }
-    }
-
-    function _buildRouterCallParamsFromHook(
-        AddLiquidityHookParams calldata params
-    ) private view returns (RouterCallParams memory) {
-        return _buildRouterCallParams(params.sender, params.wethIsEth);
-    }
-
-    function _buildRouterCallParamsFromHook(
-        RemoveLiquidityHookParams calldata params
-    ) private view returns (RouterCallParams memory) {
-        return _buildRouterCallParams(params.sender, params.wethIsEth);
     }
 
     /**
