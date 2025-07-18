@@ -27,7 +27,7 @@ library BalancerLib {
     function createContext(
         address aggregatorRouter,
         address aggregatorBatchRouter
-    ) internal pure returns (Context memory) {
+    ) internal view returns (Context memory) {
         return
             Context({
                 aggregatorRouter: IAggregatorRouter(aggregatorRouter),
@@ -50,7 +50,16 @@ library BalancerLib {
         uint256 deadline
     ) internal returns (uint256 amountOut) {
         return
-            context._swapSingleTokenExactIn(pool, tokenIn, tokenOut, exactAmountIn, minAmountOut, deadline, bytes(""));
+            BalancerInternalLib._swapSingleTokenExactIn(
+                context,
+                pool,
+                tokenIn,
+                tokenOut,
+                exactAmountIn,
+                minAmountOut,
+                deadline,
+                bytes("")
+            );
     }
 
     function swapSingleTokenExactIn(
@@ -62,9 +71,18 @@ library BalancerLib {
         uint256 minAmountOut,
         uint256 deadline,
         bytes memory userData
-    ) internal returns (uint256 amountOut) {
+    ) internal returns (uint256) {
         return
-            context._swapSingleTokenExactIn(pool, tokenIn, tokenOut, exactAmountIn, minAmountOut, deadline, userData);
+            BalancerInternalLib._swapSingleTokenExactIn(
+                context,
+                pool,
+                tokenIn,
+                tokenOut,
+                exactAmountIn,
+                minAmountOut,
+                deadline,
+                userData
+            );
     }
 
     function swapSingleTokenExactIn(
@@ -79,7 +97,8 @@ library BalancerLib {
         IERC20 unwrapedTokenOut
     ) internal returns (uint256 amountOut) {
         return
-            context._swapSingleTokenExactIn(
+            BalancerInternalLib._swapSingleTokenExactIn(
+                context,
                 pool,
                 tokenIn,
                 tokenOut,
@@ -102,10 +121,11 @@ library BalancerLib {
         uint256 deadline,
         IERC20 wrapedTokenIn,
         IERC20 unwrapedTokenOut,
-        bytes calldata userData
+        bytes memory userData
     ) internal returns (uint256 amountOut) {
         return
-            context._swapSingleTokenExactIn(
+            BalancerInternalLib._swapSingleTokenExactIn(
+                context,
                 pool,
                 tokenIn,
                 tokenOut,
@@ -132,7 +152,16 @@ library BalancerLib {
         uint256 deadline
     ) internal returns (uint256 amountIn) {
         return
-            context._swapSingleTokenExactOut(pool, tokenIn, tokenOut, exactAmountOut, maxAmountIn, deadline, bytes(""));
+            BalancerInternalLib._swapSingleTokenExactOut(
+                context,
+                pool,
+                tokenIn,
+                tokenOut,
+                exactAmountOut,
+                maxAmountIn,
+                deadline,
+                bytes("")
+            );
     }
 
     function swapSingleTokenExactOut(
@@ -146,7 +175,16 @@ library BalancerLib {
         bytes memory userData
     ) internal returns (uint256 amountIn) {
         return
-            context._swapSingleTokenExactOut(pool, tokenIn, tokenOut, exactAmountOut, maxAmountIn, deadline, userData);
+            BalancerInternalLib._swapSingleTokenExactOut(
+                context,
+                pool,
+                tokenIn,
+                tokenOut,
+                exactAmountOut,
+                maxAmountIn,
+                deadline,
+                userData
+            );
     }
 
     function swapSingleTokenExactOut(
@@ -161,7 +199,8 @@ library BalancerLib {
         IERC20 unwrapedTokenOut
     ) internal returns (uint256 amountIn) {
         return
-            context._swapSingleTokenExactOut(
+            BalancerInternalLib._swapSingleTokenExactOut(
+                context,
                 pool,
                 tokenIn,
                 tokenOut,
@@ -184,10 +223,11 @@ library BalancerLib {
         uint256 deadline,
         IERC20 wrapedTokenIn,
         IERC20 unwrapedTokenOut,
-        bytes calldata userData
+        bytes memory userData
     ) internal returns (uint256 amountIn) {
         return
-            context._swapSingleTokenExactOut(
+            BalancerInternalLib._swapSingleTokenExactOut(
+                context,
                 pool,
                 tokenIn,
                 tokenOut,
@@ -262,7 +302,7 @@ library BalancerInternalLib {
         uint256 exactAmountOut,
         uint256 maxAmountIn,
         uint256 deadline,
-        bytes calldata userData
+        bytes memory userData
     ) internal returns (uint256 amountIn) {
         tokenIn.safeTransfer(address(context.vault), maxAmountIn);
 
