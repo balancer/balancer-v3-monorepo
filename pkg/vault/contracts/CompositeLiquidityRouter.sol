@@ -896,7 +896,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         if (tokenInfo.tokenType == CompositeTokenType.BPT) {
             amountOut = _addLiquidityToChildPool(token, params);
         } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.needToWrap) {
-            amountOut = _wrapAndUpdateTokenInAmounts(IERC4626(token), params.sender, params.wethIsEth);
+            amountOut = _wrapExactInAndUpdateTokenInData(IERC4626(token), params.sender, params.wethIsEth);
         } else {
             amountOut = _currentSwapTokenInAmounts().tGet(token);
         }
@@ -931,7 +931,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626) {
                 if (tokenInfo.amount == 0) {
                     // Handle ERC4626 token wrapping at child pool level.
-                    childPoolAmountsIn[i] = _wrapAndUpdateTokenInAmounts(
+                    childPoolAmountsIn[i] = _wrapExactInAndUpdateTokenInData(
                         IERC4626(childPoolToken),
                         params.sender,
                         params.wethIsEth
@@ -986,7 +986,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @return wrappedAmountOut The amountOut of wrapped tokens
      */
-    function _wrapAndUpdateTokenInAmounts(
+    function _wrapExactInAndUpdateTokenInData(
         IERC4626 wrappedToken,
         address sender,
         bool wethIsEth
