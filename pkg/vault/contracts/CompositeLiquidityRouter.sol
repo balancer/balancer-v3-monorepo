@@ -911,11 +911,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
         uint256 numChildPoolTokens = childPoolTokens.length;
         uint256[] memory childPoolAmountsIn = new uint256[](numChildPoolTokens);
-        bool childPoolAmountsEmpty = true;
+        bool childPoolNeedsLiquidity = false;
 
         // Process tokens in the child pool (no further nesting allowed).
-        for (uint256 j = 0; j < numChildPoolTokens; j++) {
-            address childPoolToken = address(childPoolTokens[j]);
+        for (uint256 i = 0; i < numChildPoolTokens; i++) {
+            address childPoolToken = address(childPoolTokens[i]);
 
             CompositeTokenInfo memory tokenInfo = _computeCompositeTokenInfo(
                 childPoolToken,
@@ -925,35 +925,39 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             if (tokenInfo.tokenType == CompositeTokenType.BPT) {
                 // This would be a second level of nesting, which is not supported. Process as a standard ERC20 token.
                 if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
-                    childPoolAmountsIn[j] = tokenInfo.amount;
+                    childPoolAmountsIn[i] = tokenInfo.amount;
                     _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
                 }
             } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626) {
-                // wrapped amount in was not specified.
-                // Handle ERC4626 token wrapping at child pool level.
                 if (tokenInfo.amount == 0) {
-                    childPoolAmountsIn[j] = _wrapAndUpdateTokenInAmounts(
+                    // Handle ERC4626 token wrapping at child pool level.
+                    childPoolAmountsIn[i] = _wrapAndUpdateTokenInAmounts(
                         IERC4626(childPoolToken),
                         params.sender,
                         params.wethIsEth
                     );
+                } else if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
+                    // Set this token's amountIn if it's a standard token that was not previously settled.
+                    childPoolAmountsIn[i] = tokenInfo.amount;
+                    _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
                 }
             } else if (tokenInfo.tokenType == CompositeTokenType.ERC20) {
-                if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
+                if (tokenInfo.amount > 0 && _settledTokenAmounts().tGet(childPoolToken) == 0) {
                     // Set this token's amountIn if it's a standard token that was not previously settled.
-                    childPoolAmountsIn[j] = tokenInfo.amount;
+                    childPoolAmountsIn[i] = tokenInfo.amount;
                     _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
                 }
             } else {
+                // Should never happen.
                 revert IVaultErrors.InvalidTokenType();
             }
 
-            if (childPoolAmountsIn[j] > 0) {
-                childPoolAmountsEmpty = false;
+            if (childPoolAmountsIn[i] > 0) {
+                childPoolNeedsLiquidity = true;
             }
         }
 
-        if (childPoolAmountsEmpty == false) {
+        if (childPoolNeedsLiquidity) {
             // Add Liquidity will mint childTokens to the Vault, so the insertion of liquidity in the parent
             // pool will be an accounting adjustment, not a token transfer.
             (, uint256 exactChildBptAmountOut, ) = _vault.addLiquidity(
