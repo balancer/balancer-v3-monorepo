@@ -928,20 +928,24 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     childPoolAmountsIn[j] = tokenInfo.amount;
                     _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
                 }
-            } else if (
+            } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626) {
                 // wrapped amount in was not specified.
-                tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.amount == 0
-            ) {
                 // Handle ERC4626 token wrapping at child pool level.
-                childPoolAmountsIn[j] = _wrapAndUpdateTokenInAmounts(
-                    IERC4626(childPoolToken),
-                    params.sender,
-                    params.wethIsEth
-                );
-            } else if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
-                // Set this token's amountIn if it's a standard token that was not previously settled.
-                childPoolAmountsIn[j] = tokenInfo.amount;
-                _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
+                if (tokenInfo.amount == 0) {
+                    childPoolAmountsIn[j] = _wrapAndUpdateTokenInAmounts(
+                        IERC4626(childPoolToken),
+                        params.sender,
+                        params.wethIsEth
+                    );
+                }
+            } else if (tokenInfo.tokenType == CompositeTokenType.ERC20) {
+                if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
+                    // Set this token's amountIn if it's a standard token that was not previously settled.
+                    childPoolAmountsIn[j] = tokenInfo.amount;
+                    _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
+                }
+            } else {
+                revert IVaultErrors.InvalidTokenType();
             }
 
             if (childPoolAmountsIn[j] > 0) {
