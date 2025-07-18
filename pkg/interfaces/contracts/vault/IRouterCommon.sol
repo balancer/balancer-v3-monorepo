@@ -21,6 +21,9 @@ interface IRouterCommon {
     /// @notice Returns Permit2 contract address.
     function getPermit2() external view returns (IPermit2);
 
+    /// @notice Returns Vault contract address.
+    function getVault() external view returns (IVault);
+
     struct PermitApproval {
         address token;
         address owner;
