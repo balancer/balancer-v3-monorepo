@@ -166,7 +166,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             bytes("")
         );
 
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(alice);
         uint256 amountIn = router.swapSingleTokenExactOut(

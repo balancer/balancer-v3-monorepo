@@ -250,7 +250,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
                 })
             );
 
-            vm.revertTo(snapshotId);
+            vm.revertToState(snapshotId);
         }
 
         vm.expectEmit();

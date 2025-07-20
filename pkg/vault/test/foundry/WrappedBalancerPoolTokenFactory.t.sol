@@ -28,7 +28,7 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
         // get a wrapped token address
         uint256 snapshot = vm.snapshot();
         address wrappedToken = factory.createWrappedToken(pool);
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         emit IWrappedBalancerPoolTokenFactory.WrappedTokenCreated(pool, wrappedToken);
         factory.createWrappedToken(pool);

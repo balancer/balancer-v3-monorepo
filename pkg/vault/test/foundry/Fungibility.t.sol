@@ -44,7 +44,7 @@ contract FungibilityTest is BaseVaultTest {
             false,
             bytes("")
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(lp);
         // Compare the BPTs minted by addLiquidityUnbalanced with the BPTs of proportional, to make sure it's a

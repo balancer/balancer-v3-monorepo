@@ -46,7 +46,7 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
         // Snapshot is needed to predict what will be the oracle address.
         uint256 snapshot = vm.snapshot();
         ILPOracleBase oracle = _factory.create(pool, feeds);
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         vm.expectEmit();
         emit WeightedLPOracleFactory.WeightedLPOracleCreated(

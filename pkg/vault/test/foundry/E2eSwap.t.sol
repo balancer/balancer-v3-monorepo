@@ -495,7 +495,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         vm.assume(exactAmountOut > 0);
 
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
         uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
             pool,
             tokenA,

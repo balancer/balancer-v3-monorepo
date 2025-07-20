@@ -147,19 +147,19 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
         uint256 postInitSnapshot = vm.snapshot();
 
         _testAddLiquidity();
-        vm.revertTo(postInitSnapshot);
+        vm.revertToState(postInitSnapshot);
 
         _testRemoveLiquidity();
-        vm.revertTo(postInitSnapshot);
+        vm.revertToState(postInitSnapshot);
 
         _testSwap();
-        vm.revertTo(postInitSnapshot);
+        vm.revertToState(postInitSnapshot);
 
         _testAddLiquidityUnbalanced(swapFeePercentage);
     }
 
     function testInitialize__Fuzz(uint256 daiWeight, uint256 swapFeePercentage) public {
-        vm.revertTo(preInitSnapshotId);
+        vm.revertToState(preInitSnapshotId);
 
         daiWeight = bound(daiWeight, 1e16, 99e16);
         swapFeePercentage = bound(swapFeePercentage, MIN_SWAP_FEE, MAX_SWAP_FEE);

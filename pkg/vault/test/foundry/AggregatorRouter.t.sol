@@ -208,7 +208,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             bytes("")
         );
         // Restore the state before the query.
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         // Then execute the actual swap.
         vm.startPrank(alice);
@@ -361,7 +361,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             bytes("")
         );
         // Restore the state before the query.
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         // Then execute the actual swap.
         vm.startPrank(alice);

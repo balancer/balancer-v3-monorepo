@@ -207,7 +207,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         uint256 amountOut = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
 
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         uint256 amountIn = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), amountOut);
 
@@ -235,7 +235,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         vm.startPrank(sender);
         uint256 snapshotId = vm.snapshot();
         uint256 amountOutBatch = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
         uint256 amountOutEach = _executeEachOperationExactIn(exactAmountIn);
         vm.stopPrank();
 
@@ -255,7 +255,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         vm.startPrank(sender);
         uint256 snapshotId = vm.snapshot();
         uint256 amountInBatch = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), exactAmountOut);
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
         uint256 amountInEach = _executeEachOperationExactOut(exactAmountOut);
         vm.stopPrank();
 

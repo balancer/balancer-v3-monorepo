@@ -212,7 +212,7 @@ contract LBPoolTest is BaseLBPTest {
             DEFAULT_PROJECT_TOKENS_SWAP_IN
         );
 
-        vm.revertTo(preCreateSnapshotId);
+        vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
         emit LBPoolFactory.LBPoolCreated(newPool, projectToken, reserveToken);

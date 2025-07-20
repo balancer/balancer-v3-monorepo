@@ -105,7 +105,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -155,7 +155,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -203,7 +203,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -249,7 +249,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -296,7 +296,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -346,7 +346,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -404,7 +404,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(alice);
         uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
@@ -434,7 +434,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(alice);
         uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
@@ -465,7 +465,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(alice);
         uint256 actualBptAmountOut = compositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
@@ -494,7 +494,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -555,7 +555,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -617,7 +617,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             expectedWrappedAmountsIn[partialWaDaiIdx]
         );
         expectedUnderlyingAmountsIn[partialWethIdx] = expectedWrappedAmountsIn[partialWethIdx];
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -683,7 +683,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             expectedWrappedAmountsIn[partialWaDaiIdx]
         );
         expectedUnderlyingAmountsIn[partialWethIdx] = expectedWrappedAmountsIn[partialWethIdx];
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
@@ -752,7 +752,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         // Place the limit for max amounts in right below the expected value.
         uint256[] memory maxAmountsIn = new uint256[](2);
@@ -800,7 +800,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(alice);
         uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
@@ -838,7 +838,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(alice);
         uint256[] memory actualUnderlyingAmountsIn = compositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
@@ -874,7 +874,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256 beforeBPTBalance = IERC20(pool).balanceOf(bob);
 
@@ -934,7 +934,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256 beforeBPTBalance = IERC20(pool).balanceOf(bob);
 
@@ -995,7 +995,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256 beforeBPTBalance = IERC20(pool).balanceOf(bob);
 
@@ -1056,7 +1056,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256 beforeBPTBalance = IERC20(address(partialErc4626Pool)).balanceOf(bob);
 
@@ -1117,7 +1117,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256 beforeBPTBalance = IERC20(address(partialErc4626Pool)).balanceOf(bob);
 
@@ -1194,7 +1194,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         // Place the limit for min amounts out right above the expected value.
         uint256[] memory minAmountsOut = new uint256[](2);
@@ -1234,7 +1234,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256[] memory minUnderlyingAmountsOut = new uint256[](2);
         minUnderlyingAmountsOut[waWethIdx] = _vaultPreviewRedeem(waWETH, expectedWrappedAmountsOut[waWethIdx]);
@@ -1250,7 +1250,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
                 address(this),
                 bytes("")
             );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(bob);
         uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
@@ -1283,7 +1283,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256[] memory minUnderlyingAmountsOut = new uint256[](2);
         minUnderlyingAmountsOut[partialWethIdx] = expectedWrappedAmountsOut[partialWethIdx];
@@ -1305,7 +1305,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
                 address(this),
                 bytes("")
             );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(bob);
         uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter
@@ -1352,7 +1352,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256[] memory maxAmountsIn = new uint256[](2);
         maxAmountsIn[waDaiIdx] = expectedWrappedAmountsIn[waDaiIdx] - 1;
@@ -1388,7 +1388,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256[] memory minAmountsOut = new uint256[](2);
         minAmountsOut[waDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]);

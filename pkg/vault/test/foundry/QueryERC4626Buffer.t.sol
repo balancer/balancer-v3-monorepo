@@ -66,7 +66,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         ) = batchRouter.querySwapExactIn(paths, address(this), bytes(""));
 
         // Restores the network state to snapshot.
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         // Executes the actual operation.
         vm.prank(alice);
@@ -95,7 +95,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         ) = batchRouter.querySwapExactOut(paths, address(this), bytes(""));
 
         // Restores the network state to snapshot.
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         // Executes the actual operation.
         vm.prank(alice);

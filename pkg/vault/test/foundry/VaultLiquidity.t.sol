@@ -540,7 +540,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         uint256 swapFeeAmountDai = 5e18;
         uint256[] memory deltas = new uint256[](2);
@@ -576,7 +576,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vm.prank(alice);
         uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
 
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         uint256[] memory deltas = new uint256[](2);
         deltas[daiIdx] = amountsIn[daiIdx];

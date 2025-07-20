@@ -453,7 +453,7 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
                 userData: bytes("")
             })
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         if (queryBPTAmountIn > bptAmountOut) {
             vm.expectRevert(
