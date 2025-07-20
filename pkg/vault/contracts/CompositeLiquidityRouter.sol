@@ -924,30 +924,12 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _currentSwapTokenInAmounts().tGet(childPoolToken)
             );
 
-            if (tokenInfo.tokenType == CompositeTokenType.BPT) {
-                // This would be a second level of nesting, which is not supported. Process as a standard ERC20 token.
-                if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
-                    childPoolAmountsIn[i] = tokenInfo.amount;
-                    _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
-                }
-            } else if (tokenInfo.tokenType == CompositeTokenType.ERC4626) {
-                if (tokenInfo.amount == 0) {
-                    // Handle ERC4626 token wrapping at child pool level.
-                    childPoolAmountsIn[i] = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
-                } else if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
-                    // Set this token's amountIn if it's a standard token that was not previously settled.
-                    childPoolAmountsIn[i] = tokenInfo.amount;
-                    _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
-                }
-            } else if (tokenInfo.tokenType == CompositeTokenType.ERC20) {
-                if (tokenInfo.amount > 0 && _settledTokenAmounts().tGet(childPoolToken) == 0) {
-                    // Set this token's amountIn if it's a standard token that was not previously settled.
-                    childPoolAmountsIn[i] = tokenInfo.amount;
-                    _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
-                }
-            } else {
-                // Should not happen.
-                revert IVaultErrors.InvalidTokenType();
+            // If it is a wrapped token, and it's not in `_currentSwapTokenInAmounts`, we need to wrap it.
+            if (tokenInfo.tokenType == CompositeTokenType.ERC4626 && tokenInfo.amount == 0) {
+                childPoolAmountsIn[i] = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
+            } else if (_settledTokenAmounts().tGet(childPoolToken) == 0) {
+                childPoolAmountsIn[i] = tokenInfo.amount;
+                _settledTokenAmounts().tSet(childPoolToken, tokenInfo.amount);
             }
 
             if (childPoolAmountsIn[i] > 0) {
