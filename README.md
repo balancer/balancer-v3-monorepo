@@ -76,7 +76,7 @@ $ cd pkg/<package> # e.g. cd pkg/vault
 $ yarn test
 ```
 
-You can see a sample report of a test run [here](./audits/test-report.md).
+You can see a sample report of a test run [here](./audits/README.md).
 
 #### Foundry (Forge) tests
 
