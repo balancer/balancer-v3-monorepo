@@ -877,9 +877,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _currentSwapTokenInAmounts().tGet(token)
             );
 
-            amountsIn[i] = _settledTokenAmounts().tGet(token) > 0
-                ? _settledTokenAmounts().tGet(token)
-                : _processNestedPoolToken(tokenInfo, params);
+            uint256 settledAmount = _settledTokenAmounts().tGet(token);
+            amountsIn[i] = settledAmount > 0 ? settledAmount : _processNestedPoolToken(tokenInfo, params);
 
             if (amountsIn[i] > 0) {
                 allAmountsEmpty = false;
