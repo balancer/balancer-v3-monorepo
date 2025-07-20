@@ -1144,6 +1144,35 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
     }
 
+    function testAddLiquidityNestedPoolDuplicateTokens() public {
+        uint256 daiAmount = poolInitAmount;
+        uint256 wethAmount = poolInitAmount;
+
+        uint256 minBptOut = 0;
+
+        address[] memory tokensIn = new address[](3);
+        tokensIn[0] = address(dai);
+        tokensIn[1] = address(dai);
+        tokensIn[2] = address(weth);
+
+        uint256[] memory amountsIn = new uint256[](3);
+        amountsIn[0] = daiAmount;
+        amountsIn[1] = daiAmount;
+        amountsIn[2] = wethAmount;
+
+        vm.prank(lp);
+        // Since tokensIn and amountsIn have different lengths, revert.
+        vm.expectRevert(abi.encodeWithSelector(ICompositeLiquidityRouter.DuplicateTokenIn.selector, address(dai)));
+        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            parentPool,
+            tokensIn,
+            amountsIn,
+            minBptOut,
+            false,
+            bytes("")
+        );
+    }
+
     function testAddLiquidityNestedPoolNonExistentToken() public {
         ERC20TestToken newToken = new ERC20TestToken("New Token", "NT", 18);
 
@@ -1996,11 +2025,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // DAI should be in the tokensOut array, but is not, so the transaction should revert.
         // Order extracted from _currentSwapTokensOut().values() of `removeLiquidityProportionalNestedPool` after
         // all child pools were called.
-        address[] memory expectedTokensOut = new address[](4);
-        expectedTokensOut[0] = address(dai);
-        expectedTokensOut[1] = address(wsteth);
-        expectedTokensOut[2] = address(weth);
-        expectedTokensOut[3] = address(usdc);
+        address[] memory actualTokensOut = new address[](4);
+        actualTokensOut[0] = address(dai);
+        actualTokensOut[1] = address(wsteth);
+        actualTokensOut[2] = address(weth);
+        actualTokensOut[3] = address(usdc);
 
         // Notice that tokensOut and minAmountsOut do not have DAI, so the transaction will revert.
         address[] memory tokensOut = new address[](3);
@@ -2014,7 +2043,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         minAmountsOut[2] = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, expectedTokensOut, tokensOut)
+            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, actualTokensOut, tokensOut)
         );
 
         vm.prank(lp);
@@ -2040,11 +2069,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // DAI should be in the tokensOut array, but is not, so the transaction should revert.
         // Order extracted from _currentSwapTokensOut().values() of `removeLiquidityProportionalNestedPool` after
         // all child pools were called.
-        address[] memory expectedTokensOut = new address[](4);
-        expectedTokensOut[0] = address(dai);
-        expectedTokensOut[1] = address(wsteth);
-        expectedTokensOut[2] = address(weth);
-        expectedTokensOut[3] = address(usdc);
+        address[] memory actualTokensOut = new address[](4);
+        actualTokensOut[0] = address(dai);
+        actualTokensOut[1] = address(wsteth);
+        actualTokensOut[2] = address(weth);
+        actualTokensOut[3] = address(usdc);
 
         // Notice that tokensOut has a repeated token, so the transaction should be reverted.
         address[] memory tokensOut = new address[](4);
@@ -2060,7 +2089,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         minAmountsOut[3] = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, expectedTokensOut, tokensOut)
+            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, actualTokensOut, tokensOut)
         );
 
         vm.prank(lp);
