@@ -830,12 +830,20 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
         // array to find the child pool amounts to insert.
         for (uint256 i = 0; i < numTokensIn; ++i) {
-            if (params.maxAmountsIn[i] == 0) {
+            uint256 maxAmountIn = params.maxAmountsIn[i];
+
+            if (maxAmountIn == 0) {
                 continue;
             }
 
-            _currentSwapTokenInAmounts().tSet(tokensIn[i], params.maxAmountsIn[i]);
-            _currentSwapTokensIn().add(tokensIn[i]);
+            address tokenIn = tokensIn[i];
+
+            _currentSwapTokenInAmounts().tSet(tokenIn, maxAmountIn);
+
+            // Ensure there are no duplicate tokens with non-zero amountsIn.
+            if (_currentSwapTokensIn().add(tokenIn) == false) {
+                revert DuplicateTokenIn(tokenIn);
+            }
         }
 
         (uint256[] memory amountsIn, ) = _addLiquidityToNestedPool(params.pool, params);
@@ -877,8 +885,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 _currentSwapTokenInAmounts().tGet(token)
             );
 
-            uint256 settledAmount = _settledTokenAmounts().tGet(token);
-            amountsIn[i] = settledAmount > 0 ? settledAmount : _processNestedPoolToken(tokenInfo, params);
+            amountsIn[i] = _processNestedPoolToken(tokenInfo, params);
 
             if (amountsIn[i] > 0) {
                 allAmountsEmpty = false;

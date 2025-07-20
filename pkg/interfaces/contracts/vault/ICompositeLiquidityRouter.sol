@@ -16,8 +16,19 @@ pragma solidity ^0.8.24;
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
  */
 interface ICompositeLiquidityRouter {
-    /// @notice `tokensOut` array does not have all the tokens from `expectedTokensOut`.
-    error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
+    /**
+     * @notice The actual result of the liquidity removal operation does not match the expected set of tokens.
+     * @param actualTokensOut The set of tokens derived from pool traversal
+     * @param expectedTokensOut The set of tokens supplied by the user
+     */
+    error WrongTokensOut(address[] actualTokensOut, address[] expectedTokensOut);
+
+    /**
+     * @notice The `tokensIn` array contains a duplicate token.
+     * @dev Note that it's technically possible to have duplicate tokens with 0 amounts, as those are ignored.
+     * @param duplicateToken The address of the duplicate token 
+     */
+    error DuplicateTokenIn(address duplicateToken);
 
     /***************************************************************************
                                    ERC4626 Pools
