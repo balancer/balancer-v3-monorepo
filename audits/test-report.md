@@ -13,6 +13,7 @@ describe("Contract under test")
       
 It is important that the text description accurately reflects the content of the test, and that *only* the feature describe is tested. Ideally, the concatenation of descriptive texts for any given test forms a clear, understandable narrative.
 
+```
 [@balancer-labs/v3-pool-cow]: Process started
 [@balancer-labs/v3-pool-gyro]: Process started
 [@balancer-labs/v3-pool-hooks]: Process started
@@ -4682,3 +4683,4 @@ It is important that the text description accurately reflects the content of the
 [@balancer-labs/v3-vault]: 
 [@balancer-labs/v3-vault]: Process exited (exit code 0), completed in 44m 52s
 Done in 44m 52s
+```
