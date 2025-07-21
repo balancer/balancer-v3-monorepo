@@ -230,7 +230,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
         uint256 bptAmountOut;
         {
             // Check event vs returned values first.
-            uint256 snapshotId = vm.snapshot();
+            uint256 snapshotId = vm.snapshotState();
             (weightedPool, exactAmountsIn, bptAmountOut) = migrationRouter.migrateLiquidity(
                 ILBPool(pool),
                 excessReceiver,
@@ -250,7 +250,7 @@ contract LBPMigrationRouterTest is BaseLBPTest {
                 })
             );
 
-            vm.revertTo(snapshotId);
+            vm.revertToState(snapshotId);
         }
 
         vm.expectEmit();
