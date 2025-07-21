@@ -1,3 +1,18 @@
+The following is the output of a complete test run, made on commit [`992898f`](https://github.com/balancer/balancer-v3-monorepo/commit/992898f30f87c224f59e1f3dcc43e9c7010c8cd4), from July 20th, 2025. 
+
+## Test Methodology
+
+The output reflects the general best practices for unit test creation:
+
+```
+describe("Contract under test")
+  describe("Feature")
+    context("Configuration for a set of tests - this can be nested as needed, for complex cases")
+      it("individual tests within a given configuration (e.g., 'caller is owner', 'caller is not owner', etc.)")
+```
+      
+It is important that the text description accurately reflects the content of the test, and that *only* the feature describe is tested. Ideally, the concatenation of descriptive texts for any given test forms a clear, understandable narrative.
+
 [@balancer-labs/v3-pool-cow]: Process started
 [@balancer-labs/v3-pool-gyro]: Process started
 [@balancer-labs/v3-pool-hooks]: Process started
