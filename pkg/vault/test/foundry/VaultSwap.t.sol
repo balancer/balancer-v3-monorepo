@@ -72,7 +72,7 @@ contract VaultSwapTest is BaseVaultTest {
     function testSwapSymmetry() public {
         setSwapFeePercentage(DEFAULT_SWAP_FEE_PERCENTAGE);
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         vm.prank(alice);
         uint256 amountOut = router.swapSingleTokenExactIn(
@@ -86,7 +86,7 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.prank(alice);
         uint256 amountIn = router.swapSingleTokenExactOut(
