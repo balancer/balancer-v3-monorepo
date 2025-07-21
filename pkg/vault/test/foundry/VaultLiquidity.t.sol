@@ -528,7 +528,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         uint256 totalSupplyBefore = IERC20(pool).totalSupply();
         uint256 bptAmountIn = DEFAULT_AMOUNT;
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         vm.prank(lp);
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
@@ -571,7 +571,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         uint256 totalSupplyBefore = IERC20(pool).totalSupply();
         uint256[] memory amountsIn = [DEFAULT_AMOUNT, DEFAULT_AMOUNT].toMemoryArray();
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         vm.prank(alice);
         uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));

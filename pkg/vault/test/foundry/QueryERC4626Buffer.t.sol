@@ -54,7 +54,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountIn);
 
         // Snapshots the current state of the network.
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
@@ -83,7 +83,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(amount);
 
         // Snapshots the current state of the network.
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with

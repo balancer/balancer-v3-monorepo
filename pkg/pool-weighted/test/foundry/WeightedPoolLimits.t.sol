@@ -118,7 +118,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
 
-        preInitSnapshotId = vm.snapshot();
+        preInitSnapshotId = vm.snapshotState();
 
         uint256[] memory weights = weightedPool.getNormalizedWeights();
 
@@ -144,7 +144,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
         _updatePoolParams(daiWeight, swapFeePercentage);
 
-        uint256 postInitSnapshot = vm.snapshot();
+        uint256 postInitSnapshot = vm.snapshotState();
 
         _testAddLiquidity();
         vm.revertToState(postInitSnapshot);

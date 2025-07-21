@@ -41,7 +41,7 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
         AggregatorV3Interface[] memory feeds = _createFeeds(pool);
 
         // Snapshot is needed to predict what will be the oracle address.
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         ILPOracleBase oracle = _factory.create(pool, feeds);
         vm.revertToState(snapshot);
 

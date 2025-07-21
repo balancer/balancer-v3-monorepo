@@ -34,7 +34,7 @@ contract FungibilityTest is BaseVaultTest {
         uint256 totalSupplyBefore = BalancerPoolToken(pool).totalSupply();
         uint256 exactBptOutProportional = totalSupplyBefore.mulDown(proportion);
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         // Execute unbalanced add liquidity, because this is the kind of addLiquidity that computes the invariant.
         vm.prank(lp);
         uint256 bptAmountOutUnbalanced = router.addLiquidityUnbalanced(

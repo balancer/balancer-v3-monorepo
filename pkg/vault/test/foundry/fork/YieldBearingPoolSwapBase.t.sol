@@ -309,7 +309,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function _testExactIn(IBatchRouter.SwapPathExactAmountIn[] memory paths, bool withBufferLiquidity) private {
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         (
             uint256[] memory queryPathAmountsOut,
@@ -430,7 +430,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function _testExactOut(IBatchRouter.SwapPathExactAmountOut[] memory paths, bool withBufferLiquidity) private {
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         (
             uint256[] memory queryPathAmountsIn,

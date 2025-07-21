@@ -26,7 +26,7 @@ contract WrappedBalancerPoolTokenFactoryTest is BaseVaultTest {
         assertEq(factory.getWrappedToken(pool), ZERO_ADDRESS, "Wrapped token should not exist");
 
         // get a wrapped token address
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         address wrappedToken = factory.createWrappedToken(pool);
         vm.revertToState(snapshot);
 

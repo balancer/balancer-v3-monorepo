@@ -163,7 +163,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         uint256 wrappedAmount = LIQUIDITY_AMOUNT;
 
         // Get issued shares to match the event. The actual shares amount will be validated below.
-        uint256 preInitSnap = vm.snapshot();
+        uint256 preInitSnap = vm.snapshotState();
         uint256 issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, 0, bob);
         vm.revertToState(preInitSnap);
 

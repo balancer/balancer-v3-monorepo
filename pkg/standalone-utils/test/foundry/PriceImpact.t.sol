@@ -77,7 +77,7 @@ contract PriceImpactTest is BaseVaultTest {
 
     function testPriceImpact() public {
         vm.startPrank(address(0), address(0));
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
 
         // Calculate priceImpact.
         uint256 amountIn = poolInitAmount / 2;

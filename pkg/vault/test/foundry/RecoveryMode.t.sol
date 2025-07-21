@@ -47,7 +47,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         uint256 amountToRemove = bptAmountOut;
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
         vm.revertToState(snapshotId);
@@ -87,7 +87,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         uint256 amountToRemove = bptAmountOut;
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
         vm.revertToState(snapshotId);

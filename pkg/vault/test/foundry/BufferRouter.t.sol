@@ -62,7 +62,7 @@ contract BufferRouterTest is BaseVaultTest {
 
         waDAI.mockRate(rate);
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         _prankStaticCall();
         uint256 expectedIssuedShares = bufferRouter.queryInitializeBuffer(waDAI, amountUnderlying, amountWrapped);
@@ -162,7 +162,7 @@ contract BufferRouterTest is BaseVaultTest {
         vm.prank(alice);
         bufferRouter.initializeBuffer(waDAI, initAmountUnderlying, initAmountWrapped, 0);
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         _prankStaticCall();
         (uint256 expectedAmountInUnderlying, uint256 expectedAmountInWrapped) = bufferRouter.queryAddLiquidityToBuffer(
@@ -200,7 +200,7 @@ contract BufferRouterTest is BaseVaultTest {
         uint256 initialShares = bufferRouter.initializeBuffer(waDAI, initAmountUnderlying, initAmountWrapped, 0);
         sharesToRemove = bound(sharesToRemove, 1e6, initialShares);
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         _prankStaticCall();
         (uint256 expectedAmountOutUnderlying, uint256 expectedAmountOutWrapped) = bufferRouter

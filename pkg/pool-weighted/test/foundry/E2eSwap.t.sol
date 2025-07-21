@@ -152,7 +152,7 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
             Math.min(normalizedLiquidityTokenA, newPoolBalances[tokenBIdx]) / 4
         );
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
 
         vm.prank(alice);
         uint256 amountOut = router.swapSingleTokenExactIn(
