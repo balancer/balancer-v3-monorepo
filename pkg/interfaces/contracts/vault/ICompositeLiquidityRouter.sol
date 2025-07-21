@@ -26,7 +26,7 @@ interface ICompositeLiquidityRouter {
     /**
      * @notice The `tokensIn` array contains a duplicate token.
      * @dev Note that it's technically possible to have duplicate tokens with 0 amounts, as those are ignored.
-     * @param duplicateToken The address of the duplicate token 
+     * @param duplicateToken The address of the duplicate token
      */
     error DuplicateTokenIn(address duplicateToken);
 
