@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -30,6 +31,11 @@ contract OwnableAuthenticationTest is BaseVaultTest {
             IAuthentication(address(authentication)).getActionId(OwnableAuthentication.forceTransferOwnership.selector),
             admin
         );
+    }
+
+    function testConstructor() external {
+        vm.expectRevert(OwnableAuthentication.VaultNotSet.selector);
+        new OwnableAuthentication(IVault(address(0)), bob);
     }
 
     function testGetVault() external view {
