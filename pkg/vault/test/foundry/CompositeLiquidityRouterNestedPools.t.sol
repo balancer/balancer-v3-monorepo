@@ -8,6 +8,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
+import {
+    ICompositeLiquidityRouterErrors
+} from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -1218,7 +1221,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         vm.prank(lp);
         // Since tokensIn and amountsIn have different lengths, revert.
-        vm.expectRevert(abi.encodeWithSelector(ICompositeLiquidityRouter.DuplicateTokenIn.selector, address(dai)));
+        vm.expectRevert(
+            abi.encodeWithSelector(ICompositeLiquidityRouterErrors.DuplicateTokenIn.selector, address(dai))
+        );
         compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
@@ -2279,7 +2284,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         minAmountsOut[2] = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, actualTokensOut, tokensOut)
+            abi.encodeWithSelector(ICompositeLiquidityRouterErrors.WrongTokensOut.selector, actualTokensOut, tokensOut)
         );
 
         vm.prank(lp);
@@ -2326,7 +2331,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         minAmountsOut[3] = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, actualTokensOut, tokensOut)
+            abi.encodeWithSelector(ICompositeLiquidityRouterErrors.WrongTokensOut.selector, actualTokensOut, tokensOut)
         );
 
         vm.prank(lp);
