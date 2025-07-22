@@ -927,23 +927,17 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             if (childPoolTokenType == CompositeTokenType.ERC4626) {
                 if (swapAmountIn == 0) {
                     // If it's a wrapped token, and it's not in `_currentSwapTokenInAmounts`, we need to wrap it.
-                    childPoolAmountsIn[i] = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
-                } else if (childTokenSettledAmount == 0) {
-                    // Handle ERC4626 tokens with amount > 0 as standard tokens
-                    childPoolAmountsIn[i] = swapAmountIn;
-                    _settledTokenAmounts().tSet(childPoolToken, swapAmountIn);
+                    swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
                 }
-            } else if (childPoolTokenType == CompositeTokenType.ERC20 || childPoolTokenType == CompositeTokenType.BPT) {
-                if (swapAmountIn > 0 && childTokenSettledAmount == 0) {
-                    childPoolAmountsIn[i] = swapAmountIn;
-                    _settledTokenAmounts().tSet(childPoolToken, swapAmountIn);
-                }
-            } else {
+            } else if (childPoolTokenType != CompositeTokenType.ERC20 && childPoolTokenType != CompositeTokenType.BPT) {
                 revert IVaultErrors.InvalidTokenType();
             }
 
-            if (childPoolAmountsIn[i] > 0) {
+            if (swapAmountIn > 0 && childTokenSettledAmount == 0) {
                 childPoolNeedsLiquidity = true;
+
+                childPoolAmountsIn[i] = swapAmountIn;
+                _settledTokenAmounts().tSet(childPoolToken, swapAmountIn);
             }
         }
 
