@@ -138,7 +138,7 @@ export class LPOracleBenchmark {
       return this.deployOracle(poolAddress, feeds);
     };
 
-    function itMeasureGas(numberOfTokens: number) {
+    function itMeasuresGas(numberOfTokens: number) {
       describe(`measure gas ${numberOfTokens} tokens`, () => {
         let oracleContract: AggregatorV3Interface;
 
