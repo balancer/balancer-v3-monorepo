@@ -7,7 +7,7 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { PoolRoleAccountsStruct } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
-import { bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ZERO_BYTES32 } from '@balancer-labs/v3-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { AggregatorV3Interface } from '@balancer-labs/v3-interfaces/typechain-types';
