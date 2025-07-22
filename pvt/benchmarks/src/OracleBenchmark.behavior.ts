@@ -26,8 +26,8 @@ import {
 } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
-import { AggregatorV3Interface } from '@balancer-labs/v3-interfaces/typechain-types';
-import { LPOracleWrapper } from '@balancer-labs/v3-standalone-utils/typechain-types/contracts/test';
+import { AggregatorV3Interface, IERC20Metadata } from '@balancer-labs/v3-interfaces/typechain-types';
+import { LPOracleWrapper, FeedMock } from '@balancer-labs/v3-standalone-utils/typechain-types/contracts/test';
 
 export type PoolInfo = {
   pool: BaseContract;
@@ -71,7 +71,7 @@ export class LPOracleBenchmark {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async deployOracle(poolAddress: string): Promise<OracleInfo | null> {
+  async deployOracle(poolAddress: string, feeds: AggregatorV3Interface[]): Promise<OracleInfo | null> {
     return null;
   }
 
@@ -175,18 +175,42 @@ export class LPOracleBenchmark {
     });
 
     const deployOracle = async (poolTokens: string[]): Promise<OracleInfo | null> => {
+      // Deploy pool
       const poolInfo = await this.deployPool(poolTokens);
-      const poolAddress = await poolInfo?.pool.getAddress();
-      if (!poolAddress) {
+      if (!poolInfo) {
         throw new Error('Pool was not deployed');
       }
-      return this.deployOracle(poolAddress);
+
+      // Initialize pool
+      const initialBalances = Array(poolInfo.poolTokens.length).fill(TOKEN_AMOUNT);
+      await this.router
+        .connect(this.alice)
+        .initialize(poolInfo.pool, poolInfo.poolTokens, initialBalances, FP_ZERO, false, '0x');
+
+      const poolAddress = await poolInfo.pool.getAddress();
+
+      const feeds: AggregatorV3Interface[] = [];
+      for (let i = 0; i < poolInfo.poolTokens.length; i++) {
+        const token = poolInfo.poolTokens[i];
+        const tokenMetadata = (await deployedAt('v3-interfaces/IERC20Metadata', token)) as unknown as IERC20Metadata;
+        const feedMock = (await deploy('v3-standalone-utils/FeedMock', {
+          args: [tokenMetadata.decimals()],
+        })) as unknown as FeedMock;
+        const feed = (await deployedAt(
+          'v3-interfaces/AggregatorV3Interface',
+          await feedMock.getAddress()
+        )) as unknown as AggregatorV3Interface;
+        await feedMock.setLastRoundData(bn(i + 1) * bn(1e18), Math.floor(Date.now() / 1000));
+        feeds.push(feed);
+      }
+
+      return this.deployOracle(poolAddress, feeds);
     };
 
     describe('measure gas 2 tokens', () => {
       let oracleContract: AggregatorV3Interface;
 
-      sharedBeforeEach(`deploy pool`, async () => {
+      sharedBeforeEach(`deploy oracle`, async () => {
         const oracleInfo = await deployOracle(sortAddresses([tokenAAddress, tokenBAddress]));
         if (!oracleInfo) {
           throw new Error('Oracle was not deployed');
@@ -200,7 +224,7 @@ export class LPOracleBenchmark {
         });
         const tx = await wrapper.callLatestRoundData();
         const receipt = await tx.wait();
-        await saveSnap(this._testDirname, `${this._oracleType}`, [receipt!]);
+        await saveSnap(this._testDirname, `${this._oracleType} - 2 tokens`, [receipt!]);
       });
     });
   };
