@@ -933,9 +933,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     childPoolAmountsIn[i] = childPoolTokenInAmount;
                     _settledTokenAmounts().tSet(childPoolToken, childPoolTokenInAmount);
                 }
-            } else if (
-                childPoolTokenType == CompositeTokenType.ERC20 || childPoolTokenType == CompositeTokenType.BPT
-            ) {
+            } else if (childPoolTokenType == CompositeTokenType.ERC20 || childPoolTokenType == CompositeTokenType.BPT) {
                 if (childPoolTokenInAmount > 0 && childTokenSettledAmount == 0) {
                     childPoolAmountsIn[i] = childPoolTokenInAmount;
                     _settledTokenAmounts().tSet(childPoolToken, childPoolTokenInAmount);
