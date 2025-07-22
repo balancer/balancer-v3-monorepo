@@ -753,7 +753,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) = _processParentPool(params, tokensToWrap);
+        (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) = _addLiquidityToParentPool(params, tokensToWrap);
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
@@ -777,8 +777,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
-
-    function _processParentPool(AddLiquidityHookParams calldata params, address[] memory tokensToWrap) internal returns (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) {
+    // This function factored out to avoid stack-too-deep issues.
+    function _addLiquidityToParentPool(
+        AddLiquidityHookParams calldata params,
+        address[] memory tokensToWrap
+    ) internal returns (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) {
         RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
         uint256 numParentPoolTokens = parentPoolTokens.length;
