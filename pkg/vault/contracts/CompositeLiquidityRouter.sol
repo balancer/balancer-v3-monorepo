@@ -712,6 +712,55 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     // Nested Pool Hooks
 
+    function addLiquidityUnbalancedNestedPoolHook(
+        AddLiquidityHookParams calldata params,
+        address[] memory tokensIn
+    ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
+        uint256 numTokensIn = tokensIn.length;
+
+        // Revert if tokensIn length does not match maxAmountsIn length.
+        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, numTokensIn);
+
+        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
+        // array to find the child pool amounts to insert.
+        for (uint256 i = 0; i < numTokensIn; ++i) {
+            uint256 maxAmountIn = params.maxAmountsIn[i];
+
+            if (maxAmountIn == 0) {
+                continue;
+            }
+
+            address tokenIn = tokensIn[i];
+
+            _currentSwapTokenInAmounts().tSet(tokenIn, maxAmountIn);
+
+            // Ensure there are no duplicate tokens with non-zero amountsIn.
+            if (_currentSwapTokensIn().add(tokenIn) == false) {
+                revert DuplicateTokenIn(tokenIn);
+            }
+        }
+
+        (uint256[] memory amountsIn, ) = _addLiquidityToNestedPool(params.pool, params);
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
+        (, exactBptAmountOut, ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: isStaticCall ? address(this) : params.sender,
+                maxAmountsIn: amountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        // Settle the amounts in.
+        if (isStaticCall == false) {
+            _settlePaths(params.sender, params.wethIsEth);
+        }
+    }
+
     function removeLiquidityProportionalNestedPoolHook(
         RemoveLiquidityHookParams calldata params,
         address[] memory tokensOut
@@ -814,55 +863,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
 
         if (EVMCallModeHelpers.isStaticCall() == false) {
-            _settlePaths(params.sender, params.wethIsEth);
-        }
-    }
-
-    function addLiquidityUnbalancedNestedPoolHook(
-        AddLiquidityHookParams calldata params,
-        address[] memory tokensIn
-    ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
-        uint256 numTokensIn = tokensIn.length;
-
-        // Revert if tokensIn length does not match maxAmountsIn length.
-        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, numTokensIn);
-
-        // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
-        // array to find the child pool amounts to insert.
-        for (uint256 i = 0; i < numTokensIn; ++i) {
-            uint256 maxAmountIn = params.maxAmountsIn[i];
-
-            if (maxAmountIn == 0) {
-                continue;
-            }
-
-            address tokenIn = tokensIn[i];
-
-            _currentSwapTokenInAmounts().tSet(tokenIn, maxAmountIn);
-
-            // Ensure there are no duplicate tokens with non-zero amountsIn.
-            if (_currentSwapTokensIn().add(tokenIn) == false) {
-                revert DuplicateTokenIn(tokenIn);
-            }
-        }
-
-        (uint256[] memory amountsIn, ) = _addLiquidityToNestedPool(params.pool, params);
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
-
-        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
-        (, exactBptAmountOut, ) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: isStaticCall ? address(this) : params.sender,
-                maxAmountsIn: amountsIn,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
-        );
-
-        // Settle the amounts in.
-        if (isStaticCall == false) {
             _settlePaths(params.sender, params.wethIsEth);
         }
     }
