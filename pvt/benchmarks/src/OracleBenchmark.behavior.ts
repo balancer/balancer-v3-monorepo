@@ -12,7 +12,7 @@ import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/
 import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
-import { Router, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
+import { Router, IVault } from '@balancer-labs/v3-vault/typechain-types';
 import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
@@ -67,6 +67,7 @@ export class LPOracleBenchmark {
     let benchmark: LPOracleBenchmark;
 
     before('setup benchmark', () => {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       benchmark = this;
     });
 
