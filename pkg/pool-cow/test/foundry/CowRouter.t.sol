@@ -338,12 +338,12 @@ contract CowRouterTest is BaseCowTest {
         uint256 expectedSwapAmountOut = _calculateAmountOutSwapExactIn(daiSwapAmountIn);
 
         // The hint is bigger than the transfer amount (2 * expectedSwapAmountIn).
-        (
-            uint256[] memory donationAmounts,
-            uint256[] memory expectedProtocolFees,
-            uint256[] memory donationAfterFees,
-            uint256[] memory transferAmountHints
-        ) = _getDonationAndFees(donationDai, donationUsdc, 2 * daiSwapAmountIn, protocolFeePercentage);
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
+            donationDai,
+            donationUsdc,
+            2 * daiSwapAmountIn,
+            protocolFeePercentage
+        );
 
         vm.startPrank(alice);
         // Transfer the expected amount of DAI.
@@ -772,12 +772,12 @@ contract CowRouterTest is BaseCowTest {
         uint256 expectedSwapAmountIn = _calculateAmountInSwapExactOut(usdcSwapAmountOut);
 
         // The hint is bigger than the transfer amount (2 * expectedSwapAmountIn).
-        (
-            uint256[] memory donationAmounts,
-            uint256[] memory expectedProtocolFees,
-            uint256[] memory donationAfterFees,
-            uint256[] memory transferAmountHints
-        ) = _getDonationAndFees(donationDai, donationUsdc, 2 * expectedSwapAmountIn, protocolFeePercentage);
+        (uint256[] memory donationAmounts, , , uint256[] memory transferAmountHints) = _getDonationAndFees(
+            donationDai,
+            donationUsdc,
+            2 * expectedSwapAmountIn,
+            protocolFeePercentage
+        );
 
         vm.startPrank(alice);
         // Transfer the expected amount of DAI.

@@ -197,7 +197,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         swapAmountExactIn = bound(swapAmountExactIn, MIN_SWAP_AMOUNT, vault.getCurrentLiveBalances(pool)[daiIdx]);
 
         // First query the swap.
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
         uint256 queryAmountOut = aggregatorRouter.querySwapSingleTokenExactIn(
             pool,
@@ -208,7 +208,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             bytes("")
         );
         // Restore the state before the query.
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         // Then execute the actual swap.
         vm.startPrank(alice);
@@ -350,7 +350,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 maxAmountIn = dai.balanceOf(alice);
 
         // First query the swap.
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
         uint256 queryAmountIn = aggregatorRouter.querySwapSingleTokenExactOut(
             pool,
@@ -361,7 +361,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             bytes("")
         );
         // Restore the state before the query.
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         // Then execute the actual swap.
         vm.startPrank(alice);

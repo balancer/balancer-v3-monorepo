@@ -47,10 +47,10 @@ contract RecoveryModeTest is BaseVaultTest {
 
         uint256 amountToRemove = bptAmountOut;
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         // No fees; user gets all the funds back.
         assertEq(expectedAmountsOut[0], DEFAULT_AMOUNT, "Unexpected amount out [0]");
@@ -87,10 +87,10 @@ contract RecoveryModeTest is BaseVaultTest {
 
         uint256 amountToRemove = bptAmountOut;
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityRecovery(pool, amountToRemove);
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         // Verify that roundtrip fees are being applied to the expected amounts out.
         assertEq(
