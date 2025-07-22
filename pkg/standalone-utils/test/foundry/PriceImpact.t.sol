@@ -77,14 +77,14 @@ contract PriceImpactTest is BaseVaultTest {
 
     function testPriceImpact() public {
         vm.startPrank(address(0), address(0));
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
 
         // Calculate priceImpact.
         uint256 amountIn = poolInitAmount / 2;
         uint256[] memory amountsIn = [amountIn, 0].toMemoryArray();
 
         uint256 priceImpact = priceImpactHelper.calculateAddLiquidityUnbalancedPriceImpact(pool, amountsIn, address(0));
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         // It's tricky to choose an infinitesimal amount to calculate the spot price. A very low amount doesn't have
         // enough resolution to calculate the price of the BPT properly, while a big amount doesn't calculate the spot
@@ -99,7 +99,7 @@ contract PriceImpactTest is BaseVaultTest {
             address(0),
             bytes("")
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         uint256 spotPrice = infinitesimalAmountIn.divDown(infinitesimalBptOut);
 

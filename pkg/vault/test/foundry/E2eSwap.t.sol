@@ -481,7 +481,7 @@ contract E2eSwapTest is BaseVaultTest {
         vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
 
         vm.startPrank(sender);
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         uint256 exactAmountOut = router.swapSingleTokenExactIn(
             pool,
             tokenA,
@@ -495,7 +495,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         vm.assume(exactAmountOut > 0);
 
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
         uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
             pool,
             tokenA,
