@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ethers } from 'hardhat';
 
-import { BaseContract } from 'ethers';
+import { BaseContract, ContractTransactionReceipt } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
@@ -9,7 +9,7 @@ import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConv
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
-import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
+import { saveMinMaxAvgSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
 import { Router, IVault } from '@balancer-labs/v3-vault/typechain-types';
@@ -63,6 +63,7 @@ export class LPOracleBenchmark {
     const TOKEN_AMOUNT = fp(100);
 
     let tokenAddresses: string[];
+    let feedMocks: FeedMock[];
 
     let benchmark: LPOracleBenchmark;
 
@@ -120,7 +121,8 @@ export class LPOracleBenchmark {
 
       const poolAddress = await poolInfo.pool.getAddress();
 
-      const feeds: AggregatorV3Interface[] = [];
+      const feeds = [];
+      feedMocks = [];
       for (let i = 0; i < poolInfo.poolTokens.length; i++) {
         const token = poolInfo.poolTokens[i];
         const tokenMetadata = (await deployedAt('v3-interfaces/IERC20Metadata', token)) as unknown as IERC20Metadata;
@@ -131,8 +133,8 @@ export class LPOracleBenchmark {
           'v3-interfaces/AggregatorV3Interface',
           await feedMock.getAddress()
         )) as unknown as AggregatorV3Interface;
-        await feedMock.setLastRoundData(bn(i + 1) * bn(1e18), Math.floor(Date.now() / 1000));
         feeds.push(feed);
+        feedMocks.push(feedMock);
       }
 
       return this.deployOracle(poolAddress, feeds);
@@ -159,14 +161,37 @@ export class LPOracleBenchmark {
           const aggregatorV3InterfaceAbi = new ethers.Interface([
             'function latestRoundData() public view returns (uint80, int256, uint256, uint256, uint80)',
           ]);
-          const latestRoundDataData = aggregatorV3InterfaceAbi.encodeFunctionData('latestRoundData');
+          const latestRoundData = aggregatorV3InterfaceAbi.encodeFunctionData('latestRoundData');
 
-          const tx = await benchmark.alice.sendTransaction({
-            to: await oracleContract.getAddress(),
-            data: latestRoundDataData,
-          });
-          const receipt = await tx.wait();
-          await saveSnap(benchmark._testDirname, `${benchmark._oracleType} - ${numberOfTokens} tokens`, [receipt!]);
+          const priceArray = [fp(0.1), fp(1), fp(10)];
+          const cases = [];
+          for (let i = 0; i < Math.pow(priceArray.length, numberOfTokens); i++) {
+            const casePrices = [];
+            for (let j = 0; j < numberOfTokens; j++) {
+              casePrices.push(priceArray[Math.floor(i / Math.pow(priceArray.length, j)) % priceArray.length]);
+            }
+
+            cases.push(casePrices);
+          }
+
+          let receipts: ContractTransactionReceipt[] = [];
+          for (const casePrices of cases) {
+            for (let i = 0; i < casePrices.length; i++) {
+              await feedMocks[i].setLastRoundData(casePrices[i], Math.floor(Date.now() / 1000));
+            }
+
+            const tx = await benchmark.alice.sendTransaction({
+              to: await oracleContract.getAddress(),
+              data: latestRoundData,
+            });
+            receipts.push((await tx.wait()) as unknown as ContractTransactionReceipt);
+          }
+
+          await saveMinMaxAvgSnap(
+            benchmark._testDirname,
+            `${benchmark._oracleType} - ${numberOfTokens} tokens`,
+            receipts
+          );
         });
       });
     }
