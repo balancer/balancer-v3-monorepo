@@ -740,20 +740,40 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
-        (uint256[] memory amountsIn, ) = _addLiquidityToNestedPool(params.pool, params);
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+        uint256 numParentPoolTokens = parentPoolTokens.length;
+        uint256[] memory amountsIn = new uint256[](numParentPoolTokens);
+        bool parentPoolNeedsLiquidity;
+
+        for (uint256 i = 0; i < numParentPoolTokens; i++) {
+            address token = address(parentPoolTokens[i]);
+            CompositeTokenInfo memory tokenInfo = _computeCompositeTokenInfo(
+                token,
+                _currentSwapTokenInAmounts().tGet(token)
+            );
+
+            amountsIn[i] = _processNestedPoolToken(tokenInfo, params);
+
+            if (amountsIn[i] > 0) {
+                parentPoolNeedsLiquidity = true;
+            }
+        }
+
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
-        (, exactBptAmountOut, ) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: isStaticCall ? address(this) : params.sender,
-                maxAmountsIn: amountsIn,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
-        );
+        if (parentPoolNeedsLiquidity) {
+            // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
+            (, exactBptAmountOut, ) = _vault.addLiquidity(
+                AddLiquidityParams({
+                    pool: params.pool,
+                    to: isStaticCall ? address(this) : params.sender,
+                    maxAmountsIn: amountsIn,
+                    minBptAmountOut: params.minBptAmountOut,
+                    kind: params.kind,
+                    userData: params.userData
+                })
+            );
+        }
 
         // Settle the amounts in.
         if (isStaticCall == false) {
@@ -869,30 +889,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
     // Nested Pool helper functions
 
-    function _addLiquidityToNestedPool(
-        address pool,
-        AddLiquidityHookParams calldata params
-    ) internal returns (uint256[] memory amountsIn, bool allAmountsEmpty) {
-        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(pool);
-        uint256 numParentPoolTokens = parentPoolTokens.length;
-        amountsIn = new uint256[](numParentPoolTokens);
-        allAmountsEmpty = true;
-
-        for (uint256 i = 0; i < numParentPoolTokens; i++) {
-            address token = address(parentPoolTokens[i]);
-            CompositeTokenInfo memory tokenInfo = _computeCompositeTokenInfo(
-                token,
-                _currentSwapTokenInAmounts().tGet(token)
-            );
-
-            amountsIn[i] = _processNestedPoolToken(tokenInfo, params);
-
-            if (amountsIn[i] > 0) {
-                allAmountsEmpty = false;
-            }
-        }
-    }
-
     function _processNestedPoolToken(
         CompositeTokenInfo memory tokenInfo,
         AddLiquidityHookParams calldata params
@@ -928,7 +924,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
         uint256 numChildPoolTokens = childPoolTokens.length;
         uint256[] memory childPoolAmountsIn = new uint256[](numChildPoolTokens);
-        bool childPoolNeedsLiquidity = false;
+        bool childPoolNeedsLiquidity;
 
         // Process tokens in the child pool (no further nesting allowed).
         for (uint256 i = 0; i < numChildPoolTokens; i++) {
