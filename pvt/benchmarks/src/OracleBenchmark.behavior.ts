@@ -17,7 +17,7 @@ import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidit
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { AggregatorV3Interface, IERC20Metadata } from '@balancer-labs/v3-interfaces/typechain-types';
-import { LPOracleWrapper, FeedMock } from '@balancer-labs/v3-standalone-utils/typechain-types/contracts/test';
+import { FeedMock } from '@balancer-labs/v3-standalone-utils/typechain-types/contracts/test';
 
 export type PoolInfo = {
   pool: BaseContract;
@@ -156,10 +156,15 @@ export class LPOracleBenchmark {
         });
 
         it('measures gas', async () => {
-          const wrapper: LPOracleWrapper = await deploy('v3-standalone-utils/LPOracleWrapper', {
-            args: [await oracleContract.getAddress()],
+          const aggregatorV3InterfaceAbi = new ethers.Interface([
+            'function latestRoundData() public view returns (uint80, int256, uint256, uint256, uint80)',
+          ]);
+          const latestRoundDataData = aggregatorV3InterfaceAbi.encodeFunctionData('latestRoundData');
+
+          const tx = await benchmark.alice.sendTransaction({
+            to: await oracleContract.getAddress(),
+            data: latestRoundDataData,
           });
-          const tx = await wrapper.callLatestRoundData();
           const receipt = await tx.wait();
           await saveSnap(benchmark._testDirname, `${benchmark._oracleType} - ${numberOfTokens} tokens`, [receipt!]);
         });
