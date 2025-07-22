@@ -8,22 +8,12 @@ import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/Vault
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, MAX_UINT128 } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
-import {
-  BatchRouter,
-  BufferRouter,
-  Router,
-  IVault,
-  ProtocolFeeController,
-} from '@balancer-labs/v3-vault/typechain-types';
-import {
-  ERC20WithRateTestToken,
-  ERC4626TestToken,
-  WETHTestToken,
-} from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { Router, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
+import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { AggregatorV3Interface, IERC20Metadata } from '@balancer-labs/v3-interfaces/typechain-types';
@@ -50,12 +40,8 @@ export class LPOracleBenchmark {
   WETH!: WETHTestToken;
 
   permit2!: IPermit2;
-  feeCollector!: ProtocolFeeController;
   router!: Router;
-  bufferRouter!: BufferRouter;
-  batchRouter!: BatchRouter;
   alice!: SignerWithAddress;
-  admin!: SignerWithAddress;
 
   constructor(dirname: string, poolType: string) {
     this._testDirname = dirname;
@@ -73,17 +59,8 @@ export class LPOracleBenchmark {
   }
 
   itBenchmarks = () => {
-    const BATCH_ROUTER_VERSION = 'BatchRouter v9';
     const ROUTER_VERSION = 'Router v9';
-
-    const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
-    const MAX_PROTOCOL_YIELD_FEE = fp(0.2);
-
     const TOKEN_AMOUNT = fp(100);
-    const BUFFER_INITIALIZE_AMOUNT = bn(1e4);
-
-    const SWAP_AMOUNT = fp(20);
-    const SWAP_FEE = fp(0.01);
 
     let tokenAddresses: string[];
 
@@ -94,24 +71,14 @@ export class LPOracleBenchmark {
     });
 
     before('setup signers', async () => {
-      [, this.alice, this.admin] = await ethers.getSigners();
+      [, this.alice] = await ethers.getSigners();
     });
 
     sharedBeforeEach('deploy vault, router, tokens', async () => {
       this.vault = await TypesConverter.toIVault(await VaultDeployer.deploy());
-      this.feeCollector = (await deployedAt(
-        'v3-vault/ProtocolFeeController',
-        await this.vault.getProtocolFeeController()
-      )) as unknown as ProtocolFeeController;
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       this.permit2 = await deployPermit2();
       this.router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION] });
-      this.bufferRouter = await deploy('v3-vault/BufferRouter', {
-        args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION],
-      });
-      this.batchRouter = await deploy('v3-vault/BatchRouter', {
-        args: [this.vault, this.WETH, this.permit2, BATCH_ROUTER_VERSION],
-      });
       this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token A', 'TKNA', 18] });
       this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token B', 'TKNB', 18] });
       this.tokenC = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
@@ -134,8 +101,6 @@ export class LPOracleBenchmark {
       for (const token of [this.tokenA, this.tokenB, this.tokenC, this.tokenD, this.WETH]) {
         await token.connect(this.alice).approve(this.permit2, MAX_UINT256);
         await this.permit2.connect(this.alice).approve(token, this.router, MAX_UINT160, MAX_UINT48);
-        await this.permit2.connect(this.alice).approve(token, this.bufferRouter, MAX_UINT160, MAX_UINT48);
-        await this.permit2.connect(this.alice).approve(token, this.batchRouter, MAX_UINT160, MAX_UINT48);
       }
     });
 
