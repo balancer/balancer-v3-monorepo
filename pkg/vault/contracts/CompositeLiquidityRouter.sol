@@ -12,15 +12,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import {
-    TransientEnumerableSet
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
-import {
-    TransientStorageHelpers
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-
 import { CompositeLiquidityRouterHooks } from "./CompositeLiquidityRouterHooks.sol";
 
 /**
@@ -30,9 +21,6 @@ import { CompositeLiquidityRouterHooks } from "./CompositeLiquidityRouterHooks.s
  * the operation with the Vault.
  */
 contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidityRouterHooks {
-    using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
-    using TransientStorageHelpers for *;
-
     constructor(
         IVault vault,
         IWETH weth,
