@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import {ICompositeLiquidityRouterErrors} from "./ICompositeLiquidityRouterErrors.sol";
+import { ICompositeLiquidityRouterErrors } from "./ICompositeLiquidityRouterErrors.sol";
 
 /**
  * @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
@@ -17,7 +17,7 @@ import {ICompositeLiquidityRouterErrors} from "./ICompositeLiquidityRouterErrors
  * 1) without having to do any expensive ERC4626 wrapping operations; and
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
  */
-interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors{
+interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
     /***************************************************************************
                                    ERC4626 Pools
     ***************************************************************************/
