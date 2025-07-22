@@ -47,9 +47,6 @@ export class LPOracleBenchmark {
   tokenB!: ERC20WithRateTestToken;
   tokenC!: ERC20WithRateTestToken;
   tokenD!: ERC20WithRateTestToken;
-  wTokenA!: ERC4626TestToken;
-  wTokenB!: ERC4626TestToken;
-  wTokenC!: ERC4626TestToken;
   WETH!: WETHTestToken;
 
   permit2!: IPermit2;
@@ -88,14 +85,13 @@ export class LPOracleBenchmark {
     const SWAP_AMOUNT = fp(20);
     const SWAP_FEE = fp(0.01);
 
-    let tokenAAddress: string;
-    let tokenBAddress: string;
-    let tokenCAddress: string;
-    let tokenDAddress: string;
-    let wTokenAAddress: string;
-    let wTokenBAddress: string;
-    let wTokenCAddress: string;
-    let wethAddress: string;
+    let tokenAddresses: string[];
+
+    let benchmark: LPOracleBenchmark;
+
+    before('setup benchmark', () => {
+      benchmark = this;
+    });
 
     before('setup signers', async () => {
       [, this.alice, this.admin] = await ethers.getSigners();
@@ -121,24 +117,11 @@ export class LPOracleBenchmark {
       this.tokenC = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
       this.tokenD = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });
 
-      tokenAAddress = await this.tokenA.getAddress();
-      tokenBAddress = await this.tokenB.getAddress();
-      tokenCAddress = await this.tokenC.getAddress();
-      tokenDAddress = await this.tokenD.getAddress();
-      wethAddress = await this.WETH.getAddress();
-
-      this.wTokenA = await deploy('v3-solidity-utils/ERC4626TestToken', {
-        args: [tokenAAddress, 'wTokenA', 'wTokenA', 18],
-      });
-      this.wTokenB = await deploy('v3-solidity-utils/ERC4626TestToken', {
-        args: [tokenBAddress, 'wTokenB', 'wTokenB', 18],
-      });
-      this.wTokenC = await deploy('v3-solidity-utils/ERC4626TestToken', {
-        args: [tokenCAddress, 'wTokenC', 'wTokenC', 18],
-      });
-      wTokenAAddress = await this.wTokenA.getAddress();
-      wTokenBAddress = await this.wTokenB.getAddress();
-      wTokenCAddress = await this.wTokenC.getAddress();
+      tokenAddresses = [];
+      tokenAddresses[0] = await this.tokenA.getAddress();
+      tokenAddresses[1] = await this.tokenB.getAddress();
+      tokenAddresses[2] = await this.tokenC.getAddress();
+      tokenAddresses[3] = await this.tokenD.getAddress();
     });
 
     sharedBeforeEach('token setup', async () => {
@@ -148,29 +131,11 @@ export class LPOracleBenchmark {
       await this.tokenD.mint(this.alice, TOKEN_AMOUNT * 20n);
       await this.WETH.connect(this.alice).deposit({ value: TOKEN_AMOUNT });
 
-      for (const token of [
-        this.tokenA,
-        this.tokenB,
-        this.tokenC,
-        this.tokenD,
-        this.WETH,
-        this.wTokenA,
-        this.wTokenB,
-        this.wTokenC,
-      ]) {
+      for (const token of [this.tokenA, this.tokenB, this.tokenC, this.tokenD, this.WETH]) {
         await token.connect(this.alice).approve(this.permit2, MAX_UINT256);
         await this.permit2.connect(this.alice).approve(token, this.router, MAX_UINT160, MAX_UINT48);
         await this.permit2.connect(this.alice).approve(token, this.bufferRouter, MAX_UINT160, MAX_UINT48);
         await this.permit2.connect(this.alice).approve(token, this.batchRouter, MAX_UINT160, MAX_UINT48);
-      }
-
-      for (const token of [this.wTokenA, this.wTokenB, this.wTokenC]) {
-        const underlying = (await deployedAt(
-          'v3-solidity-utils/ERC20WithRateTestToken',
-          await token.asset()
-        )) as unknown as ERC20WithRateTestToken;
-        await underlying.connect(this.alice).approve(await token.getAddress(), TOKEN_AMOUNT * 10n);
-        await token.connect(this.alice).deposit(TOKEN_AMOUNT * 10n, await this.alice.getAddress());
       }
     });
 
@@ -207,25 +172,38 @@ export class LPOracleBenchmark {
       return this.deployOracle(poolAddress, feeds);
     };
 
-    describe('measure gas 2 tokens', () => {
-      let oracleContract: AggregatorV3Interface;
+    function itMeasureGas(numberOfTokens: number) {
+      describe(`measure gas ${numberOfTokens} tokens`, () => {
+        let oracleContract: AggregatorV3Interface;
 
-      sharedBeforeEach(`deploy oracle`, async () => {
-        const oracleInfo = await deployOracle(sortAddresses([tokenAAddress, tokenBAddress]));
-        if (!oracleInfo) {
-          throw new Error('Oracle was not deployed');
-        }
-        oracleContract = oracleInfo.oracle;
-      });
+        sharedBeforeEach(`deploy oracle`, async () => {
+          const poolTokens = [];
+          for (let i = 0; i < numberOfTokens; i++) {
+            poolTokens.push(tokenAddresses[i]);
+          }
 
-      it('measures gas', async () => {
-        const wrapper: LPOracleWrapper = await deploy('v3-standalone-utils/LPOracleWrapper', {
-          args: [await oracleContract.getAddress()],
+          const oracleInfo = await deployOracle(sortAddresses(poolTokens));
+          if (!oracleInfo) {
+            throw new Error('Oracle was not deployed');
+          }
+          oracleContract = oracleInfo.oracle;
         });
-        const tx = await wrapper.callLatestRoundData();
-        const receipt = await tx.wait();
-        await saveSnap(this._testDirname, `${this._oracleType} - 2 tokens`, [receipt!]);
+
+        it('measures gas', async () => {
+          const wrapper: LPOracleWrapper = await deploy('v3-standalone-utils/LPOracleWrapper', {
+            args: [await oracleContract.getAddress()],
+          });
+          const tx = await wrapper.callLatestRoundData();
+          const receipt = await tx.wait();
+          await saveSnap(benchmark._testDirname, `${benchmark._oracleType} - ${numberOfTokens} tokens`, [receipt!]);
+        });
       });
+    }
+
+    context('measure gas', () => {
+      itMeasureGas(2);
+      itMeasureGas(3);
+      itMeasureGas(4);
     });
   };
 }
