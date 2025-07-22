@@ -167,9 +167,9 @@ export class LPOracleBenchmark {
     }
 
     context('measure gas', () => {
-      itMeasureGas(2);
-      itMeasureGas(3);
-      itMeasureGas(4);
+      itMeasuresGas(2);
+      itMeasuresGas(3);
+      itMeasuresGas(4);
     });
   };
 }
