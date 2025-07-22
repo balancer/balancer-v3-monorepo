@@ -917,26 +917,26 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         for (uint256 i = 0; i < numChildPoolTokens; i++) {
             address childPoolToken = address(childPoolTokens[i]);
             CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
-            uint256 childPoolTokenInAmount = _currentSwapTokenInAmounts().tGet(childPoolToken);
+            uint256 swapAmountIn = _currentSwapTokenInAmounts().tGet(childPoolToken);
             uint256 childTokenSettledAmount;
 
-            if (childPoolTokenInAmount > 0) {
+            if (swapAmountIn > 0) {
                 childTokenSettledAmount = _settledTokenAmounts().tGet(childPoolToken);
             }
 
             if (childPoolTokenType == CompositeTokenType.ERC4626) {
-                if (childPoolTokenInAmount == 0) {
+                if (swapAmountIn == 0) {
                     // If it's a wrapped token, and it's not in `_currentSwapTokenInAmounts`, we need to wrap it.
                     childPoolAmountsIn[i] = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
                 } else if (childTokenSettledAmount == 0) {
                     // Handle ERC4626 tokens with amount > 0 as standard tokens
-                    childPoolAmountsIn[i] = childPoolTokenInAmount;
-                    _settledTokenAmounts().tSet(childPoolToken, childPoolTokenInAmount);
+                    childPoolAmountsIn[i] = swapAmountIn;
+                    _settledTokenAmounts().tSet(childPoolToken, swapAmountIn);
                 }
             } else if (childPoolTokenType == CompositeTokenType.ERC20 || childPoolTokenType == CompositeTokenType.BPT) {
-                if (childPoolTokenInAmount > 0 && childTokenSettledAmount == 0) {
-                    childPoolAmountsIn[i] = childPoolTokenInAmount;
-                    _settledTokenAmounts().tSet(childPoolToken, childPoolTokenInAmount);
+                if (swapAmountIn > 0 && childTokenSettledAmount == 0) {
+                    childPoolAmountsIn[i] = swapAmountIn;
+                    _settledTokenAmounts().tSet(childPoolToken, swapAmountIn);
                 }
             } else {
                 revert IVaultErrors.InvalidTokenType();
