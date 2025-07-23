@@ -161,7 +161,7 @@ contract CowPoolTest is BaseCowTest {
         assertTrue(IHooks(pool).onRegister(poolFactory, pool, tokenConfig, liquidityManagement), "onRegister failed");
     }
 
-    function testGetHookFlags() public {
+    function testGetHookFlags() public view {
         HookFlags memory hookFlags = IHooks(pool).getHookFlags();
 
         assertTrue(hookFlags.shouldCallBeforeSwap, "shouldCallBeforeSwap should be true");
@@ -254,7 +254,6 @@ contract CowPoolTest is BaseCowTest {
 
     function testOnBeforeAddLiquidity() public {
         // CoW Pool's onBeforeAddLiquidity ignores the numeric inputs, so any number works.
-        address wrongCowRouter = address(1);
         assertTrue(
             IHooks(pool).onBeforeAddLiquidity(
                 address(cowRouter),

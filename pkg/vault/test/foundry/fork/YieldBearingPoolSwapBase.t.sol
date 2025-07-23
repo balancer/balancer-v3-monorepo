@@ -309,14 +309,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function _testExactIn(IBatchRouter.SwapPathExactAmountIn[] memory paths, bool withBufferLiquidity) private {
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         (
             uint256[] memory queryPathAmountsOut,
             address[] memory queryTokensOut,
             uint256[] memory queryAmountsOut
         ) = batchRouter.querySwapExactIn(paths, address(this), bytes(""));
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         // Measure tokens before actual swap
         SwapResultLocals memory vars = _createSwapResultLocals(
@@ -430,14 +430,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function _testExactOut(IBatchRouter.SwapPathExactAmountOut[] memory paths, bool withBufferLiquidity) private {
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         (
             uint256[] memory queryPathAmountsIn,
             address[] memory queryTokensIn,
             uint256[] memory queryAmountsIn
         ) = batchRouter.querySwapExactOut(paths, address(this), bytes(""));
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         // Measure tokens before actual swap
         SwapResultLocals memory vars = _createSwapResultLocals(
