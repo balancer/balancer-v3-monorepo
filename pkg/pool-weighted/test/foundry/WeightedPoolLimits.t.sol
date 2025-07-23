@@ -118,7 +118,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
 
-        preInitSnapshotId = vm.snapshot();
+        preInitSnapshotId = vm.snapshotState();
 
         uint256[] memory weights = weightedPool.getNormalizedWeights();
 
@@ -144,22 +144,22 @@ contract WeightedPoolLimitsTest is BaseVaultTest, WeightedPoolContractsDeployer 
 
         _updatePoolParams(daiWeight, swapFeePercentage);
 
-        uint256 postInitSnapshot = vm.snapshot();
+        uint256 postInitSnapshot = vm.snapshotState();
 
         _testAddLiquidity();
-        vm.revertTo(postInitSnapshot);
+        vm.revertToState(postInitSnapshot);
 
         _testRemoveLiquidity();
-        vm.revertTo(postInitSnapshot);
+        vm.revertToState(postInitSnapshot);
 
         _testSwap();
-        vm.revertTo(postInitSnapshot);
+        vm.revertToState(postInitSnapshot);
 
         _testAddLiquidityUnbalanced(swapFeePercentage);
     }
 
     function testInitialize__Fuzz(uint256 daiWeight, uint256 swapFeePercentage) public {
-        vm.revertTo(preInitSnapshotId);
+        vm.revertToState(preInitSnapshotId);
 
         daiWeight = bound(daiWeight, 1e16, 99e16);
         swapFeePercentage = bound(swapFeePercentage, MIN_SWAP_FEE, MAX_SWAP_FEE);
