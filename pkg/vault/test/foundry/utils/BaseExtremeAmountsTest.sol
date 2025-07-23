@@ -441,7 +441,7 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
         assertEq(bptAmountOut, exactBPTAmount, "bpAmountOut should be equal to exactBPTAmount");
 
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         vm.prank(address(this), address(0));
         (uint256 queryBPTAmountIn, , ) = vault.removeLiquidity(
             RemoveLiquidityParams({
@@ -453,7 +453,7 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
                 userData: bytes("")
             })
         );
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
 
         if (queryBPTAmountIn > bptAmountOut) {
             vm.expectRevert(

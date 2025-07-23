@@ -196,7 +196,7 @@ contract LBPoolTest is BaseLBPTest {
         uint32 startTime = uint32(block.timestamp + DEFAULT_START_OFFSET);
         uint32 endTime = uint32(block.timestamp + DEFAULT_END_OFFSET);
 
-        uint256 preCreateSnapshotId = vm.snapshot();
+        uint256 preCreateSnapshotId = vm.snapshotState();
 
         vm.expectEmit();
         emit LBPool.GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
@@ -212,7 +212,7 @@ contract LBPoolTest is BaseLBPTest {
             DEFAULT_PROJECT_TOKENS_SWAP_IN
         );
 
-        vm.revertTo(preCreateSnapshotId);
+        vm.revertToState(preCreateSnapshotId);
 
         vm.expectEmit();
         emit LBPoolFactory.LBPoolCreated(newPool, projectToken, reserveToken);
