@@ -744,7 +744,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
         uint256 numParentPoolTokens = parentPoolTokens.length;
         uint256[] memory amountsIn = new uint256[](numParentPoolTokens);
-        bool parentPoolNeedsLiquidity;
+        bool parentPoolNeedsLiquidity = false;
 
         for (uint256 i = 0; i < numParentPoolTokens; i++) {
             address parentPoolToken = address(parentPoolTokens[i]);
@@ -911,7 +911,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
         uint256 numChildPoolTokens = childPoolTokens.length;
         uint256[] memory childPoolAmountsIn = new uint256[](numChildPoolTokens);
-        bool childPoolNeedsLiquidity;
+        bool childPoolNeedsLiquidity = false;
 
         // Process tokens in the child pool (no further nesting allowed).
         for (uint256 i = 0; i < numChildPoolTokens; i++) {
