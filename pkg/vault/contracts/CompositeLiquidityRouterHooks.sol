@@ -44,13 +44,16 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         bool isStaticCall;
     }
 
+    bool internal immutable _isAggregator;
+
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
+        bool isAggregator,
         string memory routerVersion
     ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
-        // solhint-disable-previous-line no-empty-blocks
+        _isAggregator = isAggregator;
     }
 
     // ERC4626 Pool Hooks
@@ -218,7 +221,11 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
             if (amountIn > 0) {
                 if (callParams.isStaticCall == false) {
-                    _takeTokenIn(callParams.sender, IERC20(underlyingToken), amountIn, callParams.wethIsEth);
+                    if (_isAggregator == false) {
+                        _takeTokenIn(callParams.sender, IERC20(underlyingToken), amountIn, callParams.wethIsEth);
+                    } else {
+                        _vault.settle(IERC20(underlyingToken), amountIn);
+                    }
                 }
 
                 (, , actualAmountIn) = _vault.erc4626BufferWrapOrUnwrap(
@@ -236,6 +243,8 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
             if (callParams.isStaticCall == false) {
                 _takeTokenIn(callParams.sender, IERC20(token), amountIn, callParams.wethIsEth);
+            } else {
+                _vault.settle(IERC20(token), amountIn);
             }
         }
     }
@@ -270,7 +279,11 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
             if (amountIn > 0) {
                 if (callParams.isStaticCall == false) {
-                    _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
+                    if (_isAggregator == false) {
+                        _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
+                    } else {
+                        _vault.settle(IERC20(underlyingToken), maxAmountIn);
+                    }
                 }
 
                 // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
@@ -296,6 +309,8 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
             if (callParams.isStaticCall == false) {
                 _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
+            } else {
+                _vault.settle(tokenIn, actualAmountIn);
             }
         }
 
@@ -696,6 +711,8 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         if (underlyingAmountIn > 0) {
             if (callParams.isStaticCall == false) {
                 _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
+            } else {
+                _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
             }
 
             (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
