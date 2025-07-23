@@ -29,6 +29,8 @@ struct SwapLimits {
 }
 
 struct E2eTestState {
+    address sender;
+    address poolCreator;
     SwapLimits swapLimits;
     uint256 minPoolSwapFeePercentage;
     uint256 maxPoolSwapFeePercentage;
@@ -49,9 +51,6 @@ contract E2eSwapTest is BaseVaultTest {
     uint256 internal decimalsTokenB;
     uint256 internal poolInitAmountTokenA;
     uint256 internal poolInitAmountTokenB;
-
-    address internal sender;
-    address internal poolCreator;
 
     E2eTestState private $;
 
@@ -82,7 +81,7 @@ contract E2eSwapTest is BaseVaultTest {
             admin
         );
 
-        vm.prank(poolCreator);
+        vm.prank($.poolCreator);
         // Set pool creator fee to 100% bypassing checks, so protocol + creator fees = the total charged fees.
         feeController.manualSetPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
 
@@ -100,14 +99,14 @@ contract E2eSwapTest is BaseVaultTest {
     /**
      * @notice Override pool created by BaseVaultTest.
      * @dev For this test to be generic and support tokens with different decimals, tokenA and tokenB must be set by
-     * `setUpTokens`. If this function runs before `BaseVaultTest.setUp()`, in the `setUp()` function, tokens defined
+     * `_setUpTokens`. If this function runs before `BaseVaultTest.setUp()`, in the `setUp()` function, tokens defined
      * by BaseTest (like dai and usdc) cannot be used. If it runs after, we don't know which tokens are used by
      * createPool and initPool. So, the solution is to create a parallel function to create and initialize a custom
      * pool after the BaseVaultTest setUp finishes.
      */
     function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
         // Tokens must be set before other variables, so the variables can be calculated based on tokens.
-        setUpTokens();
+        _setUpTokens();
         decimalsTokenA = IERC20Metadata(address(tokenA)).decimals();
         decimalsTokenB = IERC20Metadata(address(tokenB)).decimals();
 
@@ -116,7 +115,7 @@ contract E2eSwapTest is BaseVaultTest {
         // Pool Init Amount values are needed to set up variables that rely on the initial pool state.
         setPoolInitAmounts();
 
-        setUpVariables();
+        $ = setUpVariables($);
         $.swapLimits = computeSwapLimits();
 
         address[] memory tokens = new address[](2);
@@ -138,21 +137,14 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     /**
-     * @notice Set up tokens.
-     * @dev When extending the test, override this function and set the same variables.
-     */
-    function setUpTokens() internal virtual {
-        tokenA = dai;
-        tokenB = usdc;
-    }
-
-    /**
      * @notice Set up test variables (sender and poolCreator).
      * @dev When extending the test, override this function and set the same variables.
      */
-    function setUpVariables() internal virtual {
-        sender = lp;
-        poolCreator = lp;
+    function setUpVariables(E2eTestState memory state) internal view virtual returns (E2eTestState memory) {
+        state.sender = lp;
+        state.poolCreator = lp;
+
+        return state;
     }
 
     function computeSwapLimits() internal virtual returns (SwapLimits memory swapLimits) {
@@ -480,7 +472,7 @@ contract E2eSwapTest is BaseVaultTest {
         poolSwapFeePercentage = bound(poolSwapFeePercentage, $.minPoolSwapFeePercentage, $.maxPoolSwapFeePercentage);
         vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
 
-        vm.startPrank(sender);
+        vm.startPrank($.sender);
         uint256 snapshotId = vm.snapshotState();
         uint256 exactAmountOut = router.swapSingleTokenExactIn(
             pool,
@@ -584,9 +576,9 @@ contract E2eSwapTest is BaseVaultTest {
 
         vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender, Rounding.ROUND_DOWN);
+        BaseVaultTest.Balances memory balancesBefore = getBalances($.sender, Rounding.ROUND_DOWN);
 
-        vm.startPrank(sender);
+        vm.startPrank($.sender);
         uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
             pool,
             tokenA,
@@ -630,7 +622,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
         vm.stopPrank();
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender, Rounding.ROUND_UP);
+        BaseVaultTest.Balances memory balancesAfter = getBalances($.sender, Rounding.ROUND_UP);
 
         // User does not get any value out of the Vault.
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
@@ -702,9 +694,9 @@ contract E2eSwapTest is BaseVaultTest {
 
         vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender, Rounding.ROUND_DOWN);
+        BaseVaultTest.Balances memory balancesBefore = getBalances($.sender, Rounding.ROUND_DOWN);
 
-        vm.startPrank(sender);
+        vm.startPrank($.sender);
         uint256 exactAmountInDo = router.swapSingleTokenExactOut(
             pool,
             tokenA,
@@ -730,7 +722,7 @@ contract E2eSwapTest is BaseVaultTest {
         {
             // `exactAmountInDo` could be bigger than the actual balance of the pool, since the first swap paid fees
             // and pool creator is 100% (no LP fees).
-            BaseVaultTest.Balances memory balancesMiddle = getBalances(sender, Rounding.ROUND_DOWN);
+            BaseVaultTest.Balances memory balancesMiddle = getBalances($.sender, Rounding.ROUND_DOWN);
             vm.assume(exactAmountInDo < balancesMiddle.poolTokens[tokenAIdx]);
         }
 
@@ -755,7 +747,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
         vm.stopPrank();
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender, Rounding.ROUND_UP);
+        BaseVaultTest.Balances memory balancesAfter = getBalances($.sender, Rounding.ROUND_UP);
 
         // User does not get any value out of the Vault.
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
@@ -926,6 +918,12 @@ contract E2eSwapTest is BaseVaultTest {
         // Override vault liquidity, to make sure the extra liquidity is registered.
         vault.manualSetReservesOf(tokenA, 100 * poolInitAmountTokenA);
         vault.manualSetReservesOf(tokenB, 100 * poolInitAmountTokenB);
+    }
+
+    /// @dev This function cannot be extended in principle by other layers; there doesn't seem to be a use case for it.
+    function _setUpTokens() private {
+        tokenA = dai;
+        tokenB = usdc;
     }
 
     function _getTestState() internal view returns (E2eTestState memory) {
