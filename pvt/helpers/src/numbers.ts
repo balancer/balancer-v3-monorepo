@@ -89,6 +89,10 @@ export function printGas(gas: number | bigint): string {
   return `${(gas / 1000).toFixed(1)}k`;
 }
 
+export function printMinMaxAvgGas(minGas: number | bigint, maxGas: number | bigint, avgGas: number | bigint): string {
+  return `Min: ${printGas(minGas)}\nMax: ${printGas(maxGas)}\nAvg: ${printGas(avgGas)}`;
+}
+
 export function scaleUp(n: bigint, scalingFactor: bigint): bigint {
   if (scalingFactor == bn(1)) {
     return n;
