@@ -16,10 +16,10 @@ import { AggregatorBatchRouter } from "@balancer-labs/v3-vault/contracts/Aggrega
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
-import { Context, BalancerLib } from "../../contracts/BalancerLib.sol";
+import { Context, BalancerSwapLib } from "../../contracts/BalancerSwapLib.sol";
 
-contract BalancerLibTest is BaseVaultTest {
-    using BalancerLib for Context;
+contract BalancerSwapLibTest is BaseVaultTest {
+    using BalancerSwapLib for Context;
 
     Context internal context;
 
@@ -41,7 +41,7 @@ contract BalancerLibTest is BaseVaultTest {
         deal(address(usdc), address(this), defaultAccountBalance());
         deal(address(dai), address(this), defaultAccountBalance());
 
-        context = BalancerLib.createContext(
+        context = BalancerSwapLib.createContext(
             address(new AggregatorRouter(vault, "AggregatorRouter")),
             address(new AggregatorBatchRouter(vault, "AggregatorBatchRouter"))
         );
@@ -142,13 +142,13 @@ contract BalancerLibTest is BaseVaultTest {
 
         uint256 underlyingAmountOut = context.swapSingleTokenExactIn(
             wrappedPool,
-            usdc,
-            dai,
+            waUSDC,
+            waDAI,
             underlyingAmountIn,
             0,
             MAX_UINT256,
-            waUSDC,
-            waDAI
+            true,
+            true
         );
 
         uint256 poolAmountOut = _vaultPreviewDeposit(waDAI, underlyingAmountOut);
@@ -171,13 +171,13 @@ contract BalancerLibTest is BaseVaultTest {
 
         uint256 underlyingAmountOut = context.swapSingleTokenExactIn(
             wrappedPool,
-            usdc,
-            dai,
+            waUSDC,
+            waDAI,
             underlyingAmountIn,
             0,
             MAX_UINT256,
-            waUSDC,
-            waDAI,
+            true,
+            true,
             bytes("test")
         );
 
@@ -200,13 +200,13 @@ contract BalancerLibTest is BaseVaultTest {
 
         uint256 underlyingAmountIn = context.swapSingleTokenExactOut(
             wrappedPool,
-            usdc,
-            dai,
+            waUSDC,
+            waDAI,
             underlyingAmountOut,
             usdc.balanceOf(address(this)),
             MAX_UINT256,
-            waUSDC,
-            waDAI
+            true,
+            true
         );
         uint256 poolAmountIn = _vaultPreviewDeposit(waUSDC, underlyingAmountIn);
 
@@ -228,13 +228,13 @@ contract BalancerLibTest is BaseVaultTest {
 
         uint256 underlyingAmountIn = context.swapSingleTokenExactOut(
             wrappedPool,
-            usdc,
-            dai,
+            waUSDC,
+            waDAI,
             underlyingAmountOut,
             usdc.balanceOf(address(this)),
             MAX_UINT256,
-            waUSDC,
-            waDAI,
+            true,
+            true,
             bytes("test")
         );
         uint256 poolAmountIn = _vaultPreviewDeposit(waUSDC, underlyingAmountIn);

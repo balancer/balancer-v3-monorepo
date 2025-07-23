@@ -15,7 +15,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Context, BalancerInternalLib } from "./BalancerInternalLib.sol";
 
-library BalancerLib {
+library BalancerSwapLib {
     using SafeERC20 for IERC20;
     using BalancerInternalLib for Context;
 
@@ -88,8 +88,8 @@ library BalancerLib {
         uint256 exactAmountIn,
         uint256 minAmountOut,
         uint256 deadline,
-        IERC20 wrapedTokenIn,
-        IERC20 unwrapedTokenOut
+        bool useUnderlyingTokenIn,
+        bool useUnderlyingTokenOut
     ) internal returns (uint256 amountOut) {
         return
             BalancerInternalLib.swapSingleTokenExactIn(
@@ -100,8 +100,8 @@ library BalancerLib {
                 exactAmountIn,
                 minAmountOut,
                 deadline,
-                wrapedTokenIn,
-                unwrapedTokenOut,
+                useUnderlyingTokenIn,
+                useUnderlyingTokenOut,
                 bytes("")
             );
     }
@@ -114,8 +114,8 @@ library BalancerLib {
         uint256 exactAmountIn,
         uint256 minAmountOut,
         uint256 deadline,
-        IERC20 wrapedTokenIn,
-        IERC20 unwrapedTokenOut,
+        bool useUnderlyingTokenIn,
+        bool useUnderlyingTokenOut,
         bytes memory userData
     ) internal returns (uint256 amountOut) {
         return
@@ -127,8 +127,8 @@ library BalancerLib {
                 exactAmountIn,
                 minAmountOut,
                 deadline,
-                wrapedTokenIn,
-                unwrapedTokenOut,
+                useUnderlyingTokenIn,
+                useUnderlyingTokenOut,
                 userData
             );
     }
@@ -190,8 +190,8 @@ library BalancerLib {
         uint256 exactAmountOut,
         uint256 maxAmountIn,
         uint256 deadline,
-        IERC20 wrapedTokenIn,
-        IERC20 unwrapedTokenOut
+        bool useUnderlyingTokenIn,
+        bool useUnderlyingTokenOut
     ) internal returns (uint256 amountIn) {
         return
             BalancerInternalLib.swapSingleTokenExactOut(
@@ -202,8 +202,8 @@ library BalancerLib {
                 exactAmountOut,
                 maxAmountIn,
                 deadline,
-                wrapedTokenIn,
-                unwrapedTokenOut,
+                useUnderlyingTokenIn,
+                useUnderlyingTokenOut,
                 bytes("")
             );
     }
@@ -216,8 +216,8 @@ library BalancerLib {
         uint256 exactAmountOut,
         uint256 maxAmountIn,
         uint256 deadline,
-        IERC20 wrapedTokenIn,
-        IERC20 unwrapedTokenOut,
+        bool useUnderlyingTokenIn,
+        bool useUnderlyingTokenOut,
         bytes memory userData
     ) internal returns (uint256 amountIn) {
         return
@@ -229,8 +229,8 @@ library BalancerLib {
                 exactAmountOut,
                 maxAmountIn,
                 deadline,
-                wrapedTokenIn,
-                unwrapedTokenOut,
+                useUnderlyingTokenIn,
+                useUnderlyingTokenOut,
                 userData
             );
     }
