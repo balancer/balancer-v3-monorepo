@@ -1043,11 +1043,25 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         }
     }
 
-    // Check the current token against the wrap
-    function _needsWrapOperation(address token, address[] memory wrappedTokens) internal pure returns (bool) {
-        uint256 numTokens = wrappedTokens.length;
+    /**
+     * @notice Check the current token against the wrap/unwrap set passed in from the user.
+     * @dev Linear search is not ideal, and diverges from the flag / transient storage map approach used elsewhere.
+     * Unlike with "flat" Boosted Pools, there is no well-defined "token index" into the tree structure (internally,
+     * we use pre-order traversal, but this is not part of the interface), so the only way to implement an approach
+     * equivalent to Boosted Pools would be to impose a token-ordering requirement on users.
+     *
+     * Alternatively, we could leave the tokensIn/tokensOut arrays "partial," use a parallel array of wrap/unwrap
+     * flags, and figure it out internally (e.g., using transient storage mappings). Since the token list is expected
+     * to be short, an optimized linear search should be acceptable.
+     *
+     * @param token The current nested pool token we are checking
+     * @param wrapOperationTokenSet The set of tokens the user has directed the system to wrap/unwrap
+     * @return needsWrapOperation The result; true means we should wrap/unwrap; false means treat the token as an ERC20
+     */
+    function _needsWrapOperation(address token, address[] memory wrapOperationTokenSet) internal pure returns (bool) {
+        uint256 numTokens = wrapOperationTokenSet.length;
         for (uint256 i = 0; i < numTokens; ) {
-            if (wrappedTokens[i] == token) {
+            if (wrapOperationTokenSet[i] == token) {
                 return true;
             }
 
