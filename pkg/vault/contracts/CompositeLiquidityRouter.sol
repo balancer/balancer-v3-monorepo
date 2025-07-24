@@ -912,6 +912,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             } else if (tokenType == CompositeTokenType.ERC4626) {
                 if (
                     swapAmountIn == 0 &&
+                    _needsWrapOperation(parentPoolToken, tokensToWrap) &&
                     _currentSwapTokenInAmounts().tGet(_vault.getERC4626BufferAsset(IERC4626(parentPoolToken))) > 0
                 ) {
                     swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(parentPoolToken), callParams);
