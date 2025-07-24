@@ -28,16 +28,16 @@ contract E2eSwapECLPTest is E2eSwapTest, GyroEclpPoolDeployer {
         return createGyroEclpPool(tokens, rateProviders, label, vault, lp);
     }
 
-    function setUpVariables() internal override {
-        sender = lp;
-        poolCreator = lp;
+    function setUpVariables(E2eTestState memory state) internal view override returns (E2eTestState memory) {
+        state.sender = lp;
+        state.poolCreator = lp;
 
-        E2eTestState memory state = _getTestState();
         // 0.0001% min swap fee.
         state.minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
         state.maxPoolSwapFeePercentage = 10e16;
-        _setTestState(state);
+
+        return state;
     }
 
     function computeSwapLimits() internal view virtual override returns (SwapLimits memory swapLimits) {
