@@ -33,8 +33,9 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
+import { AggregatorCompositeLiquidityRouter } from "../../../contracts/AggregatorCompositeLiquidityRouter.sol";
 
-abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
+contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -102,8 +103,9 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
     BatchRouterMock internal batchRouter;
     BufferRouterMock internal bufferRouter;
     RateProviderMock internal rateProvider;
-    CompositeLiquidityRouterMock internal compositeLiquidityRouter;
     BasicAuthorizerMock internal authorizer;
+    CompositeLiquidityRouterMock internal compositeLiquidityRouter;
+    AggregatorCompositeLiquidityRouter internal aggregatorCompositeLiquidityRouter;
 
     // Fee controller deployed with the Vault.
     IProtocolFeeController internal feeController;
@@ -177,8 +179,12 @@ abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTes
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
+        compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
+        aggregatorCompositeLiquidityRouter = deployAggregatorCompositeLiquidityRouterMock(
+            IVault(address(vault)),
+            "Aggregator CompositeLiquidityRouter v1"
+        );
         bufferRouter = deployBufferRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(bufferRouter), "buffer router");
         feeController = vault.getProtocolFeeController();

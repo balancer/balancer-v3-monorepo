@@ -8,6 +8,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
+import {
+    ICompositeLiquidityRouterErrors
+} from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -30,6 +33,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     address internal childPoolERC4626;
     address internal parentPoolWithoutWrapper;
     address internal parentPoolWithWrapper;
+
+    bool private skipETHTests;
 
     // Max of 5 wei of error when retrieving tokens from a nested pool.
     uint256 internal constant MAX_ROUND_ERROR = 5;
@@ -106,6 +111,10 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         _initPool(poolToInitialize, sortedAmountsIn, 0);
     }
 
+    function setSkipETHTests(bool skip) internal {
+        skipETHTests = skip;
+    }
+
     /*******************************************************************************
                                 Add liquidity
     *******************************************************************************/
@@ -143,7 +152,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToWrap[2] = address(waWETH);
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
             amountsIn,
@@ -256,7 +265,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[0] = usdcAmount;
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
             amountsIn,
@@ -376,7 +385,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToWrap[2] = address(waWETH);
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPoolWithoutWrapper,
             tokensIn,
             amountsIn,
@@ -463,6 +472,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 wethAmount,
         bool forceEthLeftover
     ) public {
+        vm.skip(skipETHTests);
+
         daiAmount = bound(daiAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         usdcAmount = bound(usdcAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         wethAmount = bound(wethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
@@ -601,7 +612,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToWrap[1] = address(waWETH);
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPoolWithoutWrapper,
             tokensIn,
             amountsIn,
@@ -719,7 +730,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToWrap[2] = address(waWETH);
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
@@ -831,7 +842,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         amountsIn[vars.waWethIdx] = waWethAmount;
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
@@ -971,7 +982,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPoolWithWrapper,
             tokensIn,
             amountsIn,
@@ -1019,7 +1030,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToWrap[2] = address(waWETH);
 
         vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
             amountsIn,
@@ -1148,15 +1159,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BptAmountOutBelowMin.selector, expectedBptOut, minBptOut));
-        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
-            parentPool,
-            tokensIn,
-            amountsIn,
-            tokensToWrap,
-            minBptOut,
-            false,
-            bytes("")
-        );
+        _addLiquidityUnbalancedNestedPool(parentPool, tokensIn, amountsIn, tokensToWrap, minBptOut, false, bytes(""));
     }
 
     function testAddLiquidityNestedPoolWrongTokenArray() public {
@@ -1188,15 +1191,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         vm.prank(lp);
         // Since tokensIn and amountsIn have different lengths, revert.
         vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
-        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
-            parentPool,
-            tokensIn,
-            amountsIn,
-            tokensToWrap,
-            minBptOut,
-            false,
-            bytes("")
-        );
+        _addLiquidityUnbalancedNestedPool(parentPool, tokensIn, amountsIn, tokensToWrap, minBptOut, false, bytes(""));
     }
 
     function testAddLiquidityNestedPoolDuplicateTokens() public {
@@ -1217,8 +1212,10 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
 
         vm.prank(lp);
         // Since tokensIn and amountsIn have different lengths, revert.
-        vm.expectRevert(abi.encodeWithSelector(ICompositeLiquidityRouter.DuplicateTokenIn.selector, address(dai)));
-        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+        vm.expectRevert(
+            abi.encodeWithSelector(ICompositeLiquidityRouterErrors.DuplicateTokenIn.selector, address(dai))
+        );
+        _addLiquidityUnbalancedNestedPool(
             parentPool,
             tokensIn,
             amountsIn,
@@ -1269,15 +1266,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         permit2.approve(address(newToken), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
         // Since user passed a token that was not deposited in any pool, transaction reverts.
         vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
-        compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
-            parentPool,
-            tokensIn,
-            amountsIn,
-            tokensToWrap,
-            minBptOut,
-            false,
-            bytes("")
-        );
+        _addLiquidityUnbalancedNestedPool(parentPool, tokensIn, amountsIn, tokensToWrap, minBptOut, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -1322,7 +1311,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -1453,6 +1442,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedPoolWithEth__Fuzz(uint256 proportionToRemove) public {
+        vm.skip(skipETHTests);
+
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
 
@@ -1489,7 +1480,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -1673,7 +1664,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToUnwrap[2] = address(waUSDC);
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
             parentPoolWithWrapper,
             exactBptIn,
             tokensOut,
@@ -1814,7 +1805,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToUnwrap[0] = address(waDAI);
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
             parentPoolWithWrapper,
             exactBptIn,
             tokensOut,
@@ -1923,6 +1914,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedERC4626PoolWithEth__Fuzz(uint256 proportionToRemove) public {
+        vm.skip(skipETHTests);
+
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
 
@@ -1971,7 +1964,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToUnwrap[2] = address(waUSDC);
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
             parentPoolWithWrapper,
             exactBptIn,
             tokensOut,
@@ -2138,7 +2131,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         vm.revertTo(snapshotId);
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
             parentPoolWithWrapper,
             exactBptIn,
             tokensOut,
@@ -2200,7 +2193,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             )
         );
         vm.prank(lp);
-        compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        _removeLiquidityProportionalNestedPool(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -2237,7 +2230,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
 
         vm.prank(lp);
-        compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        _removeLiquidityProportionalNestedPool(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -2278,11 +2271,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         minAmountsOut[2] = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, actualTokensOut, tokensOut)
+            abi.encodeWithSelector(ICompositeLiquidityRouterErrors.WrongTokensOut.selector, actualTokensOut, tokensOut)
         );
 
         vm.prank(lp);
-        compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        _removeLiquidityProportionalNestedPool(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -2325,11 +2318,11 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         minAmountsOut[3] = 1;
 
         vm.expectRevert(
-            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, actualTokensOut, tokensOut)
+            abi.encodeWithSelector(ICompositeLiquidityRouterErrors.WrongTokensOut.selector, actualTokensOut, tokensOut)
         );
 
         vm.prank(lp);
-        compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+        _removeLiquidityProportionalNestedPool(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -2454,5 +2447,49 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         }
 
         balances.totalSupply = BalancerPoolToken(pool).totalSupply();
+    }
+
+    // Virtual function
+
+    function _addLiquidityUnbalancedNestedPool(
+        address pool,
+        address[] memory tokensIn,
+        uint256[] memory exactAmountsIn,
+        address[] memory tokensToWrap,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) internal virtual returns (uint256) {
+        return
+            compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+                pool,
+                tokensIn,
+                exactAmountsIn,
+                tokensToWrap,
+                minBptAmountOut,
+                wethIsEth,
+                userData
+            );
+    }
+
+    function _removeLiquidityProportionalNestedPool(
+        address pool,
+        uint256 exactBptAmountIn,
+        address[] memory tokensOut,
+        uint256[] memory minAmountsOut,
+        address[] memory tokensToUnwrap,
+        bool wethIsEth,
+        bytes memory userData
+    ) internal virtual returns (uint256[] memory amountsOut) {
+        return
+            compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
+                pool,
+                exactBptAmountIn,
+                tokensOut,
+                minAmountsOut,
+                tokensToUnwrap,
+                wethIsEth,
+                userData
+            );
     }
 }
