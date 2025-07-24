@@ -15,6 +15,8 @@ import { HooksConfigLibMock } from "@balancer-labs/v3-vault/contracts/test/Hooks
 import { BaseContractsDeployer } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseContractsDeployer.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
+import { AggregatorCompositeLiquidityRouter } from "../../../contracts/AggregatorCompositeLiquidityRouter.sol";
+import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { VaultFactory } from "../../../contracts/VaultFactory.sol";
 import { VaultExplorer } from "../../../contracts/VaultExplorer.sol";
 import { BaseHooksMock } from "../../../contracts/test/BaseHooksMock.sol";
@@ -127,6 +129,45 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                 );
         } else {
             return new BatchRouterMock(vault, weth, permit2);
+        }
+    }
+
+    function deployCompositeLiquidityRouterMock(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2
+    ) internal returns (CompositeLiquidityRouterMock) {
+        if (reusingArtifacts) {
+            return
+                CompositeLiquidityRouterMock(
+                    payable(
+                        deployCode(
+                            _computeVaultTestPath(type(CompositeLiquidityRouterMock).name),
+                            abi.encode(vault, weth, permit2)
+                        )
+                    )
+                );
+        } else {
+            return new CompositeLiquidityRouterMock(vault, weth, permit2);
+        }
+    }
+
+    function deployAggregatorCompositeLiquidityRouterMock(
+        IVault vault,
+        string memory routerVersion
+    ) internal returns (AggregatorCompositeLiquidityRouter) {
+        if (reusingArtifacts) {
+            return
+                AggregatorCompositeLiquidityRouter(
+                    payable(
+                        deployCode(
+                            _computeVaultTestPath(type(AggregatorCompositeLiquidityRouter).name),
+                            abi.encode(vault, routerVersion)
+                        )
+                    )
+                );
+        } else {
+            return new AggregatorCompositeLiquidityRouter(vault, routerVersion);
         }
     }
 

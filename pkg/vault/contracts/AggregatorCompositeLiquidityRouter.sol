@@ -26,10 +26,7 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
     constructor(
         IVault vault,
         string memory routerVersion
-    )
-        // This is router with permit2, that's why we pass `false` for isAggregator
-        CompositeLiquidityRouterQueries(vault, IWETH(address(0)), IPermit2(address(0)), false, routerVersion)
-    {
+    ) CompositeLiquidityRouterQueries(vault, IWETH(address(0)), IPermit2(address(0)), true, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

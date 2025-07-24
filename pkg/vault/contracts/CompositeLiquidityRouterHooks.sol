@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
@@ -211,6 +212,8 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         bool needToWrap,
         RouterCallParams memory callParams
     ) private returns (uint256 actualAmountIn) {
+        bool isAggregator = _isAggregator;
+
         if (needToWrap) {
             IERC4626 wrappedToken = IERC4626(token);
             address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
@@ -221,7 +224,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
             if (amountIn > 0) {
                 if (callParams.isStaticCall == false) {
-                    if (_isAggregator == false) {
+                    if (isAggregator == false) {
                         _takeTokenIn(callParams.sender, IERC20(underlyingToken), amountIn, callParams.wethIsEth);
                     } else {
                         _vault.settle(IERC20(underlyingToken), amountIn);
@@ -237,14 +240,20 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                         limitRaw: 0
                     })
                 );
+
+                if (callParams.isStaticCall == false && isAggregator == false) {
+                    // _vault.settle(IERC20(wrappedToken), actualAmountIn);
+                }
             }
         } else {
             actualAmountIn = amountIn;
 
             if (callParams.isStaticCall == false) {
-                _takeTokenIn(callParams.sender, IERC20(token), amountIn, callParams.wethIsEth);
-            } else {
-                _vault.settle(IERC20(token), amountIn);
+                if (isAggregator == false) {
+                    _takeTokenIn(callParams.sender, IERC20(token), amountIn, callParams.wethIsEth);
+                } else {
+                    _vault.settle(IERC20(token), amountIn);
+                }
             }
         }
     }
