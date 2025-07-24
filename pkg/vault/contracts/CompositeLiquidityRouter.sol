@@ -11,6 +11,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
