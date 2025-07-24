@@ -39,23 +39,24 @@ contract E2eSwapWeightedTest is E2eSwapTest, WeightedPoolContractsDeployer {
         // Set swap fees to min swap fee percentage.
         vault.manualSetStaticSwapFeePercentage(pool, IBasePool(pool).getMinimumSwapFeePercentage());
 
-        vm.prank(poolCreator);
+        E2eTestState memory state = _getTestState();
+        vm.prank(state.poolCreator);
         // Weighted pools may be drained if there are no lp fees. So, set the creator fee to 99% to add some lp fee
         // back to the pool and ensure the invariant doesn't decrease.
         feeController.setPoolCreatorSwapFeePercentage(pool, 99e16);
     }
 
-    function setUpVariables() internal override {
-        sender = lp;
-        poolCreator = lp;
+    function setUpVariables(E2eTestState memory state) internal view override returns (E2eTestState memory) {
+        state.sender = lp;
+        state.poolCreator = lp;
 
-        E2eTestState memory state = _getTestState();
         state.amountInExactInOutError = 0.001e16;
         // 0.0001% max swap fee.
         state.minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
         state.maxPoolSwapFeePercentage = 10e16; // 10%
-        _setTestState(state);
+
+        return state;
     }
 
     function computeSwapLimits() internal view override returns (SwapLimits memory swapLimits) {
