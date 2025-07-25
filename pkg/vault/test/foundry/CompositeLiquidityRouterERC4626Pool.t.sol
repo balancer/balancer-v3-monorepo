@@ -809,14 +809,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         bool[] memory wrapUnderlying = new bool[](maxAmountsIn.length);
         wrapUnderlying[partialWaDaiIdx] = true;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IVaultErrors.AmountInAboveMax.selector,
-                weth,
-                expectedWrappedAmountsIn[partialWethIdx],
-                maxAmountsIn[partialWethIdx]
-            )
-        );
         vm.startPrank(alice);
         _addLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
@@ -824,7 +816,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             maxAmountsIn,
             exactBptAmountOut,
             false,
-            bytes("")
+            bytes(""),
+            abi.encodeWithSelector(
+                IVaultErrors.AmountInAboveMax.selector,
+                weth,
+                expectedWrappedAmountsIn[partialWethIdx],
+                maxAmountsIn[partialWethIdx]
+            )
         );
         vm.stopPrank();
     }
@@ -1258,14 +1256,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         bool[] memory unwrapWrapped = new bool[](minAmountsOut.length);
         unwrapWrapped[partialWaDaiIdx] = true;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IVaultErrors.AmountOutBelowMin.selector,
-                weth,
-                expectedWrappedAmountsOut[partialWethIdx],
-                minAmountsOut[partialWethIdx]
-            )
-        );
         vm.startPrank(bob);
         _removeLiquidityProportionalFromERC4626Pool(
             partialErc4626Pool,
@@ -1273,7 +1263,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             exactBptAmountIn,
             minAmountsOut,
             false,
-            bytes("")
+            bytes(""),
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                weth,
+                expectedWrappedAmountsOut[partialWethIdx],
+                minAmountsOut[partialWethIdx]
+            )
         );
         vm.stopPrank();
     }
@@ -1392,7 +1388,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         bufferRouter.initializeBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount, 0);
     }
 
-    function testCompositeLiquidityRouterVersion() public view {
+    function testCompositeLiquidityRouterVersion() public virtual view {
         assertEq(IVersion(address(clrRouter)).version(), MOCK_CL_ROUTER_VERSION, "CL BatchRouter version mismatch");
     }
 
@@ -1413,14 +1409,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         maxAmountsIn[waDaiIdx] = expectedWrappedAmountsIn[waDaiIdx] - 1;
         maxAmountsIn[waWethIdx] = expectedWrappedAmountsIn[waWethIdx];
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IVaultErrors.AmountInAboveMax.selector,
-                waDAI,
-                expectedWrappedAmountsIn[waDaiIdx],
-                maxAmountsIn[waDaiIdx]
-            )
-        );
         vm.startPrank(alice);
         _addLiquidityProportionalToERC4626Pool(
             pool,
@@ -1428,7 +1416,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             maxAmountsIn,
             exactBptAmountOut,
             false,
-            bytes("")
+            bytes(""),
+            abi.encodeWithSelector(
+                IVaultErrors.AmountInAboveMax.selector,
+                waDAI,
+                expectedWrappedAmountsIn[waDaiIdx],
+                maxAmountsIn[waDaiIdx]
+            )
         );
         vm.stopPrank();
     }
@@ -1450,14 +1444,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         minAmountsOut[waDaiIdx] = _vaultPreviewRedeem(waDAI, expectedWrappedAmountsOut[waDaiIdx]);
         minAmountsOut[waWethIdx] = expectedWrappedAmountsOut[waWethIdx] + 1;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IVaultErrors.AmountOutBelowMin.selector,
-                waWETH,
-                expectedWrappedAmountsOut[waWethIdx],
-                minAmountsOut[waWethIdx]
-            )
-        );
         vm.startPrank(bob);
         _removeLiquidityProportionalFromERC4626Pool(
             pool,
@@ -1465,7 +1451,13 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             exactBptAmountIn,
             minAmountsOut,
             false,
-            bytes("")
+            bytes(""),
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                waWETH,
+                expectedWrappedAmountsOut[waWethIdx],
+                minAmountsOut[waWethIdx]
+            )
         );
         vm.stopPrank();
     }
@@ -1821,7 +1813,32 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
+    ) internal returns (uint256 bptAmountOut) {
+        return
+            _addLiquidityUnbalancedToERC4626Pool(
+                pool,
+                wrapUnderlying,
+                exactAmountsIn,
+                minBptAmountOut,
+                wethIsEth,
+                userData,
+                bytes("")
+            );
+    }
+
+    function _addLiquidityUnbalancedToERC4626Pool(
+        address pool,
+        bool[] memory wrapUnderlying,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData,
+        bytes memory expectedError
     ) internal virtual returns (uint256 bptAmountOut) {
+        if (expectedError.length > 0) {
+            vm.expectRevert(expectedError);
+        }
+
         return
             CompositeLiquidityRouter(payable(address(clrRouter))).addLiquidityUnbalancedToERC4626Pool(
                 pool,
@@ -1840,7 +1857,32 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
+    ) internal returns (uint256[] memory) {
+        return
+            _addLiquidityProportionalToERC4626Pool(
+                pool,
+                wrapUnderlying,
+                maxAmountsIn,
+                exactBptAmountOut,
+                wethIsEth,
+                userData,
+                bytes("")
+            );
+    }
+
+    function _addLiquidityProportionalToERC4626Pool(
+        address pool,
+        bool[] memory wrapUnderlying,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData,
+        bytes memory expectedError
     ) internal virtual returns (uint256[] memory) {
+        if (expectedError.length > 0) {
+            vm.expectRevert(expectedError);
+        }
+
         return
             CompositeLiquidityRouter(payable(address(clrRouter))).addLiquidityProportionalToERC4626Pool(
                 pool,
@@ -1859,7 +1901,32 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory minAmountsOut,
         bool wethIsEth,
         bytes memory userData
+    ) internal returns (uint256[] memory) {
+        return
+            _removeLiquidityProportionalFromERC4626Pool(
+                pool,
+                unwrapWrapped,
+                exactBptAmountIn,
+                minAmountsOut,
+                wethIsEth,
+                userData,
+                bytes("")
+            );
+    }
+
+    function _removeLiquidityProportionalFromERC4626Pool(
+        address pool,
+        bool[] memory unwrapWrapped,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bool wethIsEth,
+        bytes memory userData,
+        bytes memory expectedError
     ) internal virtual returns (uint256[] memory) {
+        if (expectedError.length > 0) {
+            vm.expectRevert(expectedError);
+        }
+
         return
             CompositeLiquidityRouter(payable(address(clrRouter))).removeLiquidityProportionalFromERC4626Pool(
                 pool,

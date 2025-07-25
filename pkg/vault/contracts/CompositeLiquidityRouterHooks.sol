@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
@@ -240,10 +239,6 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                         limitRaw: 0
                     })
                 );
-
-                if (callParams.isStaticCall == false && isAggregator == false) {
-                    // _vault.settle(IERC20(wrappedToken), actualAmountIn);
-                }
             }
         } else {
             actualAmountIn = amountIn;
@@ -307,6 +302,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 );
             }
 
+            if (actualAmountIn > maxAmountIn) {
+                revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
+            }
+
             if (callParams.isStaticCall == false) {
                 // The maxAmountsIn of underlying tokens was taken from the user, so the difference between
                 // `maxAmountsIn` and the exact underlying amount needs to be returned to the sender.
@@ -316,15 +315,18 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             actualAmountIn = amountIn;
             tokenIn = IERC20(token);
 
-            if (callParams.isStaticCall == false) {
-                _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
-            } else {
-                _vault.settle(tokenIn, actualAmountIn);
+            if (actualAmountIn > maxAmountIn) {
+                revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
             }
-        }
 
-        if (actualAmountIn > maxAmountIn) {
-            revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
+            if (callParams.isStaticCall == false) {
+                if (_isAggregator == false) {
+                    _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
+                } else {
+                    uint256 tokenInCredit = _vault.settle(tokenIn, maxAmountIn);
+                    _sendTokenOut(callParams.sender, tokenIn, tokenInCredit - actualAmountIn, false);
+                }
+            }
         }
     }
 
@@ -480,7 +482,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         // Settle the amounts in.
         if (isStaticCall == false) {
-            _settlePaths(params.sender, params.wethIsEth);
+            _settlePaths(params.sender, params.wethIsEth, _isAggregator);
         }
     }
 
@@ -593,7 +595,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (EVMCallModeHelpers.isStaticCall() == false) {
-            _settlePaths(params.sender, params.wethIsEth);
+            _settlePaths(params.sender, params.wethIsEth, _isAggregator);
         }
     }
 
@@ -718,7 +720,11 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (underlyingAmountIn > 0) {
             if (callParams.isStaticCall == false) {
-                _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
+                if (_isAggregator == false) {
+                    _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
+                } else {
+                    _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
+                }
             }
 
             (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
