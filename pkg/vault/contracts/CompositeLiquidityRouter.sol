@@ -911,7 +911,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 swapAmountIn = _addLiquidityToChildPool(parentPoolToken, tokensToWrap, params, callParams);
             } else if (tokenType == CompositeTokenType.ERC4626) {
                 if (
-                    swapAmountIn == 0 &&
                     _needsWrapOperation(parentPoolToken, tokensToWrap) &&
                     _currentSwapTokenInAmounts().tGet(_vault.getERC4626BufferAsset(IERC4626(parentPoolToken))) > 0
                 ) {
@@ -954,8 +953,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
 
             if (childPoolTokenType == CompositeTokenType.ERC4626) {
-                if (swapAmountIn == 0 && _needsWrapOperation(childPoolToken, tokensToWrap)) {
-                    // If it's a wrapped token, and it's not in `_currentSwapTokenInAmounts`, we need to wrap it.
+                if (_needsWrapOperation(childPoolToken, tokensToWrap)) {
                     swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
                 }
             } else if (childPoolTokenType != CompositeTokenType.ERC20 && childPoolTokenType != CompositeTokenType.BPT) {
