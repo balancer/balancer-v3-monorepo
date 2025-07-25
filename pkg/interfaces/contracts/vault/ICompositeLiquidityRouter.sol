@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { ICompositeLiquidityRouterErrors } from "./ICompositeLiquidityRouterErrors.sol";
+
 /**
  * @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
  * @dev This contract allow interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only underlying
@@ -15,21 +17,7 @@ pragma solidity ^0.8.24;
  * 1) without having to do any expensive ERC4626 wrapping operations; and
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
  */
-interface ICompositeLiquidityRouter {
-    /**
-     * @notice The actual result of the liquidity removal operation does not match the expected set of tokens.
-     * @param actualTokensOut The set of tokens derived from pool traversal
-     * @param expectedTokensOut The set of tokens supplied by the user
-     */
-    error WrongTokensOut(address[] actualTokensOut, address[] expectedTokensOut);
-
-    /**
-     * @notice The `tokensIn` array contains a duplicate token.
-     * @dev Note that it's technically possible to have duplicate tokens with 0 amounts, as those are ignored.
-     * @param duplicateToken The address of the duplicate token
-     */
-    error DuplicateTokenIn(address duplicateToken);
-
+interface ICompositeLiquidityRouter is ICompositeLiquidityRouterErrors {
     /***************************************************************************
                                    ERC4626 Pools
     ***************************************************************************/
