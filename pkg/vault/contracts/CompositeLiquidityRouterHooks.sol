@@ -483,7 +483,11 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             address parentPoolToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
-            CompositeTokenType parentPoolTokenType = _getCompositeTokenType(parentPoolToken);
+            // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
+            CompositeTokenType parentPoolTokenType = _computeEffectiveCompositeTokenType(
+                parentPoolToken,
+                tokensToUnwrap
+            );
 
             if (parentPoolTokenType == CompositeTokenType.BPT) {
                 // Token is a BPT, so remove liquidity from the child pool.
@@ -512,26 +516,25 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
-                    CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
-                    if (
-                        childPoolTokenType == CompositeTokenType.ERC4626 &&
-                        _needsWrapOperation(childPoolToken, tokensToUnwrap)
-                    ) {
-                        // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
+                    // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
+                    CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(
+                        childPoolToken,
+                        tokensToUnwrap
+                    );
+
+                    if (childPoolTokenType == CompositeTokenType.ERC4626) {
+                        // Token is an ERC4626 wrapper the user wants to wrap, so unwrap it and return the underlying.
                         _unwrapExactInAndUpdateTokenOutData(IERC4626(childPoolToken), childPoolAmountOut);
                     } else {
                         _currentSwapTokensOut().add(childPoolToken);
                         _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountOut);
                     }
                 }
-            } else if (
-                parentPoolTokenType == CompositeTokenType.ERC4626 &&
-                _needsWrapOperation(parentPoolToken, tokensToUnwrap)
-            ) {
-                // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
+            } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
+                // Token is an ERC4626 wrapper that the user wants to unwrap, so unwrap it and return the underlying.
                 _unwrapExactInAndUpdateTokenOutData(IERC4626(parentPoolToken), parentPoolAmountOut);
             } else {
-                // Token is neither a BPT nor ERC4626, so return the amount to the user.
+                // Token is neither a BPT nor an ERC4626 the user wants to unwrap, so return the amount to the user.
                 _currentSwapTokensOut().add(parentPoolToken);
                 _currentSwapTokenOutAmounts().tAdd(parentPoolToken, parentPoolAmountOut);
             }
@@ -586,19 +589,14 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         for (uint256 i = 0; i < numParentPoolTokens; i++) {
             address parentPoolToken = address(parentPoolTokens[i]);
-            CompositeTokenType tokenType = _getCompositeTokenType(parentPoolToken);
+            CompositeTokenType parentPoolTokenType = _computeEffectiveCompositeTokenType(parentPoolToken, tokensToWrap);
             uint256 swapAmountIn = _currentSwapTokenInAmounts().tGet(parentPoolToken);
 
-            if (tokenType == CompositeTokenType.BPT) {
+            if (parentPoolTokenType == CompositeTokenType.BPT) {
                 swapAmountIn = _addLiquidityToChildPool(parentPoolToken, tokensToWrap, params, callParams);
-            } else if (tokenType == CompositeTokenType.ERC4626) {
-                if (
-                    swapAmountIn == 0 &&
-                    _currentSwapTokenInAmounts().tGet(_vault.getERC4626BufferAsset(IERC4626(parentPoolToken))) > 0
-                ) {
-                    swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(parentPoolToken), callParams);
-                }
-            } else if (tokenType != CompositeTokenType.ERC20) {
+            } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
+                swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(parentPoolToken), callParams);
+            } else if (parentPoolTokenType != CompositeTokenType.ERC20) {
                 // Should not happen.
                 revert IVaultErrors.InvalidTokenType();
             }
@@ -626,7 +624,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         // Process tokens in the child pool (no further nesting allowed).
         for (uint256 i = 0; i < numChildPoolTokens; i++) {
             address childPoolToken = address(childPoolTokens[i]);
-            CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
+            CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(childPoolToken, tokensToWrap);
             uint256 swapAmountIn = _currentSwapTokenInAmounts().tGet(childPoolToken);
             uint256 childTokenSettledAmount;
 
@@ -635,10 +633,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             }
 
             if (childPoolTokenType == CompositeTokenType.ERC4626) {
-                if (swapAmountIn == 0 && _needsWrapOperation(childPoolToken, tokensToWrap)) {
-                    // If it's a wrapped token, and it's not in `_currentSwapTokenInAmounts`, we need to wrap it.
-                    swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
-                }
+                swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
             } else if (childPoolTokenType != CompositeTokenType.ERC20 && childPoolTokenType != CompositeTokenType.BPT) {
                 revert IVaultErrors.InvalidTokenType();
             }
@@ -713,6 +708,18 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
     }
 
+    // Compute the raw token type, and override ERC4626 with ERC20 if it should not be unwrapped.
+    function _computeEffectiveCompositeTokenType(
+        address token,
+        address[] memory tokensToUnwrap
+    ) internal view returns (CompositeTokenType tokenType) {
+        tokenType = _getCompositeTokenType(token);
+
+        if (tokenType == CompositeTokenType.ERC4626 && _needsWrapOperation(token, tokensToUnwrap) == false) {
+            tokenType = CompositeTokenType.ERC20;
+        }
+    }
+
     // Determine the token type to direct execution.
     function _getCompositeTokenType(address token) internal view returns (CompositeTokenType tokenType) {
         if (_vault.isPoolRegistered(token)) {
@@ -724,11 +731,25 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
     }
 
-    // Check the current token against the wrap
-    function _needsWrapOperation(address token, address[] memory wrappedTokens) internal pure returns (bool) {
-        uint256 numTokens = wrappedTokens.length;
+    /**
+     * @notice Check the current token against the wrap/unwrap set passed in from the user.
+     * @dev Linear search is not ideal, and diverges from the flag / transient storage map approach used elsewhere.
+     * Unlike with "flat" Boosted Pools, there is no well-defined "token index" into the tree structure (internally,
+     * we use pre-order traversal, but this is not part of the interface), so the only way to implement an approach
+     * equivalent to Boosted Pools would be to impose a token-ordering requirement on users.
+     *
+     * Alternatively, we could leave the tokensIn/tokensOut arrays "partial," use a parallel array of wrap/unwrap
+     * flags, and figure it out internally (e.g., using transient storage mappings). Since the token list is expected
+     * to be short, an optimized linear search should be acceptable.
+     *
+     * @param token The current nested pool token we are checking
+     * @param wrapOperationTokenSet The set of tokens the user has directed the system to wrap/unwrap
+     * @return needsWrapOperation The result; true means we should wrap/unwrap; false means treat the token as an ERC20
+     */
+    function _needsWrapOperation(address token, address[] memory wrapOperationTokenSet) internal pure returns (bool) {
+        uint256 numTokens = wrapOperationTokenSet.length;
         for (uint256 i = 0; i < numTokens; ) {
-            if (wrappedTokens[i] == token) {
+            if (wrapOperationTokenSet[i] == token) {
                 return true;
             }
 
