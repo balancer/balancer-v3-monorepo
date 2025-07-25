@@ -40,14 +40,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         ERC4626
     }
 
-    // Factor out common parameters used for adding liquidity.
-    struct CompositeTokenInfo {
-        address token;
-        CompositeTokenType tokenType;
-        uint256 amount;
-        bool needToWrap;
-    }
-
     // Factor out common parameters used in internal liquidity functions.
     struct RouterCallParams {
         address sender;
@@ -801,7 +793,11 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             address parentPoolToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
-            CompositeTokenType parentPoolTokenType = _getCompositeTokenType(parentPoolToken);
+            // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
+            CompositeTokenType parentPoolTokenType = _computeEffectiveCompositeTokenType(
+                parentPoolToken,
+                tokensToUnwrap
+            );
 
             if (parentPoolTokenType == CompositeTokenType.BPT) {
                 // Token is a BPT, so remove liquidity from the child pool.
@@ -830,26 +826,25 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
-                    CompositeTokenType childPoolTokenType = _getCompositeTokenType(childPoolToken);
-                    if (
-                        childPoolTokenType == CompositeTokenType.ERC4626 &&
-                        _needsWrapOperation(childPoolToken, tokensToUnwrap)
-                    ) {
-                        // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
+                    // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
+                    CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(
+                        childPoolToken,
+                        tokensToUnwrap
+                    );
+
+                    if (childPoolTokenType == CompositeTokenType.ERC4626) {
+                        // Token is an ERC4626 wrapper the user wants to wrap, so unwrap it and return the underlying.
                         _unwrapExactInAndUpdateTokenOutData(IERC4626(childPoolToken), childPoolAmountOut);
                     } else {
                         _currentSwapTokensOut().add(childPoolToken);
                         _currentSwapTokenOutAmounts().tAdd(childPoolToken, childPoolAmountOut);
                     }
                 }
-            } else if (
-                parentPoolTokenType == CompositeTokenType.ERC4626 &&
-                _needsWrapOperation(parentPoolToken, tokensToUnwrap)
-            ) {
-                // Token is an ERC4626 wrapper, so unwrap it and return the underlying.
+            } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
+                // Token is an ERC4626 wrapper that the user wants to unwrap, so unwrap it and return the underlying.
                 _unwrapExactInAndUpdateTokenOutData(IERC4626(parentPoolToken), parentPoolAmountOut);
             } else {
-                // Token is neither a BPT nor ERC4626, so return the amount to the user.
+                // Token is neither a BPT nor an ERC4626 the user wants to unwrap, so return the amount to the user.
                 _currentSwapTokensOut().add(parentPoolToken);
                 _currentSwapTokenOutAmounts().tAdd(parentPoolToken, parentPoolAmountOut);
             }
@@ -1028,6 +1023,18 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         // in advance and wrapped. Remaining tokens will be transferred in at the end of the calculation.
         _currentSwapTokensIn().remove(underlyingToken);
         _currentSwapTokenInAmounts().tSet(underlyingToken, 0);
+    }
+
+    // Compute the raw token type, and override ERC4626 with ERC20 if it should not be unwrapped.
+    function _computeEffectiveCompositeTokenType(
+        address token,
+        address[] memory tokensToUnwrap
+    ) internal view returns (CompositeTokenType tokenType) {
+        tokenType = _getCompositeTokenType(token);
+
+        if (tokenType == CompositeTokenType.ERC4626 && _needsWrapOperation(token, tokensToUnwrap) == false) {
+            tokenType = CompositeTokenType.ERC20;
+        }
     }
 
     // Determine the token type to direct execution.
