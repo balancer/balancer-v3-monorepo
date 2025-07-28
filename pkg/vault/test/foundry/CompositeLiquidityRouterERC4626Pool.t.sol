@@ -1388,7 +1388,7 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         bufferRouter.initializeBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount, 0);
     }
 
-    function testCompositeLiquidityRouterVersion() public virtual view {
+    function testCompositeLiquidityRouterVersion() public view virtual {
         assertEq(IVersion(address(clrRouter)).version(), MOCK_CL_ROUTER_VERSION, "CL BatchRouter version mismatch");
     }
 
