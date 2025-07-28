@@ -5,9 +5,9 @@ pragma solidity ^0.8.24;
 import { ICompositeLiquidityRouterQueries } from "./ICompositeLiquidityRouterQueries.sol";
 
 /**
- * @notice The aggregator composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
- * @dev This contract allow interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only underlying
- * standard tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add liquidity to an
+ * @notice An aggregator composite liquidity router for liquidity operations on ERC4626 and nested pools.
+ * @dev This contract allows interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only standard
+ * underlying tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add liquidity to an
  * ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both. If the ERC4626 buffers
  * in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through the wrapped token interface,
  * saving gas.
