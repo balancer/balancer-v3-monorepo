@@ -49,9 +49,9 @@ interface IAggregatorCompositeLiquidityRouter is ICompositeLiquidityRouterQuerie
 
     /**
      * @notice Add proportional amounts of tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
-     * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
-     * the "parent" pool, and also make sure limits are set properly.
+     * @dev An "ERC4626 pool" contains at least one IERC4626 yield-bearing token (e.g., waDAI). Ensure that any buffers associated
+     * with the wrapped tokens in the ERC4626 pool have been initialized before adding liquidity to
+     * the "ERC4626 pool", and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
      * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
