@@ -17,7 +17,9 @@ import { ICompositeLiquidityRouterQueries } from "./ICompositeLiquidityRouterQue
  * 1) without having to do any expensive ERC4626 wrapping operations; and
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
  *
- * The aggregator composite liquidity router uses prepayment instead of permit2.
+ * The aggregator composite liquidity router is designed to be called from a contract vs. an EOA through a UI.
+ * It uses prepayment instead of permit2, and defines identical functions with the same parameters as
+ * `ICompositeLiquidityRouter`, but without support for native ETH wrapping/unwrapping.
  */
 interface IAggregatorCompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
     /***************************************************************************
