@@ -12,7 +12,7 @@ import { ICompositeLiquidityRouterQueries } from "./ICompositeLiquidityRouterQue
  * in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through the wrapped token interface,
  * saving gas.
  *
- * For instance, adding only DAI to the pool above (and assuming an aDAI buffer with enough liquidity), would pull in
+ * For instance, adding only DAI to the pool above (and assuming a waDAI buffer with enough liquidity), would pull in
  * the DAI from the user, swap it for waDAI in the internal Vault buffer, and deposit the waDAI into the ERC4626 pool:
  * 1) without having to do any expensive ERC4626 wrapping operations; and
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
