@@ -70,7 +70,7 @@ interface IAggregatorCompositeLiquidityRouter is ICompositeLiquidityRouterQuerie
 
     /**
      * @notice Remove proportional amounts of tokens from an ERC4626 pool, burning an exact pool token amount.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
+     * @dev An "ERC4626 pool" contains at least one IERC4626 yield-bearing token (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
      * @param exactBptAmountIn Exact amount of pool tokens provided
