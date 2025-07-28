@@ -161,7 +161,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                 AggregatorCompositeLiquidityRouter(
                     payable(
                         deployCode(
-                            _computeVaultTestPath(type(AggregatorCompositeLiquidityRouter).name),
+                            _computeVaultPath(type(AggregatorCompositeLiquidityRouter).name),
                             abi.encode(vault, routerVersion)
                         )
                     )
