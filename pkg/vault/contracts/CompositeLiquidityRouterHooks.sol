@@ -264,10 +264,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (callParams.isStaticCall == false) {
-            if (_isAggregator == false) {
-                _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
-            } else {
+            if (_isAggregator) {
                 _vault.settle(IERC20(underlyingToken), maxAmountIn);
+            } else {
+                _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
             }
         }
 
@@ -680,10 +680,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (underlyingAmountIn > 0) {
             if (callParams.isStaticCall == false) {
-                if (_isAggregator == false) {
-                    _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
-                } else {
+                if (_isAggregator) {
                     _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
+                } else {
+                    _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
                 }
             }
 
