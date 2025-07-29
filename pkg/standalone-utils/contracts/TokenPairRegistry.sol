@@ -5,24 +5,15 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ITokenPairRegistry } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ITokenPairRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { OwnableAuthentication } from "./OwnableAuthentication.sol";
 
-contract TokenPairRegistry is OwnableAuthentication {
+contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    event TokenPairAdded(address indexed pool, address indexed tokenA, address indexed tokenB);
-
-    event TokenPairRemoved(address indexed pool, address indexed tokenA, address indexed tokenB);
-
-    error WrongTokenOrder();
-
-    error PoolAlreadyAddedForPair(address pool, address tokenA, address tokenB);
-
-    error PoolNotAddedForPair(address pool, address tokenA, address tokenB);
 
     mapping(bytes32 pairId => EnumerableSet.AddressSet pools) internal pairsToPool;
 
