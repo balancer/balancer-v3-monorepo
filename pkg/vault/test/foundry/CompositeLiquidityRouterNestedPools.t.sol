@@ -37,8 +37,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     address internal parentPoolWithoutWrapper;
     address internal parentPoolWithWrapper;
 
-    ICompositeLiquidityRouterQueries internal clrRouter;
-
     // Max of 5 wei of error when retrieving tokens from a nested pool.
     uint256 internal constant MAX_ROUND_ERROR = 5;
 
@@ -97,8 +95,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             [childPoolERC4626BptOut / 2, poolInitAmount].toMemoryArray()
         );
         vm.stopPrank();
-
-        initCLRouter();
     }
 
     function _initPoolUnsorted(
@@ -116,8 +112,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         _initPool(poolToInitialize, sortedAmountsIn, 0);
     }
 
-    function initCLRouter() internal virtual {
-        clrRouter = ICompositeLiquidityRouterQueries(address(compositeLiquidityRouter));
+    function initQueryClrRouter() internal virtual returns (ICompositeLiquidityRouterQueries) {
+        return ICompositeLiquidityRouterQueries(address(compositeLiquidityRouter));
     }
 
     function skipETHTests() internal pure virtual returns (bool) {
@@ -484,7 +480,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 wethAmount,
         bool forceEthLeftover
     ) public {
-        vm.skip(skipETHTests());
+        if (skipETHTests()) {
+            return;
+        }
 
         daiAmount = bound(daiAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         usdcAmount = bound(usdcAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
@@ -1485,7 +1483,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedPoolWithEth__Fuzz(uint256 proportionToRemove) public {
-        vm.skip(skipETHTests());
+        if (skipETHTests()) {
+            return;
+        }
 
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
@@ -1960,7 +1960,9 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedERC4626PoolWithEth__Fuzz(uint256 proportionToRemove) public {
-        vm.skip(skipETHTests());
+        if (skipETHTests()) {
+            return;
+        }
 
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
@@ -2531,7 +2533,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         }
 
         return
-            ICompositeLiquidityRouter(address(clrRouter)).addLiquidityUnbalancedNestedPool(
+            compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
                 pool,
                 tokensIn,
                 exactAmountsIn,
@@ -2579,7 +2581,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         }
 
         return
-            ICompositeLiquidityRouter(address(clrRouter)).removeLiquidityProportionalNestedPool(
+            compositeLiquidityRouter.removeLiquidityProportionalNestedPool(
                 pool,
                 exactBptAmountIn,
                 tokensOut,

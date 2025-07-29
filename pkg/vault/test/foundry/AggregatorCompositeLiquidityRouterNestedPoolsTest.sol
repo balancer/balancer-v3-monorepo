@@ -14,12 +14,6 @@ import { AggregatorCompositeLiquidityRouter } from "../../contracts/AggregatorCo
 import { CompositeLiquidityRouterNestedPoolsTest } from "./CompositeLiquidityRouterNestedPools.t.sol";
 
 contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidityRouterNestedPoolsTest {
-    mapping(address => bool) public _tokensToWrap;
-
-    function initCLRouter() internal override {
-        clrRouter = ICompositeLiquidityRouterQueries(address(aggregatorCompositeLiquidityRouter));
-    }
-
     function skipETHTests() internal pure override returns (bool) {
         return true;
     }
@@ -42,8 +36,7 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
                 continue;
             }
 
-            IERC20 effectiveToken = _tokensToWrap[tokensIn[i]] ? IERC20(tokensToWrap[i]) : IERC20(tokensIn[i]);
-            effectiveToken.transfer(address(vault), exactAmountsIn[i]);
+            IERC20(tokensIn[i]).transfer(address(vault), exactAmountsIn[i]);
         }
 
         if (expectedError.length > 0) {
@@ -51,7 +44,7 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
         }
 
         return
-            AggregatorCompositeLiquidityRouter(payable(address(clrRouter))).addLiquidityUnbalancedNestedPool(
+            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
                 pool,
                 tokensIn,
                 exactAmountsIn,
@@ -73,14 +66,14 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
     ) internal override returns (uint256[] memory amountsOut) {
         require(!wethIsEth, "WETH is not supported in this test");
 
-        IERC20(pool).approve(address(clrRouter), exactBptAmountIn);
+        IERC20(pool).approve(address(aggregatorCompositeLiquidityRouter), exactBptAmountIn);
 
         if (expectedError.length > 0) {
             vm.expectRevert(expectedError);
         }
 
         return
-            AggregatorCompositeLiquidityRouter(payable(address(clrRouter))).removeLiquidityProportionalNestedPool(
+            aggregatorCompositeLiquidityRouter.removeLiquidityProportionalNestedPool(
                 pool,
                 exactBptAmountIn,
                 tokensOut,

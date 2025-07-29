@@ -14,17 +14,17 @@ import { AggregatorCompositeLiquidityRouter } from "../../contracts/AggregatorCo
 import { CompositeLiquidityRouterERC4626PoolTest } from "./CompositeLiquidityRouterERC4626Pool.t.sol";
 
 contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidityRouterERC4626PoolTest {
-    function initCLRouter() internal override {
-        clrRouter = ICompositeLiquidityRouterQueries(address(aggregatorCompositeLiquidityRouter));
-    }
-
     function skipETHTests() internal pure override returns (bool) {
         return true;
     }
 
+    function initQueryClrRouter() internal view override returns (ICompositeLiquidityRouterQueries) {
+        return ICompositeLiquidityRouterQueries(address(aggregatorCompositeLiquidityRouter));
+    }
+
     function testCompositeLiquidityRouterVersion() public view override {
         assertEq(
-            IVersion(address(clrRouter)).version(),
+            aggregatorCompositeLiquidityRouter.version(),
             "Aggregator CompositeLiquidityRouter v1",
             "CL BatchRouter version mismatch"
         );
@@ -50,7 +50,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         }
 
         return
-            AggregatorCompositeLiquidityRouter(payable(address(clrRouter))).addLiquidityUnbalancedToERC4626Pool(
+            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
                 pool,
                 wrapUnderlying,
                 exactAmountsIn,
@@ -77,7 +77,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         }
 
         return
-            AggregatorCompositeLiquidityRouter(payable(address(clrRouter))).addLiquidityProportionalToERC4626Pool(
+            aggregatorCompositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
                 pool,
                 wrapUnderlying,
                 maxAmountsIn,
@@ -97,14 +97,14 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
     ) internal override returns (uint256[] memory) {
         require(!wethIsEth, "WETH is not supported in this test");
 
-        IERC20(pool).approve(address(clrRouter), exactBptAmountIn);
+        IERC20(pool).approve(address(aggregatorCompositeLiquidityRouter), exactBptAmountIn);
 
         if (expectedError.length > 0) {
             vm.expectRevert(expectedError);
         }
 
         return
-            AggregatorCompositeLiquidityRouter(payable(address(clrRouter))).removeLiquidityProportionalFromERC4626Pool(
+            aggregatorCompositeLiquidityRouter.removeLiquidityProportionalFromERC4626Pool(
                 pool,
                 unwrapWrapped,
                 exactBptAmountIn,

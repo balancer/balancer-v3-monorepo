@@ -212,43 +212,31 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     ) private returns (uint256 actualAmountIn) {
         bool isAggregator = _isAggregator;
 
-        if (needToWrap) {
-            IERC4626 wrappedToken = IERC4626(token);
-            address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
+        address underlyingToken = needToWrap ? _vault.getERC4626BufferAsset(IERC4626(token)) : token;
+        if (underlyingToken == address(0)) {
+            revert IVaultErrors.BufferNotInitialized(IERC4626(token));
+        }
 
-            if (underlyingToken == address(0)) {
-                revert IVaultErrors.BufferNotInitialized(wrappedToken);
+        if (callParams.isStaticCall == false) {
+            if (isAggregator) {
+                _vault.settle(IERC20(underlyingToken), amountIn);
+            } else {
+                _takeTokenIn(callParams.sender, IERC20(underlyingToken), amountIn, callParams.wethIsEth);
             }
+        }
 
-            if (amountIn > 0) {
-                if (callParams.isStaticCall == false) {
-                    if (isAggregator == false) {
-                        _takeTokenIn(callParams.sender, IERC20(underlyingToken), amountIn, callParams.wethIsEth);
-                    } else {
-                        _vault.settle(IERC20(underlyingToken), amountIn);
-                    }
-                }
-
-                (, , actualAmountIn) = _vault.erc4626BufferWrapOrUnwrap(
-                    BufferWrapOrUnwrapParams({
-                        kind: SwapKind.EXACT_IN,
-                        direction: WrappingDirection.WRAP,
-                        wrappedToken: wrappedToken,
-                        amountGivenRaw: amountIn,
-                        limitRaw: 0
-                    })
-                );
-            }
-        } else {
+        if (needToWrap && amountIn > 0) {
+            (, , actualAmountIn) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: IERC4626(token),
+                    amountGivenRaw: amountIn,
+                    limitRaw: 0
+                })
+            );
+        } else if (needToWrap == false) {
             actualAmountIn = amountIn;
-
-            if (callParams.isStaticCall == false) {
-                if (isAggregator == false) {
-                    _takeTokenIn(callParams.sender, IERC20(token), amountIn, callParams.wethIsEth);
-                } else {
-                    _vault.settle(IERC20(token), amountIn);
-                }
-            }
         }
     }
 
@@ -269,63 +257,41 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         uint256 maxAmountIn,
         RouterCallParams memory callParams
     ) private returns (uint256 actualAmountIn) {
-        IERC20 tokenIn;
+        IERC20 underlyingToken = needToWrap ? IERC20(_vault.getERC4626BufferAsset(IERC4626(token))) : IERC4626(token);
 
-        if (needToWrap) {
-            IERC4626 wrappedToken = IERC4626(token);
-            IERC20 underlyingToken = IERC20(_vault.getERC4626BufferAsset(wrappedToken));
-            tokenIn = underlyingToken;
+        if (address(underlyingToken) == address(0)) {
+            revert IVaultErrors.BufferNotInitialized(IERC4626(token));
+        }
 
-            if (address(underlyingToken) == address(0)) {
-                revert IVaultErrors.BufferNotInitialized(wrappedToken);
+        if (callParams.isStaticCall == false) {
+            if (_isAggregator == false) {
+                _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
+            } else {
+                _vault.settle(IERC20(underlyingToken), maxAmountIn);
             }
+        }
 
-            if (amountIn > 0) {
-                if (callParams.isStaticCall == false) {
-                    if (_isAggregator == false) {
-                        _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
-                    } else {
-                        _vault.settle(IERC20(underlyingToken), maxAmountIn);
-                    }
-                }
-
-                // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-                (, actualAmountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
-                    BufferWrapOrUnwrapParams({
-                        kind: SwapKind.EXACT_OUT,
-                        direction: WrappingDirection.WRAP,
-                        wrappedToken: wrappedToken,
-                        amountGivenRaw: amountIn,
-                        limitRaw: maxAmountIn
-                    })
-                );
-            }
-
-            if (actualAmountIn > maxAmountIn) {
-                revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
-            }
-
-            if (callParams.isStaticCall == false) {
-                // The maxAmountsIn of underlying tokens was taken from the user, so the difference between
-                // `maxAmountsIn` and the exact underlying amount needs to be returned to the sender.
-                _sendTokenOut(callParams.sender, underlyingToken, maxAmountIn - actualAmountIn, callParams.wethIsEth);
-            }
-        } else {
+        if (needToWrap && amountIn > 0) {
+            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+            (, actualAmountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: IERC4626(token),
+                    amountGivenRaw: amountIn,
+                    limitRaw: maxAmountIn
+                })
+            );
+        } else if (needToWrap == false) {
             actualAmountIn = amountIn;
-            tokenIn = IERC20(token);
+        }
 
-            if (actualAmountIn > maxAmountIn) {
-                revert IVaultErrors.AmountInAboveMax(tokenIn, amountIn, maxAmountIn);
-            }
+        if (actualAmountIn > maxAmountIn) {
+            revert IVaultErrors.AmountInAboveMax(underlyingToken, amountIn, maxAmountIn);
+        }
 
-            if (callParams.isStaticCall == false) {
-                if (_isAggregator == false) {
-                    _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
-                } else {
-                    uint256 tokenInCredit = _vault.settle(tokenIn, maxAmountIn);
-                    _sendTokenOut(callParams.sender, tokenIn, tokenInCredit - actualAmountIn, false);
-                }
-            }
+        if (callParams.isStaticCall == false) {
+            _sendTokenOut(callParams.sender, underlyingToken, maxAmountIn - actualAmountIn, callParams.wethIsEth);
         }
     }
 
