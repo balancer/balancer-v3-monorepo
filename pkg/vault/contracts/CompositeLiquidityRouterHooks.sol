@@ -210,32 +210,34 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         bool needToWrap,
         RouterCallParams memory callParams
     ) private returns (uint256 actualAmountIn) {
-        bool isAggregator = _isAggregator;
-
-        address underlyingToken = needToWrap ? _vault.getERC4626BufferAsset(IERC4626(token)) : token;
-        if (underlyingToken == address(0)) {
+        address settlementToken = needToWrap ? _vault.getERC4626BufferAsset(IERC4626(token)) : token;
+        if (needToWrap && settlementToken == address(0)) {
             revert IVaultErrors.BufferNotInitialized(IERC4626(token));
         }
 
         if (callParams.isStaticCall == false) {
-            if (isAggregator) {
-                _vault.settle(IERC20(underlyingToken), amountIn);
+            if (_isAggregator) {
+                // Settle the prepayment amount that was already sent
+                _vault.settle(IERC20(settlementToken), amountIn);
             } else {
-                _takeTokenIn(callParams.sender, IERC20(underlyingToken), amountIn, callParams.wethIsEth);
+                // Retrieve tokens from the sender using Permit2
+                _takeTokenIn(callParams.sender, IERC20(settlementToken), amountIn, callParams.wethIsEth);
             }
         }
 
-        if (needToWrap && amountIn > 0) {
-            (, , actualAmountIn) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_IN,
-                    direction: WrappingDirection.WRAP,
-                    wrappedToken: IERC4626(token),
-                    amountGivenRaw: amountIn,
-                    limitRaw: 0
-                })
-            );
-        } else if (needToWrap == false) {
+        if (needToWrap) {
+            if (amountIn > 0) {
+                (, , actualAmountIn) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: SwapKind.EXACT_IN,
+                        direction: WrappingDirection.WRAP,
+                        wrappedToken: IERC4626(token),
+                        amountGivenRaw: amountIn,
+                        limitRaw: 0
+                    })
+                );
+            }
+        } else {
             actualAmountIn = amountIn;
         }
     }
@@ -257,41 +259,45 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         uint256 maxAmountIn,
         RouterCallParams memory callParams
     ) private returns (uint256 actualAmountIn) {
-        IERC20 underlyingToken = needToWrap ? IERC20(_vault.getERC4626BufferAsset(IERC4626(token))) : IERC4626(token);
+        IERC20 settlementToken = needToWrap ? IERC20(_vault.getERC4626BufferAsset(IERC4626(token))) : IERC4626(token);
 
-        if (address(underlyingToken) == address(0)) {
+        if (needToWrap && address(settlementToken) == address(0)) {
             revert IVaultErrors.BufferNotInitialized(IERC4626(token));
         }
 
         if (callParams.isStaticCall == false) {
             if (_isAggregator) {
-                _vault.settle(IERC20(underlyingToken), maxAmountIn);
+                // Settle the prepayment amount that was already sent
+                _vault.settle(IERC20(settlementToken), maxAmountIn);
             } else {
-                _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
+                // Retrieve tokens from the sender using Permit2
+                _takeTokenIn(callParams.sender, settlementToken, maxAmountIn, callParams.wethIsEth);
             }
         }
 
-        if (needToWrap && amountIn > 0) {
-            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
-            (, actualAmountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_OUT,
-                    direction: WrappingDirection.WRAP,
-                    wrappedToken: IERC4626(token),
-                    amountGivenRaw: amountIn,
-                    limitRaw: maxAmountIn
-                })
-            );
-        } else if (needToWrap == false) {
+        if (needToWrap) {
+            if (amountIn > 0) {
+                // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
+                (, actualAmountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+                    BufferWrapOrUnwrapParams({
+                        kind: SwapKind.EXACT_OUT,
+                        direction: WrappingDirection.WRAP,
+                        wrappedToken: IERC4626(token),
+                        amountGivenRaw: amountIn,
+                        limitRaw: maxAmountIn
+                    })
+                );
+            }
+        } else {
             actualAmountIn = amountIn;
         }
 
         if (actualAmountIn > maxAmountIn) {
-            revert IVaultErrors.AmountInAboveMax(underlyingToken, amountIn, maxAmountIn);
+            revert IVaultErrors.AmountInAboveMax(settlementToken, amountIn, maxAmountIn);
         }
 
         if (callParams.isStaticCall == false) {
-            _sendTokenOut(callParams.sender, underlyingToken, maxAmountIn - actualAmountIn, callParams.wethIsEth);
+            _sendTokenOut(callParams.sender, settlementToken, maxAmountIn - actualAmountIn, callParams.wethIsEth);
         }
     }
 
@@ -681,8 +687,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         if (underlyingAmountIn > 0) {
             if (callParams.isStaticCall == false) {
                 if (_isAggregator) {
+                    // Settle the prepayment amount that was already sent
                     _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
                 } else {
+                    // Retrieve tokens from the sender using Permit2
                     _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
                 }
             }
