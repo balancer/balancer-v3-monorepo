@@ -15,7 +15,7 @@ import { OwnableAuthentication } from "./OwnableAuthentication.sol";
 contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    mapping(bytes32 pairId => EnumerableSet.AddressSet pools) internal pairsToPath;
+    mapping(bytes32 pairId => EnumerableSet.AddressSet pools) internal _pairsToPath;
 
     constructor(IVault vault, address initialOwner) OwnableAuthentication(vault, initialOwner) {
         // solhint-disable-previous-line no-empty-blocks
@@ -23,28 +23,28 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
 
     function getPathAt(address tokenA, address tokenB, uint256 index) external view returns (address) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return pairsToPath[tokenId].at(index);
+        return _pairsToPath[tokenId].at(index);
     }
 
     function getPathAtUnchecked(address tokenA, address tokenB, uint256 index) external view returns (address) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return pairsToPath[tokenId].unchecked_at(index);
+        return _pairsToPath[tokenId].unchecked_at(index);
     }
 
     function getPathCount(address tokenA, address tokenB) external view returns (uint256) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return pairsToPath[tokenId].length();
+        return _pairsToPath[tokenId].length();
     }
 
     function getPaths(address tokenA, address tokenB) external view returns (address[] memory) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        EnumerableSet.AddressSet storage pools = pairsToPath[tokenId];
+        EnumerableSet.AddressSet storage pools = _pairsToPath[tokenId];
         return pools._values;
     }
 
     function hasPath(address tokenA, address tokenB, address pool) external view returns (bool) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return pairsToPath[tokenId].contains(pool);
+        return _pairsToPath[tokenId].contains(pool);
     }
 
     function addPath(address path) external authenticate {
@@ -90,7 +90,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     function _addTokenPair(address pool, address tokenA, address tokenB) internal {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
 
-        if (pairsToPath[tokenId].add(pool) == false) {
+        if (_pairsToPath[tokenId].add(pool) == false) {
             revert PathAlreadyAddedForPair(pool, tokenA, tokenB);
         }
         emit TokenPairAdded(pool, tokenA, tokenB);
@@ -110,7 +110,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     function _removeTokenPair(address pool, address tokenA, address tokenB) internal {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
 
-        if (pairsToPath[tokenId].remove(pool) == false) {
+        if (_pairsToPath[tokenId].remove(pool) == false) {
             revert PathNotAddedForPair(pool, tokenA, tokenB);
         }
         emit TokenPairRemoved(pool, tokenA, tokenB);
