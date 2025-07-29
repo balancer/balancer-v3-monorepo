@@ -5,19 +5,21 @@ pragma solidity ^0.8.24;
 import { ICompositeLiquidityRouterQueries } from "./ICompositeLiquidityRouterQueries.sol";
 
 /**
- * @notice The aggregator composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
- * @dev This contract allow interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only underlying
- * standard tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add liquidity to an
+ * @notice An aggregator composite liquidity router for liquidity operations on ERC4626 and nested pools.
+ * @dev This contract allows interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only standard
+ * underlying tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add liquidity to an
  * ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both. If the ERC4626 buffers
  * in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through the wrapped token interface,
  * saving gas.
  *
- * For instance, adding only DAI to the pool above (and assuming an aDAI buffer with enough liquidity), would pull in
+ * For instance, adding only DAI to the pool above (and assuming a waDAI buffer with enough liquidity), would pull in
  * the DAI from the user, swap it for waDAI in the internal Vault buffer, and deposit the waDAI into the ERC4626 pool:
  * 1) without having to do any expensive ERC4626 wrapping operations; and
  * 2) without requiring the user to construct a batch operation containing the buffer swap.
  *
- * The aggregator composite liquidity router uses prepayment instead of permit2.
+ * The aggregator composite liquidity router is designed to be called from a contract vs. an EOA through a UI.
+ * It uses prepayment instead of permit2, and defines identical functions with the same parameters as
+ * `ICompositeLiquidityRouter`, but without support for native ETH wrapping/unwrapping.
  */
 interface IAggregatorCompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
     /***************************************************************************
@@ -26,8 +28,8 @@ interface IAggregatorCompositeLiquidityRouter is ICompositeLiquidityRouterQuerie
 
     /**
      * @notice Add arbitrary amounts of tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
-     * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
+     * @dev An "ERC4626 pool" contains at least one IERC4626 yield-bearing token (e.g., waDAI). Ensure that any buffers associated
+     * with the wrapped tokens in the ERC4626 pool have been initialized before adding liquidity to
      * the "parent" pool, and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
@@ -47,9 +49,9 @@ interface IAggregatorCompositeLiquidityRouter is ICompositeLiquidityRouterQuerie
 
     /**
      * @notice Add proportional amounts of tokens to an ERC4626 pool through the buffer.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI). Ensure that any buffers associated
-     * with the wrapped tokens in the ERC4626 pool have been initialized before initializing or adding liquidity to
-     * the "parent" pool, and also make sure limits are set properly.
+     * @dev An "ERC4626 pool" contains at least one IERC4626 yield-bearing token (e.g., waDAI). Ensure that any buffers associated
+     * with the wrapped tokens in the ERC4626 pool have been initialized before adding liquidity to
+     * the "ERC4626 pool", and also make sure limits are set properly.
      *
      * @param pool Address of the liquidity pool
      * @param wrapUnderlying Flags indicating whether the corresponding token should be wrapped or used as an ERC20
@@ -68,7 +70,7 @@ interface IAggregatorCompositeLiquidityRouter is ICompositeLiquidityRouterQuerie
 
     /**
      * @notice Remove proportional amounts of tokens from an ERC4626 pool, burning an exact pool token amount.
-     * @dev An "ERC4626 pool" contains IERC4626 yield-bearing tokens (e.g., waDAI).
+     * @dev An "ERC4626 pool" contains at least one IERC4626 yield-bearing token (e.g., waDAI).
      * @param pool Address of the liquidity pool
      * @param unwrapWrapped Flags indicating whether the corresponding token should be unwrapped or used as an ERC20
      * @param exactBptAmountIn Exact amount of pool tokens provided

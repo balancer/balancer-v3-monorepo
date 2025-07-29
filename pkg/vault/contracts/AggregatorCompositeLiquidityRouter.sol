@@ -11,7 +11,6 @@ import {
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CompositeLiquidityRouterHooks } from "./CompositeLiquidityRouterHooks.sol";
 import { CompositeLiquidityRouterQueries } from "./CompositeLiquidityRouterQueries.sol";
@@ -21,6 +20,9 @@ import { CompositeLiquidityRouterQueries } from "./CompositeLiquidityRouterQueri
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
  * These execute the steps needed to add to and remove liquidity from these special types of pools, and settle
  * the operation with the Vault.
+ *
+ * The implementation calls into the `CompositeLiquidityRouterHooks` base contract, and is identical to
+ * `CompositeLiquidityRouter`, except for hard-coding wethIsEth to false.
  */
 contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRouter, CompositeLiquidityRouterQueries {
     constructor(
