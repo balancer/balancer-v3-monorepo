@@ -22,78 +22,76 @@ interface ITokenPairRegistry {
     event TokenPairRemoved(address indexed pool, address indexed tokenA, address indexed tokenB);
 
     /**
-     * @notice Emitted when a adding a pool or buffer for a given pair which had already been added to the registry.
-     * @param pool The address of the pool or buffer that was already added
+     * @notice The given path is not a valid pool or buffer.
+     * @param path Pool or buffer address
+     */
+    error InvalidPath(address path);
+
+    /**
+     * @notice Thrown when a adding a pool or buffer for a given pair which had already been added to the registry.
+     * @param path The address of the pool or buffer that was already added
      * @param tokenA The address of the first token in the pair
      * @param tokenB The address of the second token in the pair
      */
-    error PoolAlreadyAddedForPair(address pool, address tokenA, address tokenB);
+    error PathAlreadyAddedForPair(address path, address tokenA, address tokenB);
 
     /**
-     * @notice Emitted when a removing a pool or buffer for a given pair which had not been added to the registry.
-     * @param pool The address of the pool or buffer being removed
+     * @notice Thrown when a removing a pool or buffer for a given pair which had not been added to the registry.
+     * @param path The address of the pool or buffer being removed
      * @param tokenA The address of the first token in the pair
      * @param tokenB The address of the second token in the pair
      */
-    error PoolNotAddedForPair(address pool, address tokenA, address tokenB);
+    error PathNotAddedForPair(address path, address tokenA, address tokenB);
 
     /**
-     * @notice Returns the pool address for a given token pair at a specific index.
+     * @notice Returns the path address for a given token pair at a specific index.
      * @dev Safe version, reverts if the index is out of bounds.
      * @param tokenA The address of the first token in the pair
      * @param tokenB The address of the second token in the pair
-     * @param index The index of the pool in the list of pools for the token pair
-     * @return The address of the pool at the specified index for the token pair
+     * @param index The index of the path in the list of paths for the token pair
+     * @return The address of the path at the specified index for the token pair
      */
-    function getPoolAt(address tokenA, address tokenB, uint256 index) external view returns (address);
+    function getPathAt(address tokenA, address tokenB, uint256 index) external view returns (address);
 
     /**
-     * @notice Returns the pool address for a given token pair at a specific index.
+     * @notice Returns the path address for a given token pair at a specific index.
      * @dev Unsafe version, use only when index is known to be within bounds.
      * @param tokenA The address of the first token in the pair
      * @param tokenB The address of the second token in the pair
-     * @param index The index of the pool in the list of pools for the token pair
-     * @return The address of the pool at the specified index for the token pair
+     * @param index The index of the path in the list of paths for the token pair
+     * @return The address of the path at the specified index for the token pair
      */
-    function getPoolAtUnchecked(address tokenA, address tokenB, uint256 index) external view returns (address);
+    function getPathAtUnchecked(address tokenA, address tokenB, uint256 index) external view returns (address);
 
     /**
-     * @notice Returns the number of pools registered for a given token pair.
+     * @notice Returns the number of paths registered for a given token pair.
      * @param tokenA The address of the first token in the pair
      * @param tokenB The address of the second token in the pair
-     * @return The number of pools registered for the token pair
+     * @return The number of paths registered for the token pair
      */
-    function getPoolCount(address tokenA, address tokenB) external view returns (uint256);
+    function getPathCount(address tokenA, address tokenB) external view returns (uint256);
 
     /**
-     * @notice Returns the pools registered for a given token pair.
+     * @notice Returns the paths registered for a given token pair.
      * @param tokenA The address of the first token in the pair
      * @param tokenB The address of the second token in the pair
-     * @return An array of pool addresses registered for the token pair
+     * @return An array of path addresses registered for the token pair
      */
-    function getPools(address tokenA, address tokenB) external view returns (address[] memory);
+    function getPaths(address tokenA, address tokenB) external view returns (address[] memory);
 
     /**
-     * @notice Returns true if a pool is registered for a given token pair.
+     * @notice Returns true if a path is registered for a given token pair.
      * @param tokenA The address of the first token in the pair
      * @param tokenB The address of the second token in the pair
-     * @return True if the pool is registered for the given token pair, false otherwise
+     * @return True if the path is registered for the given token pair, false otherwise
      */
-    function hasPool(address tokenA, address tokenB, address pool) external view returns (bool);
+    function hasPath(address tokenA, address tokenB, address path) external view returns (bool);
 
     /**
-     * @notice Adds a pool to the registry for all token pairs it supports.
-     * @dev This function is permissioned. The call will revert if the pool is already registered for the token pair.
+     * @notice Adds a pool or buffer to the registry for all token pairs they support.
+     * @dev This function is permissioned. The call will revert if the path is already registered for the token pair.
      */
-    function addPool(address pool) external;
+    function addPath(address path) external;
 
-    /**
-     * @notice Adds a buffer to the registry, supporting underlying <> wrapped operations.
-     * @dev This function is permissioned. The call will revert if the buffer is already registered for the token pair.
-     */
-    function addBuffer(IERC4626 wrappedToken) external;
-
-    function removePool(address pool) external;
-
-    function removeBuffer(IERC4626 wrappedToken) external;
+    function removePath(address path) external;
 }
