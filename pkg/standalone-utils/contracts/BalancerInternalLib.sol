@@ -30,46 +30,25 @@ library BalancerInternalLib {
         uint256 exactAmountIn,
         uint256 minAmountOut,
         uint256 deadline,
+        bool needToWrapTokenIn,
+        bool needToUnwrapTokenOut,
         bytes memory userData
     ) internal returns (uint256 amountOut) {
-        tokenIn.safeTransfer(address(context.vault), exactAmountIn);
-
-        amountOut = context.aggregatorRouter.swapSingleTokenExactIn(
+        (IERC20 pathTokenIn, IBatchRouter.SwapPathStep[] memory steps) = _computePathTokenInAndSteps(
+            context,
             pool,
             tokenIn,
             tokenOut,
-            exactAmountIn,
-            minAmountOut,
-            deadline,
-            userData
+            needToWrapTokenIn,
+            needToUnwrapTokenOut
         );
-    }
 
-    function swapSingleTokenExactIn(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        uint256 minAmountOut,
-        uint256 deadline,
-        bool useUnderlyingTokenIn,
-        bool useUnderlyingTokenOut,
-        bytes memory userData
-    ) internal returns (uint256 amountOut) {
-        // Determine the actual tokenIn to be used for the swap.
-        // If the underlying token is specified, we need to wrap it first,
-        // so the swap is performed using the corresponding wrapped token.
-        // Otherwise, the provided tokenIn is used directly.
-        IERC20 effectiveTokenIn = useUnderlyingTokenIn ? IERC20(IERC4626(address(tokenIn)).asset()) : tokenIn;
-
-        // Transfer the exact amount in to the vault.
-        effectiveTokenIn.safeTransfer(address(context.vault), exactAmountIn);
+        pathTokenIn.safeTransfer(address(context.vault), exactAmountIn);
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: effectiveTokenIn,
-            steps: _makeSwapPathSteps(pool, tokenIn, tokenOut, useUnderlyingTokenIn, useUnderlyingTokenOut),
+            tokenIn: pathTokenIn,
+            steps: steps,
             exactAmountIn: exactAmountIn,
             minAmountOut: minAmountOut
         });
@@ -87,37 +66,25 @@ library BalancerInternalLib {
         uint256 exactAmountOut,
         uint256 maxAmountIn,
         uint256 deadline,
+        bool needToWrapTokenIn,
+        bool needToUnwrapTokenOut,
         bytes memory userData
     ) internal returns (uint256 amountIn) {
-        tokenIn.safeTransfer(address(context.vault), maxAmountIn);
-
-        amountIn = context.aggregatorRouter.swapSingleTokenExactOut(
+        (IERC20 pathTokenIn, IBatchRouter.SwapPathStep[] memory steps) = _computePathTokenInAndSteps(
+            context,
             pool,
             tokenIn,
             tokenOut,
-            exactAmountOut,
-            maxAmountIn,
-            deadline,
-            userData
+            needToWrapTokenIn,
+            needToUnwrapTokenOut
         );
-    }
 
-    function swapSingleTokenExactOut(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        uint256 maxAmountIn,
-        uint256 deadline,
-        bool useUnderlyingTokenIn,
-        bool useUnderlyingTokenOut,
-        bytes memory userData
-    ) internal returns (uint256 amountIn) {
+        pathTokenIn.safeTransfer(address(context.vault), maxAmountIn);
+
         IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
-            tokenIn: tokenIn,
-            steps: _makeSwapPathSteps(pool, tokenIn, tokenOut, useUnderlyingTokenIn, useUnderlyingTokenOut),
+            tokenIn: pathTokenIn,
+            steps: steps,
             exactAmountOut: exactAmountOut,
             maxAmountIn: maxAmountIn
         });
@@ -127,52 +94,43 @@ library BalancerInternalLib {
         return pathAmountsOut[0];
     }
 
-    function _makeSwapPathSteps(
+    function _computePathTokenInAndSteps(
+        Context memory context,
         address pool,
-        IERC20 poolTokenIn,
-        IERC20 poolTokenOut,
-        bool useUnderlyingTokenIn,
-        bool useUnderlyingTokenOut
-    ) private view returns (IBatchRouter.SwapPathStep[] memory steps) {
-        IBatchRouter.SwapPathStep memory wrapPath;
-        IBatchRouter.SwapPathStep memory swapPath;
-        IBatchRouter.SwapPathStep memory unwrapPath;
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        bool needToWrapTokenIn,
+        bool needToUnwrapTokenOut
+    ) private returns (IERC20 pathTokenIn, IBatchRouter.SwapPathStep[] memory steps) {
+        uint256 stepCounter = 0;
+        uint256 length = 1 + (needToWrapTokenIn ? 1 : 0) + (needToUnwrapTokenOut ? 1 : 0);
+        steps = new IBatchRouter.SwapPathStep[](length);
 
-        if (useUnderlyingTokenIn) {
-            wrapPath = IBatchRouter.SwapPathStep({ pool: address(poolTokenIn), tokenOut: poolTokenIn, isBuffer: true });
-        }
+        if (needToWrapTokenIn) {
+            IERC4626 wrappedTokenIn = IERC4626(tokenIn);
+            IERC20 underlyingTokenIn = IERC20(context.vault.getERC4626BufferAsset(wrappedTokenIn));
 
-        swapPath = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: poolTokenOut, isBuffer: false });
-
-        if (useUnderlyingTokenOut) {
-            unwrapPath = IBatchRouter.SwapPathStep({
-                pool: address(IERC4626(address(poolTokenOut)).asset()),
-                tokenOut: poolTokenOut,
+            pathTokenIn = IERC20(underlyingTokenIn);
+            steps[stepCounter++] = IBatchRouter.SwapPathStep({
+                pool: address(wrappedTokenIn),
+                tokenOut: underlyingTokenIn,
                 isBuffer: true
             });
+        } else {
+            pathTokenIn = tokenIn;
         }
 
-        uint256 stepLength = 1 + (useUnderlyingTokenIn ? 1 : 0) + (useUnderlyingTokenOut ? 1 : 0);
-        steps = new IBatchRouter.SwapPathStep[](stepLength);
+        steps[stepCounter++] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: tokenOut, isBuffer: false });
 
-        // Fill the steps array based on whether wrapping or unwrapping is needed
-        {
-            uint256 i = 0;
-            if (useUnderlyingTokenIn) {
-                steps[i] = wrapPath;
-                unchecked {
-                    i++;
-                }
-            }
+        if (needToUnwrapTokenOut) {
+            IERC4626 wrappedTokenOut = IERC4626(tokenOut);
+            IERC20 underlyingTokenOut = IERC20(context.vault.getERC4626BufferAsset(wrappedTokenOut));
 
-            steps[i] = swapPath;
-            unchecked {
-                i++;
-            }
-
-            if (useUnderlyingTokenOut) {
-                steps[i] = unwrapPath;
-            }
+            steps[stepCounter++] = IBatchRouter.SwapPathStep({
+                pool: address(wrappedTokenOut),
+                tokenOut: underlyingTokenOut,
+                isBuffer: true
+            });
         }
     }
 }

@@ -17,7 +17,29 @@ import { Context, BalancerInternalLib } from "./BalancerInternalLib.sol";
 
 library BalancerSwapLib {
     using SafeERC20 for IERC20;
-    using BalancerInternalLib for Context;
+
+    struct CommonParams {
+        Context context;
+        address pool;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        uint256 deadline;
+        bool wrapTokenIn;
+        bool unwrapTokenOut;
+        bytes userData;
+    }
+
+    struct SwapExactInParams {
+        CommonParams common;
+        uint256 exactAmountIn;
+        uint256 minAmountOut;
+    }
+
+    struct SwapExactOutParams {
+        CommonParams common;
+        uint256 exactAmountOut;
+        uint256 maxAmountIn;
+    }
 
     function createContext(
         address aggregatorRouter,
@@ -35,203 +57,111 @@ library BalancerSwapLib {
                                    Swap Exact In
     ***************************************************************************/
 
-    function swapSingleTokenExactIn(
-        Context memory context,
+    function buildSwapExactIn(
+        Context memory ctx,
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountIn,
         uint256 minAmountOut,
         uint256 deadline
-    ) internal returns (uint256 amountOut) {
+    ) internal pure returns (SwapExactInParams memory) {
         return
-            BalancerInternalLib.swapSingleTokenExactIn(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountIn,
-                minAmountOut,
-                deadline,
-                bytes("")
-            );
+            SwapExactInParams({
+                common: CommonParams({
+                    context: ctx,
+                    pool: pool,
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    deadline: deadline,
+                    wrapTokenIn: false,
+                    unwrapTokenOut: false,
+                    userData: bytes("")
+                }),
+                exactAmountIn: exactAmountIn,
+                minAmountOut: minAmountOut
+            });
     }
 
-    function swapSingleTokenExactIn(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        uint256 minAmountOut,
-        uint256 deadline,
-        bytes memory userData
-    ) internal returns (uint256) {
-        return
-            BalancerInternalLib.swapSingleTokenExactIn(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountIn,
-                minAmountOut,
-                deadline,
-                userData
-            );
+    function wrapTokenIn(SwapExactInParams memory params) internal pure returns (SwapExactInParams memory) {
+        params.common.wrapTokenIn = true;
+        return params;
     }
 
-    function swapSingleTokenExactIn(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        uint256 minAmountOut,
-        uint256 deadline,
-        bool useUnderlyingTokenIn,
-        bool useUnderlyingTokenOut
-    ) internal returns (uint256 amountOut) {
-        return
-            BalancerInternalLib.swapSingleTokenExactIn(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountIn,
-                minAmountOut,
-                deadline,
-                useUnderlyingTokenIn,
-                useUnderlyingTokenOut,
-                bytes("")
-            );
+    function unwrapTokenOut(SwapExactInParams memory params) internal pure returns (SwapExactInParams memory) {
+        params.common.unwrapTokenOut = true;
+        return params;
     }
 
-    function swapSingleTokenExactIn(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        uint256 minAmountOut,
-        uint256 deadline,
-        bool useUnderlyingTokenIn,
-        bool useUnderlyingTokenOut,
-        bytes memory userData
-    ) internal returns (uint256 amountOut) {
+    function execute(SwapExactInParams memory params) internal returns (uint256 amountOut) {
         return
             BalancerInternalLib.swapSingleTokenExactIn(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountIn,
-                minAmountOut,
-                deadline,
-                useUnderlyingTokenIn,
-                useUnderlyingTokenOut,
-                userData
+                params.common.context,
+                params.common.pool,
+                params.common.tokenIn,
+                params.common.tokenOut,
+                params.exactAmountIn,
+                params.minAmountOut,
+                params.common.deadline,
+                params.common.wrapTokenIn,
+                params.common.unwrapTokenOut,
+                params.common.userData
             );
     }
 
     /***************************************************************************
-                                   Swap Exact Out
+                                   Swap Exact In
     ***************************************************************************/
 
-    function swapSingleTokenExactOut(
-        Context memory context,
+    function buildSwapExactOut(
+        Context memory ctx,
         address pool,
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
         uint256 maxAmountIn,
         uint256 deadline
-    ) internal returns (uint256 amountIn) {
+    ) internal pure returns (SwapExactOutParams memory) {
         return
-            BalancerInternalLib.swapSingleTokenExactOut(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountOut,
-                maxAmountIn,
-                deadline,
-                bytes("")
-            );
+            SwapExactOutParams({
+                common: CommonParams({
+                    context: ctx,
+                    pool: pool,
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    deadline: deadline,
+                    wrapTokenIn: false,
+                    unwrapTokenOut: false,
+                    userData: bytes("")
+                }),
+                exactAmountOut: exactAmountOut,
+                maxAmountIn: maxAmountIn
+            });
     }
 
-    function swapSingleTokenExactOut(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        uint256 maxAmountIn,
-        uint256 deadline,
-        bytes memory userData
-    ) internal returns (uint256 amountIn) {
-        return
-            BalancerInternalLib.swapSingleTokenExactOut(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountOut,
-                maxAmountIn,
-                deadline,
-                userData
-            );
+    function wrapTokenIn(SwapExactOutParams memory params) internal pure returns (SwapExactOutParams memory) {
+        params.common.wrapTokenIn = true;
+        return params;
     }
 
-    function swapSingleTokenExactOut(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        uint256 maxAmountIn,
-        uint256 deadline,
-        bool useUnderlyingTokenIn,
-        bool useUnderlyingTokenOut
-    ) internal returns (uint256 amountIn) {
-        return
-            BalancerInternalLib.swapSingleTokenExactOut(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountOut,
-                maxAmountIn,
-                deadline,
-                useUnderlyingTokenIn,
-                useUnderlyingTokenOut,
-                bytes("")
-            );
+    function unwrapTokenOut(SwapExactOutParams memory params) internal pure returns (SwapExactOutParams memory) {
+        params.common.unwrapTokenOut = true;
+        return params;
     }
 
-    function swapSingleTokenExactOut(
-        Context memory context,
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        uint256 maxAmountIn,
-        uint256 deadline,
-        bool useUnderlyingTokenIn,
-        bool useUnderlyingTokenOut,
-        bytes memory userData
-    ) internal returns (uint256 amountIn) {
+    function execute(SwapExactOutParams memory params) internal returns (uint256 amountIn) {
         return
             BalancerInternalLib.swapSingleTokenExactOut(
-                context,
-                pool,
-                tokenIn,
-                tokenOut,
-                exactAmountOut,
-                maxAmountIn,
-                deadline,
-                useUnderlyingTokenIn,
-                useUnderlyingTokenOut,
-                userData
+                params.common.context,
+                params.common.pool,
+                params.common.tokenIn,
+                params.common.tokenOut,
+                params.exactAmountOut,
+                params.maxAmountIn,
+                params.common.deadline,
+                params.common.wrapTokenIn,
+                params.common.unwrapTokenOut,
+                params.common.userData
             );
     }
 }
