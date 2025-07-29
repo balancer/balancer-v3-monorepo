@@ -13,6 +13,10 @@ import { BatchRouterMock } from "@balancer-labs/v3-vault/contracts/test/BatchRou
 import { BufferRouterMock } from "@balancer-labs/v3-vault/contracts/test/BufferRouterMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
+import { CompositeLiquidityRouterMock } from "@balancer-labs/v3-vault/contracts/test/CompositeLiquidityRouterMock.sol";
+import {
+    AggregatorCompositeLiquidityRouter
+} from "@balancer-labs/v3-vault/contracts/AggregatorCompositeLiquidityRouter.sol";
 
 import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
 
