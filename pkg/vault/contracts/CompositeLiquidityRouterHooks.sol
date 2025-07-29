@@ -278,15 +278,15 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 revert IVaultErrors.BufferNotInitialized(wrappedToken);
             }
 
-            if (amountIn > 0) {
-                if (callParams.isStaticCall == false) {
-                    if (_isAggregator) {
-                        _vault.settle(underlyingToken, maxAmountIn);
-                    } else {
-                        _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
-                    }
+            if (callParams.isStaticCall == false) {
+                if (_isAggregator) {
+                    _vault.settle(underlyingToken, maxAmountIn);
+                } else {
+                    _takeTokenIn(callParams.sender, underlyingToken, maxAmountIn, callParams.wethIsEth);
                 }
+            }
 
+            if (amountIn > 0) {
                 // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
                 (, actualAmountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
                     BufferWrapOrUnwrapParams({
@@ -310,7 +310,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
             if (callParams.isStaticCall == false) {
                 if (_isAggregator) {
-                    _vault.settle(tokenIn, actualAmountIn);
+                    // In this case the sender already paid `maxAmountIn` in full, so we also need to send back
+                    // the difference
+                    _vault.settle(tokenIn, maxAmountIn);
+                    _sendTokenOut(callParams.sender, tokenIn, maxAmountIn - actualAmountIn, callParams.wethIsEth);
                 } else {
                     _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
                 }
