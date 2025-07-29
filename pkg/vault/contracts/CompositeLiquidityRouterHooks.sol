@@ -313,7 +313,9 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                     // In this case the sender already paid `maxAmountIn` in full, so we also need to send back
                     // the difference
                     _vault.settle(tokenIn, maxAmountIn);
-                    _sendTokenOut(callParams.sender, tokenIn, maxAmountIn - actualAmountIn, callParams.wethIsEth);
+                    if (actualAmountIn < maxAmountIn) {
+                        _sendTokenOut(callParams.sender, tokenIn, maxAmountIn - actualAmountIn, callParams.wethIsEth);
+                    }
                 } else {
                     _takeTokenIn(callParams.sender, tokenIn, actualAmountIn, callParams.wethIsEth);
                 }
