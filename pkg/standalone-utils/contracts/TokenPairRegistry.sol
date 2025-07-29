@@ -121,7 +121,6 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         _removeTokenPair(address(wrappedToken), underlyingToken, address(wrappedToken));
     }
 
-
     /// @dev Returns a unique identifier for the token pair, ensuring that the order of tokens does not matter.
     function _getTokenId(address tokenA, address tokenB) internal pure returns (bytes32) {
         (tokenA, tokenB) = tokenA <= tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
