@@ -90,9 +90,12 @@ abstract contract BatchRouterCommon is RouterCommon {
     /*******************************************************************************
                                     Settlement
     *******************************************************************************/
+    function _settlePaths(address sender, bool wethIsEth) internal {
+        _settlePaths(sender, wethIsEth, false);
+    }
 
     /// @notice Settles batch and composite liquidity operations, after credits and debits are computed.
-    function _settlePaths(address sender, bool wethIsEth) internal {
+    function _settlePaths(address sender, bool wethIsEth, bool isAggregator) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
@@ -104,7 +107,13 @@ abstract contract BatchRouterCommon is RouterCommon {
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
-            _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
+            uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+            if (isAggregator) {
+                _vault.settle(IERC20(tokenIn), amount);
+            } else {
+                _takeTokenIn(sender, IERC20(tokenIn), amount, wethIsEth);
+            }
             // Erases delta, in case more than one batch router operation is called in the same transaction.
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             _currentSwapTokensIn().remove(tokenIn);
