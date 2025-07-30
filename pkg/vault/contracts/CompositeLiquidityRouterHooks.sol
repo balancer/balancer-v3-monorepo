@@ -36,13 +36,6 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         ERC4626
     }
 
-    // Factor out common parameters used in internal liquidity functions.
-    struct RouterCallParams {
-        address sender;
-        bool wethIsEth;
-        bool isStaticCall;
-    }
-
     bool internal immutable _isAggregator;
 
     constructor(
@@ -67,15 +60,16 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             wrapUnderlying.length
         );
 
-        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         uint256[] memory amountsIn = new uint256[](numTokens);
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         for (uint256 i = 0; i < numTokens; ++i) {
             amountsIn[i] = _processTokenInExactIn(
+                params,
+                isStaticCall,
                 address(erc4626PoolTokens[i]),
                 params.maxAmountsIn[i],
-                wrapUnderlying[i],
-                callParams
+                wrapUnderlying[i]
             );
         }
 
@@ -122,16 +116,17 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             })
         );
 
-        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         amountsIn = new uint256[](numTokens);
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         for (uint256 i = 0; i < numTokens; ++i) {
             amountsIn[i] = _processTokenInExactOut(
+                params,
+                isStaticCall,
                 address(erc4626PoolTokens[i]),
                 actualAmountsIn[i],
                 wrapUnderlying[i],
-                params.maxAmountsIn[i],
-                callParams
+                params.maxAmountsIn[i]
             );
         }
 
@@ -160,16 +155,17 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             })
         );
 
-        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         amountsOut = new uint256[](numTokens);
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         for (uint256 i = 0; i < numTokens; ++i) {
             amountsOut[i] = _processTokenOutExactIn(
+                params,
+                isStaticCall,
                 address(erc4626PoolTokens[i]),
                 actualAmountsOut[i],
                 unwrapWrapped[i],
-                params.minAmountsOut[i],
-                callParams
+                params.minAmountsOut[i]
             );
         }
     }
@@ -198,30 +194,32 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     /**
      * @notice Processes a single token for input during add liquidity operations.
      * @dev Handles wrapping and token transfers when not in a query context.
+     * @param liquidityParams Liquidity parameters passed down from the caller
+     * @param isStaticCall Flag indicating whether we are in a static context
      * @param token The incoming token
      * @param amountIn The token amount (or max amount)
      * @param needToWrap Flag indicating whether this token is an ERC4626 to be wrapped
-     * @param callParams Common parameters from the main router call
      * @return actualAmountIn The final token amount (of the underlying token if wrapped)
      */
     function _processTokenInExactIn(
+        AddLiquidityHookParams calldata liquidityParams,
+        bool isStaticCall,
         address token,
         uint256 amountIn,
-        bool needToWrap,
-        RouterCallParams memory callParams
+        bool needToWrap
     ) private returns (uint256 actualAmountIn) {
         address settlementToken = needToWrap ? _vault.getERC4626BufferAsset(IERC4626(token)) : token;
         if (needToWrap && settlementToken == address(0)) {
             revert IVaultErrors.BufferNotInitialized(IERC4626(token));
         }
 
-        if (callParams.isStaticCall == false) {
+        if (isStaticCall == false) {
             if (_isAggregator) {
                 // Settle the prepayment amount that was already sent
                 _vault.settle(IERC20(settlementToken), amountIn);
             } else {
                 // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(callParams.sender, IERC20(settlementToken), amountIn, callParams.wethIsEth);
+                _takeTokenIn(liquidityParams.sender, IERC20(settlementToken), amountIn, liquidityParams.wethIsEth);
             }
         }
 
@@ -245,19 +243,21 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     /**
      * @notice Processes a single token for input during proportional add liquidity operations.
      * @dev Handles wrapping and token transfers when not in a query context.
+     * @param liquidityParams Liquidity parameters passed down from the caller
+     * @param isStaticCall Flag indicating whether we are in a static context
      * @param token The incoming token
      * @param amountIn The amount of incoming tokens
      * @param needToWrap Flag indicating whether this token is an ERC4626 to be wrapped
      * @param maxAmountIn The final token amount (of the underlying token if wrapped)
-     * @param callParams Common parameters from the main router call
      * @return actualAmountIn The final token amount (of the underlying token if wrapped)
      */
     function _processTokenInExactOut(
+        AddLiquidityHookParams calldata liquidityParams,
+        bool isStaticCall,
         address token,
         uint256 amountIn,
         bool needToWrap,
-        uint256 maxAmountIn,
-        RouterCallParams memory callParams
+        uint256 maxAmountIn
     ) private returns (uint256 actualAmountIn) {
         IERC20 settlementToken = needToWrap ? IERC20(_vault.getERC4626BufferAsset(IERC4626(token))) : IERC4626(token);
 
@@ -265,13 +265,13 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             revert IVaultErrors.BufferNotInitialized(IERC4626(token));
         }
 
-        if (callParams.isStaticCall == false) {
+        if (isStaticCall == false) {
             if (_isAggregator) {
                 // Settle the prepayment amount that was already sent
                 _vault.settle(IERC20(settlementToken), maxAmountIn);
             } else {
                 // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(callParams.sender, settlementToken, maxAmountIn, callParams.wethIsEth);
+                _takeTokenIn(liquidityParams.sender, settlementToken, maxAmountIn, liquidityParams.wethIsEth);
             }
         }
 
@@ -296,27 +296,34 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             revert IVaultErrors.AmountInAboveMax(settlementToken, amountIn, maxAmountIn);
         }
 
-        if (callParams.isStaticCall == false) {
-            _sendTokenOut(callParams.sender, settlementToken, maxAmountIn - actualAmountIn, callParams.wethIsEth);
+        if (isStaticCall == false) {
+            _sendTokenOut(
+                liquidityParams.sender,
+                settlementToken,
+                maxAmountIn - actualAmountIn,
+                liquidityParams.wethIsEth
+            );
         }
     }
 
     /**
      * @notice Processes a single token for output during remove liquidity operations.
      * @dev Handles unwrapping and token transfers when not in a query context.
+     * @param liquidityParams Liquidity parameters passed down from the caller
+     * @param isStaticCall Flag indicating whether we are in a static context
      * @param token The outgoing token
      * @param amountOut The token amount out
      * @param needToUnwrap Flag indicating whether this token is an ERC4626 to be unwrapped
      * @param minAmountOut The minimum token amountOut
-     * @param callParams Common parameters from the main router call
      * @return actualAmountOut The actual amountOut (in underlying token if unwrapped)
      */
     function _processTokenOutExactIn(
+        RemoveLiquidityHookParams calldata liquidityParams,
+        bool isStaticCall,
         address token,
         uint256 amountOut,
         bool needToUnwrap,
-        uint256 minAmountOut,
-        RouterCallParams memory callParams
+        uint256 minAmountOut
     ) private returns (uint256 actualAmountOut) {
         IERC20 tokenOut;
 
@@ -341,16 +348,16 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                     })
                 );
 
-                if (callParams.isStaticCall == false) {
-                    _sendTokenOut(callParams.sender, underlyingToken, actualAmountOut, callParams.wethIsEth);
+                if (isStaticCall == false) {
+                    _sendTokenOut(liquidityParams.sender, underlyingToken, actualAmountOut, liquidityParams.wethIsEth);
                 }
             }
         } else {
             actualAmountOut = amountOut;
             tokenOut = IERC20(token);
 
-            if (callParams.isStaticCall == false) {
-                _sendTokenOut(callParams.sender, tokenOut, actualAmountOut, callParams.wethIsEth);
+            if (isStaticCall == false) {
+                _sendTokenOut(liquidityParams.sender, tokenOut, actualAmountOut, liquidityParams.wethIsEth);
             }
         }
 
@@ -385,23 +392,6 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
     }
 
-    /**
-     * @notice Creates RouterCallParams struct with common parameters
-     * @param sender The sender address
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @return callParams The constructed RouterCallParams
-     */
-    function _buildRouterCallParams(
-        address sender,
-        bool wethIsEth
-    ) private view returns (RouterCallParams memory callParams) {
-        callParams = RouterCallParams({
-            sender: sender,
-            wethIsEth: wethIsEth,
-            isStaticCall: EVMCallModeHelpers.isStaticCall()
-        });
-    }
-
     // Nested Pool Hooks
 
     function addLiquidityUnbalancedNestedPoolHook(
@@ -433,9 +423,13 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             }
         }
 
-        (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) = _addLiquidityToParentPool(params, tokensToWrap);
-
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) = _addLiquidityToParentPool(
+            params,
+            isStaticCall,
+            tokensToWrap
+        );
 
         if (parentPoolNeedsLiquidity) {
             // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
@@ -578,9 +572,9 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     // This function factored out to avoid stack-too-deep issues.
     function _addLiquidityToParentPool(
         AddLiquidityHookParams calldata params,
+        bool isStaticCall,
         address[] memory tokensToWrap
     ) internal returns (uint256[] memory amountsIn, bool parentPoolNeedsLiquidity) {
-        RouterCallParams memory callParams = _buildRouterCallParams(params.sender, params.wethIsEth);
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
         uint256 numParentPoolTokens = parentPoolTokens.length;
         amountsIn = new uint256[](numParentPoolTokens);
@@ -591,9 +585,9 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             uint256 swapAmountIn = _currentSwapTokenInAmounts().tGet(parentPoolToken);
 
             if (parentPoolTokenType == CompositeTokenType.BPT) {
-                swapAmountIn = _addLiquidityToChildPool(parentPoolToken, tokensToWrap, params, callParams);
+                swapAmountIn = _addLiquidityToChildPool(params, isStaticCall, parentPoolToken, tokensToWrap);
             } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
-                swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(parentPoolToken), callParams);
+                swapAmountIn = _wrapExactInAndUpdateTokenInData(params, isStaticCall, IERC4626(parentPoolToken));
             } else if (parentPoolTokenType != CompositeTokenType.ERC20) {
                 // Should not happen.
                 revert IVaultErrors.InvalidTokenType();
@@ -609,10 +603,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     }
 
     function _addLiquidityToChildPool(
-        address childPool,
-        address[] memory tokensToWrap,
         AddLiquidityHookParams calldata liquidityParams,
-        RouterCallParams memory callParams
+        bool isStaticCall,
+        address childPool,
+        address[] memory tokensToWrap
     ) internal returns (uint256 childBptAmountOut) {
         IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
         uint256 numChildPoolTokens = childPoolTokens.length;
@@ -631,7 +625,11 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             }
 
             if (childPoolTokenType == CompositeTokenType.ERC4626) {
-                swapAmountIn = _wrapExactInAndUpdateTokenInData(IERC4626(childPoolToken), callParams);
+                swapAmountIn = _wrapExactInAndUpdateTokenInData(
+                    liquidityParams,
+                    isStaticCall,
+                    IERC4626(childPoolToken)
+                );
             } else if (childPoolTokenType != CompositeTokenType.ERC20 && childPoolTokenType != CompositeTokenType.BPT) {
                 revert IVaultErrors.InvalidTokenType();
             }
@@ -671,13 +669,15 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
      * Note that the limit is set to 0 here; this is meant to be called mid-operation, and assumes final limits will
      * be checked externally.
      *
+     * @param liquidityParams Liquidity parameters passed down from the caller
+     * @param isStaticCall Flag indicating whether we are in a static context
      * @param wrappedToken The token to wrap
-     * @param callParams The router call parameters (sender, static, and weth flag)
      * @return wrappedAmountOut The amountOut of wrapped tokens
      */
     function _wrapExactInAndUpdateTokenInData(
-        IERC4626 wrappedToken,
-        RouterCallParams memory callParams
+        AddLiquidityHookParams calldata liquidityParams,
+        bool isStaticCall,
+        IERC4626 wrappedToken
     ) private returns (uint256 wrappedAmountOut) {
         address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
 
@@ -685,13 +685,18 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         uint256 underlyingAmountIn = _currentSwapTokenInAmounts().tGet(underlyingToken);
 
         if (underlyingAmountIn > 0) {
-            if (callParams.isStaticCall == false) {
+            if (isStaticCall == false) {
                 if (_isAggregator) {
                     // Settle the prepayment amount that was already sent
                     _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
                 } else {
                     // Retrieve tokens from the sender using Permit2
-                    _takeTokenIn(callParams.sender, IERC20(underlyingToken), underlyingAmountIn, callParams.wethIsEth);
+                    _takeTokenIn(
+                        liquidityParams.sender,
+                        IERC20(underlyingToken),
+                        underlyingAmountIn,
+                        liquidityParams.wethIsEth
+                    );
                 }
             }
 
