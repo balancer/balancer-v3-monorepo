@@ -334,7 +334,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
-                     _updateSwapTokensOut(address(step.tokenOut), stepExactAmountOut);
+                    _updateSwapTokensOut(address(step.tokenOut), stepExactAmountOut);
                 }
 
                 if (stepLocals.isLastStep) {
