@@ -275,8 +275,8 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             }
         }
 
-        if (needToWrap) {
-            if (amountIn > 0) {
+        if (amountIn > 0) {
+            if (needToWrap) {
                 // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
                 (, actualAmountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
                     BufferWrapOrUnwrapParams({
@@ -287,9 +287,9 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                         limitRaw: maxAmountIn
                     })
                 );
+            } else {
+                actualAmountIn = amountIn;
             }
-        } else {
-            actualAmountIn = amountIn;
         }
 
         if (actualAmountIn > maxAmountIn) {
@@ -375,21 +375,19 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
      * @param wrappedAmount Amount of wrapped tokens to unwrap
      */
     function _unwrapExactInAndUpdateTokenOutData(IERC4626 wrappedToken, uint256 wrappedAmount) internal {
-        if (wrappedAmount > 0) {
-            (, , uint256 underlyingAmount) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_IN,
-                    direction: WrappingDirection.UNWRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: wrappedAmount,
-                    limitRaw: 0
-                })
-            );
+        (, , uint256 underlyingAmount) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: SwapKind.EXACT_IN,
+                direction: WrappingDirection.UNWRAP,
+                wrappedToken: wrappedToken,
+                amountGivenRaw: wrappedAmount,
+                limitRaw: 0
+            })
+        );
 
-            address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
-            _currentSwapTokensOut().add(underlyingToken);
-            _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmount);
-        }
+        address underlyingToken = _vault.getERC4626BufferAsset(wrappedToken);
+        _currentSwapTokensOut().add(underlyingToken);
+        _currentSwapTokenOutAmounts().tAdd(underlyingToken, underlyingAmount);
     }
 
     // Nested Pool Hooks
@@ -475,6 +473,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             address parentPoolToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
+            if (parentPoolAmountOut == 0) {
+                continue;
+            }
+
             // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
             CompositeTokenType parentPoolTokenType = _computeEffectiveCompositeTokenType(
                 parentPoolToken,
@@ -507,6 +509,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
+
+                    if (childPoolAmountOut == 0) {
+                        continue;
+                    }
 
                     // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
                     CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(
