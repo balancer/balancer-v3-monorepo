@@ -87,8 +87,7 @@ abstract contract BatchRouterCommon is RouterCommon {
         return TransientStorageHelpers.calculateSlot(type(BatchRouterCommon).name, key);
     }
 
-    // Helpers to consolidate updates that always happen together.
-
+    // Helper to consolidate updates that always happen together.
     function _updateSwapTokensOut(address tokenOut, uint256 amountOut) internal {
         _currentSwapTokensOut().add(tokenOut);
         _currentSwapTokenOutAmounts().tAdd(tokenOut, amountOut);
