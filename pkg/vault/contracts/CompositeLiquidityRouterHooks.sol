@@ -425,17 +425,15 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         for (uint256 i = 0; i < tokensIn.length; ++i) {
             uint256 exactAmountIn = params.maxAmountsIn[i];
 
-            if (exactAmountIn == 0) {
-                continue;
-            }
+            if (exactAmountIn > 0) {
+                address tokenIn = tokensIn[i];
 
-            address tokenIn = tokensIn[i];
+                _currentSwapTokenInAmounts().tSet(tokenIn, exactAmountIn);
 
-            _currentSwapTokenInAmounts().tSet(tokenIn, exactAmountIn);
-
-            // Ensure there are no duplicate tokens with non-zero amountsIn.
-            if (_currentSwapTokensIn().add(tokenIn) == false) {
-                revert ICompositeLiquidityRouterErrors.DuplicateTokenIn(tokenIn);
+                // Ensure there are no duplicate tokens with non-zero amountsIn.
+                if (_currentSwapTokensIn().add(tokenIn) == false) {
+                    revert ICompositeLiquidityRouterErrors.DuplicateTokenIn(tokenIn);
+                }
             }
         }
 
@@ -514,21 +512,19 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
-                    if (childPoolAmountOut == 0) {
-                        continue;
-                    }
+                    if (childPoolAmountOut > 0) {
+                        // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
+                        CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(
+                            childPoolToken,
+                            tokensToUnwrap
+                        );
 
-                    // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
-                    CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(
-                        childPoolToken,
-                        tokensToUnwrap
-                    );
-
-                    if (childPoolTokenType == CompositeTokenType.ERC4626) {
-                        // Token is an ERC4626 wrapper the user wants to wrap, so unwrap it and return the underlying.
-                        _unwrapExactInAndUpdateTokenOutData(IERC4626(childPoolToken), childPoolAmountOut);
-                    } else {
-                        _updateSwapTokensOut(childPoolToken, childPoolAmountOut);
+                        if (childPoolTokenType == CompositeTokenType.ERC4626) {
+                            // Token is an ERC4626 wrapper the user wants to wrap; unwrap it and return the underlying.
+                            _unwrapExactInAndUpdateTokenOutData(IERC4626(childPoolToken), childPoolAmountOut);
+                        } else {
+                            _updateSwapTokensOut(childPoolToken, childPoolAmountOut);
+                        }
                     }
                 }
             } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
