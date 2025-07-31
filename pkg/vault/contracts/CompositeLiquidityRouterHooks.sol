@@ -418,14 +418,11 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         address[] memory tokensIn,
         address[] memory tokensToWrap
     ) external nonReentrant onlyVault returns (uint256 exactBptAmountOut) {
-        uint256 numTokensIn = tokensIn.length;
-
-        // Revert if tokensIn length does not match maxAmountsIn length.
-        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, numTokensIn);
+        InputHelpers.ensureInputLengthMatch(params.maxAmountsIn.length, tokensIn.length);
 
         // Loads a Set with all amounts to be inserted in the nested pools, so we don't need to iterate over the tokens
         // array to find the child pool amounts to insert.
-        for (uint256 i = 0; i < numTokensIn; ++i) {
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
             uint256 exactAmountIn = params.maxAmountsIn[i];
 
             if (exactAmountIn == 0) {
