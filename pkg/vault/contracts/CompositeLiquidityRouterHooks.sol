@@ -729,19 +729,12 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         address token,
         address[] memory tokensToUnwrap
     ) internal view returns (CompositeTokenType tokenType) {
-        tokenType = _getCompositeTokenType(token);
-
-        if (tokenType == CompositeTokenType.ERC4626 && _needsWrapOperation(token, tokensToUnwrap) == false) {
-            tokenType = CompositeTokenType.ERC20;
-        }
-    }
-
-    // Determine the token type to direct execution.
-    function _getCompositeTokenType(address token) internal view returns (CompositeTokenType tokenType) {
         if (_vault.isPoolRegistered(token)) {
             tokenType = CompositeTokenType.BPT;
         } else if (_vault.isERC4626BufferInitialized(IERC4626(token))) {
-            tokenType = CompositeTokenType.ERC4626;
+            tokenType = _needsWrapOperation(token, tokensToUnwrap)
+                ? CompositeTokenType.ERC4626
+                : CompositeTokenType.ERC20;
         } else {
             tokenType = CompositeTokenType.ERC20;
         }
