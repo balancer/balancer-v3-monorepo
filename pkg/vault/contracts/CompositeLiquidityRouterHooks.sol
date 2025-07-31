@@ -194,7 +194,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     /**
      * @notice Helper for constructing RemoveLiquidityParams.
      * @param hookParams Parameters passed down from the hook
-     * @param numTokens Calculated amountsIn
+     * @param numTokens Number of tokens (used to construct minAmountsOut array of zeros)
      * @return params RemoveLiquidityParams struct
      */
     function _buildRemoveLiquidityParams(
