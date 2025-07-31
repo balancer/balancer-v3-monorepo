@@ -74,16 +74,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         // Add wrapped amounts to the ERC4626 pool.
-        (, bptAmountOut, ) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: params.sender,
-                maxAmountsIn: amountsIn,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
-        );
+        (, bptAmountOut, ) = _vault.addLiquidity(_buildAddLiquidityParams(params, amountsIn, params.sender));
 
         // If there's leftover ETH, send it back to the sender. The router should not keep ETH.
         _returnEth(params.sender);
@@ -106,14 +97,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         // Add token amounts to the ERC4626 pool.
         (uint256[] memory actualAmountsIn, , ) = _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: params.pool,
-                to: params.sender,
-                maxAmountsIn: maxAmounts,
-                minBptAmountOut: params.minBptAmountOut,
-                kind: params.kind,
-                userData: params.userData
-            })
+            _buildAddLiquidityParams(params, maxAmounts, params.sender)
         );
 
         amountsIn = new uint256[](numTokens);
@@ -145,14 +129,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         );
 
         (, uint256[] memory actualAmountsOut, ) = _vault.removeLiquidity(
-            RemoveLiquidityParams({
-                pool: params.pool,
-                from: params.sender,
-                maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: new uint256[](numTokens),
-                kind: params.kind,
-                userData: params.userData
-            })
+            _buildRemoveLiquidityParams(params, numTokens)
         );
 
         amountsOut = new uint256[](numTokens);
@@ -189,6 +166,50 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         numTokens = poolTokens.length;
 
         InputHelpers.ensureInputLengthMatch(numTokens, amountsLength, wrapLength);
+    }
+
+    /**
+     * @notice Helper for constructing AddLiquidityParams.
+     * @param hookParams Parameters passed down from the hook
+     * @param maxAmountsIn Calculated amountsIn
+     * @param sender Address of the sender, which is not necessarily that specified in the hookParams
+     * @return params AddLiquidityParams struct
+     */
+    function _buildAddLiquidityParams(
+        AddLiquidityHookParams calldata hookParams,
+        uint256[] memory maxAmountsIn,
+        address sender
+    ) internal pure returns (AddLiquidityParams memory) {
+        return
+            AddLiquidityParams({
+                pool: hookParams.pool,
+                to: sender,
+                maxAmountsIn: maxAmountsIn,
+                minBptAmountOut: hookParams.minBptAmountOut,
+                kind: hookParams.kind,
+                userData: hookParams.userData
+            });
+    }
+
+    /**
+     * @notice Helper for constructing RemoveLiquidityParams.
+     * @param hookParams Parameters passed down from the hook
+     * @param numTokens Calculated amountsIn
+     * @return params RemoveLiquidityParams struct
+     */
+    function _buildRemoveLiquidityParams(
+        RemoveLiquidityHookParams calldata hookParams,
+        uint256 numTokens
+    ) internal pure returns (RemoveLiquidityParams memory) {
+        return
+            RemoveLiquidityParams({
+                pool: hookParams.pool,
+                from: hookParams.sender,
+                maxBptAmountIn: hookParams.maxBptAmountIn,
+                minAmountsOut: new uint256[](numTokens),
+                kind: hookParams.kind,
+                userData: hookParams.userData
+            });
     }
 
     /**
@@ -431,14 +452,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         if (parentPoolNeedsLiquidity) {
             // Adds liquidity to the parent pool, mints parentPool's BPT to the sender, and checks the minimum BPT out.
             (, exactBptAmountOut, ) = _vault.addLiquidity(
-                AddLiquidityParams({
-                    pool: params.pool,
-                    to: isStaticCall ? address(this) : params.sender,
-                    maxAmountsIn: amountsIn,
-                    minBptAmountOut: params.minBptAmountOut,
-                    kind: params.kind,
-                    userData: params.userData
-                })
+                _buildAddLiquidityParams(params, amountsIn, isStaticCall ? address(this) : params.sender)
             );
         }
 
@@ -458,14 +472,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
         (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
-            RemoveLiquidityParams({
-                pool: params.pool,
-                from: params.sender,
-                maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: new uint256[](parentPoolTokens.length),
-                kind: params.kind,
-                userData: params.userData
-            })
+            _buildRemoveLiquidityParams(params, parentPoolTokens.length)
         );
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
