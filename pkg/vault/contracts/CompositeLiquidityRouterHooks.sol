@@ -475,10 +475,6 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             address parentPoolToken = address(parentPoolTokens[i]);
             uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
 
-            if (parentPoolAmountOut == 0) {
-                continue;
-            }
-
             // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
             CompositeTokenType parentPoolTokenType = _computeEffectiveCompositeTokenType(
                 parentPoolToken,
@@ -512,19 +508,17 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                     address childPoolToken = address(childPoolTokens[j]);
                     uint256 childPoolAmountOut = childPoolAmountsOut[j];
 
-                    if (childPoolAmountOut > 0) {
-                        // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
-                        CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(
-                            childPoolToken,
-                            tokensToUnwrap
-                        );
+                    // If the token is an ERC4626 but should not be unwrapped, return ERC20 as the type.
+                    CompositeTokenType childPoolTokenType = _computeEffectiveCompositeTokenType(
+                        childPoolToken,
+                        tokensToUnwrap
+                    );
 
-                        if (childPoolTokenType == CompositeTokenType.ERC4626) {
-                            // Token is an ERC4626 wrapper the user wants to wrap; unwrap it and return the underlying.
-                            _unwrapExactInAndUpdateTokenOutData(IERC4626(childPoolToken), childPoolAmountOut);
-                        } else {
-                            _updateSwapTokensOut(childPoolToken, childPoolAmountOut);
-                        }
+                    if (childPoolTokenType == CompositeTokenType.ERC4626) {
+                        // Token is an ERC4626 wrapper the user wants to wrap; unwrap it and return the underlying.
+                        _unwrapExactInAndUpdateTokenOutData(IERC4626(childPoolToken), childPoolAmountOut);
+                    } else {
+                        _updateSwapTokensOut(childPoolToken, childPoolAmountOut);
                     }
                 }
             } else if (parentPoolTokenType == CompositeTokenType.ERC4626) {
