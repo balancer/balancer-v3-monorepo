@@ -121,19 +121,14 @@ abstract contract RouterHooks is RouterCommon {
                 continue;
             }
 
-            if (_isAggregator) {
-                // `amountInHint` represents the amount supposedly paid upfront by the sender.
-                uint256 amountInHint = params.maxAmountsIn[i];
-
-                uint256 tokenInCredit = _vault.settle(token, amountInHint);
-                if (tokenInCredit < amountInHint) {
-                    revert InsufficientPayment(token);
-                }
-
-                _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
-            } else {
-                _takeTokenIn(params.sender, token, amountIn, params.wethIsEth);
-            }
+            _takeTokenInAndReturnExcess(
+                params.sender,
+                token,
+                amountIn,
+                params.maxAmountsIn[i],
+                params.wethIsEth,
+                _isAggregator
+            );
         }
 
         // Send remaining ETH to the user.
@@ -335,22 +330,14 @@ abstract contract RouterHooks is RouterCommon {
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        if (_isAggregator == false) {
-            _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
-        } else {
-            // `amountInHint` represents the amount supposedly paid upfront by the sender.
-            uint256 amountInHint = params.kind == SwapKind.EXACT_IN ? params.amountGiven : params.limit;
-
-            uint256 tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
-            if (tokenInCredit < amountInHint) {
-                revert InsufficientPayment(params.tokenIn);
-            }
-
-            // Return leftover to the sender.
-            if (params.kind == SwapKind.EXACT_OUT) {
-                _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
-            }
-        }
+        _takeTokenInAndReturnExcess(
+            params.sender,
+            params.tokenIn,
+            amountIn,
+            params.limit,
+            params.wethIsEth,
+            _isAggregator
+        );
 
         _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
         if (params.tokenIn == _weth) {

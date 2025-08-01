@@ -249,15 +249,48 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
     }
 
     function _takeTokenIn(address sender, IERC20 tokenIn, uint256 amountIn, bool wethIsEth) internal {
-        // If the tokenIn is ETH, then wrap `amountIn` into WETH.
-        if (wethIsEth && tokenIn == _weth) {
-            _weth.wrapEthAndSettle(_vault, amountIn);
+        _takeTokenIn(sender, tokenIn, amountIn, wethIsEth, false);
+    }
+
+    function _takeTokenInAndReturnExcess(
+        address sender,
+        IERC20 tokenIn,
+        uint256 amountIn,
+        uint256 maxAmountIn,
+        bool wethIsEth,
+        bool isAggregator
+    ) internal {
+        uint256 amountInHint = isAggregator ? maxAmountIn : amountIn;
+        uint256 tokenInCredit = _takeTokenIn(sender, tokenIn, amountInHint, wethIsEth, isAggregator);
+        uint256 excess = tokenInCredit - amountIn;
+
+        // Return leftover to the sender.
+        if (excess > 0) {
+            _sendTokenOut(sender, tokenIn, excess, false);
+        }
+    }
+
+    function _takeTokenIn(
+        address sender,
+        IERC20 tokenIn,
+        uint256 amountIn,
+        bool wethIsEth,
+        bool isAggregator
+    ) internal returns (uint256 tokenInCredit) {
+        if (isAggregator) {
+            tokenInCredit = _vault.settle(IERC20(tokenIn), amountIn);
         } else {
-            if (amountIn > 0) {
-                // Send the tokenIn amount to the Vault.
-                _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
-                _vault.settle(tokenIn, amountIn);
+            // If the tokenIn is ETH, then wrap `amountIn` into WETH.
+            if (wethIsEth && tokenIn == _weth) {
+                _weth.wrapEthAndSettle(_vault, amountIn);
+            } else {
+                if (amountIn > 0) {
+                    // Send the tokenIn amount to the Vault.
+                    _permit2.transferFrom(sender, address(_vault), amountIn.toUint160(), address(tokenIn));
+                    _vault.settle(tokenIn, amountIn);
+                }
             }
+            tokenInCredit = amountIn;
         }
     }
 

@@ -214,13 +214,13 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), amountIn);
-            } else {
-                // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(liquidityParams.sender, IERC20(settlementToken), amountIn, liquidityParams.wethIsEth);
-            }
+            _takeTokenIn(
+                liquidityParams.sender,
+                IERC20(settlementToken),
+                amountIn,
+                liquidityParams.wethIsEth,
+                _isAggregator
+            );
         }
 
         if (needToWrap) {
@@ -266,13 +266,13 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), maxAmountIn);
-            } else {
-                // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(liquidityParams.sender, settlementToken, maxAmountIn, liquidityParams.wethIsEth);
-            }
+            _takeTokenIn(
+                liquidityParams.sender,
+                settlementToken,
+                maxAmountIn,
+                liquidityParams.wethIsEth,
+                _isAggregator
+            );
         }
 
         if (needToWrap) {
@@ -686,18 +686,13 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (underlyingAmountIn > 0) {
             if (isStaticCall == false) {
-                if (_isAggregator) {
-                    // Settle the prepayment amount that was already sent
-                    _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
-                } else {
-                    // Retrieve tokens from the sender using Permit2
-                    _takeTokenIn(
-                        liquidityParams.sender,
-                        IERC20(underlyingToken),
-                        underlyingAmountIn,
-                        liquidityParams.wethIsEth
-                    );
-                }
+                _takeTokenIn(
+                    liquidityParams.sender,
+                    IERC20(underlyingToken),
+                    underlyingAmountIn,
+                    liquidityParams.wethIsEth,
+                    _isAggregator
+                );
             }
 
             (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
