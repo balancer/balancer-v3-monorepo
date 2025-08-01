@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ITokenPairRegistry } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ITokenPairRegistry.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
@@ -15,55 +16,84 @@ import { OwnableAuthentication } from "./OwnableAuthentication.sol";
 contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    mapping(bytes32 pairId => EnumerableSet.AddressSet pools) internal _pairsToPath;
+    mapping(bytes32 pairId => IBatchRouter.SwapPathStep[][] paths) internal _pairsToPaths;
 
     constructor(IVault vault, address initialOwner) OwnableAuthentication(vault, initialOwner) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getPathAt(address tokenA, address tokenB, uint256 index) external view returns (address) {
+    function getPathAt(
+        address tokenA,
+        address tokenB,
+        uint256 index
+    ) external view returns (IBatchRouter.SwapPathStep[] memory) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return _pairsToPath[tokenId].at(index);
-    }
-
-    function getPathAtUnchecked(address tokenA, address tokenB, uint256 index) external view returns (address) {
-        bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return _pairsToPath[tokenId].unchecked_at(index);
+        return _pairsToPaths[tokenId][index];
     }
 
     function getPathCount(address tokenA, address tokenB) external view returns (uint256) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return _pairsToPath[tokenId].length();
+        return _pairsToPaths[tokenId].length;
     }
 
-    function getPaths(address tokenA, address tokenB) external view returns (address[] memory) {
+    function getPaths(address tokenA, address tokenB) external view returns (IBatchRouter.SwapPathStep[][] memory) {
         bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        EnumerableSet.AddressSet storage pools = _pairsToPath[tokenId];
-        return pools._values;
+        return _pairsToPaths[tokenId];
     }
 
-    function hasPath(address tokenA, address tokenB, address pool) external view returns (bool) {
-        bytes32 tokenId = _getTokenId(tokenA, tokenB);
-        return _pairsToPath[tokenId].contains(pool);
+    function addPath(address tokenIn, IBatchRouter.SwapPathStep[] calldata steps) external authenticate {
+        address tokenOut = address(steps[steps.length - 1].tokenOut);
+        bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
+
+        address stepTokenIn = tokenIn;
+        for (uint256 i = 0; i < steps.length; ++i) {
+            IBatchRouter.SwapPathStep memory step = steps[i];
+            if (step.isBuffer) {
+                _checkBufferStep(step.pool, stepTokenIn, address(step.tokenOut));
+            } else {
+                _checkPoolStep(step.pool, stepTokenIn, address(step.tokenOut));
+            }
+
+            // Update token in for the next iteration
+            stepTokenIn = address(step.tokenOut);
+        }
+
+        _pairsToPaths[tokenId].push(steps);
+        emit PathAdded(tokenIn, tokenOut, _pairsToPaths[tokenId].length);
     }
 
-    function addPath(address path) external authenticate {
+    function removePathAtIndex(address tokenIn, address tokenOut, uint256 index) external authenticate {
+        bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
+        IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
+        uint256 pathsLength = paths.length;
+        
+        if (index >= pathsLength) {
+            revert IndexOutOfBounds();
+        }
+
+        if (pathsLength > 1 && index != pathsLength - 1) {
+            paths[index] = paths[pathsLength - 1];
+        }
+        paths.pop();
+    }
+
+    function addSimplePath(address path) external authenticate {
         if (vault.isPoolRegistered(path)) {
             _addPool(path);
         } else if (vault.isERC4626BufferInitialized(IERC4626(path))) {
             _addBuffer(IERC4626(path));
         } else {
-            revert InvalidPath(path);
+            revert InvalidSimplePath(path);
         }
     }
 
-    function removePath(address path) external authenticate {
+    function removeSimplePath(address path) external authenticate {
         if (vault.isPoolRegistered(path)) {
             _removePool(path);
         } else if (vault.isERC4626BufferInitialized(IERC4626(path))) {
             _removeBuffer(IERC4626(path));
         } else {
-            revert InvalidPath(path);
+            revert InvalidSimplePath(path);
         }
     }
 
@@ -88,12 +118,19 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     }
 
     function _addTokenPair(address pool, address tokenA, address tokenB) internal {
-        bytes32 tokenId = _getTokenId(tokenA, tokenB);
+        _addSimplePairStep(pool, tokenA, tokenB);
+        _addSimplePairStep(pool, tokenB, tokenA);
+    }
 
-        if (_pairsToPath[tokenId].add(pool) == false) {
-            revert PathAlreadyAddedForPair(pool, tokenA, tokenB);
-        }
-        emit TokenPairAdded(pool, tokenA, tokenB);
+    function _addSimplePairStep(address pool, address tokenIn, address tokenOut) internal {
+        bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
+        IBatchRouter.SwapPathStep memory step = IBatchRouter.SwapPathStep({
+            pool: pool,
+            tokenOut: IERC20(tokenOut),
+            isBuffer: false
+        });
+        _pairsToPaths[tokenId].push([step]);
+        emit PathAdded(tokenIn, tokenOut, _pairsToPaths[tokenId].length);
     }
 
     function _removePool(address pool) internal {
@@ -108,12 +145,30 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     }
 
     function _removeTokenPair(address pool, address tokenA, address tokenB) internal {
-        bytes32 tokenId = _getTokenId(tokenA, tokenB);
+        _removeSimplePairStep(pool, tokenA, tokenB);
+        _removeSimplePairStep(pool, tokenB, tokenA);
+    }
 
-        if (_pairsToPath[tokenId].remove(pool) == false) {
-            revert PathNotAddedForPair(pool, tokenA, tokenB);
+    function _removeSimplePairStep(address pool, address tokenIn, address tokenOut) internal {
+        bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
+
+        IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
+        for (uint256 i = 0; i < paths.length; ++i) {
+            IBatchRouter.SwapPathStep[] storage steps = paths[i];
+            if (steps.length > 1) {
+                continue;
+            }
+
+            if (steps[i].pool == pool && address(steps[i].tokenOut) == tokenOut) {
+                if (paths.length > 1) {
+                    paths[i] = paths[paths.length - 1];
+                }
+                steps.pop();
+                break;
+            }
         }
-        emit TokenPairRemoved(pool, tokenA, tokenB);
+
+        emit PathRemoved(tokenIn, tokenOut, paths.length);
     }
 
     function _removeBuffer(IERC4626 wrappedToken) internal {
@@ -121,9 +176,46 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         _removeTokenPair(address(wrappedToken), underlyingToken, address(wrappedToken));
     }
 
-    /// @dev Returns a unique identifier for the token pair, ensuring that the order of tokens does not matter.
-    function _getTokenId(address tokenA, address tokenB) internal pure returns (bytes32) {
-        (tokenA, tokenB) = tokenA <= tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        return keccak256(abi.encodePacked(tokenA, tokenB));
+    function _getTokenId(address tokenIn, address tokenOut) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(tokenIn, tokenOut));
+    }
+
+    function _checkBufferStep(address buffer, address tokenIn, address tokenOut) internal view {
+        address underlying = address(vault.getBufferAsset(IERC4626(buffer)));
+
+        if (underlying == address(0)) {
+            revert BufferNotInitialized(buffer);
+        }
+
+        if (tokenIn == underlying) {
+            // This is a wrap
+            require(tokenOut == address(buffer), InvalidBufferPath(buffer, tokenIn, tokenOut));
+        } else if (tokenIn == buffer) {
+            // This is an unwrap
+            require(tokenOut == address(underlying), InvalidBufferPath(buffer, tokenIn, tokenOut));
+        } else {
+            // Token in must be either wrapped or underlying
+            revert InvalidBufferPath(buffer, tokenIn, tokenOut);
+        }
+    }
+
+    function _checkPoolStep(address pool, address tokenIn, address tokenOut) internal view {
+        IERC20[] memory tokens = vault.getPoolTokens(pool);
+
+        bool foundIn = false;
+        bool foundOut = false;
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == IERC20(tokenIn)) {
+                foundIn = true;
+            }
+            if (tokens[i] == IERC20(tokenOut)) {
+                foundOut = true;
+            }
+        }
+
+        if (!foundIn || !foundOut) {
+            revert InvalidSimplePath(pool);
+        }
     }
 }

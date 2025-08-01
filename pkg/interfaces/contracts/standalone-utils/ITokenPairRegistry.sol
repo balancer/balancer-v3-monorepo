@@ -2,46 +2,38 @@
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+
 pragma solidity ^0.8.24;
 
 interface ITokenPairRegistry {
     /**
      * @notice Emitted when a new token pair is added to the registry.
-     * @param pool The address of the pool that supports the token pair
-     * @param tokenA The address of the first token in the pair
-     * @param tokenB The address of the second token in the pair
+     * @param tokenIn The address of the first token in the pair
+     * @param tokenOut The address of the second token in the pair
+     * @param pathsLength The number of paths added for the token pair
      */
-    event TokenPairAdded(address indexed pool, address indexed tokenA, address indexed tokenB);
+    event PathAdded(address indexed tokenIn, address indexed tokenOut, uint256 pathsLength);
 
     /**
      * @notice Emitted when an existing token pair is removed from the registry.
-     * @param pool The address of the pool that supports the token pair
-     * @param tokenA The address of the first token in the pair
-     * @param tokenB The address of the second token in the pair
+     * @param tokenIn The address of the first token in the pair
+     * @param tokenOut The address of the second token in the pair
+     * @param pathsLength The number of paths added for the token pair
      */
-    event TokenPairRemoved(address indexed pool, address indexed tokenA, address indexed tokenB);
+    event PathRemoved(address indexed tokenIn, address indexed tokenOut, uint256 pathsLength);
+
+    error BufferNotInitialized(address buffer);
 
     /**
-     * @notice The given path is not a valid pool or buffer.
+     * @notice The given address is not a valid pool or buffer.
      * @param path Pool or buffer address
      */
-    error InvalidPath(address path);
+    error InvalidSimplePath(address path);
 
-    /**
-     * @notice Thrown when a adding a pool or buffer for a given pair which had already been added to the registry.
-     * @param path The address of the pool or buffer that was already added
-     * @param tokenA The address of the first token in the pair
-     * @param tokenB The address of the second token in the pair
-     */
-    error PathAlreadyAddedForPair(address path, address tokenA, address tokenB);
+    error InvalidBufferPath(address buffer, address tokenIn, address tokenOut);
 
-    /**
-     * @notice Thrown when a removing a pool or buffer for a given pair which had not been added to the registry.
-     * @param path The address of the pool or buffer being removed
-     * @param tokenA The address of the first token in the pair
-     * @param tokenB The address of the second token in the pair
-     */
-    error PathNotAddedForPair(address path, address tokenA, address tokenB);
+    error IndexOutOfBounds();
 
     /**
      * @notice Returns the path address for a given token pair at a specific index.
@@ -51,17 +43,7 @@ interface ITokenPairRegistry {
      * @param index The index of the path in the list of paths for the token pair
      * @return The address of the path at the specified index for the token pair
      */
-    function getPathAt(address tokenA, address tokenB, uint256 index) external view returns (address);
-
-    /**
-     * @notice Returns the path address for a given token pair at a specific index.
-     * @dev Unsafe version, use only when index is known to be within bounds.
-     * @param tokenA The address of the first token in the pair
-     * @param tokenB The address of the second token in the pair
-     * @param index The index of the path in the list of paths for the token pair
-     * @return The address of the path at the specified index for the token pair
-     */
-    function getPathAtUnchecked(address tokenA, address tokenB, uint256 index) external view returns (address);
+    function getPathAt(address tokenA, address tokenB, uint256 index) external view returns (IBatchRouter.SwapPathStep[] memory);
 
     /**
      * @notice Returns the number of paths registered for a given token pair.
@@ -77,21 +59,17 @@ interface ITokenPairRegistry {
      * @param tokenB The address of the second token in the pair
      * @return An array of path addresses registered for the token pair
      */
-    function getPaths(address tokenA, address tokenB) external view returns (address[] memory);
-
-    /**
-     * @notice Returns true if a path is registered for a given token pair.
-     * @param tokenA The address of the first token in the pair
-     * @param tokenB The address of the second token in the pair
-     * @return True if the path is registered for the given token pair, false otherwise
-     */
-    function hasPath(address tokenA, address tokenB, address path) external view returns (bool);
+    function getPaths(address tokenA, address tokenB) external view returns (IBatchRouter.SwapPathStep[][] memory);
 
     /**
      * @notice Adds a pool or buffer to the registry for all token pairs they support.
      * @dev This function is permissioned. The call will revert if the path is already registered for the token pair.
      */
-    function addPath(address path) external;
+    function addSimplePath(address path) external;
 
-    function removePath(address path) external;
+    /**
+     * @notice Removes a pool or buffer from the registry for all token pairs they support.
+     * @dev This function is permissioned. The call will revert if the path is not registered for the token pair.
+     */
+    function removeSimplePath(address path) external;
 }
