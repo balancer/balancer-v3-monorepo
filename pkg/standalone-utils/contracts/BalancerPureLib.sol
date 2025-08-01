@@ -13,15 +13,24 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+/// @notice Store contract addresses used by library functions.
 struct BalancerContext {
     IAggregatorRouter aggregatorRouter;
     IAggregatorBatchRouter aggregatorBatchRouter;
     IVault vault;
 }
 
+/// @notice Gas-optimized Balancer utility library for direct low-level operations
 library BalancerPureLib {
     using SafeERC20 for IERC20;
 
+    uint256 private constant _MAX_UINT128 = type(uint128).max;
+
+    /**
+     * @notice Create a context for Balancer library functions.
+     * @param aggregatorRouter The address of the Aggregator Router
+     * @param aggregatorBatchRouter The address of the Aggregator Batch Router
+     */
     function createContext(
         address aggregatorRouter,
         address aggregatorBatchRouter
@@ -34,13 +43,31 @@ library BalancerPureLib {
             });
     }
 
+    /***************************************************************************
+                                   Swap Exact In
+    ***************************************************************************/
+
+    /**
+     * @notice Queries a swap operation specifying an exact input token amount without actually executing it.
+     * @dev This function uses the Aggregator Batch Router
+     * @param pool Address of the liquidity pool
+     * @param poolTokenIn Pool token to be swapped from
+     * @param poolTokenOut Pool token to be swapped to
+     * @param exactAmountIn Exact amounts of input tokens to send
+     * @param needToWrapTokenIn Whether the input token needs to be wrapped (e.g., from ERC20 to ERC4626)
+     * @param needToUnwrapTokenOut Whether the output token needs to be unwrapped (e.g., from ERC4626 to ERC20)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
+     * @param userData Additional (optional) data sent with the query request
+     * @return amountOut Calculated amount of output tokens, denominated in the final token received:
+     * if the operation performs an unwrap step, amountOut is expressed in the underlying token,
+     * otherwise, it is expressed in poolTokenOut.
+     */
     function querySwapSingleTokenExactIn(
         BalancerContext memory context,
         address pool,
         IERC20 poolTokenIn,
         IERC20 poolTokenOut,
         uint256 exactAmountIn,
-        uint256 minAmountOut,
         bool needToWrapTokenIn,
         bool needToUnwrapTokenOut,
         address sender,
@@ -60,7 +87,7 @@ library BalancerPureLib {
             tokenIn: pathTokenIn,
             steps: steps,
             exactAmountIn: exactAmountIn,
-            minAmountOut: minAmountOut
+            minAmountOut: 0
         });
 
         (uint256[] memory pathAmountsOut, , ) = context.aggregatorBatchRouter.querySwapExactIn(paths, sender, userData);
@@ -68,6 +95,18 @@ library BalancerPureLib {
         return pathAmountsOut[0];
     }
 
+    /**
+     * @notice Executes a swap operation specifying an exact input token amount.
+     * @dev This function uses the Aggregator Router directly
+     * @param pool Address of the liquidity pool
+     * @param poolTokenIn Pool token to be swapped from
+     * @param poolTokenOut Pool token to be swapped to
+     * @param exactAmountIn Exact amounts of input tokens to send
+     * @param minAmountOut Minimum amount of tokens to be received
+     * @param deadline Deadline for the swap, after which it will revert
+     * @param userData Additional (optional) data sent with the query request\
+     * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
+     */
     function swapSingleTokenExactIn(
         BalancerContext memory context,
         address pool,
@@ -92,6 +131,22 @@ library BalancerPureLib {
             );
     }
 
+    /**
+     * @notice Executes a swap operation specifying an exact input token amount.
+     * @dev This function uses the Aggregator Batch Router
+     * @param pool Address of the liquidity pool
+     * @param poolTokenIn Pool token to be swapped from
+     * @param poolTokenOut Pool token to be swapped to
+     * @param exactAmountIn Exact amounts of input tokens to send
+     * @param minAmountOut Minimum amount of tokens to be received
+     * @param deadline Deadline for the swap, after which it will revert
+     * @param needToWrapTokenIn Whether the input token needs to be wrapped (e.g., from ERC20 to ERC4626)
+     * @param needToUnwrapTokenOut Whether the output token needs to be unwrapped (e.g., from ERC4626 to ERC20)
+     * @param userData Additional (optional) data sent with the query request
+     * @return amountOut Calculated amount of output tokens, denominated in the final token received:
+     * if the operation performs an unwrap step, amountOut is expressed in the underlying token,
+     * otherwise, it is expressed in poolTokenOut.
+     */
     function batchSwapSingleTokenExactIn(
         BalancerContext memory context,
         address pool,
@@ -128,13 +183,31 @@ library BalancerPureLib {
         return pathAmountsOut[0];
     }
 
+    /***************************************************************************
+                                   Swap Exact Out
+    ***************************************************************************/
+
+    /**
+     * @notice Queries a swap operation specifying an exact output token amount without actually executing it.
+     * @dev This function uses the Aggregator Batch Router
+     * @param pool Address of the liquidity pool
+     * @param poolTokenIn Token to be swapped from
+     * @param poolTokenOut Token to be swapped to
+     * @param exactAmountOut Exact amounts of input tokens to receive
+     * @param needToWrapTokenIn Whether the input token needs to be wrapped (e.g., from ERC20 to ERC4626)
+     * @param needToUnwrapTokenOut Whether the output token needs to be unwrapped (e.g., from ERC4626 to ERC20)
+     * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
+     * @param userData Additional (optional) data sent with the query request
+     * @return amountIn Calculated amount of input tokens, denominated in the token actually provided by the caller:
+     * if wrapping is required, amountIn is expressed in the underlying token of poolTokenIn,
+     * otherwise, it is expressed in poolTokenIn.
+     */
     function querySwapSingleTokenExactOut(
         BalancerContext memory context,
         address pool,
         IERC20 poolTokenIn,
         IERC20 poolTokenOut,
         uint256 exactAmountOut,
-        uint256 maxAmountIn,
         bool needToWrapTokenIn,
         bool needToUnwrapTokenOut,
         address sender,
@@ -154,7 +227,7 @@ library BalancerPureLib {
             tokenIn: pathTokenIn,
             steps: steps,
             exactAmountOut: exactAmountOut,
-            maxAmountIn: maxAmountIn
+            maxAmountIn: _MAX_UINT128
         });
 
         (uint256[] memory pathAmountsOut, , ) = context.aggregatorBatchRouter.querySwapExactOut(
@@ -166,6 +239,18 @@ library BalancerPureLib {
         return pathAmountsOut[0];
     }
 
+    /**
+     * @notice Executes a swap operation specifying an exact output token amount.
+     * @dev This function uses the Aggregator Router
+     * @param pool Address of the liquidity pool
+     * @param poolTokenIn Token to be swapped from
+     * @param poolTokenOut Token to be swapped to
+     * @param exactAmountOut Exact amounts of input tokens to receive
+     * @param maxAmountIn Maximum amount of tokens to be sent
+     * @param deadline Deadline for the swap, after which it will revert
+     * @param userData Additional (optional) data sent with the swap request
+     * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
+     */
     function swapSingleTokenExactOut(
         BalancerContext memory context,
         address pool,
@@ -190,6 +275,22 @@ library BalancerPureLib {
             );
     }
 
+    /**
+     * @notice Executes a swap operation specifying an exact output token amount.
+     * @dev This function uses the Aggregator Batch Router
+     * @param pool Address of the liquidity pool
+     * @param poolTokenIn Token to be swapped from
+     * @param poolTokenOut Token to be swapped to
+     * @param exactAmountOut Exact amounts of input tokens to receive
+     * @param needToWrapTokenIn Whether the input token needs to be wrapped (e.g., from ERC20 to ERC4626)
+     * @param needToUnwrapTokenOut Whether the output token needs to be unwrapped (e.g., from ERC4626 to ERC20)
+     * @param maxAmountIn Maximum amount of tokens to be sent
+     * @param deadline Deadline for the swap, after which it will revert
+     * @param userData Additional (optional) data sent with the swap request
+     * @return amountIn Calculated amount of input tokens, denominated in the token actually provided by the caller:
+     * if wrapping is required, amountIn is expressed in the underlying token of poolTokenIn,
+     * otherwise, it is expressed in poolTokenIn.
+     */
     function batchSwapSingleTokenExactOut(
         BalancerContext memory context,
         address pool,
