@@ -348,7 +348,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         PoolSwapParams memory request,
         IGyroECLPPool.EclpParams memory eclpParams,
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) internal view returns (uint256 amountCalculated, int256 a, int256 b) {
+    ) internal pure returns (uint256 amountCalculated, int256 a, int256 b) {
         // The Vault already checks that index in != index out.
         bool tokenInIsToken0 = request.indexIn == 0;
 
@@ -390,7 +390,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         uint256[] memory balancesScaled18,
         IGyroECLPPool.EclpParams memory eclpParams,
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) internal view returns (int256 a, int256 b) {
+    ) internal pure returns (int256 a, int256 b) {
         IGyroECLPPool.Vector2 memory invariant;
 
         {
@@ -413,7 +413,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         IGyroECLPPool.EclpParams memory eclpParams,
         int256 a,
         int256 b
-    ) internal view returns (uint256 imbalance) {
+    ) internal pure returns (uint256 imbalance) {
         // Compute current price
         uint256 currentPrice = _computePrice(balancesScaled18, a, b, eclpParams);
 
