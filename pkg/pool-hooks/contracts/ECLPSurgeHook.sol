@@ -430,19 +430,22 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
     function _computePrice(
         uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
         int256 a,
-        int256 b,
-        IGyroECLPPool.EclpParams memory eclpParams
+        int256 b
     ) internal pure returns (uint256 price) {
+        // Balances in the rotated ellipse centered at (0,0)
         int256 xl = int256(balancesScaled18[0]) - a;
         int256 yl = int256(balancesScaled18[1]) - b;
+
+        // Balances in the circle centered at (0,0)
         int256 xll = xl.mulDownMag(eclpParams.c).mulDownMag(eclpParams.lambda) -
             yl.mulDownMag(eclpParams.s).mulDownMag(eclpParams.lambda);
         int256 yll = xl.mulDownMag(eclpParams.s) + yl.mulDownMag(eclpParams.c);
 
         return
             (xll.mulDownMag(eclpParams.c).mulDownMag(eclpParams.lambda) + yll.mulDownMag(eclpParams.s))
-                .divDownMag(yll.mulDownMag(eclpParams.c) - xll.mulDownMag(eclpParams.s).mulDownMag(eclpParams.lambda))
+                .divDownMag(xll.mulDownMag(eclpParams.s).mulDownMag(eclpParams.lambda) - yll.mulDownMag(eclpParams.c))
                 .toUint256();
     }
 }
