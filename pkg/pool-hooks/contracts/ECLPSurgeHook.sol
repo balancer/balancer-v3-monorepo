@@ -415,10 +415,16 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         int256 b
     ) internal pure returns (uint256 imbalance) {
         // Compute current price
-        uint256 currentPrice = _computePrice(balancesScaled18, a, b, eclpParams);
+        uint256 currentPrice = _computePrice(balancesScaled18, eclpParams, a, b);
 
-        // Compute peak price
+        // Compute peak price, defined by `sine / cosine`, which is the price where the pool has the largest liquidity.
         uint256 peakPrice = eclpParams.s.divDownMag(eclpParams.c).toUint256();
+        // The peak price may be outside the [alpha, beta] interval, so we clamp it to the interval.
+        if (peakPrice < eclpParams.alpha.toUint256()) {
+            peakPrice = eclpParams.alpha.toUint256();
+        } else if (peakPrice > eclpParams.beta.toUint256()) {
+            peakPrice = eclpParams.beta.toUint256();
+        }
 
         // Compute imbalance;
         if (currentPrice < peakPrice) {
