@@ -154,6 +154,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
 
     function deployAggregatorCompositeLiquidityRouterMock(
         IVault vault,
+        IWETH weth,
         string memory routerVersion
     ) internal returns (AggregatorCompositeLiquidityRouter) {
         if (reusingArtifacts) {
@@ -162,12 +163,12 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                     payable(
                         deployCode(
                             _computeVaultPath(type(AggregatorCompositeLiquidityRouter).name),
-                            abi.encode(vault, routerVersion)
+                            abi.encode(vault, weth, routerVersion)
                         )
                     )
                 );
         } else {
-            return new AggregatorCompositeLiquidityRouter(vault, routerVersion);
+            return new AggregatorCompositeLiquidityRouter(vault, weth, routerVersion);
         }
     }
 
@@ -328,14 +329,20 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployAggregatorRouter(IVault vault, string memory version) internal returns (AggregatorRouter) {
+    function deployAggregatorRouter(
+        IVault vault,
+        IWETH weth,
+        string memory version
+    ) internal returns (AggregatorRouter) {
         if (reusingArtifacts) {
             return
                 AggregatorRouter(
-                    payable(deployCode(_computeVaultPath(type(AggregatorRouter).name), abi.encode(vault, version)))
+                    payable(
+                        deployCode(_computeVaultPath(type(AggregatorRouter).name), abi.encode(vault, weth, version))
+                    )
                 );
         } else {
-            return new AggregatorRouter(vault, version);
+            return new AggregatorRouter(vault, weth, version);
         }
     }
 

@@ -50,6 +50,7 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
                 exactAmountsIn,
                 tokensToWrap,
                 minBptAmountOut,
+                wethIsEth,
                 userData
             );
     }
@@ -79,6 +80,7 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
                 tokensOut,
                 minAmountsOut,
                 tokensToUnwrap,
+                wethIsEth,
                 userData
             );
     }
