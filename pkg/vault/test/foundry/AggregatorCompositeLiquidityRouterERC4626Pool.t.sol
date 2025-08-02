@@ -55,6 +55,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
                 wrapUnderlying,
                 exactAmountsIn,
                 minBptAmountOut,
+                wethIsEth,
                 userData
             );
     }
@@ -82,6 +83,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
                 wrapUnderlying,
                 maxAmountsIn,
                 exactBptAmountOut,
+                wethIsEth,
                 userData
             );
     }
@@ -109,6 +111,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
                 unwrapWrapped,
                 exactBptAmountIn,
                 minAmountsOut,
+                wethIsEth,
                 userData
             );
     }
