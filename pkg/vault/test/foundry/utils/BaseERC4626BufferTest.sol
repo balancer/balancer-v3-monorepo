@@ -44,7 +44,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
     function createPool() internal virtual override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC4626 Pool";
-        string memory symbol = "ERC4626P";
+        string memory symbol = "ERC4626";
 
         TokenConfig[] memory tokenConfig = getTokenConfig();
 

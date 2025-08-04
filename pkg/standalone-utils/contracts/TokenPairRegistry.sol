@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -41,7 +41,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         return _pairsToPaths[tokenId];
     }
 
-    function addPath(address tokenIn, IBatchRouter.SwapPathStep[] calldata steps) external authenticate {
+    function addPath(address tokenIn, IBatchRouter.SwapPathStep[] memory steps) external authenticate {
         address tokenOut = address(steps[steps.length - 1].tokenOut);
         bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
 
@@ -58,7 +58,11 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
             stepTokenIn = address(step.tokenOut);
         }
 
-        _pairsToPaths[tokenId].push(steps);
+        IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
+        paths.push();
+        for (uint256 i = 0; i < steps.length; ++i) {
+            paths[paths.length - 1].push(steps[i]);
+        }
         emit PathAdded(tokenIn, tokenOut, _pairsToPaths[tokenId].length);
     }
 
@@ -66,7 +70,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
         IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
         uint256 pathsLength = paths.length;
-        
+
         if (index >= pathsLength) {
             revert IndexOutOfBounds();
         }
@@ -75,6 +79,8 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
             paths[index] = paths[pathsLength - 1];
         }
         paths.pop();
+
+        emit PathRemoved(tokenIn, tokenOut, paths.length);
     }
 
     function addSimplePath(address path) external authenticate {
@@ -103,7 +109,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         uint256 tokenPairs = tokens.length - 1;
         for (uint256 i = 0; i < tokenPairs; ++i) {
             for (uint256 j = i + 1; j < tokens.length; ++j) {
-                _addTokenPair(pool, address(tokens[i]), address(tokens[j]));
+                _addTokenPair(pool, address(tokens[i]), address(tokens[j]), false);
             }
         }
     }
@@ -114,22 +120,25 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
      */
     function _addBuffer(IERC4626 wrappedToken) internal {
         address underlyingToken = vault.getBufferAsset(wrappedToken);
-        _addTokenPair(address(wrappedToken), underlyingToken, address(wrappedToken));
+        _addTokenPair(address(wrappedToken), underlyingToken, address(wrappedToken), true);
     }
 
-    function _addTokenPair(address pool, address tokenA, address tokenB) internal {
-        _addSimplePairStep(pool, tokenA, tokenB);
-        _addSimplePairStep(pool, tokenB, tokenA);
+    function _addTokenPair(address pool, address tokenA, address tokenB, bool isBuffer) internal {
+        _addSimplePairStep(pool, tokenA, tokenB, isBuffer);
+        _addSimplePairStep(pool, tokenB, tokenA, isBuffer);
     }
 
-    function _addSimplePairStep(address pool, address tokenIn, address tokenOut) internal {
+    function _addSimplePairStep(address pool, address tokenIn, address tokenOut, bool isBuffer) internal {
         bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
         IBatchRouter.SwapPathStep memory step = IBatchRouter.SwapPathStep({
             pool: pool,
             tokenOut: IERC20(tokenOut),
-            isBuffer: false
+            isBuffer: isBuffer
         });
-        _pairsToPaths[tokenId].push([step]);
+
+        IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
+        paths.push();
+        paths[paths.length - 1].push(step);
         emit PathAdded(tokenIn, tokenOut, _pairsToPaths[tokenId].length);
     }
 
@@ -168,6 +177,11 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
             }
         }
 
+        if (paths.length == 1 && paths[0].length == 0) {
+            // If the last path is empty, remove the entire entry
+            paths.pop();
+        }
+
         emit PathRemoved(tokenIn, tokenOut, paths.length);
     }
 
@@ -189,10 +203,14 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
 
         if (tokenIn == underlying) {
             // This is a wrap
-            require(tokenOut == address(buffer), InvalidBufferPath(buffer, tokenIn, tokenOut));
+            if (tokenOut != address(buffer)) {
+                revert InvalidBufferPath(buffer, tokenIn, tokenOut);
+            }
         } else if (tokenIn == buffer) {
             // This is an unwrap
-            require(tokenOut == address(underlying), InvalidBufferPath(buffer, tokenIn, tokenOut));
+            if (tokenOut != address(underlying)) {
+                revert InvalidBufferPath(buffer, tokenIn, tokenOut);
+            }
         } else {
             // Token in must be either wrapped or underlying
             revert InvalidBufferPath(buffer, tokenIn, tokenOut);
