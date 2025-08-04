@@ -9,10 +9,12 @@ import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/
 import { PoolSwapParams, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { ECLPSurgeHookMock } from "../../contracts/test/ECLPSurgeHookMock.sol";
 
 contract ECLPSurgeHookUnitTest is BaseVaultTest {
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     uint64 private constant _SURGE_THRESHOLD = 10e16; // 10%
@@ -21,6 +23,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
     IGyroECLPPool.EclpParams private eclpParams;
     IGyroECLPPool.DerivedEclpParams private derivedECLPParams;
     uint256[] private balancesScaled18;
+    uint256[] private peakBalancesScaled18;
 
     function setUp() public override {
         super.setUp();
@@ -29,6 +32,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         // Token A is WETH, and Token B is USDC.
         hookMock = new ECLPSurgeHookMock(vault, 95e16, _SURGE_THRESHOLD, "1");
         balancesScaled18 = [uint256(2948989424059932952), uint256(9513574260000000000000)].toMemoryArray();
+        peakBalancesScaled18 = [uint256(2372852587012056561), uint256(11651374260000000000000)].toMemoryArray();
         eclpParams = IGyroECLPPool.EclpParams({
             alpha: 3100000000000000000000,
             beta: 4400000000000000000000,
@@ -65,12 +69,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         // Current price is 3663 and peak price is sine/cosine = s/c = 3758. The following swap will increase the
         // price, bringing the pool closer to the peak of liquidity, so isSurging must be false.
 
-        // USDC in.
+        // 100 USDC in.
         uint256 amountGivenScaled18 = 100e18;
 
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
-            amountGivenScaled18: 100e18,
+            amountGivenScaled18: amountGivenScaled18,
             balancesScaled18: balancesScaled18,
             indexIn: 1,
             indexOut: 0,
@@ -99,12 +103,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         // Current price is 3663 and peak price is sine/cosine = s/c = 3758. The following swap will decrease the
         // price, bringing the pool farther from the peak of liquidity, so isSurging must be true.
 
-        // USDC out.
+        // 100 USDC out.
         uint256 amountGivenScaled18 = 100e18;
 
         PoolSwapParams memory request = PoolSwapParams({
             kind: SwapKind.EXACT_OUT,
-            amountGivenScaled18: 100e18,
+            amountGivenScaled18: amountGivenScaled18,
             balancesScaled18: balancesScaled18,
             indexIn: 0,
             indexOut: 1,
@@ -127,5 +131,41 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         // If newImbalance is smaller than threshold, isSurging function is not tested.
         assertGt(newImbalance, _SURGE_THRESHOLD, "New imbalance < Surge Threshold");
         assertTrue(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is not surging");
+    }
+
+    function testIsSurging__Fuzz(uint256 amountOutScaled18, uint256 tokenOutIndex) public view {
+        tokenOutIndex = bound(tokenOutIndex, 0, 1);
+        amountOutScaled18 = bound(amountOutScaled18, 1e6, peakBalancesScaled18[tokenOutIndex].mulDown(99e16));
+
+        PoolSwapParams memory request = PoolSwapParams({
+            kind: SwapKind.EXACT_OUT,
+            amountGivenScaled18: amountOutScaled18,
+            balancesScaled18: peakBalancesScaled18,
+            indexIn: 1 - tokenOutIndex,
+            indexOut: tokenOutIndex,
+            router: address(router),
+            userData: bytes("")
+        });
+
+        (uint256 amountInScaled18, , ) = hookMock.computeSwap(request, eclpParams, derivedECLPParams);
+
+        uint256[] memory balancesUpdated = new uint256[](2);
+        balancesUpdated[0] = peakBalancesScaled18[0] + amountInScaled18;
+        balancesUpdated[1] = peakBalancesScaled18[1] - amountOutScaled18;
+
+        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(peakBalancesScaled18, eclpParams, derivedECLPParams);
+        uint256 oldImbalance = hookMock.computeImbalance(peakBalancesScaled18, eclpParams, a, b);
+        // a and b are the same, since the swap without fees do not modify the invariant.
+        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+
+        if (oldImbalance < newImbalance) {
+            if (newImbalance > _SURGE_THRESHOLD) {
+                assertTrue(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is not surging");
+            } else {
+                assertFalse(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is surging");
+            }
+        } else {
+            assertFalse(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is surging");
+        }
     }
 }
