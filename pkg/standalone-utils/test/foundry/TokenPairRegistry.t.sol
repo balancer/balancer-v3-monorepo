@@ -152,6 +152,12 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         registry.removePathAtIndex(address(waDAI), address(waWETH), 0);
     }
 
+    function testRemovePathAtIndexOutOfBounds() external {
+        vm.expectRevert(ITokenPairRegistry.IndexOutOfBounds.selector);
+        vm.prank(admin);
+        registry.removePathAtIndex(address(waDAI), address(waWETH), 0);
+    }
+
     function testRemovePathAtIndex() external {
         vm.startPrank(admin);
         registry.addSimplePath(pool);
@@ -261,14 +267,29 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         registry.removeSimplePath(pool);
     }
 
-    function testRemoveSimplePath() external {
+    function testRemoveRegisteredPoolInexistentPath() external {
+        (address tokenA, address tokenB) = address(waDAI) < address(waWETH)
+            ? (address(waDAI), address(waWETH))
+            : (address(waWETH), address(waDAI));
+
+        vm.prank(admin);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ITokenPairRegistry.InvalidRemovePath.selector,
+                pool,
+                tokenA,
+                tokenB
+            )
+        );
+        registry.removeSimplePath(pool);
+    }
+
+    function testPoolRemoveSimplePath() external {
         registry.getPaths(address(waWETH), address(waDAI));
 
         vm.startPrank(admin);
         registry.addSimplePath(pool);
         vm.stopPrank();
-
-        registry.getPaths(address(waWETH), address(waDAI));
 
         assertEq(registry.getPathCount(address(waDAI), address(waWETH)), 1, "Wrong path count waDAI / waWETH");
         assertEq(registry.getPathCount(address(waWETH), address(waDAI)), 1, "Wrong path count waWETH / waDAI");
@@ -276,7 +297,6 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         _expectEmitPathRemovedEvents(address(waDAI), address(waWETH));
         vm.prank(admin);
         registry.removeSimplePath(pool);
-        registry.getPaths(address(waWETH), address(waDAI));
         assertEq(
             registry.getPathCount(address(waWETH), address(waDAI)),
             0,
@@ -286,6 +306,31 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
             registry.getPathCount(address(waDAI), address(waWETH)),
             0,
             "Wrong path count waDAI / waWETH after remove"
+        );
+    }
+
+    function testBufferRemoveSimplePath() external {
+        registry.getPaths(address(weth), address(waWETH));
+
+        vm.startPrank(admin);
+        registry.addSimplePath(address(waWETH));
+        vm.stopPrank();
+
+        assertEq(registry.getPathCount(address(weth), address(waWETH)), 1, "Wrong path count weth / waWETH");
+        assertEq(registry.getPathCount(address(waWETH), address(weth)), 1, "Wrong path count waWETH / weth");
+
+        _expectEmitPathRemovedEvents(address(weth), address(waWETH));
+        vm.prank(admin);
+        registry.removeSimplePath(address(waWETH));
+        assertEq(
+            registry.getPathCount(address(weth), address(waWETH)),
+            0,
+            "Wrong path count waWETH / weth after remove"
+        );
+        assertEq(
+            registry.getPathCount(address(waWETH), address(weth)),
+            0,
+            "Wrong path count waWETH / weth after remove"
         );
     }
 

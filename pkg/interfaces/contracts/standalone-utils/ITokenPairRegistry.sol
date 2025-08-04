@@ -31,6 +31,8 @@ interface ITokenPairRegistry {
      */
     error InvalidSimplePath(address path);
 
+    error InvalidRemovePath(address poolOrBuffer, address tokenIn, address tokenOut);
+
     error InvalidBufferPath(address buffer, address tokenIn, address tokenOut);
 
     error IndexOutOfBounds();

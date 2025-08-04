@@ -78,6 +78,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         if (pathsLength > 1 && index != pathsLength - 1) {
             paths[index] = paths[pathsLength - 1];
         }
+        // pop() can be used to clear dynamic arrays: it deletes every element and removes the inner array entirely.
         paths.pop();
 
         emit PathRemoved(tokenIn, tokenOut, paths.length);
@@ -158,21 +159,23 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         _removeSimplePairStep(pool, tokenB, tokenA);
     }
 
-    function _removeSimplePairStep(address pool, address tokenIn, address tokenOut) internal {
+    function _removeSimplePairStep(address poolOrBuffer, address tokenIn, address tokenOut) internal {
         bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
 
         IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
+        bool elementRemoved = false;
         for (uint256 i = 0; i < paths.length; ++i) {
             IBatchRouter.SwapPathStep[] storage steps = paths[i];
             if (steps.length > 1) {
                 continue;
             }
 
-            if (steps[i].pool == pool && address(steps[i].tokenOut) == tokenOut) {
+            if (steps[i].pool == poolOrBuffer && address(steps[i].tokenOut) == tokenOut) {
                 if (paths.length > 1) {
                     paths[i] = paths[paths.length - 1];
                 }
                 steps.pop();
+                elementRemoved = true;
                 break;
             }
         }
@@ -182,7 +185,11 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
             paths.pop();
         }
 
-        emit PathRemoved(tokenIn, tokenOut, paths.length);
+        if (elementRemoved) {
+            emit PathRemoved(tokenIn, tokenOut, paths.length);
+        } else {
+            revert InvalidRemovePath(poolOrBuffer, tokenIn, tokenOut);
+        }
     }
 
     function _removeBuffer(IERC4626 wrappedToken) internal {
