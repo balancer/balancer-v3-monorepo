@@ -18,7 +18,7 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getSwapSurgeFeePercentage(
+    function computeSwapSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
         uint256 staticFeePercentage,
@@ -27,7 +27,7 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
         int256 a,
         int256 b
     ) external view returns (uint256) {
-        return _getSwapSurgeFeePercentage(params, pool, staticFeePercentage, newBalances, eclpParams, a, b);
+        return _computeSwapSurgeFeePercentage(params, pool, staticFeePercentage, newBalances, eclpParams, a, b);
     }
 
     function isSurging(
@@ -40,5 +40,39 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
 
     function getSurgeFeeData(address pool) external view returns (SurgeFeeData memory) {
         return _surgeFeePoolData[pool];
+    }
+
+    function computePriceFromBalances(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) external pure returns (uint256) {
+        (int256 a, int256 b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        return _computePrice(balancesScaled18, eclpParams, a, b);
+    }
+
+    function computeImbalance(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        int256 a,
+        int256 b
+    ) external pure returns (uint256 imbalance) {
+        return _computeImbalance(balancesScaled18, eclpParams, a, b);
+    }
+
+    function computeSwap(
+        PoolSwapParams memory request,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) external pure returns (uint256 amountCalculated, int256 a, int256 b) {
+        return _computeSwap(request, eclpParams, derivedECLPParams);
+    }
+
+    function computeOffsetFromBalances(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) external pure returns (int256 a, int256 b) {
+        return _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
     }
 }

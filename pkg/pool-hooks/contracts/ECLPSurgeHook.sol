@@ -126,10 +126,10 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
-        return (true, getSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
+        return (true, computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
-    function getSwapSurgeFeePercentage(
+    function computeSwapSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
@@ -152,7 +152,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
             newBalances[params.indexOut] -= params.amountGivenScaled18;
         }
 
-        return _getSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage, newBalances, eclpParams, a, b);
+        return _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage, newBalances, eclpParams, a, b);
     }
 
     /// @inheritdoc IHooks
@@ -236,7 +236,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
      * @param pool The pool we are computing the fee for
      * @param staticFeePercentage The static fee percentage for the pool (default if there is no surge)
      */
-    function _getSwapSurgeFeePercentage(
+    function _computeSwapSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
         uint256 staticFeePercentage,
@@ -386,28 +386,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         }
     }
 
-    function _computeOffsetFromBalances(
-        uint256[] memory balancesScaled18,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) internal pure returns (int256 a, int256 b) {
-        IGyroECLPPool.Vector2 memory invariant;
-
-        {
-            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
-                balancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            // invariant = overestimate in x-component, underestimate in y-component
-            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
-            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
-        }
-
-        a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
-        b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
-    }
-
     function _computeImbalance(
         uint256[] memory balancesScaled18,
         IGyroECLPPool.EclpParams memory eclpParams,
@@ -445,13 +423,37 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         int256 yl = int256(balancesScaled18[1]) - b;
 
         // Balances in the circle centered at (0,0)
-        int256 xll = xl.mulDownMag(eclpParams.c).mulDownMag(eclpParams.lambda) -
-            yl.mulDownMag(eclpParams.s).mulDownMag(eclpParams.lambda);
+        int256 xll = xl.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) -
+            yl.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
         int256 yll = xl.mulDownMag(eclpParams.s) + yl.mulDownMag(eclpParams.c);
 
-        return
-            (xll.mulDownMag(eclpParams.c).mulDownMag(eclpParams.lambda) + yll.mulDownMag(eclpParams.s))
-                .divDownMag(xll.mulDownMag(eclpParams.s).mulDownMag(eclpParams.lambda) - yll.mulDownMag(eclpParams.c))
-                .toUint256();
+        // Scalar product of [xll, yll] by A*[1,0] => e_x (unity vector in the x direction).
+        int256 numerator = xll.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) + yll.mulDownMag(eclpParams.s);
+        // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
+        int256 denominator = yll.mulDownMag(eclpParams.c) - xll.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
+
+        return numerator.divDownMag(denominator).toUint256();
+    }
+
+    function _computeOffsetFromBalances(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) internal pure returns (int256 a, int256 b) {
+        IGyroECLPPool.Vector2 memory invariant;
+
+        {
+            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
+                balancesScaled18,
+                eclpParams,
+                derivedECLPParams
+            );
+            // invariant = overestimate in x-component, underestimate in y-component
+            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
+            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
+        }
+
+        a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
+        b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
     }
 }
