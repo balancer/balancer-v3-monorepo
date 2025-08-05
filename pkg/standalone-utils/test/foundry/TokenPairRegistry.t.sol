@@ -161,6 +161,16 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         registry.addPath(address(usdc), steps);
     }
 
+    function testBufferAddPathWrongTokenIn() external {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
+
+        vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidBufferPath.selector, waUSDC, weth, usdc));
+        vm.prank(admin);
+        registry.addPath(address(weth), steps);
+    }
+
     function testBufferAddSimplePath() external {
         _expectEmitPathAddedEvents(address(weth), address(waWETH));
         vm.prank(admin);
