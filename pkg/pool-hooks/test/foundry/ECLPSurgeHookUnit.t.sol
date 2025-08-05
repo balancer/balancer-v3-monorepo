@@ -24,6 +24,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
     IGyroECLPPool.DerivedEclpParams private derivedECLPParams;
     uint256[] private balancesScaled18;
     uint256[] private peakBalancesScaled18;
+    uint256[] private tokenRatesOne;
 
     function setUp() public override {
         super.setUp();
@@ -55,13 +56,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
             z: -74906280678135799137829029450497780483,
             dSq: 99999999999999999958780685745704854600
         });
+
+        tokenRatesOne = [uint256(1e18), uint256(1e18)].toMemoryArray();
     }
 
     function testPriceComputation() public view {
         // Price computed offchain.
         uint256 expectedPrice = 3663201029819534758509;
 
-        uint256 actualPrice = hookMock.computePriceFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        uint256 actualPrice = hookMock.computePriceFromBalances(
+            balancesScaled18,
+            tokenRatesOne,
+            eclpParams,
+            derivedECLPParams
+        );
         assertEq(actualPrice, expectedPrice, "Prices do not match");
     }
 
@@ -88,10 +96,15 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         balancesUpdated[0] = balancesScaled18[0] - amountCalculatedScaled18;
         balancesUpdated[1] = balancesScaled18[1] + amountGivenScaled18;
 
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
+        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(
+            balancesScaled18,
+            tokenRatesOne,
+            eclpParams,
+            derivedECLPParams
+        );
+        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, tokenRatesOne, eclpParams, a, b);
         // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, tokenRatesOne, eclpParams, a, b);
 
         assertLt(newImbalance, oldImbalance, "Old imbalance < New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
@@ -122,10 +135,15 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         balancesUpdated[0] = balancesScaled18[0] + amountCalculatedScaled18;
         balancesUpdated[1] = balancesScaled18[1] - amountGivenScaled18;
 
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
+        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(
+            balancesScaled18,
+            tokenRatesOne,
+            eclpParams,
+            derivedECLPParams
+        );
+        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, tokenRatesOne, eclpParams, a, b);
         // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, tokenRatesOne, eclpParams, a, b);
 
         assertGt(newImbalance, oldImbalance, "Old imbalance > New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
@@ -153,10 +171,15 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         balancesUpdated[0] = peakBalancesScaled18[0] + amountInScaled18;
         balancesUpdated[1] = peakBalancesScaled18[1] - amountOutScaled18;
 
-        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(peakBalancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(peakBalancesScaled18, eclpParams, a, b);
+        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(
+            peakBalancesScaled18,
+            tokenRatesOne,
+            eclpParams,
+            derivedECLPParams
+        );
+        uint256 oldImbalance = hookMock.computeImbalance(peakBalancesScaled18, tokenRatesOne, eclpParams, a, b);
         // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, tokenRatesOne, eclpParams, a, b);
 
         if (oldImbalance < newImbalance) {
             if (newImbalance > _SURGE_THRESHOLD) {
@@ -199,12 +222,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
         (int256 aAlpha, int256 bAlpha) = hookMock.computeOffsetFromBalances(
             balancesAlpha,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
+        uint256 imbalanceAlpha = hookMock.computeImbalance(
+            balancesAlpha,
+            tokenRatesOne,
+            eclpParamsOutsideInterval,
+            aAlpha,
+            bAlpha
+        );
         uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
@@ -216,12 +247,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
         (int256 aBeta, int256 bBeta) = hookMock.computeOffsetFromBalances(
             balancesBeta,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
+        uint256 imbalanceBeta = hookMock.computeImbalance(
+            balancesBeta,
+            tokenRatesOne,
+            eclpParamsOutsideInterval,
+            aBeta,
+            bBeta
+        );
         uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
@@ -266,12 +305,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
         (int256 aAlpha, int256 bAlpha) = hookMock.computeOffsetFromBalances(
             balancesAlpha,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
+        uint256 imbalanceAlpha = hookMock.computeImbalance(
+            balancesAlpha,
+            tokenRatesOne,
+            eclpParamsOutsideInterval,
+            aAlpha,
+            bAlpha
+        );
         uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
@@ -283,13 +330,21 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
         (int256 aBeta, int256 bBeta) = hookMock.computeOffsetFromBalances(
             balancesBeta,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
 
-        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
+        uint256 imbalanceBeta = hookMock.computeImbalance(
+            balancesBeta,
+            tokenRatesOne,
+            eclpParamsOutsideInterval,
+            aBeta,
+            bBeta
+        );
         uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
+            tokenRatesOne,
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );

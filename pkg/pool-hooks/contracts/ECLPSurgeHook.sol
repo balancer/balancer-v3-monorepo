@@ -12,6 +12,7 @@ import {
     AddLiquidityKind,
     LiquidityManagement,
     TokenConfig,
+    TokenInfo,
     PoolSwapParams,
     HookFlags,
     RemoveLiquidityKind,
@@ -253,8 +254,13 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
             return staticFeePercentage;
         }
 
-        uint256 oldTotalImbalance = _computeImbalance(params.balancesScaled18, eclpParams, a, b);
-        uint256 newTotalImbalance = _computeImbalance(newBalances, eclpParams, a, b);
+        (, TokenInfo[] memory tokenInfo, , ) = _vault.getPoolTokenInfo(pool);
+        uint256[] memory tokenRates = new uint256[](2);
+        tokenRates[0] = tokenInfo[0].rateProvider.getRate();
+        tokenRates[1] = tokenInfo[1].rateProvider.getRate();
+
+        uint256 oldTotalImbalance = _computeImbalance(params.balancesScaled18, tokenRates, eclpParams, a, b);
+        uint256 newTotalImbalance = _computeImbalance(newBalances, tokenRates, eclpParams, a, b);
 
         bool isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
 
@@ -291,17 +297,33 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
             IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
         ) = IGyroECLPPool(pool).getECLPParams();
 
+        (, TokenInfo[] memory tokenInfo, , ) = _vault.getPoolTokenInfo(pool);
+        uint256[] memory tokenRates = new uint256[](2);
+        tokenRates[0] = tokenInfo[0].rateProvider.getRate();
+        tokenRates[1] = tokenInfo[1].rateProvider.getRate();
+
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
         {
-            (int256 a, int256 b) = _computeOffsetFromBalances(oldBalancesScaled18, eclpParams, derivedECLPParams);
-            oldTotalImbalance = _computeImbalance(oldBalancesScaled18, eclpParams, a, b);
+            (int256 a, int256 b) = _computeOffsetFromBalances(
+                oldBalancesScaled18,
+                tokenRates,
+                eclpParams,
+                derivedECLPParams
+            );
+            oldTotalImbalance = _computeImbalance(oldBalancesScaled18, tokenRates, eclpParams, a, b);
         }
 
         {
-            (int256 a, int256 b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-            newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b);
+            // Since the invariant is not the same after the liquidity change, we need to recompute the offset.
+            (int256 a, int256 b) = _computeOffsetFromBalances(
+                balancesScaled18,
+                tokenRates,
+                eclpParams,
+                derivedECLPParams
+            );
+            newTotalImbalance = _computeImbalance(balancesScaled18, tokenRates, eclpParams, a, b);
         }
 
         isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
@@ -343,7 +365,10 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         }
     }
 
-    // TODO Explain why this function is needed.
+    /**
+     * @dev This function is a copy of the `onSwap` function in the E-CLP pool. However, it exposes the a and b parameters,
+     * which are needed to compute the imbalance, therefore saving gas.
+     */
     function _computeSwap(
         PoolSwapParams memory request,
         IGyroECLPPool.EclpParams memory eclpParams,
@@ -388,12 +413,13 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
     function _computeImbalance(
         uint256[] memory balancesScaled18,
+        uint256[] memory tokenRates,
         IGyroECLPPool.EclpParams memory eclpParams,
         int256 a,
         int256 b
     ) internal pure returns (uint256 imbalance) {
         // Compute current price
-        uint256 currentPrice = _computePrice(balancesScaled18, eclpParams, a, b);
+        uint256 currentPrice = _computePrice(balancesScaled18, tokenRates, eclpParams, a, b);
 
         // Compute peak price, defined by `sine / cosine`, which is the price where the pool has the largest liquidity.
         uint256 peakPrice = eclpParams.s.divDownMag(eclpParams.c).toUint256();
@@ -416,13 +442,14 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
     function _computePrice(
         uint256[] memory balancesScaled18,
+        uint256[] memory tokenRates,
         IGyroECLPPool.EclpParams memory eclpParams,
         int256 a,
         int256 b
     ) internal pure returns (uint256 price) {
         // Balances in the rotated ellipse centered at (0,0)
-        int256 xl = int256(balancesScaled18[0]) - a;
-        int256 yl = int256(balancesScaled18[1]) - b;
+        int256 xl = int256(balancesScaled18[0].divDown(tokenRates[0])) - a;
+        int256 yl = int256(balancesScaled18[1].divDown(tokenRates[1])) - b;
 
         // Balances in the circle centered at (0,0)
         int256 xll = xl.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) -
@@ -448,14 +475,19 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
     function _computeOffsetFromBalances(
         uint256[] memory balancesScaled18,
+        uint256[] memory tokenRates,
         IGyroECLPPool.EclpParams memory eclpParams,
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
     ) internal pure returns (int256 a, int256 b) {
         IGyroECLPPool.Vector2 memory invariant;
 
+        uint256[] memory normalizedBalances = new uint256[](2);
+        normalizedBalances[0] = balancesScaled18[0].divDown(tokenRates[0]);
+        normalizedBalances[1] = balancesScaled18[1].divDown(tokenRates[1]);
+
         {
             (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
-                balancesScaled18,
+                normalizedBalances,
                 eclpParams,
                 derivedECLPParams
             );

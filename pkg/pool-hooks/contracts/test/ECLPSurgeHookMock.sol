@@ -44,20 +44,22 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
 
     function computePriceFromBalances(
         uint256[] memory balancesScaled18,
+        uint256[] memory tokenRates,
         IGyroECLPPool.EclpParams memory eclpParams,
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
     ) external pure returns (uint256) {
-        (int256 a, int256 b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        return _computePrice(balancesScaled18, eclpParams, a, b);
+        (int256 a, int256 b) = _computeOffsetFromBalances(balancesScaled18, tokenRates, eclpParams, derivedECLPParams);
+        return _computePrice(balancesScaled18, tokenRates, eclpParams, a, b);
     }
 
     function computeImbalance(
         uint256[] memory balancesScaled18,
+        uint256[] memory tokenRates,
         IGyroECLPPool.EclpParams memory eclpParams,
         int256 a,
         int256 b
     ) external pure returns (uint256 imbalance) {
-        return _computeImbalance(balancesScaled18, eclpParams, a, b);
+        return _computeImbalance(balancesScaled18, tokenRates, eclpParams, a, b);
     }
 
     function computeSwap(
@@ -70,9 +72,10 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
 
     function computeOffsetFromBalances(
         uint256[] memory balancesScaled18,
+        uint256[] memory tokenRates,
         IGyroECLPPool.EclpParams memory eclpParams,
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
     ) external pure returns (int256 a, int256 b) {
-        return _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        return _computeOffsetFromBalances(balancesScaled18, tokenRates, eclpParams, derivedECLPParams);
     }
 }
