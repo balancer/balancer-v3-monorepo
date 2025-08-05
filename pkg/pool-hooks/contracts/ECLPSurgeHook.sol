@@ -404,8 +404,10 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
             peakPrice = eclpParams.beta.toUint256();
         }
 
-        // Compute imbalance;
-        if (currentPrice < peakPrice) {
+        if (currentPrice == peakPrice) {
+            // If currentPrice equals to peak price, the pool is perfectly balanced.
+            return 0;
+        } else if (currentPrice < peakPrice) {
             return (peakPrice - currentPrice).divDown(peakPrice - eclpParams.alpha.toUint256());
         } else {
             return (currentPrice - peakPrice).divDown(eclpParams.beta.toUint256() - peakPrice);
@@ -432,7 +434,16 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
         int256 denominator = yll.mulDownMag(eclpParams.c) - xll.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
 
-        return numerator.divDownMag(denominator).toUint256();
+        price = numerator.divDownMag(denominator).toUint256();
+
+        // The price cannot be outside of pool range.
+        if (price < eclpParams.alpha.toUint256()) {
+            price = eclpParams.alpha.toUint256();
+        } else if (price > eclpParams.beta.toUint256()) {
+            price = eclpParams.beta.toUint256();
+        }
+
+        return price;
     }
 
     function _computeOffsetFromBalances(

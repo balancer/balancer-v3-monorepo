@@ -168,4 +168,139 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
             assertFalse(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is surging");
         }
     }
+
+    function testComputeImbalance__PeakLowerThanAlpha() public view {
+        // Price peak = s/c = 1. Since price peak < alpha, the peak should be alpha.
+        IGyroECLPPool.EclpParams memory eclpParamsOutsideInterval = IGyroECLPPool.EclpParams({
+            alpha: 1.2e18,
+            beta: 1.3e18,
+            c: 707106781186547524,
+            s: 707106781186547524,
+            lambda: 1e18
+        });
+
+        // Derived params calculated offchain, using the jupyter notebook file on "pkg/pool-hooks/jupyter/SurgeECLP.ipynb"
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParamsOutsideInterval = IGyroECLPPool.DerivedEclpParams({
+            tauAlpha: IGyroECLPPool.Vector2({
+                x: 9053574604251854335907431643208482816,
+                y: 99589320646770395333798506640470704128
+            }),
+            tauBeta: IGyroECLPPool.Vector2({
+                x: 12933918406776802937837365453075251200,
+                y: 99160041118622168449730422792630829056
+            }),
+            u: 1940171901262474300964966904933384192,
+            v: 99374680882696281891764464716550766592,
+            w: -214639764074107649756402779120730112,
+            z: 10993746505514327456280777830730563584,
+            dSq: 99999999999999997748809823456034029568
+        });
+
+        uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
+        (int256 aAlpha, int256 bAlpha) = hookMock.computeOffsetFromBalances(
+            balancesAlpha,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
+        uint256 priceNearAlpha = hookMock.computePriceFromBalances(
+            balancesAlpha,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+
+        // Since the balances are exactly at the peak, the imbalance should be 0.
+        assertEq(imbalanceAlpha, 0, "Imbalance should be 0");
+        assertEq(priceNearAlpha, uint256(eclpParamsOutsideInterval.alpha), "Price should be equal to alpha");
+
+        uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
+        (int256 aBeta, int256 bBeta) = hookMock.computeOffsetFromBalances(
+            balancesBeta,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
+        uint256 priceNearBeta = hookMock.computePriceFromBalances(
+            balancesBeta,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+
+        // Since the balances are exactly at the fartherst point from the peak, the imbalance should be 1.
+        assertApproxEqAbs(imbalanceBeta, 1e18, 1000, "Imbalance should be 1");
+        assertApproxEqAbs(
+            priceNearBeta,
+            uint256(eclpParamsOutsideInterval.beta),
+            1000,
+            "Price should be equal to beta"
+        );
+    }
+
+    function testComputeImbalance__PeakGreaterThanBeta() public view {
+        // Price peak = s/c = 1. Since price peak > beta, the peak should be beta.
+        IGyroECLPPool.EclpParams memory eclpParamsOutsideInterval = IGyroECLPPool.EclpParams({
+            alpha: 0.7e18,
+            beta: 0.8e18,
+            c: 707106781186547524,
+            s: 707106781186547524,
+            lambda: 1e18
+        });
+
+        // Derived params calculated offchain, using the jupyter notebook file on "pkg/pool-hooks/jupyter/SurgeECLP.ipynb"
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParamsOutsideInterval = IGyroECLPPool.DerivedEclpParams({
+            tauAlpha: IGyroECLPPool.Vector2({
+                x: -17378533390904770869772025989076877312,
+                y: 98478355881793685067092123894344056832
+            }),
+            tauBeta: IGyroECLPPool.Vector2({
+                x: -11043152607484651417618851378248024064,
+                y: 99388373467361900537501525361393926144
+            }),
+            u: 3167690391710059135780776946708774912,
+            v: 98933364674577792802296824627868991488,
+            w: 455008792784103898281933401938198528,
+            z: -14210842999194712324287059401073754112,
+            dSq: 99999999999999997748809823456034029568
+        });
+
+        uint256[] memory balancesAlpha = [uint256(1e18), uint256(0)].toMemoryArray();
+        (int256 aAlpha, int256 bAlpha) = hookMock.computeOffsetFromBalances(
+            balancesAlpha,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
+        uint256 priceNearAlpha = hookMock.computePriceFromBalances(
+            balancesAlpha,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+
+        // Since the balances are exactly at the fartherst point from the peak, the imbalance should be 1.
+        assertEq(imbalanceAlpha, 1e18, "Imbalance should be 0");
+        assertEq(priceNearAlpha, uint256(eclpParamsOutsideInterval.alpha), "Price should be equal to alpha");
+
+        uint256[] memory balancesBeta = [uint256(0), uint256(1e18)].toMemoryArray();
+        (int256 aBeta, int256 bBeta) = hookMock.computeOffsetFromBalances(
+            balancesBeta,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+
+        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
+        uint256 priceNearBeta = hookMock.computePriceFromBalances(
+            balancesBeta,
+            eclpParamsOutsideInterval,
+            derivedECLPParamsOutsideInterval
+        );
+
+        // Since the balances are exactly at the peak, the imbalance should be 0.
+        assertApproxEqAbs(imbalanceBeta, 0, 1000, "Imbalance should be 1");
+        assertApproxEqAbs(
+            priceNearBeta,
+            uint256(eclpParamsOutsideInterval.beta),
+            1000,
+            "Price should be equal to beta"
+        );
+    }
 }
