@@ -273,14 +273,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
             : (address(waWETH), address(waDAI));
 
         vm.prank(admin);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ITokenPairRegistry.InvalidRemovePath.selector,
-                pool,
-                tokenA,
-                tokenB
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidRemovePath.selector, pool, tokenA, tokenB));
         registry.removeSimplePath(pool);
     }
 
