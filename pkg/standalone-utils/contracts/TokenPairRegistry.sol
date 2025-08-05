@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -162,34 +160,33 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     }
 
     function _removeSimplePairStep(address poolOrBuffer, address tokenIn, address tokenOut) internal {
-        console.log('Remove pair step');
         bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
 
         IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
-        bool elementRemoved = false;
+        bool elementFound = false;
+        // We first look for a path of length 1 which is the one for a simple pair step.
         for (uint256 i = 0; i < paths.length; ++i) {
             IBatchRouter.SwapPathStep[] storage steps = paths[i];
             if (steps.length > 1) {
-                console.log('## CONTINUE');
                 continue;
             }
 
             if (steps[0].pool == poolOrBuffer && address(steps[0].tokenOut) == tokenOut) {
-                console.log('found');
+                // Element found. Re-arrange paths if needed, swapping last element with the current one.
                 if (paths.length > 1) {
-                    console.log('arranging paths');
                     paths[i] = paths[paths.length - 1];
                 }
-                console.log('about to pop');
-                elementRemoved = true;
+                elementFound = true;
                 break;
             }
         }
 
-        if (elementRemoved) {
+        // If the element was found, the array is already arranged in such a way that we can remove the last element.
+        if (elementFound) {
             paths.pop();
             emit PathRemoved(tokenIn, tokenOut, paths.length);
         } else {
+            // If not, we revert with an error indicating the invalid removal attempt.
             revert InvalidRemovePath(poolOrBuffer, tokenIn, tokenOut);
         }
     }
