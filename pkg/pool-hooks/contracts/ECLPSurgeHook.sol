@@ -397,6 +397,15 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         int256 a,
         int256 b
     ) internal pure returns (uint256 imbalance) {
+        // On E-CLPs, the imbalance is a number from 0 to 1 that represents how far the current price is from the
+        // peak liquidity price (the price in which the liquidity of the pool is maximized).
+        // To reach this number, first we compute the peak price, which is sine/cosine (the tangent of the E-CLP
+        // rotation angle). Then, we compute the current price. We check if the current price is above or below the
+        // peak price:
+        // - If the current price is equal to the peak price, imbalance = 0 (the pool is perfectly balanced)
+        // - If the current price is below peak, imbalance = (peakPrice - currentPrice) / (peakPrice - alpha)
+        // - If the current price is above peak, imbalance = (currentPrice - peakPrice) / (beta - peakPrice)
+
         // Compute current price
         uint256 currentPrice = _computePrice(balancesScaled18, eclpParams, a, b);
 
@@ -425,6 +434,28 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         int256 a,
         int256 b
     ) internal pure returns (uint256 price) {
+        // To compute the price, first we need to transform the real balances into balances of a circle centered at
+        // (0,0).
+        //
+        // The transformation is:
+        //
+        //     --   --    --                     --   --     --
+        //     | x'' |    |  c/lambda  -s/lambda  | * | x - a |
+        //     | y'' | =  |     s          c      |   | y - b |
+        //     --   --    --                     --   --     --
+        //
+        // With x'' and y'', we can compute the price as:
+        //
+        //                          --              --   --   --
+        //             [xll, yll] o |  c/lambda   s  | * |  1  |
+        //                          | -s/lambda   c  |   |  0  |
+        //                          --              --   --   --
+        //    price =  -------------------------------------------
+        //                          --              --   --   --
+        //             [xll, yll] o |  c/lambda   s  | * |  0  |
+        //                          | -s/lambda   c  |   |  1  |
+        //                          --              --   --   --
+
         // Balances in the rotated ellipse centered at (0,0)
         int256 xl = int256(balancesScaled18[0]) - a;
         int256 yl = int256(balancesScaled18[1]) - b;
