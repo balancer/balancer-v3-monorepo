@@ -37,6 +37,26 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         registry.addPath(tokenIn, steps);
     }
 
+    function testAddInvalidPathToken() external {
+        address tokenIn = address(waWETH);
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        // Dai is not present in the pool
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidSimplePath.selector, pool));
+        registry.addPath(tokenIn, steps);
+
+        tokenIn = address(dai);
+        // Dai is not present in the pool
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: waWETH, isBuffer: false });
+
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidSimplePath.selector, pool));
+        registry.addPath(tokenIn, steps);
+    }
+
     function testAddPath() external {
         address tokenIn = address(weth);
         address tokenOut = address(dai);
@@ -106,6 +126,39 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
             keccak256(abi.encode(pathsDaiWeth[0])),
             "waDAI / waWETH getPathAt mismatch"
         );
+    }
+
+    function testBufferAddPathUninitializedBuffer() external {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        // USDC is not a buffer.
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(usdc), tokenOut: usdc, isBuffer: true });
+
+        vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.BufferNotInitialized.selector, usdc));
+        vm.prank(admin);
+        registry.addPath(address(waUSDC), steps);
+    }
+
+    function testBufferAddPathWrongUnderlying() external {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        // Unwrap(waUSDC) != dai
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: dai, isBuffer: true });
+
+        vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidBufferPath.selector, waUSDC, waUSDC, dai));
+        vm.prank(admin);
+        registry.addPath(address(waUSDC), steps);
+    }
+
+    function testBufferAddPathWrongWrapped() external {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        // Wrap(USDC) != waDAI
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: waDAI, isBuffer: true });
+
+        vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidBufferPath.selector, waUSDC, usdc, waDAI));
+        vm.prank(admin);
+        registry.addPath(address(usdc), steps);
     }
 
     function testBufferAddSimplePath() external {
@@ -254,6 +307,39 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
             otherPool,
             "Wrong path[0][1] tokenIn / tokenOut pool after remove"
         );
+    }
+
+    function testRemovePathAtIndexWithDuplicates() external {
+        address tokenIn = address(dai);
+        address tokenOut = address(waDAI);
+
+        // Redundant wrap / unwrap
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+
+        vm.prank(admin);
+        registry.addPath(tokenIn, steps);
+
+        vm.prank(admin);
+        registry.addPath(tokenIn, steps);
+
+        vm.prank(admin);
+        registry.addSimplePath(address(waDAI));
+
+        vm.prank(admin);
+        registry.addPath(tokenIn, steps);
+
+        assertEq(registry.getPathCount(tokenIn, tokenOut), 4, "Wrong path count tokenIn / tokenOut");
+        assertEq(registry.getPathAt(tokenIn, tokenOut, 2).length, 1, "Wrong simple path position");
+
+        // This will remove the simple path of length 1
+        vm.prank(admin);
+        registry.removeSimplePath(address(waDAI));
+
+        assertEq(registry.getPathCount(tokenIn, tokenOut), 3, "Wrong path count tokenIn / tokenOut after remove");
+        assertEq(registry.getPathAt(tokenIn, tokenOut, 2).length, 3, "Wrong path reorganization after remove");
     }
 
     function testRemoveSimplePathNonRegisteredPoolOrBuffer() external {

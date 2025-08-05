@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -160,6 +162,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     }
 
     function _removeSimplePairStep(address poolOrBuffer, address tokenIn, address tokenOut) internal {
+        console.log('Remove pair step');
         bytes32 tokenId = _getTokenId(tokenIn, tokenOut);
 
         IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
@@ -167,25 +170,24 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         for (uint256 i = 0; i < paths.length; ++i) {
             IBatchRouter.SwapPathStep[] storage steps = paths[i];
             if (steps.length > 1) {
+                console.log('## CONTINUE');
                 continue;
             }
 
-            if (steps[i].pool == poolOrBuffer && address(steps[i].tokenOut) == tokenOut) {
+            if (steps[0].pool == poolOrBuffer && address(steps[0].tokenOut) == tokenOut) {
+                console.log('found');
                 if (paths.length > 1) {
+                    console.log('arranging paths');
                     paths[i] = paths[paths.length - 1];
                 }
-                steps.pop();
+                console.log('about to pop');
                 elementRemoved = true;
                 break;
             }
         }
 
-        if (paths.length == 1 && paths[0].length == 0) {
-            // If the last path is empty, remove the entire entry
-            paths.pop();
-        }
-
         if (elementRemoved) {
+            paths.pop();
             emit PathRemoved(tokenIn, tokenOut, paths.length);
         } else {
             revert InvalidRemovePath(poolOrBuffer, tokenIn, tokenOut);
