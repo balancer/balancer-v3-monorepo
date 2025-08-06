@@ -346,8 +346,8 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     }
 
     /**
-     * @dev This function is a copy of the `onSwap` function in the E-CLP pool. However, it exposes the a and b parameters,
-     * which are needed to compute the imbalance, therefore saving gas.
+     * @dev This function is a copy of the `onSwap` function in the E-CLP pool. However, it exposes the a and b
+     * parameters, which are needed to compute the imbalance, therefore saving gas.
      */
     function _computeSwap(
         PoolSwapParams memory request,
