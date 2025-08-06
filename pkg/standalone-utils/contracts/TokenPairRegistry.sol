@@ -5,9 +5,10 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ITokenPairRegistry } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ITokenPairRegistry.sol";
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
@@ -22,6 +23,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /// @inheritdoc ITokenPairRegistry
     function getPathAt(
         address tokenA,
         address tokenB,
@@ -54,7 +56,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
                 _checkPoolStep(step.pool, stepTokenIn, address(step.tokenOut));
             }
 
-            // Update token in for the next iteration
+            // Update token in for the next iteration.
             stepTokenIn = address(step.tokenOut);
         }
 
@@ -205,17 +207,17 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         }
 
         if (tokenIn == underlying) {
-            // This is a wrap
+            // This is a wrap.
             if (tokenOut != address(buffer)) {
                 revert InvalidBufferPath(buffer, tokenIn, tokenOut);
             }
         } else if (tokenIn == buffer) {
-            // This is an unwrap
+            // This is an unwrap.
             if (tokenOut != address(underlying)) {
                 revert InvalidBufferPath(buffer, tokenIn, tokenOut);
             }
         } else {
-            // Token in must be either wrapped or underlying
+            // Token in must be either wrapped or underlying.
             revert InvalidBufferPath(buffer, tokenIn, tokenOut);
         }
     }
@@ -235,7 +237,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
             }
         }
 
-        if (!foundIn || !foundOut) {
+        if (foundIn == false || foundOut == false) {
             revert InvalidSimplePath(pool);
         }
     }
