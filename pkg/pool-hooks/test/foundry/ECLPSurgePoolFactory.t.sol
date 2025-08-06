@@ -14,8 +14,9 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { ECLPSurgeHookDeployer } from "./utils/ECLPSurgeHookDeployer.sol";
@@ -84,6 +85,33 @@ contract ECLPSurgePoolFactoryTest is BaseVaultTest, ECLPSurgeHookDeployer, ECLPS
     function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = eclpPoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
+    }
+
+    function testFactoryNoPoolCreator() public {
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = alice;
+        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
+
+        (
+            IGyroECLPPool.EclpParams memory eclpParams,
+            IGyroECLPPool.DerivedEclpParams memory derivedEclpParams
+        ) = getECLPPoolParams();
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
+
+        vm.expectRevert(BasePoolFactory.StandardPoolWithCreator.selector);
+        eclpPoolFactory.create(
+            "Pool Without Donation",
+            "PwoD",
+            tokenConfig,
+            eclpParams,
+            derivedEclpParams,
+            roleAccounts,
+            MAX_SWAP_FEE_PERCENTAGE,
+            false,
+            false,
+            ZERO_BYTES32
+        );
     }
 
     function testCreatePoolWithoutDonation() public {

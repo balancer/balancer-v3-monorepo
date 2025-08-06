@@ -380,6 +380,22 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         );
     }
 
+    function testGetDefaultSurgeThresholdPercentage() public view {
+        assertEq(
+            hookMock.getDefaultSurgeThresholdPercentage(),
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            "Default surge threshold percentage should be correct"
+        );
+    }
+
+    function testGetDefaultMaxSurgeFeePercentage() public view {
+        assertEq(
+            hookMock.getDefaultMaxSurgeFeePercentage(),
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
+            "Default max surge fee percentage should be correct"
+        );
+    }
+
     function testSetMaxSurgeFeePercentageIsAuthenticated() public {
         vm.prank(alice);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
