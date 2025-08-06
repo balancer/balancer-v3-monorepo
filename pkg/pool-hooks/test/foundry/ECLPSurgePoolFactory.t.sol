@@ -96,7 +96,8 @@ contract ECLPSurgePoolFactoryTest is BaseVaultTest, ECLPSurgeHookDeployer, ECLPS
     }
 
     function testCreatePoolWithDonation() public {
-        uint256 amountToDonate = poolInitAmount;
+        // Small amount, so the liquidity operation does not surge.
+        uint256 amountToDonate = 10e18;
 
         address eclpPool = _deployAndInitializeECLPPool(true);
 
