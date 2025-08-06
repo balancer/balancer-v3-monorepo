@@ -499,6 +499,10 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         );
     }
 
+    function testIsSurgingNewImbalanceZero() public view {
+        assertFalse(hookMock.isSurging(uint64(DEFAULT_SURGE_THRESHOLD_PERCENTAGE), 90e16, 0), "Is surging");
+    }
+
     function _mockPoolRoleAccounts(address swapFeeManager) private {
         PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
             pauseManager: address(0x01),
