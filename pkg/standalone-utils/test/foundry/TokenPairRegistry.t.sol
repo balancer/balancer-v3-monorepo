@@ -37,6 +37,15 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         registry.addPath(tokenIn, steps);
     }
 
+    function testAddPathEmpty() external {
+        address tokenIn = address(waDAI);
+        IBatchRouter.SwapPathStep[] memory steps;
+
+        vm.prank(admin);
+        vm.expectRevert(ITokenPairRegistry.EmptyPath.selector);
+        registry.addPath(tokenIn, steps);
+    }
+
     function testAddInvalidPathToken() external {
         address tokenIn = address(waWETH);
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
