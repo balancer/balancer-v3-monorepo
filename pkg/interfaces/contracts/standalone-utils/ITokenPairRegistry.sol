@@ -2,7 +2,7 @@
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { IBatchRouter } from "../vault/IBatchRouter.sol";
 
 pragma solidity ^0.8.24;
 
