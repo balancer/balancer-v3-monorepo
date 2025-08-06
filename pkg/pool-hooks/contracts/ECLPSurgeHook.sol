@@ -111,7 +111,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
-        return (true, _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
+        return (true, computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
     /// @inheritdoc IHooks
@@ -211,20 +211,11 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     }
 
     /// @inheritdoc IECLPSurgeHook
-    function computeSwapSurgeFeePercentage(PoolSwapParams calldata params, address pool) public view returns (uint256) {
-        uint256 staticSwapFeePercentage = _vault.getStaticSwapFeePercentage(pool);
-        return _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage);
-    }
-
-    /***************************************************************************
-                                  Private Functions
-    ***************************************************************************/
-
-    function _computeSwapSurgeFeePercentage(
+    function computeSwapSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) private view returns (uint256 surgeFeePercentage) {
+    ) public view returns (uint256) {
         (
             IGyroECLPPool.EclpParams memory eclpParams,
             IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
@@ -243,6 +234,22 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
             newBalances[params.indexOut] -= params.amountGivenScaled18;
         }
 
+        return _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage, newBalances, eclpParams, a, b);
+    }
+
+    /***************************************************************************
+                                  Private Functions
+    ***************************************************************************/
+
+    function _computeSwapSurgeFeePercentage(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage,
+        uint256[] memory newBalances,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        int256 a,
+        int256 b
+    ) private view returns (uint256 surgeFeePercentage) {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
 
         // If the max surge fee percentage is less than the static fee percentage, return the static fee percentage.

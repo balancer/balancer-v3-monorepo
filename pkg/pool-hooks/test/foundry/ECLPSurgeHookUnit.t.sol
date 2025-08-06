@@ -508,7 +508,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
                     router: address(0),
                     userData: bytes("")
                 }),
-                pool
+                pool,
+                staticSwapFeePercentage
             ),
             staticSwapFeePercentage,
             "Surge fee is wrong"
