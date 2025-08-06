@@ -4,20 +4,28 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { PoolSwapParams, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { GyroECLPPoolFactory } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPoolFactory.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { ECLPSurgeHookMock } from "../../contracts/test/ECLPSurgeHookMock.sol";
+import { ECLPSurgeHookDeployer } from "./utils/ECLPSurgeHookDeployer.sol";
+import { ECLPSurgeHook } from "../../contracts/ECLPSurgeHook.sol";
 
-contract ECLPSurgeHookUnitTest is BaseVaultTest {
+contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
     using FixedPoint for uint256;
+    using CastingHelpers for *;
     using ArrayHelpers for *;
-
-    uint64 private constant _SURGE_THRESHOLD = 10e16; // 10%
 
     ECLPSurgeHookMock private hookMock;
     IGyroECLPPool.EclpParams private eclpParams;
@@ -26,13 +34,6 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
     uint256[] private peakBalancesScaled18;
 
     function setUp() public override {
-        super.setUp();
-
-        // Data from pool 0xf78556b9ccce5a6eb9476a4d086ea15f3790660a, Arbitrum.
-        // Token A is WETH, and Token B is USDC.
-        hookMock = new ECLPSurgeHookMock(vault, 95e16, _SURGE_THRESHOLD, "1");
-        balancesScaled18 = [uint256(2948989424059932952), uint256(9513574260000000000000)].toMemoryArray();
-        peakBalancesScaled18 = [uint256(2372852587012056561), uint256(11651374260000000000000)].toMemoryArray();
         eclpParams = IGyroECLPPool.EclpParams({
             alpha: 3100000000000000000000,
             beta: 4400000000000000000000,
@@ -55,6 +56,66 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
             z: -74906280678135799137829029450497780483,
             dSq: 99999999999999999958780685745704854600
         });
+
+        super.setUp();
+
+        // Data from pool 0xf78556b9ccce5a6eb9476a4d086ea15f3790660a, Arbitrum.
+        // Token A is WETH, and Token B is USDC.
+        balancesScaled18 = [uint256(2948989424059932952), uint256(9513574260000000000000)].toMemoryArray();
+        peakBalancesScaled18 = [uint256(2372852587012056561), uint256(11651374260000000000000)].toMemoryArray();
+    }
+
+    function createPoolFactory() internal override returns (address) {
+        return address(new GyroECLPPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1"));
+    }
+
+    function createHook() internal override returns (address) {
+        vm.prank(poolFactory);
+        hookMock = deployECLPSurgeHookMock(
+            vault,
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
+            DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
+            "Test"
+        );
+        vm.label(address(hookMock), "ECLPSurgeHook");
+        return address(hookMock);
+    }
+
+    function _createPool(
+        address[] memory tokens,
+        string memory label
+    ) internal override returns (address newPool, bytes memory poolArgs) {
+        tokens = [address(weth), address(usdc)].toMemoryArray();
+        PoolRoleAccounts memory roleAccounts;
+
+        newPool = GyroECLPPoolFactory(poolFactory).create(
+            "Gyro E-CLP Pool",
+            "ECLP-POOL",
+            vault.buildTokenConfig(tokens.asIERC20()),
+            eclpParams,
+            derivedECLPParams,
+            roleAccounts,
+            DEFAULT_SWAP_FEE_PERCENTAGE,
+            poolHooksContract,
+            false,
+            false,
+            ZERO_BYTES32
+        );
+        vm.label(address(newPool), label);
+
+        return (
+            address(newPool),
+            abi.encode(
+                IGyroECLPPool.GyroECLPPoolParams({
+                    name: "Gyro E-CLP Pool",
+                    symbol: "ECLP-POOL",
+                    eclpParams: eclpParams,
+                    derivedEclpParams: derivedECLPParams,
+                    version: "Pool v1"
+                }),
+                vault
+            )
+        );
     }
 
     function testPriceComputation() public view {
@@ -95,8 +156,11 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
 
         assertLt(newImbalance, oldImbalance, "Old imbalance < New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
-        assertGt(newImbalance, _SURGE_THRESHOLD, "New imbalance < Surge Threshold");
-        assertFalse(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is surging");
+        assertGt(newImbalance, DEFAULT_SURGE_THRESHOLD_PERCENTAGE, "New imbalance < Surge Threshold");
+        assertFalse(
+            hookMock.isSurging(uint64(DEFAULT_SURGE_THRESHOLD_PERCENTAGE), oldImbalance, newImbalance),
+            "Pool is surging"
+        );
     }
 
     function testIsSurgingWithSwapTowardsEdge() public view {
@@ -129,8 +193,11 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
 
         assertGt(newImbalance, oldImbalance, "Old imbalance > New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
-        assertGt(newImbalance, _SURGE_THRESHOLD, "New imbalance < Surge Threshold");
-        assertTrue(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is not surging");
+        assertGt(newImbalance, DEFAULT_SURGE_THRESHOLD_PERCENTAGE, "New imbalance < Surge Threshold");
+        assertTrue(
+            hookMock.isSurging(uint64(DEFAULT_SURGE_THRESHOLD_PERCENTAGE), oldImbalance, newImbalance),
+            "Pool is not surging"
+        );
     }
 
     function testIsSurging__Fuzz(uint256 amountOutScaled18, uint256 tokenOutIndex) public view {
@@ -159,13 +226,22 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
         uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
 
         if (oldImbalance < newImbalance) {
-            if (newImbalance > _SURGE_THRESHOLD) {
-                assertTrue(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is not surging");
+            if (newImbalance > DEFAULT_SURGE_THRESHOLD_PERCENTAGE) {
+                assertTrue(
+                    hookMock.isSurging(uint64(DEFAULT_SURGE_THRESHOLD_PERCENTAGE), oldImbalance, newImbalance),
+                    "Pool is not surging"
+                );
             } else {
-                assertFalse(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is surging");
+                assertFalse(
+                    hookMock.isSurging(uint64(DEFAULT_SURGE_THRESHOLD_PERCENTAGE), oldImbalance, newImbalance),
+                    "Pool is surging"
+                );
             }
         } else {
-            assertFalse(hookMock.isSurging(_SURGE_THRESHOLD, oldImbalance, newImbalance), "Pool is surging");
+            assertFalse(
+                hookMock.isSurging(uint64(DEFAULT_SURGE_THRESHOLD_PERCENTAGE), oldImbalance, newImbalance),
+                "Pool is surging"
+            );
         }
     }
 
@@ -301,6 +377,138 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest {
             uint256(eclpParamsOutsideInterval.beta),
             1000,
             "Price should be equal to beta"
+        );
+    }
+
+    function testSetMaxSurgeFeePercentageIsAuthenticated() public {
+        vm.prank(alice);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        hookMock.setMaxSurgeFeePercentage(address(pool), 10e16);
+    }
+
+    function testSetMaxSurgeFeePercentageInvalidPercentage() public {
+        uint256 invalidPercentage = 101e16;
+
+        vm.prank(admin);
+        vm.expectRevert(IECLPSurgeHook.InvalidPercentage.selector);
+        hookMock.setMaxSurgeFeePercentage(address(pool), invalidPercentage);
+    }
+
+    function testSetMaxSurgeFeePercentageWithGovernance() public {
+        authorizer.grantRole(
+            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setMaxSurgeFeePercentage.selector),
+            admin
+        );
+
+        uint256 validPercentage = 25e16;
+
+        vm.expectEmit();
+        emit IECLPSurgeHook.MaxSurgeFeePercentageChanged(pool, validPercentage);
+
+        vm.prank(admin);
+        hookMock.setMaxSurgeFeePercentage(address(pool), validPercentage);
+
+        assertEq(hookMock.getMaxSurgeFeePercentage(pool), validPercentage, "Percentage was not set");
+    }
+
+    function testSetMaxSurgeFeePercentageWithSwapFeeManager() public {
+        _mockPoolRoleAccounts(alice);
+
+        uint256 validPercentage = 25e16;
+
+        vm.expectEmit();
+        emit IECLPSurgeHook.MaxSurgeFeePercentageChanged(pool, validPercentage);
+
+        vm.prank(alice);
+        hookMock.setMaxSurgeFeePercentage(address(pool), validPercentage);
+
+        assertEq(hookMock.getMaxSurgeFeePercentage(pool), validPercentage, "Percentage was not set");
+    }
+
+    function testSetSurgeThresholdPercentageIsAuthenticated() public {
+        vm.prank(alice);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        hookMock.setSurgeThresholdPercentage(address(pool), 10e16);
+    }
+
+    function testSetSurgeThresholdPercentageInvalidPercentage() public {
+        uint256 invalidPercentage = 101e16;
+
+        vm.prank(admin);
+        vm.expectRevert(IECLPSurgeHook.InvalidPercentage.selector);
+        hookMock.setSurgeThresholdPercentage(address(pool), invalidPercentage);
+    }
+
+    function testSetSurgeThresholdPercentageWithGovernance() public {
+        authorizer.grantRole(
+            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setSurgeThresholdPercentage.selector),
+            admin
+        );
+
+        uint256 validPercentage = 25e16;
+
+        vm.expectEmit();
+        emit IECLPSurgeHook.ThresholdSurgePercentageChanged(pool, validPercentage);
+
+        vm.prank(admin);
+        hookMock.setSurgeThresholdPercentage(address(pool), validPercentage);
+
+        assertEq(hookMock.getSurgeThresholdPercentage(pool), validPercentage, "Percentage was not set");
+    }
+
+    function testSetSurgeThresholdPercentageWithSwapFeeManager() public {
+        _mockPoolRoleAccounts(alice);
+
+        uint256 validPercentage = 25e16;
+
+        vm.expectEmit();
+        emit IECLPSurgeHook.ThresholdSurgePercentageChanged(pool, validPercentage);
+
+        vm.prank(alice);
+        hookMock.setSurgeThresholdPercentage(address(pool), validPercentage);
+
+        assertEq(hookMock.getSurgeThresholdPercentage(pool), validPercentage, "Percentage was not set");
+    }
+
+    function testComputeSwapSurgeFeePercentageMaxLessThanStatic() public {
+        authorizer.grantRole(
+            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setMaxSurgeFeePercentage.selector),
+            admin
+        );
+
+        uint256 staticSwapFeePercentage = vault.getStaticSwapFeePercentage(pool);
+
+        vm.prank(admin);
+        hookMock.setMaxSurgeFeePercentage(address(pool), staticSwapFeePercentage / 2);
+
+        assertEq(
+            hookMock.computeSwapSurgeFeePercentage(
+                PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    indexIn: 0,
+                    indexOut: 1,
+                    amountGivenScaled18: balancesScaled18[0] / 10,
+                    balancesScaled18: balancesScaled18,
+                    router: address(0),
+                    userData: bytes("")
+                }),
+                pool
+            ),
+            staticSwapFeePercentage,
+            "Surge fee is wrong"
+        );
+    }
+
+    function _mockPoolRoleAccounts(address swapFeeManager) private {
+        PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
+            pauseManager: address(0x01),
+            swapFeeManager: swapFeeManager,
+            poolCreator: address(0x01)
+        });
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(IVaultExtension.getPoolRoleAccounts.selector, pool),
+            abi.encode(poolRoleAccounts)
         );
     }
 }

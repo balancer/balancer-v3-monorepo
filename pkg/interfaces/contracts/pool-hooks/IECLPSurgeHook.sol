@@ -79,12 +79,10 @@ interface IECLPSurgeHook {
      *
      * @param params Input parameters for the swap (balances needed)
      * @param pool The pool we are computing the fee for
-     * @param staticSwapFeePercentage The static fee percentage for the pool (default if there is no surge)
      * @return surgeFeePercentage The surge fee percentage to be charged in the swap
      */
     function computeSwapSurgeFeePercentage(
         PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
+        address pool
     ) external view returns (uint256 surgeFeePercentage);
 }

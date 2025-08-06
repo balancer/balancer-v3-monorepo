@@ -211,11 +211,8 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     }
 
     /// @inheritdoc IECLPSurgeHook
-    function computeSwapSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view returns (uint256) {
+    function computeSwapSurgeFeePercentage(PoolSwapParams calldata params, address pool) public view returns (uint256) {
+        uint256 staticSwapFeePercentage = _vault.getStaticSwapFeePercentage(pool);
         return _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage);
     }
 
@@ -337,12 +334,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         _surgeFeePoolData[pool].thresholdPercentage = newSurgeThresholdPercentage.toUint64();
 
         emit ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
-    }
-
-    function _ensureValidPercentage(uint256 percentage) private pure {
-        if (percentage > FixedPoint.ONE) {
-            revert InvalidPercentage();
-        }
     }
 
     /**
@@ -502,5 +493,11 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
         a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
         b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
+    }
+
+    function _ensureValidPercentage(uint256 percentage) private pure {
+        if (percentage > FixedPoint.ONE) {
+            revert InvalidPercentage();
+        }
     }
 }
