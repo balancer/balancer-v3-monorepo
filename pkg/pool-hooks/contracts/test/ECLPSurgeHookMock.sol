@@ -18,18 +18,6 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function computeSwapSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticFeePercentage,
-        uint256[] memory newBalances,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        int256 a,
-        int256 b
-    ) external view returns (uint256) {
-        return _computeSwapSurgeFeePercentage(params, pool, staticFeePercentage, newBalances, eclpParams, a, b);
-    }
-
     function isSurging(
         uint64 thresholdPercentage,
         uint256 oldTotalImbalance,

@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 interface IECLPSurgeHook {
     /**
      * @notice A new `ECLPSurgeHook` contract has been registered successfully.
@@ -69,4 +71,20 @@ interface IECLPSurgeHook {
      * threshold can only be changed by governance. It is initially set to the default threshold for this hook contract.
      */
     function setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) external;
+
+    /**
+     * @notice Compute the surge fee percentage for a swap.
+     * @dev If below threshold, return the standard static swap fee percentage. It is public to allow it to be called
+     * off-chain.
+     *
+     * @param params Input parameters for the swap (balances needed)
+     * @param pool The pool we are computing the fee for
+     * @param staticSwapFeePercentage The static fee percentage for the pool (default if there is no surge)
+     * @return surgeFeePercentage The surge fee percentage to be charged in the swap
+     */
+    function computeSwapSurgeFeePercentage(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) external view returns (uint256 surgeFeePercentage);
 }

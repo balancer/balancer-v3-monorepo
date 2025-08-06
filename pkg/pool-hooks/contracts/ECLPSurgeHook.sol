@@ -75,31 +75,15 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
     }
 
+    /***************************************************************************
+                                IHooks Functions
+    ***************************************************************************/
+
     /// @inheritdoc IHooks
     function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         hookFlags.shouldCallComputeDynamicSwapFee = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getDefaultMaxSurgeFeePercentage() external view returns (uint256) {
-        return _defaultMaxSurgeFeePercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getDefaultSurgeThresholdPercentage() external view returns (uint256) {
-        return _defaultSurgeThresholdPercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getMaxSurgeFeePercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].maxSurgeFeePercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getSurgeThresholdPercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].thresholdPercentage;
     }
 
     /// @inheritdoc IHooks
@@ -127,33 +111,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
-        return (true, computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
-    }
-
-    function computeSwapSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view returns (uint256) {
-        (
-            IGyroECLPPool.EclpParams memory eclpParams,
-            IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-        ) = IGyroECLPPool(pool).getECLPParams();
-
-        (uint256 amountCalculatedScaled18, int256 a, int256 b) = _computeSwap(params, eclpParams, derivedECLPParams);
-
-        uint256[] memory newBalances = new uint256[](params.balancesScaled18.length);
-        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
-
-        if (params.kind == SwapKind.EXACT_IN) {
-            newBalances[params.indexIn] += params.amountGivenScaled18;
-            newBalances[params.indexOut] -= amountCalculatedScaled18;
-        } else {
-            newBalances[params.indexIn] += amountCalculatedScaled18;
-            newBalances[params.indexOut] -= params.amountGivenScaled18;
-        }
-
-        return _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage, newBalances, eclpParams, a, b);
+        return (true, _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
     /// @inheritdoc IHooks
@@ -212,6 +170,30 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         return (isSurging == false, amountsOutRaw);
     }
 
+    /***************************************************************************
+                          ECLP Surge Hook Functions
+    ***************************************************************************/
+
+    /// @inheritdoc IECLPSurgeHook
+    function getDefaultMaxSurgeFeePercentage() external view returns (uint256) {
+        return _defaultMaxSurgeFeePercentage;
+    }
+
+    /// @inheritdoc IECLPSurgeHook
+    function getDefaultSurgeThresholdPercentage() external view returns (uint256) {
+        return _defaultSurgeThresholdPercentage;
+    }
+
+    /// @inheritdoc IECLPSurgeHook
+    function getMaxSurgeFeePercentage(address pool) external view returns (uint256) {
+        return _surgeFeePoolData[pool].maxSurgeFeePercentage;
+    }
+
+    /// @inheritdoc IECLPSurgeHook
+    function getSurgeThresholdPercentage(address pool) external view returns (uint256) {
+        return _surgeFeePoolData[pool].thresholdPercentage;
+    }
+
     /// @inheritdoc IECLPSurgeHook
     function setMaxSurgeFeePercentage(
         address pool,
@@ -228,30 +210,48 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 
-    /**
-     * @notice Compute the surge fee percentage for a swap.
-     * @dev If below threshold, return the standard static swap fee percentage. It is public to allow it to be called
-     * off-chain.
-     *
-     * @param params Input parameters for the swap (balances needed)
-     * @param pool The pool we are computing the fee for
-     * @param staticFeePercentage The static fee percentage for the pool (default if there is no surge)
-     */
+    /// @inheritdoc IECLPSurgeHook
+    function computeSwapSurgeFeePercentage(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) public view returns (uint256) {
+        return _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage);
+    }
+
+    /***************************************************************************
+                                  Private Functions
+    ***************************************************************************/
+
     function _computeSwapSurgeFeePercentage(
         PoolSwapParams calldata params,
         address pool,
-        uint256 staticFeePercentage,
-        uint256[] memory newBalances,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        int256 a,
-        int256 b
-    ) internal view returns (uint256 surgeFeePercentage) {
+        uint256 staticSwapFeePercentage
+    ) private view returns (uint256 surgeFeePercentage) {
+        (
+            IGyroECLPPool.EclpParams memory eclpParams,
+            IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+        ) = IGyroECLPPool(pool).getECLPParams();
+
+        (uint256 amountCalculatedScaled18, int256 a, int256 b) = _computeSwap(params, eclpParams, derivedECLPParams);
+
+        uint256[] memory newBalances = new uint256[](params.balancesScaled18.length);
+        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            newBalances[params.indexIn] += params.amountGivenScaled18;
+            newBalances[params.indexOut] -= amountCalculatedScaled18;
+        } else {
+            newBalances[params.indexIn] += amountCalculatedScaled18;
+            newBalances[params.indexOut] -= params.amountGivenScaled18;
+        }
+
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
 
         // If the max surge fee percentage is less than the static fee percentage, return the static fee percentage.
         // No matter where the imbalance is, the fee can never be smaller than the static fee.
-        if (surgeFeeData.maxSurgeFeePercentage < staticFeePercentage) {
-            return staticFeePercentage;
+        if (surgeFeeData.maxSurgeFeePercentage < staticSwapFeePercentage) {
+            return staticSwapFeePercentage;
         }
 
         uint256 oldTotalImbalance = _computeImbalance(params.balancesScaled18, eclpParams, a, b);
@@ -269,14 +269,14 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
         if (isSurging) {
             surgeFeePercentage =
-                staticFeePercentage +
-                (surgeFeeData.maxSurgeFeePercentage - staticFeePercentage).mulDown(
+                staticSwapFeePercentage +
+                (surgeFeeData.maxSurgeFeePercentage - staticSwapFeePercentage).mulDown(
                     (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
                         uint256(surgeFeeData.thresholdPercentage).complement()
                     )
                 );
         } else {
-            surgeFeePercentage = staticFeePercentage;
+            surgeFeePercentage = staticSwapFeePercentage;
         }
     }
 
