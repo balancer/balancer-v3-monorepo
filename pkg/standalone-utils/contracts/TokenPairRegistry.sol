@@ -14,6 +14,12 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { OwnableAuthentication } from "./OwnableAuthentication.sol";
 
+/**
+ * @notice Stores token pair swap paths onchain, allowing an admin to maintain swap routes.
+ * @dev The paths are stored as arrays of `IBatchRouter.SwapPathStep` structs, which contain the pool or buffer
+ * address, the output token, and a boolean indicating whether the step is a buffer or not.
+ * Functions that add information to the registry are permissioned.
+ */
 contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -25,24 +31,27 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
 
     /// @inheritdoc ITokenPairRegistry
     function getPathAt(
-        address tokenA,
-        address tokenB,
+        address tokenIn,
+        address tokenOut,
         uint256 index
     ) external view returns (IBatchRouter.SwapPathStep[] memory) {
-        bytes32 tokenId = _getTokenPairId(tokenA, tokenB);
+        bytes32 tokenId = _getTokenPairId(tokenIn, tokenOut);
         return _pairsToPaths[tokenId][index];
     }
 
-    function getPathCount(address tokenA, address tokenB) external view returns (uint256) {
-        bytes32 tokenId = _getTokenPairId(tokenA, tokenB);
+    /// @inheritdoc ITokenPairRegistry
+    function getPathCount(address tokenIn, address tokenOut) external view returns (uint256) {
+        bytes32 tokenId = _getTokenPairId(tokenIn, tokenOut);
         return _pairsToPaths[tokenId].length;
     }
 
-    function getPaths(address tokenA, address tokenB) external view returns (IBatchRouter.SwapPathStep[][] memory) {
-        bytes32 tokenId = _getTokenPairId(tokenA, tokenB);
+    /// @inheritdoc ITokenPairRegistry
+    function getPaths(address tokenIn, address tokenOut) external view returns (IBatchRouter.SwapPathStep[][] memory) {
+        bytes32 tokenId = _getTokenPairId(tokenIn, tokenOut);
         return _pairsToPaths[tokenId];
     }
 
+    /// @inheritdoc ITokenPairRegistry
     function addPath(address tokenIn, IBatchRouter.SwapPathStep[] memory steps) external authenticate {
         address tokenOut = address(steps[steps.length - 1].tokenOut);
         bytes32 tokenId = _getTokenPairId(tokenIn, tokenOut);
@@ -68,6 +77,18 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         emit PathAdded(tokenIn, tokenOut, _pairsToPaths[tokenId].length);
     }
 
+    /// @inheritdoc ITokenPairRegistry
+    function addSimplePath(address poolOrBuffer) external authenticate {
+        if (vault.isPoolRegistered(poolOrBuffer)) {
+            _addPool(poolOrBuffer);
+        } else if (vault.isERC4626BufferInitialized(IERC4626(poolOrBuffer))) {
+            _addBuffer(IERC4626(poolOrBuffer));
+        } else {
+            revert InvalidSimplePath(poolOrBuffer);
+        }
+    }
+
+    /// @inheritdoc ITokenPairRegistry
     function removePathAtIndex(address tokenIn, address tokenOut, uint256 index) external authenticate {
         bytes32 tokenId = _getTokenPairId(tokenIn, tokenOut);
         IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
@@ -86,16 +107,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         emit PathRemoved(tokenIn, tokenOut, paths.length);
     }
 
-    function addSimplePath(address poolOrBuffer) external authenticate {
-        if (vault.isPoolRegistered(poolOrBuffer)) {
-            _addPool(poolOrBuffer);
-        } else if (vault.isERC4626BufferInitialized(IERC4626(poolOrBuffer))) {
-            _addBuffer(IERC4626(poolOrBuffer));
-        } else {
-            revert InvalidSimplePath(poolOrBuffer);
-        }
-    }
-
+    /// @inheritdoc ITokenPairRegistry
     function removeSimplePath(address poolOrBuffer) external authenticate {
         if (vault.isPoolRegistered(poolOrBuffer)) {
             _removePool(poolOrBuffer);
