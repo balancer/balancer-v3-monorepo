@@ -87,6 +87,8 @@ interface ITokenPairRegistry {
     /**
      * @notice Adds an arbitrary path between `tokenIn` and the last step's `tokenOut` to the registry.
      * @dev This function is permissioned. Use it to register boosted pool paths with leading / trailing buffer steps.
+     * The registry will validate that each step is valid (i.e. each pool step contains the `tokenIn` and `tokenOut`, 
+     * and each buffer step has the correct wrapped / underlying token).
      * @param tokenIn The address of the input token in the pair
      * @param steps An array of `SwapPathStep` structs representing the path steps to reach the output token
      */
