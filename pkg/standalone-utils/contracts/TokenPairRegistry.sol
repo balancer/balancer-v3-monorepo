@@ -53,6 +53,10 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
 
     /// @inheritdoc ITokenPairRegistry
     function addPath(address tokenIn, IBatchRouter.SwapPathStep[] memory steps) external authenticate {
+        if (steps.length == 0) {
+            revert EmptyPath();
+        }
+
         address tokenOut = address(steps[steps.length - 1].tokenOut);
         bytes32 tokenId = _getTokenPairId(tokenIn, tokenOut);
 

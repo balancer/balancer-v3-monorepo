@@ -29,6 +29,9 @@ interface ITokenPairRegistry {
      */
     error BufferNotInitialized(address buffer);
 
+    /// @notice The path to add cannot be empty.
+    error EmptyPath();
+
     /**
      * @notice The given address is not a valid pool or buffer.
      * @param path Pool or buffer address
