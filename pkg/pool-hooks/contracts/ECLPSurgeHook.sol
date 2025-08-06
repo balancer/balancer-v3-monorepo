@@ -489,13 +489,9 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     ) internal pure returns (int256 a, int256 b) {
         IGyroECLPPool.Vector2 memory invariant;
 
-        uint256[] memory normalizedBalances = new uint256[](2);
-        normalizedBalances[0] = balancesScaled18[0];
-        normalizedBalances[1] = balancesScaled18[1];
-
         {
             (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
-                normalizedBalances,
+                balancesScaled18,
                 eclpParams,
                 derivedECLPParams
             );

@@ -17,7 +17,7 @@ import { ECLPSurgePoolFactory } from "../../../contracts/ECLPSurgePoolFactory.so
  * These functions should have support for reusing artifacts from the hardhat compilation.
  */
 contract ECLPSurgeHookDeployer is BaseContractsDeployer {
-    uint256 public constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 30e16; // 30%
+    uint256 public constant DEFAULT_SURGE_THRESHOLD_PERCENTAGE = 10e16; // 10%
     uint256 public constant DEFAULT_MAX_SURGE_FEE_PERCENTAGE = 95e16; // 95%
 
     string private artifactsRootDir = "artifacts/";
