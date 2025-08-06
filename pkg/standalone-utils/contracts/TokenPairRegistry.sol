@@ -15,7 +15,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { OwnableAuthentication } from "./OwnableAuthentication.sol";
 
 /**
- * @notice Stores token pair swap paths onchain, allowing an admin to maintain swap routes.
+ * @notice Stores token pair swap paths on-chain, allowing an admin to maintain swap routes.
  * @dev The paths are stored as arrays of `IBatchRouter.SwapPathStep` structs, which contain the pool or buffer
  * address, the output token, and a boolean indicating whether the step is a buffer or not.
  * Functions that add information to the registry are permissioned.
@@ -129,10 +129,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
         }
     }
 
-    /**
-     * @dev The "pool" for (underlying, wrapped) shall be `wrapped` always, but only if it's registered as a vault
-     * buffer.
-     */
+    /// @dev Always wrap, as long as it's a registered buffer in the Vault.
     function _addBuffer(IERC4626 wrappedToken) internal {
         address underlyingToken = vault.getBufferAsset(wrappedToken);
         _addTokenPair(address(wrappedToken), underlyingToken, address(wrappedToken), true);
@@ -178,15 +175,12 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
 
         IBatchRouter.SwapPathStep[][] storage paths = _pairsToPaths[tokenId];
 
-        // We first look for a path of length 1 which is the one for a simple pair step.
+        // We first look for a path of length 1, representing a simple pair.
         for (uint256 i = 0; i < paths.length; ++i) {
             IBatchRouter.SwapPathStep[] storage steps = paths[i];
-            if (steps.length > 1) {
-                continue;
-            }
 
-            if (steps[0].pool == poolOrBuffer && address(steps[0].tokenOut) == tokenOut) {
-                // Element found. Re-arrange paths if needed, swapping last element with the current one.
+            if (steps.length == 1 && steps[0].pool == poolOrBuffer && address(steps[0].tokenOut) == tokenOut) {
+                // Element found. Re-arrange paths if needed, replacing the current element with the last one.
                 if (paths.length > 1) {
                     paths[i] = paths[paths.length - 1];
                 }
@@ -194,6 +188,7 @@ contract TokenPairRegistry is ITokenPairRegistry, OwnableAuthentication {
                 // Nothing else to do here.
                 paths.pop();
                 emit PathRemoved(tokenIn, tokenOut, paths.length);
+
                 return;
             }
         }

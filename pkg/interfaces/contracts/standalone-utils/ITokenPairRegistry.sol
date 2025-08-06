@@ -56,7 +56,7 @@ interface ITokenPairRegistry {
 
     /**
      * @notice Returns the path for a given token pair at a specific index.
-     * @dev Safe version, reverts if the index is out of bounds.
+     * @dev Safe version; reverts if the index is out of bounds.
      * @param tokenIn The address of the input token in the pair
      * @param tokenOut The address of the output token in the pair
      * @param index The index of the path in the list of paths for the token pair
@@ -89,6 +89,7 @@ interface ITokenPairRegistry {
      * @dev This function is permissioned. Use it to register boosted pool paths with leading / trailing buffer steps.
      * The registry will validate that each step is valid (i.e. each pool step contains the `tokenIn` and `tokenOut`,
      * and each buffer step has the correct wrapped / underlying token).
+     *
      * @param tokenIn The address of the input token in the pair
      * @param steps An array of `SwapPathStep` structs representing the path steps to reach the output token
      */
@@ -102,7 +103,7 @@ interface ITokenPairRegistry {
     function addSimplePath(address poolOrBuffer) external;
 
     /**
-     * @notice Removes a an arbitrary path from the registry at a given index.
+     * @notice Removes an arbitrary path from the registry at a given index.
      * @dev This function is permissioned.
      * @param tokenIn The address of the input token in the pair
      * @param tokenOut The address of the output token in the pair
@@ -111,7 +112,7 @@ interface ITokenPairRegistry {
     function removePathAtIndex(address tokenIn, address tokenOut, uint256 index) external;
 
     /**
-     * @notice Removes all token paths allowed by pool or buffer from the registry.
+     * @notice Removes all token paths registered for a given pool or buffer.
      * @dev This function is permissioned.
      * @param poolOrBuffer The address of the pool or buffer
      */
