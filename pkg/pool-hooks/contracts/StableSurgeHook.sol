@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
-import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
