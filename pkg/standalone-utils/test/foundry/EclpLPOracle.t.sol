@@ -332,7 +332,8 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
                     defaultAccountBalance() / 10,
                     defaultAccountBalance()
                 );
-                answers[i] = bound(answersRaw[i], 1, MAX_UINT128 / 10);
+                // The min E-CLP price is 1e11.
+                answers[i] = bound(answersRaw[i], 1e11, MAX_UINT128 / 10);
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
