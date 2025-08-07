@@ -296,6 +296,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             }
         }
 
+        // If amountIn is 0, actualAmountIn remains at its initialized value of 0.
         if (amountIn > 0) {
             if (needToWrap) {
                 // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken isn't ERC4626-conforming.
