@@ -280,13 +280,11 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         bool needToWrap,
         uint256 maxAmountIn
     ) private returns (uint256 actualAmountIn) {
-        address bufferAsset = needToWrap ? _vault.getERC4626BufferAsset(IERC4626(token)) : token;
+        IERC20 settlementToken = needToWrap ? IERC20(_vault.getERC4626BufferAsset(IERC4626(token))) : IERC4626(token);
 
-        if (needToWrap && bufferAsset == address(0)) {
+        if (needToWrap && address(settlementToken) == address(0)) {
             revert IVaultErrors.BufferNotInitialized(IERC4626(token));
         }
-
-        IERC20 settlementToken = IERC20(bufferAsset);
 
         if (isStaticCall == false) {
             if (_isAggregator) {
