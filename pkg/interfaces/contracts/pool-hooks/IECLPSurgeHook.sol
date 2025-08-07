@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolSwapParams } from "../vault/VaultTypes.sol";
 
 interface IECLPSurgeHook {
     /**
