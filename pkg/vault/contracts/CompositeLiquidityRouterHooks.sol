@@ -552,12 +552,10 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             // Note that the token in the transient array index has already been checked.
             checkedTokenIndexes[tokenIndex] = true;
 
-            uint256 amountOut = _currentSwapTokenOutAmounts().tGet(tokenOut);
-            uint256 minAmountOut = params.minAmountsOut[i];
-            amountsOut[i] = amountOut;
+            amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokenOut);
 
-            if (amountOut < minAmountOut) {
-                revert IVaultErrors.AmountOutBelowMin(IERC20(tokenOut), amountOut, minAmountOut);
+            if (amountsOut[i] < params.minAmountsOut[i]) {
+                revert IVaultErrors.AmountOutBelowMin(IERC20(tokenOut), amountsOut[i], params.minAmountsOut[i]);
             }
         }
 
