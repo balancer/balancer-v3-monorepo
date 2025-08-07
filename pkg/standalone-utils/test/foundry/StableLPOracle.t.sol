@@ -4,9 +4,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { PoolRoleAccounts, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -35,6 +37,8 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     uint256 constant MIN_TOKENS = 2;
     uint256 constant MAX_PRICE = 1000e18;
     uint256 constant MIN_PRICE = 0.001e18;
+
+    IRateProvider[] private _rateProviders;
 
     event Log(address indexed value);
     event LogUint(uint256 indexed value);
@@ -100,7 +104,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         address newPool = stablePoolFactory.create(
             name,
             symbol,
-            vault.buildTokenConfig(_tokens.asIERC20()),
+            vault.buildTokenConfig(_tokens.asIERC20(), _rateProviders),
             amplificationParameter,
             roleAccounts,
             DEFAULT_SWAP_FEE_PERCENTAGE,
@@ -276,6 +280,46 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         uint256 invariantForPrices = pool.computeInvariant(marketPriceBalancesScaled18, Rounding.ROUND_DOWN);
 
         assertApproxEqRel(invariantForPrices, invariant, 1e4, "Invariant does not match");
+    }
+
+    function testComputeTvlRawAndScaled18__Fuzz(
+        uint256 totalTokens,
+        uint256 amplificationParameter,
+        uint256[MAX_TOKENS] memory poolInitAmountsRaw,
+        uint256[MAX_TOKENS] memory pricesRaw,
+        uint256[MAX_TOKENS] memory vaultPricesRaw
+    ) public {
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+        amplificationParameter = bound(amplificationParameter, StableMath.MIN_AMP, StableMath.MAX_AMP);
+
+        _rateProviders = new IRateProvider[](totalTokens);
+
+        uint256[] memory prices = new uint256[](totalTokens);
+        int256[] memory pricesInt = new int256[](totalTokens);
+        IStablePool pool;
+        StableLPOracleMock oracle;
+        {
+            uint256[] memory poolInitAmounts = new uint256[](totalTokens);
+            address[] memory _tokens = new address[](totalTokens);
+
+            for (uint256 i = 0; i < totalTokens; i++) {
+                _tokens[i] = address(sortedTokens[i]);
+                uint256 tokenDecimals = IERC20Metadata(address(sortedTokens[i])).decimals();
+                poolInitAmounts[i] =
+                    bound(poolInitAmountsRaw[i], FixedPoint.ONE, 1e9 * FixedPoint.ONE) /
+                    (10 ** (18 - tokenDecimals));
+                prices[i] = bound(pricesRaw[i], MIN_PRICE, MAX_PRICE) / (10 ** (18 - tokenDecimals));
+                _rateProviders[i] = new RateProviderMock();
+                RateProviderMock(address(_rateProviders[i])).mockRate(prices[i] * (10 ** (18 - tokenDecimals))); //bound(vaultPricesRaw[i], MIN_PRICE, MAX_PRICE));
+                uint256 price = prices[i] * (10 ** (18 - tokenDecimals));
+                pricesInt[i] = int256(price);
+            }
+
+            pool = createAndInitPool(_tokens, poolInitAmounts, amplificationParameter);
+            (oracle, ) = deployOracle(pool);
+        }
+
+        assertEq(oracle.calculateScaled18TVL(pricesInt), oracle.calculateRawTVL(pricesInt), "TVLs don't match");
     }
 
     function testComputeMarketPriceBalances__Fuzz(
