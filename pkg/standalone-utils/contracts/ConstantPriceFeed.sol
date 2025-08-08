@@ -17,7 +17,7 @@ contract ConstantPriceFeed is AggregatorV3Interface {
 
     /**
      * @notice Return a constant value of 1.0 to all requests.
-     * @dev Use 8 decimals (a common value), and the current timestamp.
+     * @dev Use 18 decimals, and the current timestamp.
      * @return roundId Unused / obsolete
      * @return answer Fixed value of 1.0
      * @return startedAt Started/updated values are irrelevant for a constant feed
