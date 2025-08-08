@@ -310,9 +310,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     *******************************************************************************/
 
     /// @inheritdoc WeightedPool
-    function onSwap(
-        PoolSwapParams memory request
-    ) public view override(IBasePool, WeightedPool) onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view override(IBasePool, WeightedPool) returns (uint256) {
         // Block if the sale has not started or has ended.
         if (_isSwapEnabled() == false) {
             revert SwapsDisabled();
@@ -342,7 +340,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         address pool,
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata
-    ) public view override onlyVault returns (bool) {
+    ) public view override returns (bool) {
         // These preconditions are guaranteed by the standard LBPoolFactory, but check anyway.
         InputHelpers.ensureInputLengthMatch(_TWO_TOKENS, tokenConfig.length);
 
@@ -378,10 +376,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
      *
      * @return success Always true: allow the initialization to proceed if the time condition has been met
      */
-    function onBeforeInitialize(
-        uint256[] memory,
-        bytes memory
-    ) public view override onlyVault onlyBeforeSale returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) public view override onlyBeforeSale returns (bool) {
         return ISenderGuard(_trustedRouter).getSender() == owner();
     }
 
@@ -398,7 +393,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) public view override onlyVault onlyBeforeSale returns (bool) {
+    ) public view override onlyBeforeSale returns (bool) {
         return router == _trustedRouter && ISenderGuard(router).getSender() == owner();
     }
 
@@ -414,7 +409,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) public view virtual override onlyVault returns (bool) {
+    ) public view virtual override returns (bool) {
         // Only allow removing liquidity after end time.
         if (block.timestamp <= _endTime) {
             revert RemovingLiquidityNotAllowed();
