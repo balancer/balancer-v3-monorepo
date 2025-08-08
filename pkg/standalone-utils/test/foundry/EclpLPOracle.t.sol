@@ -9,38 +9,32 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import {
-    PoolRoleAccounts,
-    Rounding,
-    TokenConfig,
-    TokenType
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
-import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
+import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { GyroEclpPoolDeployer } from "@balancer-labs/v3-pool-gyro/test/foundry/utils/GyroEclpPoolDeployer.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
-import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
+import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
-import { GyroEclpPoolDeployer } from "@balancer-labs/v3-pool-gyro/test/foundry/utils/GyroEclpPoolDeployer.sol";
-
-import { FeedMock } from "../../contracts/test/FeedMock.sol";
 import { EclpLPOracleMock } from "../../contracts/test/EclpLPOracleMock.sol";
+import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
-    using FixedPoint for uint256;
-    using SignedFixedPoint for int256;
-    using SafeCast for *;
     using CastingHelpers for address[];
+    using SignedFixedPoint for int256;
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
+    using SafeCast for *;
 
     uint256 constant VERSION = 123;
     uint256 constant NUM_TOKENS = 2;
@@ -101,8 +95,6 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         uint256[] memory initAmounts
     ) internal returns (IGyroECLPPool) {
         string memory name = "ECLP-Test";
-
-        PoolRoleAccounts memory roleAccounts;
 
         (address newPool, ) = createGyroEclpPool(_tokens, rateProviders, name, vault, lp);
 
@@ -236,37 +228,37 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
-    // TODO find a way to validate the TVL
-    // function testCalculateTVL__Fuzz(
-    //     uint256[NUM_TOKENS] memory poolInitAmountsRaw,
-    //     uint256[NUM_TOKENS] memory pricesRaw
-    // ) public {
-    //     address[] memory _tokens = new address[](NUM_TOKENS);
-    //     uint256[] memory poolInitAmounts = new uint256[](NUM_TOKENS);
-    //     int256[] memory prices = new int256[](NUM_TOKENS);
+    function testCalculateTVL__Fuzz(
+        uint256[NUM_TOKENS] memory poolInitAmountsRaw,
+        uint256[NUM_TOKENS] memory pricesRaw
+    ) public {
+        address[] memory _tokens = new address[](NUM_TOKENS);
+        uint256[] memory poolInitAmounts = new uint256[](NUM_TOKENS);
+        int256[] memory prices = new int256[](NUM_TOKENS);
 
-    //     uint256 restWeight = FixedPoint.ONE;
-    //     for (uint256 i = 0; i < NUM_TOKENS; i++) {
-    //         _tokens[i] = address(sortedTokens[i]);
-    //         poolInitAmounts[i] = bound(poolInitAmountsRaw[i], defaultAccountBalance() / 10, defaultAccountBalance());
-    //         prices[i] = int256(bound(pricesRaw[i], FixedPoint.ONE, MAX_UINT128 / 10));
-    //     }
+        for (uint256 i = 0; i < NUM_TOKENS; i++) {
+            _tokens[i] = address(sortedTokens[i]);
+            poolInitAmounts[i] = bound(poolInitAmountsRaw[i], 1e18, defaultAccountBalance() / 100);
+        }
 
-    //     IGyroECLPPool pool = createAndInitPool(_tokens, poolInitAmounts);
-    //     (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        // The relative prices of the tokens must be in the range [alpha, beta].
+        pricesRaw[1] = bound(pricesRaw[1], FixedPoint.ONE, MAX_UINT128 / 10);
+        prices[1] = int256(pricesRaw[1]);
+        pricesRaw[0] = bound(
+            pricesRaw[0],
+            pricesRaw[1].mulDown(uint256(_paramsAlpha)),
+            pricesRaw[1].mulDown(uint256(_paramsBeta))
+        );
+        prices[0] = int256(pricesRaw[0]);
 
-    //     uint256 tvl = oracle.calculateTVL(prices);
+        IGyroECLPPool pool = createAndInitPool(_tokens, poolInitAmounts);
+        (EclpLPOracleMock oracle, ) = deployOracle(pool);
 
-    //     uint256[] memory lastBalancesLiveScaled18 = vault.getCurrentLiveBalances(address(pool));
+        uint256 tvl = oracle.calculateTVL(prices);
+        uint256 expectedTVL = _computeExpectedTVLBinarySearch(GyroECLPPool(address(pool)), pricesRaw.toMemoryArray());
 
-    //     uint256 expectedTVL = FixedPoint.ONE;
-    //     for (uint256 i = 0; i < NUM_TOKENS; i++) {
-    //         expectedTVL = expectedTVL.mulDown(uint256(prices[i]).divDown(weights[i]).powDown(weights[i]));
-    //     }
-    //     expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
-
-    //     assertEq(tvl, expectedTVL, "TVL does not match");
-    // }
+        assertApproxEqRel(tvl, expectedTVL, 1e8, "TVL does not match");
+    }
 
     function testCalculateTVLAfterSwapRateProvider() public {
         // wstETH/USDC pool, with a rate provider wstETH/ETH and oracle ETH/USD.
@@ -376,10 +368,10 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         router.swapSingleTokenExactIn(address(pool), wsteth, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
         uint256 tvlOracle = oracle.calculateTVL(prices);
-
-        uint256[] memory marketPriceBalances = _findBalancesForPrices(GyroECLPPool(address(pool)), _ETH_USD_RATE);
-
-        uint256 tvlMarketPriceBalances = marketPriceBalances[0].mulDown(_ETH_USD_RATE) + marketPriceBalances[1];
+        uint256 tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
+            GyroECLPPool(address(pool)),
+            [_ETH_USD_RATE, uint256(1e18)].toMemoryArray()
+        );
 
         // Error tolerance of 0.000001%.
         assertApproxEqRel(tvlOracle, tvlMarketPriceBalances, 1e10, "TVL should not change after swap");
@@ -449,13 +441,8 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         {
             for (uint256 i = 0; i < NUM_TOKENS; i++) {
                 _tokens[i] = address(sortedTokens[i]);
-                poolInitAmounts[i] = bound(
-                    poolInitAmountsRaw[i],
-                    defaultAccountBalance() / 10,
-                    defaultAccountBalance()
-                );
-                // The min E-CLP price is 1e11.
-                answers[i] = bound(answersRaw[i], 1e11, MAX_UINT128 / 10);
+                poolInitAmounts[i] = bound(poolInitAmountsRaw[i], 1e18, defaultAccountBalance() / 100);
+
                 updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
 
                 if (updateTimestamps[i] < minUpdateTimestamp) {
@@ -464,6 +451,10 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
             }
         }
 
+        // The price of the oracle needs to be within pool range.
+        answers[0] = bound(answersRaw[0], uint256(_paramsAlpha), uint256(_paramsBeta));
+        answers[1] = 1e18;
+
         IGyroECLPPool pool = createAndInitPool(_tokens, poolInitAmounts);
         (EclpLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
 
@@ -471,14 +462,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        // uint256[] memory lastBalancesLiveScaled18 = vault.getCurrentLiveBalances(address(pool));
-
-        // uint256 expectedTVL = FixedPoint.ONE;
-        // for (uint256 i = 0; i < NUM_TOKENS; i++) {
-        //     uint256 price = answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
-        //     expectedTVL = expectedTVL.mulDown(uint256(price).divDown(weights[i]).powDown(weights[i]));
-        // }
-        // expectedTVL = expectedTVL.mulDown(pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP));
+        uint256 expectedTVL = _computeExpectedTVLBinarySearch(GyroECLPPool(address(pool)), answers);
 
         (
             uint80 roundId,
@@ -489,11 +473,32 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         ) = oracle.latestRoundData();
 
         assertEq(uint256(roundId), 0, "Round ID does not match");
-        // TODO find a way to validate lpPrice
-        // assertEq(uint256(lpPrice), expectedTVL.divUp(IERC20(address(pool)).totalSupply()), "LP price does not match");
+        // Error tolerance of 0.1%.
+        assertApproxEqRel(
+            uint256(lpPrice),
+            expectedTVL.divUp(IERC20(address(pool)).totalSupply()),
+            1e15,
+            "LP price does not match"
+        );
         assertEq(startedAt, 0, "Started at does not match");
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
         assertEq(answeredInRound, 0, "Answered in round does not match");
+    }
+
+    function _computeExpectedTVLBinarySearch(
+        GyroECLPPool pool,
+        uint256[] memory oraclePricesScaled18
+    ) private returns (uint256 expectedTVL) {
+        uint256 snapshotId = vm.snapshot();
+        uint256[] memory marketPriceBalances = _findBalancesForPrices(
+            GyroECLPPool(address(pool)),
+            oraclePricesScaled18[0].divDown(oraclePricesScaled18[1])
+        );
+        vm.revertTo(snapshotId);
+
+        return
+            marketPriceBalances[0].mulDown(oraclePricesScaled18[0]) +
+            marketPriceBalances[1].mulDown(oraclePricesScaled18[1]);
     }
 
     function _findBalancesForPrices(
@@ -501,7 +506,8 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         uint256 oraclePrice
     ) private returns (uint256[] memory marketPriceBalances) {
         IERC20[] memory tokens;
-        (tokens, , , marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
+        uint256[] memory balancesRaw;
+        (tokens, , balancesRaw, marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
 
         (IGyroECLPPool.EclpParams memory eclpParams, IGyroECLPPool.DerivedEclpParams memory derivedEclpParams) = pool
             .getECLPParams();
@@ -509,9 +515,13 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         uint256 limitTokenABalance = uint256(0);
         uint256 limitTokenBBalance = uint256(0);
 
+        console2.log("oraclePrice", oraclePrice);
+
         for (uint256 i = 0; i < 255; i++) {
             (int256 a, int256 b) = _computeOffsetFromBalances(marketPriceBalances, eclpParams, derivedEclpParams);
             uint256 price = _computePrice(marketPriceBalances, eclpParams, a, b);
+
+            console2.log("price", price);
 
             if (
                 (price > oraclePrice && (price - oraclePrice).divDown(oraclePrice) < 1e6) ||
@@ -522,8 +532,8 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
 
             if (price > oraclePrice) {
                 // Overpriced (more B than A) => Swap A for B, exact out
-                uint256 exactAmountOut = (marketPriceBalances[1] - limitTokenBBalance) / 2;
-                limitTokenABalance = marketPriceBalances[0];
+                uint256 exactAmountOut = (balancesRaw[1] - limitTokenBBalance) / 2;
+                limitTokenABalance = balancesRaw[0];
 
                 vm.prank(lp);
                 router.swapSingleTokenExactOut(
@@ -537,11 +547,11 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
                     bytes("")
                 );
 
-                (, , , marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
+                (, , balancesRaw, marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
             } else {
                 // Underpriced (more A than B) => Swap B for A, exact out
-                uint256 exactAmountOut = (marketPriceBalances[0] - limitTokenABalance) / 2;
-                limitTokenBBalance = marketPriceBalances[1];
+                uint256 exactAmountOut = (balancesRaw[0] - limitTokenABalance) / 2;
+                limitTokenBBalance = balancesRaw[1];
 
                 vm.prank(lp);
                 router.swapSingleTokenExactOut(
@@ -555,7 +565,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
                     bytes("")
                 );
 
-                (, , , marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
+                (, , balancesRaw, marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
             }
         }
 
