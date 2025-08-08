@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {
     PoolRoleAccounts,
@@ -25,6 +26,9 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
+import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
+import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
 
 import { GyroEclpPoolDeployer } from "@balancer-labs/v3-pool-gyro/test/foundry/utils/GyroEclpPoolDeployer.sol";
 
@@ -33,6 +37,8 @@ import { EclpLPOracleMock } from "../../contracts/test/EclpLPOracleMock.sol";
 
 contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
     using FixedPoint for uint256;
+    using SignedFixedPoint for int256;
+    using SafeCast for *;
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
@@ -262,6 +268,123 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
     //     assertEq(tvl, expectedTVL, "TVL does not match");
     // }
 
+    function testCalculateTVLAfterSwapRateProvider() public {
+        // wstETH/USDC pool, with a rate provider wstETH/ETH and oracle ETH/USD.
+        // Price interval: [3100, 4400]
+        // Peak liquidity price: ~3700
+        // Expected TVL = 7400 => 3700 USDC + (1/[wstETH_ETH rate]) * [wstETH_ETH rate] * [ETH_USDC rate] = 7400 USD
+        uint256 expectedTvlUSD = 7400e18;
+
+        _paramsAlpha = 3100000000000000000000;
+        _paramsBeta = 4400000000000000000000;
+        _paramsC = 266047486094289;
+        _paramsS = 999999964609366945;
+        _paramsLambda = 20000000000000000000000;
+
+        _tauAlphaX = -74906290317688179576634216999624376320;
+        _tauAlphaY = 66249888081733509000774146899805470720;
+        _tauBetaX = 61281617359500194184092230363650195456;
+        _tauBetaY = 79022549780450675665143872372290355200;
+        _u = 36232449191667728242196851875381248;
+        _v = 79022548876385507382975597793964457984;
+        _w = 3398134415414380205616296112422912;
+        _z = -74906280678135835754217861217519665152;
+        _dSq = 99999999999999997748809823456034029568;
+
+        uint256 _WSTETH_RATE = 1.2e18;
+        uint256 _ETH_USD_RATE = 3700e18;
+        uint256 _INITIAL_WSTETH_BALANCE = uint256(1e18).divDown(_WSTETH_RATE);
+        uint256 _INITIAL_USDC_BALANCE = _ETH_USD_RATE;
+
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = IRateProvider(address(new RateProviderMock()));
+        RateProviderMock(address(rateProviders[0])).mockRate(_WSTETH_RATE);
+
+        IGyroECLPPool pool = createAndInitPool(
+            [address(wsteth), address(usdc)].toMemoryArray(),
+            rateProviders,
+            [_INITIAL_WSTETH_BALANCE, _INITIAL_USDC_BALANCE].toMemoryArray()
+        );
+
+        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
+
+        uint256 tvlBefore = oracle.calculateTVL(prices);
+
+        // Big swap, to make sure the pool is very unbalanced when computing the new TVL.
+        uint256 swapAmount = _INITIAL_WSTETH_BALANCE / 3;
+
+        vm.prank(lp);
+        router.swapSingleTokenExactIn(address(pool), wsteth, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        uint256 tvlAfter = oracle.calculateTVL(prices);
+
+        // Error tolerance of 0.00000001%.
+        assertApproxEqRel(tvlAfter, tvlBefore, 1e8, "TVL should not change after swap");
+        // For expected TVL comparison, the tolerance is bigger: 0.01% error.
+        assertApproxEqRel(tvlAfter, expectedTvlUSD, 1e14, "TVL should be close to expected");
+    }
+
+    function testCalculateTVLComparingWithMarketPriceBalances() public {
+        // This test compares the oracle price with the market price balance prices. The market price balances are
+        // found by searching what are the balances of the pool, in the current invariant, that would be priced the
+        // same as the oracle. Usually we would compute the gradient of the invariant function and compare with the
+        // oracle prices, but here in the test we use a binary search to find the correct market price balances.
+
+        // wstETH/USDC pool, with a rate provider wstETH/ETH and oracle ETH/USD.
+        // Price interval: [3100, 4400]
+        // Peak liquidity price: ~3700
+
+        _paramsAlpha = 3100000000000000000000;
+        _paramsBeta = 4400000000000000000000;
+        _paramsC = 266047486094289;
+        _paramsS = 999999964609366945;
+        _paramsLambda = 20000000000000000000000;
+
+        _tauAlphaX = -74906290317688179576634216999624376320;
+        _tauAlphaY = 66249888081733509000774146899805470720;
+        _tauBetaX = 61281617359500194184092230363650195456;
+        _tauBetaY = 79022549780450675665143872372290355200;
+        _u = 36232449191667728242196851875381248;
+        _v = 79022548876385507382975597793964457984;
+        _w = 3398134415414380205616296112422912;
+        _z = -74906280678135835754217861217519665152;
+        _dSq = 99999999999999997748809823456034029568;
+
+        uint256 _WSTETH_RATE = 1.2e18;
+        uint256 _ETH_USD_RATE = 3700e18;
+        uint256 _INITIAL_WSTETH_BALANCE = uint256(1e18).divDown(_WSTETH_RATE);
+        uint256 _INITIAL_USDC_BALANCE = _ETH_USD_RATE;
+
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = IRateProvider(address(new RateProviderMock()));
+        RateProviderMock(address(rateProviders[0])).mockRate(_WSTETH_RATE);
+
+        IGyroECLPPool pool = createAndInitPool(
+            [address(wsteth), address(usdc)].toMemoryArray(),
+            rateProviders,
+            [_INITIAL_WSTETH_BALANCE, _INITIAL_USDC_BALANCE].toMemoryArray()
+        );
+
+        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
+
+        // Big swap, to make sure the pool is very unbalanced when computing the new TVL.
+        uint256 swapAmount = _INITIAL_WSTETH_BALANCE / 3;
+
+        vm.prank(lp);
+        router.swapSingleTokenExactIn(address(pool), wsteth, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        uint256 tvlOracle = oracle.calculateTVL(prices);
+
+        uint256[] memory marketPriceBalances = _findBalancesForPrices(GyroECLPPool(address(pool)), _ETH_USD_RATE);
+
+        uint256 tvlMarketPriceBalances = marketPriceBalances[0].mulDown(_ETH_USD_RATE) + marketPriceBalances[1];
+
+        // Error tolerance of 0.000001%.
+        assertApproxEqRel(tvlOracle, tvlMarketPriceBalances, 1e10, "TVL should not change after swap");
+    }
+
     function testCalculateTVLAfterSwap() public {
         IGyroECLPPool pool = createAndInitPool(
             [address(dai), address(usdc)].toMemoryArray(),
@@ -280,7 +403,6 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
         uint256 tvlAfter = oracle.calculateTVL(prices);
-        uint256 totalSupply = vault.totalSupply(address(pool));
 
         assertApproxEqRel(tvlAfter, tvlBefore, 1e3, "TVL should not change after swap");
         assertApproxEqRel(tvlAfter, poolValue, 1e15, "TVL should be close to the sum of assets in the pool");
@@ -372,5 +494,147 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         assertEq(startedAt, 0, "Started at does not match");
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
         assertEq(answeredInRound, 0, "Answered in round does not match");
+    }
+
+    function _findBalancesForPrices(
+        GyroECLPPool pool,
+        uint256 oraclePrice
+    ) private returns (uint256[] memory marketPriceBalances) {
+        IERC20[] memory tokens;
+        (tokens, , , marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
+
+        (IGyroECLPPool.EclpParams memory eclpParams, IGyroECLPPool.DerivedEclpParams memory derivedEclpParams) = pool
+            .getECLPParams();
+
+        uint256 limitTokenABalance = uint256(0);
+        uint256 limitTokenBBalance = uint256(0);
+
+        for (uint256 i = 0; i < 255; i++) {
+            (int256 a, int256 b) = _computeOffsetFromBalances(marketPriceBalances, eclpParams, derivedEclpParams);
+            uint256 price = _computePrice(marketPriceBalances, eclpParams, a, b);
+
+            if (
+                (price > oraclePrice && (price - oraclePrice).divDown(oraclePrice) < 1e6) ||
+                (price < oraclePrice && (oraclePrice - price).divDown(oraclePrice) < 1e6)
+            ) {
+                return marketPriceBalances;
+            }
+
+            if (price > oraclePrice) {
+                // Overpriced (more B than A) => Swap A for B, exact out
+                uint256 exactAmountOut = (marketPriceBalances[1] - limitTokenBBalance) / 2;
+                limitTokenABalance = marketPriceBalances[0];
+
+                vm.prank(lp);
+                router.swapSingleTokenExactOut(
+                    address(pool),
+                    tokens[0],
+                    tokens[1],
+                    exactAmountOut,
+                    MAX_UINT256,
+                    MAX_UINT256,
+                    false,
+                    bytes("")
+                );
+
+                (, , , marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
+            } else {
+                // Underpriced (more A than B) => Swap B for A, exact out
+                uint256 exactAmountOut = (marketPriceBalances[0] - limitTokenABalance) / 2;
+                limitTokenBBalance = marketPriceBalances[1];
+
+                vm.prank(lp);
+                router.swapSingleTokenExactOut(
+                    address(pool),
+                    tokens[1],
+                    tokens[0],
+                    exactAmountOut,
+                    MAX_UINT256,
+                    MAX_UINT256,
+                    false,
+                    bytes("")
+                );
+
+                (, , , marketPriceBalances) = vault.getPoolTokenInfo(address(pool));
+            }
+        }
+
+        revert("Could not find market balances");
+    }
+
+    function _computePrice(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        int256 a,
+        int256 b
+    ) internal pure returns (uint256 price) {
+        // To compute the price, first we need to transform the real balances into balances of a circle centered at
+        // (0,0).
+        //
+        // The transformation is:
+        //
+        //     --   --    --                     --   --     --
+        //     | x'' |    |  c/lambda  -s/lambda  | * | x - a |
+        //     | y'' | =  |     s          c      |   | y - b |
+        //     --   --    --                     --   --     --
+        //
+        // With x'' and y'', we can compute the price as:
+        //
+        //                          --              --   --   --
+        //             [xll, yll] o |  c/lambda   s  | * |  1  |
+        //                          | -s/lambda   c  |   |  0  |
+        //                          --              --   --   --
+        //    price =  -------------------------------------------
+        //                          --              --   --   --
+        //             [xll, yll] o |  c/lambda   s  | * |  0  |
+        //                          | -s/lambda   c  |   |  1  |
+        //                          --              --   --   --
+
+        // Balances in the rotated ellipse centered at (0,0)
+        int256 xl = int256(balancesScaled18[0]) - a;
+        int256 yl = int256(balancesScaled18[1]) - b;
+
+        // Balances in the circle centered at (0,0)
+        int256 xll = xl.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) -
+            yl.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
+        int256 yll = xl.mulDownMag(eclpParams.s) + yl.mulDownMag(eclpParams.c);
+
+        // Scalar product of [xll, yll] by A*[1,0] => e_x (unity vector in the x direction).
+        int256 numerator = xll.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) + yll.mulDownMag(eclpParams.s);
+        // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
+        int256 denominator = yll.mulDownMag(eclpParams.c) - xll.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
+
+        price = numerator.divDownMag(denominator).toUint256();
+
+        // The price cannot be outside of pool range.
+        if (price < eclpParams.alpha.toUint256()) {
+            price = eclpParams.alpha.toUint256();
+        } else if (price > eclpParams.beta.toUint256()) {
+            price = eclpParams.beta.toUint256();
+        }
+
+        return price;
+    }
+
+    function _computeOffsetFromBalances(
+        uint256[] memory balancesScaled18,
+        IGyroECLPPool.EclpParams memory eclpParams,
+        IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+    ) internal pure returns (int256 a, int256 b) {
+        IGyroECLPPool.Vector2 memory invariant;
+
+        {
+            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
+                balancesScaled18,
+                eclpParams,
+                derivedECLPParams
+            );
+            // invariant = overestimate in x-component, underestimate in y-component
+            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
+            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
+        }
+
+        a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
+        b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
     }
 }
