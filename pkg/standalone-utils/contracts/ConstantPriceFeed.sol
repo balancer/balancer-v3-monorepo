@@ -4,13 +4,16 @@ pragma solidity ^0.8.24;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 /// @notice Minimal Chainlink Aggregator that always returns 1.0
 contract ConstantPriceFeed is AggregatorV3Interface {
+    // solhint-disable const-name-snakecase
     string public constant override description = "Constant 1.0 Price Feed";
-    uint8 public constant override decimals = 8; // 1.00000000
+    uint8 public constant override decimals = 18;
     uint256 public constant override version = 1;
 
-    error UnsupportedOperation();
+    // solhint-disable not-rely-on-time
 
     /**
      * @notice Return a constant value of 1.0 to all requests.
@@ -21,21 +24,16 @@ contract ConstantPriceFeed is AggregatorV3Interface {
      * @return updatedAt Just return the current timestamp for both
      * @return answeredInRound Unused / obsolete
      */
-    function latestRoundData()
-        external
-        view
-        override
-        returns (uint80, int256, uint256, uint256, uint80)
-    {
-        return (0, 1e8, block.timestamp, block.timestamp, 0);
+    function latestRoundData() external view override returns (uint80, int256, uint256, uint256, uint80) {
+        return _fixedPrice();
     }
 
-    function getRoundData(uint80)
-        external
-        pure
-        override
-        returns (uint80, int256, uint256, uint256, uint80)
-    {
-        revert UnsupportedOperation();
+    // Obsolete function; return the same if called.
+    function getRoundData(uint80) external view override returns (uint80, int256, uint256, uint256, uint80) {
+        return _fixedPrice();
+    }
+
+    function _fixedPrice() internal view returns (uint80, int256, uint256, uint256, uint80) {
+        return (0, int256(FixedPoint.ONE), block.timestamp, block.timestamp, 0);
     }
 }
