@@ -13,12 +13,13 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLPMath.sol";
 import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
 import { LPOracleBase } from "./LPOracleBase.sol";
 
 /**
- * @notice Oracle for weighted pools.
+ * @notice Oracle for E-CLP pools.
  */
 contract EclpLPOracle is LPOracleBase {
     using FixedPoint for uint256;
@@ -81,90 +82,29 @@ contract EclpLPOracle is LPOracleBase {
         int256 pxIny = px.divDownMag(py);
         if (pxIny < params.alpha) {
             int256 bP = _removePrecision(
-                mulAinv(params, derivedParams.tauBeta).x - mulAinv(params, derivedParams.tauAlpha).x
+                GyroECLPMath.mulAinv(params, derivedParams.tauBeta).x -
+                    GyroECLPMath.mulAinv(params, derivedParams.tauAlpha).x
             );
             tvl = (bP.mulDownMag(px)).toUint256().mulDown(invariant);
         } else if (pxIny > params.beta) {
             int256 bP = _removePrecision(
-                mulAinv(params, derivedParams.tauAlpha).y - mulAinv(params, derivedParams.tauBeta).y
+                GyroECLPMath.mulAinv(params, derivedParams.tauAlpha).y -
+                    GyroECLPMath.mulAinv(params, derivedParams.tauBeta).y
             );
             tvl = (bP.mulDownMag(py)).toUint256().mulDown(invariant);
         } else {
-            IGyroECLPPool.Vector2 memory vec = mulAinv(params, tau(params, pxIny));
-            vec.x = _removePrecision(mulAinv(params, derivedParams.tauBeta).x) - vec.x;
-            vec.y = _removePrecision(mulAinv(params, derivedParams.tauAlpha).y) - vec.y;
-            tvl = scalarProdDown(IGyroECLPPool.Vector2(px, py), vec).toUint256().mulDown(invariant);
+            IGyroECLPPool.Vector2 memory vec = GyroECLPMath.mulAinv(params, GyroECLPMath.tau(params, pxIny));
+            vec.x = _removePrecision(GyroECLPMath.mulAinv(params, derivedParams.tauBeta).x) - vec.x;
+            vec.y = _removePrecision(GyroECLPMath.mulAinv(params, derivedParams.tauAlpha).y) - vec.y;
+            tvl = GyroECLPMath.scalarProd(IGyroECLPPool.Vector2(px, py), vec).toUint256().mulDown(invariant);
         }
     }
 
     /**
-     * @dev E-CLP derived parameters are stored with 38 decimals precision. We remove 20 decimals to get 18 decimals precision.
+     * @dev E-CLP derived parameters are stored with 38 decimals precision. We remove 20 decimals to get 18 decimals
+     * precision.
      */
     function _removePrecision(int256 value) private pure returns (int256) {
         return value / 1e20;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-    // The following functions and structs copied over from ECLP math library
-    // Can't easily inherit because of different Solidity versions
-
-    // Scalar product of IGyroECLPPool.Vector2 objects
-    function scalarProdDown(
-        IGyroECLPPool.Vector2 memory t1,
-        IGyroECLPPool.Vector2 memory t2
-    ) internal pure returns (int256 ret) {
-        ret = t1.x.mulDownMag(t2.x) + t1.y.mulDownMag(t2.y);
-    }
-
-    /** @dev Calculate A^{-1}t where A^{-1} is given in Section 2.2
-     *  This is rotating and scaling the circle into the ellipse */
-
-    function mulAinv(
-        IGyroECLPPool.EclpParams memory params,
-        IGyroECLPPool.Vector2 memory t
-    ) internal pure returns (IGyroECLPPool.Vector2 memory tp) {
-        tp.x = t.x.mulDownMag(params.lambda).mulDownMag(params.c) + t.y.mulDownMag(params.s);
-        tp.y = -t.x.mulDownMag(params.lambda).mulDownMag(params.s) + t.y.mulDownMag(params.c);
-    }
-
-    /** @dev Given price px on the transformed ellipse, maps to the corresponding point on the untransformed normalized circle
-     *  px = price of asset x in terms of asset y */
-    function tau(
-        IGyroECLPPool.EclpParams memory params,
-        int256 px
-    ) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
-        return eta(zeta(params, px));
-    }
-
-    /** @dev Given price on a circle, gives the normalized corresponding point on the circle centered at the origin
-     *  pxc = price of asset x in terms of asset y (measured on the circle)
-     *  Notice that the eta function does not depend on Params */
-    function eta(int256 pxc) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
-        int256 z = FixedPoint.powDown(FixedPoint.ONE + (pxc.mulDownMag(pxc).toUint256()), _ONEHALF).toInt256();
-        tpp = eta(pxc, z);
-    }
-
-    /** @dev Calculates eta in more efficient way if the square root is known and input as second arg */
-    function eta(int256 pxc, int256 z) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
-        tpp.x = pxc.divDownMag(z);
-        tpp.y = SignedFixedPoint.ONE.divDownMag(z);
-    }
-
-    /** @dev Given price px on the transformed ellipse, get the untransformed price pxc on the circle
-     *  px = price of asset x in terms of asset y */
-    function zeta(IGyroECLPPool.EclpParams memory params, int256 px) internal pure returns (int256 pxc) {
-        IGyroECLPPool.Vector2 memory nd = mulA(params, IGyroECLPPool.Vector2(-SignedFixedPoint.ONE, px));
-        return -nd.y.divDownMag(nd.x);
-    }
-
-    /** @dev Calculate A t where A is given in Section 2.2
-     *  This is reversing rotation and scaling of the ellipse (mapping back to circle) */
-
-    function mulA(
-        IGyroECLPPool.EclpParams memory params,
-        IGyroECLPPool.Vector2 memory tp
-    ) internal pure returns (IGyroECLPPool.Vector2 memory t) {
-        t.x = params.c.mulDownMag(tp.x).divDownMag(params.lambda) - params.s.mulDownMag(tp.y).divDownMag(params.lambda);
-        t.y = params.s.mulDownMag(tp.x) + params.c.mulDownMag(tp.y);
     }
 }
