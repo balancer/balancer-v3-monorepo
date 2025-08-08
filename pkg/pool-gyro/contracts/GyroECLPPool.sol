@@ -115,7 +115,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external view returns (uint256 newBalance) {
+    ) external view returns (uint256) {
         (EclpParams memory eclpParams, DerivedEclpParams memory derivedECLPParams) = _reconstructECLPParams();
 
         Vector2 memory invariant;
@@ -139,17 +139,17 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
             require(invariant.x <= GyroECLPMath._MAX_INVARIANT, GyroECLPMath.MaxInvariantExceeded());
         }
 
-        int256 newBalanceInt;
+        int256 newBalance;
 
         if (tokenInIndex == 0) {
-            (newBalanceInt, , ) = GyroECLPMath.calcXGivenY(
+            (newBalance, , ) = GyroECLPMath.calcXGivenY(
                 balancesLiveScaled18[1].toInt256(),
                 eclpParams,
                 derivedECLPParams,
                 invariant
             );
         } else {
-            (newBalanceInt, , ) = GyroECLPMath.calcYGivenX(
+            (newBalance, , ) = GyroECLPMath.calcYGivenX(
                 balancesLiveScaled18[0].toInt256(),
                 eclpParams,
                 derivedECLPParams,
@@ -157,7 +157,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
             );
         }
 
-        newBalance = newBalanceInt.toUint256();
+        return newBalance.toUint256();
     }
 
     /// @inheritdoc IBasePool
