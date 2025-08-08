@@ -41,9 +41,6 @@ describe('E-CLP', function () {
 
   const SWAP_FEE = fp(0.01);
 
-  const SQRT_ALPHA = fp(0.8);
-  const SQRT_BETA = fp(0.9);
-
   // Extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet.
   const PARAMS_ALPHA = 998502246630054917n;
   const PARAMS_BETA = 1000200040008001600n;

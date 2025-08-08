@@ -31,21 +31,22 @@ export type OracleInfo = {
 export class LPOracleBenchmark {
   _testDirname: string;
   _oracleType: string;
+  _minTokens: number;
+  _maxTokens: number;
 
   vault!: IVault;
-  tokenA!: ERC20WithRateTestToken;
-  tokenB!: ERC20WithRateTestToken;
-  tokenC!: ERC20WithRateTestToken;
-  tokenD!: ERC20WithRateTestToken;
+  tokens!: ERC20WithRateTestToken[];
   WETH!: WETHTestToken;
 
   permit2!: IPermit2;
   router!: Router;
   alice!: SignerWithAddress;
 
-  constructor(dirname: string, poolType: string) {
+  constructor(dirname: string, poolType: string, minTokens: number, maxTokens: number) {
     this._testDirname = dirname;
     this._oracleType = poolType;
+    this._minTokens = minTokens;
+    this._maxTokens = maxTokens;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -81,26 +82,24 @@ export class LPOracleBenchmark {
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       this.permit2 = await deployPermit2();
       this.router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION] });
-      this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token A', 'TKNA', 18] });
-      this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token B', 'TKNB', 18] });
-      this.tokenC = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
-      this.tokenD = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });
 
+      this.tokens = [];
       tokenAddresses = [];
-      tokenAddresses[0] = await this.tokenA.getAddress();
-      tokenAddresses[1] = await this.tokenB.getAddress();
-      tokenAddresses[2] = await this.tokenC.getAddress();
-      tokenAddresses[3] = await this.tokenD.getAddress();
+      for (let i = 0; i < this._maxTokens; i++) {
+        this.tokens.push(
+          await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: [`Token ${i}`, `TKNI`, 18] })
+        );
+        tokenAddresses.push(await this.tokens[i].getAddress());
+      }
     });
 
     sharedBeforeEach('token setup', async () => {
-      await this.tokenA.mint(this.alice, TOKEN_AMOUNT * 20n);
-      await this.tokenB.mint(this.alice, TOKEN_AMOUNT * 20n);
-      await this.tokenC.mint(this.alice, TOKEN_AMOUNT * 20n);
-      await this.tokenD.mint(this.alice, TOKEN_AMOUNT * 20n);
+      for (const token of this.tokens) {
+        await token.mint(this.alice, TOKEN_AMOUNT * 20n);
+      }
       await this.WETH.connect(this.alice).deposit({ value: TOKEN_AMOUNT });
 
-      for (const token of [this.tokenA, this.tokenB, this.tokenC, this.tokenD, this.WETH]) {
+      for (const token of [...this.tokens, this.WETH]) {
         await token.connect(this.alice).approve(this.permit2, MAX_UINT256);
         await this.permit2.connect(this.alice).approve(token, this.router, MAX_UINT160, MAX_UINT48);
       }
@@ -197,9 +196,9 @@ export class LPOracleBenchmark {
     }
 
     context('measure gas', () => {
-      itMeasuresGas(2);
-      itMeasuresGas(3);
-      itMeasuresGas(4);
+      for (let i = this._minTokens; i <= this._maxTokens; i++) {
+        itMeasuresGas(i);
+      }
     });
   };
 }
