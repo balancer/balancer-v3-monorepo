@@ -515,13 +515,9 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         uint256 limitTokenABalance = uint256(0);
         uint256 limitTokenBBalance = uint256(0);
 
-        console2.log("oraclePrice", oraclePrice);
-
         for (uint256 i = 0; i < 255; i++) {
             (int256 a, int256 b) = _computeOffsetFromBalances(marketPriceBalances, eclpParams, derivedEclpParams);
             uint256 price = _computePrice(marketPriceBalances, eclpParams, a, b);
-
-            console2.log("price", price);
 
             if (
                 (price > oraclePrice && (price - oraclePrice).divDown(oraclePrice) < 1e6) ||
