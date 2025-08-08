@@ -6,7 +6,10 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-/// @notice Minimal Chainlink Aggregator that always returns 1.0
+/**
+ * @notice Minimal Chainlink price feed that always returns 1.
+ * @dev Useful for LP oracles where the rate provider already reflects the market price (e.g., XAUt).
+ */
 contract ConstantPriceFeed is AggregatorV3Interface {
     // solhint-disable const-name-snakecase
     string public constant override description = "Constant 1.0 Price Feed";
