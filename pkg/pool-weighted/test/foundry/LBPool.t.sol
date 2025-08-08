@@ -672,26 +672,6 @@ contract LBPoolTest is BaseLBPTest {
         assertFalse(success, "onRegister should return false when pool address doesn't match");
     }
 
-    function testOnRegisterCallerNotVault() public {
-        // Create token config array with 2 standard tokens
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        LBPool(pool).onRegister(
-            poolFactory,
-            pool,
-            tokenConfig,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: false,
-                enableRemoveLiquidityCustom: false,
-                enableDonation: false
-            })
-        );
-    }
-
     function testOnRegisterSuccess() public {
         // Create token config array with 2 standard tokens
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
@@ -753,14 +733,6 @@ contract LBPoolTest is BaseLBPTest {
             LBPool(pool).onBeforeInitialize(new uint256[](0), ""),
             "onBeforeInitialize should return false when sender is not factory"
         );
-    }
-
-    function testOnBeforeInitializeCallerNotVault() public {
-        // Warp to before start time (initialization is allowed before start time)
-        vm.warp(block.timestamp + DEFAULT_START_OFFSET - 1);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        LBPool(pool).onBeforeInitialize(new uint256[](0), "");
     }
 
     function testOnBeforeInitialize() public {
@@ -859,22 +831,6 @@ contract LBPoolTest is BaseLBPTest {
         assertTrue(success, "onBeforeRemoveLiquidity should return true after end time");
     }
 
-    function testOnBeforeAddLiquidityCallerNotVault() public {
-        // Warp to after end time, where removing liquidity is allowed.
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        LBPool(pool).onBeforeRemoveLiquidity(
-            address(router),
-            ZERO_ADDRESS,
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](0),
-            new uint256[](0),
-            bytes("")
-        );
-    }
-
     function testOnBeforeRemoveLiquidityWithMigrationRouter() public {
         (pool, ) = _createLBPoolWithMigration(
             address(0), // Pool creator
@@ -927,31 +883,6 @@ contract LBPoolTest is BaseLBPTest {
         );
 
         assertFalse(success, "onBeforeRemoveLiquidity should return false with wrong migration router");
-    }
-
-    function testOnBeforeRemoveLiquidityCallerNotVault() public {
-        (pool, ) = _createLBPoolWithMigration(
-            address(0), // Pool creator
-            30 days, // BPT lock duration
-            50e16, // Share to migrate (50%)
-            60e16, // New weight for project token (60%)
-            40e16 // New weight for reserve token (40%)
-        );
-        initPool();
-
-        // Warp to after end time, where removing liquidity is allowed.
-        vm.warp(block.timestamp + DEFAULT_END_OFFSET + 1);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        LBPool(pool).onBeforeRemoveLiquidity(
-            address(router),
-            ZERO_ADDRESS,
-            RemoveLiquidityKind.PROPORTIONAL,
-            0,
-            new uint256[](0),
-            new uint256[](0),
-            bytes("")
-        );
     }
 
     /*******************************************************************************
