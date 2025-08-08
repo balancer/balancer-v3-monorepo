@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LicenseRef-Gyro-1.0
 
 pragma solidity ^0.8.24;
 
@@ -25,11 +25,11 @@ contract EclpLPOracle is LPOracleBase {
     using SignedFixedPoint for int256;
     using SafeCast for *;
 
-    uint256 internal constant ONEHALF = 0.5e18;
-    int256 internal constant MIN_PRICE_ECLP = 1e11; // 1e-7 scaled
+    uint256 private constant _ONEHALF = 0.5e18;
+    int256 private constant _MIN_PRICE_ECLP = 1e11; // 1e-7 scaled
 
     // One of the token prices is too small.
-    error TOKEN_PRICES_TOO_SMALL();
+    error TokenPriceTooSmall();
 
     constructor(
         IVault vault_,
@@ -48,18 +48,18 @@ contract EclpLPOracle is LPOracleBase {
         (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
         uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
-        return calculateECLPTvl(params, derivedParams, invariant, prices);
+        return _computeEclpTvl(params, derivedParams, invariant, prices);
     }
 
     /**
-     * @notice Calculates the value of BPT for constant ellipse (ECLP) pools of two assets.
-     * @dev This calculation is robust to price manipulation within the Balancer pool.
-     * Bounds on underlying prices are enforced to make this safe across a range of typical pool
-     * parameter combinations, see `ECLP_precision_analysis_iteration.sage`. These include typical
-     * stable pair configs and the following parameter combinations: alpha in [0.05, 0.999], beta
-     * in [1.001, 1.1], relative price range width (beta/alpha-1) >= 10bp, min-curvature price q =
-     * 1.0, lambda in [1, 1e8]. This yields relative error at most 0.1bp, assuming
-     * invariantDivSupply >= 2 or total redemption amount at least 1 USD.
+     * @notice Computes the total value locked for constant ellipse (ECLP) pools of two assets.
+     * @dev This computation is robust to price manipulation within the Balancer pool. Bounds on underlying prices are
+     * enforced to make this safe across a range of typical pool parameter combinations. These include typical stable
+     * pair configs and the following parameter combinations: alpha in [0.05, 0.999], beta in [1.001, 1.1], relative
+     * price range width (beta/alpha-1) >= 10bp, min-curvature price q = 1.0, lambda in [1, 1e8]. This yields relative
+     * error at most 0.1bp, assuming `invariant / totalSupply >= 2` or total redemption amount at least 1 USD. Please
+     * refer to link https://docs.gyro.finance/gyd/technical-documents.html, document `Consolidated Price Feed`,
+     * section 5.4, for further details of this oracle implementation.
      *
      * @param params ECLP pool parameters
      * @param derivedParams (tau(alpha), tau(beta)) in 18 decimals. The other elements are not used.
@@ -67,24 +67,14 @@ contract EclpLPOracle is LPOracleBase {
      * @param prices Prices of the two assets according to a market oracle
      * @return tvl Total value of the pool, in the same unit as the price oracles
      */
-    function calculateECLPTvl(
+    function _computeEclpTvl(
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory derivedParams,
         uint256 invariant,
         int256[] memory prices
     ) internal pure returns (uint256 tvl) {
-        /**********************************************************************************************
-        // When alpha < p_x/p_y < beta:                                                              //
-        //                L   / / e_x A^{-1} tau(beta) \     -1     / p_x \  \   / p_x \             //
-        //   bptPrice =  --- | |                        | - A^  tau|  ---- |  | |       |            //
-        //                S   \ \ e_y A^{-1} tau(alpha) /           \ p_y  /  /  \ p_y  /            //
-        // When p_x/p_y < alpha:                                                                     //
-        //      bptPrice = L/S * p_x ( e_x A^{-1} tau(beta) - e_x A^{-1} tau(alpha) )                //
-        // When p_x/p_y > beta:                                                                      //
-        //      bptPrice = L/S * p_y (e_y A^{-1} tau(alpha) - e_y A^{-1} tau(beta) )                 //
-        **********************************************************************************************/
-        if (prices[0] < MIN_PRICE_ECLP || prices[1] < MIN_PRICE_ECLP) {
-            revert TOKEN_PRICES_TOO_SMALL();
+        if (prices[0] < _MIN_PRICE_ECLP || prices[1] < _MIN_PRICE_ECLP) {
+            revert TokenPriceTooSmall();
         }
         (int256 px, int256 py) = (prices[0], prices[1]);
 
@@ -150,7 +140,7 @@ contract EclpLPOracle is LPOracleBase {
      *  pxc = price of asset x in terms of asset y (measured on the circle)
      *  Notice that the eta function does not depend on Params */
     function eta(int256 pxc) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
-        int256 z = FixedPoint.powDown(FixedPoint.ONE + (pxc.mulDownMag(pxc).toUint256()), ONEHALF).toInt256();
+        int256 z = FixedPoint.powDown(FixedPoint.ONE + (pxc.mulDownMag(pxc).toUint256()), _ONEHALF).toInt256();
         tpp = eta(pxc, z);
     }
 
