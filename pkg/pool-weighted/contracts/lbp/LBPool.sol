@@ -312,7 +312,7 @@ contract LBPool is ILBPool, WeightedPool, Ownable2Step, BaseHooks {
     /// @inheritdoc WeightedPool
     function onSwap(
         PoolSwapParams memory request
-    ) public view override(IBasePool, WeightedPool) onlyVault returns (uint256) {
+    ) public view override(IBasePool, WeightedPool) returns (uint256) {
         // Block if the sale has not started or has ended.
         if (_isSwapEnabled() == false) {
             revert SwapsDisabled();
