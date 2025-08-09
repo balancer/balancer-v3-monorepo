@@ -140,7 +140,7 @@ export class BatchSwapBaseTest {
       args: [this.vaultAddress, WETH, this.permit2, BATCH_ROUTER_VERSION],
     });
     this.aggregatorRouter = await deploy('AggregatorBatchRouter', {
-      args: [this.vaultAddress, AGGREGATOR_BATCH_ROUTER_VERSION],
+      args: [this.vaultAddress, WETH, AGGREGATOR_BATCH_ROUTER_VERSION],
     });
 
     this.factory = await deploy('PoolFactoryMock', { args: [this.vaultAddress, 12 * MONTH] });
@@ -324,7 +324,7 @@ export class BatchSwapBaseTest {
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactIn.staticCall
           : this.aggregatorRouter.connect(this.sender).swapExactIn
-      )(this.pathsExactIn, deadline, '0x');
+      )(this.pathsExactIn, deadline, false, '0x');
     } else {
       return (
         isStatic
@@ -509,7 +509,7 @@ export class BatchSwapBaseTest {
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactOut.staticCall
           : this.aggregatorRouter.connect(this.sender).swapExactOut
-      )(this.pathsExactOut, deadline, '0x');
+      )(this.pathsExactOut, deadline, false, '0x');
     } else {
       return (
         isStatic

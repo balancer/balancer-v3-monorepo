@@ -183,6 +183,7 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
         aggregatorCompositeLiquidityRouter = deployAggregatorCompositeLiquidityRouterMock(
             IVault(address(vault)),
+            weth,
             "Aggregator CompositeLiquidityRouter v1"
         );
         bufferRouter = deployBufferRouterMock(IVault(address(vault)), weth, permit2);

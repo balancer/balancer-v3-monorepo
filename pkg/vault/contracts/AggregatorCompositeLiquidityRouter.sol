@@ -5,9 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import {
-    IAggregatorCompositeLiquidityRouter
-} from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorCompositeLiquidityRouter.sol";
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
@@ -16,19 +14,27 @@ import { CompositeLiquidityRouterHooks } from "./CompositeLiquidityRouterHooks.s
 import { CompositeLiquidityRouterQueries } from "./CompositeLiquidityRouterQueries.sol";
 
 /**
- * @notice Entrypoint for add/remove liquidity operations on ERC4626 and nested pools.
- * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
- * These execute the steps needed to add to and remove liquidity from these special types of pools, and settle
- * the operation with the Vault.
+ * @notice An aggregator composite liquidity router for liquidity operations on ERC4626 and nested pools.
+ * @dev This contract allows interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only standard
+ * underlying tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add liquidity to an
+ * ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both. If the ERC4626 buffers
+ * in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through the wrapped token interface,
+ * saving gas.
  *
- * The implementation calls into the `CompositeLiquidityRouterHooks` base contract, and is identical to
- * `CompositeLiquidityRouter`, except for hard-coding wethIsEth to false.
+ * For instance, adding only DAI to the pool above (and assuming a waDAI buffer with enough liquidity), would pull in
+ * the DAI from the user, swap it for waDAI in the internal Vault buffer, and deposit the waDAI into the ERC4626 pool:
+ * 1) without having to do any expensive ERC4626 wrapping operations; and
+ * 2) without requiring the user to construct a batch operation containing the buffer swap.
+ *
+ * The aggregator composite liquidity router is designed to be called from a contract vs. an EOA through a UI.
+ * It uses prepayment instead of permit2.
  */
-contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRouter, CompositeLiquidityRouterQueries {
+contract AggregatorCompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidityRouterQueries {
     constructor(
         IVault vault,
+        IWETH weth,
         string memory routerVersion
-    ) CompositeLiquidityRouterQueries(vault, IWETH(address(0)), IPermit2(address(0)), true, routerVersion) {
+    ) CompositeLiquidityRouterQueries(vault, weth, IPermit2(address(0)), true, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -36,12 +42,13 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
                                 ERC4626 Pools
     *******************************************************************************/
 
-    /// @inheritdoc IAggregatorCompositeLiquidityRouter
+    /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityUnbalancedToERC4626Pool(
         address pool,
         bool[] memory wrapUnderlying,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSender(msg.sender) returns (uint256 bptAmountOut) {
         bptAmountOut = abi.decode(
@@ -55,7 +62,7 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
                             maxAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.UNBALANCED,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         }),
                         wrapUnderlying
@@ -66,12 +73,13 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
         );
     }
 
-    /// @inheritdoc IAggregatorCompositeLiquidityRouter
+    /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityProportionalToERC4626Pool(
         address pool,
         bool[] memory wrapUnderlying,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSender(msg.sender) returns (uint256[] memory) {
         return
@@ -86,7 +94,7 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
                                 maxAmountsIn: maxAmountsIn,
                                 minBptAmountOut: exactBptAmountOut,
                                 kind: AddLiquidityKind.PROPORTIONAL,
-                                wethIsEth: false,
+                                wethIsEth: wethIsEth,
                                 userData: userData
                             }),
                             wrapUnderlying
@@ -97,12 +105,13 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
             );
     }
 
-    /// @inheritdoc IAggregatorCompositeLiquidityRouter
+    /// @inheritdoc ICompositeLiquidityRouter
     function removeLiquidityProportionalFromERC4626Pool(
         address pool,
         bool[] memory unwrapWrapped,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSender(msg.sender) returns (uint256[] memory) {
         return
@@ -117,7 +126,7 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
                                 minAmountsOut: minAmountsOut,
                                 maxBptAmountIn: exactBptAmountIn,
                                 kind: RemoveLiquidityKind.PROPORTIONAL,
-                                wethIsEth: false,
+                                wethIsEth: wethIsEth,
                                 userData: userData
                             }),
                             unwrapWrapped
@@ -132,13 +141,14 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
                                    Nested pools
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorCompositeLiquidityRouter
+    /// @inheritdoc ICompositeLiquidityRouter
     function addLiquidityUnbalancedNestedPool(
         address parentPool,
         address[] memory tokensIn,
         uint256[] memory exactAmountsIn,
         address[] memory tokensToWrap,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSender(msg.sender) returns (uint256) {
         return
@@ -153,7 +163,7 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
                                 maxAmountsIn: exactAmountsIn,
                                 minBptAmountOut: minBptAmountOut,
                                 kind: AddLiquidityKind.UNBALANCED,
-                                wethIsEth: false,
+                                wethIsEth: wethIsEth,
                                 userData: userData
                             }),
                             tokensIn,
@@ -165,13 +175,14 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
             );
     }
 
-    /// @inheritdoc IAggregatorCompositeLiquidityRouter
+    /// @inheritdoc ICompositeLiquidityRouter
     function removeLiquidityProportionalNestedPool(
         address parentPool,
         uint256 exactBptAmountIn,
         address[] memory tokensOut,
         uint256[] memory minAmountsOut,
         address[] memory tokensToUnwrap,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
@@ -185,7 +196,7 @@ contract AggregatorCompositeLiquidityRouter is IAggregatorCompositeLiquidityRout
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: exactBptAmountIn,
                             kind: RemoveLiquidityKind.PROPORTIONAL,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         }),
                         tokensOut,

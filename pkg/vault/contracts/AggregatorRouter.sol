@@ -7,7 +7,6 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IAggregatorRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -26,28 +25,63 @@ import { RouterCommon } from "./RouterCommon.sol";
 import { RouterHooks } from "./RouterHooks.sol";
 
 /**
- * @notice Entrypoint for aggregators who want to swap without the standard permit2 payment logic.
- * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
+ * @notice This router supports basic Vault operations without requiring approvals or Permit2.
+ * @dev Designed for use by aggregators, it supports swap, add/remove/donate liquidity, and the corresponding queries.
  */
-contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
+contract AggregatorRouter is IRouter, RouterHooks, RouterQueries {
     constructor(
         IVault vault,
+        IWETH weth,
         string memory routerVersion
-    ) RouterQueries(vault, IWETH(address(0)), IPermit2(address(0)), true, routerVersion) {
+    ) RouterQueries(vault, weth, IPermit2(address(0)), true, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /*******************************************************************************
+                                Pool Initialization
+    *******************************************************************************/
+
+    /// @inheritdoc IRouter
+    function initialize(
+        address pool,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender(msg.sender) returns (uint256 bptAmountOut) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(
+                        RouterHooks.initializeHook,
+                        InitializeHookParams({
+                            sender: msg.sender,
+                            pool: pool,
+                            tokens: tokens,
+                            exactAmountsIn: exactAmountsIn,
+                            minBptAmountOut: minBptAmountOut,
+                            wethIsEth: wethIsEth,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
     }
 
     /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function addLiquidityProportional(
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256[] memory amountsIn) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -58,7 +92,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -67,13 +101,14 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         );
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function addLiquidityUnbalanced(
         address pool,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256 bptAmountOut) {
+    ) external payable saveSender(msg.sender) returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -84,7 +119,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                         maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: false,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -93,14 +128,15 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         );
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function addLiquiditySingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256 amountIn) {
+    ) external payable saveSender(msg.sender) returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
@@ -117,7 +153,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                        wethIsEth: false,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -128,8 +164,13 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         return amountsIn[tokenIndex];
     }
 
-    /// @inheritdoc IAggregatorRouter
-    function donate(address pool, uint256[] memory amountsIn, bytes memory userData) external saveSender(msg.sender) {
+    /// @inheritdoc IRouter
+    function donate(
+        address pool,
+        uint256[] memory amountsIn,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender(msg.sender) {
         _vault.unlock(
             abi.encodeCall(
                 RouterHooks.addLiquidityHook,
@@ -139,21 +180,23 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                     maxAmountsIn: amountsIn,
                     minBptAmountOut: 0,
                     kind: AddLiquidityKind.DONATION,
-                    wethIsEth: false,
+                    wethIsEth: wethIsEth,
                     userData: userData
                 })
             )
         );
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function addLiquidityCustom(
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     )
         external
+        payable
         saveSender(msg.sender)
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
@@ -168,7 +211,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -181,13 +224,14 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                                  Remove Liquidity
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function removeLiquidityProportional(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256[] memory amountsOut) {
+    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -198,7 +242,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
                         kind: RemoveLiquidityKind.PROPORTIONAL,
-                        wethIsEth: false,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -207,14 +251,15 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         );
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function removeLiquiditySingleTokenExactIn(
         address pool,
         uint256 exactBptAmountIn,
         IERC20 tokenOut,
         uint256 minAmountOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256 amountOut) {
+    ) external payable saveSender(msg.sender) returns (uint256 amountOut) {
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenOut,
@@ -231,7 +276,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: exactBptAmountIn,
                         kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
-                        wethIsEth: false,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -242,14 +287,15 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         return amountsOut[tokenIndex];
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function removeLiquiditySingleTokenExactOut(
         address pool,
         uint256 maxBptAmountIn,
         IERC20 tokenOut,
         uint256 exactAmountOut,
+        bool wethIsEth,
         bytes memory userData
-    ) external saveSender(msg.sender) returns (uint256 bptAmountIn) {
+    ) external payable saveSender(msg.sender) returns (uint256 bptAmountIn) {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
@@ -262,7 +308,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                         minAmountsOut: minAmountsOut,
                         maxBptAmountIn: maxBptAmountIn,
                         kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                        wethIsEth: false,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -273,14 +319,16 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         return bptAmountIn;
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function removeLiquidityCustom(
         address pool,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,
+        bool wethIsEth,
         bytes memory userData
     )
         external
+        payable
         saveSender(msg.sender)
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
@@ -295,7 +343,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                             minAmountsOut: minAmountsOut,
                             maxBptAmountIn: maxBptAmountIn,
                             kind: RemoveLiquidityKind.CUSTOM,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -304,12 +352,12 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
             );
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
-    ) external returns (uint256[] memory amountsOut) {
+    ) external payable returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -325,7 +373,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                                        Swaps
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function swapSingleTokenExactIn(
         address pool,
         IERC20 tokenIn,
@@ -333,8 +381,9 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256 exactAmountIn,
         uint256 minAmountOut,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
-    ) public saveSender(msg.sender) returns (uint256) {
+    ) public payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -349,7 +398,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                             amountGiven: exactAmountIn,
                             limit: minAmountOut,
                             deadline: deadline,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -358,7 +407,7 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
             );
     }
 
-    /// @inheritdoc IAggregatorRouter
+    /// @inheritdoc IRouter
     function swapSingleTokenExactOut(
         address pool,
         IERC20 tokenIn,
@@ -366,8 +415,9 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
         uint256 exactAmountOut,
         uint256 maxAmountIn,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
-    ) public saveSender(msg.sender) returns (uint256) {
+    ) public payable saveSender(msg.sender) returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -382,17 +432,12 @@ contract AggregatorRouter is IAggregatorRouter, RouterHooks, RouterQueries {
                             amountGiven: exactAmountOut,
                             limit: maxAmountIn,
                             deadline: deadline,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
                 ),
                 (uint256)
             );
-    }
-
-    /// @inheritdoc RouterCommon
-    receive() external payable override {
-        revert CannotReceiveEth();
     }
 }
