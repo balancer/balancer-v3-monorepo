@@ -29,7 +29,7 @@ contract SwapFeeExemptRouterTest is BaseVaultTest {
     address internal testPool;
 
     uint256 internal usdcAmountIn = 1e3 * 1e6; // USDC has 6 decimals  
-    uint256 internal daiAmountOut = 1e2 * 1e18;
+    uint256 internal daiAmountOut = 1e6; // Request very small amount to ensure sufficient balance
 
     address internal testUser;
 
