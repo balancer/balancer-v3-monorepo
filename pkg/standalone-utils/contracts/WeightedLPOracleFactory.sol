@@ -25,7 +25,11 @@ contract WeightedLPOracleFactory is LPOracleFactoryBase {
      */
     event WeightedLPOracleCreated(IWeightedPool indexed pool, AggregatorV3Interface[] feeds, IWeightedLPOracle oracle);
 
-    constructor(IVault vault, uint256 oracleVersion) LPOracleFactoryBase(vault, oracleVersion) {
+    constructor(
+        IVault vault,
+        string memory factoryVersion,
+        uint256 oracleVersion
+    ) LPOracleFactoryBase(vault, factoryVersion, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
