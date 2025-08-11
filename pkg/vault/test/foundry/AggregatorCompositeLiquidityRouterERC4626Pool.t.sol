@@ -117,13 +117,15 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         IERC20[] memory poolTokens = vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < poolTokens.length; i++) {
-            if (amountsIn[i] > 0) {
-                IERC20 effectiveToken = wrapUnderlying[i]
-                    ? IERC20(vault.getERC4626BufferAsset(IERC4626(address(poolTokens[i]))))
-                    : poolTokens[i];
-
-                effectiveToken.transfer(address(vault), amountsIn[i]);
+            if (amountsIn[i] == 0) {
+                continue;
             }
+
+            IERC20 effectiveToken = wrapUnderlying[i]
+                ? IERC20(vault.getERC4626BufferAsset(IERC4626(address(poolTokens[i]))))
+                : poolTokens[i];
+
+            effectiveToken.transfer(address(vault), amountsIn[i]);
         }
     }
 }

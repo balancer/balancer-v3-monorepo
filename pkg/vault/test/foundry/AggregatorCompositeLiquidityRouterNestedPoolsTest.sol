@@ -32,9 +32,11 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
         require(!wethIsEth, "WETH is not supported in this test");
 
         for (uint256 i = 0; i < tokensIn.length; i++) {
-            if (exactAmountsIn[i] > 0) {
-                IERC20(tokensIn[i]).transfer(address(vault), exactAmountsIn[i]);
+            if (exactAmountsIn[i] == 0) {
+                continue;
             }
+
+            IERC20(tokensIn[i]).transfer(address(vault), exactAmountsIn[i]);
         }
 
         if (expectedError.length > 0) {
