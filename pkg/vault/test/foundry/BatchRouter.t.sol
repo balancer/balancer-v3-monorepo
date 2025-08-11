@@ -18,7 +18,7 @@ contract BatchRouterTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        // Setup permit2 approvals for BPT operations
+        // Setup permit2 approvals for BPT operations.
         vm.startPrank(alice);
         IERC20(pool).approve(address(permit2), type(uint256).max);
         permit2.approve(address(pool), address(batchRouter), type(uint160).max, type(uint48).max);
@@ -85,7 +85,7 @@ contract BatchRouterTest is BaseVaultTest {
         IERC20(pool).transfer(alice, bptAmountIn * 2);
         vm.stopPrank();
 
-        // Create BPT remove liquidity step: BPT -> DAI
+        // Create BPT remove liquidity step: BPT -> DAI.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(pool), // pool == stepTokenIn for remove liquidity
@@ -110,7 +110,7 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
         uint256 aliceDaiAfter = dai.balanceOf(alice);
 
-        // Verify BPT was burned and DAI was received
+        // Verify BPT was burned and DAI was received.
         assertEq(aliceBptAfter, aliceBptBefore - bptAmountIn, "BPT should be burned");
         assertEq(aliceDaiAfter, aliceDaiBefore + pathAmountsOut[0], "DAI should be received");
         assertGt(pathAmountsOut[0], 0, "Should receive some DAI");
@@ -125,7 +125,7 @@ contract BatchRouterTest is BaseVaultTest {
         IERC20(pool).transfer(alice, maxBptIn);
         vm.stopPrank();
 
-        // Create BPT remove liquidity step: BPT -> DAI (exact out)
+        // Create BPT remove liquidity step: BPT -> DAI (exact out).
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
 
@@ -146,7 +146,7 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
         uint256 aliceDaiAfter = dai.balanceOf(alice);
 
-        // Verify exact DAI amount received and BPT burned
+        // Verify exact DAI amount received and BPT burned.
         assertEq(aliceDaiAfter, aliceDaiBefore + exactDaiOut, "Should receive exact DAI amount");
         assertEq(aliceBptAfter, aliceBptBefore - pathAmountsIn[0], "BPT should be burned");
         assertLt(pathAmountsIn[0], maxBptIn, "Should use less than max BPT");
@@ -159,7 +159,7 @@ contract BatchRouterTest is BaseVaultTest {
     function testBPTAddLiquidityExactIn() public {
         uint256 daiAmountIn = poolInitAmount / 100;
 
-        // Create BPT add liquidity step: DAI -> BPT
+        // Create BPT add liquidity step: DAI -> BPT.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(pool), // pool == step.tokenOut for add liquidity
@@ -184,7 +184,7 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 aliceDaiAfter = dai.balanceOf(alice);
         uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
 
-        // Verify DAI was spent and BPT was received
+        // Verify DAI was spent and BPT was received.
         assertEq(aliceDaiAfter, aliceDaiBefore - daiAmountIn, "DAI should be spent");
         assertEq(aliceBptAfter, aliceBptBefore + pathAmountsOut[0], "BPT should be received");
         assertGt(pathAmountsOut[0], 0, "Should receive some BPT");
@@ -194,7 +194,7 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 exactBptOut = poolInitAmount / 1000;
         uint256 maxDaiIn = poolInitAmount / 10;
 
-        // Create BPT add liquidity step: DAI -> BPT (exact out)
+        // Create BPT add liquidity step: DAI -> BPT (exact out).
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: IERC20(address(pool)), isBuffer: false });
 
@@ -215,7 +215,7 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 aliceDaiAfter = dai.balanceOf(alice);
         uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
 
-        // Verify exact BPT received and DAI spent
+        // Verify exact BPT received and DAI spent.
         assertEq(aliceBptAfter, aliceBptBefore + exactBptOut, "Should receive exact BPT amount");
         assertEq(aliceDaiAfter, aliceDaiBefore - pathAmountsIn[0], "DAI should be spent");
         assertLt(pathAmountsIn[0], maxDaiIn, "Should use less than max DAI");
@@ -233,7 +233,7 @@ contract BatchRouterTest is BaseVaultTest {
         IERC20(pool).transfer(alice, bptAmountIn * 2);
         vm.stopPrank();
 
-        // Multi-step: BPT -> DAI -> BPT (remove then add liquidity)
+        // Multi-step: BPT -> DAI -> BPT (remove then add liquidity).
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(pool), // Remove liquidity: BPT -> DAI
@@ -310,19 +310,18 @@ contract BatchRouterTest is BaseVaultTest {
     }
 
     function testBPTRemoveLiquidityIntermediateStepExactOut() public {
-        // Simpler approach: just test that intermediate BPT steps use flashloan logic
-        // by creating a path where the step is NOT the last step
+        // Test that intermediate BPT steps use flashloan logic by creating a path where the step is NOT the last step.
 
         uint256 exactUsdcOut = MIN_AMOUNT;
         uint256 maxBptIn = poolInitAmount / 100;
 
-        // Give Alice some BPT
+        // Give Alice some BPT.
         vm.startPrank(lp);
         IERC20(pool).transfer(alice, maxBptIn);
         vm.stopPrank();
 
-        // Two-step path: BPT -> DAI -> USDC
-        // The BPT removal is in the first position (not last), triggering flashloan logic
+        // Two-step path: BPT -> DAI -> USDC.
+        // The BPT removal is in the first position (not last), triggering flashloan logic.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(pool), // Remove liquidity: BPT -> DAI (NOT LAST STEP)
@@ -419,7 +418,7 @@ contract BatchRouterTest is BaseVaultTest {
 
         uint256 smallDaiOut = MIN_AMOUNT; // Very small amount to ensure unused flashloan
 
-        // Multi-step with intermediate BPT remove that will have unused flashloan.
+        // Multi-step with intermediate BPT remove that will have an unused flashloan.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(pool), // Remove liquidity with flashloan

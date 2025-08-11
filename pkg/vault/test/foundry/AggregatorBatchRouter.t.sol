@@ -100,7 +100,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             minAmountOut: 0
         });
 
-        // Pre-transfer tokens to vault (aggregator/pre-paid pattern).
+        // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
         usdc.transfer(address(vault), exactAmountIn);
 
@@ -145,7 +145,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             maxAmountIn: maxAmountIn
         });
 
-        // Pre-transfer tokens to vault (aggregator/pre-paid pattern).
+        // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
         usdc.transfer(address(vault), maxAmountIn);
 
@@ -183,7 +183,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     function testSwapExactIn_MultiStep() public {
         uint256 exactAmountIn = MIN_SWAP_AMOUNT;
 
-        // Create multi-step path: DAI -> USDC -> WETH
+        // Create multi-step path: DAI -> USDC -> WETH.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
         steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: usdc, isBuffer: false });
         steps[1] = IBatchRouter.SwapPathStep({ pool: secondPool, tokenOut: weth, isBuffer: false });
@@ -196,7 +196,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             minAmountOut: 0
         });
 
-        // Pre-transfer tokens to vault.
+        // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
         dai.transfer(address(vault), exactAmountIn);
 
@@ -238,7 +238,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             maxAmountIn: maxAmountIn
         });
 
-        // Pre-transfer tokens to vault.
+        // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
         dai.transfer(address(vault), maxAmountIn);
 
@@ -294,7 +294,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             minAmountOut: 0
         });
 
-        // Pre-transfer tokens to vault.
+        // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
         dai.transfer(address(vault), exactAmountIn1 + exactAmountIn2);
 
@@ -336,7 +336,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     function testQuerySwapExactIn() public {
         uint256 exactAmountIn = MIN_SWAP_AMOUNT;
 
-        // Create single step path
+        // Create single step path.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
@@ -373,7 +373,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     function testQuerySwapExactOut() public {
         uint256 exactAmountOut = MIN_SWAP_AMOUNT;
 
-        // Create single step path
+        // Create single step path.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
@@ -509,8 +509,6 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     }
 
     function testOperationNotSupportedForBPTOperations() public {
-        // Test that BPT-related operations revert with OperationNotSupported.
-
         // Create a step where pool address equals tokenIn (which would be BPT).
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({
@@ -598,7 +596,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
 
         uint256 snapshot = vm.snapshotState();
 
-        // First query the swap
+        // First query the swap.
         _prankStaticCall();
         (uint256[] memory queryAmountsOut, , ) = aggregatorBatchRouter.querySwapExactIn(paths, alice, bytes(""));
         vm.revertToState(snapshot);
@@ -625,7 +623,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(dai), // Any address for buffer operation
             tokenOut: usdc,
-            isBuffer: true // This is the key flag
+            isBuffer: true // Trigger buffer operations
         });
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
@@ -636,7 +634,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             minAmountOut: 0
         });
 
-        // Pre-transfer tokens to vault
+        // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
         dai.transfer(address(vault), exactAmountIn);
 
@@ -663,7 +661,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             maxAmountIn: maxAmountIn
         });
 
-        // Pre-transfer tokens to vault.
+        // Transfer tokens to the Vault in advance (aggregator/pre-paid pattern).
         vm.startPrank(alice);
         dai.transfer(address(vault), maxAmountIn);
 
