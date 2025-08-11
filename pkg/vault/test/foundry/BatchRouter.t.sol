@@ -449,6 +449,124 @@ contract BatchRouterTest is BaseVaultTest {
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
+    function testBPTRemoveLiquidityWithFlashloanRefund() public {
+        // We need a BPT remove operation that is NOT the last step AND uses flashloan.
+
+        uint256 verySmallDaiOut = 1; // Tiny amount to minimize BPT usage
+        uint256 maxBptIn = poolInitAmount; // Large max to ensure flashloan > actual usage
+
+        // Give Alice a lot of BPT
+        vm.startPrank(lp);
+        IERC20(pool).transfer(alice, maxBptIn);
+        vm.stopPrank();
+
+        // Create a path where BPT removal is NOT the last step in ExactOut.
+        // This should trigger: stepLocals.isLastStep == false.
+        // And the flashloan refund logic.
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
+        steps[0] = IBatchRouter.SwapPathStep({
+            pool: address(pool), // BPT remove (intermediate step)
+            tokenOut: dai,
+            isBuffer: false
+        });
+        steps[1] = IBatchRouter.SwapPathStep({
+            pool: pool, // Regular swap DAI->USDC
+            tokenOut: usdc,
+            isBuffer: false
+        });
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: IERC20(address(pool)), // Start with BPT
+            steps: steps,
+            exactAmountOut: verySmallDaiOut, // Tiny USDC output
+            maxAmountIn: maxBptIn // Large BPT input allowance
+        });
+
+        vm.prank(alice);
+        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    function testBPTRemoveLiquidityNotLastStep() public {
+        // Simple two-step where BPT removal is the FIRST step (not last, in reverse iteration).
+
+        uint256 exactUsdcOut = 1e6; // 1 USDC out
+        uint256 maxBptIn = 1e18; // 1 BPT max in
+
+        // Give Alice some BPT.
+        vm.startPrank(lp);
+        IERC20(pool).transfer(alice, maxBptIn * 2);
+        vm.stopPrank();
+
+        // Two steps: BPT -> DAI -> USDC.
+        // In exactOut inverted processing: USDC is "last", BPT removal is "not last".
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
+        steps[0] = IBatchRouter.SwapPathStep({
+            pool: address(pool), // BPT -> DAI (will be processed as "not last step")
+            tokenOut: dai,
+            isBuffer: false
+        });
+        steps[1] = IBatchRouter.SwapPathStep({
+            pool: pool, // DAI -> USDC
+            tokenOut: usdc,
+            isBuffer: false
+        });
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: IERC20(address(pool)),
+            steps: steps,
+            exactAmountOut: exactUsdcOut,
+            maxAmountIn: maxBptIn
+        });
+
+        vm.prank(alice);
+        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    function testBPTRemoveLiquidityMultiStepBackwards() public {
+        // In ExactOut, steps are processed backwards; the "isLastStep" in reverse iteration is actually
+        // the FIRST step in the array.
+
+        uint256 exactDaiOut = MIN_AMOUNT;
+
+        // Give Alice BPT.
+        vm.startPrank(lp);
+        IERC20(pool).transfer(alice, poolInitAmount / 10);
+        vm.stopPrank();
+
+        // Three-step path processed backwards: [BPT->DAI, DAI->USDC, USDC->DAI].
+        // In reverse processing: USDC->DAI (last), DAI->USDC (middle), BPT->DAI (first).
+        // The BPT->DAI step will be "not last" in reverse iteration.
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        steps[0] = IBatchRouter.SwapPathStep({
+            pool: address(pool), // This becomes "first" in reverse iteration (not last)
+            tokenOut: dai,
+            isBuffer: false
+        });
+        steps[1] = IBatchRouter.SwapPathStep({
+            pool: pool, // Middle step
+            tokenOut: usdc,
+            isBuffer: false
+        });
+        steps[2] = IBatchRouter.SwapPathStep({
+            pool: pool, // This becomes "last" in reverse iteration
+            tokenOut: dai,
+            isBuffer: false
+        });
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: IERC20(address(pool)),
+            steps: steps,
+            exactAmountOut: exactDaiOut,
+            maxAmountIn: poolInitAmount / 10
+        });
+
+        vm.prank(alice);
+        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+    }
+
     /***************************************************************************
                                 Query Functions
     ***************************************************************************/
