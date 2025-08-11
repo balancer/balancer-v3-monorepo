@@ -141,16 +141,18 @@ abstract contract MinimalRouter is RouterCommon {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
-            if (amountIn > 0) {
-                // There can be only one WETH token in the pool.
-                if (params.wethIsEth && address(token) == address(_weth)) {
-                    _weth.wrapEthAndSettle(_vault, amountIn);
-                } else {
-                    // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                    // necessary. Done out of an abundance of caution.
-                    _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                    _vault.settle(token, amountIn);
-                }
+            if (amountIn == 0) {
+                continue;
+            }
+
+            // There can be only one WETH token in the pool.
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                _weth.wrapEthAndSettle(_vault, amountIn);
+            } else {
+                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+                _vault.settle(token, amountIn);
             }
         }
 
@@ -224,16 +226,18 @@ abstract contract MinimalRouter is RouterCommon {
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
 
-            if (amountOut > 0) {
-                IERC20 token = tokens[i];
+            if (amountOut == 0) {
+                continue;
+            }
 
-                // There can be only one WETH token in the pool.
-                if (params.wethIsEth && address(token) == address(_weth)) {
-                    _weth.unwrapWethAndTransferToSender(_vault, params.receiver, amountOut);
-                } else {
-                    // Transfer the token to the receiver (amountOut).
-                    _vault.sendTo(token, params.receiver, amountOut);
-                }
+            IERC20 token = tokens[i];
+
+            // There can be only one WETH token in the pool.
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                _weth.unwrapWethAndTransferToSender(_vault, params.receiver, amountOut);
+            } else {
+                // Transfer the token to the receiver (amountOut).
+                _vault.sendTo(token, params.receiver, amountOut);
             }
         }
     }

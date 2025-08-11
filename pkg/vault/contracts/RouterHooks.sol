@@ -117,20 +117,22 @@ abstract contract RouterHooks is RouterCommon {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
-            if (amountIn > 0) {
-                if (_isAggregator) {
-                    // `amountInHint` represents the amount supposedly paid upfront by the sender.
-                    uint256 amountInHint = params.maxAmountsIn[i];
+            if (amountIn == 0) {
+                continue;
+            }
 
-                    uint256 tokenInCredit = _vault.settle(token, amountInHint);
-                    if (tokenInCredit < amountInHint) {
-                        revert InsufficientPayment(token);
-                    }
+            if (_isAggregator) {
+                // `amountInHint` represents the amount supposedly paid upfront by the sender.
+                uint256 amountInHint = params.maxAmountsIn[i];
 
-                    _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
-                } else {
-                    _takeTokenIn(params.sender, token, amountIn, params.wethIsEth);
+                uint256 tokenInCredit = _vault.settle(token, amountInHint);
+                if (tokenInCredit < amountInHint) {
+                    revert InsufficientPayment(token);
                 }
+
+                _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
+            } else {
+                _takeTokenIn(params.sender, token, amountIn, params.wethIsEth);
             }
         }
 

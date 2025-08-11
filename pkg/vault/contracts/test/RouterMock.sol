@@ -204,12 +204,15 @@ contract RouterMock is Router {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
-            if (amountIn > 0) {
-                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                _vault.settle(token, amountIn);
+
+            if (amountIn == 0) {
+                continue;
             }
+
+            // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+            // necessary. Done out of an abundance of caution.
+            _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
+            _vault.settle(token, amountIn);
         }
 
         (bptAmountIn, amountsOut, ) = _vault.removeLiquidity(
@@ -226,10 +229,13 @@ contract RouterMock is Router {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountOut = amountsOut[i];
-            if (amountOut > 0) {
-                // Transfer the token to the sender (amountOut).
-                _vault.sendTo(token, params.sender, amountOut);
+
+            if (amountOut == 0) {
+                continue;
             }
+
+            // Transfer the token to the sender (amountOut).
+            _vault.sendTo(token, params.sender, amountOut);
         }
     }
 }
