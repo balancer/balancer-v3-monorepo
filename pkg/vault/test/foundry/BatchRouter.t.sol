@@ -350,8 +350,8 @@ contract BatchRouterTest is BaseVaultTest {
     function testBPTAddLiquidityIntermediateStepExactOut() public {
         uint256 maxUsdcIn = poolInitAmount / 100;
 
-        // Two-step path: USDC -> BPT -> DAI
-        // The BPT addition is intermediate, triggering the "not first step" logic
+        // Two-step path: USDC -> BPT -> DAI.
+        // The BPT addition is intermediate, triggering the "not first step" logic.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
         steps[0] = IBatchRouter.SwapPathStep({
             pool: pool, // Regular swap: USDC -> DAI
