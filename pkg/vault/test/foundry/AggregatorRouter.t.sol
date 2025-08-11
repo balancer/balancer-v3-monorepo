@@ -689,32 +689,27 @@ contract AggregatorRouterTest is BaseVaultTest {
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), lp);
     }
 
-    function removeLiquidityCustom() public {
+    function testRemoveLiquidityCustom() public {
         uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
-        uint256 maxBptAmountIn = IERC20(pool).totalSupply();
-        uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[daiIdx] = balancesBefore.lpTokens[daiIdx];
-        minAmountsOut[usdcIdx] = balancesBefore.lpTokens[usdcIdx];
+        uint256 exactBptAmountIn = IERC20(pool).balanceOf(lp);
 
         vm.startPrank(lp);
-        IERC20(pool).approve(address(aggregatorRouter), maxBptAmountIn);
+        IERC20(pool).approve(address(aggregatorRouter), exactBptAmountIn);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = aggregatorRouter.removeLiquidityCustom(
+        (, uint256[] memory amountsOut, ) = aggregatorRouter.removeLiquidityCustom(
             pool,
-            maxBptAmountIn,
-            minAmountsOut,
+            exactBptAmountIn,
+            new uint256[](2),
             bytes("")
         );
         vm.stopPrank();
 
-        assertLe(bptAmountIn, maxBptAmountIn, "BPT amount in should be less than or equal to max BPT amount in");
-
         int256[] memory vaultBalancesDiff = new int256[](2);
         vaultBalancesDiff[daiIdx] = -int256(amountsOut[daiIdx]);
         vaultBalancesDiff[usdcIdx] = -int256(amountsOut[usdcIdx]);
-        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), lp);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(exactBptAmountIn), lp);
     }
 
     function testRemoveLiquidityRecovery() public {
