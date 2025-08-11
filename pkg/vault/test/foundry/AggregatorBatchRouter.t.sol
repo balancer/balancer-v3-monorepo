@@ -625,7 +625,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(dai), // Any address for buffer operation
             tokenOut: usdc,
-            isBuffer: true  // This is the key flag
+            isBuffer: true // This is the key flag
         });
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
@@ -653,11 +653,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
 
         // Create buffer operation step.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({
-            pool: address(dai),
-            tokenOut: usdc,
-            isBuffer: true
-        });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(dai), tokenOut: usdc, isBuffer: true });
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
@@ -682,11 +678,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 maxAmountIn = MIN_SWAP_AMOUNT * 2;
 
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({
-            pool: pool,
-            tokenOut: dai,
-            isBuffer: false
-        });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: pool, tokenOut: dai, isBuffer: false });
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
@@ -720,7 +712,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         steps[0] = IBatchRouter.SwapPathStep({
             pool: address(dai), // pool == tokenOut triggers BPT add liquidity logic
-            tokenOut: dai,      // This makes it a BPT operation
+            tokenOut: dai, // This makes it a BPT operation
             isBuffer: false
         });
 
