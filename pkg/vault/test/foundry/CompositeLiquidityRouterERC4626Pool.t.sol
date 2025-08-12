@@ -977,7 +977,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         _prankStaticCall();
         uint256[] memory expectedWrappedAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityRecovery(
             pool,
-            bob,
             exactBptAmountIn
         );
         vm.revertToState(snapshot);
