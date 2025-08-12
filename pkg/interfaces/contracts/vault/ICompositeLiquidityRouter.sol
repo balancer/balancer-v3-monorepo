@@ -100,7 +100,7 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 
     /***************************************************************************
                                    Nested pools
