@@ -96,7 +96,7 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
-    function removeLiquidityRecoveryFromERC4626Pool(
+    function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
@@ -157,24 +157,5 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
         address[] memory tokensToUnwrap,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut);
-
-    /**
-     * @notice Removes liquidity from a nested pool in Recovery Mode.
-     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
-     * multiple pools involved, the token order is not well-defined, and must be specified by the caller. We will not
-     * unwrap any tokens, or use native ETH. All pools (parent and child) must be in Recovery Mode.
-     *
-     * @param parentPool The address of the parent pool (which contains BPTs of other pools)
-     * @param exactBptAmountIn The exact amount of `parentPool` tokens provided
-     * @param tokensOut An array with all tokens from the child pools, and all non-BPT parent tokens, in arbitrary order
-     * @param minAmountsOut An array with the minimum amountOut of each token, sorted in the same order as tokensOut
-     * @return amountsOut An array with the actual amountOut of each token, sorted in the same order as tokensOut
-     */
-    function removeLiquidityRecoveryNestedPool(
-        address parentPool,
-        uint256 exactBptAmountIn,
-        address[] memory tokensOut,
-        uint256[] memory minAmountsOut
     ) external payable returns (uint256[] memory amountsOut);
 }

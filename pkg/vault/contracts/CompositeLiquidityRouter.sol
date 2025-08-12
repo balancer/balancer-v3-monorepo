@@ -131,7 +131,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
     }
 
     /// @inheritdoc ICompositeLiquidityRouter
-    function removeLiquidityRecoveryFromERC4626Pool(
+    function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
@@ -140,7 +140,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
             abi.decode(
                 _vault.unlock(
                     abi.encodeCall(
-                        CompositeLiquidityRouterHooks.removeLiquidityERC4626PoolRecoveryHook,
+                        CompositeLiquidityRouterHooks.removeLiquidityRecoveryHook,
                         (pool, msg.sender, exactBptAmountIn, minAmountsOut)
                     )
                 ),
@@ -213,24 +213,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
                         tokensOut,
                         tokensToUnwrap
                     )
-                )
-            ),
-            (uint256[])
-        );
-    }
-
-    /// @inheritdoc ICompositeLiquidityRouter
-    function removeLiquidityRecoveryNestedPool(
-        address parentPool,
-        uint256 exactBptAmountIn,
-        address[] memory tokensOut,
-        uint256[] memory minAmountsOut
-    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
-            _vault.unlock(
-                abi.encodeCall(
-                    CompositeLiquidityRouterHooks.removeLiquidityRecoveryNestedPoolHook,
-                    (parentPool, msg.sender, exactBptAmountIn, tokensOut, minAmountsOut)
                 )
             ),
             (uint256[])
