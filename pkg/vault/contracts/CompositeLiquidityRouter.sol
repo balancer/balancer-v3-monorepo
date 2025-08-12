@@ -135,7 +135,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minAmountsOut
-    ) external payable saveSender(msg.sender) returns (uint256[] memory) {
+    ) external payable returns (uint256[] memory) {
         return
             abi.decode(
                 _vault.unlock(
