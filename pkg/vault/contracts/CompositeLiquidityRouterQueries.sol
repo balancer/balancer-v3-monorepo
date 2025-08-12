@@ -34,9 +34,8 @@ abstract contract CompositeLiquidityRouterQueries is ICompositeLiquidityRouterQu
     /// @inheritdoc ICompositeLiquidityRouterQueries
     function queryRemoveLiquidityRecovery(
         address pool,
-        address sender,
         uint256 exactBptAmountIn
-    ) external saveSender(sender) returns (uint256[] memory) {
+    ) external returns (uint256[] memory) {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
 
         return
@@ -44,7 +43,7 @@ abstract contract CompositeLiquidityRouterQueries is ICompositeLiquidityRouterQu
                 _vault.quote(
                     abi.encodeCall(
                         CompositeLiquidityRouterHooks.removeLiquidityRecoveryHook,
-                        (pool, sender, exactBptAmountIn, new uint256[](poolTokens.length))
+                        (pool, address(this), exactBptAmountIn, new uint256[](poolTokens.length))
                     )
                 ),
                 (uint256[])
