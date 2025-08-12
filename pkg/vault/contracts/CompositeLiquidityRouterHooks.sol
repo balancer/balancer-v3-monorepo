@@ -214,12 +214,12 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator && (liquidityParams.wethIsEth == false || settlementToken != address(_weth))) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), amountIn);
-            } else {
+            if (_isAggregator == false || (liquidityParams.wethIsEth && settlementToken == address(_weth))) {
                 // Retrieve tokens from the sender using Permit2
                 _takeTokenIn(liquidityParams.sender, IERC20(settlementToken), amountIn, liquidityParams.wethIsEth);
+            } else {
+                // Settle the prepayment amount that was already sent
+                _vault.settle(IERC20(settlementToken), amountIn);
             }
         }
 
@@ -266,12 +266,12 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator && (liquidityParams.wethIsEth == false || address(settlementToken) != address(_weth))) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), maxAmountIn);
-            } else {
+            if (_isAggregator == false || (liquidityParams.wethIsEth && address(settlementToken) == address(_weth))) {
                 // Retrieve tokens from the sender using Permit2
                 _takeTokenIn(liquidityParams.sender, settlementToken, maxAmountIn, liquidityParams.wethIsEth);
+            } else {
+                // Settle the prepayment amount that was already sent
+                _vault.settle(IERC20(settlementToken), maxAmountIn);
             }
         }
 
@@ -686,10 +686,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (underlyingAmountIn > 0) {
             if (isStaticCall == false) {
-                if (_isAggregator && (liquidityParams.wethIsEth == false || underlyingToken != address(_weth))) {
-                    // Settle the prepayment amount that was already sent
-                    _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
-                } else {
+                if (_isAggregator == false || (liquidityParams.wethIsEth && underlyingToken == address(_weth))) {
                     // Retrieve tokens from the sender using Permit2
                     _takeTokenIn(
                         liquidityParams.sender,
@@ -697,6 +694,9 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                         underlyingAmountIn,
                         liquidityParams.wethIsEth
                     );
+                } else {
+                    // Settle the prepayment amount that was already sent
+                    _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
                 }
             }
 
