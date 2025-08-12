@@ -147,6 +147,34 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
     }
 
+    /**
+     * @notice Hook for removing liquidity in Recovery Mode.
+     * @dev Can only be called by the Vault, when the pool is in Recovery Mode.
+     * @param pool Address of the liquidity pool
+     * @param sender Account originating the remove liquidity operation
+     * @param exactBptAmountIn BPT amount burned for the output tokens
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
+     * @return amountsOut Actual token amounts transferred in exchange for the BPT
+     */
+    function removeLiquidityERC4626PoolRecoveryHook(
+        address pool,
+        address sender,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        amountsOut = _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
+
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 amountOut = amountsOut[i];
+            if (amountOut > 0) {
+                // Transfer the token to the sender (amountOut).
+                _vault.sendTo(tokens[i], sender, amountOut);
+            }
+        }
+    }
+
     // ERC4626 Pool helper functions
 
     /**
@@ -561,6 +589,90 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (EVMCallModeHelpers.isStaticCall() == false) {
             _settlePaths(params.sender, params.wethIsEth, _isAggregator);
+        }
+    }
+
+    function removeLiquidityRecoveryNestedPoolHook(
+        address parentPool,
+        address sender,
+        uint256 exactBptAmountIn,
+        address[] memory tokensOut,
+        uint256[] memory minAmountsOut
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        InputHelpers.ensureInputLengthMatch(tokensOut.length, minAmountsOut.length);
+
+        uint256[] memory parentPoolAmountsOut = _vault.removeLiquidityRecovery(
+            parentPool,
+            sender,
+            exactBptAmountIn,
+            minAmountsOut
+        );
+
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(parentPool);
+        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
+            address parentPoolToken = address(parentPoolTokens[i]);
+            uint256 parentPoolAmountOut = parentPoolAmountsOut[i];
+
+            if (_vault.isPoolRegistered(parentPoolToken)) {
+                // Token is a BPT, so remove liquidity from the child pool.
+
+                // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
+                // practice just use the existing credit).
+                _vault.sendTo(IERC20(parentPoolToken), address(this), parentPoolAmountOut);
+
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(parentPoolToken);
+
+                // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
+                // is both owner and spender (which doesn't need approval).
+                uint256[] memory childPoolAmountsOut = _vault.removeLiquidityRecovery(
+                    parentPool,
+                    address(this),
+                    parentPoolAmountOut,
+                    new uint256[](childPoolTokens.length)
+                );
+
+                // Return amounts to user.
+                for (uint256 j = 0; j < childPoolTokens.length; j++) {
+                    _updateSwapTokensOut(address(childPoolTokens[j]), childPoolAmountsOut[j]);
+                }
+            } else {
+                // We never unwrap. If the token is not a BPT, return the amount to the user.
+                _updateSwapTokensOut(parentPoolToken, parentPoolAmountOut);
+            }
+        }
+
+        uint256 numTokensOut = tokensOut.length;
+
+        if (_currentSwapTokensOut().length() != numTokensOut) {
+            // If tokensOut length does not match transient tokens out length, the tokensOut array is wrong.
+            revert ICompositeLiquidityRouterErrors.WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
+        }
+
+        // The hook writes current swap token and token amounts out.
+        amountsOut = new uint256[](numTokensOut);
+
+        bool[] memory checkedTokenIndexes = new bool[](numTokensOut);
+        for (uint256 i = 0; i < numTokensOut; ++i) {
+            address tokenOut = tokensOut[i];
+            uint256 tokenIndex = _currentSwapTokensOut().indexOf(tokenOut);
+
+            if (_currentSwapTokensOut().contains(tokenOut) == false || checkedTokenIndexes[tokenIndex]) {
+                // If tokenOut is not in transient tokens out array or token is repeated, the tokensOut array is wrong.
+                revert ICompositeLiquidityRouterErrors.WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
+            }
+
+            // Note that the token in the transient array index has already been checked.
+            checkedTokenIndexes[tokenIndex] = true;
+
+            amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokenOut);
+
+            if (amountsOut[i] < minAmountsOut[i]) {
+                revert IVaultErrors.AmountOutBelowMin(IERC20(tokenOut), amountsOut[i], minAmountsOut[i]);
+            }
+        }
+
+        if (EVMCallModeHelpers.isStaticCall() == false) {
+            _settlePaths(sender, false, _isAggregator);
         }
     }
 
