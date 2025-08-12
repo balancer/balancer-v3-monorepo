@@ -109,7 +109,7 @@ abstract contract BatchRouterCommon is RouterCommon {
             address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
             uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
 
-            if (isAggregator) {
+            if (isAggregator && (wethIsEth == false || tokenIn != address(_weth))) {
                 _vault.settle(IERC20(tokenIn), amount);
             } else {
                 _takeTokenIn(sender, IERC20(tokenIn), amount, wethIsEth);

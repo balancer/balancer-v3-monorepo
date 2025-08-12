@@ -41,8 +41,8 @@ contract AggregatorRouterTest is BaseVaultTest {
     AggregatorRouter internal aggregatorRouter;
     SimpleEIP7702Contract internal delegatedContractCode;
 
-    // Track the indices for the standard dai/usdc pool.
-    uint256 internal daiIdx;
+    // Track the indices for the standard weth/usdc pool.
+    uint256 internal wethIdx;
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
@@ -79,7 +79,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         PoolFactoryMock(poolFactory).registerPool(
             newPool,
             vault.buildTokenConfig(
-                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                [address(weth), address(usdc)].toMemoryArray().asIERC20(),
                 rateProviders,
                 paysYieldFees
             ),
@@ -88,7 +88,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             liquidityManagement
         );
 
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+        (wethIdx, usdcIdx) = getSortedIndexes(address(weth), address(usdc));
 
         poolArgs = abi.encode(vault, name, symbol);
     }
@@ -99,7 +99,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
     function testSwapExactIn__Fuzz(uint256 swapAmount) public {
         uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
-        swapAmount = bound(swapAmount, MIN_SWAP_AMOUNT, poolBalancesBefore[daiIdx]);
+        swapAmount = bound(swapAmount, MIN_SWAP_AMOUNT, poolBalancesBefore[wethIdx]);
 
         vm.startPrank(alice);
         usdc.transfer(address(vault), swapAmount);
@@ -107,7 +107,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 outputTokenAmount = aggregatorRouter.swapSingleTokenExactIn(
             pool,
             usdc,
-            dai,
+            weth,
             swapAmount,
             0,
             MAX_UINT256,
@@ -119,15 +119,85 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256[] memory poolBalancesAfter = vault.getCurrentLiveBalances(pool);
 
         assertEq(usdc.balanceOf(alice), defaultAccountBalance() - swapAmount, "Wrong USDC balance");
-        assertEq(dai.balanceOf(alice), defaultAccountBalance() + outputTokenAmount, "Wrong DAI balance");
-        assertEq(poolBalancesAfter[daiIdx], poolBalancesBefore[daiIdx] - outputTokenAmount, "Wrong DAI pool balance");
+        assertEq(weth.balanceOf(alice), defaultAccountBalance() + outputTokenAmount, "Wrong WETH balance");
+        assertEq(
+            poolBalancesAfter[wethIdx],
+            poolBalancesBefore[wethIdx] - outputTokenAmount,
+            "Wrong WETH pool balance"
+        );
+        assertEq(poolBalancesAfter[usdcIdx], poolBalancesBefore[usdcIdx] + swapAmount, "Wrong USDC pool balance");
+    }
+
+    function testSwapExactInEthToUsdc() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        uint256 swapAmount = poolBalancesBefore[wethIdx] / 2;
+
+        uint256 ethAliceBalanceBefore = alice.balance;
+
+        vm.prank(alice);
+        uint256 outputTokenAmount = aggregatorRouter.swapSingleTokenExactIn{ value: swapAmount }(
+            pool,
+            weth,
+            usdc,
+            swapAmount,
+            0,
+            MAX_UINT256,
+            true,
+            bytes("")
+        );
+        assertEq(alice.balance, ethAliceBalanceBefore - swapAmount, "Wrong ETH balance");
+
+        uint256[] memory poolBalancesAfter = vault.getCurrentLiveBalances(pool);
+
+        assertEq(usdc.balanceOf(alice), defaultAccountBalance() + outputTokenAmount, "Wrong USDC balance");
+        assertEq(weth.balanceOf(alice), defaultAccountBalance(), "Wrong WETH balance");
+        assertEq(poolBalancesAfter[wethIdx], poolBalancesBefore[wethIdx] + swapAmount, "Wrong WETH pool balance");
+        assertEq(
+            poolBalancesAfter[usdcIdx],
+            poolBalancesBefore[usdcIdx] - outputTokenAmount,
+            "Wrong USDC pool balance"
+        );
+    }
+
+    function testSwapExactInUsdcToEth() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        uint256 swapAmount = poolBalancesBefore[usdcIdx] / 2;
+
+        uint256 ethAliceBalanceBefore = alice.balance;
+
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), swapAmount);
+
+        uint256 outputTokenAmount = aggregatorRouter.swapSingleTokenExactIn(
+            pool,
+            usdc,
+            weth,
+            swapAmount,
+            0,
+            MAX_UINT256,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(alice.balance, ethAliceBalanceBefore + outputTokenAmount, "Wrong ETH balance");
+
+        uint256[] memory poolBalancesAfter = vault.getCurrentLiveBalances(pool);
+
+        assertEq(usdc.balanceOf(alice), defaultAccountBalance() - swapAmount, "Wrong USDC balance");
+        assertEq(weth.balanceOf(alice), defaultAccountBalance(), "Wrong WETH balance");
+        assertEq(
+            poolBalancesAfter[wethIdx],
+            poolBalancesBefore[wethIdx] - outputTokenAmount,
+            "Wrong WETH pool balance"
+        );
         assertEq(poolBalancesAfter[usdcIdx], poolBalancesBefore[usdcIdx] + swapAmount, "Wrong USDC pool balance");
     }
 
     function testQuerySwapExactIn() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        aggregatorRouter.querySwapSingleTokenExactIn(pool, usdc, dai, MIN_SWAP_AMOUNT, address(this), bytes(""));
+        aggregatorRouter.querySwapSingleTokenExactIn(pool, usdc, weth, MIN_SWAP_AMOUNT, address(this), bytes(""));
     }
 
     function testSwapExactInMinAmountOut() public {
@@ -138,7 +208,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         aggregatorRouter.swapSingleTokenExactIn(
             pool,
             usdc,
-            dai,
+            weth,
             DEFAULT_AMOUNT,
             DEFAULT_AMOUNT + 1,
             MAX_UINT256,
@@ -155,7 +225,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         aggregatorRouter.swapSingleTokenExactIn(
             pool,
             usdc,
-            dai,
+            weth,
             DEFAULT_AMOUNT,
             DEFAULT_AMOUNT,
             block.timestamp - 1,
@@ -173,13 +243,13 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 insufficientAmount = MIN_SWAP_AMOUNT;
 
         vm.startPrank(alice);
-        dai.transfer(address(vault), insufficientAmount);
+        weth.transfer(address(vault), insufficientAmount);
 
         // The operation is reverted because we’re trying to take more tokens out of the pool than it has in its balance.
         vm.expectRevert();
         aggregatorRouter.swapSingleTokenExactIn(
             pool,
-            dai,
+            weth,
             usdc,
             exactAmountIn,
             minAmountOut,
@@ -198,21 +268,21 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 partialTransfer = DEFAULT_AMOUNT / 2;
 
         vm.startPrank(alice);
-        dai.transfer(address(vault), partialTransfer);
-        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
-        aggregatorRouter.swapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, 0, MAX_UINT256, false, bytes(""));
+        weth.transfer(address(vault), partialTransfer);
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
+        aggregatorRouter.swapSingleTokenExactIn(pool, weth, usdc, exactAmountIn, 0, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 
     function testQuerySwapExactIn__Fuzz(uint256 swapAmountExactIn) public {
-        swapAmountExactIn = bound(swapAmountExactIn, MIN_SWAP_AMOUNT, vault.getCurrentLiveBalances(pool)[daiIdx]);
+        swapAmountExactIn = bound(swapAmountExactIn, MIN_SWAP_AMOUNT, vault.getCurrentLiveBalances(pool)[wethIdx]);
 
         // First query the swap.
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
         uint256 queryAmountOut = aggregatorRouter.querySwapSingleTokenExactIn(
             pool,
-            dai,
+            weth,
             usdc,
             swapAmountExactIn,
             alice,
@@ -223,10 +293,10 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         // Then execute the actual swap.
         vm.startPrank(alice);
-        dai.transfer(address(vault), swapAmountExactIn);
+        weth.transfer(address(vault), swapAmountExactIn);
         uint256 actualAmountOut = aggregatorRouter.swapSingleTokenExactIn(
             pool,
-            dai,
+            weth,
             usdc,
             swapAmountExactIn,
             0,
@@ -247,15 +317,15 @@ contract AggregatorRouterTest is BaseVaultTest {
     function testSwapExactOut__Fuzz(uint256 swapAmountExactOut) public {
         uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
 
-        swapAmountExactOut = bound(swapAmountExactOut, MIN_SWAP_AMOUNT, poolBalancesBefore[daiIdx]);
-        uint256 maxAmountIn = dai.balanceOf(alice);
+        swapAmountExactOut = bound(swapAmountExactOut, MIN_SWAP_AMOUNT, poolBalancesBefore[wethIdx]);
+        uint256 maxAmountIn = weth.balanceOf(alice);
 
         vm.startPrank(alice);
-        dai.transfer(address(vault), maxAmountIn);
+        weth.transfer(address(vault), maxAmountIn);
 
         uint256 swapAmountExactIn = aggregatorRouter.swapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             swapAmountExactOut,
             maxAmountIn,
@@ -266,9 +336,13 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         uint256[] memory poolBalancesAfter = vault.getCurrentLiveBalances(pool);
-        assertEq(dai.balanceOf(alice), defaultAccountBalance() - swapAmountExactIn, "Wrong DAI balance");
+        assertEq(weth.balanceOf(alice), defaultAccountBalance() - swapAmountExactIn, "Wrong WETH balance");
         assertEq(usdc.balanceOf(alice), defaultAccountBalance() + swapAmountExactOut, "Wrong USDC balance");
-        assertEq(poolBalancesAfter[daiIdx], poolBalancesBefore[daiIdx] + swapAmountExactIn, "Wrong DAI pool balance");
+        assertEq(
+            poolBalancesAfter[wethIdx],
+            poolBalancesBefore[wethIdx] + swapAmountExactIn,
+            "Wrong WETH pool balance"
+        );
         assertEq(
             poolBalancesAfter[usdcIdx],
             poolBalancesBefore[usdcIdx] - swapAmountExactOut,
@@ -276,18 +350,90 @@ contract AggregatorRouterTest is BaseVaultTest {
         );
     }
 
+    function testSwapExactOutEthToUsdc() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+
+        uint256 ethAliceBalanceBefore = alice.balance;
+        uint256 swapAmountExactOut = poolBalancesBefore[usdcIdx] / 2;
+        uint256 maxAmountIn = ethAliceBalanceBefore;
+
+        vm.prank(alice);
+        uint256 swapAmountExactIn = aggregatorRouter.swapSingleTokenExactOut{ value: maxAmountIn }(
+            pool,
+            weth,
+            usdc,
+            swapAmountExactOut,
+            maxAmountIn,
+            MAX_UINT256,
+            true,
+            bytes("")
+        );
+        assertEq(alice.balance, ethAliceBalanceBefore - swapAmountExactIn, "Wrong ETH balance");
+
+        uint256[] memory poolBalancesAfter = vault.getCurrentLiveBalances(pool);
+        assertEq(weth.balanceOf(alice), defaultAccountBalance(), "Wrong WETH balance");
+        assertEq(usdc.balanceOf(alice), defaultAccountBalance() + swapAmountExactOut, "Wrong USDC balance");
+        assertEq(
+            poolBalancesAfter[wethIdx],
+            poolBalancesBefore[wethIdx] + swapAmountExactIn,
+            "Wrong WETH pool balance"
+        );
+        assertEq(
+            poolBalancesAfter[usdcIdx],
+            poolBalancesBefore[usdcIdx] - swapAmountExactOut,
+            "Wrong USDC pool balance"
+        );
+    }
+
+    function testSwapExactOutUsdcToEth() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+
+        uint256 swapAmountExactOut = poolBalancesBefore[wethIdx] / 2;
+        uint256 maxAmountIn = usdc.balanceOf(alice);
+
+        uint256 ethAliceBalanceBefore = alice.balance;
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), maxAmountIn);
+        uint256 swapAmountExactIn = aggregatorRouter.swapSingleTokenExactOut(
+            pool,
+            usdc,
+            weth,
+            swapAmountExactOut,
+            maxAmountIn,
+            MAX_UINT256,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+        assertEq(alice.balance, ethAliceBalanceBefore + swapAmountExactOut, "Wrong ETH balance");
+
+        uint256[] memory poolBalancesAfter = vault.getCurrentLiveBalances(pool);
+        assertEq(weth.balanceOf(alice), defaultAccountBalance(), "Wrong WETH balance");
+        assertEq(usdc.balanceOf(alice), defaultAccountBalance() - swapAmountExactIn, "Wrong USDC balance");
+        assertEq(
+            poolBalancesAfter[wethIdx],
+            poolBalancesBefore[wethIdx] - swapAmountExactOut,
+            "Wrong WETH pool balance"
+        );
+        assertEq(
+            poolBalancesAfter[usdcIdx],
+            poolBalancesBefore[usdcIdx] + swapAmountExactIn,
+            "Wrong USDC pool balance"
+        );
+    }
+
     function testQuerySwapExactOut() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        aggregatorRouter.querySwapSingleTokenExactOut(pool, dai, usdc, MAX_UINT256, address(this), bytes(""));
+        aggregatorRouter.querySwapSingleTokenExactOut(pool, weth, usdc, MAX_UINT256, address(this), bytes(""));
     }
 
     function testSwapExactOutWithoutPayment() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
         aggregatorRouter.swapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             MIN_SWAP_AMOUNT,
             MIN_SWAP_AMOUNT,
@@ -299,12 +445,12 @@ contract AggregatorRouterTest is BaseVaultTest {
 
     function testSwapExactOutMaxAmountIn() public {
         vm.startPrank(alice);
-        dai.transfer(address(vault), DEFAULT_AMOUNT);
+        weth.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, DEFAULT_AMOUNT + 1, DEFAULT_AMOUNT));
         aggregatorRouter.swapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             DEFAULT_AMOUNT + 1,
             DEFAULT_AMOUNT,
@@ -316,12 +462,12 @@ contract AggregatorRouterTest is BaseVaultTest {
 
     function testSwapExactOutDeadline() public {
         vm.startPrank(alice);
-        dai.transfer(address(vault), DEFAULT_AMOUNT);
+        weth.transfer(address(vault), DEFAULT_AMOUNT);
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         aggregatorRouter.swapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             DEFAULT_AMOUNT,
             DEFAULT_AMOUNT,
@@ -340,11 +486,11 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 insufficientAmount = MIN_SWAP_AMOUNT;
 
         vm.startPrank(alice);
-        dai.transfer(address(vault), insufficientAmount);
-        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
+        weth.transfer(address(vault), insufficientAmount);
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
         aggregatorRouter.swapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             exactAmountOut,
             maxAmountIn,
@@ -360,15 +506,15 @@ contract AggregatorRouterTest is BaseVaultTest {
         // send the correct amount, the swap will revert.
 
         uint256 exactAmountOut = MIN_SWAP_AMOUNT;
-        uint256 maxAmountIn = dai.balanceOf(alice);
+        uint256 maxAmountIn = weth.balanceOf(alice);
         uint256 partialTransfer = maxAmountIn / 2;
 
         vm.startPrank(alice);
-        dai.transfer(address(vault), partialTransfer);
-        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(dai)));
+        weth.transfer(address(vault), partialTransfer);
+        vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(weth)));
         aggregatorRouter.swapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             exactAmountOut,
             maxAmountIn,
@@ -381,14 +527,14 @@ contract AggregatorRouterTest is BaseVaultTest {
 
     function testQuerySwapExactOut__Fuzz(uint256 swapAmountExactOut) public {
         swapAmountExactOut = bound(swapAmountExactOut, MIN_SWAP_AMOUNT, vault.getCurrentLiveBalances(pool)[usdcIdx]);
-        uint256 maxAmountIn = dai.balanceOf(alice);
+        uint256 maxAmountIn = weth.balanceOf(alice);
 
         // First query the swap.
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
         uint256 queryAmountIn = aggregatorRouter.querySwapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             swapAmountExactOut,
             alice,
@@ -399,10 +545,10 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         // Then execute the actual swap.
         vm.startPrank(alice);
-        dai.transfer(address(vault), maxAmountIn);
+        weth.transfer(address(vault), maxAmountIn);
         uint256 actualAmountIn = aggregatorRouter.swapSingleTokenExactOut(
             pool,
-            dai,
+            weth,
             usdc,
             swapAmountExactOut,
             maxAmountIn,
@@ -427,12 +573,12 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256[] memory maxAmountsIn = new uint256[](2);
-        maxAmountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx];
+        maxAmountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx];
         maxAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx];
 
         vm.startPrank(alice);
         usdc.transfer(address(vault), maxAmountsIn[usdcIdx]);
-        dai.transfer(address(vault), maxAmountsIn[daiIdx]);
+        weth.transfer(address(vault), maxAmountsIn[wethIdx]);
 
         uint256[] memory amountsIn = aggregatorRouter.addLiquidityProportional(
             pool,
@@ -444,9 +590,9 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         assertGt(
-            maxAmountsIn[daiIdx],
-            amountsIn[daiIdx],
-            "Max DAI amount in should be greater than actual DAI amount in"
+            maxAmountsIn[wethIdx],
+            amountsIn[wethIdx],
+            "Max weth amount in should be greater than actual weth amount in"
         );
         assertGt(
             maxAmountsIn[usdcIdx],
@@ -455,9 +601,58 @@ contract AggregatorRouterTest is BaseVaultTest {
         );
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = int256(amountsIn[daiIdx]);
+        vaultBalancesDiff[wethIdx] = int256(amountsIn[wethIdx]);
         vaultBalancesDiff[usdcIdx] = int256(amountsIn[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(exactBptAmountOut), alice);
+    }
+
+    function testAddLiquidityProportionalWithEth() public {
+        uint256 exactBptAmountOut = IERC20(pool).totalSupply() / 5;
+
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256 ethBalanceBefore = alice.balance;
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[wethIdx] = ethBalanceBefore;
+        maxAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx];
+
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), maxAmountsIn[usdcIdx]);
+
+        uint256[] memory amountsIn = aggregatorRouter.addLiquidityProportional{ value: maxAmountsIn[wethIdx] }(
+            pool,
+            maxAmountsIn,
+            exactBptAmountOut,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(alice.balance, ethBalanceBefore - amountsIn[wethIdx], "Wrong ETH balance");
+
+        assertGt(
+            maxAmountsIn[wethIdx],
+            amountsIn[wethIdx],
+            "Max weth amount in should be greater than actual weth amount in"
+        );
+        assertGt(
+            maxAmountsIn[usdcIdx],
+            amountsIn[usdcIdx],
+            "Max USDC amount in should be greater than actual USDC amount in"
+        );
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = int256(amountsIn[wethIdx]);
+        vaultBalancesDiff[usdcIdx] = int256(amountsIn[usdcIdx]);
+        _checkBalancesDiff(
+            balancesBefore,
+            poolBalancesBefore,
+            vaultBalancesDiff,
+            int256(exactBptAmountOut),
+            true,
+            alice
+        );
     }
 
     function testAddLiquidityProportionalRevertIfInsufficientPayment() public {
@@ -466,12 +661,12 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256[] memory maxAmountsIn = new uint256[](2);
-        maxAmountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx];
+        maxAmountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx];
         maxAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx];
 
         vm.startPrank(alice);
         usdc.transfer(address(vault), maxAmountsIn[usdcIdx] / 2);
-        dai.transfer(address(vault), maxAmountsIn[daiIdx] / 2);
+        weth.transfer(address(vault), maxAmountsIn[wethIdx] / 2);
 
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(usdc)));
         aggregatorRouter.addLiquidityProportional(pool, maxAmountsIn, exactBptAmountOut, false, bytes(""));
@@ -483,12 +678,12 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256[] memory exactAmountsIn = new uint256[](2);
-        exactAmountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx] / 2;
+        exactAmountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx] / 2;
         exactAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx] / 3;
 
         vm.startPrank(alice);
         usdc.transfer(address(vault), exactAmountsIn[usdcIdx]);
-        dai.transfer(address(vault), exactAmountsIn[daiIdx]);
+        weth.transfer(address(vault), exactAmountsIn[wethIdx]);
 
         uint256 bptAmountOut = aggregatorRouter.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, bytes(""));
         vm.stopPrank();
@@ -496,21 +691,52 @@ contract AggregatorRouterTest is BaseVaultTest {
         assertGt(bptAmountOut, 0, "BPT amount out should be greater than zero for unbalanced liquidity");
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = int256(exactAmountsIn[daiIdx]);
+        vaultBalancesDiff[wethIdx] = int256(exactAmountsIn[wethIdx]);
         vaultBalancesDiff[usdcIdx] = int256(exactAmountsIn[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(bptAmountOut), alice);
+    }
+
+    function testAddLiquidityUnbalancedWithEth() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256 ethBalanceBefore = alice.balance;
+        uint256[] memory exactAmountsIn = new uint256[](2);
+        exactAmountsIn[wethIdx] = ethBalanceBefore / 100;
+        exactAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx] / 3;
+
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), exactAmountsIn[usdcIdx]);
+
+        uint256 bptAmountOut = aggregatorRouter.addLiquidityUnbalanced{ value: exactAmountsIn[wethIdx] }(
+            pool,
+            exactAmountsIn,
+            0,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(alice.balance, ethBalanceBefore - exactAmountsIn[wethIdx], "Wrong ETH balance");
+
+        assertGt(bptAmountOut, 0, "BPT amount out should be greater than zero for unbalanced liquidity");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = int256(exactAmountsIn[wethIdx]);
+        vaultBalancesDiff[usdcIdx] = int256(exactAmountsIn[usdcIdx]);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(bptAmountOut), true, alice);
     }
 
     function testAddLiquidityUnbalancedRevertIfInsufficientPayment() public {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256[] memory exactAmountsIn = new uint256[](2);
-        exactAmountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx] / 2;
+        exactAmountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx] / 2;
         exactAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx] / 3;
 
         vm.startPrank(alice);
         usdc.transfer(address(vault), exactAmountsIn[usdcIdx] / 2);
-        dai.transfer(address(vault), exactAmountsIn[daiIdx] / 2);
+        weth.transfer(address(vault), exactAmountsIn[wethIdx] / 2);
 
         vm.expectRevert(abi.encodeWithSelector(RouterHooks.InsufficientPayment.selector, address(usdc)));
         aggregatorRouter.addLiquidityUnbalanced(pool, exactAmountsIn, 0, false, bytes(""));
@@ -526,7 +752,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256[] memory maxAmountsIn = new uint256[](2);
-        maxAmountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx];
+        maxAmountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx];
         maxAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx];
 
         SimpleEIP7702Contract simpleAliceContract = SimpleEIP7702Contract(alice);
@@ -537,8 +763,8 @@ contract AggregatorRouterTest is BaseVaultTest {
             value: 0
         });
         calls[1] = SimpleEIP7702Contract.Call({
-            to: address(dai),
-            data: abi.encodeCall(IERC20.transfer, (address(vault), maxAmountsIn[daiIdx])),
+            to: address(weth),
+            data: abi.encodeCall(IERC20.transfer, (address(vault), maxAmountsIn[wethIdx])),
             value: 0
         });
         calls[2] = SimpleEIP7702Contract.Call({
@@ -554,9 +780,9 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256[] memory amountsIn = abi.decode(results[2], (uint256[]));
 
         assertGt(
-            maxAmountsIn[daiIdx],
-            amountsIn[daiIdx],
-            "Max DAI amount in should be greater than actual DAI amount in"
+            maxAmountsIn[wethIdx],
+            amountsIn[wethIdx],
+            "Max weth amount in should be greater than actual weth amount in"
         );
         assertGt(
             maxAmountsIn[usdcIdx],
@@ -565,7 +791,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         );
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = int256(amountsIn[daiIdx]);
+        vaultBalancesDiff[wethIdx] = int256(amountsIn[wethIdx]);
         vaultBalancesDiff[usdcIdx] = int256(amountsIn[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(exactBptAmountOut), alice);
     }
@@ -575,14 +801,14 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256 exactBptAmountOut = IERC20(pool).totalSupply() / 5;
-        uint256 maxAmountIn = balancesBefore.aliceTokens[daiIdx];
+        uint256 maxAmountIn = balancesBefore.aliceTokens[wethIdx];
 
         vm.startPrank(alice);
-        dai.transfer(address(vault), maxAmountIn);
+        weth.transfer(address(vault), maxAmountIn);
 
         uint256 amountIn = aggregatorRouter.addLiquiditySingleTokenExactOut(
             pool,
-            dai,
+            weth,
             maxAmountIn,
             exactBptAmountOut,
             false,
@@ -593,8 +819,43 @@ contract AggregatorRouterTest is BaseVaultTest {
         assertGt(amountIn, 0, "Amount in should be greater than zero for single token exact out liquidity");
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = int256(amountIn);
+        vaultBalancesDiff[wethIdx] = int256(amountIn);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(exactBptAmountOut), alice);
+    }
+
+    function testAddLiquiditySingleTokenExactOutWithEth() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256 ethBalanceBefore = alice.balance;
+        uint256 exactBptAmountOut = IERC20(pool).totalSupply() / 5;
+        uint256 maxAmountIn = balancesBefore.aliceTokens[wethIdx];
+
+        vm.startPrank(alice);
+
+        uint256 amountIn = aggregatorRouter.addLiquiditySingleTokenExactOut{ value: maxAmountIn }(
+            pool,
+            weth,
+            maxAmountIn,
+            exactBptAmountOut,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+        assertEq(alice.balance, ethBalanceBefore - amountIn, "Wrong ETH balance");
+
+        assertGt(amountIn, 0, "Amount in should be greater than zero for single token exact out liquidity");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = int256(amountIn);
+        _checkBalancesDiff(
+            balancesBefore,
+            poolBalancesBefore,
+            vaultBalancesDiff,
+            int256(exactBptAmountOut),
+            true,
+            alice
+        );
     }
 
     function testDonate() public {
@@ -602,20 +863,43 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx] / 2;
+        amountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx] / 2;
         amountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx] / 2;
 
         vm.startPrank(alice);
-        dai.transfer(address(vault), amountsIn[daiIdx]);
+        weth.transfer(address(vault), amountsIn[wethIdx]);
         usdc.transfer(address(vault), amountsIn[usdcIdx]);
 
         aggregatorRouter.donate(pool, amountsIn, false, bytes(""));
         vm.stopPrank();
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = int256(amountsIn[daiIdx]);
+        vaultBalancesDiff[wethIdx] = int256(amountsIn[wethIdx]);
         vaultBalancesDiff[usdcIdx] = int256(amountsIn[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(0), alice);
+    }
+
+    function testDonateWithEth() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256 ethBalanceBefore = alice.balance;
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx] / 2;
+        amountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx] / 2;
+
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), amountsIn[usdcIdx]);
+
+        aggregatorRouter.donate{ value: amountsIn[wethIdx] }(pool, amountsIn, true, bytes(""));
+        vm.stopPrank();
+
+        assertEq(alice.balance, ethBalanceBefore - amountsIn[wethIdx], "Wrong ETH balance");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = int256(amountsIn[wethIdx]);
+        vaultBalancesDiff[usdcIdx] = int256(amountsIn[usdcIdx]);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(0), true, alice);
     }
 
     function testAddLiquidityCustom() public {
@@ -625,12 +909,12 @@ contract AggregatorRouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
         uint256[] memory maxAmountsIn = new uint256[](2);
-        maxAmountsIn[daiIdx] = balancesBefore.aliceTokens[daiIdx] / 2;
+        maxAmountsIn[wethIdx] = balancesBefore.aliceTokens[wethIdx] / 2;
         maxAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx] / 10;
 
         vm.startPrank(alice);
         usdc.transfer(address(vault), maxAmountsIn[usdcIdx]);
-        dai.transfer(address(vault), maxAmountsIn[daiIdx]);
+        weth.transfer(address(vault), maxAmountsIn[wethIdx]);
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = aggregatorRouter.addLiquidityCustom(
             pool,
@@ -641,13 +925,42 @@ contract AggregatorRouterTest is BaseVaultTest {
         );
         vm.stopPrank();
 
-        assertEq(maxAmountsIn[daiIdx], amountsIn[daiIdx], "Max DAI amount in should match actual DAI amount in");
+        assertEq(maxAmountsIn[wethIdx], amountsIn[wethIdx], "Max weth amount in should match actual weth amount in");
         assertEq(maxAmountsIn[usdcIdx], amountsIn[usdcIdx], "Max USDC amount in should match actual USDC amount in");
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = int256(amountsIn[daiIdx]);
+        vaultBalancesDiff[wethIdx] = int256(amountsIn[wethIdx]);
         vaultBalancesDiff[usdcIdx] = int256(amountsIn[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(bptAmountOut), alice);
+    }
+
+    function testAddLiquidityCustomWithEth() public {
+        uint256 minBptAmountOut = IERC20(pool).totalSupply() / 5;
+
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256 ethBalanceBefore = alice.balance;
+        uint256[] memory maxAmountsIn = new uint256[](2);
+        maxAmountsIn[wethIdx] = ethBalanceBefore / 10;
+        maxAmountsIn[usdcIdx] = balancesBefore.aliceTokens[usdcIdx] / 10;
+
+        vm.startPrank(alice);
+        usdc.transfer(address(vault), maxAmountsIn[usdcIdx]);
+
+        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = aggregatorRouter.addLiquidityCustom{
+            value: maxAmountsIn[wethIdx]
+        }(pool, maxAmountsIn, minBptAmountOut, true, bytes(""));
+        vm.stopPrank();
+        assertEq(alice.balance, ethBalanceBefore - amountsIn[wethIdx], "Wrong ETH balance");
+
+        assertEq(maxAmountsIn[wethIdx], amountsIn[wethIdx], "Max weth amount in should match actual weth amount in");
+        assertEq(maxAmountsIn[usdcIdx], amountsIn[usdcIdx], "Max USDC amount in should match actual USDC amount in");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = int256(amountsIn[wethIdx]);
+        vaultBalancesDiff[usdcIdx] = int256(amountsIn[usdcIdx]);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, int256(bptAmountOut), true, alice);
     }
 
     /***************************************************************************
@@ -673,9 +986,35 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = -int256(amountsOut[daiIdx]);
+        vaultBalancesDiff[wethIdx] = -int256(amountsOut[wethIdx]);
         vaultBalancesDiff[usdcIdx] = -int256(amountsOut[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), lp);
+    }
+
+    function testRemoveLiquidityProportionalWithEth() public {
+        uint256 bptAmountIn = IERC20(pool).totalSupply() / 5;
+
+        uint256 ethLpBalanceBefore = lp.balance;
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        vm.startPrank(lp);
+        IERC20(pool).approve(address(aggregatorRouter), bptAmountIn);
+
+        uint256[] memory amountsOut = aggregatorRouter.removeLiquidityProportional(
+            pool,
+            bptAmountIn,
+            new uint256[](2),
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+        assertEq(lp.balance, ethLpBalanceBefore + amountsOut[wethIdx], "Wrong ETH balance");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = -int256(amountsOut[wethIdx]);
+        vaultBalancesDiff[usdcIdx] = -int256(amountsOut[usdcIdx]);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), true, lp);
     }
 
     function testRemoveLiquiditySingleTokenExactIn() public {
@@ -690,7 +1029,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 amountOut = aggregatorRouter.removeLiquiditySingleTokenExactIn(
             pool,
             exactBptAmountIn,
-            dai,
+            weth,
             1,
             false,
             bytes("")
@@ -698,8 +1037,35 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = -int256(amountOut);
+        vaultBalancesDiff[wethIdx] = -int256(amountOut);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(exactBptAmountIn), lp);
+    }
+
+    function testRemoveLiquiditySingleTokenExactInWithEth() public {
+        uint256 exactBptAmountIn = IERC20(pool).totalSupply() / 5;
+
+        uint256 ethLpBalanceBefore = lp.balance;
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        vm.startPrank(lp);
+        IERC20(pool).approve(address(aggregatorRouter), exactBptAmountIn);
+
+        uint256 amountOut = aggregatorRouter.removeLiquiditySingleTokenExactIn(
+            pool,
+            exactBptAmountIn,
+            weth,
+            1,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(lp.balance, ethLpBalanceBefore + amountOut, "Wrong ETH balance");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = -int256(amountOut);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(exactBptAmountIn), true, lp);
     }
 
     function testRemoveLiquiditySingleTokenExactOut() public {
@@ -711,12 +1077,12 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.startPrank(lp);
         IERC20(pool).approve(address(aggregatorRouter), maxBptAmountIn);
 
-        uint256 exactAmountOut = balancesBefore.vaultTokens[daiIdx] / 2;
+        uint256 exactAmountOut = balancesBefore.vaultTokens[wethIdx] / 2;
 
         uint256 bptAmountIn = aggregatorRouter.removeLiquiditySingleTokenExactOut(
             pool,
             maxBptAmountIn,
-            dai,
+            weth,
             exactAmountOut,
             false,
             bytes("")
@@ -726,8 +1092,39 @@ contract AggregatorRouterTest is BaseVaultTest {
         assertLe(bptAmountIn, maxBptAmountIn, "BPT amount in should be less than or equal to max BPT amount in");
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = -int256(exactAmountOut);
+        vaultBalancesDiff[wethIdx] = -int256(exactAmountOut);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), lp);
+    }
+
+    function testRemoveLiquiditySingleTokenExactOutWithEth() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256 ethLpBalanceBefore = lp.balance;
+        uint256 maxBptAmountIn = IERC20(pool).totalSupply();
+
+        vm.startPrank(lp);
+        IERC20(pool).approve(address(aggregatorRouter), maxBptAmountIn);
+
+        uint256 exactAmountOut = balancesBefore.vaultTokens[wethIdx] / 2;
+
+        uint256 bptAmountIn = aggregatorRouter.removeLiquiditySingleTokenExactOut(
+            pool,
+            maxBptAmountIn,
+            weth,
+            exactAmountOut,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertEq(lp.balance, ethLpBalanceBefore + exactAmountOut, "Wrong ETH balance");
+
+        assertLe(bptAmountIn, maxBptAmountIn, "BPT amount in should be less than or equal to max BPT amount in");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = -int256(exactAmountOut);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), true, lp);
     }
 
     function removeLiquidityCustom() public {
@@ -736,7 +1133,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         uint256 maxBptAmountIn = IERC20(pool).totalSupply();
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[daiIdx] = balancesBefore.lpTokens[daiIdx];
+        minAmountsOut[wethIdx] = balancesBefore.lpTokens[wethIdx];
         minAmountsOut[usdcIdx] = balancesBefore.lpTokens[usdcIdx];
 
         vm.startPrank(lp);
@@ -754,7 +1151,41 @@ contract AggregatorRouterTest is BaseVaultTest {
         assertLe(bptAmountIn, maxBptAmountIn, "BPT amount in should be less than or equal to max BPT amount in");
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = -int256(amountsOut[daiIdx]);
+        vaultBalancesDiff[wethIdx] = -int256(amountsOut[wethIdx]);
+        vaultBalancesDiff[usdcIdx] = -int256(amountsOut[usdcIdx]);
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), lp);
+    }
+
+    function removeLiquidityCustomWithEth() public {
+        uint256[] memory poolBalancesBefore = vault.getCurrentLiveBalances(pool);
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+
+        uint256 ethBalanceBefore = lp.balance;
+        uint256 maxBptAmountIn = IERC20(pool).totalSupply();
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[wethIdx] = ethBalanceBefore;
+        minAmountsOut[usdcIdx] = balancesBefore.lpTokens[usdcIdx];
+
+        vm.startPrank(lp);
+        IERC20(pool).approve(address(aggregatorRouter), maxBptAmountIn);
+        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = aggregatorRouter.removeLiquidityCustom(
+            pool,
+            maxBptAmountIn,
+            minAmountsOut,
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
+        assertEq(
+            lp.balance,
+            alice.balance + amountsOut[wethIdx],
+            "Wrong ETH balance after removing liquidity with ETH"
+        );
+
+        assertLe(bptAmountIn, maxBptAmountIn, "BPT amount in should be less than or equal to max BPT amount in");
+
+        int256[] memory vaultBalancesDiff = new int256[](2);
+        vaultBalancesDiff[wethIdx] = -int256(amountsOut[wethIdx]);
         vaultBalancesDiff[usdcIdx] = -int256(amountsOut[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(bptAmountIn), lp);
     }
@@ -778,7 +1209,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         int256[] memory vaultBalancesDiff = new int256[](2);
-        vaultBalancesDiff[daiIdx] = -int256(amountsOut[daiIdx]);
+        vaultBalancesDiff[wethIdx] = -int256(amountsOut[wethIdx]);
         vaultBalancesDiff[usdcIdx] = -int256(amountsOut[usdcIdx]);
         _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, -int256(exactBptAmountIn), lp);
     }
@@ -798,14 +1229,27 @@ contract AggregatorRouterTest is BaseVaultTest {
         int256 bptAmountDiff,
         address user
     ) public view {
+        _checkBalancesDiff(balancesBefore, poolBalancesBefore, vaultBalancesDiff, bptAmountDiff, false, user);
+    }
+
+    function _checkBalancesDiff(
+        BaseVaultTest.Balances memory balancesBefore,
+        uint256[] memory poolBalancesBefore,
+        int256[] memory vaultBalancesDiff,
+        int256 bptAmountDiff,
+        bool wethIsEth,
+        address user
+    ) public view {
         uint256[] memory poolBalancesAfter = vault.getCurrentLiveBalances(pool);
         BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
 
         if (user == alice) {
             assertEq(
-                balancesAfter.aliceTokens[daiIdx],
-                uint256(int256(balancesBefore.aliceTokens[daiIdx]) - vaultBalancesDiff[daiIdx]),
-                "Wrong DAI balance (alice)"
+                balancesAfter.aliceTokens[wethIdx],
+                uint256(
+                    int256(balancesBefore.aliceTokens[wethIdx]) - (wethIsEth ? int256(0) : vaultBalancesDiff[wethIdx])
+                ),
+                "Wrong WETH balance (alice)"
             );
             assertEq(
                 balancesAfter.aliceTokens[usdcIdx],
@@ -819,9 +1263,11 @@ contract AggregatorRouterTest is BaseVaultTest {
             );
         } else if (user == lp) {
             assertEq(
-                balancesAfter.lpTokens[daiIdx],
-                uint256(int256(balancesBefore.lpTokens[daiIdx]) - vaultBalancesDiff[daiIdx]),
-                "Wrong DAI balance (lp)"
+                balancesAfter.lpTokens[wethIdx],
+                uint256(
+                    int256(balancesBefore.lpTokens[wethIdx]) - (wethIsEth ? int256(0) : vaultBalancesDiff[wethIdx])
+                ),
+                "Wrong WETH balance (lp)"
             );
             assertEq(
                 balancesAfter.lpTokens[usdcIdx],
@@ -838,9 +1284,9 @@ contract AggregatorRouterTest is BaseVaultTest {
         }
 
         assertEq(
-            balancesAfter.vaultTokens[daiIdx],
-            uint256(int256(balancesBefore.vaultTokens[daiIdx]) + vaultBalancesDiff[daiIdx]),
-            "Wrong DAI balance (vault)"
+            balancesAfter.vaultTokens[wethIdx],
+            uint256(int256(balancesBefore.vaultTokens[wethIdx]) + vaultBalancesDiff[wethIdx]),
+            "Wrong WETH balance (vault)"
         );
         assertEq(
             balancesAfter.vaultTokens[usdcIdx],
@@ -849,9 +1295,9 @@ contract AggregatorRouterTest is BaseVaultTest {
         );
 
         assertEq(
-            poolBalancesAfter[daiIdx],
-            uint256(int256(poolBalancesBefore[daiIdx]) + vaultBalancesDiff[daiIdx]),
-            "Wrong DAI pool balance"
+            poolBalancesAfter[wethIdx],
+            uint256(int256(poolBalancesBefore[wethIdx]) + vaultBalancesDiff[wethIdx]),
+            "Wrong WETH pool balance"
         );
         assertEq(
             poolBalancesAfter[usdcIdx],

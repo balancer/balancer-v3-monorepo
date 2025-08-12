@@ -214,7 +214,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
+            if (_isAggregator && (liquidityParams.wethIsEth == false || settlementToken != address(_weth))) {
                 // Settle the prepayment amount that was already sent
                 _vault.settle(IERC20(settlementToken), amountIn);
             } else {
@@ -266,7 +266,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
+            if (_isAggregator && (liquidityParams.wethIsEth == false || address(settlementToken) != address(_weth))) {
                 // Settle the prepayment amount that was already sent
                 _vault.settle(IERC20(settlementToken), maxAmountIn);
             } else {
@@ -686,7 +686,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (underlyingAmountIn > 0) {
             if (isStaticCall == false) {
-                if (_isAggregator) {
+                if (_isAggregator && (liquidityParams.wethIsEth == false || underlyingToken != address(_weth))) {
                     // Settle the prepayment amount that was already sent
                     _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
                 } else {
