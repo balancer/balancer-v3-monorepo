@@ -31,6 +31,26 @@ contract CompositeLiquidityRouterQueries is ICompositeLiquidityRouterQueries, Co
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /// @inheritdoc ICompositeLiquidityRouterQueries
+    function queryRemoveLiquidityRecovery(
+        address pool,
+        address sender,
+        uint256 exactBptAmountIn
+    ) external saveSender(sender) returns (uint256[] memory) {
+        IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
+
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeCall(
+                        CompositeLiquidityRouterHooks.removeLiquidityRecoveryHook,
+                        (pool, sender, exactBptAmountIn, new uint256[](poolTokens.length))
+                    )
+                ),
+                (uint256[])
+            );
+    }
+
     /*******************************************************************************
                                 ERC4626 Pools
     *******************************************************************************/
