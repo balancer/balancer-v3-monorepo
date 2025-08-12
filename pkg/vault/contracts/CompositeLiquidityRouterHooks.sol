@@ -25,7 +25,7 @@ import {
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
 /// @notice Hooks for managing liquidity in composite pools.
-contract CompositeLiquidityRouterHooks is BatchRouterCommon {
+abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
