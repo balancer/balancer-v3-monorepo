@@ -968,6 +968,48 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
     }
 
+    function testRemoveLiquidityRecovery__Fuzz(uint256 rawOperationAmount) public {
+        uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
+
+        vault.manualEnableRecoveryMode(pool);
+
+        uint256 snapshot = vm.snapshotState();
+        _prankStaticCall();
+        uint256[] memory expectedWrappedAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityRecovery(
+            pool,
+            bob,
+            exactBptAmountIn
+        );
+        vm.revertToState(snapshot);
+
+        uint256 beforeBPTBalance = IERC20(pool).balanceOf(bob);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[waWethIdx] = expectedWrappedAmountsOut[waWethIdx];
+        minAmountsOut[waDaiIdx] = expectedWrappedAmountsOut[waDaiIdx];
+
+        vm.prank(bob);
+        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter.removeLiquidityRecovery(
+            pool,
+            exactBptAmountIn,
+            minAmountsOut
+        );
+
+        assertEq(
+            actualUnderlyingAmountsOut[waDaiIdx],
+            expectedWrappedAmountsOut[waDaiIdx],
+            "waDAI Amounts should match expected (no unwrapping in recovery mode)"
+        );
+        assertEq(
+            actualUnderlyingAmountsOut[waWethIdx],
+            expectedWrappedAmountsOut[waWethIdx],
+            "waWETH Amounts should match expected (no unwrapping in recovery mode)"
+        );
+
+        uint256 afterBPTBalance = IERC20(pool).balanceOf(bob);
+        assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
+    }
+
     function testRemoveLiquidityProportionalFromERC4626PoolWithWrappedToken__Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
