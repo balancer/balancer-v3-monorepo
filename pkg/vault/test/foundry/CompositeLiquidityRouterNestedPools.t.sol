@@ -29,7 +29,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     using FixedPoint for uint256;
     using CastingHelpers for *;
     using ArrayHelpers for *;
-    
+
     address internal parentPool;
     address internal childPoolA;
     address internal childPoolB;
