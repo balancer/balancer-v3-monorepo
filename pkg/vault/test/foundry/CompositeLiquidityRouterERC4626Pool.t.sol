@@ -14,6 +14,7 @@ import {
     ICompositeLiquidityRouterQueries
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
@@ -30,8 +31,8 @@ import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { CompositeLiquidityRouter } from "../../contracts/CompositeLiquidityRouter.sol";
 
 contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
+    using CastingHelpers for *;
     using ArrayHelpers for *;
-    using CastingHelpers for address[];
     using FixedPoint for *;
 
     uint256 constant MIN_AMOUNT = 1e12;
@@ -1460,6 +1461,64 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
             )
         );
         vm.stopPrank();
+    }
+
+    function testAddLiquidityERC4626PoolUnbalancedHookWhenNotVault() public {
+        AddLiquidityHookParams memory params = AddLiquidityHookParams({
+            sender: address(this),
+            pool: pool,
+            maxAmountsIn: new uint256[](2),
+            minBptAmountOut: FixedPoint.ONE,
+            kind: AddLiquidityKind.UNBALANCED,
+            wethIsEth: false,
+            userData: bytes("")
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.addLiquidityERC4626PoolProportionalHook(params, new bool[](2));
+    }
+
+    function testAddLiquidityERC4626PoolProportionalHookWhenNotVault() public {
+        AddLiquidityHookParams memory params = AddLiquidityHookParams({
+            sender: address(this),
+            pool: pool,
+            maxAmountsIn: new uint256[](2),
+            minBptAmountOut: FixedPoint.ONE,
+            kind: AddLiquidityKind.PROPORTIONAL,
+            wethIsEth: false,
+            userData: bytes("")
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.addLiquidityERC4626PoolUnbalancedHook(params, new bool[](2));
+    }
+
+    function testRemoveLiquidityERC4626PoolProportionalHookWhenNotVault() public {
+        RemoveLiquidityHookParams memory params = RemoveLiquidityHookParams({
+            sender: address(this),
+            pool: pool,
+            minAmountsOut: new uint256[](2),
+            maxBptAmountIn: FixedPoint.ONE,
+            kind: RemoveLiquidityKind.PROPORTIONAL,
+            wethIsEth: false,
+            userData: bytes("")
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook(params, new bool[](2));
+    }
+
+    function testRemoveLiquidityRecoveryHookWhenNotVault() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.removeLiquidityRecoveryHook(pool, address(this), FixedPoint.ONE, new uint256[](2));
+    }
+
+    function testRemoveLiquidityRecoveryHookWhenNotRecoveryMode() public {
+        vault.forceUnlock();
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInRecoveryMode.selector, pool));
+        vm.prank(address(vault));
+        compositeLiquidityRouter.removeLiquidityRecoveryHook(pool, address(this), FixedPoint.ONE, new uint256[](2));
     }
 
     struct TestLocals {

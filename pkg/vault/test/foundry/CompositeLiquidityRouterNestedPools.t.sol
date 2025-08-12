@@ -6,29 +6,30 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     ICompositeLiquidityRouterQueries
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
-import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import {
     ICompositeLiquidityRouterErrors
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
 contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
-    using ArrayHelpers for *;
-    using CastingHelpers for address[];
     using FixedPoint for uint256;
-
+    using CastingHelpers for *;
+    using ArrayHelpers for *;
+    
     address internal parentPool;
     address internal childPoolA;
     address internal childPoolB;
@@ -2376,6 +2377,40 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             abi.encodeWithSelector(ICompositeLiquidityRouterErrors.WrongTokensOut.selector, actualTokensOut, tokensOut)
         );
         vm.stopPrank();
+    }
+
+    function testAddLiquidityUnbalancedNestedPoolHookWhenNotVault() public {
+        address[] memory tokens = vault.getPoolTokens(pool).asAddress();
+
+        AddLiquidityHookParams memory params = AddLiquidityHookParams({
+            sender: address(this),
+            pool: pool,
+            maxAmountsIn: new uint256[](2),
+            minBptAmountOut: FixedPoint.ONE,
+            kind: AddLiquidityKind.UNBALANCED,
+            wethIsEth: false,
+            userData: bytes("")
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook(params, tokens, tokens);
+    }
+
+    function testRemoveLiquidityProportionalNestedPoolHookWhenNotVault() public {
+        address[] memory tokens = vault.getPoolTokens(pool).asAddress();
+
+        RemoveLiquidityHookParams memory params = RemoveLiquidityHookParams({
+            sender: address(this),
+            pool: pool,
+            minAmountsOut: new uint256[](2),
+            maxBptAmountIn: FixedPoint.ONE,
+            kind: RemoveLiquidityKind.PROPORTIONAL,
+            wethIsEth: false,
+            userData: bytes("")
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook(params, tokens, tokens);
     }
 
     struct NestedPoolTestLocals {
