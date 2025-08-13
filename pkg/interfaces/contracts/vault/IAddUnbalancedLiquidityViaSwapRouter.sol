@@ -11,7 +11,7 @@ import { IRouterQueries } from "./IRouterQueries.sol";
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import "./RouterTypes.sol";
 
-/// @notice Router interface for adding unbalanced liquidity via the Swap.
+/// @notice Router interface for adding unbalanced liquidity via a combination of a proportional add and a swap.
 interface IAddUnbalancedLiquidityViaSwapRouter {
     struct AddLiquidityProportionalParams {
         uint256[] maxAmountsIn;
@@ -41,9 +41,10 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     }
 
     /**
-     * @notice Adds liquidity to a pool with proportional token amounts and swaps exact in in the same transaction.
+     * @notice Adds liquidity to a pool with proportional token amounts and an ExactIn swap in the same transaction.
      * @param pool Address of the liquidity pool
      * @param deadline Timestamp after which the transaction will revert
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
      * @return addLiquidityAmountsIn Array of amounts in for each token added to the pool
@@ -54,10 +55,12 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     function addUnbalancedLiquidityViaSwapExactIn(
         address pool,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactInParams calldata swapParams
     )
         external
+        payable
         returns (
             uint256[] memory addLiquidityAmountsIn,
             uint256 addLiquidityBptAmountOut,
@@ -66,9 +69,10 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         );
 
     /**
-     * @notice Adds liquidity to a pool with proportional token amounts and swaps exact out in the same transaction.
+     * @notice Adds liquidity to a pool with proportional token amounts and an ExactOut swap in the same transaction.
      * @param pool Address of the liquidity pool
      * @param deadline Timestamp after which the transaction will revert
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
      * @return addLiquidityAmountsIn Array of amounts in for each token added to the pool
@@ -79,6 +83,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     function addUnbalancedLiquidityViaSwapExactOut(
         address pool,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactOutParams calldata swapParams
     )
