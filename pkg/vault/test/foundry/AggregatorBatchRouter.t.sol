@@ -549,7 +549,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
                               Fuzz Testing
     ***************************************************************************/
 
-    function testSwapExactIn_Fuzz(uint256 swapAmount) public {
+    function testSwapExactIn__Fuzz(uint256 swapAmount) public {
         uint256[] memory poolBalances = vault.getCurrentLiveBalances(pool);
         swapAmount = bound(swapAmount, MIN_SWAP_AMOUNT, poolBalances[daiIdx] / 2);
 
@@ -579,7 +579,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         assertGt(pathAmountsOut[0], 0, "Should receive positive amount out");
     }
 
-    function testQueryVsActualSwap_Fuzz(uint256 swapAmount) public {
+    function testQueryVsActualSwap__Fuzz(uint256 swapAmount) public {
         uint256[] memory poolBalances = vault.getCurrentLiveBalances(pool);
         swapAmount = bound(swapAmount, MIN_SWAP_AMOUNT, poolBalances[daiIdx] / 2);
 
@@ -608,6 +608,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         // Query and actual should match.
+        assertEq(queryAmountsOut.length, actualAmountsOut.length, "Query and actual amounts differ in length");
         assertEq(queryAmountsOut[0], actualAmountsOut[0], "Query amount differs from actual swap amount");
     }
 
