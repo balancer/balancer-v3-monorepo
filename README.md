@@ -161,4 +161,5 @@ Most of the Solidity source code is licensed under the GNU General Public Licens
 
 ### Exceptions
 
+- [Gyro pools](./pkg/pool-gyro/) and related contracts have their own license type. The full text can be found [here](https://github.com/gyrostable/gyd-core?tab=License-1-ov-file).
 - All other files, including tests and the [`pvt`](./pvt) directory are unlicensed.

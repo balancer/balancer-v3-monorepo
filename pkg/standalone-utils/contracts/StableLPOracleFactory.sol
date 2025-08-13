@@ -24,7 +24,11 @@ contract StableLPOracleFactory is LPOracleFactoryBase {
      */
     event StableLPOracleCreated(IStablePool indexed pool, AggregatorV3Interface[] feeds, ILPOracleBase oracle);
 
-    constructor(IVault vault, uint256 oracleVersion) LPOracleFactoryBase(vault, oracleVersion) {
+    constructor(
+        IVault vault,
+        string memory factoryVersion,
+        uint256 oracleVersion
+    ) LPOracleFactoryBase(vault, factoryVersion, oracleVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
