@@ -455,14 +455,13 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         int256 yl = int256(balancesScaled18[1]) - b;
 
         // Balances in the circle centered at (0,0)
-        int256 xll = xl.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) -
-            yl.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
-        int256 yll = xl.mulDownMag(eclpParams.s) + yl.mulDownMag(eclpParams.c);
+        int256 xll = (xl * eclpParams.c - yl * eclpParams.s) / eclpParams.lambda;
+        int256 yll = (xl * eclpParams.s + yl * eclpParams.c) / 1e18;
 
         // Scalar product of [xll, yll] by A*[1,0] => e_x (unity vector in the x direction).
-        int256 numerator = xll.mulDownMag(eclpParams.c).divDownMag(eclpParams.lambda) + yll.mulDownMag(eclpParams.s);
+        int256 numerator = yll.mulDownMag(eclpParams.s) + ((xll * eclpParams.c) / eclpParams.lambda);
         // Scalar product of [xll, yll] by A*[0,1] => e_y (unity vector in the y direction).
-        int256 denominator = yll.mulDownMag(eclpParams.c) - xll.mulDownMag(eclpParams.s).divDownMag(eclpParams.lambda);
+        int256 denominator = yll.mulDownMag(eclpParams.c) - ((xll * eclpParams.s) / eclpParams.lambda);
 
         price = numerator.divDownMag(denominator).toUint256();
 
