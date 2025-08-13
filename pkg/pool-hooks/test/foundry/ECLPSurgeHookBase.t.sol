@@ -58,7 +58,9 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         pure
         virtual
         returns (IGyroECLPPool.EclpParams memory eclpParams, IGyroECLPPool.DerivedEclpParams memory derivedECLPParams);
+
     function _getWethRate() internal pure virtual returns (uint256 wethRate);
+
     function _balancePool()
         internal
         virtual
