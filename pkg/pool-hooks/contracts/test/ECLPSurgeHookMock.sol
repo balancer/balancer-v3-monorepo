@@ -52,7 +52,7 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
         PoolSwapParams memory request,
         IGyroECLPPool.EclpParams memory eclpParams,
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-    ) external pure returns (uint256 amountCalculated, int256 a, int256 b) {
+    ) external pure returns (uint256 amountCalculatedScaled18, int256 a, int256 b) {
         return _computeSwap(request, eclpParams, derivedECLPParams);
     }
 
@@ -62,5 +62,9 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
     ) external pure returns (int256 a, int256 b) {
         return _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+    }
+
+    function manualSetSurgeMaxFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) external {
+        _setMaxSurgeFeePercentage(pool, newMaxSurgeFeePercentage);
     }
 }

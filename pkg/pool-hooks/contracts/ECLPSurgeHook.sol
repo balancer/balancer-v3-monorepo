@@ -324,7 +324,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     }
 
     /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setMaxSurgeFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) private {
+    function _setMaxSurgeFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) internal {
         // Still use SafeCast out of an abundance of caution.
         _surgeFeePoolData[pool].maxSurgeFeePercentage = newMaxSurgeFeePercentage.toUint64();
 
@@ -332,7 +332,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     }
 
     /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) private {
+    function _setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) internal {
         // Still use SafeCast out of an abundance of caution.
         _surgeFeePoolData[pool].thresholdPercentage = newSurgeThresholdPercentage.toUint64();
 

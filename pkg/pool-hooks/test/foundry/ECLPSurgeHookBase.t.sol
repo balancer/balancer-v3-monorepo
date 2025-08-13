@@ -368,20 +368,6 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         );
     }
 
-    struct SwapTestLocals {
-        uint256[] initialBalancesRaw;
-        uint256[] initialBalancesScaled18;
-        SwapKind kind;
-        uint256 wethRate;
-        uint256 amountGivenScaled18;
-        uint256 swapFeePercentage;
-        uint256 actualSwapFeePercentage;
-        uint256 actualAmountInRaw;
-        uint256 actualAmountOutRaw;
-        uint256 expectedAmountInScaled18;
-        uint256 expectedAmountOutScaled18;
-    }
-
     function testSwap__Fuzz(uint256 amountGivenScaled18, uint256 swapFeePercentageRaw, uint256 kindRaw) public {
         (, uint256[] memory initialBalancesScaled18) = _balancePool();
 
@@ -394,51 +380,23 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         }
 
         vault.manualUnsafeSetStaticSwapFeePercentage(pool, bound(swapFeePercentageRaw, 0, 1e16));
-        uint256 swapFeePercentage = vault.getStaticSwapFeePercentage(pool);
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
-
-        if (kind == SwapKind.EXACT_IN) {
-            vm.prank(alice);
-            router.swapSingleTokenExactIn(pool, usdc, weth, amountGivenScaled18, 0, MAX_UINT256, false, bytes(""));
-        } else {
-            vm.prank(alice);
-            router.swapSingleTokenExactOut(
-                pool,
-                usdc,
-                weth,
-                amountGivenScaled18.divDown(wethRate),
-                MAX_UINT256,
-                MAX_UINT256,
-                false,
-                bytes("")
-            );
-        }
-
-        uint256 actualSwapFeePercentage = _computeFee(
+        (uint256 actualAmountInRaw, uint256 actualAmountOutRaw, uint256 actualFeeAmountScaled18) = _computeSwapAndFee(
             amountGivenScaled18,
-            kind,
-            swapFeePercentage,
-            initialBalancesScaled18
+            kind
         );
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
-
-        uint256 actualAmountOutRaw = balancesAfter.aliceTokens[wethIdx] - balancesBefore.aliceTokens[wethIdx];
-        uint256 actualAmountInRaw = balancesBefore.aliceTokens[usdcIdx] - balancesAfter.aliceTokens[usdcIdx];
-
-        uint256 expectedAmountOutScaled18;
         uint256 expectedAmountInScaled18;
+        uint256 expectedAmountOutScaled18;
         if (kind == SwapKind.EXACT_IN) {
             expectedAmountInScaled18 = amountGivenScaled18;
-            uint256 swapAmount = amountGivenScaled18.mulUp(actualSwapFeePercentage);
 
             (uint256 amountCalculatedScaled18, , ) = eclpSurgeHookMock.computeSwap(
                 PoolSwapParams({
                     kind: kind,
                     indexIn: usdcIdx,
                     indexOut: wethIdx,
-                    amountGivenScaled18: expectedAmountInScaled18 - swapAmount,
+                    amountGivenScaled18: expectedAmountInScaled18 - actualFeeAmountScaled18,
                     balancesScaled18: initialBalancesScaled18,
                     router: address(0),
                     userData: bytes("")
@@ -463,84 +421,88 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
                 eclpParams,
                 derivedECLPParams
             );
-            expectedAmountInScaled18 =
-                amountCalculatedScaled18 +
-                amountCalculatedScaled18.mulDivUp(actualSwapFeePercentage, actualSwapFeePercentage.complement());
+
+            expectedAmountInScaled18 = amountCalculatedScaled18 + actualFeeAmountScaled18;
         }
 
         // The vault converts the pool balances from raw to scaled18, and the balance of WETH loses a bit of precision.
-        // Amount In is in USDC, so scaled18 and raw are the same.
-        assertApproxEqAbs(expectedAmountInScaled18, actualAmountInRaw, 1e6, "Amount in should be expectedAmountIn");
+        // Amount In is in USDC, so scaled18 and raw are the same. Since we estimate the fees based on a real swap,
+        // rounding errors are expected, so the tolerance is a bit high.
+        assertApproxEqRel(expectedAmountInScaled18, actualAmountInRaw, 1e13, "Amount in should be expectedAmountIn");
         // Amount Out is in WETH, so we need to convert scaled18 to raw to compare with the actual swap.
-        assertApproxEqAbs(
+        assertApproxEqRel(
             expectedAmountOutScaled18.divDown(wethRate),
             actualAmountOutRaw,
-            1e6,
+            1e13,
             "Amount out should be expectedAmountOut"
         );
     }
 
-    function _computeFee(
+    function _computeSwapAndFee(
         uint256 amountGivenScaled18,
-        SwapKind kind,
-        uint256 swapFeePercentage,
-        uint256[] memory balances
-    ) private view returns (uint256) {
-        (uint256 amountCalculatedScaled18, , ) = eclpSurgeHookMock.computeSwap(
-            PoolSwapParams({
-                kind: kind,
-                indexIn: usdcIdx,
-                indexOut: wethIdx,
-                amountGivenScaled18: amountGivenScaled18,
-                balancesScaled18: balances,
-                router: address(0),
-                userData: bytes("")
-            }),
-            eclpParams,
-            derivedECLPParams
-        );
+        SwapKind kind
+    ) private returns (uint256 actualAmountInRaw, uint256 actualAmountOutRaw, uint256 actualFeeAmountScaled18) {
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
-        uint256[] memory newBalances = new uint256[](balances.length);
-        ScalingHelpers.copyToArray(balances, newBalances);
+        uint256 snapshotId = vm.snapshotState();
+        _executeSwap(amountGivenScaled18, kind);
+        BaseVaultTest.Balances memory balancesAfterWithFees = getBalances(alice);
+        vm.revertToState(snapshotId);
 
-        if (kind == SwapKind.EXACT_IN) {
-            newBalances[usdcIdx] += amountGivenScaled18;
-            newBalances[wethIdx] -= amountCalculatedScaled18;
+        actualAmountInRaw = balancesBefore.aliceTokens[usdcIdx] - balancesAfterWithFees.aliceTokens[usdcIdx];
+        actualAmountOutRaw = balancesAfterWithFees.aliceTokens[wethIdx] - balancesBefore.aliceTokens[wethIdx];
+
+        snapshotId = vm.snapshotState();
+        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
+        eclpSurgeHookMock.manualSetSurgeMaxFeePercentage(pool, 0);
+        // The fee is always charged in token in. Since decimals of USDC in these tests is 18, and the rate is 1,
+        // raw and scaled18 amounts are the same.
+        if (kind == SwapKind.EXACT_OUT) {
+            // To compute the EXACT_OUT fee, charged in token in, we need to execute the same swap as before but
+            // without fees. The amount of tokens in charged will be different, and the difference is the fees.
+            _executeSwap(amountGivenScaled18, kind);
+            BaseVaultTest.Balances memory balancesAfterNoFees = getBalances(alice);
+            vm.revertToState(snapshotId);
+
+            actualFeeAmountScaled18 =
+                balancesAfterNoFees.aliceTokens[usdcIdx] -
+                balancesAfterWithFees.aliceTokens[usdcIdx];
         } else {
-            newBalances[usdcIdx] += amountCalculatedScaled18;
-            newBalances[wethIdx] -= amountGivenScaled18;
+            // To compute the EXACT_IN fee, charged in token in, we need to execute an EXACT_OUT swap with the amount
+            // out computed by the EXACT IN swap with fees. Since fees are not charged now, the amount in will be
+            // different, and the difference is the fees.
+            _executeSwap(actualAmountOutRaw.mulDown(wethRate), SwapKind.EXACT_OUT);
+            BaseVaultTest.Balances memory balancesAfterNoFees = getBalances(alice);
+            vm.revertToState(snapshotId);
+
+            uint256 amountInNoFeesScaled18 = balancesBefore.aliceTokens[usdcIdx] -
+                balancesAfterNoFees.aliceTokens[usdcIdx];
+            if (amountInNoFeesScaled18 > amountGivenScaled18) {
+                // EXACT_OUT swaps round amount in up, so if the fee is very low, the amount in without fees may be a
+                // bit bigger than the amount in with fees.
+                actualFeeAmountScaled18 = 0;
+            } else {
+                actualFeeAmountScaled18 = amountGivenScaled18 - amountInNoFeesScaled18;
+            }
         }
+    }
 
-        uint256 newTotalImbalance;
-        uint256 oldTotalImbalance;
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(balances, eclpParams, derivedECLPParams);
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(balances, eclpParams, a, b);
-        }
-
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                newBalances,
-                eclpParams,
-                derivedECLPParams
+    function _executeSwap(uint256 amountGivenScaled18, SwapKind kind) private {
+        if (kind == SwapKind.EXACT_IN) {
+            vm.prank(alice);
+            router.swapSingleTokenExactIn(pool, usdc, weth, amountGivenScaled18, 0, MAX_UINT256, false, bytes(""));
+        } else {
+            vm.prank(alice);
+            router.swapSingleTokenExactOut(
+                pool,
+                usdc,
+                weth,
+                amountGivenScaled18.divDown(wethRate),
+                MAX_UINT256,
+                MAX_UINT256,
+                false,
+                bytes("")
             );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(newBalances, eclpParams, a, b);
         }
-
-        if (
-            newTotalImbalance == 0 ||
-            (newTotalImbalance <= oldTotalImbalance || newTotalImbalance <= DEFAULT_SURGE_THRESHOLD_PERCENTAGE)
-        ) {
-            return swapFeePercentage;
-        }
-
-        return
-            swapFeePercentage +
-            (eclpSurgeHookMock.getMaxSurgeFeePercentage(pool) - swapFeePercentage).mulDown(
-                (newTotalImbalance - DEFAULT_SURGE_THRESHOLD_PERCENTAGE).divDown(
-                    DEFAULT_SURGE_THRESHOLD_PERCENTAGE.complement()
-                )
-            );
     }
 }
