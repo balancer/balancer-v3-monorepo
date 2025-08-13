@@ -385,8 +385,13 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
     function testSwap__Fuzz(uint256 amountGivenScaled18, uint256 swapFeePercentageRaw, uint256 kindRaw) public {
         (, uint256[] memory initialBalancesScaled18) = _balancePool();
 
-        amountGivenScaled18 = bound(amountGivenScaled18, 1e18, 200e18);
         SwapKind kind = SwapKind(bound(kindRaw, 0, 1));
+        {
+            uint256 amountGivenUpperLimit = kind == SwapKind.EXACT_IN
+                ? initialBalancesScaled18[usdcIdx] / 5
+                : initialBalancesScaled18[wethIdx] / 10;
+            amountGivenScaled18 = bound(amountGivenScaled18, amountGivenUpperLimit / 100, amountGivenUpperLimit);
+        }
 
         vault.manualUnsafeSetStaticSwapFeePercentage(pool, bound(swapFeePercentageRaw, 0, 1e16));
         uint256 swapFeePercentage = vault.getStaticSwapFeePercentage(pool);
