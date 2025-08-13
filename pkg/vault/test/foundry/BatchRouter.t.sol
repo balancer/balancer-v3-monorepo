@@ -342,8 +342,20 @@ contract BatchRouterTest is BaseVaultTest {
             maxAmountIn: maxBptIn
         });
 
+        uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+
         vm.prank(alice);
-        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcAfter = usdc.balanceOf(alice);
+
+        // Verify exact USDC received and BPT burned
+        assertEq(aliceUsdcAfter, aliceUsdcBefore + exactUsdcOut, "Should receive exact USDC amount");
+        assertEq(aliceBptAfter, aliceBptBefore - pathAmountsIn[0], "BPT should be burned");
+        assertLt(pathAmountsIn[0], maxBptIn, "Should use less than max BPT");
+        assertGt(pathAmountsIn[0], 0, "Should burn some BPT");
     }
 
     function testBPTAddLiquidityIntermediateStepExactOut() public {
@@ -371,15 +383,27 @@ contract BatchRouterTest is BaseVaultTest {
             maxAmountIn: maxUsdcIn
         });
 
+        uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+        uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
+
         vm.prank(alice);
-        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceUsdcAfter = usdc.balanceOf(alice);
+        uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
+
+        // Verify exact BPT received and USDC spent
+        assertEq(aliceBptAfter, aliceBptBefore + (MIN_AMOUNT / 10), "Should receive exact BPT amount");
+        assertEq(aliceUsdcAfter, aliceUsdcBefore - pathAmountsIn[0], "USDC should be spent");
+        assertLt(pathAmountsIn[0], maxUsdcIn, "Should use less than max USDC");
+        assertGt(pathAmountsIn[0], 0, "Should spend some USDC");
     }
 
     function testBPTRemoveLiquidityWithFlashloan() public {
         // This test specifically targets the flashloan logic in BPT remove operations
         // when stepLocals.isLastStep == false.
 
-        uint256 exactDaiOut = poolInitAmount / 2000; // Very small amount
+        uint256 exactUsdcOut = poolInitAmount / 2000; // Very small amount
 
         // Create a 2-step path where BPT removal is NOT the last step.
         // This forces the intermediate BPT removal logic that uses flashloan.
@@ -399,7 +423,7 @@ contract BatchRouterTest is BaseVaultTest {
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)), // Start with BPT
             steps: steps,
-            exactAmountOut: exactDaiOut,
+            exactAmountOut: exactUsdcOut,
             maxAmountIn: poolInitAmount / 10
         });
 
@@ -408,15 +432,26 @@ contract BatchRouterTest is BaseVaultTest {
         IERC20(pool).transfer(alice, poolInitAmount / 10);
         vm.stopPrank();
 
+        uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+
         vm.prank(alice);
-        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcAfter = usdc.balanceOf(alice);
+
+        // Verify exact USDC received and BPT burned
+        assertEq(aliceUsdcAfter, aliceUsdcBefore + exactUsdcOut, "Should receive exact USDC amount");
+        assertEq(aliceBptAfter, aliceBptBefore - pathAmountsIn[0], "BPT should be burned");
+        assertGt(pathAmountsIn[0], 0, "Should burn some BPT");
     }
 
     function testBPTRefundUnusedFlashloan() public {
         // This targets the refund logic.
         // We need a scenario where bptAmountIn < stepMaxAmountIn.
 
-        uint256 smallDaiOut = MIN_AMOUNT; // Very small amount to ensure unused flashloan
+        uint256 smallUsdcOut = MIN_AMOUNT; // Very small amount to ensure unused flashloan
 
         // Multi-step with intermediate BPT remove that will have an unused flashloan.
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
@@ -435,7 +470,7 @@ contract BatchRouterTest is BaseVaultTest {
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)),
             steps: steps,
-            exactAmountOut: smallDaiOut, // Very small output to ensure refund
+            exactAmountOut: smallUsdcOut, // Very small output to ensure refund
             maxAmountIn: poolInitAmount // Large max to allow flashloan
         });
 
@@ -444,14 +479,26 @@ contract BatchRouterTest is BaseVaultTest {
         IERC20(pool).transfer(alice, poolInitAmount);
         vm.stopPrank();
 
+        uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+
         vm.prank(alice);
-        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcAfter = usdc.balanceOf(alice);
+
+        // Verify exact USDC received and BPT burned (should be small due to refund)
+        assertEq(aliceUsdcAfter, aliceUsdcBefore + smallUsdcOut, "Should receive exact USDC amount");
+        assertEq(aliceBptAfter, aliceBptBefore - pathAmountsIn[0], "BPT should be burned");
+        assertLt(pathAmountsIn[0], poolInitAmount / 100, "Should use very little BPT due to small output");
+        assertGt(pathAmountsIn[0], 0, "Should still burn some BPT");
     }
 
     function testBPTRemoveLiquidityWithFlashloanRefund() public {
         // We need a BPT remove operation that is NOT the last step AND uses flashloan.
 
-        uint256 verySmallDaiOut = 1; // Tiny amount to minimize BPT usage
+        uint256 verySmallUsdcOut = 1; // Tiny amount to minimize BPT usage
         uint256 maxBptIn = poolInitAmount; // Large max to ensure flashloan > actual usage
 
         // Give Alice a lot of BPT
@@ -478,12 +525,24 @@ contract BatchRouterTest is BaseVaultTest {
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)), // Start with BPT
             steps: steps,
-            exactAmountOut: verySmallDaiOut, // Tiny USDC output
+            exactAmountOut: verySmallUsdcOut, // Tiny USDC output
             maxAmountIn: maxBptIn // Large BPT input allowance
         });
 
+        uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+
         vm.prank(alice);
-        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcAfter = usdc.balanceOf(alice);
+
+        // Verify tiny USDC received and minimal BPT burned
+        assertEq(aliceUsdcAfter, aliceUsdcBefore + verySmallUsdcOut, "Should receive exact tiny USDC amount");
+        assertEq(aliceBptAfter, aliceBptBefore - pathAmountsIn[0], "BPT should be burned");
+        assertLt(pathAmountsIn[0], maxBptIn / 1000, "Should use very little BPT for tiny output");
+        assertGt(pathAmountsIn[0], 0, "Should burn some BPT");
     }
 
     function testBPTRemoveLiquidityNotLastStep() public {
@@ -519,8 +578,20 @@ contract BatchRouterTest is BaseVaultTest {
             maxAmountIn: maxBptIn
         });
 
+        uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+
         vm.prank(alice);
-        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
+        uint256 aliceUsdcAfter = usdc.balanceOf(alice);
+
+        // Verify exact USDC received and BPT burned
+        assertEq(aliceUsdcAfter, aliceUsdcBefore + exactUsdcOut, "Should receive exact USDC amount");
+        assertEq(aliceBptAfter, aliceBptBefore - pathAmountsIn[0], "BPT should be burned");
+        assertLt(pathAmountsIn[0], maxBptIn, "Should use less than max BPT");
+        assertGt(pathAmountsIn[0], 0, "Should burn some BPT");
     }
 
     function testBPTRemoveLiquidityMultiStepBackwards() public {
@@ -562,8 +633,20 @@ contract BatchRouterTest is BaseVaultTest {
             maxAmountIn: poolInitAmount / 10
         });
 
+        uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
+        uint256 aliceDaiBefore = dai.balanceOf(alice);
+
         vm.prank(alice);
-        batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceBptAfter = IERC20(pool).balanceOf(alice);
+        uint256 aliceDaiAfter = dai.balanceOf(alice);
+
+        // Verify exact DAI received and BPT burned (multi-step should work but with fees)
+        assertEq(aliceDaiAfter, aliceDaiBefore + exactDaiOut, "Should receive exact DAI amount");
+        assertEq(aliceBptAfter, aliceBptBefore - pathAmountsIn[0], "BPT should be burned");
+        assertLt(pathAmountsIn[0], poolInitAmount / 10, "Should use less than max BPT");
+        assertGt(pathAmountsIn[0], 0, "Should burn some BPT");
     }
 
     /***************************************************************************
