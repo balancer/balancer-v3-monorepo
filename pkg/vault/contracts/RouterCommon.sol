@@ -96,6 +96,11 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
         return _permit2;
     }
 
+    /// @inheritdoc IRouterCommon
+    function getVault() external view returns (IVault) {
+        return _vault;
+    }
+
     /*******************************************************************************
                                       Utilities
     *******************************************************************************/
