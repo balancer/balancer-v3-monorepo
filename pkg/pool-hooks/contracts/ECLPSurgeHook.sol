@@ -433,10 +433,10 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         //
         // The transformation is:
         //
-        //     --   --    --                     --   --     --
+        //     --   --    --           --   --     --
         //     | x'' |    |  c/λ  -s/λ  | * | x - a |
         //     | y'' | =  |   s     c   |   | y - b |
-        //     --   --    --                     --   --     --
+        //     --   --    --           --   --     --
         //
         // With x'' and y'', we can compute the price as:
         //
