@@ -4,7 +4,7 @@
 
 This package contains the source code for Gyro 2-CLP and E-CLP pools ported to Balancer V3. For more information about 
 this pool type, please refer to the 
-[documentation](https://docs.gyro.finance/gyroscope-protocol/concentrated-liquidity-pools/2-clps).
+[documentation](https://docs.gyro.finance/pools/2-clps.html).
 
 ## Licensing
 
