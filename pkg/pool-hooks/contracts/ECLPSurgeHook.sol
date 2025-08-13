@@ -299,16 +299,12 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
-        {
-            (int256 a, int256 b) = _computeOffsetFromBalances(oldBalancesScaled18, eclpParams, derivedECLPParams);
-            oldTotalImbalance = _computeImbalance(oldBalancesScaled18, eclpParams, a, b);
-        }
+        (int256 a, int256 b) = _computeOffsetFromBalances(oldBalancesScaled18, eclpParams, derivedECLPParams);
+        oldTotalImbalance = _computeImbalance(oldBalancesScaled18, eclpParams, a, b);
 
-        {
-            // Since the invariant is not the same after the liquidity change, we need to recompute the offset.
-            (int256 a, int256 b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-            newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b);
-        }
+        // Since the invariant is not the same after the liquidity change, we need to recompute the offset.
+        (a, b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b);
 
         isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
     }
