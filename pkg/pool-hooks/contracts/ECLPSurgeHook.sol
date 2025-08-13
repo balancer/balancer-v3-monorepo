@@ -8,17 +8,7 @@ import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hook
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    AddLiquidityKind,
-    LiquidityManagement,
-    TokenConfig,
-    TokenInfo,
-    PoolSwapParams,
-    HookFlags,
-    RemoveLiquidityKind,
-    SwapKind,
-    Rounding
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
