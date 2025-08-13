@@ -87,4 +87,18 @@ interface IECLPSurgeHook {
         address pool,
         uint256 staticSwapFeePercentage
     ) external view returns (uint256 surgeFeePercentage);
+
+    /**
+     * @notice Compute whether a swap will surge.
+     * @dev If max surge fee is less than static fee, return false.
+     * @param params Input parameters for the swap (balances needed)
+     * @param pool The pool we are computing the surge flag for
+     * @param staticSwapFeePercentage The static fee percentage for the pool (default if there is no surge)
+     * @return isSurging True if the swap will surge, false otherwise
+     */
+    function isSurgingSwap(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) external view returns (bool isSurging);
 }

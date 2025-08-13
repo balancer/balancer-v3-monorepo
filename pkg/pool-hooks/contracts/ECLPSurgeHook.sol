@@ -215,53 +215,15 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view returns (uint256) {
-        (
-            IGyroECLPPool.EclpParams memory eclpParams,
-            IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
-        ) = IGyroECLPPool(pool).getECLPParams();
-
-        (uint256 amountCalculatedScaled18, int256 a, int256 b) = _computeSwap(params, eclpParams, derivedECLPParams);
-
-        uint256[] memory newBalances = new uint256[](params.balancesScaled18.length);
-        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
-
-        if (params.kind == SwapKind.EXACT_IN) {
-            newBalances[params.indexIn] += params.amountGivenScaled18;
-            newBalances[params.indexOut] -= amountCalculatedScaled18;
-        } else {
-            newBalances[params.indexIn] += amountCalculatedScaled18;
-            newBalances[params.indexOut] -= params.amountGivenScaled18;
-        }
-
-        return _computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage, newBalances, eclpParams, a, b);
-    }
-
-    /***************************************************************************
-                                  Private Functions
-    ***************************************************************************/
-
-    function _computeSwapSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage,
-        uint256[] memory newBalances,
-        IGyroECLPPool.EclpParams memory eclpParams,
-        int256 a,
-        int256 b
-    ) private view returns (uint256 surgeFeePercentage) {
+    ) public view returns (uint256 surgeFeePercentage) {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
 
-        // If the max surge fee percentage is less than the static fee percentage, return the static fee percentage.
-        // No matter where the imbalance is, the fee can never be smaller than the static fee.
-        if (surgeFeeData.maxSurgeFeePercentage < staticSwapFeePercentage) {
-            return staticSwapFeePercentage;
-        }
-
-        uint256 oldTotalImbalance = _computeImbalance(params.balancesScaled18, eclpParams, a, b);
-        uint256 newTotalImbalance = _computeImbalance(newBalances, eclpParams, a, b);
-
-        bool isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
+        (bool isSurging, uint256 newTotalImbalance) = _isSurgingSwap(
+            params,
+            pool,
+            staticSwapFeePercentage,
+            surgeFeeData
+        );
 
         // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
         //
@@ -282,6 +244,57 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         } else {
             surgeFeePercentage = staticSwapFeePercentage;
         }
+    }
+
+    /// @inheritdoc IECLPSurgeHook
+    function isSurgingSwap(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage
+    ) external view returns (bool isSurging) {
+        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
+
+        (isSurging, ) = _isSurgingSwap(params, pool, staticSwapFeePercentage, surgeFeeData);
+    }
+
+    /***************************************************************************
+                                  Private Functions
+    ***************************************************************************/
+
+    function _isSurgingSwap(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage,
+        SurgeFeeData memory surgeFeeData
+    ) internal view returns (bool isSurging, uint256 newTotalImbalance) {
+        // If the max surge fee percentage is less than the static fee percentage, return false.
+        // No matter where the imbalance is, surge is never lower than the static fee.
+        if (surgeFeeData.maxSurgeFeePercentage < staticSwapFeePercentage) {
+            return (false, 0);
+        }
+
+        (
+            IGyroECLPPool.EclpParams memory eclpParams,
+            IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
+        ) = IGyroECLPPool(pool).getECLPParams();
+
+        (uint256 amountCalculatedScaled18, int256 a, int256 b) = _computeSwap(params, eclpParams, derivedECLPParams);
+
+        uint256[] memory newBalances = new uint256[](params.balancesScaled18.length);
+        ScalingHelpers.copyToArray(params.balancesScaled18, newBalances);
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            newBalances[params.indexIn] += params.amountGivenScaled18;
+            newBalances[params.indexOut] -= amountCalculatedScaled18;
+        } else {
+            newBalances[params.indexIn] += amountCalculatedScaled18;
+            newBalances[params.indexOut] -= params.amountGivenScaled18;
+        }
+
+        uint256 oldTotalImbalance = _computeImbalance(params.balancesScaled18, eclpParams, a, b);
+
+        newTotalImbalance = _computeImbalance(newBalances, eclpParams, a, b);
+        isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
     }
 
     function _isSurgingUnbalancedLiquidity(
