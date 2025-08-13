@@ -40,6 +40,8 @@ contract ECLPSurgeHookTest is BaseVaultTest, ECLPSurgeHookDeployer {
     IGyroECLPPool.DerivedEclpParams private derivedECLPParams;
 
     function setUp() public override {
+        // The pool below is a WETH/USDC pool, with price interval from [3100, 4400]. The peak price is around 3758,
+        // so s/c must be 3758 and s^2 + c^2 = 1. Lambda was chosen arbitrarily.
         eclpParams = IGyroECLPPool.EclpParams({
             alpha: 3100000000000000000000,
             beta: 4400000000000000000000,
@@ -47,6 +49,9 @@ contract ECLPSurgeHookTest is BaseVaultTest, ECLPSurgeHookDeployer {
             s: 999999964609366945,
             lambda: 20000000000000000000000
         });
+
+        // Derived params calculated offchain based on the params above, using the jupyter notebook file on
+        // "pkg/pool-hooks/jupyter/SurgeECLP.ipynb".
         derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
             tauAlpha: IGyroECLPPool.Vector2({
                 x: -74906290317688162800819482607385924041,
