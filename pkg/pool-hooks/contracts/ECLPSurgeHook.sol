@@ -434,21 +434,21 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         // The transformation is:
         //
         //     --   --    --                     --   --     --
-        //     | x'' |    |  c/lambda  -s/lambda  | * | x - a |
-        //     | y'' | =  |     s          c      |   | y - b |
+        //     | x'' |    |  c/λ  -s/λ  | * | x - a |
+        //     | y'' | =  |   s     c   |   | y - b |
         //     --   --    --                     --   --     --
         //
         // With x'' and y'', we can compute the price as:
         //
-        //                          --              --   --   --
-        //             [xll, yll] o |  c/lambda   s  | * |  1  |
-        //                          | -s/lambda   c  |   |  0  |
-        //                          --              --   --   --
+        //                          --            --   --   --
+        //             [xll, yll] o |  c/λ   -s/λ  | * |  1  |
+        //                          |   s      c   |   |  0  |
+        //                          --            --   --   --
         //    price =  -------------------------------------------
-        //                          --              --   --   --
-        //             [xll, yll] o |  c/lambda   s  | * |  0  |
-        //                          | -s/lambda   c  |   |  1  |
-        //                          --              --   --   --
+        //                          --            --   --   --
+        //             [xll, yll] o |  c/λ   -s/λ  | * |  0  |
+        //                          |   s      c   |   |  1  |
+        //                          --            --   --   --
 
         // Balances in the rotated ellipse centered at (0,0)
         int256 xl = int256(balancesScaled18[0]) - a;
