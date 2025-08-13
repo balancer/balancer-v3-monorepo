@@ -537,13 +537,13 @@ library GyroECLPMath {
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory derived,
         IGyroECLPPool.Vector2 memory invariant
-    ) internal pure returns (uint256 amountOut) {
+    ) internal pure returns (uint256 amountOut, int256 a, int256 b) {
         function(
             int256,
             IGyroECLPPool.EclpParams memory,
             IGyroECLPPool.DerivedEclpParams memory,
             IGyroECLPPool.Vector2 memory
-        ) pure returns (int256) calcGiven;
+        ) pure returns (int256, int256, int256) calcGiven;
         uint8 ixIn;
         uint8 ixOut;
         if (tokenInIsToken0) {
@@ -558,7 +558,8 @@ library GyroECLPMath {
 
         int256 balInNew = (balances[ixIn] + amountIn).toInt256(); // checked because amountIn is given by the user.
         checkAssetBounds(params, derived, invariant, balInNew, ixIn);
-        int256 balOutNew = calcGiven(balInNew, params, derived, invariant);
+        int256 balOutNew;
+        (balOutNew, a, b) = calcGiven(balInNew, params, derived, invariant);
         // Make sub checked as an extra check against numerical error; but this really should never happen
         amountOut = balances[ixOut] - balOutNew.toUint256();
         // The above line guarantees that amountOut <= balances[ixOut].
@@ -571,13 +572,13 @@ library GyroECLPMath {
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory derived,
         IGyroECLPPool.Vector2 memory invariant
-    ) internal pure returns (uint256 amountIn) {
+    ) internal pure returns (uint256 amountIn, int256 a, int256 b) {
         function(
             int256,
             IGyroECLPPool.EclpParams memory,
             IGyroECLPPool.DerivedEclpParams memory,
             IGyroECLPPool.Vector2 memory
-        ) pure returns (int256) calcGiven;
+        ) pure returns (int256, int256, int256) calcGiven;
         uint8 ixIn;
         uint8 ixOut;
         if (tokenInIsToken0) {
@@ -592,7 +593,8 @@ library GyroECLPMath {
 
         require(amountOut <= balances[ixOut], AssetBoundsExceeded());
         int256 balOutNew = (balances[ixOut] - amountOut).toInt256();
-        int256 balInNew = calcGiven(balOutNew, params, derived, invariant);
+        int256 balInNew;
+        (balInNew, a, b) = calcGiven(balOutNew, params, derived, invariant);
         // The checks in the following two lines should really always succeed; we keep them as extra safety against
         // numerical error.
         checkAssetBounds(params, derived, invariant, balInNew, ixIn);
@@ -742,14 +744,13 @@ library GyroECLPMath {
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
-    ) internal pure returns (int256 y) {
+    ) internal pure returns (int256 y, int256 a, int256 b) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
         // Note that the error correction in the invariant should more than make up for uncaught rounding directions
         // (in 38 decimals) in virtual offsets.
-        IGyroECLPPool.Vector2 memory ab = IGyroECLPPool.Vector2(
-            virtualOffset0(params, d, r),
-            virtualOffset1(params, d, r)
-        );
+        a = virtualOffset0(params, d, r);
+        b = virtualOffset1(params, d, r);
+        IGyroECLPPool.Vector2 memory ab = IGyroECLPPool.Vector2(a, b);
         y = solveQuadraticSwap(params.lambda, x, params.s, params.c, r, ab, d.tauBeta, d.dSq);
     }
 
@@ -758,14 +759,13 @@ library GyroECLPMath {
         IGyroECLPPool.EclpParams memory params,
         IGyroECLPPool.DerivedEclpParams memory d,
         IGyroECLPPool.Vector2 memory r // overestimate in x component, underestimate in y
-    ) internal pure returns (int256 x) {
+    ) internal pure returns (int256 x, int256 a, int256 b) {
         // Want to overestimate the virtual offsets except in a particular setting that will be corrected for later.
         // Note that the error correction in the invariant should more than make up for uncaught rounding directions
         // (in 38 decimals) in virtual offsets.
-        IGyroECLPPool.Vector2 memory ba = IGyroECLPPool.Vector2(
-            virtualOffset1(params, d, r),
-            virtualOffset0(params, d, r)
-        );
+        a = virtualOffset0(params, d, r);
+        b = virtualOffset1(params, d, r);
+        IGyroECLPPool.Vector2 memory ba = IGyroECLPPool.Vector2(b, a);
         // Change x->y, s->c, c->s, b->a, a->b, tauBeta.x -> -tauAlpha.x, tauBeta.y -> tauAlpha.y vs calcYGivenX.
         x = solveQuadraticSwap(
             params.lambda,

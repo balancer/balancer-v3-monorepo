@@ -81,6 +81,7 @@ interface IGyroECLPPool is IBasePool {
      * @param symbol Pool symbol
      * @param eclpParams Parameters to configure the E-CLP pool, with 18 decimals
      * @param derivedEclpParams Parameters calculated off-chain based on eclpParams. 38 decimals for higher precision
+     * @param version Pool version
      */
     struct GyroECLPPoolParams {
         string name;
@@ -153,4 +154,11 @@ interface IGyroECLPPool is IBasePool {
      * @return data A struct containing all immutable stable pool parameters
      */
     function getGyroECLPPoolImmutableData() external view returns (GyroECLPPoolImmutableData memory data);
+
+    /**
+     * @notice Get ECLP parameters relevant to swap/add/remove calculations.
+     * @return params A struct containing all ECLP parameters
+     * @return d A struct containing all derived ECLP parameters
+     */
+    function getECLPParams() external view returns (EclpParams memory params, DerivedEclpParams memory d);
 }

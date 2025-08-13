@@ -237,8 +237,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                     // The amount out for the last step of the path should be recorded for the return value, and the
                     // amount for the token should be sent back to the sender later on.
                     pathAmountsOut[i] = amountOut;
-                    _currentSwapTokensOut().add(address(step.tokenOut));
-                    _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                    _updateSwapTokensOut(address(step.tokenOut), amountOut);
                 } else {
                     // Input for the next step is output of current step.
                     stepExactAmountIn = amountOut;
@@ -337,8 +336,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
-                    _currentSwapTokensOut().add(address(step.tokenOut));
-                    _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
+                    _updateSwapTokensOut(address(step.tokenOut), stepExactAmountOut);
                 }
 
                 if (stepLocals.isLastStep) {
@@ -388,8 +386,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
                     // Save the remaining difference between maxAmountIn and actualAmountIn,
                     // and add it to the token out amounts for processing during settlement.
                     pathAmountsIn[i] = amountIn;
-                    _currentSwapTokensOut().add(address(stepTokenIn));
-                    _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                    _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
 
                     _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), amountIn);
                 } else {

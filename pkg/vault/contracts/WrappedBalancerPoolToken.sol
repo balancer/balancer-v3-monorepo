@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWrappedBalancerPoolToken } from "@balancer-labs/v3-interfaces/contracts/vault/IWrappedBalancerPoolToken.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 /**
  * @notice ERC20 wrapper for Balancer Pool Token (BPT).
@@ -26,9 +26,9 @@ contract WrappedBalancerPoolToken is IWrappedBalancerPoolToken, ERC20, ERC20Perm
     constructor(
         IVault vault_,
         IERC20 balancerPoolToken_,
-        string memory name,
-        string memory symbol
-    ) ERC20(name, symbol) ERC20Permit(name) {
+        string memory name_,
+        string memory symbol_
+    ) ERC20(name_, symbol_) ERC20Permit(name_) {
         vault = vault_;
         balancerPoolToken = balancerPoolToken_;
     }
