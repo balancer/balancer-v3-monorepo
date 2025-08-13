@@ -115,7 +115,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external view returns (uint256 newBalance) {
+    ) external view returns (uint256) {
         (EclpParams memory eclpParams, DerivedEclpParams memory derivedECLPParams) = _reconstructECLPParams();
 
         Vector2 memory invariant;
@@ -139,17 +139,25 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
             require(invariant.x <= GyroECLPMath._MAX_INVARIANT, GyroECLPMath.MaxInvariantExceeded());
         }
 
+        int256 newBalance;
+
         if (tokenInIndex == 0) {
-            return
-                GyroECLPMath
-                    .calcXGivenY(balancesLiveScaled18[1].toInt256(), eclpParams, derivedECLPParams, invariant)
-                    .toUint256();
+            (newBalance, , ) = GyroECLPMath.calcXGivenY(
+                balancesLiveScaled18[1].toInt256(),
+                eclpParams,
+                derivedECLPParams,
+                invariant
+            );
         } else {
-            return
-                GyroECLPMath
-                    .calcYGivenX(balancesLiveScaled18[0].toInt256(), eclpParams, derivedECLPParams, invariant)
-                    .toUint256();
+            (newBalance, , ) = GyroECLPMath.calcYGivenX(
+                balancesLiveScaled18[0].toInt256(),
+                eclpParams,
+                derivedECLPParams,
+                invariant
+            );
         }
+
+        return newBalance.toUint256();
     }
 
     /// @inheritdoc IBasePool
@@ -171,7 +179,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
         }
 
         if (request.kind == SwapKind.EXACT_IN) {
-            uint256 amountOutScaled18 = GyroECLPMath.calcOutGivenIn(
+            (uint256 amountOutScaled18, , ) = GyroECLPMath.calcOutGivenIn(
                 request.balancesScaled18,
                 request.amountGivenScaled18,
                 tokenInIsToken0,
@@ -182,7 +190,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
 
             return amountOutScaled18;
         } else {
-            uint256 amountInScaled18 = GyroECLPMath.calcInGivenOut(
+            (uint256 amountInScaled18, , ) = GyroECLPMath.calcInGivenOut(
                 request.balancesScaled18,
                 request.amountGivenScaled18,
                 tokenInIsToken0,
@@ -208,6 +216,7 @@ contract GyroECLPPool is IGyroECLPPool, BalancerPoolToken, PoolInfo, Version {
         (d.u, d.v, d.w, d.z, d.dSq) = (_u, _v, _w, _z, _dSq);
     }
 
+    /// @inheritdoc IGyroECLPPool
     function getECLPParams() external view returns (EclpParams memory params, DerivedEclpParams memory d) {
         return _reconstructECLPParams();
     }
