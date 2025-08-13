@@ -112,7 +112,7 @@ contract StableSurgeHook is IStableSurgeHook, BaseHooks, VaultGuard, SingletonAu
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view override onlyVault returns (bool, uint256) {
+    ) public view override returns (bool, uint256) {
         return (true, getSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 

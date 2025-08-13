@@ -97,7 +97,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view override onlyVault returns (bool, uint256) {
+    ) public view override returns (bool, uint256) {
         return (true, computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
