@@ -413,7 +413,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         }
 
         if (currentPrice == peakPrice) {
-            // If currentPrice equals to peak price, the pool is perfectly balanced.
+            // If the currentPrice equals the peak price, the pool is perfectly balanced.
             return 0;
         } else if (currentPrice < peakPrice) {
             return (peakPrice - currentPrice).divDown(peakPrice - eclpParams.alpha.toUint256());
