@@ -21,6 +21,7 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
+    bytes public lastSwapUserData;
     bool public failOnAfterInitialize;
     bool public failOnBeforeInitialize;
     bool public failOnComputeDynamicSwapFeeHook;
@@ -122,6 +123,10 @@ contract PoolHooksMock is BaseHooks, VaultGuard {
     }
 
     function onBeforeSwap(PoolSwapParams calldata params, address) public override returns (bool) {
+        if (params.userData.length > 0) {
+            lastSwapUserData = params.userData;
+        }
+
         if (shouldIgnoreSavedSender == false) {
             _savedSender = ISenderGuard(params.router).getSender();
         }
