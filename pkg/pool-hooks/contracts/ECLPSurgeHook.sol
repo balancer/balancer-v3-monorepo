@@ -489,7 +489,8 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
                 derivedECLPParams
             );
             // invariant = overestimate in x-component, underestimate in y-component
-            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
+            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath (the sum of the
+            // balances of the tokens cannot exceed 1e34, so the invariant + err value is bounded by 3e37).
             invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
         }
 
