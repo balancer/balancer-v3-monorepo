@@ -53,6 +53,11 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
 
     IPermit2 internal immutable _permit2;
 
+    // If Permit2 is the zero address, set this flag to indicate it's a "prepaid" router.
+    // Prepaid routers are designed to be used by contracts (e.g., aggregators), which send funds to the Vault
+    // in advance. "Retail" routers do Permit2 token transfers from the user during the operation.
+    bool internal immutable _isPrepaid;
+
     /**
      * @notice Locks the return of excess ETH to the sender until the end of the function.
      * @dev This also encompasses the `saveSender` functionality.
@@ -84,6 +89,7 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
     ) SenderGuard() VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
         _permit2 = permit2;
+        _isPrepaid = permit2 == IPermit2(address(0));
     }
 
     /// @inheritdoc IRouterCommon
