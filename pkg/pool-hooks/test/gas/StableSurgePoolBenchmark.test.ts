@@ -58,6 +58,6 @@ class StableSurgePoolBenchmark extends Benchmark {
   }
 }
 
-describe.only('StableSurgePool Gas Benchmark', function () {
+describe('StableSurgePool Gas Benchmark', function () {
   new StableSurgePoolBenchmark(__dirname).itBenchmarks();
 });
