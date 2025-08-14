@@ -33,7 +33,6 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
-import { AggregatorCompositeLiquidityRouter } from "../../../contracts/AggregatorCompositeLiquidityRouter.sol";
 
 contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
     using CastingHelpers for address[];
@@ -105,7 +104,7 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
     RateProviderMock internal rateProvider;
     BasicAuthorizerMock internal authorizer;
     CompositeLiquidityRouterMock internal compositeLiquidityRouter;
-    AggregatorCompositeLiquidityRouter internal aggregatorCompositeLiquidityRouter;
+    CompositeLiquidityRouterMock internal aggregatorCompositeLiquidityRouter;
 
     // Fee controller deployed with the Vault.
     IProtocolFeeController internal feeController;
@@ -175,15 +174,17 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
         vm.label(address(vaultAdmin), "vaultAdmin");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
-        router = deployRouterMock(IVault(address(vault)), weth, permit2);
+        router = deployRouterMock(IVault(address(vault)), weth, permit2, false);
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
+        compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2, false);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
-        aggregatorCompositeLiquidityRouter = deployAggregatorCompositeLiquidityRouterMock(
+        aggregatorCompositeLiquidityRouter = deployCompositeLiquidityRouterMock(
             IVault(address(vault)),
-            "Aggregator CompositeLiquidityRouter v1"
+            weth,
+            permit2,
+            true
         );
         bufferRouter = deployBufferRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(bufferRouter), "buffer router");

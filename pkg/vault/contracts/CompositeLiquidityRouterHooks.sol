@@ -36,16 +36,14 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         ERC4626
     }
 
-    bool internal immutable _isAggregator;
-
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
         bool isAggregator,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
-        _isAggregator = isAggregator;
+    ) BatchRouterCommon(vault, weth, permit2, isAggregator, routerVersion) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     // ERC4626 Pool Hooks
@@ -235,13 +233,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), amountIn);
-            } else {
-                // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(liquidityParams.sender, IERC20(settlementToken), amountIn, liquidityParams.wethIsEth);
-            }
+            _takeOrSettle(liquidityParams.sender, liquidityParams.wethIsEth, settlementToken, amountIn);
         }
 
         if (needToWrap) {
@@ -287,13 +279,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), maxAmountIn);
-            } else {
-                // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(liquidityParams.sender, settlementToken, maxAmountIn, liquidityParams.wethIsEth);
-            }
+            _takeOrSettle(liquidityParams.sender, liquidityParams.wethIsEth, address(settlementToken), maxAmountIn);
         }
 
         // If amountIn is 0, actualAmountIn remains at its initialized value of 0.
@@ -453,7 +439,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         // Settle the amounts in.
         if (isStaticCall == false) {
-            _settlePaths(params.sender, params.wethIsEth, _isAggregator);
+            _settlePaths(params.sender, params.wethIsEth);
         }
     }
 
@@ -560,7 +546,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (EVMCallModeHelpers.isStaticCall() == false) {
-            _settlePaths(params.sender, params.wethIsEth, _isAggregator);
+            _settlePaths(params.sender, params.wethIsEth);
         }
     }
 
@@ -683,18 +669,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (underlyingAmountIn > 0) {
             if (isStaticCall == false) {
-                if (_isAggregator) {
-                    // Settle the prepayment amount that was already sent
-                    _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
-                } else {
-                    // Retrieve tokens from the sender using Permit2
-                    _takeTokenIn(
-                        liquidityParams.sender,
-                        IERC20(underlyingToken),
-                        underlyingAmountIn,
-                        liquidityParams.wethIsEth
-                    );
-                }
+                _takeOrSettle(liquidityParams.sender, liquidityParams.wethIsEth, underlyingToken, underlyingAmountIn);
             }
 
             (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(

@@ -10,14 +10,9 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 
-import { AggregatorCompositeLiquidityRouter } from "../../contracts/AggregatorCompositeLiquidityRouter.sol";
 import { CompositeLiquidityRouterNestedPoolsTest } from "./CompositeLiquidityRouterNestedPools.t.sol";
 
 contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidityRouterNestedPoolsTest {
-    function skipETHTests() internal pure override returns (bool) {
-        return true;
-    }
-
     // Virtual function
     function _addLiquidityUnbalancedNestedPool(
         address pool,
@@ -25,14 +20,17 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
         uint256[] memory exactAmountsIn,
         address[] memory tokensToWrap,
         uint256 minBptAmountOut,
+        uint256 ethValue,
         bool wethIsEth,
         bytes memory userData,
         bytes memory expectedError
     ) internal override returns (uint256) {
-        require(!wethIsEth, "WETH is not supported in this test");
-
         for (uint256 i = 0; i < tokensIn.length; i++) {
             if (exactAmountsIn[i] == 0) {
+                continue;
+            }
+
+            if (wethIsEth && tokensIn[i] == address(weth)) {
                 continue;
             }
 
@@ -44,12 +42,13 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
         }
 
         return
-            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedNestedPool{ value: ethValue }(
                 pool,
                 tokensIn,
                 exactAmountsIn,
                 tokensToWrap,
                 minBptAmountOut,
+                wethIsEth,
                 userData
             );
     }
@@ -64,8 +63,6 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
         bytes memory userData,
         bytes memory expectedError
     ) internal override returns (uint256[] memory amountsOut) {
-        require(!wethIsEth, "WETH is not supported in this test");
-
         IERC20(pool).approve(address(aggregatorCompositeLiquidityRouter), exactBptAmountIn);
 
         if (expectedError.length > 0) {
@@ -79,6 +76,7 @@ contract AggregatorCompositeLiquidityRouterNestedPoolsTest is CompositeLiquidity
                 tokensOut,
                 minAmountsOut,
                 tokensToUnwrap,
+                wethIsEth,
                 userData
             );
     }
