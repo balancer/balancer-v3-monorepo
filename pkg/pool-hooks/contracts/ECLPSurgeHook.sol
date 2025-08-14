@@ -18,48 +18,25 @@ import { GyroECLPMath } from "@balancer-labs/v3-pool-gyro/contracts/lib/GyroECLP
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
-import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
+
+import { SurgeHookCommon } from "./SurgeHookCommon.sol";
 
 /**
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthentication, Version {
+contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
     using SignedFixedPoint for int256;
     using FixedPoint for uint256;
     using SafeCast for *;
-
-    // Percentages are 18-decimal FP values, which fit in 64 bits (sized ensure a single slot).
-    struct SurgeFeeData {
-        uint64 thresholdPercentage;
-        uint64 maxSurgeFeePercentage;
-    }
-
-    // The default threshold, above which surging will occur.
-    uint256 private immutable _defaultMaxSurgeFeePercentage;
-
-    // The default threshold, above which surging will occur.
-    uint256 private immutable _defaultSurgeThresholdPercentage;
-
-    // Store the current threshold and max fee for each pool.
-    mapping(address pool => SurgeFeeData data) internal _surgeFeePoolData;
-
-    modifier withValidPercentage(uint256 percentageValue) {
-        _ensureValidPercentage(percentageValue);
-        _;
-    }
 
     constructor(
         IVault vault,
         uint256 defaultMaxSurgeFeePercentage,
         uint256 defaultSurgeThresholdPercentage,
         string memory version
-    ) SingletonAuthentication(vault) VaultGuard(vault) Version(version) {
-        _ensureValidPercentage(defaultMaxSurgeFeePercentage);
-        _ensureValidPercentage(defaultSurgeThresholdPercentage);
-
-        _defaultMaxSurgeFeePercentage = defaultMaxSurgeFeePercentage;
-        _defaultSurgeThresholdPercentage = defaultSurgeThresholdPercentage;
+    ) SurgeHookCommon(vault, defaultMaxSurgeFeePercentage, defaultSurgeThresholdPercentage, version) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /***************************************************************************
@@ -67,38 +44,15 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     ***************************************************************************/
 
     /// @inheritdoc IHooks
-    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
-        hookFlags.shouldCallComputeDynamicSwapFee = true;
-        hookFlags.shouldCallAfterAddLiquidity = true;
-        hookFlags.shouldCallAfterRemoveLiquidity = true;
-    }
-
-    /// @inheritdoc IHooks
     function onRegister(
         address factory,
         address pool,
-        TokenConfig[] memory,
-        LiquidityManagement calldata
-    ) public override onlyVault returns (bool) {
-        // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
-        // in the future).
-        _setMaxSurgeFeePercentage(pool, _defaultMaxSurgeFeePercentage);
-
-        // Initially set the pool threshold to the default (can be changed by the pool swapFeeManager in the future).
-        _setSurgeThresholdPercentage(pool, _defaultSurgeThresholdPercentage);
+        TokenConfig[] memory tokenConfig,
+        LiquidityManagement calldata liquidityManagement
+    ) public override onlyVault returns (bool success) {
+        success = super.onRegister(factory, pool, tokenConfig, liquidityManagement);
 
         emit ECLPSurgeHookRegistered(pool, factory);
-
-        return true;
-    }
-
-    /// @inheritdoc IHooks
-    function onComputeDynamicSwapFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view override returns (bool, uint256) {
-        return (true, computeSwapSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
     /// @inheritdoc IHooks
@@ -160,42 +114,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
     /***************************************************************************
                           ECLP Surge Hook Functions
     ***************************************************************************/
-
-    /// @inheritdoc IECLPSurgeHook
-    function getDefaultMaxSurgeFeePercentage() external view returns (uint256) {
-        return _defaultMaxSurgeFeePercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getDefaultSurgeThresholdPercentage() external view returns (uint256) {
-        return _defaultSurgeThresholdPercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getMaxSurgeFeePercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].maxSurgeFeePercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function getSurgeThresholdPercentage(address pool) external view returns (uint256) {
-        return _surgeFeePoolData[pool].thresholdPercentage;
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function setMaxSurgeFeePercentage(
-        address pool,
-        uint256 newMaxSurgeSurgeFeePercentage
-    ) external withValidPercentage(newMaxSurgeSurgeFeePercentage) onlySwapFeeManagerOrGovernance(pool) {
-        _setMaxSurgeFeePercentage(pool, newMaxSurgeSurgeFeePercentage);
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function setSurgeThresholdPercentage(
-        address pool,
-        uint256 newSurgeThresholdPercentage
-    ) external withValidPercentage(newSurgeThresholdPercentage) onlySwapFeeManagerOrGovernance(pool) {
-        _setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
-    }
 
     /// @inheritdoc IECLPSurgeHook
     function computeSwapSurgeFeePercentage(
