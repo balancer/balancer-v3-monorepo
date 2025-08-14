@@ -5,22 +5,22 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ZERO_BYTES32, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
-import { GyroECLPPoolFactory } from '@balancer-labs/v3-pool-gyro/typechain-types';
+import { Gyro2CLPPoolFactory } from '@balancer-labs/v3-pool-gyro/typechain-types';
 import { PoolRoleAccountsStruct } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { Benchmark, PoolTag, PoolInfo } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
 
-class ECLPPoolBenchmark extends Benchmark {
+class Gyro2CLPPoolBenchmark extends Benchmark {
   constructor(dirname: string) {
-    super(dirname, 'ECLPPool', {
+    super(dirname, 'Gyro2CLPPool', {
       disableNestedPoolTests: true, // Pool does not support 3 tokens
     });
   }
 
   override async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo> {
-    const factory = (await deploy('v3-pool-gyro/GyroECLPPoolFactory', {
+    const factory = (await deploy('v3-pool-gyro/Gyro2CLPPoolFactory', {
       args: [await this.vault.getAddress(), MONTH * 12, '', ''],
-    })) as unknown as GyroECLPPoolFactory;
+    })) as unknown as Gyro2CLPPoolFactory;
 
     const poolRoleAccounts: PoolRoleAccountsStruct = {
       pauseManager: ZERO_ADDRESS,
@@ -30,30 +30,15 @@ class ECLPPoolBenchmark extends Benchmark {
 
     const enableDonation = true;
 
-    const eclpParams = {
-      alpha: 998502246630054917n,
-      beta: 1000200040008001600n,
-      c: 707106781186547524n,
-      s: 707106781186547524n,
-      lambda: 4000000000000000000000n,
-    };
-
-    const derivedEclpParams = {
-      tauAlpha: { x: -94861212813096057289512505574275160547n, y: 31644119574235279926451292677567331630n },
-      tauBeta: { x: 37142269533113549537591131345643981951n, y: 92846388265400743995957747409218517601n },
-      u: 66001741173104803338721745994955553010n,
-      v: 62245253919818011890633399060291020887n,
-      w: 30601134345582732000058913853921008022n,
-      z: -28859471639991253843240999485797747790n,
-      dSq: 99999999999999999886624093342106115200n,
-    };
+    const sqrtAlpha = 997496867163000167n;
+    const sqrtBeta = 1002496882788171068n;
 
     const tx = await factory.create(
-      'ECLPPool',
+      'Gyro2CLPPool',
       'Test',
       buildTokenConfig(poolTokens, withRate),
-      eclpParams,
-      derivedEclpParams,
+      sqrtAlpha,
+      sqrtBeta,
       poolRoleAccounts,
       fp(0.1),
       ZERO_ADDRESS,
@@ -64,7 +49,7 @@ class ECLPPoolBenchmark extends Benchmark {
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
-    const pool = (await deployedAt('v3-pool-gyro/GyroECLPPool', event.args.pool)) as unknown as BaseContract;
+    const pool = (await deployedAt('v3-pool-gyro/Gyro2CLPPool', event.args.pool)) as unknown as BaseContract;
     return {
       pool: pool,
       poolTokens: poolTokens,
@@ -72,6 +57,6 @@ class ECLPPoolBenchmark extends Benchmark {
   }
 }
 
-describe('ECLPPool Gas Benchmark', function () {
-  new ECLPPoolBenchmark(__dirname).itBenchmarks();
+describe('Gyro2CLPPool Gas Benchmark', function () {
+  new Gyro2CLPPoolBenchmark(__dirname).itBenchmarks();
 });
