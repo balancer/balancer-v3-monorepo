@@ -118,7 +118,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         uint256 amountIn = balancesBefore.poolTokens[tokenInIdx] / 2;
 
         vm.startPrank(alice);
-        if (wethIsEth == false || isEthTokenOut) {
+        if (isEthTokenIn == false) {
             tokens[tokenInIdx].transfer(address(vault), amountIn);
         }
 
@@ -320,9 +320,23 @@ contract AggregatorRouterTest is BaseVaultTest {
         _testSwapExactOut(usdcIdx, wethIdx, true);
     }
 
+    // This silliness required to avoid stack-too-deep.
+    enum EthToken {
+        NEITHER,
+        TOKEN_IN,
+        TOKEN_OUT
+    }
+
     function _testSwapExactOut(uint256 tokenInIdx, uint256 tokenOutIdx, bool wethIsEth) internal {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
         IERC20[] memory tokens = vault.getPoolTokens(pool);
+
+        EthToken ethToken;
+        if (wethIsEth && tokenInIdx == wethIdx) {
+            ethToken = EthToken.TOKEN_IN;
+        } else if (wethIsEth && tokenOutIdx == wethIdx) {
+            ethToken = EthToken.TOKEN_OUT;
+        }
 
         uint256 amountOut = balancesBefore.poolTokens[tokenOutIdx] / 2;
         uint256 maxAmountIn = wethIsEth && tokenInIdx == wethIdx
@@ -330,7 +344,7 @@ contract AggregatorRouterTest is BaseVaultTest {
             : balancesBefore.aliceTokens[tokenInIdx] / 2;
 
         vm.startPrank(alice);
-        if (wethIsEth == false || tokenInIdx != wethIdx) {
+        if (ethToken != EthToken.TOKEN_IN) {
             tokens[tokenInIdx].transfer(address(vault), maxAmountIn);
         }
 
@@ -341,7 +355,7 @@ contract AggregatorRouterTest is BaseVaultTest {
 
         // Check alice balances after the swap
         BaseVaultTest.Balances memory balanceAfter = getBalances(alice);
-        if (wethIsEth && tokenInIdx == wethIdx) {
+        if (ethToken == EthToken.TOKEN_IN) {
             assertEq(balanceAfter.aliceEth, balancesBefore.aliceEth - amountIn, "Wrong ETH balance (alice)");
 
             assertEq(
@@ -354,7 +368,7 @@ contract AggregatorRouterTest is BaseVaultTest {
                 balancesBefore.aliceTokens[tokenOutIdx] + amountOut,
                 "Wrong TokenOut balance (alice)"
             );
-        } else if (wethIsEth && tokenOutIdx == wethIdx) {
+        } else if (ethToken == EthToken.TOKEN_OUT) {
             assertEq(balanceAfter.aliceEth, balancesBefore.aliceEth + amountOut, "Wrong ETH balance (alice)");
 
             assertEq(
