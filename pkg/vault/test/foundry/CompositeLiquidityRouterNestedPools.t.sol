@@ -2491,8 +2491,15 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         vars.parentPoolAfter = _getPoolBalances(parentPool);
         vars.parentPoolWithoutWrapperAfter = _getPoolBalances(parentPoolWithoutWrapper);
         vars.parentPoolWithWrapperAfter = _getPoolBalances(parentPoolWithWrapper);
-        vars.burnedChildPoolABpt = vars.childPoolABefore.totalSupply - vars.childPoolAAfter.totalSupply;
-        vars.burnedChildPoolBBpt = vars.childPoolBBefore.totalSupply - vars.childPoolBAfter.totalSupply;
+
+        // This had to be added to avoid stack-too-deep in nested pool operations, but doesn't always apply.
+        // Check magnitudes so that it doesn't run during add operations and cause underflows.
+        if (vars.childPoolABefore.totalSupply > vars.childPoolAAfter.totalSupply) {
+            vars.burnedChildPoolABpt = vars.childPoolABefore.totalSupply - vars.childPoolAAfter.totalSupply;
+        }
+        if (vars.childPoolBBefore.totalSupply > vars.childPoolBAfter.totalSupply) {
+            vars.burnedChildPoolBBpt = vars.childPoolBBefore.totalSupply - vars.childPoolBAfter.totalSupply;
+        }
     }
 
     function _getBalances(address entity) private view returns (TokenBalances memory balances) {
