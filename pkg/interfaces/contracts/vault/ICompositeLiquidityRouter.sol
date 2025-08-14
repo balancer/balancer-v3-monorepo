@@ -88,20 +88,6 @@ interface ICompositeLiquidityRouter is ICompositeLiquidityRouterQueries {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut);
 
-    /**
-     * @notice Removes liquidity proportionally, burning an exact pool token amount. Only available in Recovery Mode.
-     * @dev Will not do any unwrapping or native ETH handling.
-     * @param pool Address of the liquidity pool
-     * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
-     */
-    function removeLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn,
-        uint256[] memory minAmountsOut
-    ) external returns (uint256[] memory amountsOut);
-
     /***************************************************************************
                                    Nested pools
     ***************************************************************************/

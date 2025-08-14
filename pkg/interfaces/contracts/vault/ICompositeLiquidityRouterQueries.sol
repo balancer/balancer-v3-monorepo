@@ -64,18 +64,6 @@ interface ICompositeLiquidityRouterQueries is ICompositeLiquidityRouterErrors {
         bytes memory userData
     ) external returns (uint256[] memory amountsOut);
 
-    /**
-     * @notice Queries a `removeLiquidityRecovery` operation without actually executing it.
-     * @dev It doesn't matter what the tokens are (e.g., ERC4626 or BPT); all are treated as regular ERC20 tokens.
-     * @param pool Address of the liquidity pool
-     * @param exactBptAmountIn Exact amount of pool tokens provided for the query
-     * @return amountsOut Expected amounts of tokens to receive
-     */
-    function queryRemoveLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
-
     /***************************************************************************
                                    Nested pools
     ***************************************************************************/

@@ -130,24 +130,6 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
             );
     }
 
-    /// @inheritdoc ICompositeLiquidityRouter
-    function removeLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn,
-        uint256[] memory minAmountsOut
-    ) external returns (uint256[] memory) {
-        return
-            abi.decode(
-                _vault.unlock(
-                    abi.encodeCall(
-                        CompositeLiquidityRouterHooks.removeLiquidityRecoveryHook,
-                        (pool, msg.sender, exactBptAmountIn, minAmountsOut)
-                    )
-                ),
-                (uint256[])
-            );
-    }
-
     /***************************************************************************
                                    Nested pools
     ***************************************************************************/
