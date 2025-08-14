@@ -50,7 +50,7 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
         IVault vault,
         IWETH weth,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), true, routerVersion) {
+    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
