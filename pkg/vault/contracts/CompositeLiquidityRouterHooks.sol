@@ -128,9 +128,19 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             unwrapWrapped.length
         );
 
-        (, uint256[] memory actualAmountsOut, ) = _vault.removeLiquidity(
-            _buildRemoveLiquidityParams(params, numTokens)
-        );
+        uint256[] memory actualAmountsOut;
+
+        // If the pool is in Recovery Mode, do a recovery withdrawal.
+        if (_vault.isPoolInRecoveryMode(params.pool)) {
+            actualAmountsOut = _vault.removeLiquidityRecovery(
+                params.pool,
+                params.sender,
+                params.maxBptAmountIn,
+                params.minAmountsOut
+            );
+        } else {
+            (, actualAmountsOut, ) = _vault.removeLiquidity(_buildRemoveLiquidityParams(params, numTokens));
+        }
 
         amountsOut = new uint256[](numTokens);
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
@@ -144,34 +154,6 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
                 unwrapWrapped[i],
                 params.minAmountsOut[i]
             );
-        }
-    }
-
-    /**
-     * @notice Hook for removing liquidity in Recovery Mode.
-     * @dev Can only be called by the Vault, when the pool is in Recovery Mode.
-     * @param pool Address of the liquidity pool
-     * @param sender Account originating the remove liquidity operation
-     * @param exactBptAmountIn BPT amount burned for the output tokens
-     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @return amountsOut Actual token amounts transferred in exchange for the BPT
-     */
-    function removeLiquidityRecoveryHook(
-        address pool,
-        address sender,
-        uint256 exactBptAmountIn,
-        uint256[] memory minAmountsOut
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
-        amountsOut = _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
-
-        IERC20[] memory tokens = _vault.getPoolTokens(pool);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountOut = amountsOut[i];
-            if (amountOut > 0) {
-                // Transfer the token to the sender (amountOut).
-                _vault.sendTo(tokens[i], sender, amountOut);
-            }
         }
     }
 
@@ -494,9 +476,21 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
-        (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
-            _buildRemoveLiquidityParams(params, parentPoolTokens.length)
-        );
+        uint256[] memory parentPoolAmountsOut;
+
+        // If the pool is in Recovery Mode, do a recovery withdrawal.
+        if (_vault.isPoolInRecoveryMode(params.pool)) {
+            parentPoolAmountsOut = _vault.removeLiquidityRecovery(
+                params.pool,
+                params.sender,
+                params.maxBptAmountIn,
+                params.minAmountsOut
+            );
+        } else {
+            (, parentPoolAmountsOut, ) = _vault.removeLiquidity(
+                _buildRemoveLiquidityParams(params, parentPoolTokens.length)
+            );
+        }
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address parentPoolToken = address(parentPoolTokens[i]);
@@ -519,16 +513,27 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
-                (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
-                    RemoveLiquidityParams({
-                        pool: parentPoolToken,
-                        from: address(this),
-                        maxBptAmountIn: parentPoolAmountOut,
-                        minAmountsOut: new uint256[](childPoolTokens.length),
-                        kind: params.kind,
-                        userData: params.userData
-                    })
-                );
+                uint256[] memory childPoolAmountsOut;
+
+                if (_vault.isPoolInRecoveryMode(parentPoolToken)) {
+                    childPoolAmountsOut = _vault.removeLiquidityRecovery(
+                        parentPoolToken,
+                        address(this),
+                        parentPoolAmountOut,
+                        new uint256[](childPoolTokens.length)
+                    );
+                } else {
+                    (, childPoolAmountsOut, ) = _vault.removeLiquidity(
+                        RemoveLiquidityParams({
+                            pool: parentPoolToken,
+                            from: address(this),
+                            maxBptAmountIn: parentPoolAmountOut,
+                            minAmountsOut: new uint256[](childPoolTokens.length),
+                            kind: params.kind,
+                            userData: params.userData
+                        })
+                    );
+                }
 
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
