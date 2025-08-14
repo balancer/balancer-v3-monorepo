@@ -125,6 +125,10 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
     ) external payable virtual returns (bytes[] memory results) {
+        if (_isPrepaid) {
+            revert OperationNotSupported();
+        }
+
         _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
 
         // Execute all the required operations once permissions have been granted.

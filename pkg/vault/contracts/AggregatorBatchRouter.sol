@@ -42,9 +42,6 @@ contract AggregatorBatchRouter is BatchRouter {
      */
     error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
 
-    /// @notice The operation not supported by the router.
-    error OperationNotSupported();
-
     constructor(
         IVault vault,
         IWETH weth,
@@ -315,19 +312,5 @@ contract AggregatorBatchRouter is BatchRouter {
                 }
             }
         }
-    }
-
-    function permitBatchAndCall(
-        PermitApproval[] calldata,
-        bytes[] calldata,
-        IAllowanceTransfer.PermitBatch calldata,
-        bytes calldata,
-        bytes[] calldata
-    ) external payable override returns (bytes[] memory) {
-        revert OperationNotSupported();
-    }
-
-    function multicall(bytes[] calldata) public payable override returns (bytes[] memory) {
-        revert OperationNotSupported();
     }
 }
