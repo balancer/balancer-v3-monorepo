@@ -4,13 +4,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 
-import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
-import { ECLPSurgeHook } from "../../contracts/ECLPSurgeHook.sol";
 import { ECLPSurgeHookBaseTest } from "./ECLPSurgeHookBase.t.sol";
 
 contract ECLPSurgeHookRateProviderTest is ECLPSurgeHookBaseTest {
@@ -63,9 +61,9 @@ contract ECLPSurgeHookRateProviderTest is ECLPSurgeHookBaseTest {
         override
         returns (uint256[] memory initialBalancesRaw, uint256[] memory initialBalancesScaled18)
     {
-        // Balances computed so that imbalance is close to 0.
+        // Balances computed so that imbalance is close to 0 (0.0004%).
         initialBalancesScaled18 = new uint256[](2);
-        initialBalancesScaled18[wethIdx] = 414e18;
+        initialBalancesScaled18[wethIdx] = 414.32e18;
         initialBalancesScaled18[usdcIdx] = 500e18;
 
         initialBalancesRaw = new uint256[](2);
@@ -73,5 +71,8 @@ contract ECLPSurgeHookRateProviderTest is ECLPSurgeHookBaseTest {
         initialBalancesRaw[usdcIdx] = initialBalancesScaled18[usdcIdx];
 
         vault.manualSetPoolBalances(pool, initialBalancesRaw, initialBalancesScaled18);
+
+        uint256 imbalance = eclpSurgeHookMock.computeImbalanceFromBalances(GyroECLPPool(pool), initialBalancesScaled18);
+        assertLt(imbalance, 4e12, "Imbalance should be less than 0.0004%");
     }
 }

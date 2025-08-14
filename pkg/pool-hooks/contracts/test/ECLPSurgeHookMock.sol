@@ -6,6 +6,8 @@ import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/
 import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
+
 import { ECLPSurgeHook } from "./../ECLPSurgeHook.sol";
 
 contract ECLPSurgeHookMock is ECLPSurgeHook {
@@ -62,6 +64,16 @@ contract ECLPSurgeHookMock is ECLPSurgeHook {
         IGyroECLPPool.DerivedEclpParams memory derivedECLPParams
     ) external pure returns (int256 a, int256 b) {
         return _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+    }
+
+    function computeImbalanceFromBalances(
+        GyroECLPPool pool,
+        uint256[] memory balancesScaled18
+    ) external view returns (uint256 imbalance) {
+        (IGyroECLPPool.EclpParams memory eclpParams, IGyroECLPPool.DerivedEclpParams memory derivedECLPParams) = pool
+            .getECLPParams();
+        (int256 a, int256 b) = _computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+        return _computeImbalance(balancesScaled18, eclpParams, a, b);
     }
 
     function manualSetSurgeMaxFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) external {
