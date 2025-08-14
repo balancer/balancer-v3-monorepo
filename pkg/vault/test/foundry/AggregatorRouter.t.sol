@@ -22,8 +22,8 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
+import { RouterMock } from "../../contracts/test/RouterMock.sol";
 import { RouterHooks } from "../../contracts/RouterHooks.sol";
-import { AggregatorRouter } from "../../contracts/AggregatorRouter.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -36,9 +36,9 @@ contract AggregatorRouterTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     uint256 constant MIN_SWAP_AMOUNT = 1e6;
-    string constant version = "test";
+    string constant version = "Mock Router v1";
 
-    AggregatorRouter internal aggregatorRouter;
+    RouterMock internal aggregatorRouter;
     SimpleEIP7702Contract internal delegatedContractCode;
 
     // Track the indices for the standard weth/usdc pool.
@@ -49,7 +49,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
-        aggregatorRouter = deployAggregatorRouter(IVault(address(vault)), weth, version);
+        aggregatorRouter = deployRouterMock(IVault(address(vault)), weth, permit2, true);
 
         delegatedContractCode = new SimpleEIP7702Contract();
     }

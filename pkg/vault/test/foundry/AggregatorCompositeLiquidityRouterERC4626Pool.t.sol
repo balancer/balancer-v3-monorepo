@@ -10,7 +10,6 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 
-import { AggregatorCompositeLiquidityRouter } from "../../contracts/AggregatorCompositeLiquidityRouter.sol";
 import { CompositeLiquidityRouterERC4626PoolTest } from "./CompositeLiquidityRouterERC4626Pool.t.sol";
 
 contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidityRouterERC4626PoolTest {
@@ -21,7 +20,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
     function testCompositeLiquidityRouterVersion() public view override {
         assertEq(
             aggregatorCompositeLiquidityRouter.version(),
-            "Aggregator CompositeLiquidityRouter v1",
+            "Mock CompositeLiquidityRouter v1",
             "CL BatchRouter version mismatch"
         );
     }
