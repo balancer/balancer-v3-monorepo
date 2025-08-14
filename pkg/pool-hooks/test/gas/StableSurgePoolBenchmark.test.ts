@@ -5,7 +5,7 @@ import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { ZERO_BYTES32, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
-import { StableSurgePoolFactory } from '@balancer-labs/v3-pool-hooks/typechain-types';
+import { StableSurgeHook, StableSurgePoolFactory } from '@balancer-labs/v3-pool-hooks/typechain-types';
 import { PoolRoleAccountsStruct } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { Benchmark, PoolTag, PoolInfo } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
@@ -14,12 +14,19 @@ class StableSurgePoolBenchmark extends Benchmark {
   AMPLIFICATION_PARAMETER = 200n;
 
   constructor(dirname: string) {
-    super(dirname, 'StablePool');
+    super(dirname, 'StableSurgePool', {
+      disableNestedPoolTests: true,
+      disableUnbalancedLiquidityTests: true, // Reverts if the pool surges
+    });
   }
 
   override async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo> {
+    const stableSurgeHook = (await deploy('v3-pool-hooks/StableSurgeHook', {
+      args: [await this.vault.getAddress(), fp(0.1), fp(0.3), ''],
+    })) as unknown as StableSurgeHook;
+
     const factory = (await deploy('v3-pool-hooks/StableSurgePoolFactory', {
-      args: [await this.vault.getAddress(), MONTH * 12, '', ''],
+      args: [await stableSurgeHook.getAddress(), MONTH * 12, '', ''],
     })) as unknown as StableSurgePoolFactory;
 
     const poolRoleAccounts: PoolRoleAccountsStruct = {
