@@ -968,58 +968,45 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
     }
 
-    function testRemoveLiquidityRecovery__Fuzz(uint256 rawOperationAmount) public {
-        uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
-
-        vault.manualEnableRecoveryMode(pool);
-
-        uint256 snapshot = vm.snapshotState();
-        _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityRecovery(
-            pool,
-            exactBptAmountIn
-        );
-        vm.revertToState(snapshot);
-
-        uint256 beforeBPTBalance = IERC20(pool).balanceOf(bob);
-
-        uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[waWethIdx] = expectedWrappedAmountsOut[waWethIdx];
-        minAmountsOut[waDaiIdx] = expectedWrappedAmountsOut[waDaiIdx];
-
-        vm.prank(bob);
-        uint256[] memory actualUnderlyingAmountsOut = compositeLiquidityRouter.removeLiquidityRecovery(
-            pool,
-            exactBptAmountIn,
-            minAmountsOut
-        );
-
-        assertEq(
-            actualUnderlyingAmountsOut[waDaiIdx],
-            expectedWrappedAmountsOut[waDaiIdx],
-            "waDAI Amounts should match expected (no unwrapping in recovery mode)"
-        );
-        assertEq(
-            actualUnderlyingAmountsOut[waWethIdx],
-            expectedWrappedAmountsOut[waWethIdx],
-            "waWETH Amounts should match expected (no unwrapping in recovery mode)"
-        );
-
-        uint256 afterBPTBalance = IERC20(pool).balanceOf(bob);
-        assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
-    }
-
     function testRemoveLiquidityProportionalFromERC4626PoolWithWrappedToken__Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
+        removeLiquidityProportionalFromERC4626PoolWithWrappedToken(exactBptAmountIn, false);
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolWithWrappedTokenRecoveryMode__Fuzz(
+        uint256 rawOperationAmount
+    ) public {
+        uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
+
+        removeLiquidityProportionalFromERC4626PoolWithWrappedToken(exactBptAmountIn, true);
+    }
+
+    function removeLiquidityProportionalFromERC4626PoolWithWrappedToken(
+        uint256 exactBptAmountIn,
+        bool recoveryMode
+    ) internal {
+        if (recoveryMode) {
+            vault.manualEnableRecoveryMode(pool);
+        }
+
         uint256 snapshot = vm.snapshotState();
-        _prankStaticCall();
-        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
-            pool,
-            exactBptAmountIn,
-            address(this),
-            bytes("")
-        );
+
+        // Amounts are slightly different in recovery mode, due to rounding.
+        uint256[] memory expectedWrappedAmountsOut;
+        if (vault.isPoolInRecoveryMode(pool)) {
+            _prankStaticCall();
+            expectedWrappedAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
+        } else {
+            _prankStaticCall();
+            expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
+                pool,
+                exactBptAmountIn,
+                address(this),
+                bytes("")
+            );
+        }
+
         vm.revertToState(snapshot);
 
         uint256 beforeBPTBalance = IERC20(pool).balanceOf(bob);
@@ -1547,19 +1534,6 @@ contract CompositeLiquidityRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
         compositeLiquidityRouter.removeLiquidityERC4626PoolProportionalHook(params, new bool[](2));
-    }
-
-    function testRemoveLiquidityRecoveryHookWhenNotVault() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        compositeLiquidityRouter.removeLiquidityRecoveryHook(pool, address(this), FixedPoint.ONE, new uint256[](2));
-    }
-
-    function testRemoveLiquidityRecoveryHookWhenNotRecoveryMode() public {
-        vault.forceUnlock();
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInRecoveryMode.selector, pool));
-        vm.prank(address(vault));
-        compositeLiquidityRouter.removeLiquidityRecoveryHook(pool, address(this), FixedPoint.ONE, new uint256[](2));
     }
 
     struct TestLocals {
