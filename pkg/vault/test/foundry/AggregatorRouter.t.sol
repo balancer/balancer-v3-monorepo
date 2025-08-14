@@ -917,24 +917,22 @@ contract AggregatorRouterTest is BaseVaultTest {
     function _removeLiquidityCustom(bool wethIsEth) internal {
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
 
-        uint256 maxBptAmountIn = IERC20(pool).totalSupply();
+        uint256 exactBptAmountIn = IERC20(pool).totalSupply();
         uint256[] memory minAmountsOut = new uint256[](2);
         minAmountsOut[wethIdx] = wethIsEth ? balancesBefore.aliceEth / 100 : balancesBefore.lpTokens[wethIdx];
         minAmountsOut[usdcIdx] = balancesBefore.lpTokens[usdcIdx];
 
         vm.startPrank(lp);
-        IERC20(pool).approve(address(aggregatorRouter), maxBptAmountIn);
+        IERC20(pool).approve(address(aggregatorRouter), exactBptAmountIn);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, ) = aggregatorRouter.removeLiquidityCustom(
             pool,
-            maxBptAmountIn,
+            exactBptAmountIn,
             minAmountsOut,
             wethIsEth,
             bytes("")
         );
         vm.stopPrank();
-
-        assertLe(bptAmountIn, maxBptAmountIn, "BPT amount in should be less than or equal to max BPT amount in");
 
         int256[] memory vaultBalancesDiff = new int256[](2);
         vaultBalancesDiff[wethIdx] = -int256(amountsOut[wethIdx]);

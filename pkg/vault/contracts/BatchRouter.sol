@@ -515,7 +515,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         pathAmountsIn[i] = bptAmountIn;
                         _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
 
-                        // Refund unused portion of BPT to the user.alias
+                        // Refund unused portion of BPT to the user.
                         if (bptAmountIn < stepMaxAmountIn && params.sender != address(this)) {
                             stepTokenIn.safeTransfer(address(params.sender), stepMaxAmountIn - bptAmountIn);
                         }
