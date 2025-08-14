@@ -167,6 +167,18 @@ library GyroECLPMath {
     }
 
     /**
+     * @notice Calculate A^{-1}t where A^{-1} is given in Section 2.2
+     * @dev This is rotating and scaling the circle into the ellipse
+     */
+    function mulAinv(
+        IGyroECLPPool.EclpParams memory params,
+        IGyroECLPPool.Vector2 memory t
+    ) internal pure returns (IGyroECLPPool.Vector2 memory tp) {
+        tp.x = t.x.mulDownMag(params.lambda).mulDownMag(params.c) + t.y.mulDownMag(params.s);
+        tp.y = -t.x.mulDownMag(params.lambda).mulDownMag(params.s) + t.y.mulDownMag(params.c);
+    }
+
+    /**
      * @notice Calculate virtual offset a given invariant r, see calculation in Section 2.1.2.
      * @dev In contrast to virtual reserve offsets in CPMM, these are *subtracted* from the real reserves, moving the
      * curve to the upper-right. They can be positive or negative, but not both can be negative. Calculates
@@ -777,5 +789,41 @@ library GyroECLPMath {
             IGyroECLPPool.Vector2(-d.tauAlpha.x, d.tauAlpha.y),
             d.dSq
         );
+    }
+
+    /**
+     * @notice Maps price px to the corresponding point on the untransformed normalized circle.
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param px price of asset x in terms of asset y in the rotated and translated ellipsis
+     * @return tpp Balances of the normalized circle corresponding to price px in the ellipsis
+     */
+    function tau(
+        IGyroECLPPool.EclpParams memory params,
+        int256 px
+    ) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
+        return eta(zeta(params, px));
+    }
+
+    /**
+     * @notice Maps price pxc of the circle to the corresponding point on the circle centered at the origin.
+     * @dev Notice that eta function does not depend on ECLP params.
+     * @param pxc price of asset x in terms of asset y in the circle centered at the origin
+     * @return tpp Balances of the normalized circle corresponding to price pxc in this same circle
+     */
+    function eta(int256 pxc) internal pure returns (IGyroECLPPool.Vector2 memory tpp) {
+        int256 z = FixedPoint.powDown(FixedPoint.ONE + (pxc.mulDownMag(pxc).toUint256()), _ONEHALF).toInt256();
+        tpp.x = pxc.divDownMag(z);
+        tpp.y = SignedFixedPoint.ONE.divDownMag(z);
+    }
+
+    /**
+     * @notice Maps price px in the transformed ellipsis to the untransformed price pxc on the circle.
+     * @param params ECLP params alpha, beta, c, s and lambda
+     * @param px price of asset x in terms of asset y in the rotated and translated ellipsis
+     * @return pxc price of asset x in terms of asset y in the circle centered at the origin
+     */
+    function zeta(IGyroECLPPool.EclpParams memory params, int256 px) internal pure returns (int256 pxc) {
+        IGyroECLPPool.Vector2 memory nd = mulA(params, IGyroECLPPool.Vector2(-SignedFixedPoint.ONE, px));
+        return -nd.y.divDownMag(nd.x);
     }
 }

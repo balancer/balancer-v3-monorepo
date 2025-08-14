@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { name } from './package.json';
+
 import '@nomicfoundation/hardhat-ethers';
 import '@nomicfoundation/hardhat-toolbox';
 import '@typechain/hardhat';
@@ -58,6 +60,7 @@ export default {
   },
   solidity: {
     compilers: hardhatBaseConfig.compilers,
+    overrides: { ...hardhatBaseConfig.overrides(name) },
   },
   warnings: hardhatBaseConfig.warnings,
 };
