@@ -118,7 +118,7 @@ export class Benchmark {
     const TOKEN_AMOUNT = fp(100);
     const BUFFER_INITIALIZE_AMOUNT = bn(1e4);
 
-    const SWAP_AMOUNT = fp(20);
+    const SWAP_AMOUNT = fp(50);
     const SWAP_FEE = fp(0.01);
 
     let tokenAAddress: string;

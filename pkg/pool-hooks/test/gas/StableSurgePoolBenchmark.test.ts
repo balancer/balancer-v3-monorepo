@@ -22,7 +22,7 @@ class StableSurgePoolBenchmark extends Benchmark {
 
   override async deployPool(tag: PoolTag, poolTokens: string[], withRate: boolean): Promise<PoolInfo> {
     const stableSurgeHook = (await deploy('v3-pool-hooks/StableSurgeHook', {
-      args: [await this.vault.getAddress(), fp(0.1), fp(0.3), ''],
+      args: [await this.vault.getAddress(), fp(0.9), fp(0), ''],
     })) as unknown as StableSurgeHook;
 
     const factory = (await deploy('v3-pool-hooks/StableSurgePoolFactory', {
