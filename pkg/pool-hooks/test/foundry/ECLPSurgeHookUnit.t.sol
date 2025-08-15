@@ -5,7 +5,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
+import { ISurgeHookCommon } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ISurgeHookCommon.sol";
+import { ISurgeHookCommon } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ISurgeHookCommon.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -406,20 +407,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 invalidPercentage = 101e16;
 
         vm.prank(admin);
-        vm.expectRevert(IECLPSurgeHook.InvalidPercentage.selector);
+        vm.expectRevert(ISurgeHookCommon.InvalidPercentage.selector);
         hookMock.setMaxSurgeFeePercentage(address(pool), invalidPercentage);
     }
 
     function testSetMaxSurgeFeePercentageWithGovernance() public {
         authorizer.grantRole(
-            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setMaxSurgeFeePercentage.selector),
+            ECLPSurgeHook(address(hookMock)).getActionId(ISurgeHookCommon.setMaxSurgeFeePercentage.selector),
             admin
         );
 
         uint256 validPercentage = 25e16;
 
         vm.expectEmit();
-        emit IECLPSurgeHook.MaxSurgeFeePercentageChanged(pool, validPercentage);
+        emit ISurgeHookCommon.MaxSurgeFeePercentageChanged(pool, validPercentage);
 
         vm.prank(admin);
         hookMock.setMaxSurgeFeePercentage(address(pool), validPercentage);
@@ -433,7 +434,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 validPercentage = 25e16;
 
         vm.expectEmit();
-        emit IECLPSurgeHook.MaxSurgeFeePercentageChanged(pool, validPercentage);
+        emit ISurgeHookCommon.MaxSurgeFeePercentageChanged(pool, validPercentage);
 
         vm.prank(alice);
         hookMock.setMaxSurgeFeePercentage(address(pool), validPercentage);
@@ -451,20 +452,20 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 invalidPercentage = 101e16;
 
         vm.prank(admin);
-        vm.expectRevert(IECLPSurgeHook.InvalidPercentage.selector);
+        vm.expectRevert(ISurgeHookCommon.InvalidPercentage.selector);
         hookMock.setSurgeThresholdPercentage(address(pool), invalidPercentage);
     }
 
     function testSetSurgeThresholdPercentageWithGovernance() public {
         authorizer.grantRole(
-            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setSurgeThresholdPercentage.selector),
+            ECLPSurgeHook(address(hookMock)).getActionId(ISurgeHookCommon.setSurgeThresholdPercentage.selector),
             admin
         );
 
         uint256 validPercentage = 25e16;
 
         vm.expectEmit();
-        emit IECLPSurgeHook.ThresholdSurgePercentageChanged(pool, validPercentage);
+        emit ISurgeHookCommon.ThresholdSurgePercentageChanged(pool, validPercentage);
 
         vm.prank(admin);
         hookMock.setSurgeThresholdPercentage(address(pool), validPercentage);
@@ -478,7 +479,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 validPercentage = 25e16;
 
         vm.expectEmit();
-        emit IECLPSurgeHook.ThresholdSurgePercentageChanged(pool, validPercentage);
+        emit ISurgeHookCommon.ThresholdSurgePercentageChanged(pool, validPercentage);
 
         vm.prank(alice);
         hookMock.setSurgeThresholdPercentage(address(pool), validPercentage);
@@ -488,7 +489,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
     function testComputeSwapSurgeFeePercentageMaxLessThanStatic() public {
         authorizer.grantRole(
-            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setMaxSurgeFeePercentage.selector),
+            ECLPSurgeHook(address(hookMock)).getActionId(ISurgeHookCommon.setMaxSurgeFeePercentage.selector),
             admin
         );
 

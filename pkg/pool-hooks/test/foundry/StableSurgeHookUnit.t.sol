@@ -4,40 +4,34 @@ pragma solidity ^0.8.24;
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { ISurgeHookCommon } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ISurgeHookCommon.sol";
 import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
-import {
-    LiquidityManagement,
-    TokenConfig,
-    PoolSwapParams,
-    HookFlags,
-    SwapKind,
-    PoolRoleAccounts
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExplorer.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
+import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
 import { StableSurgeHookDeployer } from "./utils/StableSurgeHookDeployer.sol";
 import { StableSurgeHook } from "../../contracts/StableSurgeHook.sol";
-import { StableSurgeMedianMathMock } from "../../contracts/test/StableSurgeMedianMathMock.sol";
 
 contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
     using FixedPoint for uint256;
 
-    uint256 constant MIN_TOKENS = 2;
-    uint256 constant MAX_TOKENS = 8;
+    uint256 private constant MIN_TOKENS = 2;
+    uint256 private constant MAX_TOKENS = 8;
 
-    uint256 constant STATIC_FEE_PERCENTAGE = 1e16;
+    uint256 private constant STATIC_FEE_PERCENTAGE = 1e16;
 
-    string internal version = "Stable Surge Hook Vx";
+    string private constant VERSION = "Stable Surge Hook Vx";
 
-    StableSurgeMedianMathMock stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
-    StableSurgeHook stableSurgeHook;
-    LiquidityManagement defaultLiquidityManagement;
+    StableSurgeMedianMathMock private stableSurgeMedianMathMock = new StableSurgeMedianMathMock();
+    StableSurgeHook private stableSurgeHook;
+    LiquidityManagement private defaultLiquidityManagement;
 
     function setUp() public override {
         super.setUp();
@@ -47,17 +41,17 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
             vault,
             DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
             DEFAULT_SURGE_THRESHOLD_PERCENTAGE,
-            version
+            VERSION
         );
 
         authorizer.grantRole(
-            IAuthentication(address(stableSurgeHook)).getActionId(IStableSurgeHook.setMaxSurgeFeePercentage.selector),
+            IAuthentication(address(stableSurgeHook)).getActionId(ISurgeHookCommon.setMaxSurgeFeePercentage.selector),
             admin
         );
     }
 
     function testVersion() public view {
-        assertEq(stableSurgeHook.version(), version, "Incorrect version");
+        assertEq(stableSurgeHook.version(), VERSION, "Incorrect version");
     }
 
     function testOnRegister() public {
@@ -109,7 +103,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
         uint256 newSurgeThresholdPercentage = 0.5e18;
 
         vm.expectEmit();
-        emit IStableSurgeHook.ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
+        emit ISurgeHookCommon.ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
 
         PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
             pauseManager: address(this),
@@ -146,7 +140,7 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
             abi.encode(poolRoleAccounts)
         );
 
-        vm.expectRevert(IStableSurgeHook.InvalidPercentage.selector);
+        vm.expectRevert(ISurgeHookCommon.InvalidPercentage.selector);
         stableSurgeHook.setSurgeThresholdPercentage(pool, newSurgeThresholdPercentage);
     }
 
