@@ -55,113 +55,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         emit ECLPSurgeHookRegistered(pool, factory);
     }
 
-    /// @inheritdoc IHooks
-    function onAfterAddLiquidity(
-        address,
-        address pool,
-        AddLiquidityKind kind,
-        uint256[] memory amountsInScaled18,
-        uint256[] memory amountsInRaw,
-        uint256,
-        uint256[] memory balancesScaled18,
-        bytes memory
-    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
-        // Proportional add is always fine.
-        if (kind == AddLiquidityKind.PROPORTIONAL) {
-            return (true, amountsInRaw);
-        }
-
-        // Rebuild old balances before adding liquidity.
-        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
-        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
-            oldBalancesScaled18[i] = balancesScaled18[i] - amountsInScaled18[i];
-        }
-
-        bool isSurging = _isSurgingUnbalancedLiquidity(pool, oldBalancesScaled18, balancesScaled18);
-
-        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, amountsInRaw);
-    }
-
-    /// @inheritdoc IHooks
-    function onAfterRemoveLiquidity(
-        address,
-        address pool,
-        RemoveLiquidityKind kind,
-        uint256,
-        uint256[] memory amountsOutScaled18,
-        uint256[] memory amountsOutRaw,
-        uint256[] memory balancesScaled18,
-        bytes memory
-    ) public view override returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw) {
-        // Proportional remove is always fine.
-        if (kind == RemoveLiquidityKind.PROPORTIONAL) {
-            return (true, amountsOutRaw);
-        }
-
-        // Rebuild old balances before removing liquidity.
-        uint256[] memory oldBalancesScaled18 = new uint256[](balancesScaled18.length);
-        for (uint256 i = 0; i < balancesScaled18.length; ++i) {
-            oldBalancesScaled18[i] = balancesScaled18[i] + amountsOutScaled18[i];
-        }
-
-        bool isSurging = _isSurgingUnbalancedLiquidity(pool, oldBalancesScaled18, balancesScaled18);
-
-        // If we're not surging, it's fine to proceed; otherwise halt execution by returning false.
-        return (isSurging == false, amountsOutRaw);
-    }
-
-    /***************************************************************************
-                          ECLP Surge Hook Functions
-    ***************************************************************************/
-
-    /// @inheritdoc IECLPSurgeHook
-    function computeSwapSurgeFeePercentage(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) public view returns (uint256 surgeFeePercentage) {
-        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
-
-        (bool isSurging, uint256 newTotalImbalance) = _isSurgingSwap(
-            params,
-            pool,
-            staticSwapFeePercentage,
-            surgeFeeData
-        );
-
-        // surgeFee = staticFee + (maxFee - staticFee) * (pctImbalance - pctThreshold) / (1 - pctThreshold).
-        //
-        // As you can see from the formula, if it’s unbalanced exactly at the threshold, the last term is 0,
-        // and the fee is just: static + 0 = static fee.
-        // As the unbalanced proportion term approaches 1, the fee surge approaches: static + max - static ~= max fee.
-        // This formula linearly increases the fee from 0 at the threshold up to the maximum fee.
-        // At 35%, the fee would be 1% + (0.95 - 0.01) * ((0.35 - 0.3)/(0.95-0.3)) = 1% + 0.94 * 0.0769 ~ 8.2%.
-        // At 50% unbalanced, the fee would be 44%. At 99% unbalanced, the fee would be ~94%, very close to the maximum.
-        if (isSurging) {
-            surgeFeePercentage =
-                staticSwapFeePercentage +
-                (surgeFeeData.maxSurgeFeePercentage - staticSwapFeePercentage).mulDown(
-                    (newTotalImbalance - surgeFeeData.thresholdPercentage).divDown(
-                        uint256(surgeFeeData.thresholdPercentage).complement()
-                    )
-                );
-        } else {
-            surgeFeePercentage = staticSwapFeePercentage;
-        }
-    }
-
-    /// @inheritdoc IECLPSurgeHook
-    function isSurgingSwap(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage
-    ) external view returns (bool isSurging) {
-        SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
-
-        (isSurging, ) = _isSurgingSwap(params, pool, staticSwapFeePercentage, surgeFeeData);
-    }
-
     /***************************************************************************
                                   Private Functions
     ***************************************************************************/
@@ -171,7 +64,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         address pool,
         uint256 staticSwapFeePercentage,
         SurgeFeeData memory surgeFeeData
-    ) internal view returns (bool isSurging, uint256 newTotalImbalance) {
+    ) internal view override returns (bool isSurging, uint256 newTotalImbalance) {
         // If the max surge fee percentage is less than the static fee percentage, return false.
         // No matter where the imbalance is, surge is never lower than the static fee.
         if (surgeFeeData.maxSurgeFeePercentage < staticSwapFeePercentage) {
@@ -206,7 +99,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         address pool,
         uint256[] memory oldBalancesScaled18,
         uint256[] memory balancesScaled18
-    ) internal view returns (bool isSurging) {
+    ) internal view override returns (bool isSurging) {
         SurgeFeeData memory surgeFeeData = _surgeFeePoolData[pool];
 
         (
@@ -225,36 +118,6 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         newTotalImbalance = _computeImbalance(balancesScaled18, eclpParams, a, b);
 
         isSurging = _isSurging(surgeFeeData.thresholdPercentage, oldTotalImbalance, newTotalImbalance);
-    }
-
-    function _isSurging(
-        uint64 thresholdPercentage,
-        uint256 oldTotalImbalance,
-        uint256 newTotalImbalance
-    ) internal pure returns (bool isSurging) {
-        // If we are balanced, or the balance has improved, do not surge: simply return the regular fee percentage.
-        if (newTotalImbalance == 0) {
-            return false;
-        }
-
-        // Surging if imbalance grows and we're currently above the threshold.
-        return (newTotalImbalance > oldTotalImbalance && newTotalImbalance > thresholdPercentage);
-    }
-
-    /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setMaxSurgeFeePercentage(address pool, uint256 newMaxSurgeFeePercentage) internal {
-        // Still use SafeCast out of an abundance of caution.
-        _surgeFeePoolData[pool].maxSurgeFeePercentage = newMaxSurgeFeePercentage.toUint64();
-
-        emit MaxSurgeFeePercentageChanged(pool, newMaxSurgeFeePercentage);
-    }
-
-    /// @dev Assumes the percentage value and sender have been externally validated.
-    function _setSurgeThresholdPercentage(address pool, uint256 newSurgeThresholdPercentage) internal {
-        // Still use SafeCast out of an abundance of caution.
-        _surgeFeePoolData[pool].thresholdPercentage = newSurgeThresholdPercentage.toUint64();
-
-        emit ThresholdSurgePercentageChanged(pool, newSurgeThresholdPercentage);
     }
 
     /**
@@ -414,11 +277,5 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
 
         a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
         b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
-    }
-
-    function _ensureValidPercentage(uint256 percentage) private pure {
-        if (percentage > FixedPoint.ONE) {
-            revert InvalidPercentage();
-        }
     }
 }
