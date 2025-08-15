@@ -228,9 +228,20 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest, Weigh
         setSwapFeePercentageInPools(swapFeePercentage);
 
         // For very small invariant ratios, `BasePoolMath` reverts when calculated amount out < 0 because of rounding.
-        // Perform an external call so that `expectRevert` catches the error.
-        vm.expectRevert(stdError.arithmeticError);
-        this.removeExactInArbitraryBptInExternal(exactBptAmountIn);
+        // It might return exactly 0, in which case it will revert with `IVaultErrors.AmountOutBelowMin`.
+        // The following code is equivalent to `expectRevert` with either of the two reasons.
+        try this.removeExactInArbitraryBptInExternal(exactBptAmountIn) {
+            // Just call and see revert reason
+            revert("Operation did not revert");
+        } catch (bytes memory reason) {
+            // We can also get here if the revert happens during the external call.
+            assertTrue(
+                bytes4(reason) == bytes4(stdError.arithmeticError) ||
+                    keccak256(reason) ==
+                    keccak256(abi.encodeWithSelector(IVaultErrors.AmountOutBelowMin.selector, usdc, 0, 1)),
+                "Unexpected error"
+            );
+        }
     }
 
     // Utils
