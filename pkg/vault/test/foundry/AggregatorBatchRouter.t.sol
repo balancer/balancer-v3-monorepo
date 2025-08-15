@@ -8,7 +8,6 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IAggregatorBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorBatchRouter.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
@@ -43,7 +42,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        aggregatorBatchRouter = new AggregatorBatchRouter(IVault(address(vault)), ROUTER_VERSION);
+        aggregatorBatchRouter = new AggregatorBatchRouter(IVault(address(vault)), weth, ROUTER_VERSION);
 
         // Create additional pool for multi-hop: USDC/WETH.
         secondPool = _createSecondPool();
@@ -112,7 +111,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             uint256[] memory pathAmountsOut,
             address[] memory tokensOut,
             uint256[] memory amountsOut
-        ) = aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, bytes(""));
+        ) = aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
 
         // Verify results.
@@ -154,7 +153,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 aliceUsdcBalanceBefore = usdc.balanceOf(alice);
 
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = aggregatorBatchRouter
-            .swapExactOut(paths, MAX_UINT256, bytes(""));
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
 
         // Verify results.
@@ -206,6 +205,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, ) = aggregatorBatchRouter.swapExactIn(
             paths,
             MAX_UINT256,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -248,6 +248,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, ) = aggregatorBatchRouter.swapExactOut(
             paths,
             MAX_UINT256,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -305,6 +306,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, ) = aggregatorBatchRouter.swapExactIn(
             paths,
             MAX_UINT256,
+            false,
             bytes("")
         );
         vm.stopPrank();
@@ -427,7 +429,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), MIN_SWAP_AMOUNT);
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
-        aggregatorBatchRouter.swapExactIn(paths, block.timestamp - 1, bytes(""));
+        aggregatorBatchRouter.swapExactIn(paths, block.timestamp - 1, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -447,7 +449,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), poolInitAmount);
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
-        aggregatorBatchRouter.swapExactOut(paths, block.timestamp - 1, bytes(""));
+        aggregatorBatchRouter.swapExactOut(paths, block.timestamp - 1, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -477,7 +479,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
                 exactAmountIn
             )
         );
-        aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, bytes(""));
+        aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -529,7 +531,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), MIN_SWAP_AMOUNT);
 
         vm.expectRevert(AggregatorBatchRouter.OperationNotSupported.selector);
-        aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, bytes(""));
+        aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -570,7 +572,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         uint256 aliceDaiBalanceBefore = dai.balanceOf(alice);
         uint256 aliceUsdcBalanceBefore = usdc.balanceOf(alice);
 
-        (uint256[] memory pathAmountsOut, , ) = aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, bytes(""));
+        (uint256[] memory pathAmountsOut, , ) = aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
 
         // Verify balances - USDC already transferred, so balance should be unchanged.
@@ -604,7 +606,12 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         // Then execute the actual swap.
         vm.startPrank(alice);
         usdc.transfer(address(vault), swapAmount);
-        (uint256[] memory actualAmountsOut, , ) = aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, bytes(""));
+        (uint256[] memory actualAmountsOut, , ) = aggregatorBatchRouter.swapExactIn(
+            paths,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         // Query and actual should match.
@@ -642,7 +649,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         // This should revert because the AggregatorBatchRouter doesn't properly handle buffer operations
         // when there's no buffer initialized for this token.
         vm.expectRevert(); // Any revert is fine, we just want to hit the buffer code path
-        aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, bytes(""));
+        aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -668,7 +675,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
 
         // This should revert because buffer is not properly set up.
         vm.expectRevert();
-        aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, bytes(""));
+        aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -699,7 +706,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
                 maxAmountIn
             )
         );
-        aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, bytes(""));
+        aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 
@@ -727,7 +734,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         usdc.transfer(address(vault), maxAmountIn);
 
         vm.expectRevert(AggregatorBatchRouter.OperationNotSupported.selector);
-        aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, bytes(""));
+        aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
 }

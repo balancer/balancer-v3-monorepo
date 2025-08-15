@@ -23,11 +23,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
+        bool isAggregator,
         string memory routerVersion
-    )
-        // This router uses permit2, so we set isAggregator to `false`.
-        CompositeLiquidityRouterQueries(vault, weth, permit2, false, routerVersion)
-    {
+    ) CompositeLiquidityRouterQueries(vault, weth, permit2, isAggregator, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
