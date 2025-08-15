@@ -37,7 +37,7 @@ describe('AggregatorBatchSwap', function () {
 
   describe('batch swap given in', () => {
     context('pure swaps with no nesting', () => {
-      context('should revert if path is inccorrect', () => {
+      context('should revert if path is incorrect', () => {
         it('should revert if the step.pool is tokenIn', async () => {
           expect(
             baseTest.aggregatorRouter.connect(baseTest.sender).swapExactIn(
@@ -50,6 +50,7 @@ describe('AggregatorBatchSwap', function () {
                 },
               ],
               MAX_UINT256,
+              false,
               '0x'
             )
           ).to.be.revertedWithCustomError(baseTest.aggregatorRouter, 'OperationNotSupported');
@@ -66,6 +67,7 @@ describe('AggregatorBatchSwap', function () {
                 },
               ],
               MAX_UINT256,
+              false,
               '0x'
             )
           ).to.be.revertedWithCustomError(baseTest.aggregatorRouter, 'OperationNotSupported');
