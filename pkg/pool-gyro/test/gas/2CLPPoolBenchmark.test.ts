@@ -30,6 +30,8 @@ class Gyro2CLPPoolBenchmark extends Benchmark {
 
     const enableDonation = true;
 
+    // Alpha and beta are concentrating the pool prices in the range [0.995, 1.005].
+    // The values below are the square roots of the alpha and beta values.
     const sqrtAlpha = 997496867163000167n;
     const sqrtBeta = 1002496882788171068n;
 

@@ -30,6 +30,8 @@ class ECLPPoolBenchmark extends Benchmark {
 
     const enableDonation = true;
 
+    // Values extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet. (Same as GyroEclpPoolDeployer
+    // and ECLP.test.ts)
     const eclpParams = {
       alpha: 998502246630054917n,
       beta: 1000200040008001600n,
@@ -38,6 +40,8 @@ class ECLPPoolBenchmark extends Benchmark {
       lambda: 4000000000000000000000n,
     };
 
+    // Values extracted from pool 0x2191df821c198600499aa1f0031b1a7514d7a7d9 on Mainnet. (Same as GyroEclpPoolDeployer
+    // and ECLP.test.ts)
     const derivedEclpParams = {
       tauAlpha: { x: -94861212813096057289512505574275160547n, y: 31644119574235279926451292677567331630n },
       tauBeta: { x: 37142269533113549537591131345643981951n, y: 92846388265400743995957747409218517601n },
