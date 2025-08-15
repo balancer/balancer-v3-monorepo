@@ -47,6 +47,23 @@ abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, Si
     }
 
     /***************************************************************************
+                              Functions to Implement
+    ***************************************************************************/
+
+    function _isSurgingSwap(
+        PoolSwapParams calldata params,
+        address pool,
+        uint256 staticSwapFeePercentage,
+        SurgeFeeData memory surgeFeeData
+    ) internal view virtual returns (bool isSurging, uint256 newTotalImbalance);
+
+    function _isSurgingUnbalancedLiquidity(
+        address pool,
+        uint256[] memory oldBalancesScaled18,
+        uint256[] memory balancesScaled18
+    ) internal view virtual returns (bool isSurging);
+
+    /***************************************************************************
                                 IHooks Functions
     ***************************************************************************/
 
@@ -59,7 +76,7 @@ abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, Si
 
     /// @inheritdoc IHooks
     function onRegister(
-        address factory,
+        address,
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
@@ -233,19 +250,6 @@ abstract contract SurgeHookCommon is ISurgeHookCommon, BaseHooks, VaultGuard, Si
     /***************************************************************************
                                   Private Functions
     ***************************************************************************/
-
-    function _isSurgingSwap(
-        PoolSwapParams calldata params,
-        address pool,
-        uint256 staticSwapFeePercentage,
-        SurgeFeeData memory surgeFeeData
-    ) internal view virtual returns (bool isSurging, uint256 newTotalImbalance);
-
-    function _isSurgingUnbalancedLiquidity(
-        address pool,
-        uint256[] memory oldBalancesScaled18,
-        uint256[] memory balancesScaled18
-    ) internal view virtual returns (bool isSurging);
 
     function _isSurging(
         uint64 thresholdPercentage,
