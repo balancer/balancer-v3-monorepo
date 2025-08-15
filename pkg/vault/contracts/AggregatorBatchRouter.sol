@@ -6,7 +6,6 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IAggregatorBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorBatchRouter.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -33,7 +32,7 @@ struct SwapStepLocals {
  * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
-contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
+contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -49,8 +48,9 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
 
     constructor(
         IVault vault,
+        IWETH weth,
         string memory routerVersion
-    ) BatchRouterCommon(vault, IWETH(address(0)), IPermit2(address(0)), routerVersion) {
+    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), true, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -58,10 +58,11 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                                        Swaps
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function swapExactIn(
         IBatchRouter.SwapPathExactAmountIn[] memory paths,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
     )
         external
@@ -78,7 +79,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -87,10 +88,11 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
             );
     }
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function swapExactOut(
         IBatchRouter.SwapPathExactAmountOut[] memory paths,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
     )
         external
@@ -107,7 +109,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -412,7 +414,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                                      Queries
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function querySwapExactIn(
         IBatchRouter.SwapPathExactAmountIn[] memory paths,
         address sender,
@@ -444,7 +446,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
             );
     }
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function querySwapExactOut(
         IBatchRouter.SwapPathExactAmountOut[] memory paths,
         address sender,
