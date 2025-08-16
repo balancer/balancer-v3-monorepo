@@ -12,7 +12,8 @@ import { StableSurgeHook } from "../../../contracts/StableSurgeHook.sol";
 import { StableSurgePoolFactory } from "../../../contracts/StableSurgePoolFactory.sol";
 
 /**
- * @dev This contract contains functions for deploying mocks and contracts related to the "StablePool". These functions should have support for reusing artifacts from the hardhat compilation.
+ * @dev This contract contains functions for deploying mocks and contracts related to the "StablePool". These functions
+ * should have support for reusing artifacts from the hardhat compilation.
  */
 contract StableSurgePoolFactoryDeployer is BaseContractsDeployer {
     string private artifactsRootDir = "artifacts/";
