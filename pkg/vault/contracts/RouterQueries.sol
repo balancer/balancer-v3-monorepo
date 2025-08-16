@@ -22,9 +22,8 @@ abstract contract RouterQueries is IRouterQueries, RouterHooks {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        bool isAggregator,
         string memory routerVersion
-    ) RouterHooks(vault, weth, permit2, isAggregator, routerVersion) {
+    ) RouterHooks(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

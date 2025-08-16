@@ -12,6 +12,9 @@ import "./IVault.sol";
 
 /// @notice Interface for functions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
+    /// @notice The operation not supported by the router (e.g., permit2 operation when pre-paid).
+    error OperationNotSupported();
+
     /*******************************************************************************
                                          Utils
     *******************************************************************************/

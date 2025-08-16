@@ -37,8 +37,6 @@ abstract contract BatchRouterCommon is RouterCommon {
         _calculateBatchRouterStorageSlot("currentSwapTokenOutAmounts");
     bytes32 private immutable _SETTLED_TOKEN_AMOUNTS_SLOT = _calculateBatchRouterStorageSlot("settledTokenAmounts");
 
-    bool internal immutable _isAggregator;
-
     // solhint-enable var-name-mixedcase
     // solhint-disable no-inline-assembly
 
@@ -46,10 +44,9 @@ abstract contract BatchRouterCommon is RouterCommon {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        bool isAggregator,
         string memory routerVersion
     ) RouterCommon(vault, weth, permit2, routerVersion) {
-        _isAggregator = isAggregator;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     // We use transient storage to track tokens and amounts flowing in and out of a batch swap.
@@ -143,7 +140,7 @@ abstract contract BatchRouterCommon is RouterCommon {
      * @param amountIn The amount being transferred or settled
      */
     function _takeOrSettle(address sender, bool wethIsEth, address token, uint256 amountIn) internal {
-        if (_isAggregator == false || (wethIsEth && token == address(_weth))) {
+        if (_isPrepaid == false || (wethIsEth && token == address(_weth))) {
             // Retrieve tokens from the sender using Permit2
             _takeTokenIn(sender, IERC20(token), amountIn, wethIsEth);
         } else {

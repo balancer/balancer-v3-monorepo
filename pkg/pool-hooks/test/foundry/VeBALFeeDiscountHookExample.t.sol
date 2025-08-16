@@ -188,7 +188,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
 
         // Create an untrusted router
-        address payable untrustedRouter = payable(deployRouterMock(IVault(address(vault)), weth, permit2, false));
+        address payable untrustedRouter = payable(deployRouterMock(IVault(address(vault)), weth, permit2));
         vm.label(untrustedRouter, "untrusted router");
 
         // Allows permit2 to move DAI tokens from Bob to untrustedRouter.

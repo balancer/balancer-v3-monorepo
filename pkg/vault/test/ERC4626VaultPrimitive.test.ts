@@ -75,7 +75,7 @@ describe('ERC4626VaultPrimitive', function () {
       args: [vault, await WETH.getAddress(), permit2, BATCH_ROUTER_VERSION],
     });
     router = await deploy('v3-vault/Router', {
-      args: [vault, await WETH.getAddress(), permit2, false, ROUTER_VERSION],
+      args: [vault, await WETH.getAddress(), permit2, ROUTER_VERSION],
     });
     bufferRouter = await deploy('v3-vault/BufferRouter', {
       args: [vault, await WETH.getAddress(), permit2, ROUTER_VERSION],

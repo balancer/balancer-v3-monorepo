@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
@@ -49,7 +50,7 @@ contract AggregatorRouterTest is BaseVaultTest {
         rateProvider = deployRateProviderMock();
 
         BaseVaultTest.setUp();
-        aggregatorRouter = deployRouterMock(IVault(address(vault)), weth, permit2, true);
+        aggregatorRouter = deployRouterMock(IVault(address(vault)), weth, IPermit2(address(0)));
 
         delegatedContractCode = new SimpleEIP7702Contract();
     }

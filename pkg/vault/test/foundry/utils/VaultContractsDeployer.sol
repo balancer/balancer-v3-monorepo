@@ -133,8 +133,7 @@ contract VaultContractsDeployer is BaseContractsDeployer {
     function deployCompositeLiquidityRouterMock(
         IVault vault,
         IWETH weth,
-        IPermit2 permit2,
-        bool isAggregator
+        IPermit2 permit2
     ) internal returns (CompositeLiquidityRouterMock) {
         if (reusingArtifacts) {
             return
@@ -142,12 +141,12 @@ contract VaultContractsDeployer is BaseContractsDeployer {
                     payable(
                         deployCode(
                             _computeVaultTestPath(type(CompositeLiquidityRouterMock).name),
-                            abi.encode(vault, weth, permit2, isAggregator)
+                            abi.encode(vault, weth, permit2)
                         )
                     )
                 );
         } else {
-            return new CompositeLiquidityRouterMock(vault, weth, permit2, isAggregator);
+            return new CompositeLiquidityRouterMock(vault, weth, permit2);
         }
     }
 
@@ -297,24 +296,14 @@ contract VaultContractsDeployer is BaseContractsDeployer {
         }
     }
 
-    function deployRouterMock(
-        IVault vault,
-        IWETH weth,
-        IPermit2 permit2,
-        bool isAggregator
-    ) internal returns (RouterMock) {
+    function deployRouterMock(IVault vault, IWETH weth, IPermit2 permit2) internal returns (RouterMock) {
         if (reusingArtifacts) {
             return
                 RouterMock(
-                    payable(
-                        deployCode(
-                            _computeVaultTestPath(type(RouterMock).name),
-                            abi.encode(vault, weth, permit2, isAggregator)
-                        )
-                    )
+                    payable(deployCode(_computeVaultTestPath(type(RouterMock).name), abi.encode(vault, weth, permit2)))
                 );
         } else {
-            return new RouterMock(vault, weth, permit2, isAggregator);
+            return new RouterMock(vault, weth, permit2);
         }
     }
 

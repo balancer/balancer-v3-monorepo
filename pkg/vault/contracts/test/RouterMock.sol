@@ -25,12 +25,7 @@ contract RouterMock is Router {
 
     error MockErrorCode();
 
-    constructor(
-        IVault vault,
-        IWETH weth,
-        IPermit2 permit2,
-        bool isAggregator
-    ) Router(vault, weth, permit2, isAggregator, MOCK_ROUTER_VERSION) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2, MOCK_ROUTER_VERSION) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
