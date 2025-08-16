@@ -20,7 +20,7 @@ import { CompositeLiquidityRouterHooks } from "./CompositeLiquidityRouterHooks.s
  * @dev Implements read-only query functions that allow off-chain components to estimate results of Vault interactions.
  * Designed to provide accurate previews of composite liquidity operations.
  */
-contract CompositeLiquidityRouterQueries is ICompositeLiquidityRouterQueries, CompositeLiquidityRouterHooks {
+abstract contract CompositeLiquidityRouterQueries is ICompositeLiquidityRouterQueries, CompositeLiquidityRouterHooks {
     constructor(
         IVault vault,
         IWETH weth,

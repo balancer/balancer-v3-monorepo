@@ -25,7 +25,7 @@ import {
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
 /// @notice Hooks for managing liquidity in composite pools.
-contract CompositeLiquidityRouterHooks is BatchRouterCommon {
+abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -126,9 +126,19 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             unwrapWrapped.length
         );
 
-        (, uint256[] memory actualAmountsOut, ) = _vault.removeLiquidity(
-            _buildRemoveLiquidityParams(params, numTokens)
-        );
+        uint256[] memory actualAmountsOut;
+
+        // If the pool is in Recovery Mode, do a recovery withdrawal.
+        if (_vault.isPoolInRecoveryMode(params.pool)) {
+            actualAmountsOut = _vault.removeLiquidityRecovery(
+                params.pool,
+                params.sender,
+                params.maxBptAmountIn,
+                params.minAmountsOut
+            );
+        } else {
+            (, actualAmountsOut, ) = _vault.removeLiquidity(_buildRemoveLiquidityParams(params, numTokens));
+        }
 
         amountsOut = new uint256[](numTokens);
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
@@ -452,9 +462,21 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
-        (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
-            _buildRemoveLiquidityParams(params, parentPoolTokens.length)
-        );
+        uint256[] memory parentPoolAmountsOut;
+
+        // If the pool is in Recovery Mode, do a recovery withdrawal.
+        if (_vault.isPoolInRecoveryMode(params.pool)) {
+            parentPoolAmountsOut = _vault.removeLiquidityRecovery(
+                params.pool,
+                params.sender,
+                params.maxBptAmountIn,
+                params.minAmountsOut
+            );
+        } else {
+            (, parentPoolAmountsOut, ) = _vault.removeLiquidity(
+                _buildRemoveLiquidityParams(params, parentPoolTokens.length)
+            );
+        }
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address parentPoolToken = address(parentPoolTokens[i]);
@@ -477,16 +499,27 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
-                (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
-                    RemoveLiquidityParams({
-                        pool: parentPoolToken,
-                        from: address(this),
-                        maxBptAmountIn: parentPoolAmountOut,
-                        minAmountsOut: new uint256[](childPoolTokens.length),
-                        kind: params.kind,
-                        userData: params.userData
-                    })
-                );
+                uint256[] memory childPoolAmountsOut;
+
+                if (_vault.isPoolInRecoveryMode(parentPoolToken)) {
+                    childPoolAmountsOut = _vault.removeLiquidityRecovery(
+                        parentPoolToken,
+                        address(this),
+                        parentPoolAmountOut,
+                        new uint256[](childPoolTokens.length)
+                    );
+                } else {
+                    (, childPoolAmountsOut, ) = _vault.removeLiquidity(
+                        RemoveLiquidityParams({
+                            pool: parentPoolToken,
+                            from: address(this),
+                            maxBptAmountIn: parentPoolAmountOut,
+                            minAmountsOut: new uint256[](childPoolTokens.length),
+                            kind: params.kind,
+                            userData: params.userData
+                        })
+                    );
+                }
 
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
