@@ -346,6 +346,14 @@ contract StableSurgeHookUnitTest is BaseVaultTest, StableSurgeHookDeployer {
         assertEq(surgeFeePercentage, STATIC_FEE_PERCENTAGE, "Surge fee percentage should be staticFeePercentage");
     }
 
+    function testGetDefaultMaxSurgeFeePercentage() public view {
+        assertEq(
+            stableSurgeHook.getDefaultMaxSurgeFeePercentage(),
+            DEFAULT_MAX_SURGE_FEE_PERCENTAGE,
+            "Default max surge threshold percentage should be correct"
+        );
+    }
+
     function _boundValues(
         uint256 lengthRaw,
         uint256 indexInRaw,
