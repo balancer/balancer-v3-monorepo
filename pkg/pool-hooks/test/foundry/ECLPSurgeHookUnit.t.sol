@@ -520,6 +520,108 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         assertFalse(hookMock.isSurging(uint64(DEFAULT_SURGE_THRESHOLD_PERCENTAGE), 90e16, 0), "Is surging");
     }
 
+    function testPriceMonotonicity() public {
+        uint256 NUM_SIMULATED_SWAPS = 50;
+
+        uint256[] memory prices = new uint256[](NUM_SIMULATED_SWAPS);
+        uint256 swapAmount = poolInitAmount / 20;
+
+        // Execute series of swaps in one direction.
+        for (uint i = 0; i < NUM_SIMULATED_SWAPS; i++) {
+            prices[i] = hookMock.computePriceFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
+
+            // Simulate swap.
+            balancesScaled18[1] += swapAmount;
+            balancesScaled18[0] -= swapAmount.divDown(prices[i]); // Approximate based on price
+        }
+
+        // Verify monotonic price movement.
+        for (uint i = 1; i < NUM_SIMULATED_SWAPS; i++) {
+            assertGt(prices[i], prices[i - 1], "Price should increase monotonically");
+        }
+    }
+
+    function testExtremeBalances() public view {
+        // Test with maximum allowed balances (sum must be <= 1e34).
+        uint256 maxTotalBalance = 1e34; // From GyroECLPMath library
+        uint256[] memory largeBalances = [maxTotalBalance / 2, maxTotalBalance / 2].toMemoryArray();
+        uint256 alpha = uint256(eclpParams.alpha);
+        uint256 beta = uint256(eclpParams.beta);
+
+        // Should not revert.
+        uint256 price = hookMock.computePriceFromBalances(largeBalances, eclpParams, derivedECLPParams);
+
+        // Price should be within bounds.
+        assertGe(price, alpha, "Large balance price below alpha");
+        assertLe(price, beta, "Large balance price above beta");
+
+        // Test with asymmetric large balances.
+        largeBalances = [maxTotalBalance / 10, (maxTotalBalance * 9) / 10].toMemoryArray();
+        price = hookMock.computePriceFromBalances(largeBalances, eclpParams, derivedECLPParams);
+        assertGe(price, alpha, "Asymmetric large balance price below alpha");
+        assertLe(price, beta, "Asymmetric large balance price above beta");
+
+        // Test with very small balances.
+        uint256[] memory smallBalances = [uint256(1e6), uint256(1e6)].toMemoryArray();
+        price = hookMock.computePriceFromBalances(smallBalances, eclpParams, derivedECLPParams);
+        assertGe(price, alpha, "Small balance price below alpha");
+        assertLe(price, beta, "Small balance price above beta");
+
+        // Test with extreme price ratios at small scale.
+        smallBalances = [uint256(1e6), uint256(1e12)].toMemoryArray();
+        price = hookMock.computePriceFromBalances(smallBalances, eclpParams, derivedECLPParams);
+        assertGe(price, alpha, "Extreme ratio small balance price below alpha");
+        assertLe(price, beta, "Extreme ratio small balance price above beta");
+    }
+
+    function testIsSurgingSwapAtDifferentImbalanceLevels__Fuzz(uint256 swapAmountPercentage) public view {
+        swapAmountPercentage = bound(swapAmountPercentage, 1e16, 20e16);
+
+        uint256 staticSwapFee = vault.getStaticSwapFeePercentage(pool);
+
+        // Calculate balances that should be at peak price (s/c ≈ 3759).
+        uint256 peakPrice = uint256(eclpParams.s).divDown(uint256(eclpParams.c));
+
+        uint256[] memory actualPeakBalances = new uint256[](2);
+        actualPeakBalances[0] = FixedPoint.ONE; // 1 WETH
+        actualPeakBalances[1] = peakPrice; // 3758 USDC (at peak price)
+
+        // Test with balanced pool (at actual peak).
+        uint256 smallSwapAmount = actualPeakBalances[0].mulDown(swapAmountPercentage);
+
+        PoolSwapParams memory swapFromPeak = PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: smallSwapAmount,
+            balancesScaled18: actualPeakBalances,
+            indexIn: 0, // Add WETH
+            indexOut: 1, // Remove USDC
+            router: address(router),
+            userData: bytes("")
+        });
+
+        // From actual peak, this should worsen balance.
+        bool isSurging = hookMock.isSurgingSwap(swapFromPeak, pool, staticSwapFee);
+
+        // But it might not surge if the imbalance is still below threshold!
+        // Check the actual imbalance:
+        (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(swapFromPeak, eclpParams, derivedECLPParams);
+
+        uint256[] memory newBalances = new uint256[](2);
+        newBalances[0] = actualPeakBalances[0] + smallSwapAmount;
+        newBalances[1] = actualPeakBalances[1] - amountCalculatedScaled18;
+
+        (int256 a, int256 b) = hookMock.computeOffsetFromBalances(actualPeakBalances, eclpParams, derivedECLPParams);
+        //uint256 oldImbalance = hookMock.computeImbalance(actualPeakBalances, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalance(newBalances, eclpParams, a, b);
+
+        // The swap worsens balance but might not exceed threshold.
+        if (newImbalance > hookMock.getSurgeThresholdPercentage(pool)) {
+            assertTrue(isSurging, "Should surge when moving away from peak above threshold");
+        } else {
+            assertFalse(isSurging, "Should not surge when below threshold");
+        }
+    }
+
     function _mockPoolRoleAccounts(address swapFeeManager) private {
         PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
             pauseManager: address(0x01),
