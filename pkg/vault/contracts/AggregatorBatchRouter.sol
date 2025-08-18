@@ -127,10 +127,6 @@ contract AggregatorBatchRouter is IBatchRouter, AggregatorBatchHooks {
         saveSender(sender)
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
-        if (wethIsEth) {
-            revert WethOperationsNotSupported();
-        }
-
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].minAmountOut = 0;
         }
@@ -163,10 +159,6 @@ contract AggregatorBatchRouter is IBatchRouter, AggregatorBatchHooks {
         saveSender(sender)
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
-        if (wethIsEth) {
-            revert WethOperationsNotSupported();
-        }
-
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].maxAmountIn = _MAX_AMOUNT;
         }
