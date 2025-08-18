@@ -41,7 +41,7 @@ export const WRAPPED_TOKEN_AMOUNT = fp(1e6);
 
 export class BatchSwapBaseTest {
   // BaseTest config
-  isAggregator: boolean;
+  isPrepaid: boolean;
 
   // Main contracts
   permit2!: IPermit2;
@@ -114,8 +114,8 @@ export class BatchSwapBaseTest {
   amountsIn!: bigint[];
   pathsExactOut!: IBatchRouter.SwapPathExactAmountOutStruct[];
 
-  constructor(isAggregator: boolean) {
-    this.isAggregator = isAggregator;
+  constructor(isPrepaid: boolean) {
+    this.isPrepaid = isPrepaid;
   }
 
   async setUpSigners() {
@@ -134,7 +134,7 @@ export class BatchSwapBaseTest {
       args: [this.vaultAddress, await WETH, this.permit2, ROUTER_VERSION],
     });
     this.basicRouter = await deploy('Router', {
-      args: [this.vaultAddress, WETH, this.permit2, false, ROUTER_VERSION],
+      args: [this.vaultAddress, WETH, this.permit2, ROUTER_VERSION],
     });
     this.router = await deploy('BatchRouter', {
       args: [this.vaultAddress, WETH, this.permit2, BATCH_ROUTER_VERSION],
@@ -319,7 +319,7 @@ export class BatchSwapBaseTest {
   }
 
   private async _doSwapExactIn(isStatic: boolean, deadline = MAX_UINT256): Promise<unknown> {
-    if (this.isAggregator) {
+    if (this.isPrepaid) {
       return (
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactIn.staticCall
@@ -339,7 +339,7 @@ export class BatchSwapBaseTest {
     tokensOut: string[];
     amountsOut: bigint[];
   }> {
-    if (this.isAggregator) {
+    if (this.isPrepaid) {
       return this.aggregatorRouter
         .connect(this.zero)
         .querySwapExactIn.staticCall(this.pathsExactIn, this.zero.address, '0x');
@@ -388,7 +388,7 @@ export class BatchSwapBaseTest {
         },
       ];
 
-      if (this.isAggregator) {
+      if (this.isPrepaid) {
         await (
           await ERC20TestToken__factory.connect(this.token0, this.sender).transfer(this.vault, this.pathExactAmountIn)
         ).wait();
@@ -495,7 +495,7 @@ export class BatchSwapBaseTest {
     tokensIn: string[];
     amountsIn: bigint[];
   }> {
-    if (this.isAggregator) {
+    if (this.isPrepaid) {
       return this.aggregatorRouter
         .connect(this.zero)
         .querySwapExactOut.staticCall(this.pathsExactOut, this.zero.address, '0x');
@@ -504,7 +504,7 @@ export class BatchSwapBaseTest {
   }
 
   private async _doSwapExactOut(isStatic: boolean, deadline = MAX_UINT256): Promise<unknown> {
-    if (this.isAggregator) {
+    if (this.isPrepaid) {
       return (
         isStatic
           ? this.aggregatorRouter.connect(this.sender).swapExactOut.staticCall
