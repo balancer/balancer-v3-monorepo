@@ -6,14 +6,11 @@ import "forge-std/Test.sol";
 
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
 import { ECLPSurgeHookBaseTest } from "./ECLPSurgeHookBase.t.sol";
 
 contract ECLPSurgeHookTest is ECLPSurgeHookBaseTest {
-    using FixedPoint for uint256;
-
     function _setupEclpParams()
         internal
         pure
