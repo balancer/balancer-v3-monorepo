@@ -619,7 +619,8 @@ contract MevCaptureHookTest is BaseVaultTest {
 
         uint256 baseFee = 1e9;
         uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
-        gasPriceDelta = bound(gasPriceDelta, gasDeltaMaxFee, gasDeltaMaxFee * 1e40);
+        // According to REVM limits, txGasPrice cannot be higher than 2^64 - 1.
+        gasPriceDelta = bound(gasPriceDelta, gasDeltaMaxFee, type(uint64).max - baseFee - priorityThreshold);
 
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
@@ -633,7 +634,7 @@ contract MevCaptureHookTest is BaseVaultTest {
         assertGe(feePercentage, staticSwapFeePercentage, "Fee percentage not greater than static fee percentage");
     }
 
-    function testFeePercentageMathOverflow__Fuzz(uint256 gasPriceDelta) public {
+    function testFeePercentageMathOverflow() public {
         uint256 staticSwapFeePercentage = 10e16; // 10% static swap fee
         uint256 priorityThreshold = 100e9;
         uint256 multiplier = 1_000_000e18;
@@ -644,15 +645,11 @@ contract MevCaptureHookTest is BaseVaultTest {
 
         uint256 baseFee = 1e9;
         uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
-        gasPriceDelta = bound(gasPriceDelta, gasDeltaMaxFee * 1e40, type(uint256).max);
+        // According to REVM limits, txGasPrice cannot be higher than 2^64 - 1.
+        uint256 gasPriceDelta = type(uint64).max - baseFee - priorityThreshold;
 
         vm.fee(baseFee);
-        // Avoids an overflow in the calculation of txGasPrice.
-        if (gasPriceDelta > type(uint256).max - baseFee - priorityThreshold) {
-            vm.txGasPrice(type(uint256).max);
-        } else {
-            vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
-        }
+        vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
 
         uint256 feePercentage = _mevCaptureHook.calculateSwapFeePercentageExternal(
             staticSwapFeePercentage,
@@ -673,7 +670,8 @@ contract MevCaptureHookTest is BaseVaultTest {
         _mevCaptureHook.setMaxMevSwapFeePercentage(maxMevSwapFeePercentage);
 
         uint256 baseFee = 1e9;
-        gasPriceDelta = bound(gasPriceDelta, 0, type(uint256).max - priorityThreshold - baseFee);
+        // According to REVM limits, txGasPrice cannot be higher than 2^64 - 1.
+        gasPriceDelta = bound(gasPriceDelta, 0, type(uint64).max - priorityThreshold - baseFee);
 
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
