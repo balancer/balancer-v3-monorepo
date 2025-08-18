@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { HyperTokenInfoPrecompile } from "../../../contracts/utils/HyperTokenInfoPrecompile.sol";
-import { HyperSpotPricePrecompile } from "../../../contracts/utils/HyperSpotPricePrecompile.sol";
+import { HyperTokenInfoPrecompile } from "../../contracts/utils/HyperTokenInfoPrecompile.sol";
+import { HyperSpotPricePrecompile } from "../../contracts/utils/HyperSpotPricePrecompile.sol";
 import { HyperTokenInfoPrecompileMock } from "./utils/HyperTokenInfoPrecompileMock.sol";
 import { HyperSpotPricePrecompileMock } from "./utils/HyperSpotPricePrecompileMock.sol";
 
@@ -17,20 +17,6 @@ contract HyperEVMPrecompileMocksTest is Test {
         bytes memory data = _ffiPrecompile(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS, uethIndex);
         // Store the szDecimals of the UETH token, as returned by the precompile.
         uint256 originalSzDecimals = abi.decode(data, (HyperTokenInfoPrecompile.HyperTokenInfo)).szDecimals;
-        HyperTokenInfoPrecompile.HyperTokenInfo memory tokenInfo = abi.decode(
-            data,
-            (HyperTokenInfoPrecompile.HyperTokenInfo)
-        );
-        console2.log("tokenInfo", tokenInfo.name);
-        for (uint i = 0; i < tokenInfo.spots.length; i++) {
-            console2.log("tokenInfo", tokenInfo.spots[i]);
-        }
-        console2.log("tokenInfo", tokenInfo.deployerTradingFeeShare);
-        console2.log("tokenInfo", tokenInfo.deployer);
-        console2.log("tokenInfo", tokenInfo.evmContract);
-        console2.log("tokenInfo", tokenInfo.szDecimals);
-        console2.log("tokenInfo", tokenInfo.weiDecimals);
-        console2.log("tokenInfo", tokenInfo.evmExtraWeiDecimals);
 
         // Mock the precompile.
         vm.etch(

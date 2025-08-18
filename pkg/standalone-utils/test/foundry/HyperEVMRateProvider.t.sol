@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { HyperTokenInfoPrecompile } from "../../../contracts/utils/HyperTokenInfoPrecompile.sol";
-import { HyperSpotPricePrecompile } from "../../../contracts/utils/HyperSpotPricePrecompile.sol";
+import { HyperTokenInfoPrecompile } from "../../contracts/utils/HyperTokenInfoPrecompile.sol";
+import { HyperSpotPricePrecompile } from "../../contracts/utils/HyperSpotPricePrecompile.sol";
 import { HyperTokenInfoPrecompileMock } from "./utils/HyperTokenInfoPrecompileMock.sol";
 import { HyperSpotPricePrecompileMock } from "./utils/HyperSpotPricePrecompileMock.sol";
-import { HyperEVMRateProvider } from "../../../contracts/HyperEVMRateProvider.sol";
+import { HyperEVMRateProvider } from "../../contracts/HyperEVMRateProvider.sol";
 
 contract HyperEVMRateProviderTest is Test {
     HyperEVMRateProvider private hyperEVMRateProvider;
