@@ -196,6 +196,13 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
     function multicall(
         bytes[] calldata data
     ) public payable virtual saveSenderAndManageEth returns (bytes[] memory results) {
+        // Though theoretically these calls could be batched, the normal use case for multicall involves some
+        // combination of operation and token transfers (either permit2 or direct to Vault), which cannot be
+        // done with multicall alone.
+        if (_isPrepaid) {
+            revert OperationNotSupported();
+        }
+
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);

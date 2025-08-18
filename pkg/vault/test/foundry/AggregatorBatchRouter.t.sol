@@ -503,6 +503,13 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         aggregatorBatchRouter.permitBatchAndCall(permitApprovals, permitCalls, permitBatch, bytes(""), multicallData);
     }
 
+    function testMulticallNotSupported() public {
+        bytes[] memory calls;
+
+        vm.expectRevert(IRouterCommon.OperationNotSupported.selector);
+        aggregatorBatchRouter.multicall(calls);
+    }
+
     function testOperationNotSupportedForBPTOperations() public {
         // Create a step where pool address equals tokenIn (which would be BPT).
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
