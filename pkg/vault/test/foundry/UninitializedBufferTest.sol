@@ -6,9 +6,9 @@ import "forge-std/Test.sol";
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 
@@ -36,7 +36,7 @@ contract UnInitializedBufferTest is BaseVaultTest {
     }
 
     function testWrapUnwrapBufferUninitialized() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory path = _buildSimpleWrapExactInPath();
+        SwapPathExactAmountIn[] memory path = _buildSimpleWrapExactInPath();
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, waDAI));
@@ -44,13 +44,13 @@ contract UnInitializedBufferTest is BaseVaultTest {
     }
 
     /// @dev Simple batch swap with single wrap step (waDAI)
-    function _buildSimpleWrapExactInPath() private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+    function _buildSimpleWrapExactInPath() private view returns (SwapPathExactAmountIn[] memory paths) {
         uint256 amount = 1e18;
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        paths = new SwapPathExactAmountIn[](1);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps,
             exactAmountIn: amount,

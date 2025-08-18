@@ -31,7 +31,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
 
     function testAddPathPermissioned() external {
         address tokenIn = address(waDAI);
-        IBatchRouter.SwapPathStep[] memory steps;
+        SwapPathStep[] memory steps;
 
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         registry.addPath(tokenIn, steps);
@@ -39,7 +39,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
 
     function testAddPathEmpty() external {
         address tokenIn = address(waDAI);
-        IBatchRouter.SwapPathStep[] memory steps;
+        SwapPathStep[] memory steps;
 
         vm.prank(admin);
         vm.expectRevert(ITokenPairRegistry.EmptyPath.selector);
@@ -48,10 +48,10 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
 
     function testAddInvalidPathToken() external {
         address tokenIn = address(waWETH);
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
 
         // Dai is not present in the pool
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
+        steps[0] = SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
 
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidSimplePath.selector, pool));
@@ -59,7 +59,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
 
         tokenIn = address(dai);
         // Dai is not present in the pool
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: waWETH, isBuffer: false });
+        steps[0] = SwapPathStep({ pool: address(pool), tokenOut: waWETH, isBuffer: false });
 
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidSimplePath.selector, pool));
@@ -69,11 +69,11 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     function testAddPath() external {
         address tokenIn = address(weth);
         address tokenOut = address(dai);
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        SwapPathStep[] memory steps = new SwapPathStep[](3);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: waDAI, isBuffer: false });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        steps[0] = SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
+        steps[1] = SwapPathStep({ pool: address(pool), tokenOut: waDAI, isBuffer: false });
+        steps[2] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
 
         vm.expectEmit();
         emit ITokenPairRegistry.PathAdded(address(weth), address(dai), 1);
@@ -106,7 +106,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         assertEq(registry.getPathCount(address(waWETH), address(waDAI)), 1, "Wrong path count waWETH / waDAI");
         assertEq(registry.getPathCount(address(waDAI), address(waWETH)), 1, "Wrong path count waDAI / waWETH");
 
-        IBatchRouter.SwapPathStep[][] memory pathsWethDai = registry.getPaths(address(waWETH), address(waDAI));
+        SwapPathStep[][] memory pathsWethDai = registry.getPaths(address(waWETH), address(waDAI));
         assertEq(pathsWethDai.length, 1, "Wrong path length waWETH / waDAI");
         assertEq(pathsWethDai[0].length, 1, "Wrong path[0] waWETH / waDAI steps length");
         assertEq(pathsWethDai[0][0].pool, address(pool), "Wrong path[0] waWETH / waDAI step pool");
@@ -114,14 +114,14 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         assertFalse(pathsWethDai[0][0].isBuffer, "Wrong path[0] waWETH / waDAI step isBuffer");
 
         // getPathAt returns the correct one
-        IBatchRouter.SwapPathStep[] memory pathWethDai0 = registry.getPathAt(address(waWETH), address(waDAI), 0);
+        SwapPathStep[] memory pathWethDai0 = registry.getPathAt(address(waWETH), address(waDAI), 0);
         assertEq(
             keccak256(abi.encode(pathWethDai0)),
             keccak256(abi.encode(pathsWethDai[0])),
             "waWETH / waDAI getPathAt mismatch"
         );
 
-        IBatchRouter.SwapPathStep[][] memory pathsDaiWeth = registry.getPaths(address(waDAI), address(waWETH));
+        SwapPathStep[][] memory pathsDaiWeth = registry.getPaths(address(waDAI), address(waWETH));
         assertEq(pathsDaiWeth.length, 1, "Wrong path length waDAI / waWETH");
         assertEq(pathsDaiWeth[0].length, 1, "Wrong path[0] waDAI / waWETH steps length");
         assertEq(pathsDaiWeth[0][0].pool, address(pool), "Wrong path[0] waDAI / waWETH step pool");
@@ -129,7 +129,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         assertFalse(pathsDaiWeth[0][0].isBuffer, "Wrong path[0] waDAI / waWETH step isBuffer");
 
         // getPathAt returns the correct one
-        IBatchRouter.SwapPathStep[] memory pathDaiWeth0 = registry.getPathAt(address(waDAI), address(waWETH), 0);
+        SwapPathStep[] memory pathDaiWeth0 = registry.getPathAt(address(waDAI), address(waWETH), 0);
         assertEq(
             keccak256(abi.encode(pathDaiWeth0)),
             keccak256(abi.encode(pathsDaiWeth[0])),
@@ -138,10 +138,10 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     }
 
     function testBufferAddPathUninitializedBuffer() external {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
 
         // USDC is not a buffer.
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(usdc), tokenOut: usdc, isBuffer: true });
+        steps[0] = SwapPathStep({ pool: address(usdc), tokenOut: usdc, isBuffer: true });
 
         vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.BufferNotInitialized.selector, usdc));
         vm.prank(admin);
@@ -149,10 +149,10 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     }
 
     function testBufferAddPathWrongUnderlying() external {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
 
         // Unwrap(waUSDC) != dai
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: dai, isBuffer: true });
+        steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: dai, isBuffer: true });
 
         vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidBufferPath.selector, waUSDC, waUSDC, dai));
         vm.prank(admin);
@@ -160,10 +160,10 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     }
 
     function testBufferAddPathWrongWrapped() external {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
 
         // Wrap(USDC) != waDAI
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: waDAI, isBuffer: true });
+        steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: waDAI, isBuffer: true });
 
         vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidBufferPath.selector, waUSDC, usdc, waDAI));
         vm.prank(admin);
@@ -171,9 +171,9 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     }
 
     function testBufferAddPathWrongTokenIn() external {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
+        steps[0] = SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
         vm.expectRevert(abi.encodeWithSelector(ITokenPairRegistry.InvalidBufferPath.selector, waUSDC, weth, usdc));
         vm.prank(admin);
@@ -188,7 +188,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         assertEq(registry.getPathCount(address(weth), address(waWETH)), 1, "Wrong path count weth / waWETH");
         assertEq(registry.getPathCount(address(waWETH), address(weth)), 1, "Wrong path count waWETH / weth");
 
-        IBatchRouter.SwapPathStep[][] memory pathsWrap = registry.getPaths(address(weth), address(waWETH));
+        SwapPathStep[][] memory pathsWrap = registry.getPaths(address(weth), address(waWETH));
         assertEq(pathsWrap.length, 1, "Wrong path length weth / waWETH");
         assertEq(pathsWrap[0].length, 1, "Wrong path[0] weth / waWETH steps length");
         assertEq(pathsWrap[0][0].pool, address(waWETH), "Wrong path[0] weth / waWETH step pool");
@@ -196,14 +196,14 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         assertTrue(pathsWrap[0][0].isBuffer, "Wrong path[0] weth / waWETH step isBuffer");
 
         // getPathAt returns the correct one
-        IBatchRouter.SwapPathStep[] memory pathWrap0 = registry.getPathAt(address(weth), address(waWETH), 0);
+        SwapPathStep[] memory pathWrap0 = registry.getPathAt(address(weth), address(waWETH), 0);
         assertEq(
             keccak256(abi.encode(pathWrap0)),
             keccak256(abi.encode(pathsWrap[0])),
             "weth / waWETH getPathAt mismatch"
         );
 
-        IBatchRouter.SwapPathStep[][] memory pathsUnwrap = registry.getPaths(address(waWETH), address(weth));
+        SwapPathStep[][] memory pathsUnwrap = registry.getPaths(address(waWETH), address(weth));
         assertEq(pathsUnwrap.length, 1, "Wrong path length waWETH / weth");
         assertEq(pathsUnwrap[0].length, 1, "Wrong path[0] waWETH / weth steps length");
         assertEq(pathsUnwrap[0][0].pool, address(waWETH), "Wrong path[0] waWETH / weth step pool");
@@ -211,7 +211,7 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         assertTrue(pathsUnwrap[0][0].isBuffer, "Wrong path[0] waWETH / weth step isBuffer");
 
         // getPathAt returns the correct one
-        IBatchRouter.SwapPathStep[] memory pathUnwrap0 = registry.getPathAt(address(waWETH), address(weth), 0);
+        SwapPathStep[] memory pathUnwrap0 = registry.getPathAt(address(waWETH), address(weth), 0);
         assertEq(
             keccak256(abi.encode(pathUnwrap0)),
             keccak256(abi.encode(pathsUnwrap[0])),
@@ -289,16 +289,16 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
     function testRemovePathAtIndexMultiHop() external {
         address tokenIn = address(weth);
         address tokenOut = address(dai);
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        SwapPathStep[] memory steps = new SwapPathStep[](3);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: waDAI, isBuffer: false });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        steps[0] = SwapPathStep({ pool: address(waWETH), tokenOut: waWETH, isBuffer: true });
+        steps[1] = SwapPathStep({ pool: address(pool), tokenOut: waDAI, isBuffer: false });
+        steps[2] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
 
         vm.prank(admin);
         registry.addPath(tokenIn, steps);
 
-        steps[1] = IBatchRouter.SwapPathStep({ pool: address(otherPool), tokenOut: waDAI, isBuffer: false });
+        steps[1] = SwapPathStep({ pool: address(otherPool), tokenOut: waDAI, isBuffer: false });
         vm.prank(admin);
         registry.addPath(tokenIn, steps);
 
@@ -333,10 +333,10 @@ contract TokenPairRegistryTest is BaseERC4626BufferTest {
         address tokenOut = address(waDAI);
 
         // Redundant wrap / unwrap
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        SwapPathStep[] memory steps = new SwapPathStep[](3);
+        steps[0] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        steps[1] = SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
+        steps[2] = SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
 
         vm.prank(admin);
         registry.addPath(tokenIn, steps);

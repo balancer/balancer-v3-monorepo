@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { ISenderGuard } from "@balancer-labs/v3-interfaces/contracts/vault/ISenderGuard.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { MOCK_BATCH_ROUTER_VERSION } from "../../contracts/test/BatchRouterMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -32,14 +32,14 @@ contract BatchRouterTest is BaseVaultTest {
     }
 
     function testSwapDeadlineExactIn() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths;
+        SwapPathExactAmountIn[] memory paths;
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         batchRouter.swapExactIn(paths, block.timestamp - 1, false, bytes(""));
     }
 
     function testSwapDeadlineExactOut() public {
-        IBatchRouter.SwapPathExactAmountOut[] memory paths;
+        SwapPathExactAmountOut[] memory paths;
 
         vm.expectRevert(ISenderGuard.SwapDeadline.selector);
         batchRouter.swapExactOut(paths, block.timestamp - 1, false, bytes(""));
@@ -51,22 +51,17 @@ contract BatchRouterTest is BaseVaultTest {
 
     function testQuerySingleStepRemove() public {
         // create a swap step and query the batch router, where the first token is the bpt.
-        IBatchRouter.SwapPathStep[] memory step = new IBatchRouter.SwapPathStep[](1);
-        step[0] = IBatchRouter.SwapPathStep(address(pool), IERC20(address(dai)), false);
+        SwapPathStep[] memory step = new SwapPathStep[](1);
+        step[0] = SwapPathStep(address(pool), IERC20(address(dai)), false);
 
         uint256 totalSupply = IERC20(pool).totalSupply();
         uint256 bptAmountIn = 1e18;
 
         require(bptAmountIn < totalSupply);
 
-        IBatchRouter.SwapPathExactAmountIn memory path = IBatchRouter.SwapPathExactAmountIn(
-            IERC20(address(pool)),
-            step,
-            bptAmountIn,
-            0
-        );
+        SwapPathExactAmountIn memory path = SwapPathExactAmountIn(IERC20(address(pool)), step, bptAmountIn, 0);
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
         paths[0] = path;
 
         vm.prank(alice, address(0));
@@ -86,15 +81,15 @@ contract BatchRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         // Create BPT remove liquidity step: BPT -> DAI.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({
             pool: address(pool), // pool == stepTokenIn for remove liquidity
             tokenOut: dai,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(address(pool)), // BPT as token in
             steps: steps,
             exactAmountIn: bptAmountIn,
@@ -126,11 +121,11 @@ contract BatchRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         // Create BPT remove liquidity step: BPT -> DAI (exact out).
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)),
             steps: steps,
             exactAmountOut: exactDaiOut,
@@ -160,20 +155,15 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 daiAmountIn = poolInitAmount / 100;
 
         // Create BPT add liquidity step: DAI -> BPT.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({
             pool: address(pool), // pool == step.tokenOut for add liquidity
             tokenOut: IERC20(address(pool)), // BPT as token out
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: dai,
-            steps: steps,
-            exactAmountIn: daiAmountIn,
-            minAmountOut: 1
-        });
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({ tokenIn: dai, steps: steps, exactAmountIn: daiAmountIn, minAmountOut: 1 });
 
         uint256 aliceDaiBefore = dai.balanceOf(alice);
         uint256 aliceBptBefore = IERC20(pool).balanceOf(alice);
@@ -195,11 +185,11 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 maxDaiIn = poolInitAmount / 10;
 
         // Create BPT add liquidity step: DAI -> BPT (exact out).
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: IERC20(address(pool)), isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(pool), tokenOut: IERC20(address(pool)), isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
             exactAmountOut: exactBptOut,
@@ -234,20 +224,20 @@ contract BatchRouterTest is BaseVaultTest {
         vm.stopPrank();
 
         // Multi-step: BPT -> DAI -> BPT (remove then add liquidity).
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: address(pool), // Remove liquidity: BPT -> DAI
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: address(pool), // Add liquidity: DAI -> BPT
             tokenOut: IERC20(address(pool)),
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(address(pool)),
             steps: steps,
             exactAmountIn: bptAmountIn,
@@ -273,25 +263,20 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 daiAmountIn = poolInitAmount / 100;
 
         // Multi-step with intermediate BPT: DAI -> BPT -> DAI.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: address(pool), // Add liquidity: DAI -> BPT (intermediate)
             tokenOut: IERC20(address(pool)),
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: address(pool), // Remove liquidity: BPT -> DAI
             tokenOut: dai,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: dai,
-            steps: steps,
-            exactAmountIn: daiAmountIn,
-            minAmountOut: 1
-        });
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({ tokenIn: dai, steps: steps, exactAmountIn: daiAmountIn, minAmountOut: 1 });
 
         uint256 aliceDaiBefore = dai.balanceOf(alice);
 
@@ -322,20 +307,20 @@ contract BatchRouterTest is BaseVaultTest {
 
         // Two-step path: BPT -> DAI -> USDC.
         // The BPT removal is in the first position (not last), triggering flashloan logic.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: address(pool), // Remove liquidity: BPT -> DAI (NOT LAST STEP)
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: pool, // Regular swap: DAI -> USDC
             tokenOut: usdc,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)),
             steps: steps,
             exactAmountOut: exactUsdcOut,
@@ -363,20 +348,20 @@ contract BatchRouterTest is BaseVaultTest {
 
         // Two-step path: USDC -> BPT -> DAI.
         // The BPT addition is intermediate, triggering the "not first step" logic.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: pool, // Regular swap: USDC -> DAI
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: address(pool), // Add liquidity: DAI -> BPT (NOT LAST STEP)
             tokenOut: IERC20(address(pool)),
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: usdc,
             steps: steps,
             exactAmountOut: MIN_AMOUNT / 10, // Very small BPT amount
@@ -407,20 +392,20 @@ contract BatchRouterTest is BaseVaultTest {
 
         // Create a 2-step path where BPT removal is NOT the last step.
         // This forces the intermediate BPT removal logic that uses flashloan.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: address(pool), // Remove liquidity: BPT -> DAI (NOT LAST STEP)
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: pool, // Regular swap: DAI -> USDC
             tokenOut: usdc,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)), // Start with BPT
             steps: steps,
             exactAmountOut: exactUsdcOut,
@@ -454,20 +439,20 @@ contract BatchRouterTest is BaseVaultTest {
         uint256 smallUsdcOut = MIN_AMOUNT; // Very small amount to ensure unused flashloan
 
         // Multi-step with intermediate BPT remove that will have an unused flashloan.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: address(pool), // Remove liquidity with flashloan
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: pool, // Regular swap
             tokenOut: usdc,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)),
             steps: steps,
             exactAmountOut: smallUsdcOut, // Very small output to ensure refund
@@ -509,20 +494,20 @@ contract BatchRouterTest is BaseVaultTest {
         // Create a path where BPT removal is NOT the last step in ExactOut.
         // This should trigger: stepLocals.isLastStep == false.
         // And the flashloan refund logic.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: address(pool), // BPT remove (intermediate step)
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: pool, // Regular swap DAI->USDC
             tokenOut: usdc,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)), // Start with BPT
             steps: steps,
             exactAmountOut: verySmallUsdcOut, // Tiny USDC output
@@ -558,20 +543,20 @@ contract BatchRouterTest is BaseVaultTest {
 
         // Two steps: BPT -> DAI -> USDC.
         // In exactOut inverted processing: USDC is "last", BPT removal is "not last".
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](2);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](2);
+        steps[0] = SwapPathStep({
             pool: address(pool), // BPT -> DAI (will be processed as "not last step")
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: pool, // DAI -> USDC
             tokenOut: usdc,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)),
             steps: steps,
             exactAmountOut: exactUsdcOut,
@@ -608,25 +593,25 @@ contract BatchRouterTest is BaseVaultTest {
         // Three-step path processed backwards: [BPT->DAI, DAI->USDC, USDC->DAI].
         // In reverse processing: USDC->DAI (last), DAI->USDC (middle), BPT->DAI (first).
         // The BPT->DAI step will be "not last" in reverse iteration.
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
-        steps[0] = IBatchRouter.SwapPathStep({
+        SwapPathStep[] memory steps = new SwapPathStep[](3);
+        steps[0] = SwapPathStep({
             pool: address(pool), // This becomes "first" in reverse iteration (not last)
             tokenOut: dai,
             isBuffer: false
         });
-        steps[1] = IBatchRouter.SwapPathStep({
+        steps[1] = SwapPathStep({
             pool: pool, // Middle step
             tokenOut: usdc,
             isBuffer: false
         });
-        steps[2] = IBatchRouter.SwapPathStep({
+        steps[2] = SwapPathStep({
             pool: pool, // This becomes "last" in reverse iteration
             tokenOut: dai,
             isBuffer: false
         });
 
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+        SwapPathExactAmountOut[] memory paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: IERC20(address(pool)),
             steps: steps,
             exactAmountOut: exactDaiOut,
@@ -656,11 +641,11 @@ contract BatchRouterTest is BaseVaultTest {
     function testQueryBPTOperations() public {
         uint256 bptAmountIn = poolInitAmount / 100;
 
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
+        SwapPathStep[] memory steps = new SwapPathStep[](1);
+        steps[0] = SwapPathStep({ pool: address(pool), tokenOut: dai, isBuffer: false });
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+        SwapPathExactAmountIn[] memory paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: IERC20(address(pool)),
             steps: steps,
             exactAmountIn: bptAmountIn,

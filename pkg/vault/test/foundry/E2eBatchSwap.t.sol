@@ -9,8 +9,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { Rounding, MAX_FEE_PERCENTAGE } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
@@ -263,7 +263,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
     }
 
     function _executeAndCheckBatchExactIn(IERC20 tokenIn, uint256 exactAmountIn) private returns (uint256 amountOut) {
-        IBatchRouter.SwapPathExactAmountIn[] memory swapPath = _buildExactInPaths(tokenIn, exactAmountIn, 0);
+        SwapPathExactAmountIn[] memory swapPath = _buildExactInPaths(tokenIn, exactAmountIn, 0);
 
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(swapPath, MAX_UINT128, false, bytes(""));
@@ -350,11 +350,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
     }
 
     function _executeAndCheckBatchExactOut(IERC20 tokenIn, uint256 exactAmountOut) private returns (uint256 amountIn) {
-        IBatchRouter.SwapPathExactAmountOut[] memory swapPath = _buildExactOutPaths(
-            tokenIn,
-            MAX_UINT128,
-            exactAmountOut
-        );
+        SwapPathExactAmountOut[] memory swapPath = _buildExactOutPaths(tokenIn, MAX_UINT128, exactAmountOut);
 
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(swapPath, MAX_UINT128, false, bytes(""));
@@ -420,9 +416,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         IERC20 tokenIn,
         uint256 exactAmountIn,
         uint256 minAmountOut
-    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
-        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+    ) private view returns (SwapPathExactAmountIn[] memory paths) {
+        paths = new SwapPathExactAmountIn[](1);
+        paths[0] = SwapPathExactAmountIn({
             tokenIn: tokenIn,
             steps: _getSwapSteps(tokenIn),
             exactAmountIn: exactAmountIn,
@@ -434,9 +430,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactAmountOut
-    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
-        paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+    ) private view returns (SwapPathExactAmountOut[] memory paths) {
+        paths = new SwapPathExactAmountOut[](1);
+        paths[0] = SwapPathExactAmountOut({
             tokenIn: tokenIn,
             steps: _getSwapSteps(tokenIn),
             maxAmountIn: maxAmountIn,
@@ -444,17 +440,17 @@ contract E2eBatchSwapTest is BaseVaultTest {
         });
     }
 
-    function _getSwapSteps(IERC20 tokenIn) private view returns (IBatchRouter.SwapPathStep[] memory steps) {
-        steps = new IBatchRouter.SwapPathStep[](3);
+    function _getSwapSteps(IERC20 tokenIn) private view returns (SwapPathStep[] memory steps) {
+        steps = new SwapPathStep[](3);
 
         if (address(tokenIn) == address(tokenD)) {
-            steps[0] = IBatchRouter.SwapPathStep({ pool: poolC, tokenOut: IERC20(address(tokenC)), isBuffer: false });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: poolB, tokenOut: IERC20(address(tokenB)), isBuffer: false });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: poolA, tokenOut: IERC20(address(tokenA)), isBuffer: false });
+            steps[0] = SwapPathStep({ pool: poolC, tokenOut: IERC20(address(tokenC)), isBuffer: false });
+            steps[1] = SwapPathStep({ pool: poolB, tokenOut: IERC20(address(tokenB)), isBuffer: false });
+            steps[2] = SwapPathStep({ pool: poolA, tokenOut: IERC20(address(tokenA)), isBuffer: false });
         } else {
-            steps[0] = IBatchRouter.SwapPathStep({ pool: poolA, tokenOut: IERC20(address(tokenB)), isBuffer: false });
-            steps[1] = IBatchRouter.SwapPathStep({ pool: poolB, tokenOut: IERC20(address(tokenC)), isBuffer: false });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: poolC, tokenOut: IERC20(address(tokenD)), isBuffer: false });
+            steps[0] = SwapPathStep({ pool: poolA, tokenOut: IERC20(address(tokenB)), isBuffer: false });
+            steps[1] = SwapPathStep({ pool: poolB, tokenOut: IERC20(address(tokenC)), isBuffer: false });
+            steps[2] = SwapPathStep({ pool: poolC, tokenOut: IERC20(address(tokenD)), isBuffer: false });
         }
     }
 
