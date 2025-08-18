@@ -620,7 +620,7 @@ contract MevCaptureHookTest is BaseVaultTest {
         uint256 baseFee = 1e9;
         uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
         // According to REVM limits, txGasPrice cannot be higher than 2^64 - 1.
-        gasPriceDelta = bound(gasPriceDelta, gasDeltaMaxFee, type(uint64).max - baseFee - priorityThreshold);
+        gasPriceDelta = bound(gasPriceDelta, gasDeltaMaxFee, MAX_UINT64 - baseFee - priorityThreshold);
 
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
@@ -646,7 +646,7 @@ contract MevCaptureHookTest is BaseVaultTest {
         uint256 baseFee = 1e9;
         uint256 gasDeltaMaxFee = (maxMevSwapFeePercentage - staticSwapFeePercentage).divDown(multiplier);
         // According to REVM limits, txGasPrice cannot be higher than 2^64 - 1.
-        uint256 gasPriceDelta = type(uint64).max - baseFee - priorityThreshold;
+        uint256 gasPriceDelta = MAX_UINT64 - baseFee - priorityThreshold;
 
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
@@ -671,7 +671,7 @@ contract MevCaptureHookTest is BaseVaultTest {
 
         uint256 baseFee = 1e9;
         // According to REVM limits, txGasPrice cannot be higher than 2^64 - 1.
-        gasPriceDelta = bound(gasPriceDelta, 0, type(uint64).max - priorityThreshold - baseFee);
+        gasPriceDelta = bound(gasPriceDelta, 0, MAX_UINT64 - priorityThreshold - baseFee);
 
         vm.fee(baseFee);
         vm.txGasPrice(baseFee + priorityThreshold + gasPriceDelta);
