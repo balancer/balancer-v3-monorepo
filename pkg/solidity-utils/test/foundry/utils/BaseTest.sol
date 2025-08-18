@@ -25,6 +25,8 @@ abstract contract BaseTest is Test {
     uint256 internal constant MAX_UINT256 = type(uint256).max;
     // Raw token balances are stored in half a slot, so the max is uint128.
     uint256 internal constant MAX_UINT128 = type(uint128).max;
+    // txGasPrice has a limit of 2^64 - 1.
+    uint256 internal constant MAX_UINT64 = type(uint64).max;
 
     bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
