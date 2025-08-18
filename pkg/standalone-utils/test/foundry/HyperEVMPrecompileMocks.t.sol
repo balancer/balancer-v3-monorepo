@@ -5,8 +5,7 @@ import "forge-std/Test.sol";
 
 import { HyperTokenInfoPrecompile } from "../../contracts/utils/HyperTokenInfoPrecompile.sol";
 import { HyperSpotPricePrecompile } from "../../contracts/utils/HyperSpotPricePrecompile.sol";
-import { HyperTokenInfoPrecompileMock } from "./utils/HyperTokenInfoPrecompileMock.sol";
-import { HyperSpotPricePrecompileMock } from "./utils/HyperSpotPricePrecompileMock.sol";
+import { HypercorePrecompileMock } from "./utils/HypercorePrecompileMock.sol";
 
 contract HyperEVMPrecompileMocksTest is Test {
     bytes internal constant ALPHABET = "0123456789abcdef";
@@ -19,12 +18,9 @@ contract HyperEVMPrecompileMocksTest is Test {
         uint256 originalSzDecimals = abi.decode(data, (HyperTokenInfoPrecompile.HyperTokenInfo)).szDecimals;
 
         // Mock the precompile.
-        vm.etch(
-            HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS,
-            address(new HyperTokenInfoPrecompileMock()).code
-        );
+        vm.etch(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS, address(new HypercorePrecompileMock()).code);
         // Set the onchain data to the mock.
-        HyperTokenInfoPrecompileMock(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS).setData(data);
+        HypercorePrecompileMock(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS).setData(data);
 
         // Check if the library, using the mocked precompile, returns the same szDecimals.
         assertEq(HyperTokenInfoPrecompile.szDecimals(uethIndex), originalSzDecimals, "Wrong szDecimals");
@@ -38,12 +34,9 @@ contract HyperEVMPrecompileMocksTest is Test {
         uint256 originalSpotPrice = abi.decode(data, (uint256));
 
         // Mock the precompile.
-        vm.etch(
-            HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS,
-            address(new HyperSpotPricePrecompileMock()).code
-        );
+        vm.etch(HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS, address(new HypercorePrecompileMock()).code);
         // Set the onchain data to the mock.
-        HyperSpotPricePrecompileMock(HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS).setData(data);
+        HypercorePrecompileMock(HyperSpotPricePrecompile.SPOT_PRICE_PRECOMPILE_ADDRESS).setData(data);
 
         // Check if the library, using the mocked precompile, returns the same spot price.
         assertEq(HyperSpotPricePrecompile.spotPrice(uethUsdPairIndex), originalSpotPrice, "Wrong spot price");

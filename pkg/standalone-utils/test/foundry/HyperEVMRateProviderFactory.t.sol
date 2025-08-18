@@ -15,8 +15,7 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 
 import { HyperEVMRateProviderFactory } from "../../contracts/HyperEVMRateProviderFactory.sol";
 import { HyperTokenInfoPrecompile } from "../../contracts/utils/HyperTokenInfoPrecompile.sol";
-import { HyperTokenInfoPrecompileMock } from "./utils/HyperTokenInfoPrecompileMock.sol";
-import { HyperEVMRateProvider } from "../../contracts/HyperEVMRateProvider.sol";
+import { HypercorePrecompileMock } from "./utils/HypercorePrecompileMock.sol";
 
 contract HyperEVMRateProviderFactoryTest is BaseVaultTest {
     string constant RATE_PROVIDER_FACTORY_VERSION = "Factory v1";
@@ -38,14 +37,11 @@ contract HyperEVMRateProviderFactoryTest is BaseVaultTest {
         );
 
         // Setup TokenInfo precompile (used on rate provider constructor).
-        vm.etch(
-            HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS,
-            address(new HyperTokenInfoPrecompileMock()).code
-        );
+        vm.etch(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS, address(new HypercorePrecompileMock()).code);
         // Data from `cast call PRECOMPILE_ADDRESS TOKEN_INDEX --rpc-url $RPC`. UETH data.
         uint64[] memory spots = new uint64[](1);
         spots[0] = 151;
-        HyperTokenInfoPrecompileMock(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS).setData(
+        HypercorePrecompileMock(HyperTokenInfoPrecompile.TOKEN_INFO_PRECOMPILE_ADDRESS).setData(
             abi.encode(
                 HyperTokenInfoPrecompile.HyperTokenInfo({
                     name: "UETH",
