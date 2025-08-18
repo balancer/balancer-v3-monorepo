@@ -10,23 +10,33 @@ import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /**
  * @notice Base contract for deploying and managing pool oracles.
  * @dev The factories that inherit this contract must implement the `_create` function, which deploys a different
  * oracle, depending on the pool.
  */
-abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication {
+abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication, Version {
     uint256 internal _oracleVersion;
     bool internal _isDisabled;
 
     mapping(bytes32 oracleId => ILPOracleBase oracle) internal _oracles;
     mapping(ILPOracleBase oracle => bool creationFlag) internal _isOracleFromFactory;
 
-    constructor(IVault vault, uint256 oracleVersion) SingletonAuthentication(vault) {
+    constructor(
+        IVault vault,
+        string memory factoryVersion,
+        uint256 oracleVersion
+    ) SingletonAuthentication(vault) Version(factoryVersion) {
         _oracleVersion = oracleVersion;
+    }
+
+    /// @inheritdoc ILPOracleFactoryBase
+    function getOracleVersion() external view returns (uint256) {
+        return _oracleVersion;
     }
 
     /// @inheritdoc ILPOracleFactoryBase

@@ -26,6 +26,15 @@ interface ILPOracleFactoryBase {
     error OracleFactoryIsDisabled();
 
     /**
+     * @notice Returns a number representing the oracle version.
+     * @dev This is a number - not a JSON string like the factory version (and other contracts in the system
+     * derived from Version) - because the V3AggregatorInterface for oracles defines a numerical version.
+     *
+     * @return oracleVersion The oracle version number
+     */
+    function getOracleVersion() external view returns (uint256);
+
+    /**
      * @notice Creates a new oracle for the given pool.
      * @param pool The address of the pool
      * @param feeds The array of price feeds for the tokens in the pool

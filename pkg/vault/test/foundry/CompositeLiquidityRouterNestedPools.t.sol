@@ -6,28 +6,29 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     ICompositeLiquidityRouterQueries
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
-import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 import {
     ICompositeLiquidityRouterErrors
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/RouterTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
 contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
-    using ArrayHelpers for *;
-    using CastingHelpers for address[];
     using FixedPoint for uint256;
+    using CastingHelpers for *;
+    using ArrayHelpers for *;
 
     address internal parentPool;
     address internal childPoolA;
@@ -116,10 +117,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         return ICompositeLiquidityRouterQueries(address(compositeLiquidityRouter));
     }
 
-    function skipETHTests() internal pure virtual returns (bool) {
-        return false;
-    }
-
     /*******************************************************************************
                                 Add liquidity
     *******************************************************************************/
@@ -163,6 +160,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -277,6 +275,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             new address[](0), // No tokens to wrap
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -398,6 +397,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -480,10 +480,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 wethAmount,
         bool forceEthLeftover
     ) public {
-        if (skipETHTests()) {
-            return;
-        }
-
         daiAmount = bound(daiAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         usdcAmount = bound(usdcAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
         wethAmount = bound(wethAmount, PRODUCTION_MIN_TRADE_AMOUNT, 10 * poolInitAmount);
@@ -511,10 +507,18 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensToWrap[1] = address(waUSDC);
         tokensToWrap[2] = address(waWETH);
 
-        vm.prank(lp);
-        uint256 exactBptOut = compositeLiquidityRouter.addLiquidityUnbalancedNestedPool{
-            value: wethAmount + (forceEthLeftover ? 1e18 : 0)
-        }(parentPoolWithoutWrapper, tokensIn, amountsIn, tokensToWrap, minBptOut, true, bytes(""));
+        vm.startPrank(lp);
+        uint256 exactBptOut = _addLiquidityUnbalancedNestedPool(
+            parentPoolWithoutWrapper,
+            tokensIn,
+            amountsIn,
+            tokensToWrap,
+            minBptOut,
+            wethAmount + (forceEthLeftover ? 1e18 : 0),
+            true,
+            bytes("")
+        );
+        vm.stopPrank();
 
         _fillNestedPoolTestLocalsAfter(vars);
         uint256 mintedChildPoolERC4626Bpt = vars.childPoolERC4626After.totalSupply -
@@ -628,6 +632,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -747,6 +752,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -860,6 +866,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             new address[](0), // No tokens to wrap
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -1001,6 +1008,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -1050,6 +1058,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes("")
         );
@@ -1179,6 +1188,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes(""),
             abi.encodeWithSelector(IVaultErrors.BptAmountOutBelowMin.selector, expectedBptOut, minBptOut)
@@ -1220,6 +1230,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes(""),
             abi.encodeWithSelector(InputHelpers.InputLengthMismatch.selector)
@@ -1251,6 +1262,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             new address[](0),
             minBptOut,
+            0,
             false,
             bytes(""),
             abi.encodeWithSelector(ICompositeLiquidityRouterErrors.DuplicateTokenIn.selector, address(dai))
@@ -1303,6 +1315,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             amountsIn,
             tokensToWrap,
             minBptOut,
+            0,
             false,
             bytes(""),
             abi.encodeWithSelector(IVaultErrors.BalanceNotSettled.selector)
@@ -1314,20 +1327,29 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
                               Remove liquidity
     *******************************************************************************/
 
-    function testRemoveLiquidityNestedPool__Fuzz(uint256 proportionToRemove) public {
+    function testRemoveLiquidityNestedPool__Fuzz(
+        uint256 proportionToRemove,
+        bool parentRecovery,
+        bool poolARecovery,
+        bool poolBRecovery
+    ) public {
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
 
+        if (parentRecovery) {
+            vault.manualEnableRecoveryMode(parentPool);
+        }
+        if (poolARecovery) {
+            vault.manualEnableRecoveryMode(childPoolA);
+        }
+        if (poolBRecovery) {
+            vault.manualEnableRecoveryMode(childPoolB);
+        }
+
         uint256 totalPoolBPT = BalancerPoolToken(parentPool).totalSupply();
-        // Since LP is the owner of all BPT supply, and part of the BPT were burned in the initialization step, using
-        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
         uint256 exactBptIn = totalPoolBPT.mulDown(proportionToRemove);
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
-
-        // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
-        // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
-        // we can extract from the child pools.
         uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
 
         address[] memory tokensOut = new address[](4);
@@ -1336,12 +1358,24 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         tokensOut[vars.wstethIdx] = address(wsteth);
         tokensOut[vars.usdcIdx] = address(usdc);
 
+        uint256[] memory minAmountsOut = new uint256[](4);
+
+        vm.startPrank(lp);
+        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
+            parentPool,
+            exactBptIn,
+            tokensOut,
+            minAmountsOut, // Zero minimums - no intermediate checks
+            new address[](0),
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        _fillNestedPoolTestLocalsAfter(vars);
+
         uint256[] memory expectedAmountsOut = new uint256[](4);
-        // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
-        // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
-        // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
-        // totalSupply (so the burned POOL_MINIMUM_TOTAL_SUPPLY amount does not affect the BPT in circulation, and the
-        // amounts out are perfectly proportional to the parent pool balance).
+        // DAI still gets 2x in recovery mode due to nested unwrapping.
         expectedAmountsOut[vars.daiIdx] =
             (poolInitAmount.mulDown(proportionToRemove) * 2) -
             deadTokens -
@@ -1350,46 +1384,34 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         expectedAmountsOut[vars.wstethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
         expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
 
-        vm.startPrank(lp);
-        uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
-            parentPool,
-            exactBptIn,
-            tokensOut,
-            expectedAmountsOut,
-            new address[](0), // No tokens to unwrap
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        _fillNestedPoolTestLocalsAfter(vars);
-        uint256 burnedChildPoolABpt = vars.childPoolABefore.totalSupply - vars.childPoolAAfter.totalSupply;
-        uint256 burnedChildPoolBBpt = vars.childPoolBBefore.totalSupply - vars.childPoolBAfter.totalSupply;
-
         // Check returned token amounts.
         assertEq(amountsOut.length, 4, "amountsOut length is wrong");
+
+        // Use slightly more generous tolerance for recovery mode.
+        uint256 tolerance = parentRecovery || poolARecovery || poolBRecovery ? MAX_ROUND_ERROR * 2 : MAX_ROUND_ERROR;
+
         assertApproxEqAbs(
             expectedAmountsOut[vars.daiIdx],
             amountsOut[vars.daiIdx],
-            MAX_ROUND_ERROR,
+            tolerance,
             "DAI amount out is wrong"
         );
         assertApproxEqAbs(
             expectedAmountsOut[vars.wethIdx],
             amountsOut[vars.wethIdx],
-            MAX_ROUND_ERROR,
+            tolerance,
             "WETH amount out is wrong"
         );
         assertApproxEqAbs(
             expectedAmountsOut[vars.wstethIdx],
             amountsOut[vars.wstethIdx],
-            MAX_ROUND_ERROR,
+            tolerance,
             "WstETH amount out is wrong"
         );
         assertApproxEqAbs(
             expectedAmountsOut[vars.usdcIdx],
             amountsOut[vars.usdcIdx],
-            MAX_ROUND_ERROR,
+            tolerance,
             "USDC amount out is wrong"
         );
 
@@ -1419,12 +1441,12 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         // them was burned when liquidity was removed, we need to discount this amount from the Vault reserves.
         assertEq(
             vars.vaultAfter.childPoolABpt,
-            vars.vaultBefore.childPoolABpt - burnedChildPoolABpt,
+            vars.vaultBefore.childPoolABpt - vars.burnedChildPoolABpt,
             "Vault ChildPoolA BPT Balance is wrong"
         );
         assertEq(
             vars.vaultAfter.childPoolBBpt,
-            vars.vaultBefore.childPoolBBpt - burnedChildPoolBBpt,
+            vars.vaultBefore.childPoolBBpt - vars.burnedChildPoolBBpt,
             "Vault ChildPoolB BPT Balance is wrong"
         );
         // Vault did not hold the parent pool BPT.
@@ -1472,21 +1494,17 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         );
         assertEq(
             vars.parentPoolAfter.childPoolABpt,
-            vars.parentPoolBefore.childPoolABpt - burnedChildPoolABpt,
+            vars.parentPoolBefore.childPoolABpt - vars.burnedChildPoolABpt,
             "ParentPool ChildPoolA BPT Balance is wrong"
         );
         assertEq(
             vars.parentPoolAfter.childPoolBBpt,
-            vars.parentPoolBefore.childPoolBBpt - burnedChildPoolBBpt,
+            vars.parentPoolBefore.childPoolBBpt - vars.burnedChildPoolBBpt,
             "ParentPool ChildPoolB BPT Balance is wrong"
         );
     }
 
     function testRemoveLiquidityNestedPoolWithEth__Fuzz(uint256 proportionToRemove) public {
-        if (skipETHTests()) {
-            return;
-        }
-
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
 
@@ -1960,10 +1978,6 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
     }
 
     function testRemoveLiquidityNestedERC4626PoolWithEth__Fuzz(uint256 proportionToRemove) public {
-        if (skipETHTests()) {
-            return;
-        }
-
         // Remove between 0.0001% and 50% of each pool liquidity.
         proportionToRemove = bound(proportionToRemove, 1e12, 50e16);
 
@@ -2167,7 +2181,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             poolInitAmount.mulDown(proportionToRemove) - MAX_ROUND_ERROR
         );
 
-        uint256 snapshotId = vm.snapshot();
+        uint256 snapshotId = vm.snapshotState();
         _prankStaticCall();
         uint256[] memory queryAmountsOut = compositeLiquidityRouter.queryRemoveLiquidityProportionalNestedPool(
             parentPoolWithWrapper,
@@ -2177,7 +2191,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
             address(this),
             bytes("")
         );
-        vm.revertTo(snapshotId);
+        vm.revertToState(snapshotId);
 
         vm.startPrank(lp);
         uint256[] memory amountsOut = _removeLiquidityProportionalNestedPool(
@@ -2378,6 +2392,40 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         vm.stopPrank();
     }
 
+    function testAddLiquidityUnbalancedNestedPoolHookWhenNotVault() public {
+        address[] memory tokens = vault.getPoolTokens(pool).asAddress();
+
+        AddLiquidityHookParams memory params = AddLiquidityHookParams({
+            sender: address(this),
+            pool: pool,
+            maxAmountsIn: new uint256[](2),
+            minBptAmountOut: FixedPoint.ONE,
+            kind: AddLiquidityKind.UNBALANCED,
+            wethIsEth: false,
+            userData: bytes("")
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.addLiquidityUnbalancedNestedPoolHook(params, tokens, tokens);
+    }
+
+    function testRemoveLiquidityProportionalNestedPoolHookWhenNotVault() public {
+        address[] memory tokens = vault.getPoolTokens(pool).asAddress();
+
+        RemoveLiquidityHookParams memory params = RemoveLiquidityHookParams({
+            sender: address(this),
+            pool: pool,
+            minAmountsOut: new uint256[](2),
+            maxBptAmountIn: FixedPoint.ONE,
+            kind: RemoveLiquidityKind.PROPORTIONAL,
+            wethIsEth: false,
+            userData: bytes("")
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        compositeLiquidityRouter.removeLiquidityProportionalNestedPoolHook(params, tokens, tokens);
+    }
+
     struct NestedPoolTestLocals {
         uint256 daiIdx;
         uint256 wethIdx;
@@ -2386,6 +2434,8 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256 waDaiIdx;
         uint256 waWethIdx;
         uint256 waUsdcIdx;
+        uint256 burnedChildPoolABpt;
+        uint256 burnedChildPoolBBpt;
         TokenBalances lpBefore;
         TokenBalances lpAfter;
         TokenBalances vaultBefore;
@@ -2445,6 +2495,15 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         vars.parentPoolAfter = _getPoolBalances(parentPool);
         vars.parentPoolWithoutWrapperAfter = _getPoolBalances(parentPoolWithoutWrapper);
         vars.parentPoolWithWrapperAfter = _getPoolBalances(parentPoolWithWrapper);
+
+        // This had to be added to avoid stack-too-deep in nested pool operations, but doesn't always apply.
+        // Check magnitudes so that it doesn't run during add operations and cause underflows.
+        if (vars.childPoolABefore.totalSupply > vars.childPoolAAfter.totalSupply) {
+            vars.burnedChildPoolABpt = vars.childPoolABefore.totalSupply - vars.childPoolAAfter.totalSupply;
+        }
+        if (vars.childPoolBBefore.totalSupply > vars.childPoolBAfter.totalSupply) {
+            vars.burnedChildPoolBBpt = vars.childPoolBBefore.totalSupply - vars.childPoolBAfter.totalSupply;
+        }
     }
 
     function _getBalances(address entity) private view returns (TokenBalances memory balances) {
@@ -2502,6 +2561,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256[] memory exactAmountsIn,
         address[] memory tokensToWrap,
         uint256 minBptAmountOut,
+        uint256 ethValue,
         bool wethIsEth,
         bytes memory userData
     ) internal returns (uint256) {
@@ -2512,6 +2572,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
                 exactAmountsIn,
                 tokensToWrap,
                 minBptAmountOut,
+                ethValue,
                 wethIsEth,
                 userData,
                 bytes("")
@@ -2524,6 +2585,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         uint256[] memory exactAmountsIn,
         address[] memory tokensToWrap,
         uint256 minBptAmountOut,
+        uint256 ethValue,
         bool wethIsEth,
         bytes memory userData,
         bytes memory expectedError
@@ -2533,7 +2595,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseERC4626BufferTest {
         }
 
         return
-            compositeLiquidityRouter.addLiquidityUnbalancedNestedPool(
+            compositeLiquidityRouter.addLiquidityUnbalancedNestedPool{ value: ethValue }(
                 pool,
                 tokensIn,
                 exactAmountsIn,

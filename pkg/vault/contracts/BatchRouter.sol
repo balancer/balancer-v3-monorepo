@@ -47,7 +47,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
+    ) BatchRouterCommon(vault, weth, permit2, false, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -515,7 +515,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         pathAmountsIn[i] = bptAmountIn;
                         _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
 
-                        // Refund unused portion of BPT to the user.alias
+                        // Refund unused portion of BPT to the user.
                         if (bptAmountIn < stepMaxAmountIn && params.sender != address(this)) {
                             stepTokenIn.safeTransfer(address(params.sender), stepMaxAmountIn - bptAmountIn);
                         }

@@ -25,7 +25,12 @@ contract RouterMock is Router {
 
     error MockErrorCode();
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2, MOCK_ROUTER_VERSION) {
+    constructor(
+        IVault vault,
+        IWETH weth,
+        IPermit2 permit2,
+        bool isAggregator
+    ) Router(vault, weth, permit2, isAggregator, MOCK_ROUTER_VERSION) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -204,6 +209,7 @@ contract RouterMock is Router {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
+
             if (amountIn == 0) {
                 continue;
             }
@@ -228,6 +234,7 @@ contract RouterMock is Router {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountOut = amountsOut[i];
+
             if (amountOut == 0) {
                 continue;
             }

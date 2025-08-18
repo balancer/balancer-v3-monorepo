@@ -10,14 +10,9 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouterQueries.sol";
 import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 
-import { AggregatorCompositeLiquidityRouter } from "../../contracts/AggregatorCompositeLiquidityRouter.sol";
 import { CompositeLiquidityRouterERC4626PoolTest } from "./CompositeLiquidityRouterERC4626Pool.t.sol";
 
 contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidityRouterERC4626PoolTest {
-    function skipETHTests() internal pure override returns (bool) {
-        return true;
-    }
-
     function initQueryClrRouter() internal view override returns (ICompositeLiquidityRouterQueries) {
         return ICompositeLiquidityRouterQueries(address(aggregatorCompositeLiquidityRouter));
     }
@@ -25,7 +20,7 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
     function testCompositeLiquidityRouterVersion() public view override {
         assertEq(
             aggregatorCompositeLiquidityRouter.version(),
-            "Aggregator CompositeLiquidityRouter v1",
+            "Mock CompositeLiquidityRouter v1",
             "CL BatchRouter version mismatch"
         );
     }
@@ -37,24 +32,24 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         bool[] memory wrapUnderlying,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        uint256 ethValue,
         bool wethIsEth,
         bytes memory userData,
         bytes memory expectedError
     ) internal override returns (uint256 bptAmountOut) {
-        require(!wethIsEth, "WETH is not supported in this test");
-
-        _sendTokensToVault(pool, wrapUnderlying, exactAmountsIn);
+        _sendTokensToVault(pool, wrapUnderlying, exactAmountsIn, wethIsEth);
 
         if (expectedError.length > 0) {
             vm.expectRevert(expectedError);
         }
 
         return
-            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool(
+            aggregatorCompositeLiquidityRouter.addLiquidityUnbalancedToERC4626Pool{ value: ethValue }(
                 pool,
                 wrapUnderlying,
                 exactAmountsIn,
                 minBptAmountOut,
+                wethIsEth,
                 userData
             );
     }
@@ -64,24 +59,24 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         bool[] memory wrapUnderlying,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
+        uint256 ethValue,
         bool wethIsEth,
         bytes memory userData,
         bytes memory expectedError
     ) internal override returns (uint256[] memory) {
-        require(!wethIsEth, "WETH is not supported in this test");
-
-        _sendTokensToVault(pool, wrapUnderlying, maxAmountsIn);
+        _sendTokensToVault(pool, wrapUnderlying, maxAmountsIn, wethIsEth);
 
         if (expectedError.length > 0) {
             vm.expectRevert(expectedError);
         }
 
         return
-            aggregatorCompositeLiquidityRouter.addLiquidityProportionalToERC4626Pool(
+            aggregatorCompositeLiquidityRouter.addLiquidityProportionalToERC4626Pool{ value: ethValue }(
                 pool,
                 wrapUnderlying,
                 maxAmountsIn,
                 exactBptAmountOut,
+                wethIsEth,
                 userData
             );
     }
@@ -95,8 +90,6 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
         bytes memory userData,
         bytes memory expectedError
     ) internal override returns (uint256[] memory) {
-        require(!wethIsEth, "WETH is not supported in this test");
-
         IERC20(pool).approve(address(aggregatorCompositeLiquidityRouter), exactBptAmountIn);
 
         if (expectedError.length > 0) {
@@ -109,11 +102,17 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
                 unwrapWrapped,
                 exactBptAmountIn,
                 minAmountsOut,
+                wethIsEth,
                 userData
             );
     }
 
-    function _sendTokensToVault(address pool, bool[] memory wrapUnderlying, uint256[] memory amountsIn) private {
+    function _sendTokensToVault(
+        address pool,
+        bool[] memory wrapUnderlying,
+        uint256[] memory amountsIn,
+        bool wethIsEth
+    ) private {
         IERC20[] memory poolTokens = vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < poolTokens.length; i++) {
@@ -124,6 +123,10 @@ contract AggregatorCompositeLiquidityRouterERC4626PoolTest is CompositeLiquidity
             IERC20 effectiveToken = wrapUnderlying[i]
                 ? IERC20(vault.getERC4626BufferAsset(IERC4626(address(poolTokens[i]))))
                 : poolTokens[i];
+
+            if (wethIsEth && address(effectiveToken) == address(weth)) {
+                continue;
+            }
 
             effectiveToken.transfer(address(vault), amountsIn[i]);
         }

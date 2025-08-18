@@ -15,6 +15,3 @@ import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksM
 import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { CompositeLiquidityRouterMock } from "@balancer-labs/v3-vault/contracts/test/CompositeLiquidityRouterMock.sol";
-import {
-    AggregatorCompositeLiquidityRouter
-} from "@balancer-labs/v3-vault/contracts/AggregatorCompositeLiquidityRouter.sol";

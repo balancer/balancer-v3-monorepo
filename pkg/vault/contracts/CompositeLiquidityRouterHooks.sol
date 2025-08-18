@@ -25,7 +25,7 @@ import {
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
 /// @notice Hooks for managing liquidity in composite pools.
-contract CompositeLiquidityRouterHooks is BatchRouterCommon {
+abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -36,16 +36,14 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         ERC4626
     }
 
-    bool internal immutable _isAggregator;
-
     constructor(
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
         bool isAggregator,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
-        _isAggregator = isAggregator;
+    ) BatchRouterCommon(vault, weth, permit2, isAggregator, routerVersion) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     // ERC4626 Pool Hooks
@@ -128,9 +126,19 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
             unwrapWrapped.length
         );
 
-        (, uint256[] memory actualAmountsOut, ) = _vault.removeLiquidity(
-            _buildRemoveLiquidityParams(params, numTokens)
-        );
+        uint256[] memory actualAmountsOut;
+
+        // If the pool is in Recovery Mode, do a recovery withdrawal.
+        if (_vault.isPoolInRecoveryMode(params.pool)) {
+            actualAmountsOut = _vault.removeLiquidityRecovery(
+                params.pool,
+                params.sender,
+                params.maxBptAmountIn,
+                params.minAmountsOut
+            );
+        } else {
+            (, actualAmountsOut, ) = _vault.removeLiquidity(_buildRemoveLiquidityParams(params, numTokens));
+        }
 
         amountsOut = new uint256[](numTokens);
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
@@ -235,13 +243,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), amountIn);
-            } else {
-                // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(liquidityParams.sender, IERC20(settlementToken), amountIn, liquidityParams.wethIsEth);
-            }
+            _takeOrSettle(liquidityParams.sender, liquidityParams.wethIsEth, settlementToken, amountIn);
         }
 
         if (needToWrap) {
@@ -287,13 +289,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (isStaticCall == false) {
-            if (_isAggregator) {
-                // Settle the prepayment amount that was already sent
-                _vault.settle(IERC20(settlementToken), maxAmountIn);
-            } else {
-                // Retrieve tokens from the sender using Permit2
-                _takeTokenIn(liquidityParams.sender, settlementToken, maxAmountIn, liquidityParams.wethIsEth);
-            }
+            _takeOrSettle(liquidityParams.sender, liquidityParams.wethIsEth, address(settlementToken), maxAmountIn);
         }
 
         // If amountIn is 0, actualAmountIn remains at its initialized value of 0.
@@ -453,7 +449,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         // Settle the amounts in.
         if (isStaticCall == false) {
-            _settlePaths(params.sender, params.wethIsEth, _isAggregator);
+            _settlePaths(params.sender, params.wethIsEth);
         }
     }
 
@@ -466,9 +462,21 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         InputHelpers.ensureInputLengthMatch(params.minAmountsOut.length, tokensOut.length);
 
-        (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
-            _buildRemoveLiquidityParams(params, parentPoolTokens.length)
-        );
+        uint256[] memory parentPoolAmountsOut;
+
+        // If the pool is in Recovery Mode, do a recovery withdrawal.
+        if (_vault.isPoolInRecoveryMode(params.pool)) {
+            parentPoolAmountsOut = _vault.removeLiquidityRecovery(
+                params.pool,
+                params.sender,
+                params.maxBptAmountIn,
+                params.minAmountsOut
+            );
+        } else {
+            (, parentPoolAmountsOut, ) = _vault.removeLiquidity(
+                _buildRemoveLiquidityParams(params, parentPoolTokens.length)
+            );
+        }
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
             address parentPoolToken = address(parentPoolTokens[i]);
@@ -491,16 +499,27 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
                 // Router is an intermediary in this case. The Vault will burn tokens from the Router, so the Router
                 // is both owner and spender (which doesn't need approval).
-                (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
-                    RemoveLiquidityParams({
-                        pool: parentPoolToken,
-                        from: address(this),
-                        maxBptAmountIn: parentPoolAmountOut,
-                        minAmountsOut: new uint256[](childPoolTokens.length),
-                        kind: params.kind,
-                        userData: params.userData
-                    })
-                );
+                uint256[] memory childPoolAmountsOut;
+
+                if (_vault.isPoolInRecoveryMode(parentPoolToken)) {
+                    childPoolAmountsOut = _vault.removeLiquidityRecovery(
+                        parentPoolToken,
+                        address(this),
+                        parentPoolAmountOut,
+                        new uint256[](childPoolTokens.length)
+                    );
+                } else {
+                    (, childPoolAmountsOut, ) = _vault.removeLiquidity(
+                        RemoveLiquidityParams({
+                            pool: parentPoolToken,
+                            from: address(this),
+                            maxBptAmountIn: parentPoolAmountOut,
+                            minAmountsOut: new uint256[](childPoolTokens.length),
+                            kind: params.kind,
+                            userData: params.userData
+                        })
+                    );
+                }
 
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
@@ -560,7 +579,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         }
 
         if (EVMCallModeHelpers.isStaticCall() == false) {
-            _settlePaths(params.sender, params.wethIsEth, _isAggregator);
+            _settlePaths(params.sender, params.wethIsEth);
         }
     }
 
@@ -683,18 +702,7 @@ contract CompositeLiquidityRouterHooks is BatchRouterCommon {
 
         if (underlyingAmountIn > 0) {
             if (isStaticCall == false) {
-                if (_isAggregator) {
-                    // Settle the prepayment amount that was already sent
-                    _vault.settle(IERC20(underlyingToken), underlyingAmountIn);
-                } else {
-                    // Retrieve tokens from the sender using Permit2
-                    _takeTokenIn(
-                        liquidityParams.sender,
-                        IERC20(underlyingToken),
-                        underlyingAmountIn,
-                        liquidityParams.wethIsEth
-                    );
-                }
+                _takeOrSettle(liquidityParams.sender, liquidityParams.wethIsEth, underlyingToken, underlyingAmountIn);
             }
 
             (, , wrappedAmountOut) = _vault.erc4626BufferWrapOrUnwrap(
