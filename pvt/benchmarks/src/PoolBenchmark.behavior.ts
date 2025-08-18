@@ -154,7 +154,9 @@ export class Benchmark {
       )) as unknown as ProtocolFeeController;
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       this.permit2 = await deployPermit2();
-      this.router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION] });
+      this.router = await deploy('v3-vault/Router', {
+        args: [this.vault, this.WETH, this.permit2, false, ROUTER_VERSION],
+      });
       this.bufferRouter = await deploy('v3-vault/BufferRouter', {
         args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION],
       });

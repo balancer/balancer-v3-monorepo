@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
@@ -24,11 +23,9 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, CompositeLiquidi
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
+        bool isAggregator,
         string memory routerVersion
-    )
-        // This router uses permit2, so we set isAggregator to `false`.
-        CompositeLiquidityRouterQueries(vault, weth, permit2, false, routerVersion)
-    {
+    ) CompositeLiquidityRouterQueries(vault, weth, permit2, isAggregator, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

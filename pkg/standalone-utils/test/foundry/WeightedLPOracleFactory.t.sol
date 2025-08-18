@@ -29,8 +29,6 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
-    uint256 constant ORACLE_VERSION = 1;
-
     WeightedPoolFactory _weightedPoolFactory;
 
     function setUp() public virtual override {
@@ -99,6 +97,7 @@ contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleF
     }
 
     function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
-        return ILPOracleFactoryBase(address(new WeightedLPOracleFactory(vault, ORACLE_VERSION)));
+        return
+            ILPOracleFactoryBase(address(new WeightedLPOracleFactory(vault, ORACLE_FACTORY_VERSION, ORACLE_VERSION)));
     }
 }

@@ -25,7 +25,6 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
-    uint256 constant ORACLE_VERSION = 1;
     uint256 constant AMPLIFICATION_PARAMETER = 100;
 
     StablePoolFactory _stablePoolFactory;
@@ -90,6 +89,6 @@ contract StableLPOracleFactoryTest is StablePoolContractsDeployer, LPOracleFacto
     }
 
     function _createOracleFactory() internal override returns (ILPOracleFactoryBase) {
-        return ILPOracleFactoryBase(address(new StableLPOracleFactory(vault, ORACLE_VERSION)));
+        return ILPOracleFactoryBase(address(new StableLPOracleFactory(vault, ORACLE_FACTORY_VERSION, ORACLE_VERSION)));
     }
 }

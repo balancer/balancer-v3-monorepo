@@ -37,6 +37,8 @@ abstract contract BatchRouterCommon is RouterCommon {
         _calculateBatchRouterStorageSlot("currentSwapTokenOutAmounts");
     bytes32 private immutable _SETTLED_TOKEN_AMOUNTS_SLOT = _calculateBatchRouterStorageSlot("settledTokenAmounts");
 
+    bool internal immutable _isAggregator;
+
     // solhint-enable var-name-mixedcase
     // solhint-disable no-inline-assembly
 
@@ -44,9 +46,10 @@ abstract contract BatchRouterCommon is RouterCommon {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
+        bool isAggregator,
         string memory routerVersion
     ) RouterCommon(vault, weth, permit2, routerVersion) {
-        // solhint-disable-previous-line no-empty-blocks
+        _isAggregator = isAggregator;
     }
 
     // We use transient storage to track tokens and amounts flowing in and out of a batch swap.
@@ -87,15 +90,18 @@ abstract contract BatchRouterCommon is RouterCommon {
         return TransientStorageHelpers.calculateSlot(type(BatchRouterCommon).name, key);
     }
 
+    // Helper to consolidate updates that always happen together.
+    function _updateSwapTokensOut(address tokenOut, uint256 amountOut) internal {
+        _currentSwapTokensOut().add(tokenOut);
+        _currentSwapTokenOutAmounts().tAdd(tokenOut, amountOut);
+    }
+
     /*******************************************************************************
                                     Settlement
     *******************************************************************************/
-    function _settlePaths(address sender, bool wethIsEth) internal {
-        _settlePaths(sender, wethIsEth, false);
-    }
 
     /// @notice Settles batch and composite liquidity operations, after credits and debits are computed.
-    function _settlePaths(address sender, bool wethIsEth, bool isAggregator) internal {
+    function _settlePaths(address sender, bool wethIsEth) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
@@ -109,11 +115,8 @@ abstract contract BatchRouterCommon is RouterCommon {
             address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
             uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
 
-            if (isAggregator) {
-                _vault.settle(IERC20(tokenIn), amount);
-            } else {
-                _takeTokenIn(sender, IERC20(tokenIn), amount, wethIsEth);
-            }
+            _takeOrSettle(sender, wethIsEth, tokenIn, amount);
+
             // Erases delta, in case more than one batch router operation is called in the same transaction.
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             _currentSwapTokensIn().remove(tokenIn);
@@ -129,5 +132,23 @@ abstract contract BatchRouterCommon is RouterCommon {
 
         // Return the rest of ETH to sender.
         _returnEth(sender);
+    }
+
+    /**
+     * @notice Interpret the parameters and flags to decide whether we need to pull in tokens, or settle directly.
+     * @dev This logic is repeated in many places.
+     * @param sender The sender from the current operation
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param token The token being transferred or settled
+     * @param amountIn The amount being transferred or settled
+     */
+    function _takeOrSettle(address sender, bool wethIsEth, address token, uint256 amountIn) internal {
+        if (_isAggregator == false || (wethIsEth && token == address(_weth))) {
+            // Retrieve tokens from the sender using Permit2
+            _takeTokenIn(sender, IERC20(token), amountIn, wethIsEth);
+        } else {
+            // Settle the prepayment amount that was already sent
+            _vault.settle(IERC20(token), amountIn);
+        }
     }
 }
