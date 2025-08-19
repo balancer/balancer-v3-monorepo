@@ -61,7 +61,10 @@ contract ECLPSurgeHookTest is ECLPSurgeHookBaseTest {
         initialBalancesRaw[usdcIdx] = 491.03e18;
         vault.manualSetPoolBalances(pool, initialBalancesRaw, initialBalancesRaw);
 
-        uint256 imbalance = eclpSurgeHookMock.computeImbalanceFromBalances(GyroECLPPool(pool), initialBalancesRaw);
+        uint256 imbalance = eclpSurgeHookMock.computeImbalanceFromBalancesNoSlope(
+            GyroECLPPool(pool),
+            initialBalancesRaw
+        );
         assertLt(imbalance, 4e11, "Imbalance should be less than 0.00004%");
 
         // No rate providers and 18 decimals, so raw and scaled18 are the same.

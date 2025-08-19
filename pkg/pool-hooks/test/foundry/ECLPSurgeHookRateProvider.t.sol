@@ -72,7 +72,10 @@ contract ECLPSurgeHookRateProviderTest is ECLPSurgeHookBaseTest {
 
         vault.manualSetPoolBalances(pool, initialBalancesRaw, initialBalancesScaled18);
 
-        uint256 imbalance = eclpSurgeHookMock.computeImbalanceFromBalances(GyroECLPPool(pool), initialBalancesScaled18);
+        uint256 imbalance = eclpSurgeHookMock.computeImbalanceFromBalancesNoSlope(
+            GyroECLPPool(pool),
+            initialBalancesScaled18
+        );
         assertLt(imbalance, 4e12, "Imbalance should be less than 0.0004%");
     }
 }

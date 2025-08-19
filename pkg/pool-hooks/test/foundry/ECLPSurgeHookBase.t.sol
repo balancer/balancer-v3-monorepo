@@ -170,7 +170,7 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
                 eclpParams,
                 derivedECLPParams
             );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
+            oldTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(initialBalancesScaled18, eclpParams, a, b);
         }
 
         {
@@ -179,7 +179,12 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
                 eclpParams,
                 derivedECLPParams
             );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(expectedBalancesAfterAddScaled18, eclpParams, a, b);
+            newTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(
+                expectedBalancesAfterAddScaled18,
+                eclpParams,
+                a,
+                b
+            );
         }
 
         assertTrue(
@@ -220,7 +225,7 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
                 eclpParams,
                 derivedECLPParams
             );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
+            oldTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(initialBalancesScaled18, eclpParams, a, b);
         }
 
         {
@@ -229,7 +234,12 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
                 eclpParams,
                 derivedECLPParams
             );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(expectedBalancesAfterAddScaled18, eclpParams, a, b);
+            newTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(
+                expectedBalancesAfterAddScaled18,
+                eclpParams,
+                a,
+                b
+            );
         }
 
         assertFalse(
@@ -261,28 +271,24 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                initialBalancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
-        }
+        (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
+            initialBalancesScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        oldTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(initialBalancesScaled18, eclpParams, a, b);
 
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                expectedBalancesAfterRemoveScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(
-                expectedBalancesAfterRemoveScaled18,
-                eclpParams,
-                a,
-                b
-            );
-        }
+        (a, b) = eclpSurgeHookMock.computeOffsetFromBalances(
+            expectedBalancesAfterRemoveScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        newTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(
+            expectedBalancesAfterRemoveScaled18,
+            eclpParams,
+            a,
+            b
+        );
 
         // Pool needs to be surging after remove, so the unbalanced liquidity operation reverts.
         assertTrue(
@@ -334,7 +340,7 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
                 eclpParams,
                 derivedECLPParams
             );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
+            oldTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(initialBalancesScaled18, eclpParams, a, b);
         }
 
         {
@@ -343,7 +349,7 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
                 eclpParams,
                 derivedECLPParams
             );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(
+            newTotalImbalance = eclpSurgeHookMock.computeImbalanceNoSlope(
                 expectedBalancesAfterRemoveScaled18,
                 eclpParams,
                 a,

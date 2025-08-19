@@ -151,9 +151,9 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         balancesUpdated[1] = balancesScaled18[1] + amountGivenScaled18;
 
         (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
+        uint256 oldImbalance = hookMock.computeImbalanceNoSlope(balancesScaled18, eclpParams, a, b);
         // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalanceNoSlope(balancesUpdated, eclpParams, a, b);
 
         assertLt(newImbalance, oldImbalance, "Old imbalance < New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
@@ -188,9 +188,9 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         balancesUpdated[1] = balancesScaled18[1] - amountGivenScaled18;
 
         (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
+        uint256 oldImbalance = hookMock.computeImbalanceNoSlope(balancesScaled18, eclpParams, a, b);
         // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalanceNoSlope(balancesUpdated, eclpParams, a, b);
 
         assertGt(newImbalance, oldImbalance, "Old imbalance > New imbalance");
         // If newImbalance is smaller than threshold, isSurging function is not tested.
@@ -222,9 +222,9 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         balancesUpdated[1] = peakBalancesScaled18[1] - amountOutScaled18;
 
         (int256 a, int256 b) = hookMock.computeOffsetFromBalances(peakBalancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(peakBalancesScaled18, eclpParams, a, b);
+        uint256 oldImbalance = hookMock.computeImbalanceNoSlope(peakBalancesScaled18, eclpParams, a, b);
         // a and b are the same, since the swap without fees do not modify the invariant.
-        uint256 newImbalance = hookMock.computeImbalance(balancesUpdated, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalanceNoSlope(balancesUpdated, eclpParams, a, b);
 
         if (oldImbalance < newImbalance) {
             if (newImbalance > DEFAULT_SURGE_THRESHOLD_PERCENTAGE) {
@@ -279,7 +279,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
+        uint256 imbalanceAlpha = hookMock.computeImbalanceNoSlope(
+            balancesAlpha,
+            eclpParamsOutsideInterval,
+            aAlpha,
+            bAlpha
+        );
         uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
             eclpParamsOutsideInterval,
@@ -296,7 +301,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
+        uint256 imbalanceBeta = hookMock.computeImbalanceNoSlope(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
         uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
             eclpParamsOutsideInterval,
@@ -346,7 +351,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             eclpParamsOutsideInterval,
             derivedECLPParamsOutsideInterval
         );
-        uint256 imbalanceAlpha = hookMock.computeImbalance(balancesAlpha, eclpParamsOutsideInterval, aAlpha, bAlpha);
+        uint256 imbalanceAlpha = hookMock.computeImbalanceNoSlope(
+            balancesAlpha,
+            eclpParamsOutsideInterval,
+            aAlpha,
+            bAlpha
+        );
         uint256 priceNearAlpha = hookMock.computePriceFromBalances(
             balancesAlpha,
             eclpParamsOutsideInterval,
@@ -364,7 +374,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             derivedECLPParamsOutsideInterval
         );
 
-        uint256 imbalanceBeta = hookMock.computeImbalance(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
+        uint256 imbalanceBeta = hookMock.computeImbalanceNoSlope(balancesBeta, eclpParamsOutsideInterval, aBeta, bBeta);
         uint256 priceNearBeta = hookMock.computePriceFromBalances(
             balancesBeta,
             eclpParamsOutsideInterval,
@@ -612,8 +622,7 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         newBalances[1] = actualPeakBalances[1] - amountCalculatedScaled18;
 
         (int256 a, int256 b) = hookMock.computeOffsetFromBalances(actualPeakBalances, eclpParams, derivedECLPParams);
-        //uint256 oldImbalance = hookMock.computeImbalance(actualPeakBalances, eclpParams, a, b);
-        uint256 newImbalance = hookMock.computeImbalance(newBalances, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalanceNoSlope(newBalances, eclpParams, a, b);
 
         // The swap worsens balance but might not exceed threshold.
         if (newImbalance > hookMock.getSurgeThresholdPercentage(pool)) {

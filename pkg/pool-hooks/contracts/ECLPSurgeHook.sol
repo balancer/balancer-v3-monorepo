@@ -214,7 +214,7 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
         int256 a,
         int256 b,
         ImbalanceSlopeData memory imbalanceSlopeData
-    ) internal view returns (uint256 imbalance) {
+    ) internal pure returns (uint256 imbalance) {
         // On E-CLPs, the imbalance is a number from 0 to 1 that represents how far the current price is from the
         // peak liquidity price (the price in which the liquidity of the pool is maximized).
         // To reach this number, first we compute the peak price, which is sine/cosine (the tangent of the E-CLP
