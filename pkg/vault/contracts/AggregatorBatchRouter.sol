@@ -43,14 +43,11 @@ contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
      */
     error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
 
-    /// @notice The operation not supported by the router.
-    error OperationNotSupported();
-
     constructor(
         IVault vault,
         IWETH weth,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), true, routerVersion) {
+    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

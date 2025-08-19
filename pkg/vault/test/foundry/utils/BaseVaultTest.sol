@@ -4,8 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -20,19 +21,19 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
+import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
-import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
-import { BufferRouterMock } from "../../../contracts/test/BufferRouterMock.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
-import { Permit2Helpers } from "./Permit2Helpers.sol";
 import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
+import { Permit2Helpers } from "./Permit2Helpers.sol";
 
 contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
     using CastingHelpers for address[];
@@ -174,17 +175,16 @@ contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit
         vm.label(address(vaultAdmin), "vaultAdmin");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
-        router = deployRouterMock(IVault(address(vault)), weth, permit2, false);
+        router = deployRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
         batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2, false);
+        compositeLiquidityRouter = deployCompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(compositeLiquidityRouter), "composite liquidity router");
         aggregatorCompositeLiquidityRouter = deployCompositeLiquidityRouterMock(
             IVault(address(vault)),
             weth,
-            permit2,
-            true
+            IPermit2(address(0))
         );
         bufferRouter = deployBufferRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(bufferRouter), "buffer router");
