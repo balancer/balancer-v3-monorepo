@@ -403,12 +403,8 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
         // Compute peak price, defined by `sine / cosine`, which is the price where the pool has the largest liquidity.
         uint256 peakPrice = eclpParams.s.divDownMag(eclpParams.c).toUint256();
-        // The peak price may be outside the [alpha, beta] interval, so we clamp it to the interval.
-        if (peakPrice < eclpParams.alpha.toUint256()) {
-            peakPrice = eclpParams.alpha.toUint256();
-        } else if (peakPrice > eclpParams.beta.toUint256()) {
-            peakPrice = eclpParams.beta.toUint256();
-        }
+        // The price cannot be outside of pool range.
+        peakPrice = _clampPriceToPoolRange(peakPrice, eclpParams);
 
         if (currentPrice == peakPrice) {
             // If the currentPrice equals the peak price, the pool is perfectly balanced.
@@ -462,13 +458,8 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         int256 denominator = yll.mulDownMag(eclpParams.c) - ((xll * eclpParams.s) / eclpParams.lambda);
 
         price = numerator.divDownMag(denominator).toUint256();
-
         // The price cannot be outside of pool range.
-        if (price < eclpParams.alpha.toUint256()) {
-            price = eclpParams.alpha.toUint256();
-        } else if (price > eclpParams.beta.toUint256()) {
-            price = eclpParams.beta.toUint256();
-        }
+        price = _clampPriceToPoolRange(price, eclpParams);
 
         return price;
     }
@@ -494,6 +485,25 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
         a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
         b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
+    }
+
+    /**
+     * @notice Clamps the price to the pool range.
+     * @dev The pool price cannot be lower than alpha or higher than beta. So, we clamp it to the interval.
+     * @param price The price to clamp
+     * @param eclpParams The E-CLP parameters
+     * @return The clamped price
+     */
+    function _clampPriceToPoolRange(
+        uint256 price,
+        IGyroECLPPool.EclpParams memory eclpParams
+    ) internal pure returns (uint256) {
+        if (price < eclpParams.alpha.toUint256()) {
+            return eclpParams.alpha.toUint256();
+        } else if (price > eclpParams.beta.toUint256()) {
+            return eclpParams.beta.toUint256();
+        }
+        return price;
     }
 
     function _ensureValidPercentage(uint256 percentage) private pure {
