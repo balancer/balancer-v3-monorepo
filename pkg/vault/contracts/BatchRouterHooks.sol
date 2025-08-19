@@ -132,9 +132,12 @@ contract BatchRouterHooks is BatchRouterCommon {
                 }
 
                 SwapPathStep memory step = path.steps[j];
+                uint256 amountOut;
+
+                bool isAddingLiquidity;
 
                 if (step.isBuffer) {
-                    (, , uint256 amountOut) = _vault.erc4626BufferWrapOrUnwrap(
+                    (, , amountOut) = _vault.erc4626BufferWrapOrUnwrap(
                         BufferWrapOrUnwrapParams({
                             kind: SwapKind.EXACT_IN,
                             direction: step.pool == address(stepTokenIn)
@@ -145,121 +148,31 @@ contract BatchRouterHooks is BatchRouterCommon {
                             limitRaw: minAmountOut
                         })
                     );
-
-                    if (stepLocals.isLastStep) {
-                        // The amount out for the last step of the path should be recorded for the return value, and the
-                        // amount for the token should be sent back to the sender later on.
-                        pathAmountsOut[i] = amountOut;
-                        _updateSwapTokensOut(address(step.tokenOut), amountOut);
-                    } else {
-                        // Input for the next step is output of current step.
-                        stepExactAmountIn = amountOut;
-                        // The token in for the next step is the token out of the current step.
-                        stepTokenIn = step.tokenOut;
-                    }
                 } else if (address(stepTokenIn) == step.pool) {
-                    // Token in is BPT: remove liquidity - Single token exact in
-
-                    // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
-                    // required amount when performing the operation. These tokens might be the output of a previous
-                    // step, in which case the user will have a BPT credit.
-
-                    if (stepLocals.isFirstStep) {
-                        if (stepExactAmountIn > 0 && params.sender != address(this)) {
-                            // If this is the first step, the sender must have the tokens. Therefore, we can transfer
-                            // them to the Router, which acts as an intermediary. If the sender is the Router, we just
-                            // skip this step (useful for queries).
-                            //
-                            // This saves one permit(1) approval for the BPT to the Router; if we burned tokens
-                            // directly from the sender we would need their approval.
-                            _permit2.transferFrom(
-                                params.sender,
-                                address(this),
-                                stepExactAmountIn.toUint160(),
-                                address(stepTokenIn)
-                            );
-                        }
-
-                        // BPT is burned instantly, so we don't need to send it back later.
-                        if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
-                            _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
-                        }
-                    } else {
-                        // If this is an intermediate step, we don't expect the sender to have BPT to burn.
-                        // Then, we flashloan tokens here (which should in practice just use existing credit).
-                        _vault.sendTo(IERC20(step.pool), address(this), stepExactAmountIn);
-                    }
-
-                    // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
-                    // wouldn't know which token to use.
-                    (uint256[] memory amountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+                    amountOut = _removeLiquidityExactIn(
                         step.pool,
                         step.tokenOut,
-                        minAmountOut == 0 ? 1 : minAmountOut
+                        stepExactAmountIn,
+                        stepTokenIn,
+                        minAmountOut,
+                        stepLocals.isFirstStep,
+                        params.sender,
+                        params.userData
                     );
-
-                    // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
-                    // Router is both owner and spender (which doesn't need approval).
-                    // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
-                    (, amountsOut, ) = _vault.removeLiquidity(
-                        RemoveLiquidityParams({
-                            pool: step.pool,
-                            from: address(this),
-                            maxBptAmountIn: stepExactAmountIn,
-                            minAmountsOut: amountsOut,
-                            kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
-                            userData: params.userData
-                        })
-                    );
-
-                    if (stepLocals.isLastStep) {
-                        // The amount out for the last step of the path should be recorded for the return value, and the
-                        // amount for the token should be sent back to the sender later on.
-                        pathAmountsOut[i] = amountsOut[tokenIndex];
-                        _updateSwapTokensOut(address(step.tokenOut), amountsOut[tokenIndex]);
-                    } else {
-                        // Input for the next step is output of current step.
-                        stepExactAmountIn = amountsOut[tokenIndex];
-                        // The token in for the next step is the token out of the current step.
-                        stepTokenIn = step.tokenOut;
-                    }
                 } else if (address(step.tokenOut) == step.pool) {
-                    // Token out is BPT: add liquidity - Single token exact in (unbalanced).
-                    (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
+                    isAddingLiquidity = true;
+                    amountOut = _addLiquidityExactIn(
                         step.pool,
                         stepTokenIn,
-                        stepExactAmountIn
+                        stepExactAmountIn,
+                        minAmountOut,
+                        stepLocals.isLastStep,
+                        params.sender,
+                        params.userData
                     );
-
-                    (, uint256 bptAmountOut, ) = _vault.addLiquidity(
-                        AddLiquidityParams({
-                            pool: step.pool,
-                            to: stepLocals.isLastStep ? params.sender : address(_vault),
-                            maxAmountsIn: exactAmountsIn,
-                            minBptAmountOut: minAmountOut,
-                            kind: AddLiquidityKind.UNBALANCED,
-                            userData: params.userData
-                        })
-                    );
-
-                    if (stepLocals.isLastStep) {
-                        // The amount out for the last step of the path should be recorded for the return value.
-                        // We do not need to register the amount out in _currentSwapTokenOutAmounts since the BPT
-                        // is minted directly to the sender, so this step can be considered settled at this point.
-                        pathAmountsOut[i] = bptAmountOut;
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _settledTokenAmounts().tAdd(address(step.tokenOut), bptAmountOut);
-                    } else {
-                        // Input for the next step is output of current step.
-                        stepExactAmountIn = bptAmountOut;
-                        // The token in for the next step is the token out of the current step.
-                        stepTokenIn = step.tokenOut;
-                        // If this is an intermediate step, BPT is minted to the Vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool), bptAmountOut);
-                    }
                 } else {
                     // No BPT involved in the operation: regular swap exact in.
-                    (, , uint256 amountOut) = _vault.swap(
+                    (, , amountOut) = _vault.swap(
                         VaultSwapParams({
                             kind: SwapKind.EXACT_IN,
                             pool: step.pool,
@@ -270,21 +183,121 @@ contract BatchRouterHooks is BatchRouterCommon {
                             userData: params.userData
                         })
                     );
+                }
 
-                    if (stepLocals.isLastStep) {
-                        // The amount out for the last step of the path should be recorded for the return value, and the
-                        // amount for the token should be sent back to the sender later on.
-                        pathAmountsOut[i] = amountOut;
-                        _updateSwapTokensOut(address(step.tokenOut), amountOut);
+                if (stepLocals.isLastStep) {
+                    // The amount out for the last step of the path should be recorded for the return value, and the
+                    // amount for the token should be sent back to the sender later on.
+                    pathAmountsOut[i] = amountOut;
+
+                    address stepTokenOut = address(step.tokenOut);
+                    _currentSwapTokensOut().add(stepTokenOut);
+
+                    if (isAddingLiquidity) {
+                        _settledTokenAmounts().tAdd(stepTokenOut, amountOut);
                     } else {
-                        // Input for the next step is output of current step.
-                        stepExactAmountIn = amountOut;
-                        // The token in for the next step is the token out of the current step.
-                        stepTokenIn = step.tokenOut;
+                        _currentSwapTokenOutAmounts().tAdd(stepTokenOut, amountOut);
+                    }
+                } else {
+                    // Input for the next step is output of current step.
+                    stepExactAmountIn = amountOut;
+                    // The token in for the next step is the token out of the current step.
+                    stepTokenIn = step.tokenOut;
+
+                    if (isAddingLiquidity) {
+                        _vault.settle(IERC20(step.pool), amountOut);
                     }
                 }
             }
         }
+    }
+
+    function _removeLiquidityExactIn(
+        address pool,
+        IERC20 tokenOut,
+        uint256 stepExactAmountIn,
+        IERC20 stepTokenIn,
+        uint256 minAmountOut,
+        bool isFirstStep,
+        address sender,
+        bytes memory userData
+    ) internal returns (uint256 amountOut) {
+        // Token in is BPT: remove liquidity - Single token exact in
+
+        // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
+        // required amount when performing the operation. These tokens might be the output of a previous
+        // step, in which case the user will have a BPT credit.
+
+        if (isFirstStep) {
+            if (stepExactAmountIn > 0 && sender != address(this)) {
+                // If this is the first step, the sender must have the tokens. Therefore, we can transfer
+                // them to the Router, which acts as an intermediary. If the sender is the Router, we just
+                // skip this step (useful for queries).
+                //
+                // This saves one permit(1) approval for the BPT to the Router; if we burned tokens
+                // directly from the sender we would need their approval.
+                _permit2.transferFrom(sender, address(this), stepExactAmountIn.toUint160(), address(stepTokenIn));
+            }
+
+            // BPT is burned instantly, so we don't need to send it back later.
+            if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
+                _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
+            }
+        } else {
+            // If this is an intermediate step, we don't expect the sender to have BPT to burn.
+            // Then, we flashloan tokens here (which should in practice just use existing credit).
+            _vault.sendTo(IERC20(pool), address(this), stepExactAmountIn);
+        }
+
+        // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
+        // wouldn't know which token to use.
+        (uint256[] memory amountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+            pool,
+            tokenOut,
+            minAmountOut == 0 ? 1 : minAmountOut
+        );
+
+        // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
+        // Router is both owner and spender (which doesn't need approval).
+        // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
+        (, amountsOut, ) = _vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: pool,
+                from: address(this),
+                maxBptAmountIn: stepExactAmountIn,
+                minAmountsOut: amountsOut,
+                kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
+                userData: userData
+            })
+        );
+
+        return amountsOut[tokenIndex];
+    }
+
+    function _addLiquidityExactIn(
+        address pool,
+        IERC20 stepTokenIn,
+        uint256 stepExactAmountIn,
+        uint256 minAmountOut,
+        bool isLastStep,
+        address sender,
+        bytes memory userData
+    ) internal returns (uint256 amountOut) {
+        // Token out is BPT: add liquidity - Single token exact in (unbalanced).
+        (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(pool, stepTokenIn, stepExactAmountIn);
+
+        (, uint256 bptAmountOut, ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: pool,
+                to: isLastStep ? sender : address(_vault),
+                maxAmountsIn: exactAmountsIn,
+                minBptAmountOut: minAmountOut,
+                kind: AddLiquidityKind.UNBALANCED,
+                userData: userData
+            })
+        );
+
+        return bptAmountOut;
     }
 
     /***************************************************************************
@@ -381,141 +394,52 @@ contract BatchRouterHooks is BatchRouterCommon {
                     stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                 }
 
+                address tokenIn = address(stepTokenIn);
+                uint256 amountIn;
+                bool isSettled;
+
                 if (step.isBuffer) {
-                    if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
-                        // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
-                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, params.wethIsEth);
-                    }
-
-                    (, uint256 amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
-                        BufferWrapOrUnwrapParams({
-                            kind: SwapKind.EXACT_OUT,
-                            direction: step.pool == address(stepTokenIn)
-                                ? WrappingDirection.UNWRAP
-                                : WrappingDirection.WRAP,
-                            wrappedToken: IERC4626(step.pool),
-                            amountGivenRaw: stepExactAmountOut,
-                            limitRaw: stepMaxAmountIn
-                        })
-                    );
-
-                    if (stepLocals.isLastStep) {
-                        pathAmountsIn[i] = amountIn;
-                        // Since the token was taken in advance, returns to the user what is left from the
-                        // wrap/unwrap operation.
-                        _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
-                        // `settledTokenAmounts` is used to return the `amountsIn` at the end of the operation, which
-                        // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
-                        // settle.
-                        _settledTokenAmounts().tAdd(address(path.tokenIn), amountIn);
-                    } else {
-                        stepExactAmountOut = amountIn;
-                    }
-                } else if (address(stepTokenIn) == step.pool) {
-                    // Token in is BPT: remove liquidity - Single token exact out
-
-                    // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
-                    // required amount when performing the operation. In this case, the BPT amount needed for the
-                    // operation is not known in advance, so we take a flashloan for all the available reserves.
-                    //
-                    // The last step is the one that defines the inputs for this path. The caller should have enough
-                    // BPT to burn already if that's the case, so we just skip this step if so.
-                    if (stepLocals.isLastStep == false) {
-                        stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
-                        _vault.sendTo(IERC20(step.pool), address(this), stepMaxAmountIn);
-                    } else if (params.sender != address(this)) {
-                        // The last step being executed is the first step in the swap path, meaning that it's the one
-                        // that defines the inputs of the path.
-                        //
-                        // In that case, the sender must have the tokens. Therefore, we can transfer them
-                        // to the Router, which acts as an intermediary. If the sender is the Router, we just skip this
-                        // step (useful for queries).
-                        _permit2.transferFrom(
-                            params.sender,
-                            address(this),
-                            stepMaxAmountIn.toUint160(),
-                            address(stepTokenIn)
-                        );
-                    }
-
-                    (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(
-                        step.pool,
-                        step.tokenOut,
-                        stepExactAmountOut
-                    );
-
-                    // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
-                    // Router is both owner and spender (which doesn't need approval).
-                    (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
-                        RemoveLiquidityParams({
-                            pool: step.pool,
-                            from: address(this),
-                            maxBptAmountIn: stepMaxAmountIn,
-                            minAmountsOut: exactAmountsOut,
-                            kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                            userData: params.userData
-                        })
-                    );
-
-                    if (stepLocals.isLastStep) {
-                        // BPT is burned instantly, so we don't need to send it to the Vault during settlement.
-                        pathAmountsIn[i] = bptAmountIn;
-                        _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
-
-                        // Refund unused portion of BPT to the user.
-                        if (bptAmountIn < stepMaxAmountIn && params.sender != address(this)) {
-                            stepTokenIn.safeTransfer(address(params.sender), stepMaxAmountIn - bptAmountIn);
-                        }
-                    } else {
-                        // Output for the step (j - 1) is the input of step (j).
-                        stepExactAmountOut = bptAmountIn;
-                        // Refund unused portion of BPT flashloan to the Vault.
-                        if (bptAmountIn < stepMaxAmountIn) {
-                            uint256 refundAmount = stepMaxAmountIn - bptAmountIn;
-                            stepTokenIn.safeTransfer(address(_vault), refundAmount);
-                            _vault.settle(stepTokenIn, refundAmount);
-                        }
-                    }
-                } else if (address(step.tokenOut) == step.pool) {
-                    // Token out is BPT: add liquidity - Single token exact out.
-                    (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+                    amountIn = _wrapOrUnwrapExactOut(
                         step.pool,
                         stepTokenIn,
-                        stepMaxAmountIn
+                        stepExactAmountOut,
+                        stepMaxAmountIn,
+                        path.tokenIn,
+                        path.maxAmountIn,
+                        stepLocals.isLastStep,
+                        params.sender,
+                        params.wethIsEth
+                    );
+                    isSettled = true;
+                    tokenIn = address(path.tokenIn);
+                } else if (address(stepTokenIn) == step.pool) {
+                    amountIn = _removeLiquidityExactOut(
+                        step.pool,
+                        stepTokenIn,
+                        stepExactAmountOut,
+                        stepMaxAmountIn,
+                        step.tokenOut,
+                        stepLocals.isLastStep,
+                        params.sender,
+                        params.userData
                     );
 
-                    // Reusing `amountsIn` as input argument and function output to prevent stack too deep error.
-                    (stepAmountsIn, , ) = _vault.addLiquidity(
-                        AddLiquidityParams({
-                            pool: step.pool,
-                            to: stepLocals.isFirstStep ? params.sender : address(_vault),
-                            maxAmountsIn: stepAmountsIn,
-                            minBptAmountOut: stepExactAmountOut,
-                            kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                            userData: params.userData
-                        })
+                    isSettled = true;
+                } else if (address(step.tokenOut) == step.pool) {
+                    amountIn = _addLiquidityExactOut(
+                        step.pool,
+                        stepTokenIn,
+                        step.tokenOut,
+                        stepExactAmountOut,
+                        stepMaxAmountIn,
+                        stepLocals.isFirstStep,
+                        stepLocals.isLastStep,
+                        params.sender,
+                        params.userData
                     );
-
-                    if (stepLocals.isLastStep) {
-                        // The amount out for the last step of the path should be recorded for the return value.
-                        pathAmountsIn[i] = stepAmountsIn[tokenIndex];
-                        _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepAmountsIn[tokenIndex]);
-                    } else {
-                        stepExactAmountOut = stepAmountsIn[tokenIndex];
-                    }
-
-                    // The first step executed determines the outputs for the path, since this is given out.
-                    if (stepLocals.isFirstStep) {
-                        // Instead of sending tokens back to the Vault, we can just discount it from whatever
-                        // the Vault owes the sender to make one less transfer.
-                        _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
-                    } else {
-                        // If it's not the first step, BPT is minted to the Vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool), stepExactAmountOut);
-                    }
                 } else {
                     // No BPT involved in the operation: regular swap exact out.
-                    (, uint256 amountIn, ) = _vault.swap(
+                    (, amountIn, ) = _vault.swap(
                         VaultSwapParams({
                             kind: SwapKind.EXACT_OUT,
                             pool: step.pool,
@@ -526,15 +450,157 @@ contract BatchRouterHooks is BatchRouterCommon {
                             userData: params.userData
                         })
                     );
+                }
 
-                    if (stepLocals.isLastStep) {
-                        pathAmountsIn[i] = amountIn;
-                        _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+                if (stepLocals.isLastStep) {
+                    pathAmountsIn[i] = amountIn;
+
+                    if (isSettled) {
+                        _settledTokenAmounts().tAdd(tokenIn, amountIn);
                     } else {
-                        stepExactAmountOut = amountIn;
+                        _currentSwapTokenInAmounts().tAdd(tokenIn, amountIn);
                     }
+                } else {
+                    stepExactAmountOut = amountIn;
                 }
             }
+        }
+    }
+
+    function _wrapOrUnwrapExactOut(
+        address pool,
+        IERC20 stepTokenIn,
+        uint256 stepExactAmountOut,
+        uint256 stepMaxAmountIn,
+        IERC20 pathTokenIn,
+        uint256 pathMaxAmountIn,
+        bool isLastStep,
+        address sender,
+        bool wethIsEth
+    ) internal returns (uint256 amountIn) {
+        if (isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
+            // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
+            _takeTokenIn(sender, pathTokenIn, pathMaxAmountIn, wethIsEth);
+        }
+
+        (, amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: SwapKind.EXACT_OUT,
+                direction: pool == address(stepTokenIn) ? WrappingDirection.UNWRAP : WrappingDirection.WRAP,
+                wrappedToken: IERC4626(pool),
+                amountGivenRaw: stepExactAmountOut,
+                limitRaw: stepMaxAmountIn
+            })
+        );
+
+        if (isLastStep) {
+            // Since the token was taken in advance, returns to the user what is left from the
+            // wrap/unwrap operation.
+            _updateSwapTokensOut(address(stepTokenIn), pathMaxAmountIn - amountIn);
+        }
+    }
+
+    function _removeLiquidityExactOut(
+        address pool,
+        IERC20 stepTokenIn,
+        uint256 stepExactAmountOut,
+        uint256 stepMaxAmountIn,
+        IERC20 tokenOut,
+        bool isLastStep,
+        address sender,
+        bytes memory userData
+    ) internal returns (uint256 amountIn) {
+        // Token in is BPT: remove liquidity - Single token exact out
+
+        // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
+        // required amount when performing the operation. In this case, the BPT amount needed for the
+        // operation is not known in advance, so we take a flashloan for all the available reserves.
+        //
+        // The last step is the one that defines the inputs for this path. The caller should have enough
+        // BPT to burn already if that's the case, so we just skip this step if so.
+        if (isLastStep == false) {
+            stepMaxAmountIn = _vault.getReservesOf(stepTokenIn);
+            _vault.sendTo(IERC20(pool), address(this), stepMaxAmountIn);
+        } else if (sender != address(this)) {
+            // The last step being executed is the first step in the swap path, meaning that it's the one
+            // that defines the inputs of the path.
+            //
+            // In that case, the sender must have the tokens. Therefore, we can transfer them
+            // to the Router, which acts as an intermediary. If the sender is the Router, we just skip this
+            // step (useful for queries).
+            _permit2.transferFrom(sender, address(this), stepMaxAmountIn.toUint160(), address(stepTokenIn));
+        }
+
+        (uint256[] memory exactAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, stepExactAmountOut);
+
+        // Router is always an intermediary in this case. The Vault will burn tokens from the Router, so
+        // Router is both owner and spender (which doesn't need approval).
+        (amountIn, , ) = _vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: pool,
+                from: address(this),
+                maxBptAmountIn: stepMaxAmountIn,
+                minAmountsOut: exactAmountsOut,
+                kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                userData: userData
+            })
+        );
+
+        if (isLastStep) {
+            // Refund unused portion of BPT to the user.
+            if (amountIn < stepMaxAmountIn && sender != address(this)) {
+                stepTokenIn.safeTransfer(address(sender), stepMaxAmountIn - amountIn);
+            }
+        } else if (amountIn < stepMaxAmountIn) {
+            // Refund unused portion of BPT flashloan to the Vault.
+            uint256 refundAmount = stepMaxAmountIn - amountIn;
+            stepTokenIn.safeTransfer(address(_vault), refundAmount);
+            _vault.settle(stepTokenIn, refundAmount);
+        }
+    }
+
+    function _addLiquidityExactOut(
+        address pool,
+        IERC20 stepTokenIn,
+        IERC20 tokenOut,
+        uint256 stepExactAmountOut,
+        uint256 stepMaxAmountIn,
+        bool isFirstStep,
+        bool isLastStep,
+        address sender,
+        bytes memory userData
+    ) internal returns (uint256 amountIn) {
+        // Token out is BPT: add liquidity - Single token exact out.
+        (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
+            pool,
+            stepTokenIn,
+            stepMaxAmountIn
+        );
+
+        // Reusing `amountsIn` as input argument and function output to prevent stack too deep error.
+        (stepAmountsIn, , ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: pool,
+                to: isFirstStep ? sender : address(_vault),
+                maxAmountsIn: stepAmountsIn,
+                minBptAmountOut: stepExactAmountOut,
+                kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                userData: userData
+            })
+        );
+
+        amountIn = stepAmountsIn[tokenIndex];
+
+        uint256 amountOut = isLastStep ? stepExactAmountOut : amountIn;
+
+        // The first step executed determines the outputs for the path, since this is given out.
+        if (isFirstStep) {
+            // Instead of sending tokens back to the Vault, we can just discount it from whatever
+            // the Vault owes the sender to make one less transfer.
+            _currentSwapTokenOutAmounts().tSub(address(tokenOut), amountOut);
+        } else {
+            // If it's not the first step, BPT is minted to the Vault so we just get the credit.
+            _vault.settle(IERC20(pool), amountOut);
         }
     }
 
