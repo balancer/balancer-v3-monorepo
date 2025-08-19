@@ -50,7 +50,7 @@ describe('StablePool', () => {
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
-    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, false, ROUTER_VERSION] });
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2, ROUTER_VERSION] });
 
     factory = await deploy('StablePoolFactory', {
       args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],
