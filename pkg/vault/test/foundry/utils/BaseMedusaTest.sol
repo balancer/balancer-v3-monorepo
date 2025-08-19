@@ -88,13 +88,12 @@ contract BaseMedusaTest is Test {
 
         _deployVaultMock(0, 0);
 
-        router = new RouterMock(IVault(address(vault)), IWETH(address(weth)), permit2, false);
+        router = new RouterMock(IVault(address(vault)), IWETH(address(weth)), permit2);
         batchRouter = new BatchRouterMock(IVault(address(vault)), IWETH(address(weth)), permit2);
         compositeLiquidityRouter = new CompositeLiquidityRouterMock(
             IVault(address(vault)),
             IWETH(address(weth)),
-            permit2,
-            false
+            permit2
         );
 
         _setPermissionsForUsersAndTokens();

@@ -159,7 +159,7 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
-        (int256[] memory prices, uint256 _updatedAt) = getFeedData();
+        (int256[] memory prices, , uint256 _updatedAt) = getFeedData();
 
         uint256 tvl = calculateTVL(prices);
         uint256 totalSupply = _vault.totalSupply(address(pool));
@@ -173,19 +173,28 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     function calculateTVL(int256[] memory) public view virtual returns (uint256);
 
     /// @inheritdoc ILPOracleBase
-    function getFeedData() public view returns (int256[] memory prices, uint256 updatedAt) {
+    function getFeedData()
+        public
+        view
+        returns (int256[] memory prices, uint256[] memory updatedAt, uint256 minUpdatedAt)
+    {
         uint256 totalTokens = _totalTokens;
         AggregatorV3Interface[] memory feeds = _getFeeds(totalTokens);
         uint256[] memory feedDecimalScalingFactors = _getFeedTokenDecimalScalingFactors(totalTokens);
 
         prices = new int256[](totalTokens);
+        updatedAt = new uint256[](totalTokens);
 
-        updatedAt = type(uint256).max;
+        minUpdatedAt = type(uint256).max;
+
         for (uint256 i = 0; i < totalTokens; i++) {
             (, int256 answer, , uint256 feedUpdatedAt, ) = feeds[i].latestRoundData();
             prices[i] = answer * feedDecimalScalingFactors[i].toInt256();
+            updatedAt[i] = feedUpdatedAt;
 
-            updatedAt = updatedAt < feedUpdatedAt ? updatedAt : feedUpdatedAt;
+            if (feedUpdatedAt < minUpdatedAt) {
+                minUpdatedAt = feedUpdatedAt;
+            }
         }
     }
 
