@@ -353,16 +353,14 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
 
         IGyroECLPPool.Vector2 memory invariant;
 
-        {
-            (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
-                request.balancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            // invariant = overestimate in x-component, underestimate in y-component
-            // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
-            invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
-        }
+        (int256 currentInvariant, int256 invErr) = GyroECLPMath.calculateInvariantWithError(
+            request.balancesScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        // invariant = overestimate in x-component, underestimate in y-component
+        // No overflow in `+` due to constraints to the different values enforced in GyroECLPMath.
+        invariant = IGyroECLPPool.Vector2(currentInvariant + 2 * invErr, currentInvariant);
 
         if (request.kind == SwapKind.EXACT_IN) {
             (amountCalculated, a, b) = GyroECLPMath.calcOutGivenIn(
