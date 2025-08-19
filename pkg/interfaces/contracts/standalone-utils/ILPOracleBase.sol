@@ -22,7 +22,7 @@ interface ILPOracleBase {
      * @dev The feeds might have different update frequencies; e.g., one updates hourly, and another daily. For most
      * applications, the "oldest" (i.e., least up-to-date) timestamp is a common way to represent the overall state,
      * so it is returned for convenience as `minUpdatedAt`. However, some use cases may require more sophisticated
-     * analysis, so `updatedAt` now returns all values.
+     * analysis, so `updatedAt` returns all values.
      *
      * @return prices An array of latest prices from the feeds
      * @return updatedAt An array of timestamps corresponding to the last update of each feed
