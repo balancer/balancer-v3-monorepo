@@ -624,12 +624,12 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
 
         // Makes sure the swap is surging without the max surge fee percentage check.
         (int256 a, int256 b) = hookMock.computeOffsetFromBalances(balancesScaled18, eclpParams, derivedECLPParams);
-        uint256 oldImbalance = hookMock.computeImbalance(balancesScaled18, eclpParams, a, b);
+        uint256 oldImbalance = hookMock.computeImbalanceNoSlope(balancesScaled18, eclpParams, a, b);
         (uint256 amountCalculatedScaled18, , ) = hookMock.computeSwap(swapParams, eclpParams, derivedECLPParams);
         uint256[] memory newBalancesScaled18 = new uint256[](2);
         newBalancesScaled18[0] = balancesScaled18[0] + balancesScaled18[0] / 10;
         newBalancesScaled18[1] = balancesScaled18[1] - amountCalculatedScaled18;
-        uint256 newImbalance = hookMock.computeImbalance(newBalancesScaled18, eclpParams, a, b);
+        uint256 newImbalance = hookMock.computeImbalanceNoSlope(newBalancesScaled18, eclpParams, a, b);
         assertTrue(
             hookMock.isSurging(uint64(hookMock.getSurgeThresholdPercentage(pool)), oldImbalance, newImbalance),
             "Swap is not surging"
