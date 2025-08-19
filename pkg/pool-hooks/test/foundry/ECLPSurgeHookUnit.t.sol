@@ -611,7 +611,6 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         newBalances[1] = actualPeakBalances[1] - amountCalculatedScaled18;
 
         (int256 a, int256 b) = hookMock.computeOffsetFromBalances(actualPeakBalances, eclpParams, derivedECLPParams);
-        //uint256 oldImbalance = hookMock.computeImbalance(actualPeakBalances, eclpParams, a, b);
         uint256 newImbalance = hookMock.computeImbalance(newBalances, eclpParams, a, b);
 
         // The swap worsens balance but might not exceed threshold.
