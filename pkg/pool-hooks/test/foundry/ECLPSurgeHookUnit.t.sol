@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { ISurgeHookCommon } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ISurgeHookCommon.sol";
-import { ISurgeHookCommon } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/ISurgeHookCommon.sol";
+import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -27,6 +27,8 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
     using FixedPoint for uint256;
     using CastingHelpers for *;
     using ArrayHelpers for *;
+
+    uint128 private constant _DEFAULT_IMBALANCE_SLOPE = 1e18;
 
     ECLPSurgeHookMock private hookMock;
     IGyroECLPPool.EclpParams private eclpParams;
@@ -64,6 +66,16 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         // Token A is WETH, and Token B is USDC.
         balancesScaled18 = [uint256(2948989424059932952), uint256(9513574260000000000000)].toMemoryArray();
         peakBalancesScaled18 = [uint256(2372852587012056561), uint256(11651374260000000000000)].toMemoryArray();
+
+        authorizer.grantRole(
+            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setImbalanceSlopeBelowPeak.selector),
+            admin
+        );
+
+        authorizer.grantRole(
+            ECLPSurgeHook(address(hookMock)).getActionId(IECLPSurgeHook.setImbalanceSlopeAbovePeak.selector),
+            admin
+        );
     }
 
     function createPoolFactory() internal override returns (address) {
@@ -116,6 +128,98 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
                 }),
                 vault
             )
+        );
+    }
+
+    function testGetImbalanceSlopeBelowPeakAfterRegister() public view {
+        assertEq(
+            hookMock.getImbalanceSlopeBelowPeak(pool),
+            _DEFAULT_IMBALANCE_SLOPE,
+            "Imbalance slope below peak should be the default value"
+        );
+    }
+
+    function testGetImbalanceSlopeAbovePeakAfterRegister() public view {
+        assertEq(
+            hookMock.getImbalanceSlopeAbovePeak(pool),
+            _DEFAULT_IMBALANCE_SLOPE,
+            "Imbalance slope above peak should be the default value"
+        );
+    }
+
+    function testSetImbalanceSlopeBelowPeakIsAuthenticated() public {
+        vm.prank(alice);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        hookMock.setImbalanceSlopeBelowPeak(address(pool), 1e18);
+    }
+
+    function testSetImbalanceSlopeBelowPeakGovernance() public {
+        uint128 newImbalanceSlopeBelowPeak = 2e18;
+
+        vm.prank(admin);
+        vm.expectEmit();
+        emit IECLPSurgeHook.ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak);
+        hookMock.setImbalanceSlopeBelowPeak(address(pool), newImbalanceSlopeBelowPeak);
+
+        assertEq(
+            hookMock.getImbalanceSlopeBelowPeak(pool),
+            newImbalanceSlopeBelowPeak,
+            "Wrong imbalance slope below peak"
+        );
+    }
+
+    function testSetImbalanceSlopeBelowPeakSwapFeeManager() public {
+        _mockPoolRoleAccounts(alice);
+
+        uint128 newImbalanceSlopeBelowPeak = 2e18;
+
+        vm.prank(alice);
+        vm.expectEmit();
+        emit IECLPSurgeHook.ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak);
+        hookMock.setImbalanceSlopeBelowPeak(address(pool), newImbalanceSlopeBelowPeak);
+
+        assertEq(
+            hookMock.getImbalanceSlopeBelowPeak(pool),
+            newImbalanceSlopeBelowPeak,
+            "Wrong imbalance slope below peak"
+        );
+    }
+
+    function testSetImbalanceSlopeAbovePeakIsAuthenticated() public {
+        vm.prank(alice);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        hookMock.setImbalanceSlopeAbovePeak(address(pool), 1e18);
+    }
+
+    function testSetImbalanceSlopeAbovePeakGovernance() public {
+        uint128 newImbalanceSlopeAbovePeak = 2e18;
+
+        vm.prank(admin);
+        vm.expectEmit();
+        emit IECLPSurgeHook.ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak);
+        hookMock.setImbalanceSlopeAbovePeak(address(pool), newImbalanceSlopeAbovePeak);
+
+        assertEq(
+            hookMock.getImbalanceSlopeAbovePeak(pool),
+            newImbalanceSlopeAbovePeak,
+            "Wrong imbalance slope above peak"
+        );
+    }
+
+    function testSetImbalanceSlopeAbovePeakSwapFeeManager() public {
+        _mockPoolRoleAccounts(alice);
+
+        uint128 newImbalanceSlopeAbovePeak = 2e18;
+
+        vm.prank(alice);
+        vm.expectEmit();
+        emit IECLPSurgeHook.ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak);
+        hookMock.setImbalanceSlopeAbovePeak(address(pool), newImbalanceSlopeAbovePeak);
+
+        assertEq(
+            hookMock.getImbalanceSlopeAbovePeak(pool),
+            newImbalanceSlopeAbovePeak,
+            "Wrong imbalance slope above peak"
         );
     }
 
