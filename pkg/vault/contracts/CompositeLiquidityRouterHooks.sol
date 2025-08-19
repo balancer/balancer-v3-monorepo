@@ -40,9 +40,8 @@ abstract contract CompositeLiquidityRouterHooks is BatchRouterCommon {
         IVault vault,
         IWETH weth,
         IPermit2 permit2,
-        bool isAggregator,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, permit2, isAggregator, routerVersion) {
+    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

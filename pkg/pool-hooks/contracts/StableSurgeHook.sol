@@ -5,30 +5,17 @@ pragma solidity ^0.8.24;
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
-import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    AddLiquidityKind,
-    LiquidityManagement,
-    TokenConfig,
-    PoolSwapParams,
-    HookFlags,
-    RemoveLiquidityKind,
-    SwapKind,
-    Rounding
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
-import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
-
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
-
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
 import { StableSurgeMedianMath } from "./utils/StableSurgeMedianMath.sol";
 
@@ -124,7 +111,7 @@ contract StableSurgeHook is IStableSurgeHook, BaseHooks, VaultGuard, SingletonAu
         PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) public view override onlyVault returns (bool, uint256) {
+    ) public view override returns (bool, uint256) {
         return (true, getSurgeFeePercentage(params, pool, staticSwapFeePercentage));
     }
 
