@@ -296,13 +296,16 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
             FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
         }
 
-        (int256[] memory returnedAnswers, uint256 returnedUpdateTimestamp) = oracle.getFeedData();
+        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps, uint256 returnedUpdateTimestamp) = oracle
+            .getFeedData();
         for (uint256 i = 0; i < totalTokens; i++) {
             assertEq(
                 uint256(returnedAnswers[i]),
                 answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i],
                 "Answer does not match"
             );
+
+            assertEq(returnedTimestamps[i], updateTimestamps[i], "Timestamp does not match");
         }
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }

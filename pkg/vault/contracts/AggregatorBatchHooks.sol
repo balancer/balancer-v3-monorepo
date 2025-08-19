@@ -42,9 +42,6 @@ contract AggregatorBatchHooks is BatchRouterCommon {
      */
     error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
 
-    /// @notice The operation not supported by the router.
-    error OperationNotSupported();
-
     /// @notice The operations with weth is not supported.
     error WethOperationsNotSupported();
 
@@ -52,7 +49,7 @@ contract AggregatorBatchHooks is BatchRouterCommon {
         IVault vault,
         IWETH weth,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), true, routerVersion) {
+    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

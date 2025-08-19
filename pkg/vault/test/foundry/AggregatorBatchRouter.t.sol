@@ -495,14 +495,14 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
             sigDeadline: 0
         });
 
-        vm.expectRevert(AggregatorBatchHooks.OperationNotSupported.selector);
+        vm.expectRevert(IRouterCommon.OperationNotSupported.selector);
         aggregatorBatchRouter.permitBatchAndCall(permitApprovals, permitCalls, permitBatch, bytes(""), multicallData);
     }
 
     function testMulticallNotSupported() public {
         bytes[] memory calls;
 
-        vm.expectRevert(AggregatorBatchHooks.OperationNotSupported.selector);
+        vm.expectRevert(IRouterCommon.OperationNotSupported.selector);
         aggregatorBatchRouter.multicall(calls);
     }
 
@@ -526,7 +526,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), MIN_SWAP_AMOUNT);
 
-        vm.expectRevert(AggregatorBatchHooks.OperationNotSupported.selector);
+        vm.expectRevert(IRouterCommon.OperationNotSupported.selector);
         aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
@@ -714,7 +714,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), maxAmountIn);
 
-        vm.expectRevert(AggregatorBatchHooks.OperationNotSupported.selector);
+        vm.expectRevert(IRouterCommon.OperationNotSupported.selector);
         aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }

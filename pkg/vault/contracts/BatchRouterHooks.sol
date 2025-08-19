@@ -46,7 +46,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         IWETH weth,
         IPermit2 permit2,
         string memory routerVersion
-    ) BatchRouterCommon(vault, weth, permit2, false, routerVersion) {
+    ) BatchRouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -69,7 +69,11 @@ contract BatchRouterHooks is BatchRouterCommon {
 
     function _swapExactInHook(
         SwapExactInHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+    )
+        internal
+        virtual
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
+    {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -92,7 +96,7 @@ contract BatchRouterHooks is BatchRouterCommon {
 
     function _computePathAmountsOut(
         SwapExactInHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsOut) {
+    ) internal virtual returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -302,7 +306,7 @@ contract BatchRouterHooks is BatchRouterCommon {
 
     function _swapExactOutHook(
         SwapExactOutHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+    ) internal virtual returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -327,7 +331,7 @@ contract BatchRouterHooks is BatchRouterCommon {
      */
     function _computePathAmountsIn(
         SwapExactOutHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsIn) {
+    ) internal virtual returns (uint256[] memory pathAmountsIn) {
         pathAmountsIn = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
