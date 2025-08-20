@@ -47,10 +47,8 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
-     * @return addLiquidityAmountsIn Array of amounts in for each token added to the pool
-     * @return addLiquidityBptAmountOut Amount of BPT tokens received from the liquidity addition
-     * @return swapAmountOut Amount of tokens received from the swap operation
-     * @return addLiquidityReturnData Additional data returned from the add liquidity operation
+     * @return amountsIn Array of amounts in for each token added to the pool
+     * @return swapAmountOut Swap amount out for the swap operation
      */
     function addUnbalancedLiquidityViaSwapExactIn(
         address pool,
@@ -58,15 +56,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactInParams calldata swapParams
-    )
-        external
-        payable
-        returns (
-            uint256[] memory addLiquidityAmountsIn,
-            uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountOut,
-            bytes memory addLiquidityReturnData
-        );
+    ) external payable returns (uint256[] memory amountsIn, uint256 swapAmountOut);
 
     /**
      * @notice Adds liquidity to a pool with proportional token amounts and an ExactOut swap in the same transaction.
@@ -75,10 +65,8 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
-     * @return addLiquidityAmountsIn Array of amounts in for each token added to the pool
-     * @return addLiquidityBptAmountOut Amount of BPT tokens received from the liquidity addition
-     * @return swapAmountIn Amount of tokens used in the swap operation
-     * @return addLiquidityReturnData Additional data returned from the add liquidity operation
+     * @return amountsIn Array of amounts in for each token added to the pool
+     * @return swapAmountIn Swap amount in for the swap operation
      */
     function addUnbalancedLiquidityViaSwapExactOut(
         address pool,
@@ -86,14 +74,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
         bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactOutParams calldata swapParams
-    )
-        external
-        returns (
-            uint256[] memory addLiquidityAmountsIn,
-            uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountIn,
-            bytes memory addLiquidityReturnData
-        );
+    ) external returns (uint256[] memory amountsIn, uint256 swapAmountIn);
 
     /**
      * @notice Queries an `addUnbalancedLiquidityViaSwapExactIn` operation without actually executing it.
@@ -101,24 +82,15 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
-     * @return addLiquidityAmountsIn Array of amounts in for each token added to the pool
-     * @return addLiquidityBptAmountOut Amount of BPT tokens received from the liquidity
-     * @return swapAmountOut Amount of tokens received from the swap operation
-     * @return addLiquidityReturnData Additional data returned from the add liquidity operation
+     * @return amountsIn Array of amounts in for each token added to the pool
+     * @return swapAmountOut Swap amount out for the swap operation
      */
     function queryAddUnbalancedLiquidityViaSwapExactIn(
         address pool,
         address sender,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactInParams calldata swapParams
-    )
-        external
-        returns (
-            uint256[] memory addLiquidityAmountsIn,
-            uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountOut,
-            bytes memory addLiquidityReturnData
-        );
+    ) external returns (uint256[] memory amountsIn, uint256 swapAmountOut);
 
     /**
      * @notice Queries an `addUnbalancedLiquidityViaSwapExactOut` operation without actually executing it.
@@ -126,22 +98,13 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
      * @param sender The sender passed to the operation. It can influence results (e.g., with user-dependent hooks)
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
-     * @return addLiquidityAmountsIn Array of amounts in for each token added to the pool
-     * @return addLiquidityBptAmountOut Amount of BPT tokens received from the liquidity
-     * @return swapAmountIn Amount of tokens received from the swap operation
-     * @return addLiquidityReturnData Additional data returned from the add liquidity operation
+     * @return amountsIn Array of amounts in for each token added to the pool
+     * @return swapAmountIn Swap amount in for the swap operation
      */
     function queryAddUnbalancedLiquidityViaSwapExactOut(
         address pool,
         address sender,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactOutParams calldata swapParams
-    )
-        external
-        returns (
-            uint256[] memory addLiquidityAmountsIn,
-            uint256 addLiquidityBptAmountOut,
-            uint256 swapAmountIn,
-            bytes memory addLiquidityReturnData
-        );
+    ) external returns (uint256[] memory amountsIn, uint256 swapAmountIn);
 }
