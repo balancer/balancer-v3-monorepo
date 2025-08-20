@@ -135,9 +135,8 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     }
 
     function testAddProportionalAndSwapExactIn() public {
-        uint256[] memory currentBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory expectedBalances = currentBalances;
-        expectedBalances[daiIdx] = currentBalances[daiIdx] + TOKEN_AMOUNT;
+        uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
+        expectedBalances[daiIdx] += TOKEN_AMOUNT;
 
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
@@ -195,9 +194,8 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             bytes("")
         );
 
-        uint256[] memory currentBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory expectedBalances = currentBalances;
-        expectedBalances[daiIdx] = currentBalances[daiIdx] + TOKEN_AMOUNT;
+        uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
+        expectedBalances[daiIdx] += TOKEN_AMOUNT;
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
@@ -258,9 +256,8 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     }
 
     function testAddProportionalAndSwapExactOut() public {
-        uint256[] memory currentBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory expectedBalances = currentBalances;
-        expectedBalances[daiIdx] = currentBalances[daiIdx] + TOKEN_AMOUNT;
+        uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
+        expectedBalances[daiIdx] += TOKEN_AMOUNT;
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
