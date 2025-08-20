@@ -34,7 +34,7 @@ contract SwapMedusaTest is BaseMedusaTest {
         return -int256(computeInvariant());
     }
 
-    function property_currentInvariant() public returns (bool) {
+    function property_currentInvariant() public view returns (bool) {
         int256 currentInvariant = computeInvariant();
         return currentInvariant >= initInvariant;
     }

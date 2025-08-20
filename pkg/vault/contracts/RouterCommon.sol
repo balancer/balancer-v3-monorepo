@@ -53,6 +53,11 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
 
     IPermit2 internal immutable _permit2;
 
+    // If Permit2 is the zero address, set this flag to indicate it's a "prepaid" router.
+    // Prepaid routers are designed to be used by contracts (e.g., aggregators), which send funds to the Vault
+    // in advance. "Retail" routers do Permit2 token transfers from the user during the operation.
+    bool internal immutable _isPrepaid;
+
     /**
      * @notice Locks the return of excess ETH to the sender until the end of the function.
      * @dev This also encompasses the `saveSender` functionality.
@@ -84,6 +89,7 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
     ) SenderGuard() VaultGuard(vault) Version(routerVersion) {
         _weth = weth;
         _permit2 = permit2;
+        _isPrepaid = permit2 == IPermit2(address(0));
     }
 
     /// @inheritdoc IRouterCommon
@@ -94,6 +100,11 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
     /// @inheritdoc IRouterCommon
     function getPermit2() external view returns (IPermit2) {
         return _permit2;
+    }
+
+    /// @inheritdoc IRouterCommon
+    function getVault() external view returns (IVault) {
+        return _vault;
     }
 
     /*******************************************************************************
@@ -114,6 +125,10 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
     ) external payable virtual returns (bytes[] memory results) {
+        if (_isPrepaid) {
+            revert OperationNotSupported();
+        }
+
         _permitBatch(permitBatch, permitSignatures, permit2Batch, permit2Signature);
 
         // Execute all the required operations once permissions have been granted.
@@ -181,6 +196,13 @@ abstract contract RouterCommon is IRouterCommon, SenderGuard, VaultGuard, Reentr
     function multicall(
         bytes[] calldata data
     ) public payable virtual saveSenderAndManageEth returns (bytes[] memory results) {
+        // Though theoretically these calls could be batched, the normal use case for multicall involves some
+        // combination of operation and token transfers (either permit2 or direct to Vault), which cannot be
+        // done with multicall alone.
+        if (_isPrepaid) {
+            revert OperationNotSupported();
+        }
+
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; ++i) {
             results[i] = Address.functionDelegateCall(address(this), data[i]);

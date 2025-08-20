@@ -204,6 +204,7 @@ contract RouterMock is Router {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
+
             if (amountIn == 0) {
                 continue;
             }
@@ -228,6 +229,7 @@ contract RouterMock is Router {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountOut = amountsOut[i];
+
             if (amountOut == 0) {
                 continue;
             }

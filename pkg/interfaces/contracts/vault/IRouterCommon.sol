@@ -4,13 +4,17 @@ pragma solidity ^0.8.24;
 
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
-import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
-import "./RouterTypes.sol";
 
+import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 import { IWETH } from "../solidity-utils/misc/IWETH.sol";
+import "./RouterTypes.sol";
+import "./IVault.sol";
 
 /// @notice Interface for functions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
+    /// @notice The operation not supported by the router (e.g., permit2 operation when pre-paid).
+    error OperationNotSupported();
+
     /*******************************************************************************
                                          Utils
     *******************************************************************************/
@@ -20,6 +24,9 @@ interface IRouterCommon {
 
     /// @notice Returns Permit2 contract address.
     function getPermit2() external view returns (IPermit2);
+
+    /// @notice Returns Vault contract address.
+    function getVault() external view returns (IVault);
 
     struct PermitApproval {
         address token;

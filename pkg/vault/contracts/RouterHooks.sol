@@ -14,12 +14,18 @@ import { RouterWethLib } from "./lib/RouterWethLib.sol";
 import { RouterCommon } from "./RouterCommon.sol";
 
 /**
- * @notice Base Router with hooks for swaps and liquidity operations via the Vault.
+ * @notice Base Router contract with hooks for swaps and liquidity operations via the Vault.
  * @dev Implements hooks for init, add liquidity, remove liquidity, and swaps.
  */
 abstract contract RouterHooks is RouterCommon {
     using RouterWethLib for IWETH;
     using SafeCast for *;
+
+    /**
+     * @notice The sender has not transferred the correct amount of tokens to the Vault.
+     * @param token The address of the token that should have been transferred
+     */
+    error InsufficientPayment(IERC20 token);
 
     constructor(
         IVault vault,
@@ -29,6 +35,10 @@ abstract contract RouterHooks is RouterCommon {
     ) RouterCommon(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    /***************************************************************************
+                                   Initialize
+    ***************************************************************************/
 
     /**
      * @notice Hook for initialization.
@@ -53,28 +63,16 @@ abstract contract RouterHooks is RouterCommon {
         );
 
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            uint256 amountIn = params.exactAmountsIn[i];
-            if (amountIn == 0) {
-                continue;
-            }
-
-            IERC20 token = params.tokens[i];
-
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.wrapEthAndSettle(_vault, amountIn);
-            } else {
-                // Transfer tokens from the user to the Vault.
-                // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                _vault.settle(token, amountIn);
-            }
+            _takeTokenIn(params.sender, params.tokens[i], params.exactAmountsIn[i], params.wethIsEth);
         }
 
         // Return ETH dust.
         _returnEth(params.sender);
     }
+
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
 
     /**
      * @notice Hook for adding liquidity.
@@ -120,14 +118,18 @@ abstract contract RouterHooks is RouterCommon {
                 continue;
             }
 
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.wrapEthAndSettle(_vault, amountIn);
+            if (_isPrepaid == false || (params.wethIsEth && token == _weth)) {
+                _takeTokenIn(params.sender, token, amountIn, params.wethIsEth);
             } else {
-                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
-                // necessary. Done out of an abundance of caution.
-                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
-                _vault.settle(token, amountIn);
+                // `amountInHint` represents the amount supposedly paid upfront by the sender.
+                uint256 amountInHint = params.maxAmountsIn[i];
+
+                uint256 tokenInCredit = _vault.settle(token, amountInHint);
+                if (tokenInCredit < amountInHint) {
+                    revert InsufficientPayment(token);
+                }
+
+                _sendTokenOut(params.sender, token, tokenInCredit - amountIn, false);
             }
         }
 
@@ -163,6 +165,10 @@ abstract contract RouterHooks is RouterCommon {
             })
         );
     }
+
+    /***************************************************************************
+                                   Remove Liquidity
+    ***************************************************************************/
 
     /**
      * @notice Hook for removing liquidity.
@@ -201,20 +207,7 @@ abstract contract RouterHooks is RouterCommon {
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountOut = amountsOut[i];
-            if (amountOut == 0) {
-                continue;
-            }
-
-            IERC20 token = tokens[i];
-
-            // There can be only one WETH token in the pool.
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                _weth.unwrapWethAndTransferToSender(_vault, params.sender, amountOut);
-            } else {
-                // Transfer the token to the sender (amountOut).
-                _vault.sendTo(token, params.sender, amountOut);
-            }
+            _sendTokenOut(params.sender, tokens[i], amountsOut[i], params.wethIsEth);
         }
 
         _returnEth(params.sender);
@@ -314,6 +307,10 @@ abstract contract RouterHooks is RouterCommon {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn, minAmountsOut);
     }
 
+    /***************************************************************************
+                                   Swaps
+    ***************************************************************************/
+
     /**
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
@@ -335,7 +332,22 @@ abstract contract RouterHooks is RouterCommon {
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
+        if (_isPrepaid == false || (params.wethIsEth && params.tokenIn == _weth)) {
+            _takeTokenIn(params.sender, params.tokenIn, amountIn, params.wethIsEth);
+        } else {
+            // `amountInHint` represents the amount supposedly paid upfront by the sender.
+            uint256 amountInHint = params.kind == SwapKind.EXACT_IN ? params.amountGiven : params.limit;
+
+            uint256 tokenInCredit = _vault.settle(params.tokenIn, amountInHint);
+            if (tokenInCredit < amountInHint) {
+                revert InsufficientPayment(params.tokenIn);
+            }
+
+            // Return leftover to the sender.
+            if (params.kind == SwapKind.EXACT_OUT) {
+                _sendTokenOut(params.sender, params.tokenIn, tokenInCredit - amountIn, false);
+            }
+        }
 
         _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
         if (params.tokenIn == _weth) {

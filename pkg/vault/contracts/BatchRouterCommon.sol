@@ -87,6 +87,12 @@ abstract contract BatchRouterCommon is RouterCommon {
         return TransientStorageHelpers.calculateSlot(type(BatchRouterCommon).name, key);
     }
 
+    // Helper to consolidate updates that always happen together.
+    function _updateSwapTokensOut(address tokenOut, uint256 amountOut) internal {
+        _currentSwapTokensOut().add(tokenOut);
+        _currentSwapTokenOutAmounts().tAdd(tokenOut, amountOut);
+    }
+
     /*******************************************************************************
                                     Settlement
     *******************************************************************************/
@@ -104,7 +110,10 @@ abstract contract BatchRouterCommon is RouterCommon {
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
-            _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
+            uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+            _takeOrSettle(sender, wethIsEth, tokenIn, amount);
+
             // Erases delta, in case more than one batch router operation is called in the same transaction.
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             _currentSwapTokensIn().remove(tokenIn);
@@ -120,5 +129,23 @@ abstract contract BatchRouterCommon is RouterCommon {
 
         // Return the rest of ETH to sender.
         _returnEth(sender);
+    }
+
+    /**
+     * @notice Interpret the parameters and flags to decide whether we need to pull in tokens, or settle directly.
+     * @dev This logic is repeated in many places.
+     * @param sender The sender from the current operation
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param token The token being transferred or settled
+     * @param amountIn The amount being transferred or settled
+     */
+    function _takeOrSettle(address sender, bool wethIsEth, address token, uint256 amountIn) internal {
+        if (_isPrepaid == false || (wethIsEth && token == address(_weth))) {
+            // Retrieve tokens from the sender using Permit2
+            _takeTokenIn(sender, IERC20(token), amountIn, wethIsEth);
+        } else {
+            // Settle the prepayment amount that was already sent
+            _vault.settle(IERC20(token), amountIn);
+        }
     }
 }

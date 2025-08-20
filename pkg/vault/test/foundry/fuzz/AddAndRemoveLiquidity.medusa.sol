@@ -179,8 +179,8 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
         bptProfit += int256(bptAmountOut) - int256(exactBptAmountIn);
     }
 
-    function property_no_bpt_profit() public returns (bool) {
-        return assertBptProfit(pool);
+    function property_no_bpt_profit() public view returns (bool) {
+        return assertBptProfit();
     }
 
     /*******************************************************************************
@@ -291,18 +291,18 @@ contract AddAndRemoveLiquidityMedusaTest is BaseMedusaTest {
     }
 
     function property_rate_never_decreases() public returns (bool) {
-        return assertRate(pool);
+        return assertRate();
     }
 
     /*******************************************************************************
                   Helpers (private functions, so they're not fuzzed)
     *******************************************************************************/
 
-    function assertBptProfit(IBasePool pool) internal returns (bool) {
+    function assertBptProfit() internal view returns (bool) {
         return bptProfit <= 0;
     }
 
-    function assertRate(IBasePool pool) internal returns (bool) {
+    function assertRate() internal returns (bool) {
         updateRateDecrease();
         return rateDecrease <= int256(maxRateTolerance);
     }

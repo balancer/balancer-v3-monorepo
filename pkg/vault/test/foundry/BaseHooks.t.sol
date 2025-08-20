@@ -26,7 +26,6 @@ contract BaseHooksTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig;
         LiquidityManagement memory liquidityManagement;
 
-        vm.prank(address(vault));
         assertFalse(
             testHook.onRegister(address(0), address(0), tokenConfig, liquidityManagement),
             "onRegister should be false"
@@ -36,7 +35,6 @@ contract BaseHooksTest is BaseVaultTest {
     function testOnBeforeInitialize() public {
         uint256[] memory exactAmountsIn;
 
-        vm.prank(address(vault));
         assertFalse(testHook.onBeforeInitialize(exactAmountsIn, bytes("")), "onBeforeInitialize should be false");
     }
 
@@ -44,7 +42,6 @@ contract BaseHooksTest is BaseVaultTest {
         uint256[] memory exactAmountsIn;
         uint256 bptAmountOut;
 
-        vm.prank(address(vault));
         assertFalse(
             testHook.onAfterInitialize(exactAmountsIn, bptAmountOut, bytes("")),
             "onAfterInitialize should be false"
@@ -56,7 +53,6 @@ contract BaseHooksTest is BaseVaultTest {
         uint256 minBptAmountOut;
         uint256[] memory balancesScaled18;
 
-        vm.prank(address(vault));
         assertFalse(
             testHook.onBeforeAddLiquidity(
                 address(0),
@@ -77,7 +73,6 @@ contract BaseHooksTest is BaseVaultTest {
         uint256 bptAmountOut;
         uint256[] memory balancesScaled18;
 
-        vm.prank(address(vault));
         (bool result, uint256[] memory hookAdjustedAmounts) = testHook.onAfterAddLiquidity(
             address(0),
             address(0),
@@ -99,7 +94,6 @@ contract BaseHooksTest is BaseVaultTest {
         uint256[] memory minAmountsOutScaled18;
         uint256[] memory balancesScaled18;
 
-        vm.prank(address(vault));
         assertFalse(
             testHook.onBeforeRemoveLiquidity(
                 address(0),
@@ -120,7 +114,6 @@ contract BaseHooksTest is BaseVaultTest {
         uint256[] memory amountsOutRaw;
         uint256[] memory balancesScaled18;
 
-        vm.prank(address(vault));
         (bool result, uint256[] memory hookAdjustedAmounts) = testHook.onAfterRemoveLiquidity(
             address(0),
             address(0),
@@ -140,14 +133,12 @@ contract BaseHooksTest is BaseVaultTest {
     function testOnBeforeSwap() public {
         PoolSwapParams memory params;
 
-        vm.prank(address(vault));
         assertFalse(testHook.onBeforeSwap(params, address(0)), "onBeforeSwap should be false");
     }
 
     function testOnAfterSwap() public {
         AfterSwapParams memory params;
 
-        vm.prank(address(vault));
         (bool success, uint256 hookAdjustedAmount) = testHook.onAfterSwap(params);
 
         assertFalse(success, "onAfterSwap should be false");
@@ -155,11 +146,10 @@ contract BaseHooksTest is BaseVaultTest {
         assertEq(hookAdjustedAmount, 0, "hookAdjustedAmount is not zero");
     }
 
-    function testOnComputeDynamicSwapFeePercentage() public {
+    function testOnComputeDynamicSwapFeePercentage() public view {
         PoolSwapParams memory params;
         uint256 staticSwapFeePercentage;
 
-        vm.prank(address(vault));
         (bool success, uint256 newFeePercentage) = testHook.onComputeDynamicSwapFeePercentage(
             params,
             address(0),

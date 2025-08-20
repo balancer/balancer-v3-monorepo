@@ -16,6 +16,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { LPOracleBase } from "./LPOracleBase.sol";
 
+/// @notice Oracle for weighted pools.
 contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
     using FixedPoint for uint256;
     using SafeCast for *;

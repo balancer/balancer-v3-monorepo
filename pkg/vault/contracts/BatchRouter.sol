@@ -130,7 +130,11 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
 
     function _swapExactInHook(
         SwapExactInHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+    )
+        internal
+        virtual
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
+    {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -153,7 +157,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
 
     function _computePathAmountsOut(
         SwapExactInHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsOut) {
+    ) internal virtual returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -207,8 +211,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountOut;
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                        _updateSwapTokensOut(address(step.tokenOut), amountOut);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = amountOut;
@@ -274,8 +277,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountsOut[tokenIndex];
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountsOut[tokenIndex]);
+                        _updateSwapTokensOut(address(step.tokenOut), amountsOut[tokenIndex]);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = amountsOut[tokenIndex];
@@ -334,8 +336,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountOut;
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                        _updateSwapTokensOut(address(step.tokenOut), amountOut);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = amountOut;
@@ -362,7 +363,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
 
     function _swapExactOutHook(
         SwapExactOutHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+    ) internal virtual returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -387,7 +388,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
      */
     function _computePathAmountsIn(
         SwapExactOutHookParams calldata params
-    ) internal returns (uint256[] memory pathAmountsIn) {
+    ) internal virtual returns (uint256[] memory pathAmountsIn) {
         pathAmountsIn = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -421,8 +422,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
-                    _currentSwapTokensOut().add(address(step.tokenOut));
-                    _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
+                    _updateSwapTokensOut(address(step.tokenOut), stepExactAmountOut);
                 }
 
                 if (stepLocals.isLastStep) {
@@ -460,8 +460,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         pathAmountsIn[i] = amountIn;
                         // Since the token was taken in advance, returns to the user what is left from the
                         // wrap/unwrap operation.
-                        _currentSwapTokensOut().add(address(stepTokenIn));
-                        _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                        _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
                         // `settledTokenAmounts` is used to return the `amountsIn` at the end of the operation, which
                         // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
                         // settle.
@@ -520,7 +519,7 @@ contract BatchRouter is IBatchRouter, BatchRouterCommon {
                         pathAmountsIn[i] = bptAmountIn;
                         _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
 
-                        // Refund unused portion of BPT to the user.alias
+                        // Refund unused portion of BPT to the user.
                         if (bptAmountIn < stepMaxAmountIn && params.sender != address(this)) {
                             stepTokenIn.safeTransfer(address(params.sender), stepMaxAmountIn - bptAmountIn);
                         }

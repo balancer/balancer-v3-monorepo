@@ -108,10 +108,8 @@ kₙ₊₁ = kₙ - F(kₙ) / F'(kₙ)
 
 ## Root Selection and Initialization
 
-- For even `n`, there's one root.
-- For odd `n`, there are two roots. The **smaller one is correct**.
 - Safe starting point for Newton's method:
 
 k₀ = min{ 1 + 1/(1+b), 2 - c } / min{rᵢ}
 
-This ensures convergence to the correct solution.
+There may be many roots, especially for higher numbers of tokens. This starting point ensures convergence to the correct solution: the smallest non-negative root.

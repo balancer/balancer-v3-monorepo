@@ -3,7 +3,7 @@
 # Balancer V3 Monorepo
 
 [![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/)
-[![CI Status](https://github.com/balancer/balancer-v3-monorepo/workflows/CI/badge.svg)](https://github.com/balancer/balancer-v3-monorepo/actions)
+[![CI Status](https://github.com/balancer/balancer-v3-monorepo/actions/workflows/ci.yml/badge.svg)](https://github.com/balancer/balancer-v3-monorepo/actions)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 This repository contains the Balancer Protocol V3 core smart contracts, including the `Vault` and standard Pools, along with their tests.
@@ -161,4 +161,5 @@ Most of the Solidity source code is licensed under the GNU General Public Licens
 
 ### Exceptions
 
+- [Gyro pools](./pkg/pool-gyro/) and related contracts have their own license type. The full text can be found [here](https://github.com/gyrostable/gyd-core?tab=License-1-ov-file).
 - All other files, including tests and the [`pvt`](./pvt) directory are unlicensed.

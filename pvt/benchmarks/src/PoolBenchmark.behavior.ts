@@ -4,7 +4,6 @@ import { expect } from 'chai';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
-import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp, bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48, MAX_UINT128 } from '@balancer-labs/v3-helpers/src/constants';
@@ -15,7 +14,13 @@ import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
-import { BatchRouter, BufferRouter, IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
+import {
+  BatchRouter,
+  BufferRouter,
+  Router,
+  IVault,
+  ProtocolFeeController,
+} from '@balancer-labs/v3-vault/typechain-types';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import {
   ERC20WithRateTestToken,
@@ -149,7 +154,9 @@ export class Benchmark {
       )) as unknown as ProtocolFeeController;
       this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       this.permit2 = await deployPermit2();
-      this.router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION] });
+      this.router = await deploy('v3-vault/Router', {
+        args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION],
+      });
       this.bufferRouter = await deploy('v3-vault/BufferRouter', {
         args: [this.vault, this.WETH, this.permit2, ROUTER_VERSION],
       });

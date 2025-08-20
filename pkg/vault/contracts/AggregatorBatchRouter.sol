@@ -2,12 +2,11 @@
 
 pragma solidity ^0.8.24;
 
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
-import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IAggregatorBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IAggregatorBatchRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -33,7 +32,7 @@ struct SwapStepLocals {
  * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
-contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
+contract AggregatorBatchRouter is IBatchRouter, BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
@@ -44,13 +43,11 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
      */
     error InsufficientFunds(address token, uint256 senderCredits, uint256 senderDebits);
 
-    /// @notice The operation not supported by the router.
-    error OperationNotSupported();
-
     constructor(
         IVault vault,
+        IWETH weth,
         string memory routerVersion
-    ) BatchRouterCommon(vault, IWETH(address(0)), IPermit2(address(0)), routerVersion) {
+    ) BatchRouterCommon(vault, weth, IPermit2(address(0)), routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -58,10 +55,11 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                                        Swaps
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function swapExactIn(
         IBatchRouter.SwapPathExactAmountIn[] memory paths,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
     )
         external
@@ -78,7 +76,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -87,10 +85,11 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
             );
     }
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function swapExactOut(
         IBatchRouter.SwapPathExactAmountOut[] memory paths,
         uint256 deadline,
+        bool wethIsEth,
         bytes calldata userData
     )
         external
@@ -107,7 +106,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                             sender: msg.sender,
                             paths: paths,
                             deadline: deadline,
-                            wethIsEth: false,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -235,8 +234,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                     // The amount out for the last step of the path should be recorded for the return value, and the
                     // amount for the token should be sent back to the sender later on.
                     pathAmountsOut[i] = amountOut;
-                    _currentSwapTokensOut().add(address(step.tokenOut));
-                    _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                    _updateSwapTokensOut(address(step.tokenOut), amountOut);
                 } else {
                     // Input for the next step is output of current step.
                     stepExactAmountIn = amountOut;
@@ -335,8 +333,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
-                    _currentSwapTokensOut().add(address(step.tokenOut));
-                    _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
+                    _updateSwapTokensOut(address(step.tokenOut), stepExactAmountOut);
                 }
 
                 if (stepLocals.isLastStep) {
@@ -386,8 +383,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                     // Save the remaining difference between maxAmountIn and actualAmountIn,
                     // and add it to the token out amounts for processing during settlement.
                     pathAmountsIn[i] = amountIn;
-                    _currentSwapTokensOut().add(address(stepTokenIn));
-                    _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                    _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
 
                     _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), amountIn);
                 } else {
@@ -415,7 +411,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
                                      Queries
     ***************************************************************************/
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function querySwapExactIn(
         IBatchRouter.SwapPathExactAmountIn[] memory paths,
         address sender,
@@ -447,7 +443,7 @@ contract AggregatorBatchRouter is IAggregatorBatchRouter, BatchRouterCommon {
             );
     }
 
-    /// @inheritdoc IAggregatorBatchRouter
+    /// @inheritdoc IBatchRouter
     function querySwapExactOut(
         IBatchRouter.SwapPathExactAmountOut[] memory paths,
         address sender,
