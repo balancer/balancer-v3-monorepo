@@ -30,6 +30,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant DELTA_RATIO = 1e15; // 0.1% delta
+    uint256 constant ETH_DELTA = 1e3;
 
     string constant version = "Add Unbalanced Liquidity Via Swap Router Test v1";
 
@@ -44,6 +45,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         addUnbalancedLiquidityViaSwapRouter = new AddUnbalancedLiquidityViaSwapRouter(
             IVault(address(vault)),
             permit2,
+            weth,
             version
         );
 
@@ -97,7 +99,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         );
     }
 
-    function testAddProportionalAndSwapExactIn__Fuzz(uint256 tokenAmount) public {
+    function testAddProportionalAndSwapExactIn__Fuzz(uint256 tokenAmount, bool wethIsEth) public {
         uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
         tokenAmount = bound(tokenAmount, 1e6, expectedBalances[wethIdx]);
         expectedBalances[wethIdx] += tokenAmount;
@@ -135,9 +137,29 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             .queryAddUnbalancedLiquidityViaSwapExactIn(pool, alice, addLiquidityParams, swapParams);
         vm.revertTo(snapshot);
 
+        uint256 ethBalanceBefore = address(alice).balance;
+
+        bool _wethIsEth = wethIsEth;
         vm.prank(alice);
         (uint256[] memory amountsIn, uint256 swapAmountOut) = addUnbalancedLiquidityViaSwapRouter
-            .addUnbalancedLiquidityViaSwapExactIn(pool, MAX_UINT256, addLiquidityParams, swapParams);
+            .addUnbalancedLiquidityViaSwapExactIn{ value: _wethIsEth ? tokenAmount : 0 }(
+            pool,
+            MAX_UINT256,
+            _wethIsEth,
+            addLiquidityParams,
+            swapParams
+        );
+
+        if (_wethIsEth) {
+            assertApproxEqAbs(
+                address(alice).balance,
+                ethBalanceBefore - tokenAmount,
+                ETH_DELTA,
+                "ETH balance mismatch (wethIsEth)"
+            );
+        } else {
+            assertEq(address(alice).balance, ethBalanceBefore, "ETH balance mismatch");
+        }
 
         uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
         assertApproxEqRel(balancesAfter[daiIdx], expectedBalances[daiIdx], DELTA_RATIO, "Dai balance mismatch");
@@ -147,7 +169,7 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         assertEq(swapAmountOut, querySwapAmountOut, "real and query swap amount out mismatch");
     }
 
-    function testAddProportionalAndSwapExactOut__Fuzz(uint256 tokenAmount) public {
+    function testAddProportionalAndSwapExactOut__Fuzz(uint256 tokenAmount, bool wethIsEth) public {
         uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
         tokenAmount = bound(tokenAmount, 1e6, expectedBalances[wethIdx]);
         expectedBalances[wethIdx] += tokenAmount;
@@ -189,10 +211,28 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
                 userData: bytes("")
             });
 
+        uint256 ethBalanceBefore = address(alice).balance;
         snapshot = vm.snapshot();
         vm.prank(alice);
         (uint256[] memory amountsIn, uint256 swapAmountIn) = addUnbalancedLiquidityViaSwapRouter
-            .addUnbalancedLiquidityViaSwapExactOut(pool, MAX_UINT256, addLiquidityParams, swapParams);
+            .addUnbalancedLiquidityViaSwapExactOut{ value: wethIsEth ? tokenAmount : 0 }(
+            pool,
+            MAX_UINT256,
+            wethIsEth,
+            addLiquidityParams,
+            swapParams
+        );
+
+        if (wethIsEth) {
+            assertApproxEqAbs(
+                address(alice).balance,
+                ethBalanceBefore - tokenAmount,
+                ETH_DELTA,
+                "ETH balance mismatch (wethIsEth)"
+            );
+        } else {
+            assertEq(address(alice).balance, ethBalanceBefore, "ETH balance mismatch");
+        }
 
         uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
 

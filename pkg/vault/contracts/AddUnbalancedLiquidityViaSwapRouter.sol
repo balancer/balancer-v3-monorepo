@@ -35,8 +35,9 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     constructor(
         IVault vault,
         IPermit2 permit2,
+        IWETH weth,
         string memory routerVersion
-    ) RouterHooks(vault, IWETH(address(0)), permit2, routerVersion) {
+    ) RouterHooks(vault, weth, permit2, routerVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -44,9 +45,10 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     function addUnbalancedLiquidityViaSwapExactIn(
         address pool,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactInParams calldata swapParams
-    ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn, uint256 swapAmountOut) {
+    ) external payable saveSenderAndManageEth returns (uint256[] memory amountsIn, uint256 swapAmountOut) {
         (amountsIn, swapAmountOut) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -55,6 +57,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         msg.sender,
                         deadline,
+                        wethIsEth,
                         addLiquidityParams,
                         _buildSwapExactInParams(swapParams)
                     )
@@ -68,9 +71,10 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     function addUnbalancedLiquidityViaSwapExactOut(
         address pool,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactOutParams calldata swapParams
-    ) external saveSender(msg.sender) returns (uint256[] memory amountsIn, uint256 swapAmountIn) {
+    ) external payable saveSenderAndManageEth returns (uint256[] memory amountsIn, uint256 swapAmountIn) {
         (amountsIn, swapAmountIn) = abi.decode(
             _vault.unlock(
                 abi.encodeCall(
@@ -79,6 +83,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         msg.sender,
                         deadline,
+                        wethIsEth,
                         addLiquidityParams,
                         _buildSwapExactOutParams(swapParams)
                     )
@@ -106,6 +111,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         address(this),
                         _MAX_AMOUNT, // No deadline in query
+                        false, // wethIsEth is false in query
                         addLiquidityParams,
                         _buildSwapExactInParams(swapParams)
                     )
@@ -129,6 +135,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         address(this),
                         _MAX_AMOUNT, // No deadline in query
+                        false, // wethIsEth is false in query
                         addLiquidityParams,
                         _buildSwapExactOutParams(swapParams)
                     )
@@ -165,6 +172,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         address pool,
         address sender,
         uint256 deadline,
+        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapParams memory swapParams
     ) private pure returns (AddLiquidityAndSwapHookParams memory params) {
@@ -176,7 +184,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     maxAmountsIn: addLiquidityParams.maxAmountsIn,
                     minBptAmountOut: addLiquidityParams.exactBptAmountOut,
                     kind: AddLiquidityKind.PROPORTIONAL,
-                    wethIsEth: false,
+                    wethIsEth: wethIsEth,
                     userData: addLiquidityParams.userData
                 }),
                 swapParams: SwapSingleTokenHookParams({
@@ -188,7 +196,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     amountGiven: swapParams.amountGiven,
                     limit: swapParams.limit,
                     deadline: deadline,
-                    wethIsEth: false,
+                    wethIsEth: wethIsEth,
                     userData: swapParams.userData
                 })
             });
