@@ -393,20 +393,35 @@ contract BatchRouterHooks is BatchRouterCommon {
                 bool isSettled;
 
                 if (step.isBuffer) {
-                    amountIn = _wrapOrUnwrapExactOut(
-                        params.sender,
-                        params.wethIsEth,
-                        path.tokenIn,
-                        path.maxAmountIn,
-                        step.pool,
-                        stepTokenIn,
-                        stepExactAmountOut,
-                        stepMaxAmountIn,
-                        stepLocals.isLastStep
-                    );
                     isSettled = true;
                     tokenIn = address(path.tokenIn);
+
+                    if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
+                        bool wethIsEth = params.wethIsEth;
+                        // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
+                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, wethIsEth);
+                    }
+
+                    (, amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
+                            kind: SwapKind.EXACT_OUT,
+                            direction: step.pool == address(stepTokenIn)
+                                ? WrappingDirection.UNWRAP
+                                : WrappingDirection.WRAP,
+                            wrappedToken: IERC4626(step.pool),
+                            amountGivenRaw: stepExactAmountOut,
+                            limitRaw: stepMaxAmountIn
+                        })
+                    );
+
+                    if (stepLocals.isLastStep) {
+                        // Since the token was taken in advance, returns to the user what is left from the
+                        // wrap/unwrap operation.
+                        _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
+                    }
                 } else if (address(stepTokenIn) == step.pool) {
+                    isSettled = true;
+
                     amountIn = _removeLiquidityExactOut(
                         params.sender,
                         params.userData,
@@ -417,8 +432,6 @@ contract BatchRouterHooks is BatchRouterCommon {
                         step.tokenOut,
                         stepLocals.isLastStep
                     );
-
-                    isSettled = true;
                 } else if (address(step.tokenOut) == step.pool) {
                     amountIn = _addLiquidityExactOut(
                         params.sender,
@@ -459,39 +472,6 @@ contract BatchRouterHooks is BatchRouterCommon {
                     stepExactAmountOut = amountIn;
                 }
             }
-        }
-    }
-
-    function _wrapOrUnwrapExactOut(
-        address sender,
-        bool wethIsEth,
-        IERC20 pathTokenIn,
-        uint256 pathMaxAmountIn,
-        address pool,
-        IERC20 stepTokenIn,
-        uint256 stepExactAmountOut,
-        uint256 stepMaxAmountIn,
-        bool isLastStep
-    ) internal returns (uint256 amountIn) {
-        if (isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
-            // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
-            _takeTokenIn(sender, pathTokenIn, pathMaxAmountIn, wethIsEth);
-        }
-
-        (, amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
-            BufferWrapOrUnwrapParams({
-                kind: SwapKind.EXACT_OUT,
-                direction: pool == address(stepTokenIn) ? WrappingDirection.UNWRAP : WrappingDirection.WRAP,
-                wrappedToken: IERC4626(pool),
-                amountGivenRaw: stepExactAmountOut,
-                limitRaw: stepMaxAmountIn
-            })
-        );
-
-        if (isLastStep) {
-            // Since the token was taken in advance, returns to the user what is left from the
-            // wrap/unwrap operation.
-            _updateSwapTokensOut(address(stepTokenIn), pathMaxAmountIn - amountIn);
         }
     }
 
