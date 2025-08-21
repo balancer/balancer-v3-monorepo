@@ -122,19 +122,13 @@ contract BatchRouterHooks is BatchRouterCommon {
                 SwapStepLocals memory stepLocals;
                 stepLocals.isLastStep = (j == path.steps.length - 1);
                 stepLocals.isFirstStep = (j == 0);
-                uint256 minAmountOut;
 
                 // minAmountOut only applies to the last step.
-                if (stepLocals.isLastStep) {
-                    minAmountOut = path.minAmountOut;
-                } else {
-                    minAmountOut = 0;
-                }
-
-                SwapPathStep memory step = path.steps[j];
-                uint256 amountOut;
+                uint256 minAmountOut = stepLocals.isLastStep ? path.minAmountOut : 0;
 
                 bool isAddingLiquidity;
+                uint256 amountOut;
+                SwapPathStep memory step = path.steps[j];
 
                 if (step.isBuffer) {
                     (, , amountOut) = _vault.erc4626BufferWrapOrUnwrap(
@@ -150,25 +144,25 @@ contract BatchRouterHooks is BatchRouterCommon {
                     );
                 } else if (address(stepTokenIn) == step.pool) {
                     amountOut = _removeLiquidityExactIn(
+                        params.sender,
+                        params.userData,
                         step.pool,
                         step.tokenOut,
                         stepExactAmountIn,
                         stepTokenIn,
                         minAmountOut,
-                        stepLocals.isFirstStep,
-                        params.sender,
-                        params.userData
+                        stepLocals.isFirstStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
                     isAddingLiquidity = true;
                     amountOut = _addLiquidityExactIn(
+                        params.sender,
+                        params.userData,
                         step.pool,
                         stepTokenIn,
                         stepExactAmountIn,
                         minAmountOut,
-                        stepLocals.isLastStep,
-                        params.sender,
-                        params.userData
+                        stepLocals.isLastStep
                     );
                 } else {
                     // No BPT involved in the operation: regular swap exact in.
@@ -213,14 +207,14 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _removeLiquidityExactIn(
+        address sender,
+        bytes memory userData,
         address pool,
         IERC20 tokenOut,
         uint256 stepExactAmountIn,
         IERC20 stepTokenIn,
         uint256 minAmountOut,
-        bool isFirstStep,
-        address sender,
-        bytes memory userData
+        bool isFirstStep
     ) internal returns (uint256 amountOut) {
         // Token in is BPT: remove liquidity - Single token exact in
 
@@ -275,13 +269,13 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _addLiquidityExactIn(
+        address sender,
+        bytes memory userData,
         address pool,
         IERC20 stepTokenIn,
         uint256 stepExactAmountIn,
         uint256 minAmountOut,
-        bool isLastStep,
-        address sender,
-        bytes memory userData
+        bool isLastStep
     ) internal returns (uint256 amountOut) {
         // Token out is BPT: add liquidity - Single token exact in (unbalanced).
         (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(pool, stepTokenIn, stepExactAmountIn);
@@ -400,44 +394,45 @@ contract BatchRouterHooks is BatchRouterCommon {
 
                 if (step.isBuffer) {
                     amountIn = _wrapOrUnwrapExactOut(
+                        params.sender,
+                        params.wethIsEth,
+                        path.tokenIn,
+                        path.maxAmountIn,
                         step.pool,
                         stepTokenIn,
                         stepExactAmountOut,
                         stepMaxAmountIn,
-                        path.tokenIn,
-                        path.maxAmountIn,
-                        stepLocals.isLastStep,
-                        params.sender,
-                        params.wethIsEth
+                        stepLocals.isLastStep
                     );
                     isSettled = true;
                     tokenIn = address(path.tokenIn);
                 } else if (address(stepTokenIn) == step.pool) {
                     amountIn = _removeLiquidityExactOut(
+                        params.sender,
+                        params.userData,
                         step.pool,
                         stepTokenIn,
                         stepExactAmountOut,
                         stepMaxAmountIn,
                         step.tokenOut,
-                        stepLocals.isLastStep,
-                        params.sender,
-                        params.userData
+                        stepLocals.isLastStep
                     );
 
                     isSettled = true;
                 } else if (address(step.tokenOut) == step.pool) {
                     amountIn = _addLiquidityExactOut(
+                        params.sender,
+                        params.userData,
                         step.pool,
                         stepTokenIn,
                         step.tokenOut,
                         stepExactAmountOut,
                         stepMaxAmountIn,
                         stepLocals.isFirstStep,
-                        stepLocals.isLastStep,
-                        params.sender,
-                        params.userData
+                        stepLocals.isLastStep
                     );
                 } else {
+                    bytes memory userData = params.userData;
                     // No BPT involved in the operation: regular swap exact out.
                     (, amountIn, ) = _vault.swap(
                         VaultSwapParams({
@@ -447,7 +442,7 @@ contract BatchRouterHooks is BatchRouterCommon {
                             tokenOut: step.tokenOut,
                             amountGivenRaw: stepExactAmountOut,
                             limitRaw: stepMaxAmountIn,
-                            userData: params.userData
+                            userData: userData
                         })
                     );
                 }
@@ -468,15 +463,15 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _wrapOrUnwrapExactOut(
+        address sender,
+        bool wethIsEth,
+        IERC20 pathTokenIn,
+        uint256 pathMaxAmountIn,
         address pool,
         IERC20 stepTokenIn,
         uint256 stepExactAmountOut,
         uint256 stepMaxAmountIn,
-        IERC20 pathTokenIn,
-        uint256 pathMaxAmountIn,
-        bool isLastStep,
-        address sender,
-        bool wethIsEth
+        bool isLastStep
     ) internal returns (uint256 amountIn) {
         if (isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
             // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
@@ -501,14 +496,14 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _removeLiquidityExactOut(
+        address sender,
+        bytes memory userData,
         address pool,
         IERC20 stepTokenIn,
         uint256 stepExactAmountOut,
         uint256 stepMaxAmountIn,
         IERC20 tokenOut,
-        bool isLastStep,
-        address sender,
-        bytes memory userData
+        bool isLastStep
     ) internal returns (uint256 amountIn) {
         // Token in is BPT: remove liquidity - Single token exact out
 
@@ -560,15 +555,15 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _addLiquidityExactOut(
+        address sender,
+        bytes memory userData,
         address pool,
         IERC20 stepTokenIn,
         IERC20 tokenOut,
         uint256 stepExactAmountOut,
         uint256 stepMaxAmountIn,
         bool isFirstStep,
-        bool isLastStep,
-        address sender,
-        bytes memory userData
+        bool isLastStep
     ) internal returns (uint256 amountIn) {
         // Token out is BPT: add liquidity - Single token exact out.
         (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
