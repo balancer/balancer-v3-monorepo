@@ -6,8 +6,11 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ILPOracleBase {
-    // A price feed has decimals greater than the maximum allowed.
+    /// @notice A price feed has decimals greater than the maximum allowed.
     error UnsupportedDecimals();
+
+    /// @notice Oracle prices must be greater than zero to prevent zero or negative TVL values.
+    error InvalidOraclePrice();
 
     /**
      * @notice Calculates the TVL based on the provided prices.

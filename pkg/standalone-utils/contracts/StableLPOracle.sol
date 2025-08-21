@@ -40,13 +40,19 @@ contract StableLPOracle is LPOracleBase {
 
     /// @inheritdoc ILPOracleBase
     function calculateTVL(int256[] memory prices) public view override returns (uint256 tvl) {
-        (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
-        InputHelpers.ensureInputLengthMatch(prices.length, lastBalancesLiveScaled18.length);
+        InputHelpers.ensureInputLengthMatch(prices.length, _totalTokens);
+
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            if (prices[i] <= 0) {
+                revert InvalidOraclePrice();
+            }
+        }
 
         // The TVL of the stable pool is computed by calculating the balances for the stable pool that would represent
         // the given price vector. To compute these balances, we need only the amplification parameter of the pool,
         // the invariant and the price vector.
 
+        (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(address(pool));
         uint256 invariant = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
 
         uint256[] memory marketPriceBalancesScaled18 = _computeMarketPriceBalances(invariant, prices);
