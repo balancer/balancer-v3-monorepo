@@ -65,7 +65,7 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
-     * @return amountsIn Array of amounts in for each token added to the pool
+     * @return amountsIn Array of amounts in for each token added to the pool, sorted in token registration order.
      * @return swapAmountIn Swap amount in for the swap operation
      */
     function addUnbalancedLiquidityViaSwapExactOut(
