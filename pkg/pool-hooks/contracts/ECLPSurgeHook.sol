@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -25,10 +24,18 @@ import { SurgeHookCommon } from "./SurgeHookCommon.sol";
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
+contract ECLPSurgeHook is SurgeHookCommon {
     using SignedFixedPoint for int256;
     using FixedPoint for uint256;
     using SafeCast for *;
+
+    /**
+     * @notice A new `ECLPSurgeHook` contract has been registered successfully.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param pool The pool on which the hook was registered
+     * @param factory The factory that registered the pool
+     */
+    event ECLPSurgeHookRegistered(address indexed pool, address indexed factory);
 
     constructor(
         IVault vault,
