@@ -44,7 +44,6 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
      * @notice Adds liquidity to a pool with proportional token amounts and an ExactIn swap in the same transaction.
      * @param pool Address of the liquidity pool
      * @param deadline Timestamp after which the transaction will revert
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
      * @return amountsIn Array of amounts in for each token added to the pool
@@ -53,7 +52,6 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     function addUnbalancedLiquidityViaSwapExactIn(
         address pool,
         uint256 deadline,
-        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactInParams calldata swapParams
     ) external payable returns (uint256[] memory amountsIn, uint256 swapAmountOut);
@@ -62,7 +60,6 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
      * @notice Adds liquidity to a pool with proportional token amounts and an ExactOut swap in the same transaction.
      * @param pool Address of the liquidity pool
      * @param deadline Timestamp after which the transaction will revert
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param addLiquidityParams Parameters for adding liquidity
      * @param swapParams Parameters for the swap operation
      * @return amountsIn Array of amounts in for each token added to the pool
@@ -71,7 +68,6 @@ interface IAddUnbalancedLiquidityViaSwapRouter {
     function addUnbalancedLiquidityViaSwapExactOut(
         address pool,
         uint256 deadline,
-        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactOutParams calldata swapParams
     ) external returns (uint256[] memory amountsIn, uint256 swapAmountIn);

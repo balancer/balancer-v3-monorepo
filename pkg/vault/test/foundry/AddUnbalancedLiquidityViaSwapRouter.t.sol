@@ -26,26 +26,18 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
-    address internal weightedPoolFactory;
-    IERC20[] internal wethDaiTokens;
-    address internal wethPool;
-
-    uint256 internal daiIdxWethPool;
-    uint256 internal wethIdx;
-
     uint256 constant WEIGHTED_SWAP_FEE = 1e16;
     string constant POOL_VERSION = "Pool v1";
     uint256 constant DEFAULT_AMP_FACTOR = 200;
-    uint256 constant TOKEN_AMOUNT = 1e16;
-    uint256 constant DELTA = 1e11;
+    uint256 constant DELTA_RATIO = 1e15; // 0.1% delta
 
     string constant version = "Add Unbalanced Liquidity Via Swap Router Test v1";
 
     AddUnbalancedLiquidityViaSwapRouter internal addUnbalancedLiquidityViaSwapRouter;
 
-    // Track the indices for the standard dai/usdc pool.
+    // Track the indices for the standard dai/weth pool.
     uint256 internal daiIdx;
-    uint256 internal usdcIdx;
+    uint256 internal wethIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -72,18 +64,18 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         return address(new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION));
     }
 
-    function _createPool(
-        address[] memory tokens,
-        string memory
-    ) internal override returns (address newPool, bytes memory poolArgs) {
+    function createPool() internal override returns (address newPool, bytes memory poolArgs) {
         string memory name = "ERC20 Pool";
         string memory symbol = "ERC20POOL";
 
+        (daiIdx, wethIdx) = getSortedIndexes(address(dai), address(weth));
+
+        IERC20[] memory tokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
         PoolRoleAccounts memory roleAccounts;
         newPool = StablePoolFactory(poolFactory).create(
             name,
             symbol,
-            vault.buildTokenConfig(tokens.asIERC20()),
+            vault.buildTokenConfig(tokens),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
             BASE_MIN_SWAP_FEE,
@@ -103,46 +95,19 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
             }),
             vault
         );
-
-        wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
-        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
-
-        vm.startPrank(alice);
-        weth.approve(address(permit2), type(uint256).max);
-        permit2.approve(
-            address(weth),
-            address(addUnbalancedLiquidityViaSwapRouter),
-            type(uint160).max,
-            type(uint48).max
-        );
-        vm.stopPrank();
-
-        weightedPoolFactory = address(
-            new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", POOL_VERSION)
-        );
-        wethPool = WeightedPoolFactory(weightedPoolFactory).create(
-            name,
-            symbol,
-            vault.buildTokenConfig(wethDaiTokens),
-            weights,
-            roleAccounts,
-            WEIGHTED_SWAP_FEE,
-            address(0), // no hook
-            false, // does not support donation
-            false, // supports unbalanced add/remove liquidity
-            ZERO_BYTES32
-        );
     }
 
-    function testAddProportionalAndSwapExactIn() public {
+    function testAddProportionalAndSwapExactIn__Fuzz(uint256 tokenAmount) public {
         uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
-        expectedBalances[daiIdx] += TOKEN_AMOUNT;
+        tokenAmount = bound(tokenAmount, 1e6, expectedBalances[wethIdx]);
+        expectedBalances[wethIdx] += tokenAmount;
 
+        uint256 halfTokenAmount = tokenAmount / 2;
         uint256 snapshot = vm.snapshotState();
         _prankStaticCall();
         uint256 expectedBptAmountOut = router.queryAddLiquidityUnbalanced(
             pool,
-            [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
+            [halfTokenAmount, halfTokenAmount].toMemoryArray(),
             alice,
             bytes("")
         );
@@ -150,120 +115,59 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
 
         IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams
             memory addLiquidityParams = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams({
-                maxAmountsIn: [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
+                maxAmountsIn: [halfTokenAmount, halfTokenAmount].toMemoryArray(),
                 exactBptAmountOut: expectedBptAmountOut,
                 userData: bytes("")
             });
 
         AddUnbalancedLiquidityViaSwapRouter.SwapExactInParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
             .SwapExactInParams({
-                tokenIn: dai,
-                tokenOut: usdc,
-                exactAmountIn: TOKEN_AMOUNT / 2,
+                tokenIn: weth,
+                tokenOut: dai,
+                exactAmountIn: halfTokenAmount,
                 minAmountOut: 0,
                 userData: bytes("")
             });
 
-        snapshot = vm.snapshot();
-        vm.prank(alice);
-        (uint256[] memory amountsIn, uint256 swapAmountOut) = addUnbalancedLiquidityViaSwapRouter
-            .addUnbalancedLiquidityViaSwapExactIn(pool, MAX_UINT256, false, addLiquidityParams, swapParams);
-
-        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
-
-        assertApproxEqAbs(balancesAfter[daiIdx], expectedBalances[daiIdx], DELTA, "Dai balance mismatch");
-        assertApproxEqAbs(balancesAfter[usdcIdx], expectedBalances[usdcIdx], DELTA, "Usdc balance mismatch");
-
-        vm.revertTo(snapshot);
+        snapshot = vm.snapshotState();
         _prankStaticCall();
         (uint256[] memory queryAmountsIn, uint256 querySwapAmountOut) = addUnbalancedLiquidityViaSwapRouter
             .queryAddUnbalancedLiquidityViaSwapExactIn(pool, alice, addLiquidityParams, swapParams);
-
-        assertEq(amountsIn, queryAmountsIn, "real and query amounts in mismatch");
-        assertEq(swapAmountOut, querySwapAmountOut, "real and query swap amount out mismatch");
-    }
-
-    function testAddProportionalAndSwapExactInNative() public {
-        vm.prank(alice);
-        router.initialize(
-            address(wethPool),
-            wethDaiTokens,
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            0,
-            false,
-            bytes("")
-        );
-
-        uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
-        expectedBalances[daiIdx] += TOKEN_AMOUNT;
-
-        uint256 snapshot = vm.snapshot();
-        _prankStaticCall();
-        uint256 expectedBptAmountOut = router.queryAddLiquidityUnbalanced(
-            pool,
-            [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
-            alice,
-            bytes("")
-        );
         vm.revertTo(snapshot);
 
-        IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams
-            memory addLiquidityParams = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams({
-                maxAmountsIn: [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
-                exactBptAmountOut: expectedBptAmountOut,
-                userData: bytes("")
-            });
-
-        IAddUnbalancedLiquidityViaSwapRouter.SwapExactInParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
-            .SwapExactInParams({
-                tokenIn: weth,
-                tokenOut: dai,
-                exactAmountIn: TOKEN_AMOUNT / 2,
-                minAmountOut: 0,
-                userData: bytes("")
-            });
-
-        snapshot = vm.snapshot();
         vm.prank(alice);
-        addLiquidityParams.maxAmountsIn = [TOKEN_AMOUNT + 200, TOKEN_AMOUNT + 200].toMemoryArray();
-
         (uint256[] memory amountsIn, uint256 swapAmountOut) = addUnbalancedLiquidityViaSwapRouter
-            .addUnbalancedLiquidityViaSwapExactIn{ value: TOKEN_AMOUNT / 2 }(
-            wethPool,
-            MAX_UINT256,
-            true, // Use native ETH
-            addLiquidityParams,
-            swapParams
-        );
+            .addUnbalancedLiquidityViaSwapExactIn(pool, MAX_UINT256, addLiquidityParams, swapParams);
 
-        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(wethPool);
-
-        assertApproxEqAbs(
-            balancesAfter[daiIdxWethPool],
-            expectedBalances[daiIdxWethPool],
-            1e16,
-            "Dai balance mismatch"
-        );
-        assertApproxEqAbs(balancesAfter[wethIdx], expectedBalances[wethIdx], 1e16, "WETH balance mismatch");
-
-        vm.revertTo(snapshot);
-        _prankStaticCall();
-        (uint256[] memory queryAmountsIn, uint256 querySwapAmountOut) = addUnbalancedLiquidityViaSwapRouter
-            .queryAddUnbalancedLiquidityViaSwapExactIn(wethPool, alice, addLiquidityParams, swapParams);
+        uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
+        assertApproxEqRel(balancesAfter[daiIdx], expectedBalances[daiIdx], DELTA_RATIO, "Dai balance mismatch");
+        assertApproxEqRel(balancesAfter[wethIdx], expectedBalances[wethIdx], DELTA_RATIO, "WETH balance mismatch");
 
         assertEq(amountsIn, queryAmountsIn, "real and query amounts in mismatch");
         assertEq(swapAmountOut, querySwapAmountOut, "real and query swap amount out mismatch");
     }
 
-    function testAddProportionalAndSwapExactOut() public {
+    function testAddProportionalAndSwapExactOut__Fuzz(uint256 tokenAmount) public {
         uint256[] memory expectedBalances = vault.getCurrentLiveBalances(pool);
-        expectedBalances[daiIdx] += TOKEN_AMOUNT;
+        tokenAmount = bound(tokenAmount, 1e6, expectedBalances[wethIdx]);
+        expectedBalances[wethIdx] += tokenAmount;
+        uint256 halfTokenAmount = tokenAmount / 2;
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
         uint256 bptAmountOut = router.queryAddLiquidityUnbalanced(
             pool,
-            [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
+            [halfTokenAmount, halfTokenAmount].toMemoryArray(),
+            alice,
+            bytes("")
+        );
+
+        _prankStaticCall();
+        uint256 expectedSwapAmountOut = router.querySwapSingleTokenExactIn(
+            pool,
+            weth,
+            dai,
+            halfTokenAmount,
             alice,
             bytes("")
         );
@@ -271,16 +175,16 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
 
         IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams
             memory addLiquidityParams = IAddUnbalancedLiquidityViaSwapRouter.AddLiquidityProportionalParams({
-                maxAmountsIn: [TOKEN_AMOUNT / 2, TOKEN_AMOUNT / 2].toMemoryArray(),
+                maxAmountsIn: [halfTokenAmount, halfTokenAmount].toMemoryArray(),
                 exactBptAmountOut: bptAmountOut,
                 userData: bytes("")
             });
 
         IAddUnbalancedLiquidityViaSwapRouter.SwapExactOutParams memory swapParams = IAddUnbalancedLiquidityViaSwapRouter
             .SwapExactOutParams({
-                tokenIn: dai,
-                tokenOut: usdc,
-                exactAmountOut: TOKEN_AMOUNT / 2,
+                tokenIn: weth,
+                tokenOut: dai,
+                exactAmountOut: expectedSwapAmountOut,
                 maxAmountIn: MAX_UINT256,
                 userData: bytes("")
             });
@@ -288,12 +192,12 @@ contract AddUnbalancedLiquidityViaSwapRouterTest is BaseVaultTest {
         snapshot = vm.snapshot();
         vm.prank(alice);
         (uint256[] memory amountsIn, uint256 swapAmountIn) = addUnbalancedLiquidityViaSwapRouter
-            .addUnbalancedLiquidityViaSwapExactOut(pool, MAX_UINT256, false, addLiquidityParams, swapParams);
+            .addUnbalancedLiquidityViaSwapExactOut(pool, MAX_UINT256, addLiquidityParams, swapParams);
 
         uint256[] memory balancesAfter = vault.getCurrentLiveBalances(pool);
 
-        assertApproxEqAbs(balancesAfter[daiIdx], expectedBalances[daiIdx], DELTA, "Dai balance mismatch");
-        assertApproxEqAbs(balancesAfter[usdcIdx], expectedBalances[usdcIdx], DELTA, "Usdc balance mismatch");
+        assertApproxEqRel(balancesAfter[daiIdx], expectedBalances[daiIdx], DELTA_RATIO, "Dai balance mismatch");
+        assertApproxEqRel(balancesAfter[wethIdx], expectedBalances[wethIdx], DELTA_RATIO, "WETH balance mismatch");
 
         vm.revertTo(snapshot);
         _prankStaticCall();

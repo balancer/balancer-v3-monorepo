@@ -44,7 +44,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     function addUnbalancedLiquidityViaSwapExactIn(
         address pool,
         uint256 deadline,
-        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactInParams calldata swapParams
     ) external payable saveSender(msg.sender) returns (uint256[] memory amountsIn, uint256 swapAmountOut) {
@@ -56,7 +55,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         msg.sender,
                         deadline,
-                        wethIsEth,
                         addLiquidityParams,
                         _buildSwapExactInParams(swapParams)
                     )
@@ -70,7 +68,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     function addUnbalancedLiquidityViaSwapExactOut(
         address pool,
         uint256 deadline,
-        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapExactOutParams calldata swapParams
     ) external saveSender(msg.sender) returns (uint256[] memory amountsIn, uint256 swapAmountIn) {
@@ -82,7 +79,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         msg.sender,
                         deadline,
-                        wethIsEth,
                         addLiquidityParams,
                         _buildSwapExactOutParams(swapParams)
                     )
@@ -110,7 +106,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         address(this),
                         _MAX_AMOUNT, // No deadline in query
-                        false, // wethIsEth is false in query
                         addLiquidityParams,
                         _buildSwapExactInParams(swapParams)
                     )
@@ -134,7 +129,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                         pool,
                         address(this),
                         _MAX_AMOUNT, // No deadline in query
-                        false, // wethIsEth is false in query
                         addLiquidityParams,
                         _buildSwapExactOutParams(swapParams)
                     )
@@ -171,7 +165,6 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
         address pool,
         address sender,
         uint256 deadline,
-        bool wethIsEth,
         AddLiquidityProportionalParams calldata addLiquidityParams,
         SwapParams memory swapParams
     ) private pure returns (AddLiquidityAndSwapHookParams memory params) {
@@ -183,7 +176,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     maxAmountsIn: addLiquidityParams.maxAmountsIn,
                     minBptAmountOut: addLiquidityParams.exactBptAmountOut,
                     kind: AddLiquidityKind.PROPORTIONAL,
-                    wethIsEth: wethIsEth,
+                    wethIsEth: false,
                     userData: addLiquidityParams.userData
                 }),
                 swapParams: SwapSingleTokenHookParams({
@@ -195,7 +188,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
                     amountGiven: swapParams.amountGiven,
                     limit: swapParams.limit,
                     deadline: deadline,
-                    wethIsEth: wethIsEth,
+                    wethIsEth: false,
                     userData: swapParams.userData
                 })
             });
