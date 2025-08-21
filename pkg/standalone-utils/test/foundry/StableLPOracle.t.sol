@@ -187,6 +187,38 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         oracle.computeFeedTokenDecimalScalingFactor(feedWith20Decimals);
     }
 
+    function testLengthMismatchTVL() public {
+        IStablePool pool = createAndInitPool(2, 100);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory prices = new int256[](3);
+
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
+        oracle.calculateTVL(prices);
+    }
+
+    function testZeroPrice() public {
+        IStablePool pool = createAndInitPool(2, 100);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory prices = new int256[](2);
+
+        vm.expectRevert(ILPOracleBase.InvalidOraclePrice.selector);
+        oracle.calculateTVL(prices);
+    }
+
+    function testNegativePrice() public {
+        IStablePool pool = createAndInitPool(2, 100);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory prices = new int256[](2);
+        prices[0] = 1e18;
+        prices[1] = -1e6;
+
+        vm.expectRevert(ILPOracleBase.InvalidOraclePrice.selector);
+        oracle.calculateTVL(prices);
+    }
+
     function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
