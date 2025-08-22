@@ -24,6 +24,13 @@ interface IHyperEVMRateProviderFactory {
      */
     error RateProviderAlreadyExists(uint32 tokenIndex, uint32 pairIndex, IHyperEVMRateProvider rateProvider);
 
+    /**
+     * @notice The rate provider was not found for the given token and pair.
+     * @param tokenIndex The index of the base asset on the Hyperliquid public API
+     * @param pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
+     */
+    error RateProviderNotFound(uint32 tokenIndex, uint32 pairIndex);
+
     /// @notice The factory is disabled.
     error RateProviderFactoryIsDisabled();
 
@@ -43,6 +50,7 @@ interface IHyperEVMRateProviderFactory {
 
     /**
      * @notice Gets the rate provider for the given token and pair.
+     * @dev Reverts if the rate provider was not found for the given token and pair.
      * @param tokenIndex The index of the base asset on the Hyperliquid public API
      * @param pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
      * @return rateProvider The address of the rate provider for the given token and pair

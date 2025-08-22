@@ -91,8 +91,11 @@ contract HyperEVMRateProviderFactoryTest is BaseVaultTest {
         assertEq(rateProvider.getPairIndex(), _UETH_PAIR_INDEX, "Wrong pair index");
     }
 
-    function testGetNonExistentRateProvider() external view {
-        assertEq(address(_factory.getRateProvider(uint32(1), uint32(2))), address(0), "Rate provider address mismatch");
+    function testGetNonExistentRateProvider() external {
+        vm.expectRevert(
+            abi.encodeWithSelector(IHyperEVMRateProviderFactory.RateProviderNotFound.selector, uint32(1), uint32(2))
+        );
+        _factory.getRateProvider(uint32(1), uint32(2));
     }
 
     function testCreateRateProviderDifferentTokenAndPair() external {

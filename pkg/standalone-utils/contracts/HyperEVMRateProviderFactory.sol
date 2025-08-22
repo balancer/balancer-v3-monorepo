@@ -56,9 +56,16 @@ contract HyperEVMRateProviderFactory is IHyperEVMRateProviderFactory, SingletonA
     }
 
     /// @inheritdoc IHyperEVMRateProviderFactory
-    function getRateProvider(uint32 tokenIndex, uint32 pairIndex) external view returns (IHyperEVMRateProvider) {
+    function getRateProvider(
+        uint32 tokenIndex,
+        uint32 pairIndex
+    ) external view returns (IHyperEVMRateProvider rateProvider) {
         bytes32 rateProviderId = _computeRateProviderId(tokenIndex, pairIndex);
-        return _rateProviders[rateProviderId];
+        rateProvider = _rateProviders[rateProviderId];
+        if (address(rateProvider) == address(0)) {
+            revert RateProviderNotFound(tokenIndex, pairIndex);
+        }
+        return rateProvider;
     }
 
     /// @inheritdoc IHyperEVMRateProviderFactory
