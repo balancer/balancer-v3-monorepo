@@ -87,10 +87,12 @@ contract BatchRouterHooks is BatchRouterCommon {
         tokensOut = _currentSwapTokensOut().values();
         amountsOut = new uint256[](tokensOut.length);
         for (uint256 i = 0; i < tokensOut.length; ++i) {
-            amountsOut[i] =
-                _currentSwapTokenOutAmounts().tGet(tokensOut[i]) +
-                _settledTokenAmounts().tGet(tokensOut[i]);
-            _settledTokenAmounts().tSet(tokensOut[i], 0);
+            uint256 settledAmount = _settledTokenAmounts().tGet(tokensOut[i]);
+            amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]) + settledAmount;
+
+            if (settledAmount != 0) {
+                _settledTokenAmounts().tSet(tokensOut[i], 0);
+            }
         }
     }
 
@@ -98,6 +100,10 @@ contract BatchRouterHooks is BatchRouterCommon {
         SwapExactInHookParams calldata params
     ) internal virtual returns (uint256[] memory pathAmountsOut) {
         pathAmountsOut = new uint256[](params.paths.length);
+
+        if (_isPrepaid && EVMCallModeHelpers.isStaticCall() == false) {
+            _prepayIfNeeded(params);
+        }
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountIn memory path = params.paths[i];
@@ -107,15 +113,17 @@ contract BatchRouterHooks is BatchRouterCommon {
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
-                // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
-                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
-            } else {
-                // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
-                // in a set with unique addresses that can be iterated later on.
-                // For example, if all paths share the same token in, the set will end up with only one entry.
-                _currentSwapTokensIn().add(address(stepTokenIn));
-                _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+            if (_isPrepaid == false) {
+                if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
+                    // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
+                    _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
+                } else {
+                    // Paths may (or may not) share the same token in. To minimize token transfers,
+                    // we store the addresses in a set with unique addresses that can be iterated later on.
+                    // For example, if all paths share the same token in, the set will end up with only one entry.
+                    _currentSwapTokensIn().add(address(stepTokenIn));
+                    _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+                }
             }
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
@@ -143,6 +151,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                         })
                     );
                 } else if (address(stepTokenIn) == step.pool) {
+                    _ensureNotPrepaymentMode();
+
                     amountOut = _removeLiquidityExactIn(
                         params.sender,
                         params.userData,
@@ -154,6 +164,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                         stepLocals.isFirstStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
+                    _ensureNotPrepaymentMode();
+
                     isAddingLiquidity = true;
                     amountOut = _addLiquidityExactIn(
                         params.sender,
@@ -327,8 +339,16 @@ contract BatchRouterHooks is BatchRouterCommon {
         tokensIn = _currentSwapTokensIn().values(); // Copy transient storage to memory
         amountsIn = new uint256[](tokensIn.length);
         for (uint256 i = 0; i < tokensIn.length; ++i) {
-            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokensIn[i]) + _settledTokenAmounts().tGet(tokensIn[i]);
-            _settledTokenAmounts().tSet(tokensIn[i], 0);
+            uint256 settledAmount = _settledTokenAmounts().tGet(tokensIn[i]);
+            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokensIn[i]) + settledAmount;
+
+            if (settledAmount != 0) {
+                _settledTokenAmounts().tSet(tokensIn[i], 0);
+            }
+
+            if (_isPrepaid) {
+                _currentSwapTokenInAmounts().tSet(tokensIn[i], 0);
+            }
         }
     }
 
@@ -340,6 +360,10 @@ contract BatchRouterHooks is BatchRouterCommon {
         SwapExactOutHookParams calldata params
     ) internal virtual returns (uint256[] memory pathAmountsIn) {
         pathAmountsIn = new uint256[](params.paths.length);
+
+        if (_isPrepaid) {
+            _prepayIfNeeded(params);
+        }
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountOut memory path = params.paths[i];
@@ -393,10 +417,10 @@ contract BatchRouterHooks is BatchRouterCommon {
                 bool isSettled;
 
                 if (step.isBuffer) {
-                    isSettled = true;
+                    isSettled = _isPrepaid == false;
                     tokenIn = address(path.tokenIn);
 
-                    if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
+                    if (_isPrepaid == false && stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
                         bool wethIsEth = params.wethIsEth;
                         // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
                         _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, wethIsEth);
@@ -420,6 +444,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                         _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
                     }
                 } else if (address(stepTokenIn) == step.pool) {
+                    _ensureNotPrepaymentMode();
+
                     isSettled = true;
 
                     amountIn = _removeLiquidityExactOut(
@@ -433,6 +459,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                         stepLocals.isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
+                    _ensureNotPrepaymentMode();
+
                     amountIn = _addLiquidityExactOut(
                         params.sender,
                         params.userData,
@@ -458,6 +486,10 @@ contract BatchRouterHooks is BatchRouterCommon {
                             userData: userData
                         })
                     );
+
+                    if (_isPrepaid && stepLocals.isLastStep) {
+                        _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
+                    }
                 }
 
                 if (stepLocals.isLastStep) {
@@ -603,5 +635,53 @@ contract BatchRouterHooks is BatchRouterCommon {
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
+    }
+
+    /***************************************************************************
+                                     Other
+    ***************************************************************************/
+
+    function _ensureNotPrepaymentMode() internal view {
+        if (_isPrepaid) {
+            revert OperationNotSupported();
+        }
+    }
+
+    function _prepayIfNeeded(SwapExactInHookParams calldata params) internal {
+        // Register the token amounts expected to be paid by the sender upfront as settled
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            SwapPathExactAmountIn memory path = params.paths[i];
+            _currentSwapTokensIn().add(address(path.tokenIn));
+            _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.exactAmountIn);
+        }
+
+        address[] memory tokensIn = _currentSwapTokensIn().values();
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            address tokenIn = tokensIn[i];
+            uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+            if (EVMCallModeHelpers.isStaticCall() == false) {
+                _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
+            }
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+        }
+    }
+
+    function _prepayIfNeeded(SwapExactOutHookParams calldata params) internal {
+        for (uint256 i = 0; i < params.paths.length; ++i) {
+            // Register the token amounts expected to be paid by the sender upfront as settled
+            SwapPathExactAmountOut memory path = params.paths[i];
+            _currentSwapTokensIn().add(address(path.tokenIn));
+            _currentSwapTokenInAmounts().tAdd(address(path.tokenIn), path.maxAmountIn);
+        }
+
+        address[] memory tokensIn = _currentSwapTokensIn().values();
+        for (uint256 i = 0; i < tokensIn.length; ++i) {
+            address tokenIn = tokensIn[i];
+            uint256 amount = _currentSwapTokenInAmounts().tGet(tokenIn);
+
+            _takeOrSettle(params.sender, params.wethIsEth, tokenIn, amount);
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+        }
     }
 }
