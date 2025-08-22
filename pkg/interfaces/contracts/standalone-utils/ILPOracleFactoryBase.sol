@@ -36,6 +36,11 @@ interface ILPOracleFactoryBase {
 
     /**
      * @notice Creates a new oracle for the given pool.
+     * @dev Note that the caller must ensure that the given `feeds` are correct for the corresponding pool tokens.
+     * The contract checks that the array lengths match, but cannot independently verify correctness. See the docs for
+     * notes on how to pair feeds (and rate providers) with tokens, as there are many subtleties. Note that mistakes
+     * are recoverable; just call create again with the correct values.
+     *
      * @param pool The address of the pool
      * @param feeds The array of price feeds for the tokens in the pool
      * @return oracle The address of the newly created oracle
