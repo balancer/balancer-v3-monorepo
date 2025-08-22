@@ -22,7 +22,7 @@ interface IHyperEVMRateProviderFactory {
      * @param pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
      * @param rateProvider The address of the deployed rate provider
      */
-    error RateProviderAlreadyExists(uint32 tokenIndex, uint32 pairIndex, IHyperEVMRateProvider rateProvider);
+    error RateProviderAlreadyExists(uint32 tokenIndex, uint32 pairIndex, address rateProvider);
 
     /**
      * @notice The rate provider was not found for the given token and pair.

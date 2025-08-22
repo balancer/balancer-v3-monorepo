@@ -16,6 +16,11 @@ contract HyperEVMRateProvider is IRateProvider, IHyperEVMRateProvider {
 
     constructor(uint32 tokenIndex, uint32 pairIndex) {
         uint8 szDecimals = HyperTokenInfoPrecompile.szDecimals(tokenIndex);
+        // The spot price is returned with a different number of decimals for each token. So, to make this rate
+        // provider compatible with the vault, we need to scale the spot price to 18 decimals using this multiplier.
+        // According to hyperliquid's documentation
+        // (https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/interacting-with-hypercore),
+        // szDecimals has a minimum of 0 and a maximum of 8, so the multiplier is always between 1e10 and 1e18.
         _spotPriceMultiplier = 1e18 / (10 ** (8 - szDecimals));
 
         _pairIndex = pairIndex;

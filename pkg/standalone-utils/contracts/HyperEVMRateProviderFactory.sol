@@ -42,8 +42,8 @@ contract HyperEVMRateProviderFactory is IHyperEVMRateProviderFactory, SingletonA
 
         bytes32 rateProviderId = _computeRateProviderId(tokenIndex, pairIndex);
 
-        address existingRateProvider = _rateProviders[rateProviderId];
-        
+        address existingRateProvider = address(_rateProviders[rateProviderId]);
+
         if (existingRateProvider != address(0)) {
             revert RateProviderAlreadyExists(tokenIndex, pairIndex, existingRateProvider);
         }
