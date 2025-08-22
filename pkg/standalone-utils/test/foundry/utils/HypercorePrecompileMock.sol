@@ -2,13 +2,13 @@
 pragma solidity ^0.8.24;
 
 contract HypercorePrecompileMock {
-    bytes internal data;
+    bytes internal _data;
 
-    function setData(bytes memory _data) external {
-        data = _data;
+    function setData(bytes memory data) external {
+        _data = data;
     }
 
     fallback(bytes calldata) external returns (bytes memory) {
-        return data;
+        return _data;
     }
 }
