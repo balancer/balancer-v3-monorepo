@@ -10,21 +10,21 @@ import { HyperSpotPricePrecompile } from "./utils/HyperSpotPricePrecompile.sol";
 import { HyperTokenInfoPrecompile } from "./utils/HyperTokenInfoPrecompile.sol";
 
 contract HyperEVMRateProvider is IRateProvider, IHyperEVMRateProvider {
-    uint256 private immutable _spotPriceDivisor;
+    uint256 private immutable _spotPriceMultiplier;
     uint32 private immutable _pairIndex;
     uint32 private immutable _tokenIndex;
 
     constructor(uint32 tokenIndex, uint32 pairIndex) {
         uint8 szDecimals = HyperTokenInfoPrecompile.szDecimals(tokenIndex);
-        _spotPriceDivisor = 10 ** (8 - szDecimals);
+        _spotPriceMultiplier = 1e18 / (10 ** (8 - szDecimals));
 
         _pairIndex = pairIndex;
         _tokenIndex = tokenIndex;
     }
 
     /// @inheritdoc IHyperEVMRateProvider
-    function getSpotPriceDivisor() external view returns (uint256) {
-        return _spotPriceDivisor;
+    function getSpotPriceMultiplier() external view returns (uint256) {
+        return _spotPriceMultiplier;
     }
 
     /// @inheritdoc IHyperEVMRateProvider
@@ -40,6 +40,6 @@ contract HyperEVMRateProvider is IRateProvider, IHyperEVMRateProvider {
     /// @inheritdoc IRateProvider
     function getRate() external view returns (uint256) {
         uint256 spotPrice = HyperSpotPricePrecompile.spotPrice(_pairIndex);
-        return (spotPrice * 1e18) / _spotPriceDivisor;
+        return spotPrice * _spotPriceMultiplier;
     }
 }

@@ -16,10 +16,10 @@ interface IHyperEVMRateProvider {
     function getPairIndex() external view returns (uint32);
 
     /**
-     * @notice The spot price divisor.
-     * @dev The spot price divisor is computed as 10 ** (8 - szDecimals), where szDecimals is the number of decimals of the token.
-     * szDecimals is fetched using the TOKEN INFO precompile of Hypercore.
-     * @return spotPriceDivisor The spot price divisor
+     * @notice The spot price multiplier.
+     * @dev Hypercore returns the spot price with a different number of decimals for each token. So, to make this rate
+     * provider compatible with the vault, we need to scale the spot price to 18 decimals using this multiplier.
+     * @return spotPriceMultiplier The spot price multiplier
      */
-    function getSpotPriceDivisor() external view returns (uint256 spotPriceDivisor);
+    function getSpotPriceMultiplier() external view returns (uint256 spotPriceMultiplier);
 }
