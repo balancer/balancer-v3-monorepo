@@ -10,8 +10,9 @@ interface IHyperEVMRateProvider {
     function getTokenIndex() external view returns (uint32);
 
     /**
-     * @notice The index of the pair of the spot price on the Hyperliquid public API.
-     * @return pairIndex The index of the pair on the Hyperliquid public API
+     * @notice The index of the pair to fetch the spot price, according to the Hyperliquid public API.
+     * @dev Hypercore has an index that identifies a pair of tokens to fetch the spot price.
+     * @return pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
      */
     function getPairIndex() external view returns (uint32);
 

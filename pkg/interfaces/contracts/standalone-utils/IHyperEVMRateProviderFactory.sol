@@ -8,7 +8,7 @@ interface IHyperEVMRateProviderFactory {
     /**
      * @notice A new HyperEVM Rate Provider was created.
      * @param tokenIndex The index of the base asset on the Hyperliquid public API
-     * @param pairIndex The pair index of the spot price on the Hyperliquid public API
+     * @param pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
      * @param rateProvider The address of the deployed rate provider
      */
     event RateProviderCreated(uint256 indexed tokenIndex, uint256 indexed pairIndex, address indexed rateProvider);
@@ -19,7 +19,7 @@ interface IHyperEVMRateProviderFactory {
     /**
      * @notice A rate provider already exists for the given token and pair.
      * @param tokenIndex The index of the base asset on the Hyperliquid public API
-     * @param pairIndex The pair index of the spot price on the Hyperliquid public API
+     * @param pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
      * @param rateProvider The address of the deployed rate provider
      */
     error RateProviderAlreadyExists(uint32 tokenIndex, uint32 pairIndex, IHyperEVMRateProvider rateProvider);
@@ -36,7 +36,7 @@ interface IHyperEVMRateProviderFactory {
     /**
      * @notice Creates a new HyperEVM Rate Provider for the given token and pair.
      * @param tokenIndex The index of the base asset on the Hyperliquid public API
-     * @param pairIndex The pair index of the spot price on the Hyperliquid public API
+     * @param pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
      * @return rateProvider The address of the deployed rate provider
      */
     function create(uint32 tokenIndex, uint32 pairIndex) external returns (IHyperEVMRateProvider rateProvider);
@@ -44,7 +44,7 @@ interface IHyperEVMRateProviderFactory {
     /**
      * @notice Gets the rate provider for the given token and pair.
      * @param tokenIndex The index of the base asset on the Hyperliquid public API
-     * @param pairIndex The pair index of the spot price on the Hyperliquid public API
+     * @param pairIndex The index of the pair to fetch the spot price, according to the Hyperliquid public API
      * @return rateProvider The address of the rate provider for the given token and pair
      */
     function getRateProvider(
