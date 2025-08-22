@@ -3,11 +3,11 @@
 pragma solidity ^0.8.24;
 
 import {
-    IHyperEVMRateProvider
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IHyperEVMRateProvider.sol";
-import {
     IHyperEVMRateProviderFactory
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IHyperEVMRateProviderFactory.sol";
+import {
+    IHyperEVMRateProvider
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IHyperEVMRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
@@ -15,11 +15,9 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 
 import { HyperEVMRateProvider } from "./HyperEVMRateProvider.sol";
 
-/**
- * @notice Factory for deploying and managing HyperEVM rate providers.
- */
+/// @notice Factory for deploying and managing HyperEVM rate providers.
 contract HyperEVMRateProviderFactory is IHyperEVMRateProviderFactory, SingletonAuthentication, Version {
-    uint256 internal _rateProviderVersion;
+    uint256 internal immutable _rateProviderVersion;
     bool internal _isDisabled;
 
     mapping(bytes32 rateProviderId => IHyperEVMRateProvider rateProvider) internal _rateProviders;

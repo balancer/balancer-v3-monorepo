@@ -70,7 +70,7 @@ interface IHyperEVMRateProviderFactory {
     /**
      * @notice Disables the rate provider factory.
      * @dev A disabled rate provider factory cannot create new rate providers and cannot be re-enabled. However,
-     * already created rate providers are still usable.
+     * already created rate providers are still usable. This is a permissioned function.
      */
     function disable() external;
 }
