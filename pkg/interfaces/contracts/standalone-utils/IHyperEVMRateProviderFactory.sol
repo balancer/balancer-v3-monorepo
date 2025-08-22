@@ -11,11 +11,7 @@ interface IHyperEVMRateProviderFactory {
      * @param pairIndex The pair index of the spot price on the Hyperliquid public API
      * @param rateProvider The address of the deployed rate provider
      */
-    event RateProviderCreated(
-        uint256 indexed tokenIndex,
-        uint256 indexed pairIndex,
-        IHyperEVMRateProvider rateProvider
-    );
+    event RateProviderCreated(uint256 indexed tokenIndex, uint256 indexed pairIndex, address indexed rateProvider);
 
     /// @notice Emitted when the factory is disabled.
     event RateProviderFactoryDisabled();

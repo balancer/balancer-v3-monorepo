@@ -51,6 +51,8 @@ contract HyperEVMRateProviderFactory is IHyperEVMRateProviderFactory, SingletonA
         rateProvider = IHyperEVMRateProvider(address(new HyperEVMRateProvider(tokenIndex, pairIndex)));
         _rateProviders[rateProviderId] = rateProvider;
         _isRateProviderFromFactory[rateProvider] = true;
+
+        emit RateProviderCreated(tokenIndex, pairIndex, address(rateProvider));
     }
 
     /// @inheritdoc IHyperEVMRateProviderFactory
