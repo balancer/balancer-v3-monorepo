@@ -3,11 +3,11 @@
 pragma solidity ^0.8.24;
 
 import {
-    IHyperEVMRateProvider
-} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IHyperEVMRateProvider.sol";
-import {
     IHyperEVMRateProviderFactory
 } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IHyperEVMRateProviderFactory.sol";
+import {
+    IHyperEVMRateProvider
+} from "@balancer-labs/v3-interfaces/contracts/standalone-utils/IHyperEVMRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
