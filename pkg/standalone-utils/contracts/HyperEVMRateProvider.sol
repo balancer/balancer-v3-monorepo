@@ -9,6 +9,12 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-u
 import { HyperSpotPricePrecompile } from "./utils/HyperSpotPricePrecompile.sol";
 import { HyperTokenInfoPrecompile } from "./utils/HyperTokenInfoPrecompile.sol";
 
+/**
+ * @notice A rate provider for the HyperEVM.
+ * @dev HyperEVM has precompiles that allow to fetch the spot price of a token (in terms of USD or other tokens).
+ * This contract uses the spot price and the token info precompiles to return the rate of a token on-chain,
+ * scaled with 18 decimals (compatible with the Vault).
+ */
 contract HyperEVMRateProvider is IRateProvider, IHyperEVMRateProvider {
     uint256 private immutable _spotPriceMultiplier;
     uint32 private immutable _pairIndex;
