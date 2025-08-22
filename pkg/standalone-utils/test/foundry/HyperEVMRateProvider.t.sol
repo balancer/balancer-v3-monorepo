@@ -48,4 +48,12 @@ contract HyperEVMRateProviderTest is Test {
     function testGetRateHyperEVM() public view {
         assertEq(hyperEVMRateProvider.getRate(), (_UETH_USD_RATE * 1e18) / 10 ** (8 - _UETH_SZ_DECIMALS), "Wrong rate");
     }
+
+    function testGetSpotPriceMultiplier() public view {
+        assertEq(
+            hyperEVMRateProvider.getSpotPriceMultiplier(),
+            1e18 / (10 ** (8 - _UETH_SZ_DECIMALS)),
+            "Wrong spot price multiplier"
+        );
+    }
 }
