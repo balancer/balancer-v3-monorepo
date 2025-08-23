@@ -109,22 +109,13 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             poolInitAmounts[i] = poolInitAmount;
         }
 
-        return (createAndInitPool(_tokens, poolInitAmounts, amplificationParameter, with18DecimalTokens));
+        return (createAndInitPool(_tokens, poolInitAmounts, amplificationParameter));
     }
 
     function createAndInitPool(
         address[] memory _tokens,
         uint256[] memory initAmounts,
         uint256 amplificationParameter
-    ) internal returns (IStablePool) {
-        return createAndInitPool(_tokens, initAmounts, amplificationParameter, false);
-    }
-
-    function createAndInitPool(
-        address[] memory _tokens,
-        uint256[] memory initAmounts,
-        uint256 amplificationParameter,
-        bool with18DecimalTokens
     ) internal returns (IStablePool) {
         string memory name = "Stable Pool Test";
         string memory symbol = "STABLE-TEST";
@@ -146,14 +137,10 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         vm.startPrank(lp);
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(newPool);
-        if (with18DecimalTokens) {
-            router.initialize(newPool, tokens, initAmounts, 0, false, bytes(""));
-        } else {
-            try router.initialize(newPool, tokens, initAmounts, 0, false, bytes("")) {} catch {
-                // If the initialization of the pool failed, probably the Stable Invariant did not converge. So, ignore this test.
-                // This condition only happens in fuzz tests, when fuzzying the initial balances of a stable pool.
-                vm.assume(false);
-            }
+        try router.initialize(newPool, tokens, initAmounts, 0, false, bytes("")) {} catch {
+            // If the initialization of the pool failed, probably the Stable Invariant did not converge. So, ignore this test.
+            // This condition only happens in fuzz tests, when fuzzying the initial balances of a stable pool.
+            vm.assume(false);
         }
         vm.stopPrank();
 
