@@ -67,9 +67,15 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
     }
 
     /// @inheritdoc ILPOracleBase
-    function calculateTVL(int256[] memory prices) public view override returns (uint256 tvl) {
+    function computeTVLGivenPrices(int256[] memory prices) public view override returns (uint256) {
+        // This can be called by external users, so we need length validation.
         InputHelpers.ensureInputLengthMatch(prices.length, _totalTokens);
 
+        return _computeTVL(prices);
+    }
+
+    /// @inheritdoc LPOracleBase
+    function _computeTVL(int256[] memory prices) internal view override returns (uint256 tvl) {
         /**********************************************************************************************
         // We know that the normalized value of each token in the pool is equal:
         // C = (P1 * B1 / W1) = (P2 * B2 / W2) = ... = (Pn * Bn / Wn)

@@ -13,12 +13,21 @@ interface ILPOracleBase {
     error InvalidOraclePrice();
 
     /**
-     * @notice Calculates the TVL based on the provided prices.
-     * @dev Prices are defined the same way as in the oracle feed, and scaled to 18-decimal FP values.
-     * @param prices An array of prices for the tokens in the pool, sorted in token registration order
-     * @return tvl TVL calculated from the prices and current weights
+     * @notice Calculates the TVL based on the current prices.
+     * @return tvl TVL (total value locked) calculated from the prices and other pool data
      */
-    function calculateTVL(int256[] memory prices) external view returns (uint256 tvl);
+    function computeTVL() external view returns (uint256 tvl);
+
+    /**
+     * @notice Calculates the TVL based on the given prices.
+     * @dev Prices are defined the same way as in the oracle feed, and scaled to 18-decimal FP values.
+     * Since it accepts arbitrary prices, this version isn't for use in production, but is a useful
+     * utility function for testing, integration, and simulation.
+     *
+     * @param prices An array of prices for the tokens in the pool, sorted in token registration order
+     * @return tvl TVL (total value locked) calculated from the prices and other pool data
+     */
+    function computeTVLGivenPrices(int256[] memory prices) external view returns (uint256 tvl);
 
     /**
      * @notice Gets the latest feed data.
