@@ -156,15 +156,13 @@ contract BatchRouterHooks is BatchRouterCommon {
                         isLastStep
                     );
                 } else {
-                    // Stack to deep
-                    bytes memory userData = params.userData;
                     amountOut = _swapExactIn(
+                        params.userData,
                         step.pool,
                         stepTokenIn,
                         step.tokenOut,
                         stepExactAmountIn,
                         minAmountOut,
-                        userData,
                         isLastStep
                     );
                 }
@@ -312,12 +310,12 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _swapExactIn(
+        bytes memory userData,
         address pool,
         IERC20 stepTokenIn,
         IERC20 stepTokenOut,
         uint256 stepExactAmountIn,
         uint256 minAmountOut,
-        bytes memory userData,
         bool isLastStep
     ) internal returns (uint256 amountOut) {
         // No BPT involved in the operation: regular swap exact in.
@@ -438,14 +436,14 @@ contract BatchRouterHooks is BatchRouterCommon {
 
                 if (step.isBuffer) {
                     amountIn = _erc4626BufferWrapOrUnwrapExactOut(
+                        params.sender,
+                        params.wethIsEth,
                         step.pool,
                         path.tokenIn,
                         stepTokenIn,
                         stepExactAmountOut,
                         path.maxAmountIn,
                         stepMaxAmountIn,
-                        params.sender,
-                        params.wethIsEth,
                         isLastStep
                     );
                 } else if (address(stepTokenIn) == step.pool) {
@@ -493,14 +491,14 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _erc4626BufferWrapOrUnwrapExactOut(
+        address sender,
+        bool wethIsEth,
         address pool,
         IERC20 pathTokenIn,
         IERC20 stepTokenIn,
         uint256 exactAmountOut,
         uint256 pathMaxAmountIn,
         uint256 maxAmountIn,
-        address sender,
-        bool wethIsEth,
         bool isLastStep
     ) internal returns (uint256 amountIn) {
         if (isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
