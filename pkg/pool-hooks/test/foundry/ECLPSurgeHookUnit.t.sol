@@ -748,6 +748,86 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         }
     }
 
+    function testComputeImbalanceWithImbalanceSlopeAbovePeak__Fuzz(
+        uint128 imbalanceSlopeAbovePeak,
+        uint256 balanceX,
+        uint256 balanceY
+    ) public {
+        uint256 peakPrice = uint256(eclpParams.s).divDown(uint256(eclpParams.c));
+        imbalanceSlopeAbovePeak = uint128(bound(imbalanceSlopeAbovePeak, 1e16, 10000e16));
+        // Sum of balances cannot be bigger than 1e34.
+        balanceX = bound(balanceX, 1e10, 1e34 - 1e18);
+        balanceY = bound(balanceY, 1e10, 1e34 - balanceX);
+        uint256[] memory balances = [balanceX, balanceY].toMemoryArray();
+        uint256 currentPrice = hookMock.computePriceFromBalances(balances, eclpParams, derivedECLPParams);
+        // This will test above peak slope.
+        vm.assume(currentPrice > peakPrice);
+
+        IECLPSurgeHook.ImbalanceSlopeData memory imbalanceSlopeData = IECLPSurgeHook.ImbalanceSlopeData({
+            imbalanceSlopeBelowPeak: uint128(FixedPoint.ONE),
+            imbalanceSlopeAbovePeak: imbalanceSlopeAbovePeak
+        });
+
+        uint256 imbalanceNoSlope = hookMock.computeImbalanceFromBalancesNoSlope(pool, balances);
+        uint256 expectedImbalanceWithSlope = imbalanceNoSlope.mulDown(imbalanceSlopeAbovePeak);
+
+        vm.prank(admin);
+        hookMock.setImbalanceSlopeAbovePeak(pool, imbalanceSlopeAbovePeak);
+        uint256 actualImbalanceWithSlope = hookMock.computeImbalanceFromBalances(pool, balances, imbalanceSlopeData);
+
+        if (expectedImbalanceWithSlope > FixedPoint.ONE) {
+            expectedImbalanceWithSlope = FixedPoint.ONE;
+        }
+
+        // If the imbalance is small (below 0.01), rounding errors can occur, so the test needs some tolerance.
+        assertApproxEqAbs(
+            actualImbalanceWithSlope,
+            expectedImbalanceWithSlope,
+            100,
+            "Imbalance with slope do not match"
+        );
+    }
+
+    function testComputeImbalanceWithImbalanceSlopeBelowPeak__Fuzz(
+        uint128 imbalanceSlopeBelowPeak,
+        uint256 balanceX,
+        uint256 balanceY
+    ) public {
+        uint256 peakPrice = uint256(eclpParams.s).divDown(uint256(eclpParams.c));
+        imbalanceSlopeBelowPeak = uint128(bound(imbalanceSlopeBelowPeak, 1e16, 10000e16));
+        // Sum of balances cannot be bigger than 1e34.
+        balanceX = bound(balanceX, 1e10, 1e34 - 1e18);
+        balanceY = bound(balanceY, 1e10, 1e34 - balanceX);
+        uint256[] memory balances = [balanceX, balanceY].toMemoryArray();
+        uint256 currentPrice = hookMock.computePriceFromBalances(balances, eclpParams, derivedECLPParams);
+        // This will test below peak slope.
+        vm.assume(currentPrice <= peakPrice);
+
+        IECLPSurgeHook.ImbalanceSlopeData memory imbalanceSlopeData = IECLPSurgeHook.ImbalanceSlopeData({
+            imbalanceSlopeBelowPeak: imbalanceSlopeBelowPeak,
+            imbalanceSlopeAbovePeak: uint128(FixedPoint.ONE)
+        });
+
+        uint256 imbalanceNoSlope = hookMock.computeImbalanceFromBalancesNoSlope(pool, balances);
+        uint256 expectedImbalanceWithSlope = imbalanceNoSlope.mulDown(imbalanceSlopeBelowPeak);
+
+        vm.prank(admin);
+        hookMock.setImbalanceSlopeBelowPeak(pool, imbalanceSlopeBelowPeak);
+        uint256 actualImbalanceWithSlope = hookMock.computeImbalanceFromBalances(pool, balances, imbalanceSlopeData);
+
+        if (expectedImbalanceWithSlope > FixedPoint.ONE) {
+            expectedImbalanceWithSlope = FixedPoint.ONE;
+        }
+
+        // If the imbalance is small (below 0.01), rounding errors can occur, so the test needs some tolerance.
+        assertApproxEqAbs(
+            actualImbalanceWithSlope,
+            expectedImbalanceWithSlope,
+            100,
+            "Imbalance with slope do not match"
+        );
+    }
+
     function _mockPoolRoleAccounts(address swapFeeManager) private {
         PoolRoleAccounts memory poolRoleAccounts = PoolRoleAccounts({
             pauseManager: address(0x01),
