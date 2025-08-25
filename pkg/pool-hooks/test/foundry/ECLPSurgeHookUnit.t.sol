@@ -5,10 +5,10 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -630,6 +630,96 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         } else {
             assertFalse(isSurging, "Should not surge when below threshold");
         }
+    }
+
+    function testSmallSine() public {
+        eclpParams = IGyroECLPPool.EclpParams({
+            alpha: 0.98e18,
+            beta: 1.052e18,
+            s: 499999999999999999,
+            c: 866025403784439000,
+            lambda: 5e18
+        });
+        derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
+            tauAlpha: IGyroECLPPool.Vector2({
+                x: 78960952556362824682142154432201097216,
+                y: 61360964557215219997269893819219836928
+            }),
+            tauBeta: IGyroECLPPool.Vector2({
+                x: 82825623944068867190685460179451904000,
+                y: 56034953540408080861813899060945354752
+            }),
+            u: 1673451799516144606319014859914608640,
+            v: 60029461803013477714704240956458139648,
+            w: -2306230420695388926881356069224841216,
+            z: 81859456097142422676680393917672194048,
+            dSq: 100000000000000054417207617891776593920
+        });
+
+        address[] memory tokens = [address(weth), address(usdc)].toMemoryArray();
+        PoolRoleAccounts memory roleAccounts;
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
+
+        vm.expectRevert(IECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
+        GyroECLPPoolFactory(poolFactory).create(
+            "Gyro E-CLP Pool",
+            "ECLP-POOL",
+            tokenConfig,
+            eclpParams,
+            derivedECLPParams,
+            roleAccounts,
+            DEFAULT_SWAP_FEE_PERCENTAGE,
+            poolHooksContract,
+            false,
+            false,
+            ZERO_BYTES32
+        );
+    }
+
+    function testSmallCosine() public {
+        eclpParams = IGyroECLPPool.EclpParams({
+            alpha: 0.98e18,
+            beta: 1.052e18,
+            s: 866025403784439000,
+            c: 499999999999999999,
+            lambda: 5e18
+        });
+        derivedECLPParams = IGyroECLPPool.DerivedEclpParams({
+            tauAlpha: IGyroECLPPool.Vector2({
+                x: -81234142751744859759636680989990715392,
+                y: 58318213719121622877520104685557514240
+            }),
+            tauBeta: IGyroECLPPool.Vector2({
+                x: -76907814511956353325422470947730882560,
+                y: 63915475958444729531936719596876201984
+            }),
+            u: 1873355080383432733063603607671144448,
+            v: 62516160398614000091997394565498667008,
+            w: 2423685645448591586564810551939039232,
+            z: -80152560691797799264213888654458748928,
+            dSq: 100000000000000054417207617891776593920
+        });
+
+        address[] memory tokens = [address(weth), address(usdc)].toMemoryArray();
+        PoolRoleAccounts memory roleAccounts;
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
+
+        vm.expectRevert(IECLPSurgeHook.InvalidRotationAngleForSurgeHook.selector);
+        GyroECLPPoolFactory(poolFactory).create(
+            "Gyro E-CLP Pool",
+            "ECLP-POOL",
+            tokenConfig,
+            eclpParams,
+            derivedECLPParams,
+            roleAccounts,
+            DEFAULT_SWAP_FEE_PERCENTAGE,
+            poolHooksContract,
+            false,
+            false,
+            ZERO_BYTES32
+        );
     }
 
     function _mockPoolRoleAccounts(address swapFeeManager) private {
