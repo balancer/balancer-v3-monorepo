@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IStableSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IStableSurgeHook.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -23,9 +22,17 @@ import { SurgeHookCommon } from "./SurgeHookCommon.sol";
  * @notice Hook that charges a fee on trades that push a pool into an imbalanced state beyond a given threshold.
  * @dev Uses the dynamic fee mechanism to apply a "surge" fee on trades that unbalance the pool beyond the threshold.
  */
-contract StableSurgeHook is IStableSurgeHook, SurgeHookCommon {
+contract StableSurgeHook is SurgeHookCommon {
     using FixedPoint for uint256;
     using SafeCast for *;
+
+    /**
+     * @notice A new `StableSurgeHook` contract has been registered successfully.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param pool The pool on which the hook was registered
+     * @param factory The factory that registered the pool
+     */
+    event StableSurgeHookRegistered(address indexed pool, address indexed factory);
 
     constructor(
         IVault vault,

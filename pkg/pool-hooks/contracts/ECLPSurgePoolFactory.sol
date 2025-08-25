@@ -3,32 +3,34 @@
 pragma solidity ^0.8.24;
 
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
-import { IECLPSurgeHook } from "@balancer-labs/v3-interfaces/contracts/pool-hooks/IECLPSurgeHook.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool.sol";
 
-import { ECLPSurgeHook } from "./ECLPSurgeHook.sol";
-
 /// @notice ECLP Pool factory that deploys a standard ECLPPool with a ECLPSurgeHook.
 contract ECLPSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
-    IECLPSurgeHook private immutable _eclpSurgeHook;
+    address private immutable _eclpSurgeHook;
 
     string private _poolVersion;
 
     uint256 private constant _NUM_TOKENS = 2;
 
     constructor(
-        ECLPSurgeHook eclpSurgeHook,
+        address eclpSurgeHook,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion
     )
-        BasePoolFactory(eclpSurgeHook.getVault(), pauseWindowDuration, type(GyroECLPPool).creationCode)
+        BasePoolFactory(
+            SingletonAuthentication(eclpSurgeHook).getVault(),
+            pauseWindowDuration,
+            type(GyroECLPPool).creationCode
+        )
         Version(factoryVersion)
     {
         _eclpSurgeHook = eclpSurgeHook;
@@ -43,9 +45,9 @@ contract ECLPSurgePoolFactory is IPoolVersion, BasePoolFactory, Version {
     /**
      * @notice Getter for the internally deployed ECLP surge hook contract.
      * @dev This hook will be registered to every pool created by this factory.
-     * @return address eclpSurgeHook Address of the deployed ECLPSurgeHook
+     * @return eclpSurgeHook Address of the deployed ECLPSurgeHook
      */
-    function getECLPSurgeHook() external view returns (IECLPSurgeHook) {
+    function getECLPSurgeHook() external view returns (address) {
         return _eclpSurgeHook;
     }
 

@@ -15,6 +15,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
+import { LPOracleBase } from "../../contracts/LPOracleBase.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
@@ -112,6 +113,22 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     function testDisableIsAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         _factory.disable();
+    }
+
+    function testGetRoundData() public {
+        IBasePool pool = _createAndInitPool();
+        AggregatorV3Interface[] memory feeds = _createFeeds(pool);
+
+        ILPOracleBase oracle = _factory.create(pool, feeds);
+
+        (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = LPOracleBase(
+            address(oracle)
+        ).getRoundData(0);
+        assertEq(roundId, 0, "roundId not zero");
+        assertEq(answer, 0, "answer not zero");
+        assertEq(startedAt, 0, "startedAt not zero");
+        assertEq(updatedAt, 0, "updatedAt not zero");
+        assertEq(answeredInRound, 0, "answeredInRound not zero");
     }
 
     function _createFeeds(IBasePool pool) internal returns (AggregatorV3Interface[] memory feeds) {
