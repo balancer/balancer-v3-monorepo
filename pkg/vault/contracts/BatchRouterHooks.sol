@@ -23,11 +23,6 @@ import {
 
 import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
-struct SwapStepLocals {
-    bool isFirstStep;
-    bool isLastStep;
-}
-
 /**
  * @notice Entrypoint for batch swaps, and batch swap queries.
  * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
@@ -229,7 +224,6 @@ contract BatchRouterHooks is BatchRouterCommon {
         // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
         // required amount when performing the operation. These tokens might be the output of a previous
         // step, in which case the user will have a BPT credit.
-
         if (isFirstStep) {
             if (stepExactAmountIn > 0 && sender != address(this)) {
                 // If this is the first step, the sender must have the tokens. Therefore, we can transfer
@@ -411,23 +405,23 @@ contract BatchRouterHooks is BatchRouterCommon {
             // last. The calculated input of step (j) is the exact amount out for step (j - 1).
             for (int256 j = int256(path.steps.length - 1); j >= 0; --j) {
                 SwapPathStep memory step = path.steps[uint256(j)];
-                SwapStepLocals memory stepLocals;
-                stepLocals.isLastStep = (j == 0);
-                stepLocals.isFirstStep = (uint256(j) == path.steps.length - 1);
 
-                // These two variables are set at the beginning of the iteration and are used as inputs for
-                // the operation described by the step.
-                uint256 stepMaxAmountIn;
-                IERC20 stepTokenIn;
+                bool isLastStep = (j == 0);
+                bool isFirstStep = (uint256(j) == path.steps.length - 1);
 
-                if (stepLocals.isFirstStep) {
+                if (isFirstStep) {
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
                     _updateSwapTokensOut(address(step.tokenOut), stepExactAmountOut);
                 }
 
-                if (stepLocals.isLastStep) {
+                // These two variables are set at the beginning of the iteration and are used as inputs for
+                // the operation described by the step.
+                uint256 stepMaxAmountIn;
+                IERC20 stepTokenIn;
+
+                if (isLastStep) {
                     // In backwards order, the last step is the first one in the given path.
                     // The given token in and max amount in apply for this step.
                     stepMaxAmountIn = path.maxAmountIn;
@@ -440,40 +434,21 @@ contract BatchRouterHooks is BatchRouterCommon {
                     stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                 }
 
-                address tokenIn = address(stepTokenIn);
                 uint256 amountIn;
-                bool isSettled;
 
                 if (step.isBuffer) {
-                    isSettled = true;
-                    tokenIn = address(path.tokenIn);
-
-                    if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
-                        bool wethIsEth = params.wethIsEth;
-                        // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
-                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, wethIsEth);
-                    }
-
-                    (, amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
-                        BufferWrapOrUnwrapParams({
-                            kind: SwapKind.EXACT_OUT,
-                            direction: step.pool == address(stepTokenIn)
-                                ? WrappingDirection.UNWRAP
-                                : WrappingDirection.WRAP,
-                            wrappedToken: IERC4626(step.pool),
-                            amountGivenRaw: stepExactAmountOut,
-                            limitRaw: stepMaxAmountIn
-                        })
+                    amountIn = _erc4626BufferWrapOrUnwrapExactOut(
+                        step.pool,
+                        path.tokenIn,
+                        stepTokenIn,
+                        stepExactAmountOut,
+                        path.maxAmountIn,
+                        stepMaxAmountIn,
+                        params.sender,
+                        params.wethIsEth,
+                        isLastStep
                     );
-
-                    if (stepLocals.isLastStep) {
-                        // Since the token was taken in advance, returns to the user what is left from the
-                        // wrap/unwrap operation.
-                        _updateSwapTokensOut(address(stepTokenIn), path.maxAmountIn - amountIn);
-                    }
                 } else if (address(stepTokenIn) == step.pool) {
-                    isSettled = true;
-
                     amountIn = _removeLiquidityExactOut(
                         params.sender,
                         params.userData,
@@ -482,7 +457,7 @@ contract BatchRouterHooks is BatchRouterCommon {
                         stepExactAmountOut,
                         stepMaxAmountIn,
                         step.tokenOut,
-                        stepLocals.isLastStep
+                        isLastStep
                     );
                 } else if (address(step.tokenOut) == step.pool) {
                     amountIn = _addLiquidityExactOut(
@@ -493,37 +468,61 @@ contract BatchRouterHooks is BatchRouterCommon {
                         step.tokenOut,
                         stepExactAmountOut,
                         stepMaxAmountIn,
-                        stepLocals.isFirstStep,
-                        stepLocals.isLastStep
+                        isFirstStep,
+                        isLastStep
                     );
                 } else {
-                    bytes memory userData = params.userData;
-                    // No BPT involved in the operation: regular swap exact out.
-                    (, amountIn, ) = _vault.swap(
-                        VaultSwapParams({
-                            kind: SwapKind.EXACT_OUT,
-                            pool: step.pool,
-                            tokenIn: stepTokenIn,
-                            tokenOut: step.tokenOut,
-                            amountGivenRaw: stepExactAmountOut,
-                            limitRaw: stepMaxAmountIn,
-                            userData: userData
-                        })
+                    amountIn = _swapExactOut(
+                        params.userData,
+                        step.pool,
+                        stepTokenIn,
+                        step.tokenOut,
+                        stepExactAmountOut,
+                        stepMaxAmountIn,
+                        isLastStep
                     );
                 }
 
-                if (stepLocals.isLastStep) {
+                if (isLastStep) {
                     pathAmountsIn[i] = amountIn;
-
-                    if (isSettled) {
-                        _settledTokenAmounts().tAdd(tokenIn, amountIn);
-                    } else {
-                        _currentSwapTokenInAmounts().tAdd(tokenIn, amountIn);
-                    }
                 } else {
                     stepExactAmountOut = amountIn;
                 }
             }
+        }
+    }
+
+    function _erc4626BufferWrapOrUnwrapExactOut(
+        address pool,
+        IERC20 pathTokenIn,
+        IERC20 stepTokenIn,
+        uint256 exactAmountOut,
+        uint256 pathMaxAmountIn,
+        uint256 maxAmountIn,
+        address sender,
+        bool wethIsEth,
+        bool isLastStep
+    ) internal returns (uint256 amountIn) {
+        if (isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
+            // The buffer will need this token to wrap/unwrap, so take it from the user in advance.
+            _takeTokenIn(sender, stepTokenIn, pathMaxAmountIn, wethIsEth);
+        }
+
+        (, amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+            BufferWrapOrUnwrapParams({
+                kind: SwapKind.EXACT_OUT,
+                direction: pool == address(stepTokenIn) ? WrappingDirection.UNWRAP : WrappingDirection.WRAP,
+                wrappedToken: IERC4626(pool),
+                amountGivenRaw: exactAmountOut,
+                limitRaw: maxAmountIn
+            })
+        );
+
+        if (isLastStep) {
+            _settledTokenAmounts().tAdd(address(pathTokenIn), amountIn);
+            // Since the token was taken in advance, returns to the user what is left from the
+            // wrap/unwrap operation.
+            _updateSwapTokensOut(address(stepTokenIn), maxAmountIn - amountIn);
         }
     }
 
@@ -584,6 +583,10 @@ contract BatchRouterHooks is BatchRouterCommon {
             stepTokenIn.safeTransfer(address(_vault), refundAmount);
             _vault.settle(stepTokenIn, refundAmount);
         }
+
+        if (isLastStep) {
+            _settledTokenAmounts().tAdd(address(stepTokenIn), amountIn);
+        }
     }
 
     function _addLiquidityExactOut(
@@ -628,6 +631,37 @@ contract BatchRouterHooks is BatchRouterCommon {
         } else {
             // If it's not the first step, BPT is minted to the Vault so we just get the credit.
             _vault.settle(IERC20(pool), amountOut);
+        }
+
+        if (isLastStep) {
+            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+        }
+    }
+
+    function _swapExactOut(
+        bytes memory userData,
+        address pool,
+        IERC20 stepTokenIn,
+        IERC20 stepTokenOut,
+        uint256 stepExactAmountOut,
+        uint256 stepMaxAmountIn,
+        bool isLastStep
+    ) internal returns (uint256 amountIn) {
+        // No BPT involved in the operation: regular swap exact out.
+        (, amountIn, ) = _vault.swap(
+            VaultSwapParams({
+                kind: SwapKind.EXACT_OUT,
+                pool: pool,
+                tokenIn: stepTokenIn,
+                tokenOut: stepTokenOut,
+                amountGivenRaw: stepExactAmountOut,
+                limitRaw: stepMaxAmountIn,
+                userData: userData
+            })
+        );
+
+        if (isLastStep) {
+            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
         }
     }
 
