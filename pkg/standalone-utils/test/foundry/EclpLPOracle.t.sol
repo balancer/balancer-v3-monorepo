@@ -227,7 +227,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         assertEq(minTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
-    function testCalculateTVL__Fuzz(
+    function testComputeTVL__Fuzz(
         uint256[NUM_TOKENS] memory poolInitAmountsRaw,
         uint256[NUM_TOKENS] memory pricesRaw
     ) public {
@@ -253,13 +253,13 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         IGyroECLPPool pool = createAndInitPool(_tokens, poolInitAmounts);
         (EclpLPOracleMock oracle, ) = deployOracle(pool);
 
-        uint256 tvl = oracle.calculateTVL(prices);
+        uint256 tvl = oracle.computeTVL(prices);
         uint256 expectedTVL = _computeExpectedTVLBinarySearch(GyroECLPPool(address(pool)), pricesRaw.toMemoryArray());
 
         assertApproxEqRel(tvl, expectedTVL, 1e8, "TVL does not match");
     }
 
-    function testCalculateTVLAfterSwapRateProvider() public {
+    function testComputeTVLAfterSwapRateProvider() public {
         // wstETH/USDC pool, with a rate provider wstETH/ETH and oracle ETH/USD.
         // Price interval: [3100, 4400]
         // Peak liquidity price: ~3700
@@ -300,7 +300,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         (EclpLPOracleMock oracle, ) = deployOracle(pool);
         int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
 
-        uint256 tvlBefore = oracle.calculateTVL(prices);
+        uint256 tvlBefore = oracle.computeTVL(prices);
 
         // Big swap, to make sure the pool is very unbalanced when computing the new TVL.
         uint256 swapAmount = _INITIAL_WSTETH_BALANCE / 3;
@@ -308,7 +308,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         vm.prank(lp);
         router.swapSingleTokenExactIn(address(pool), wsteth, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        uint256 tvlAfter = oracle.calculateTVL(prices);
+        uint256 tvlAfter = oracle.computeTVL(prices);
 
         // Error tolerance of 0.00000001%.
         assertApproxEqRel(tvlAfter, tvlBefore, 1e8, "TVL should not change after swap");
@@ -316,7 +316,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         assertApproxEqRel(tvlAfter, expectedTvlUSD, 1e14, "TVL should be close to expected");
     }
 
-    function testCalculateTVLComparingWithMarketPriceBalances() public {
+    function testComputeTVLComparingWithMarketPriceBalances() public {
         // This test compares the oracle price with the market price balance prices. The market price balances are
         // found by searching what are the balances of the pool, in the current invariant, that would be priced the
         // same as the oracle. Usually we would compute the gradient of the invariant function and compare with the
@@ -366,7 +366,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         vm.prank(lp);
         router.swapSingleTokenExactIn(address(pool), wsteth, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        uint256 tvlOracle = oracle.calculateTVL(prices);
+        uint256 tvlOracle = oracle.computeTVL(prices);
         uint256 tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
             GyroECLPPool(address(pool)),
             [_ETH_USD_RATE, uint256(1e18)].toMemoryArray()
@@ -376,7 +376,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         assertApproxEqRel(tvlOracle, tvlMarketPriceBalances, 1e10, "TVL should not change after swap");
     }
 
-    function testCalculateTVLAfterSwap() public {
+    function testComputeTVLAfterSwap() public {
         IGyroECLPPool pool = createAndInitPool(
             [address(dai), address(usdc)].toMemoryArray(),
             [poolInitAmount, poolInitAmount].toMemoryArray()
@@ -386,20 +386,20 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         (EclpLPOracleMock oracle, ) = deployOracle(pool);
         int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
 
-        uint256 tvlBefore = oracle.calculateTVL(prices);
+        uint256 tvlBefore = oracle.computeTVL(prices);
 
         uint256 swapAmount = poolInitAmount / 10;
 
         vm.prank(lp);
         router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        uint256 tvlAfter = oracle.calculateTVL(prices);
+        uint256 tvlAfter = oracle.computeTVL(prices);
 
         assertApproxEqRel(tvlAfter, tvlBefore, 1e3, "TVL should not change after swap");
         assertApproxEqRel(tvlAfter, poolValue, 1e15, "TVL should be close to the sum of assets in the pool");
     }
 
-    function testCalculateTVLAfterSwapWithRates() public {
+    function testComputeTVLAfterSwapWithRates() public {
         address[] memory tokens = [address(usdc), address(dai)].toMemoryArray();
         IRateProvider[] memory rateProviders = new IRateProvider[](tokens.length);
 
@@ -414,14 +414,14 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         (EclpLPOracleMock oracle, ) = deployOracle(pool);
         int256[] memory prices = [int256(1e18), int256(1e18)].toMemoryArray();
 
-        uint256 tvlBefore = oracle.calculateTVL(prices);
+        uint256 tvlBefore = oracle.computeTVL(prices);
 
         uint256 swapAmount = poolInitAmount / 10;
 
         vm.prank(lp);
         router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        uint256 tvlAfter = oracle.calculateTVL(prices);
+        uint256 tvlAfter = oracle.computeTVL(prices);
 
         assertApproxEqRel(tvlAfter, tvlBefore, 1e3, "TVL should not change after swap");
     }

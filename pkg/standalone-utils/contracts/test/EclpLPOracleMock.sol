@@ -22,4 +22,8 @@ contract EclpLPOracleMock is EclpLPOracle {
     function computeFeedTokenDecimalScalingFactor(AggregatorV3Interface feed) public view returns (uint256) {
         return _computeFeedTokenDecimalScalingFactor(feed);
     }
+
+    function computeTVL(int256[] memory prices) public view returns (uint256) {
+        return _computeTVL(prices);
+    }
 }

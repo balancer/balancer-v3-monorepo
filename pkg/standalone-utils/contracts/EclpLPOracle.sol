@@ -38,8 +38,12 @@ contract EclpLPOracle is LPOracleBase {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /// @inheritdoc ILPOracleBase
-    function calculateTVL(int256[] memory prices) public view override returns (uint256) {
+    /**
+     * @notice Computes the total value locked for constant ellipse (ECLP) pools of two assets.
+     * @param prices Prices of the two assets according to a market oracle
+     * @return tvl Total value of the pool, in the same unit as the price oracles
+     */
+    function _computeTVL(int256[] memory prices) internal view override returns (uint256) {
         (IGyroECLPPool.EclpParams memory params, IGyroECLPPool.DerivedEclpParams memory derivedParams) = GyroECLPPool(
             address(pool)
         ).getECLPParams();
