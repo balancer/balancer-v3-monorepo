@@ -261,28 +261,19 @@ abstract contract ECLPSurgeHookBaseTest is BaseVaultTest, ECLPSurgeHookDeployer 
         uint256 oldTotalImbalance;
         uint256 newTotalImbalance;
 
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                initialBalancesScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
-        }
+        (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
+            initialBalancesScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        oldTotalImbalance = eclpSurgeHookMock.computeImbalance(initialBalancesScaled18, eclpParams, a, b);
 
-        {
-            (int256 a, int256 b) = eclpSurgeHookMock.computeOffsetFromBalances(
-                expectedBalancesAfterRemoveScaled18,
-                eclpParams,
-                derivedECLPParams
-            );
-            newTotalImbalance = eclpSurgeHookMock.computeImbalance(
-                expectedBalancesAfterRemoveScaled18,
-                eclpParams,
-                a,
-                b
-            );
-        }
+        (a, b) = eclpSurgeHookMock.computeOffsetFromBalances(
+            expectedBalancesAfterRemoveScaled18,
+            eclpParams,
+            derivedECLPParams
+        );
+        newTotalImbalance = eclpSurgeHookMock.computeImbalance(expectedBalancesAfterRemoveScaled18, eclpParams, a, b);
 
         // Pool needs to be surging after remove, so the unbalanced liquidity operation reverts.
         assertTrue(

@@ -80,6 +80,14 @@ contract ECLPSurgeHook is IECLPSurgeHook, BaseHooks, VaultGuard, SingletonAuthen
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) public override onlyVault returns (bool) {
+        (IGyroECLPPool.EclpParams memory eclpParams, ) = IGyroECLPPool(pool).getECLPParams();
+
+        // The surge hook only works for pools with a rotation angle between 30 and 60 degrees. Outside of this range,
+        // the computation of the peak price cannot be approximated by sine/cosine.
+        if (eclpParams.s < 50e16 || eclpParams.c < 50e16) {
+            revert InvalidRotationAngleForSurgeHook();
+        }
+
         // Initially set the max pool surge percentage to the default (can be changed by the pool swapFeeManager
         // in the future).
         _setMaxSurgeFeePercentage(pool, _defaultMaxSurgeFeePercentage);
