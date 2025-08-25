@@ -134,8 +134,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                     );
                 } else if (address(stepTokenIn) == step.pool) {
                     amountOut = _removeLiquidityExactIn(
-                        params.sender,
                         params.userData,
+                        params.sender,
                         step.pool,
                         stepTokenIn,
                         step.tokenOut,
@@ -146,8 +146,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                     );
                 } else if (address(step.tokenOut) == step.pool) {
                     amountOut = _addLiquidityExactIn(
-                        params.sender,
                         params.userData,
+                        params.sender,
                         step.pool,
                         stepTokenIn,
                         step.tokenOut,
@@ -207,8 +207,8 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _removeLiquidityExactIn(
-        address sender,
         bytes memory userData,
+        address sender,
         address pool,
         IERC20 stepTokenIn,
         IERC20 stepTokenOut,
@@ -275,8 +275,8 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _addLiquidityExactIn(
-        address sender,
         bytes memory userData,
+        address sender,
         address pool,
         IERC20 stepTokenIn,
         IERC20 stepTokenOut,
@@ -448,8 +448,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                     );
                 } else if (address(stepTokenIn) == step.pool) {
                     amountIn = _removeLiquidityExactOut(
-                        params.sender,
                         params.userData,
+                        params.sender,
                         step.pool,
                         stepTokenIn,
                         stepExactAmountOut,
@@ -459,8 +459,8 @@ contract BatchRouterHooks is BatchRouterCommon {
                     );
                 } else if (address(step.tokenOut) == step.pool) {
                     amountIn = _addLiquidityExactOut(
-                        params.sender,
                         params.userData,
+                        params.sender,
                         step.pool,
                         stepTokenIn,
                         step.tokenOut,
@@ -525,8 +525,8 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _removeLiquidityExactOut(
-        address sender,
         bytes memory userData,
+        address sender,
         address pool,
         IERC20 stepTokenIn,
         uint256 stepExactAmountOut,
@@ -588,8 +588,8 @@ contract BatchRouterHooks is BatchRouterCommon {
     }
 
     function _addLiquidityExactOut(
-        address sender,
         bytes memory userData,
+        address sender,
         address pool,
         IERC20 stepTokenIn,
         IERC20 tokenOut,
