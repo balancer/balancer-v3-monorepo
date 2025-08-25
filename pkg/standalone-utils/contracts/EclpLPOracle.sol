@@ -18,18 +18,15 @@ import { GyroECLPPool } from "@balancer-labs/v3-pool-gyro/contracts/GyroECLPPool
 
 import { LPOracleBase } from "./LPOracleBase.sol";
 
-/**
- * @notice Oracle for E-CLP pools.
- */
+/// @notice Oracle for E-CLP pools.
 contract EclpLPOracle is LPOracleBase {
     using FixedPoint for uint256;
     using SignedFixedPoint for int256;
     using SafeCast for *;
 
-    uint256 private constant _ONEHALF = 0.5e18;
     int256 private constant _MIN_PRICE_ECLP = 1e11; // 1e-7 scaled
 
-    // One of the token prices is too small.
+    /// @notice One of the token prices is too small.
     error TokenPriceTooSmall();
 
     constructor(
