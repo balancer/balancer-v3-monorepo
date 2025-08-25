@@ -337,7 +337,6 @@ library GyroECLPMath {
         int256 atAChi = calcAtAChi(x, y, params, derived);
         (int256 sqrt, int256 err) = calcInvariantSqrt(x, y, params, derived);
         // Calculate the error in the square root term, separates cases based on sqrt >= 1/2
-        // somedayTODO: can this be improved for cases of large balances (when xp error magnifies to np)
         // Note: the minimum non-zero value of sqrt is 1e-9 since the minimum argument is 1e-18
         if (sqrt > 0) {
             // err + 1 to account for O(eps_np) term ignored before
@@ -345,7 +344,6 @@ library GyroECLPMath {
         } else {
             // In the false case here, the extra precision error does not magnify, and so the error inside the sqrt is
             // O(1e-18)
-            // somedayTODO: The true case will almost surely never happen (can it be removed)
             err = err > 0 ? GyroPoolMath.sqrt(err.toUint256(), 5).toInt256() : int256(1e9);
         }
         // Calculate the error in the numerator, scale the error by 20 to be sure all possible terms accounted for
@@ -431,9 +429,6 @@ library GyroECLPMath {
 
         // (A chi)_y^2 = lambda^2 u^2 + lambda 2 u v + v^2
         //      account for 3 factors of dSq (6 s,c factors)
-        // SOMEDAY: In these calcs, a calculated value is multiplied by lambda and lambda^2, resp, which implies some
-        // error amplification. It's fine because we're doing it in extra precision here, but would still be nice if it
-        // could be avoided, perhaps by splitting up the numbers into a high and low part.
         val = p.lambda.mulUpMagU((2 * d.u).mulXpU(d.v).divXpU(dSq3));
         // For lambda^2 u^2 factor in rounding error in u since lambda could be big.
         // Note: lambda^2 is multiplied at the end to be sure the calculation doesn't overflow, but this can lose some
@@ -618,8 +613,6 @@ library GyroECLPMath {
 
         // Convert prices back to ellipse
         // NB: These operations check for overflow because the price pc[0] might be large when vec.y is small.
-        // SOMEDAY I think this probably can't actually happen due to our bounds on the different values. In this case
-        // we could do this unchecked as well.
         int256 pgx = scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(_ONE, 0)));
         px = pgx.divDownMag(scalarProd(pc, mulA(params, IGyroECLPPool.Vector2(0, _ONE)))).toUint256();
     }
