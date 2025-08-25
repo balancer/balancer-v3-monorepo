@@ -12,6 +12,7 @@ import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultType
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { LPOracleBase } from "./LPOracleBase.sol";
@@ -65,11 +66,8 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         }
     }
 
-    /// @inheritdoc ILPOracleBase
-    function calculateTVL(int256[] memory prices) public view override returns (uint256 tvl) {
-        uint256[] memory weights = _getWeights();
-        uint256[] memory lastBalancesLiveScaled18 = _vault.getCurrentLiveBalances(address(pool));
-
+    /// @inheritdoc LPOracleBase
+    function _computeTVL(int256[] memory prices) internal view override returns (uint256 tvl) {
         /**********************************************************************************************
         // We know that the normalized value of each token in the pool is equal:
         // C = (P1 * B1 / W1) = (P2 * B2 / W2) = ... = (Pn * Bn / Wn)
@@ -112,12 +110,19 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         // k = invariant                                                                             //
         **********************************************************************************************/
 
-        uint256 k = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP);
+        uint256[] memory lastBalancesLiveScaled18 = _vault.getCurrentLiveBalances(address(pool));
+        uint256[] memory weights = _getWeights();
 
         tvl = FixedPoint.ONE;
         for (uint256 i = 0; i < _totalTokens; i++) {
+            if (prices[i] <= 0) {
+                revert InvalidOraclePrice();
+            }
+
             tvl = tvl.mulDown(prices[i].toUint256().divDown(weights[i]).powDown(weights[i]));
         }
+
+        uint256 k = pool.computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_UP);
 
         tvl = tvl.mulDown(k);
     }

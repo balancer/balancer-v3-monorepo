@@ -41,19 +41,36 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
     IERC20[] sortedTokens;
 
+    IERC20[] internal tokens18;
+    IERC20[] internal sortedTokens18;
+
     StablePoolFactory stablePoolFactory;
     uint256 poolCreationNonce;
 
     function setUp() public virtual override {
         for (uint256 i = 0; i < MAX_TOKENS; i++) {
             tokens.push(createERC20(string(abi.encodePacked("TK", i)), 18 - uint8(2 * i)));
+            tokens18.push(createERC20(string(abi.encodePacked("TK18-", i)), 18));
         }
 
         sortedTokens = InputHelpers.sortTokens(tokens);
+        sortedTokens18 = InputHelpers.sortTokens(tokens18);
 
         super.setUp();
 
         stablePoolFactory = deployStablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+
+        for (uint256 i = 0; i < users.length; ++i) {
+            address user = users[i];
+
+            vm.startPrank(user);
+            for (uint256 j = 0; j < tokens18.length; ++j) {
+                deal(address(tokens18[j]), user, defaultAccountBalance());
+                tokens18[j].approve(address(permit2), type(uint256).max);
+                permit2.approve(address(tokens18[j]), address(router), type(uint160).max, type(uint48).max);
+            }
+            vm.stopPrank();
+        }
     }
 
     function deployOracle(
@@ -76,11 +93,19 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
     }
 
     function createAndInitPool(uint256 totalTokens, uint256 amplificationParameter) internal returns (IStablePool) {
+        return createAndInitPool(totalTokens, amplificationParameter, false);
+    }
+
+    function createAndInitPool(
+        uint256 totalTokens,
+        uint256 amplificationParameter,
+        bool with18DecimalTokens
+    ) internal returns (IStablePool) {
         address[] memory _tokens = new address[](totalTokens);
         uint256[] memory poolInitAmounts = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            _tokens[i] = address(sortedTokens[i]);
+            _tokens[i] = with18DecimalTokens ? address(sortedTokens18[i]) : address(sortedTokens[i]);
             poolInitAmounts[i] = poolInitAmount;
         }
 
@@ -187,6 +212,38 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         oracle.computeFeedTokenDecimalScalingFactor(feedWith20Decimals);
     }
 
+    function testLengthMismatchTVL() public {
+        IStablePool pool = createAndInitPool(2, 100);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory prices = new int256[](3);
+
+        vm.expectRevert(InputHelpers.InputLengthMismatch.selector);
+        oracle.computeTVLGivenPrices(prices);
+    }
+
+    function testZeroPrice() public {
+        IStablePool pool = createAndInitPool(2, 100);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory prices = new int256[](2);
+
+        vm.expectRevert(ILPOracleBase.InvalidOraclePrice.selector);
+        oracle.computeTVLGivenPrices(prices);
+    }
+
+    function testNegativePrice() public {
+        IStablePool pool = createAndInitPool(2, 100);
+        (StableLPOracleMock oracle, ) = deployOracle(pool);
+
+        int256[] memory prices = new int256[](2);
+        prices[0] = 1e18;
+        prices[1] = -1e6;
+
+        vm.expectRevert(ILPOracleBase.InvalidOraclePrice.selector);
+        oracle.computeTVLGivenPrices(prices);
+    }
+
     function testCalculateFeedTokenDecimalScalingFactor__Fuzz(uint256 totalTokens) public {
         totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
 
@@ -242,6 +299,52 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
         assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
     }
 
+    function testComputeTVL__Fuzz(
+        uint256 totalTokens,
+        uint256[MAX_TOKENS] memory answersRaw,
+        uint256[MAX_TOKENS] memory updateTimestampsRaw
+    ) public {
+        totalTokens = bound(totalTokens, MIN_TOKENS, MAX_TOKENS);
+
+        uint256 minUpdateTimestamp = MAX_UINT256;
+        uint256[] memory answers = new uint256[](totalTokens);
+        uint256[] memory updateTimestamps = new uint256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            answers[i] = bound(answersRaw[i], 5e17, 5e18); // 0.5 to 5 for stable assets
+            updateTimestamps[i] = block.timestamp - bound(updateTimestampsRaw[i], 1, 100);
+
+            if (updateTimestamps[i] < minUpdateTimestamp) {
+                minUpdateTimestamp = updateTimestamps[i];
+            }
+        }
+
+        // Create a pool with 18-decimal tokens, so that we don't overflow.
+        IStablePool pool = createAndInitPool(totalTokens, 100, true);
+        (StableLPOracleMock oracle, AggregatorV3Interface[] memory feeds) = deployOracle(pool);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            FeedMock(address(feeds[i])).setLastRoundData(answers[i], updateTimestamps[i]);
+        }
+
+        (int256[] memory returnedAnswers, uint256[] memory returnedTimestamps, uint256 returnedUpdateTimestamp) = oracle
+            .getFeedData();
+        for (uint256 i = 0; i < totalTokens; i++) {
+            assertEq(
+                uint256(returnedAnswers[i]),
+                answers[i] * oracle.getFeedTokenDecimalScalingFactors()[i],
+                "Answer does not match"
+            );
+
+            assertEq(returnedTimestamps[i], updateTimestamps[i], "Timestamp does not match");
+        }
+        assertEq(returnedUpdateTimestamp, minUpdateTimestamp, "Update timestamp does not match");
+
+        uint256 tvlWithPrices = oracle.computeTVLGivenPrices(returnedAnswers);
+        uint256 tvl = oracle.computeTVL();
+
+        assertEq(tvl, tvlWithPrices, "Alternate TVL computations don't match");
+    }
+
     function testCalculateTVL2Tokens() public {
         // For a pool with 2 tokens, 1000 balance, rate = 1, the expected TVL is 2000.
         uint256 expectedTVL = 2000e18;
@@ -268,7 +371,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             uint256 price = uint256(prices[i]) * oracle.getFeedTokenDecimalScalingFactors()[i];
             pricesInt[i] = int256(price);
         }
-        uint256 tvl = oracle.calculateTVL(pricesInt);
+        uint256 tvl = oracle.computeTVLGivenPrices(pricesInt);
 
         assertApproxEqRel(tvl, expectedTVL, 1e8, "TVL does not match");
 
@@ -363,7 +466,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
             uint256 price = prices[i] * oracle.getFeedTokenDecimalScalingFactors()[i];
             pricesInt[i] = int256(price);
         }
-        uint256 expectedTVL = oracle.calculateTVL(pricesInt);
+        uint256 expectedTVL = oracle.computeTVLGivenPrices(pricesInt);
 
         (
             uint80 roundId,
