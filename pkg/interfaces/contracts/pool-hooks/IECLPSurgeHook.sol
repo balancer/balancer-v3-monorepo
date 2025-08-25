@@ -10,6 +10,9 @@ interface IECLPSurgeHook {
         uint128 imbalanceSlopeAbovePeak;
     }
 
+    /// @notice Thrown when an invalid imbalance slope is provided.
+    error InvalidImbalanceSlope();
+
     /**
      * @notice A new `ECLPSurgeHook` contract has been registered successfully.
      * @dev If the registration fails the call will revert, so there will be no event.

@@ -185,6 +185,22 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         );
     }
 
+    function testSetImbalanceSlopeBelowPeakInvalidSlope() public {
+        // The slope cannot be greater than MAX_IMBALANCE_SLOPE.
+        uint128 newImbalanceSlopeBelowPeak = hookMock.MAX_IMBALANCE_SLOPE() + 1;
+
+        vm.prank(admin);
+        vm.expectRevert(IECLPSurgeHook.InvalidImbalanceSlope.selector);
+        hookMock.setImbalanceSlopeBelowPeak(address(pool), newImbalanceSlopeBelowPeak);
+
+        // The slope cannot be smaller than MIN_IMBALANCE_SLOPE.
+        newImbalanceSlopeBelowPeak = hookMock.MIN_IMBALANCE_SLOPE() - 1;
+
+        vm.prank(admin);
+        vm.expectRevert(IECLPSurgeHook.InvalidImbalanceSlope.selector);
+        hookMock.setImbalanceSlopeBelowPeak(address(pool), newImbalanceSlopeBelowPeak);
+    }
+
     function testSetImbalanceSlopeAbovePeakIsAuthenticated() public {
         vm.prank(alice);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
@@ -221,6 +237,22 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
             newImbalanceSlopeAbovePeak,
             "Wrong imbalance slope above peak"
         );
+    }
+
+    function testSetImbalanceSlopeAbovePeakInvalidSlope() public {
+        // The slope cannot be greater than MAX_IMBALANCE_SLOPE.
+        uint128 newImbalanceSlopeAbovePeak = hookMock.MAX_IMBALANCE_SLOPE() + 1;
+
+        vm.prank(admin);
+        vm.expectRevert(IECLPSurgeHook.InvalidImbalanceSlope.selector);
+        hookMock.setImbalanceSlopeAbovePeak(address(pool), newImbalanceSlopeAbovePeak);
+
+        // The slope cannot be smaller than MIN_IMBALANCE_SLOPE.
+        newImbalanceSlopeAbovePeak = hookMock.MIN_IMBALANCE_SLOPE() - 1;
+
+        vm.prank(admin);
+        vm.expectRevert(IECLPSurgeHook.InvalidImbalanceSlope.selector);
+        hookMock.setImbalanceSlopeAbovePeak(address(pool), newImbalanceSlopeAbovePeak);
     }
 
     function testPriceComputation() public view {
@@ -754,7 +786,9 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 balanceY
     ) public {
         uint256 peakPrice = uint256(eclpParams.s).divDown(uint256(eclpParams.c));
-        imbalanceSlopeAbovePeak = uint128(bound(imbalanceSlopeAbovePeak, 1e16, 10000e16));
+        imbalanceSlopeAbovePeak = uint128(
+            bound(imbalanceSlopeAbovePeak, hookMock.MIN_IMBALANCE_SLOPE(), hookMock.MAX_IMBALANCE_SLOPE())
+        );
         // Sum of balances cannot be bigger than 1e34.
         balanceX = bound(balanceX, 1e10, 1e34 - 1e18);
         balanceY = bound(balanceY, 1e10, 1e34 - balanceX);
@@ -794,7 +828,9 @@ contract ECLPSurgeHookUnitTest is BaseVaultTest, ECLPSurgeHookDeployer {
         uint256 balanceY
     ) public {
         uint256 peakPrice = uint256(eclpParams.s).divDown(uint256(eclpParams.c));
-        imbalanceSlopeBelowPeak = uint128(bound(imbalanceSlopeBelowPeak, 1e16, 10000e16));
+        imbalanceSlopeBelowPeak = uint128(
+            bound(imbalanceSlopeBelowPeak, hookMock.MIN_IMBALANCE_SLOPE(), hookMock.MAX_IMBALANCE_SLOPE())
+        );
         // Sum of balances cannot be bigger than 1e34.
         balanceX = bound(balanceX, 1e10, 1e34 - 1e18);
         balanceY = bound(balanceY, 1e10, 1e34 - balanceX);

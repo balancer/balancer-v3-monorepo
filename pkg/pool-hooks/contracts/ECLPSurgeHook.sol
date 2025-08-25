@@ -32,6 +32,8 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
 
     // Cannot use FixedPoint.ONE because the constant is a uint128.
     uint128 internal constant _DEFAULT_IMBALANCE_SLOPE = 1e18;
+    uint128 public constant MAX_IMBALANCE_SLOPE = 10000e16;
+    uint128 public constant MIN_IMBALANCE_SLOPE = 1e16;
 
     // Store the current below and above peak slopes for each pool.
     mapping(address pool => ImbalanceSlopeData data) internal _imbalanceSlopePoolData;
@@ -322,11 +324,19 @@ contract ECLPSurgeHook is IECLPSurgeHook, SurgeHookCommon {
     }
 
     function _setImbalanceSlopeBelowPeak(address pool, uint128 newImbalanceSlopeBelowPeak) internal {
+        if (newImbalanceSlopeBelowPeak > MAX_IMBALANCE_SLOPE || newImbalanceSlopeBelowPeak < MIN_IMBALANCE_SLOPE) {
+            revert InvalidImbalanceSlope();
+        }
+
         _imbalanceSlopePoolData[pool].imbalanceSlopeBelowPeak = newImbalanceSlopeBelowPeak;
         emit ImbalanceSlopeBelowPeakChanged(pool, newImbalanceSlopeBelowPeak);
     }
 
     function _setImbalanceSlopeAbovePeak(address pool, uint128 newImbalanceSlopeAbovePeak) internal {
+        if (newImbalanceSlopeAbovePeak > MAX_IMBALANCE_SLOPE || newImbalanceSlopeAbovePeak < MIN_IMBALANCE_SLOPE) {
+            revert InvalidImbalanceSlope();
+        }
+
         _imbalanceSlopePoolData[pool].imbalanceSlopeAbovePeak = newImbalanceSlopeAbovePeak;
         emit ImbalanceSlopeAbovePeakChanged(pool, newImbalanceSlopeAbovePeak);
     }
