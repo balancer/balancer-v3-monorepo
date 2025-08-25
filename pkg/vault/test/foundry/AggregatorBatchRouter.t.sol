@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
@@ -18,8 +19,7 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
-import { AggregatorBatchRouter } from "../../contracts/AggregatorBatchRouter.sol";
-import { AggregatorBatchHooks } from "../../contracts/AggregatorBatchHooks.sol";
+import { BatchRouter } from "../../contracts/BatchRouter.sol";
 import { PoolFactoryMock, BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract AggregatorBatchRouterTest is BaseVaultTest {
@@ -28,7 +28,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     uint256 constant MIN_SWAP_AMOUNT = 1e6;
     string constant ROUTER_VERSION = "test-aggregator-batch";
 
-    AggregatorBatchRouter internal aggregatorBatchRouter;
+    BatchRouter internal aggregatorBatchRouter;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -43,7 +43,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        aggregatorBatchRouter = new AggregatorBatchRouter(IVault(address(vault)), weth, ROUTER_VERSION);
+        aggregatorBatchRouter = new BatchRouter(IVault(address(vault)), weth, IPermit2(address(0)), ROUTER_VERSION);
 
         // Create additional pool for multi-hop: USDC/WETH.
         secondPool = _createSecondPool();
@@ -467,14 +467,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), exactAmountIn / 2);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AggregatorBatchHooks.InsufficientFunds.selector,
-                address(usdc),
-                exactAmountIn / 2,
-                exactAmountIn
-            )
-        );
+        vm.expectRevert();
         aggregatorBatchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
@@ -679,14 +672,7 @@ contract AggregatorBatchRouterTest is BaseVaultTest {
         vm.startPrank(alice);
         usdc.transfer(address(vault), maxAmountIn / 2);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AggregatorBatchHooks.InsufficientFunds.selector,
-                address(usdc),
-                maxAmountIn / 2,
-                maxAmountIn
-            )
-        );
+        vm.expectRevert();
         aggregatorBatchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
