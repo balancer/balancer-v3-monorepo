@@ -177,7 +177,12 @@ abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
     }
 
     /// @inheritdoc ILPOracleBase
-    function computeTVLGivenPrices(int256[] memory prices) public view virtual returns (uint256);
+    function computeTVLGivenPrices(int256[] memory prices) public view virtual returns (uint256) {
+        // This can be called by external users, so we need length validation.
+        InputHelpers.ensureInputLengthMatch(prices.length, _totalTokens);
+
+        return _computeTVL(prices);
+    }
 
     /// @inheritdoc ILPOracleBase
     function getFeedData()

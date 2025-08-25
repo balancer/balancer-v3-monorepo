@@ -66,14 +66,6 @@ contract WeightedLPOracle is IWeightedLPOracle, LPOracleBase {
         }
     }
 
-    /// @inheritdoc ILPOracleBase
-    function computeTVLGivenPrices(int256[] memory prices) public view override returns (uint256) {
-        // This can be called by external users, so we need length validation.
-        InputHelpers.ensureInputLengthMatch(prices.length, _totalTokens);
-
-        return _computeTVL(prices);
-    }
-
     /// @inheritdoc LPOracleBase
     function _computeTVL(int256[] memory prices) internal view override returns (uint256 tvl) {
         /**********************************************************************************************
