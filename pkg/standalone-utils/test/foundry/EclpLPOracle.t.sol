@@ -12,11 +12,9 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
 import { IGyroECLPPool } from "@balancer-labs/v3-interfaces/contracts/pool-gyro/IGyroECLPPool.sol";
-import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { GyroEclpPoolDeployer } from "@balancer-labs/v3-pool-gyro/test/foundry/utils/GyroEclpPoolDeployer.sol";
-import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { SignedFixedPoint } from "@balancer-labs/v3-pool-gyro/contracts/lib/SignedFixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -30,7 +28,6 @@ import { EclpLPOracleMock } from "../../contracts/test/EclpLPOracleMock.sol";
 import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
-    using CastingHelpers for address[];
     using SignedFixedPoint for int256;
     using FixedPoint for uint256;
     using ArrayHelpers for *;
