@@ -97,7 +97,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         pathAmountsOut = new uint256[](params.paths.length);
 
         if (_isPrepaid && EVMCallModeHelpers.isStaticCall() == false) {
-            _prepayIfNeeded(params);
+            _prepayIfNeededExactIn(params);
         }
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -406,7 +406,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         pathAmountsIn = new uint256[](params.paths.length);
 
         if (_isPrepaid) {
-            _prepayIfNeeded(params);
+            _prepayIfNeededExactOut(params);
         }
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -737,7 +737,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         }
     }
 
-    function _prepayIfNeeded(SwapExactInHookParams calldata params) internal {
+    function _prepayIfNeededExactIn(SwapExactInHookParams calldata params) internal {
         // Register the token amounts expected to be paid by the sender upfront as settled
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountIn memory path = params.paths[i];
@@ -757,7 +757,7 @@ contract BatchRouterHooks is BatchRouterCommon {
         }
     }
 
-    function _prepayIfNeeded(SwapExactOutHookParams calldata params) internal {
+    function _prepayIfNeededExactOut(SwapExactOutHookParams calldata params) internal {
         for (uint256 i = 0; i < params.paths.length; ++i) {
             // Register the token amounts expected to be paid by the sender upfront as settled
             SwapPathExactAmountOut memory path = params.paths[i];
