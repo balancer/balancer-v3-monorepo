@@ -164,7 +164,7 @@ contract AddUnbalancedLiquidityViaSwapRouter is RouterHooks, IAddUnbalancedLiqui
     }
 
     /***************************************************************************
-                                   Others functions
+                                   Helper functions
     ***************************************************************************/
 
     // Required to avoid stack-too-deep in the caller.
