@@ -61,7 +61,7 @@ contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {
 
         uptimeFeed = new FeedMock(18);
         // Default to indicating the feed has been up for a day.
-        uptimeFeed.setLastRoundData(0, 1 days);
+        uptimeFeed.setLastRoundData(0, block.timestamp - 1 days);
     }
 
     function deployOracle(

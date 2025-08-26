@@ -32,7 +32,7 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
 
         _uptimeFeed = new FeedMock(18);
         // Default to indicating the feed has been up for a day.
-        _uptimeFeed.setLastRoundData(0, 1 days);
+        _uptimeFeed.setLastRoundData(0, block.timestamp - 1 days);
 
         _factory = _createOracleFactory();
 

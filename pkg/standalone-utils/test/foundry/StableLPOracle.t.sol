@@ -66,7 +66,7 @@ contract StableLPOracleTest is BaseVaultTest, StablePoolContractsDeployer {
 
         uptimeFeed = new FeedMock(18);
         // Default to indicating the feed has been up for a day.
-        uptimeFeed.setLastRoundData(0, 1 days);
+        uptimeFeed.setLastRoundData(0, block.timestamp - 1 days);
 
         for (uint256 i = 0; i < users.length; ++i) {
             address user = users[i];
