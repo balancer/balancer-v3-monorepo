@@ -55,13 +55,13 @@ contract EclpLPOracle is LPOracleBase {
 
     /**
      * @notice Computes the total value locked for constant ellipse (ECLP) pools of two assets.
-     * @dev This computation is resistant to price manipulation within the Balancer pool. Bounds on underlying prices are
-     * enforced to make this safe across a range of typical pool parameter combinations. These include typical stable
-     * pair configs and the following parameter combinations: alpha in [0.05, 0.999], beta in [1.001, 1.1], relative
-     * price range width (beta/alpha-1) >= 10bp, min-curvature price q = 1.0, lambda in [1, 1e8]. This yields a relative
-     * error of at most 0.1bp, assuming `invariant / totalSupply >= 2` or total redemption amount at least 1 USD. Please
-     * refer to Section 5.4 Consolidated Price Feed, in the Gyro technical documentation, for further details:
-     * (https://docs.gyro.finance/gyd/technical-documents.html).
+     * @dev This computation is resistant to price manipulation within the Balancer pool. Bounds on underlying prices
+     * are enforced to make this safe across a range of typical pool parameter combinations. These include typical
+     * stable pair configs and the following parameter combinations: alpha in [0.05, 0.999], beta in [1.001, 1.1],
+     * relative price range width (beta/alpha-1) >= 10bp, min-curvature price q = 1.0, lambda in [1, 1e8]. This yields
+     * a relative error of at most 0.1bp, assuming `invariant / totalSupply >= 2` or total redemption amount at least
+     * 1 USD. Please refer to Section 5.4 Consolidated Price Feed, in the Gyro technical documentation, for further
+     * details: (https://docs.gyro.finance/gyd/technical-documents.html).
      *
      * @param params ECLP pool parameters
      * @param derivedParams (tau(alpha), tau(beta)) in 18 decimals. The other elements are not used.
