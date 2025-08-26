@@ -6,8 +6,9 @@ import "forge-std/Test.sol";
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
@@ -29,6 +30,7 @@ import { FeedMock } from "../../contracts/test/FeedMock.sol";
 
 contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
     using SignedFixedPoint for int256;
+    using SignedMath for int256;
     using FixedPoint for uint256;
     using ArrayHelpers for *;
     using SafeCast for *;
@@ -316,7 +318,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
         assertApproxEqRel(tvlAfter, expectedTvlUSD, 1e14, "TVL should be close to expected");
     }
 
-    function testComputeTVLComparingWithMarketPriceBalances() public {
+    function testComputeTVLComparingWithMarketPriceBalancesExactIn() public {
         // This test compares the oracle price with the market price balance prices. The market price balances are
         // found by searching what are the balances of the pool, in the current invariant, that would be priced the
         // same as the oracle. Usually we would compute the gradient of the invariant function and compare with the
@@ -374,6 +376,84 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
 
         vm.prank(lp);
         router.swapSingleTokenExactIn(address(pool), wsteth, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        tvlOracle = oracle.computeTVL(prices);
+        tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
+            GyroECLPPool(address(pool)),
+            [_ETH_USD_RATE, uint256(1e18)].toMemoryArray()
+        );
+
+        // Error tolerance of 0.000001%.
+        assertApproxEqRel(tvlOracle, tvlMarketPriceBalances, 1e10, "TVL should not change after swap");
+    }
+
+    function testComputeTVLComparingWithMarketPriceBalancesExactOut() public {
+        // This test compares the oracle price with the market price balance prices. The market price balances are
+        // found by searching what are the balances of the pool, in the current invariant, that would be priced the
+        // same as the oracle. Usually we would compute the gradient of the invariant function and compare with the
+        // oracle prices, but here in the test we use a binary search to find the correct market price balances.
+
+        // wstETH/USDC pool, with a rate provider wstETH/ETH and oracle ETH/USD.
+        // Price interval: [3100, 4400]
+        // Peak liquidity price: ~3700
+
+        _paramsAlpha = 3100000000000000000000;
+        _paramsBeta = 4400000000000000000000;
+        _paramsC = 266047486094289;
+        _paramsS = 999999964609366945;
+        _paramsLambda = 20000000000000000000000;
+
+        _tauAlphaX = -74906290317688179576634216999624376320;
+        _tauAlphaY = 66249888081733509000774146899805470720;
+        _tauBetaX = 61281617359500194184092230363650195456;
+        _tauBetaY = 79022549780450675665143872372290355200;
+        _u = 36232449191667728242196851875381248;
+        _v = 79022548876385507382975597793964457984;
+        _w = 3398134415414380205616296112422912;
+        _z = -74906280678135835754217861217519665152;
+        _dSq = 99999999999999997748809823456034029568;
+
+        uint256 _WSTETH_RATE = 1.2e18;
+        uint256 _ETH_USD_RATE = 3700e18;
+        uint256 _INITIAL_WSTETH_BALANCE = uint256(1e18).divDown(_WSTETH_RATE);
+        uint256 _INITIAL_USDC_BALANCE = _ETH_USD_RATE;
+
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = IRateProvider(address(new RateProviderMock()));
+        RateProviderMock(address(rateProviders[0])).mockRate(_WSTETH_RATE);
+
+        IGyroECLPPool pool = createAndInitPool(
+            [address(wsteth), address(usdc)].toMemoryArray(),
+            rateProviders,
+            [_INITIAL_WSTETH_BALANCE, _INITIAL_USDC_BALANCE].toMemoryArray()
+        );
+
+        (EclpLPOracleMock oracle, ) = deployOracle(pool);
+        int256[] memory prices = [int256(_ETH_USD_RATE), int256(1e18)].toMemoryArray();
+
+        uint256 tvlOracle = oracle.computeTVL(prices);
+        uint256 tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
+            GyroECLPPool(address(pool)),
+            [_ETH_USD_RATE, uint256(1e18)].toMemoryArray()
+        );
+
+        // Error tolerance of 0.000001%.
+        assertApproxEqRel(tvlOracle, tvlMarketPriceBalances, 1e10, "TVL should be different before swap");
+
+        // Big swap, to make sure the pool is very unbalanced when computing the new TVL.
+        uint256 swapAmount = _INITIAL_WSTETH_BALANCE.mulDown(99e16);
+
+        vm.prank(lp);
+        router.swapSingleTokenExactOut(
+            address(pool),
+            usdc,
+            wsteth,
+            swapAmount,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
         tvlOracle = oracle.computeTVL(prices);
         tvlMarketPriceBalances = _computeExpectedTVLBinarySearch(
@@ -527,7 +607,7 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
             (int256 a, int256 b) = _computeOffsetFromBalances(marketPriceBalances, eclpParams, derivedEclpParams);
             uint256 price = _computePrice(marketPriceBalances, eclpParams, a, b);
 
-            if (_subAbs(price, oraclePrice).divDown(oraclePrice) < 1e6) {
+            if (uint256((int256(price) - int256(oraclePrice)).abs()).divDown(oraclePrice) < 1e6) {
                 return marketPriceBalances;
             }
 
@@ -647,13 +727,5 @@ contract EclpLPOracleTest is BaseVaultTest, GyroEclpPoolDeployer {
 
         a = GyroECLPMath.virtualOffset0(eclpParams, derivedECLPParams, invariant);
         b = GyroECLPMath.virtualOffset1(eclpParams, derivedECLPParams, invariant);
-    }
-
-    function _subAbs(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a > b) {
-            return a - b;
-        } else {
-            return b - a;
-        }
     }
 }
