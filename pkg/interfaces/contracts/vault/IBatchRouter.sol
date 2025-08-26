@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import{ SwapPathExactAmountIn, SwapPathExactAmountOut } from "./BatchRouterTypes.sol";
+import { SwapPathExactAmountIn, SwapPathExactAmountOut } from "./BatchRouterTypes.sol";
 import "./IBatchRouterQueries.sol";
 
 /// @notice Interface for the `BatchRouter`, supporting multi-hop swaps.

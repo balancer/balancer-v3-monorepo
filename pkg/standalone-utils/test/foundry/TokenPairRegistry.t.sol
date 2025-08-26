@@ -16,8 +16,6 @@ import { BaseERC4626BufferTest } from "@balancer-labs/v3-vault/test/foundry/util
 import { TokenPairRegistry } from "../../contracts/TokenPairRegistry.sol";
 
 contract TokenPairRegistryTest is BaseERC4626BufferTest {
-    using ArrayHelpers for *;
-
     TokenPairRegistry internal registry;
     address internal otherPool;
 

@@ -14,14 +14,12 @@ import "@balancer-labs/v3-interfaces/contracts/vault/BatchRouterTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
 contract YieldBearingPoolsTest is BaseERC4626BufferTest {
-    using ArrayHelpers for *;
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 

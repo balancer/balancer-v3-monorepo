@@ -26,10 +26,8 @@ struct SwapStepLocals {
 }
 
 /**
- * @notice Entrypoint for batch swaps, and batch swap queries.
- * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
- * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
- * settle with the Vault, and handle wrapping and unwrapping ETH.
+ * @notice Base BatchRouter contract with hooks for swaps and liquidity operations via the Vault.
+ * Uses prepayment instead of permit2.
  */
 contract AggregatorBatchHooks is BatchRouterCommon {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
@@ -65,6 +63,7 @@ contract AggregatorBatchHooks is BatchRouterCommon {
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
+        // We expect the user to make a prepayment instead of using permit2.
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
         _settlePaths(params.sender, false);
@@ -199,6 +198,7 @@ contract AggregatorBatchHooks is BatchRouterCommon {
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
+        // We expect the user to make a prepayment instead of using permit2.
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
         _settlePaths(params.sender, false);
