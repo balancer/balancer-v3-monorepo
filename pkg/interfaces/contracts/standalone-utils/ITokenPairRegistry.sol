@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-
-import { IBatchRouter } from "../vault/IBatchRouter.sol";
+import { SwapPathStep } from "../vault/BatchRouterTypes.sol";
 
 pragma solidity ^0.8.24;
 
@@ -65,11 +63,7 @@ interface ITokenPairRegistry {
      * @param index The index of the path in the list of paths for the token pair
      * @return The path at the specified index for the token pair
      */
-    function getPathAt(
-        address tokenIn,
-        address tokenOut,
-        uint256 index
-    ) external view returns (IBatchRouter.SwapPathStep[] memory);
+    function getPathAt(address tokenIn, address tokenOut, uint256 index) external view returns (SwapPathStep[] memory);
 
     /**
      * @notice Returns the number of paths registered for a given token pair.
@@ -85,7 +79,7 @@ interface ITokenPairRegistry {
      * @param tokenOut The address of the output token in the pair
      * @return An array of path addresses registered for the token pair
      */
-    function getPaths(address tokenIn, address tokenOut) external view returns (IBatchRouter.SwapPathStep[][] memory);
+    function getPaths(address tokenIn, address tokenOut) external view returns (SwapPathStep[][] memory);
 
     /**
      * @notice Adds an arbitrary path between `tokenIn` and the last step's `tokenOut` to the registry.
@@ -96,7 +90,7 @@ interface ITokenPairRegistry {
      * @param tokenIn The address of the input token in the pair
      * @param steps An array of `SwapPathStep` structs representing the path steps to reach the output token
      */
-    function addPath(address tokenIn, IBatchRouter.SwapPathStep[] memory steps) external;
+    function addPath(address tokenIn, SwapPathStep[] memory steps) external;
 
     /**
      * @notice Adds a pool or buffer to the registry with all token pairs it supports.

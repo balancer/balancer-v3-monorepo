@@ -14,7 +14,7 @@ import { AggregatorV3Interface } from '@balancer-labs/v3-interfaces/typechain-ty
 
 class WeightedLPOracleBenchmark extends LPOracleBenchmark {
   constructor(dirname: string) {
-    super(dirname, 'WeightedLPOracle');
+    super(dirname, 'WeightedLPOracle', 2, 6);
   }
 
   override async deployPool(poolTokens: string[]): Promise<PoolInfo> {
@@ -33,16 +33,12 @@ class WeightedLPOracleBenchmark extends LPOracleBenchmark {
     // Equal weights
     const weights = [];
 
-    // Avoid rounding issues
-    if (poolTokens.length == 3) {
-      weights[0] = fp(0.3);
-      weights[1] = fp(0.3);
-      weights[2] = fp(0.4);
-    } else {
-      for (let i = 0; i < poolTokens.length; i++) {
-        weights.push(fp(1 / poolTokens.length));
-      }
+    for (let i = 0; i < poolTokens.length; i++) {
+      weights.push(fp(1 / poolTokens.length));
     }
+    const sumWeights = weights.reduce((acc, weight) => acc + weight, fp(0));
+    // Sum of weights must be 1, so we adjust the first weight to absorb any rounding issue.
+    weights[0] = weights[0] + (fp(1) - sumWeights);
 
     const tx = await factory.create(
       'WeightedPool',

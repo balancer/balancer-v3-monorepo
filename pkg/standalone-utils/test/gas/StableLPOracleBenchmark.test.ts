@@ -14,7 +14,7 @@ import { AggregatorV3Interface } from '@balancer-labs/v3-interfaces/typechain-ty
 
 class StableLPOracleBenchmark extends LPOracleBenchmark {
   constructor(dirname: string) {
-    super(dirname, 'StableLPOracle');
+    super(dirname, 'StableLPOracle', 2, 4);
   }
 
   override async deployPool(poolTokens: string[]): Promise<PoolInfo> {
