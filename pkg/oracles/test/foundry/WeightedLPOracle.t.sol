@@ -27,8 +27,8 @@ import {
 } from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { FeedMock } from "@balancer-labs/v3-standalone-utils/contracts/test/FeedMock.sol";
 
-import { FeedMock } from "../../contracts/test/FeedMock.sol";
 import { WeightedLPOracleMock } from "../../contracts/test/WeightedLPOracleMock.sol";
 
 contract WeightedLPOracleTest is BaseVaultTest, WeightedPoolContractsDeployer {

@@ -20,9 +20,9 @@ import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/W
 import {
     WeightedPoolContractsDeployer
 } from "@balancer-labs/v3-pool-weighted/test/foundry/utils/WeightedPoolContractsDeployer.sol";
+import { FeedMock } from "@balancer-labs/v3-standalone-utils/contracts/test/FeedMock.sol";
 
 import { WeightedLPOracleFactory } from "../../contracts/WeightedLPOracleFactory.sol";
-import { FeedMock } from "../../contracts/test/FeedMock.sol";
 import { LPOracleFactoryBaseTest } from "./LPOracleFactoryBase.t.sol";
 
 contract WeightedLPOracleFactoryTest is WeightedPoolContractsDeployer, LPOracleFactoryBaseTest {
