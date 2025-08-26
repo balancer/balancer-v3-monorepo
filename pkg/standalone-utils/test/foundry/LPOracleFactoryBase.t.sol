@@ -6,6 +6,7 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/inte
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISequencerUptimeFeed } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ISequencerUptimeFeed.sol";
 import { ILPOracleFactoryBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleFactoryBase.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { ILPOracleBase } from "@balancer-labs/v3-interfaces/contracts/standalone-utils/ILPOracleBase.sol";
@@ -138,11 +139,11 @@ abstract contract LPOracleFactoryBaseTest is BaseVaultTest {
     }
 
     function testGetUptimeFeed() public view {
-        assertEq(address(_factory.getSequencerUptimeFeed()), address(_uptimeFeed), "Wrong uptime feed");
+        assertEq(address(ISequencerUptimeFeed(address(_factory)).getSequencerUptimeFeed()), address(_uptimeFeed), "Wrong uptime feed");
     }
 
     function testGetUptimeGracePeriod() public view {
-        assertEq(_factory.getUptimeGracePeriod(), UPTIME_GRACE_PERIOD, "Wrong uptime grace period");
+        assertEq(ISequencerUptimeFeed(address(_factory)).getUptimeGracePeriod(), UPTIME_GRACE_PERIOD, "Wrong uptime grace period");
     }
 
     function _createFeeds(IBasePool pool) internal returns (AggregatorV3Interface[] memory feeds) {

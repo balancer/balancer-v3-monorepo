@@ -21,7 +21,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
  * oracle that inherits this contract, and it must return the total value locked (TVL) of the pool. The rest of
  * this contract are standard functions that makes the oracle compatible with Chainlink's AggregatorV3Interface.
  */
-abstract contract LPOracleBase is ILPOracleBase, AggregatorV3Interface {
+abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, AggregatorV3Interface {
     using FixedPoint for uint256;
     using SafeCast for *;
 

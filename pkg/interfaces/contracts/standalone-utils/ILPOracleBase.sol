@@ -5,9 +5,7 @@ pragma solidity ^0.8.24;
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ISequencerUptimeFeed } from "./ISequencerUptimeFeed.sol";
-
-interface ILPOracleBase is ISequencerUptimeFeed {
+interface ILPOracleBase {
     /// @notice A price feed has decimals greater than the maximum allowed.
     error UnsupportedDecimals();
 

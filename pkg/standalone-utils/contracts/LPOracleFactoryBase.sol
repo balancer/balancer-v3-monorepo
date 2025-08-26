@@ -20,7 +20,7 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
  * @dev The factories that inherit this contract must implement the `_create` function, which deploys a different
  * oracle, depending on the pool.
  */
-abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, SingletonAuthentication, Version {
+abstract contract LPOracleFactoryBase is ILPOracleFactoryBase, ISequencerUptimeFeed, SingletonAuthentication, Version {
     // Used to ensure the L2 sequencer (on networks that have one) is live, and has been operating long enough to
     // accurately reflect the state. These values are passed to the oracle contracts on creation.
     AggregatorV3Interface internal immutable _sequencerUptimeFeed;
