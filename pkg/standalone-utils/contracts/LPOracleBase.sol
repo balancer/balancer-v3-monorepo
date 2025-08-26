@@ -317,7 +317,6 @@ abstract contract LPOracleBase is ILPOracleBase, ISequencerUptimeFeed, Aggregato
 
         // Check the status of the uptime feed.
         try _sequencerUptimeFeed.latestRoundData() returns (uint80, int256 answer, uint256 startedAt, uint256, uint80) {
-            // Check whether the sequencer is down.
             if (answer == _SEQUENCER_STATUS_DOWN) {
                 revert SequencerDown();
             }
