@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";a
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IBatchRouterQueries } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouterQueries.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
